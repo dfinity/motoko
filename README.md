@@ -1,2 +1,269 @@
-# actorscript
-Simple high-level language for writing Dfinity actors
+# ActorScript
+
+A simple language for writing Dfinity actors.
+
+
+## Introduction
+
+### Motivation and Goals
+
+* High-level language for programming Dfinity applications
+
+* Simple ("K.I.S.S.") design and familiar syntax for average programmers
+
+* Good and convenient support for actor model
+
+* Good fit for underlying Wasm and Dfinity execution model
+
+* Anticipate future extensions to Wasm where possible
+
+
+### Key Design Points
+
+* Simple class-based OO language, objects as closures
+
+* Classes can be actors
+
+* Async construct for direct-style programming of asynchronous messaging
+
+* Nominally and structurally typed with simple generics and subtyping
+
+* Overflow-checked number types, explicit conversions
+
+* JavaScript/TypeScript-style syntax but without the JavaScript madness
+
+* Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
+
+
+### Left for Future Version
+
+* Gas-related features?
+
+* Infinite-precision integers
+
+* Richer destructuring and pattern matching
+
+* Exception handling
+
+* Tail calls
+
+* Mixin composition for inheritance
+
+* Fancier types (generic bounds, top type?, union types?, co/contra-variance?)
+
+* Linear types?
+
+* Atoms?
+
+* String interpolation?
+
+
+## Overview
+
+### Types
+
+* Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
+  - `Int`, `Nat` (trap on overflow)
+  - `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
+  - `Float`
+  - `Char`, `Text`
+  - `Bool`, `Null`
+
+* Function types: first-class, multiple return values, can be generic
+  - `T -> U`
+  - `(T, U) -> (V, W)`
+  - `(x : T, y : U) -> V`
+  - `<A, B>(x : T, y : U) -> (V, W)`
+
+* Object types: structural record types, JS-like, fields can be mutable
+  - `{x : T; var y : U; z : V}`
+
+* Array types: Java-like, but elements can be mutable or immutable
+  - `T[]`
+  - `var T[]`
+
+* Option types: ML/Haskell-style option/maybe type, other types do not include null!
+  - `T?`
+
+* Async types: like futures/promises
+  - `async T`
+
+* Class types: the identity of a class (essentially, a modref)
+  - `class`
+
+* Like types: structural expansions of nominal types
+  - `like T`
+
+* Structural equi-recursive subtyping
+
+* Generics over reference types, uniform representation
+
+* Distinguish sharable and non-sharable types
+  - an object type is non-sharable if it has a mutable field or one of non-sharable type
+  - an array is non-sharable if it is mutable or has non-sharable element type
+  - a function is non-sharable if has a non-async result or a parameter or result of non-sharable type or closes over non-sharable locals (how indicate the latter in type?)
+  - all other types are sharable
+  - all public actor functions must be sharable
+
+
+### Expressions and Statements
+
+* Identifiers
+  - `x`, `foo_bar`
+
+* Literals for primitive types
+  - `13`, `0xf4`, `-20`, `1_000_000`
+  - `3.14`, `-0.3e+15`
+  - `'x'`, `'\u{6a}'`
+  - `"boo"`, `"foo \u{62}ar"`
+  - `true`, `false`
+  - `null`
+
+* Unary and binary arithmetic operators
+  - `- x`, `not b`
+  - `a + b`
+
+* Object and array literals, field/element access and update
+  - `{c = 3; var x = 4; f() {return y}; private y = 9}`
+  - `[3, 4]`
+  - `o.x`
+  - `a[i]`
+
+* Function calls, short-cut return
+  - `f(x, y)`
+  - `f<T, U>(x, y)`
+  - `return f()`
+
+* Blocks with local scope
+  - `{let x = h(); f(x); g(x)}`
+
+* Conditionals and switches
+  - `if b ...`
+  - `if b ... else ...`
+  - `switch x case 1 ... case 2 ... case _ ...`
+
+* While loops and iterations
+  - `while (p()) ...`
+  - `loop ...`
+  - `loop ... while (p())`
+  - `for x in f() ...`
+
+* Labels, nested break and continue
+  - `do l ...`
+  - `break l`
+  - `continue l`
+
+* Async and await
+  - `async {... await f() ...}`
+
+* Type annotation
+  - `e : T`
+
+* Instance check
+  - `x is T`
+
+* Assertions
+  - `assert (x > 0)`
+
+* Every statement is an expression
+
+
+### Declarations
+
+* Immutable and mutable variables, with destructuring
+  - `let x = f()`
+  - `let x : T = f()`
+  - `var y : T`
+  - `var z = 0`
+  - `let (a, b, c) = f()`
+
+* Functions
+  - `func f() ...`
+  - `func g(x : T, y : U) ...`
+  - `func h(x : T, y : U) : V ...`
+  - `func p<A, B>(x : T, y : U) : V ...`
+
+* Type aliases
+  - `type X = T`
+  - `type X<A, B> = U`
+
+* Classes, can be annotated as actor, instantiation as function call
+  - `class C(x : T, y : U) {...}`
+  - `class D<A, B>(x : T) {...}`
+  - `actor class A() {...}`
+  - `C(4, 5)`
+
+* Every declaration is a statement (and thereby an expression)
+
+
+
+## Example
+
+Here is a variant of the bank account example.
+
+```
+actor class Bank(supply : Int) {
+  private issuer = Issuer();
+  private reserve = Account(supply);
+  getIssuer() : async Issuer { return issuer; };
+  getReserve() : async Account { return reserve; };
+};
+
+actor class Issuer() {
+  hasIssued(account : like Account) : async Bool {
+    return (account is Account);
+  };
+};
+
+actor class Account(initial_balance : Int) {
+  private var balance : Int = initial_balance;
+
+  getBalance() : async Int {
+    return balance;
+  };
+
+  split(amount : Int) : async Account {
+    balance -= amount;
+    return Account(amount);
+  };
+
+  join(account : Account) {  // this implicitly asserts that account is Account
+    let amount = balance;
+    balance := 0;
+    account.credit(amount);
+  };
+
+  private credit(amount : Int) {
+    // private implicitly asserts that caller is own class
+    // by implicitly passing the modref as an extra argument
+    balance += amount;
+  };
+
+  isCompatible(account : like Account) : async Bool {
+    return (account is Account);
+  };
+};
+```
+
+Example use:
+```
+func transfer(sender : Account, receiver : Account, amount : Int) async {
+  let trx = await sender.split(amount);
+  receiver.join(trx);
+};
+```
+
+
+## Syntax
+
+See [here](design/Syntax.md).
+
+
+## Semantics
+
+TODO.
+
+
+## Implementation
+
+See [here](design/Implementation.md).
