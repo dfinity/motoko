@@ -75,8 +75,9 @@ A simple language for writing Dfinity actors.
   - `(x : T, y : U) -> V`
   - `<A, B>(x : T, y : U) -> (V, W)`
 
-* Object types: structural record types, JS-like, fields can be mutable
+* Object types: structural record types, JS-like, fields can be mutable, can be marked as actor
   - `{x : T; var y : U; z : V}`
+  - `actor {f : T -> (); g : U -> async T}`
 
 * Array types: Java-like, but elements can be mutable or immutable
   - `T[]`
@@ -123,8 +124,9 @@ A simple language for writing Dfinity actors.
   - `- x`, `not b`
   - `a + b`
 
-* Object and array literals, field/element access and update
+* Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
+  - `actor {f() {}}; private var x = 4; g() : async Int {return y}}`
   - `[3, 4]`
   - `o.x`
   - `a[i]`

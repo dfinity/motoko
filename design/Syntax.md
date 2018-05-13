@@ -7,7 +7,7 @@ Productions marked * probably deferred to later versions.
 ```
 <type> ::=                                     type expressions
   <id> <type-args>?                              constructor
-  { <type-field>;* }                             object
+  actor? { <type-field>;* }                      object
   var? <type> [ ]                                array
   <type> ?                                       option
   <type-params>? <type> -> <type>                function
@@ -43,7 +43,7 @@ Productions marked * probably deferred to later versions.
   <expr> <binop> <expr>                          binary numeric operator
   ( <expr>,* )                                   tuple
   <expr> . <nat>                                 tuple projection
-  (<id> as)? { <expr-field>;* }                  object
+  actor? <id>? { <expr-field>;* }                object
   <expr> . <id>                                  object projection
   <expr> := <expr>                               assignment
   <expr> <binop>= <expr>                         binary update
