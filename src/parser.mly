@@ -84,6 +84,15 @@ let anyT = TupT []
 %token<string> TEXT
 (* %token<string Source.phrase -> Ast.instr' * Values.value> CONST *)
 
+%left ADDOP SUBOP
+%left MULOP DIVOP
+%left OROP
+%left ANDOP
+%left XOROP
+%left CATOP  //?
+%nonassoc USUBOP
+
+
 %start<Syntax.typ> typ
 %%
 
@@ -182,8 +191,30 @@ lit :
     | c = CHAR	  { CharLit c}
     | t = TEXT    { TextLit t}
 
-exp :
+unop :
+    | ADDOP { PosOp }
+    | SUBOP { NegOp } 
+    | NOTOP { NotOp }
+
+%inline binop :
+    | ADDOP { AddOp}
+    | SUBOP { SubOp}
+    | DIVOP { DivOp}
+    | MODOP { ModOp}
+    | ANDOP { AndOp}
+    | OROP  { OrOp }
+    | XOROP { XorOp }
+    | SHIFTLOP { ShiftLOp }
+    | SHIFTROP { ShiftROp }
+    | ROTLOP   { RotLOp }
+    | ROTROP   { RotROp }
+    | CATOP    { CatOp }
+
+expr :
       id = id { VarE id @@ at() }
     | l = lit { LitE l @@ at() }
+    | uop = unop e = expr { UnE (uop,e) @@ at()}
+    | e1 = expr bop = binop { BinOp (e1, binop, e2) @@ at() }
+    
 
 %%
