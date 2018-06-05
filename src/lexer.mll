@@ -174,9 +174,9 @@ rule token = parse
   | ?? { ROTROP }
  *)
   | "@" { CATOP}  (*??*)
-
+  | "->" { ARROW }
   | nat as s { NAT s }
-  | int as s { INT s }
+  | int { INT s }
   | float as s { FLOAT s }
 
   | string as s { STRING (string s) }
@@ -199,12 +199,15 @@ rule token = parse
           f64_const (n @@ s.at), Values.F64 n))
     }
 *)
+  | "null" { NULL }
+  | "true" {BOOL true}
+  | "false" {BOOL false}
   | "func" { FUNC }
   | "mut" { MUT }
   | "let" { LET }
   | "var" { VAR }
   | "loop" { LOOP }
-  | "while" { LOOP }
+  | "while" { WHILE }
   | "return" { RETURN }
   | "if" { IF }
   | "then" { THEN }

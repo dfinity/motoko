@@ -5,11 +5,11 @@ MENHIR := menhir
 
 MENHIRFLAGS     := --infer
 
-OCAMLBUILD      := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)"
+OCAMLBUILD      := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" -I src -I lib -pkg wasm
 
 MAIN            := main
 
-all:
+all: sanity
 	$(OCAMLBUILD) $(MAIN).native
 
 clean:
@@ -20,3 +20,6 @@ test: all
 	@echo "The following command should print 42:"
 	echo "(1 + 2 * 10) * 2" | ./$(MAIN).native
 
+
+sanity:
+	ocamlfind query wasm

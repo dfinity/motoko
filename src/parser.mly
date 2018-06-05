@@ -44,20 +44,25 @@ let nat s at =
     if n >= 0 then n else raise (Failure "")
   with Failure _ -> error at "integer constant out of range"
 
-(*
+(* 
 let nat32 s at =
-  try I32.of_string_u s with Failure _ -> error at "i32 constant out of range"
+  try i32.of_string_u s with Failure _ -> error at "i32 constant out of range"
+
 
 let name s at =
   try Utf8.decode s with Utf8.Utf8 -> error at "invalid UTF-8 encoding"
 
 *)
+
+(* bogus bound *)
+let anyT = TupT []
+
 %}
 
 %token MUT LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token IF THEN ELSE SWITCH LOOP WHILE FOR LABEL BREAK RETURN CONTINUE ASYNC
-%token AWAIT 
+%token IF THEN ELSE SWITCH LOOP WHILE FOR LABEL LIKE BREAK RETURN CONTINUE ASYNC
+%token AWAIT ARROW
 %token FUNC TYPE ACTOR CLASS PRIVATE
 %token SEMICOLON COLON COMMA DOT
 %token ASSERT
@@ -67,11 +72,16 @@ let name s at =
 %token CATOP
 /* comparisons? */
 %token LT GT
+%token NULL
 %token<string> NAT
-%token<string> INT
-%token<string> FLOAT
+%token<int>  INT
+%token<float>  FLOAT
+%token<char>   CHAR
 %token<string> STRING
+%token<int>  WORD
+%token<bool>   BOOL
 %token<string> ID
+%token<string> TEXT
 (* %token<string Source.phrase -> Ast.instr' * Values.value> CONST *)
 
 %start<Syntax.typ> typ
@@ -81,13 +91,18 @@ let name s at =
 
 option(V) :
   | /* empty */ { None @@ at() }
-  | v=V { Some v @@ at() } 
+  | v=V { (Some v) @@ at() } 
 
 
 list(V) :
   | /* empty */ { [] @@ at() }
-  | v = V vs = list(V) { (v::vs.it) @@ at() } 
+  | v = V vs = list(V) { (v::vs.it) @@ at() }
 
+seplist(V,Sep) :
+  | /* empty */ { [] @@ at() }
+  | v = V Sep vs = list(V) { (v::vs.it) @@ at() } 
+  | v = V { [v] @@ at() }
+ 
 /* Types */
 
 id :
@@ -100,7 +115,7 @@ typ :
 	       Some ts -> ts | None -> [] )
 	@@ at()
      }
-  | a = actor? LCURLY tfs = list(tf = typ_field SEMICOLON {tf}) RCURLY
+  | a = actor? LCURLY tfs = seplist(typ_field,SEMICOLON ) RCURLY
     {
        let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
@@ -109,22 +124,66 @@ typ :
           ObjT (actor,tfs.it)
           @@ at()
     }
+  | vo = VAR? t = typ LBRACKET RBRACKET
+    {
+	ArrayT((match vo.it with
+	        | Some _ -> VarMut @@ vo.at
+	        | None -> ConstMut @@ vo.at),
+	       t)
+	@@ at()
+    }
+  | tpo = typ_params? t1 = typ ARROW t2 = typ 
+    {
+	FuncT((match tpo.it with
+	       | Some tp -> tp
+	       | None -> []),
+	      t1,
+	      t2)
+	@@ at()
+    }
+  | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
+  | ASYNC t = typ {  AsyncT t @@ at() }
+  | LIKE t = typ {  LikeT t @@ at() }
 
+
+typ_item :
+  | ID COLON t=typ { t }
+  | t=typ { t }
+   
 actor:
   | ACTOR { Actor @@ at()}
 
 typ_args :
-  | LT ts = list(t = typ COMMA {t}) GT { ts.it }
+  | LT ts = seplist(typ,COMMA) GT { ts.it }
 
 typ_params :
-  | LT ts = list(id = id COMMA {id}) GT { ts.it }
+  | LT ts = seplist(typ_bind,COMMA) GT { ts.it }
 
+typ_bind :
+  | id = id { {var=id; bound = anyT @@ at()} @@ at() }
+//| ID :> typ 
 typ_field :
   | id = id COLON t=typ
      { {var = id; typ = t; mut = ConstMut @@ no_region} @@ at() }
   | VAR id = id COLON t=typ
      { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+//TODO
 //  | id = id typ_params? <params>+ COLON t=typ
-//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }   
+//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+
+
+lit :
+    | NULL	  { NullLit}
+    | i = INT     { IntLit i}
+    | b = BOOL	  { BoolLit b}
+    | n = NAT	  { NatLit n}
+    | f = FLOAT   { FloatLit f}
+    | w = WORD    { WordLit w}
+    | c = CHAR	  { CharLit c}
+    | t = TEXT    { TextLit t}
+
+exp :
+      id = id { VarE id @@ at() }
+    | l = lit { LitE l @@ at() }
 
 %%
