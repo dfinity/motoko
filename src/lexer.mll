@@ -156,6 +156,7 @@ rule token = parse
   | ";" { SEMICOLON }
   | "," { COMMA }
   | "." { DOT }
+  | "=" { EQ }
   | "<" { LT }
   | ">" { GT }
   | "+" { ADDOP }
@@ -175,6 +176,8 @@ rule token = parse
  *)
   | "@" { CATOP}  (*??*)
   | "->" { ARROW }
+  | ":=" { ASSIGN }
+  | "_" { UNDERSCORE }
   | nat as s { NAT s }
   | int { INT s }
   | float as s { FLOAT s }
@@ -199,26 +202,36 @@ rule token = parse
           f64_const (n @@ s.at), Values.F64 n))
     }
 *)
-  | "null" { NULL }
-  | "true" {BOOL true}
-  | "false" {BOOL false}
-  | "func" { FUNC }
-  | "mut" { MUT }
-  | "let" { LET }
-  | "var" { VAR }
-  | "loop" { LOOP }
-  | "while" { WHILE }
-  | "return" { RETURN }
-  | "if" { IF }
-  | "then" { THEN }
-  | "else" { ELSE }
-  | "switch" { SWITCH }
-  | "type" { TYPE }
-  | "func" { FUNC }
   | "actor" { ACTOR }
+  | "and" { AND }
+  | "async" { ASYNC }
+  | "await" { AWAIT }
+  | "break" { BREAK }
+  | "case" { CASE }
   | "class" { CLASS }
+  | "continue" { CASE }
+  | "else" { ELSE }
+  | "false" {BOOL false}
+  | "for" { FOR }
+  | "func" { FUNC }
+  | "if" { IF }
+  | "in" { IN }
+  | "is" { IS }
+  | "mut" { MUT }
+  | "not" { NOT }
+  | "null" { NULL }
+  | "or" { OR }
+  | "label" { LABEL }
+  | "let" { LET }
+  | "loop" { LOOP }
+  | "return" { RETURN }
+  | "switch" { SWITCH }
+  | "true" {BOOL true}
+  | "then" { THEN }
+  | "type" { TYPE }
+  | "var" { VAR }
+  | "while" { WHILE }
   | name as s { ID s }
-
   | ";;"utf8_no_nl*eof { EOF }
   | ";;"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
   | ";;"utf8_no_nl* { token lexbuf (* causes error on following position *) }
