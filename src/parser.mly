@@ -6,7 +6,6 @@ open Source
 
 exception SyntaxError of region * string
 
-
 let error at msg = raise (SyntaxError (at, msg))
 
 let parse_error msg =
@@ -74,12 +73,12 @@ let anyT = TupT []
 /* comparisons? */
 %token EQ LT GT
 %token NULL
-%token<string> NAT
+%token<Types.nat> NAT
 %token<int>  INT
 %token<float>  FLOAT
-%token<char>   CHAR
+%token<Types.unicode>   CHAR
 %token<string> STRING
-%token<int>  WORD
+%token<Types.word>  WORD
 %token<bool>   BOOL
 %token<string> ID
 %token<string> TEXT
@@ -99,7 +98,7 @@ let anyT = TupT []
 %nonassoc IFX
 %nonassoc ELSE
 
-%start<Syntax.typ> typ
+%start<Syntax.prog> prog
 %%
 
 /* Helpers */
@@ -174,6 +173,21 @@ typ_args :
 typ_params :
   | LT ts = seplist(typ_bind,COMMA) GT { ts.it }
 
+//TBR
+param:
+  | t = typ { t }
+
+//TODO:  the informal grammar is actually, but I'm not sure how to understand <params>+
+//  | id = id typ_params? <params>+ COLON t=typ
+//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+fun_spec :
+  | id = id tpo = typ_params? p = param t = return_typ 
+    {	let tps = match tpo.it with
+    	    	  | Some tp -> tp
+		  | None -> [] in
+	(id,(FuncT(tps,p,t) @@ {left = tpo.at.left;right=t.at.right}))
+    }
+
 typ_bind :
   | id = id { {var=id; bound = anyT @@ at()} @@ at() }
 //| ID :> typ 
@@ -182,7 +196,10 @@ typ_field :
      { {var = id; typ = t; mut = ConstMut @@ no_region} @@ at() }
   | VAR id = id COLON t=typ
      { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
-//TODO
+  | fs = fun_spec
+    { let (id,t) = fs in
+      {var = id; typ = t; mut = ConstMut @@ no_region} @@ at() 
+    }
 //  | id = id typ_params? <params>+ COLON t=typ
 //     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
 
@@ -223,43 +240,95 @@ expr :
       id = id { VarE id @@ at() }
     | l = lit { LitE l @@ at() }
     | uop = unop e = expr { UnE (uop,e) @@ at()}
-    | e1 = expr bop = binop { BinOp (e1, binop, e2) @@ at() }
-    | LPAR es  = seplist(expr,COMMA) RPAR
+    // wouldn't it be better for BinE to have to exp arguments?
+    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at() }
+    | LPAR es = seplist(expr,COMMA) RPAR
       { match es.it with
         | [e] -> e
         | es -> TupE(es) @@ at()
       }
     | e=expr DOT n = NAT {ProjE (e,n) @@ at() }
-    | actor? id? LCURLY seplist(expr_field,SEMICOLON) RCURLY
+    | a = actor? ido = id? LCURLY es = seplist(expr_field,SEMICOLON) RCURLY
       {
-         
+         let actor =
+       	   (match a.it with Some _ -> Actor | _ -> Object)
+            @@ a.at in
+	 let id =  
+       	    match ido.it with Some id -> Some id | _ -> None  in
+	 ObjE(actor,id,es.it) @@ at()
       }
     | e=expr DOT id = id {DotE (e,id) @@ at() }
     | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
-    | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { Array(es) @@ at() }
-    | e1=expr LBRACKET e2=expr RBRACKET { ArrayE(e1,e2) @@ at() }
+    | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at() }
+    | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at() }
     | e1=expr e2=expr { CallE(e1,e2) @@ at() }
-    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es) @@ at() }
+    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at() }
     | NOT e = expr { NotE e @@ at() }
-    | e1 = expr AND e2 = expr { NotE(e1,e2) @@ at() }
-    | e1 = expr OR e2 = expr { AndE(e1,e2) @@ at() }
-    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ noRegion) @@ at() }
+    | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at() }
+    | e1 = expr OR e2 = expr { OrE(e1,e2) @@ at() }
+    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ no_region) @@ at() }
     | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at() }
     | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at()}
     | WHILE b=expr e=expr { WhileE(b,e) @@ at() }
     | LOOP e=expr eo=expr? { LoopE(e,eo.it) @@ at() }
-    | FOR e0=expr IN e1=expr e2=expr { ForE(e0,e1,e2) @@ at() }
+    | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at() }
     | LABEL id = id e = expr { LabelE (id,e) @@ at() }
-    | BREAK id = id eo= expr? { BreakE (id,e) @@ at() }
-    | RETURN eo= expr? { ReturnE eo @@ at() }
+    | BREAK id = id eo = expr?
+      {
+        let es =
+	    match eo.it with
+	    | Some e -> [e]
+	    | None -> [] in	    
+      	BreakE (id,es) @@ at()
+      }
+    | CONTINUE id = id { ContE id @@ at() }
+    | RETURN eo = expr?
+      {
+        let es =
+	    match eo.it with
+	    | Some e -> [e]
+	    | None -> [] in	    
+      	RetE es @@ at()
+      }
     | ASYNC e = expr { AsyncE e @@ at() }
+    | AWAIT e = expr { AwaitE e @@ at() }
     | ASSERT e = expr { AssertE e @@ at() }
     | e = expr IS t = typ { IsE(e,t) @@ at() }
     | e = expr COLON t = typ { AnnotE(e,t) @@ at() }
     | d=dec { DecE d @@ at() }
     
 case : 
-  | CASE p=pat e=expr { {pat = p; e=expr} @@ at() }
+  | CASE p=pat e=expr { {pat = p; exp = e} @@ at() }
+
+typ_annot :
+  | COLON t=typ { t }
+
+privacy :
+  | PRIVATE { Private @@ at() }
+  | /* empty */ { Public @@ at() }
+
+mutability :
+  | VAR { VarMut @@ at() }
+  | /* empty */ { ConstMut @@ at() }
+
+expr_field:
+  | p=privacy m=mutability id = id ot = typ_annot? EQ e=expr
+    {
+	let e = match ot.it with
+                | Some t -> AnnotE(e,t) @@ {left=t.at.left;right=e.at.right}
+                | None -> e in
+	{  var = id; mut = m; priv=p; exp = e}
+	@@ at()
+    }
+// TBR: should a func_def abbreviate a dec or block {dec;id}? *)
+  | p=privacy fd=func_def
+     {
+    	let (id,tps,pat,t,e) = fd.it in
+	let dec = FuncD(id,tps,pat,t,e) @@ fd.at in
+	let exp = DecE(dec) @@ fd.at in 
+	{  var = id; mut = ConstMut @@ no_region; priv = p; exp = exp}
+	@@ at() 
+     }
 
 atpat :
   | p = pat COLON t=typ { AnnotP(p,t) @@ at() }
@@ -267,18 +336,32 @@ atpat :
   
 pat :
   | UNDERSCORE { WildP @@ at() }
-  | id { VarP(it) @@ at() }
+  | id = id { VarP(id) @@ at() }
   | LPAR ps  = seplist(atpat,COMMA) RPAR
       { match ps.it with
         | [p] -> p
-        | ps -> TupP(es) @@ at()
+        | ps -> TupP(ps) @@ at()
       }
 
-init :
+init :  
   | EQ e=expr { e }
 
 return_typ :
   | COLON t=typ { t }
+
+//TBR: do we want id _ ... d x ... or id (x,...).
+// if t is NONE, should it default to unit or is it inferred from expr?
+func_def :
+  | id = id tpo = typ_params? p = pat t = return_typ? EQ e=expr 
+    {	let tps = match tpo.it with
+    	    	  | Some tp -> tp 
+		  | None -> [] in
+        let t = match t.it with
+	        | Some t -> t
+	        | None -> TupT([]) @@ no_region in
+	(id,tps,p,t,e)
+	@@ at()
+    }
 
 dec :
   | LET p = pat e = expr { LetD (p,e) @@ at() }
@@ -288,38 +371,32 @@ dec :
 	   | Some e -> Some e
 	   | None -> None)
       @@ at() } 
-//TBR: do we want func id _ ... func id x ... or just func id (x,...).
-// if t is NONE, should it default to unit or is it inferred from expr?
-  | FUNC id = id tpo = typ_params? p = pat t = return_typ? EQ e=expr 
-    {	let tps = match typ with
-    	    	  | Some tp -> tp
-		  | None -> [] @@ noRegion in
-        let t = match t with
-	        | Some t -> t
-	        | None -> TupT([]) @@ noRegion in
-	FuncD(id,tps,p,t,e)
-	@@ at()
+  | FUNC fd = func_def
+    {	let (id,tps,p,t,e) = fd.it in
+	FuncD(id,tps,p,t,e) @@ at()
     }
-  | TYPE id = id tpo = typ_params? EQ t=typ
-    {	let tps = match typ with
-    	    	  | Some tp -> tp
-		  | None -> [] @@ noRegion in
+  | TYPE id = id tpso = typ_params? EQ t=typ
+    {	let tps = match tpso.it with
+    	    	  | Some tps -> tps
+		  | None -> [] in
         TypD(id,tps,t)
 	@@ at()
     }
 
-  | a = actor? CLASS id = id tpo = typ_params? p=pat EQ e=expr
+  | a = actor? CLASS id = id tpso = typ_params? p=pat EQ e=expr
     {
         let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
-            @@ a.at
-	let tps = match typ with
-    	    	  | Some tp -> tp
-		  | None -> [] @@ noRegion in
-        ClassT(actor,id,tps,p,e)
+            @@ a.at in
+	let tps = match tpso.it with
+    	    	  | Some tps -> tps
+		  | None -> [] in
+        ClassD(actor,id,tps,p,e)
 	@@ at()
     }
 
+prog:
+    ds = dec* { ds }
 
  
 
