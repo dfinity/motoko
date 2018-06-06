@@ -229,6 +229,11 @@ expr :
         | [e] -> e
         | es -> TupE(es) @@ at()
       }
+    | e=expr DOT n = NAT {ProjE (e,n) @@ at() }
+    | actor? id? LCURLY seplist(expr_field,SEMICOLON) RCURLY
+      {
+         
+      }
     | e=expr DOT id = id {DotE (e,id) @@ at() }
     | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
     | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { Array(es) @@ at() }
