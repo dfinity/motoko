@@ -3,7 +3,7 @@
 
 MENHIR := menhir 
 
-MENHIRFLAGS     := --infer
+MENHIRFLAGS     := --infer --dump --explain
 
 OCAMLBUILD      := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" -I src -I lib -pkg wasm
 

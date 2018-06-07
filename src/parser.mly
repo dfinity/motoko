@@ -1,4 +1,5 @@
 %{
+
 open Types
 open Syntax
 open Source 
@@ -58,6 +59,8 @@ let anyT = TupT []
 
 %}
 
+%token EOF
+
 %token MUT LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LABEL LIKE RETURN 
@@ -66,7 +69,7 @@ let anyT = TupT []
 %token SEMICOLON COLON COMMA DOT
 %token AND OR NOT 
 %token ASSERT
-%token EOF
+%token OBJECT //delete me?
 %token ADDOP SUBOP MULOP DIVOP MODOP ANDOP OROP XOROP NOTOP SHIFTLOP SHIFTROP
 %token ROTLOP ROTROP
 %token CATOP
@@ -93,12 +96,14 @@ let anyT = TupT []
 %left XOROP
 %left CATOP  //?
 %nonassoc USUBOP
-
+    
 
 %nonassoc IFX
 %nonassoc ELSE
 
 %start<Syntax.prog> prog
+//%start<Syntax.typ> typ
+
 %%
 
 /* Helpers */
@@ -122,6 +127,13 @@ seplist(V,Sep) :
 id :
   | id = ID { id @@ at()}
 
+sort:
+  | ACTOR  { Some () @@ at() }
+  | OBJECT { None @@ at() }
+atom_typ:
+  | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
+  | ASYNC t = typ {  AsyncT t @@ at() }
+  | LIKE t = typ {  LikeT t @@ at() }
 typ : 
   |  id = id ots = typ_args? {
      	VarT (id,
@@ -129,7 +141,7 @@ typ :
 	       Some ts -> ts | None -> [] )
 	@@ at()
      }
-  | a = actor? LCURLY tfs = seplist(typ_field,SEMICOLON ) RCURLY
+  | a = sort LCURLY tfs = seplist(typ_field,SEMICOLON ) RCURLY
     {
        let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
@@ -138,7 +150,8 @@ typ :
           ObjT (actor,tfs.it)
           @@ at()
     }
-  | vo = VAR? t = typ LBRACKET RBRACKET
+/*
+  | vo = VAR? t = atom_typ LBRACKET RBRACKET
     {
 	ArrayT((match vo.it with
 	        | Some _ -> VarMut @@ vo.at
@@ -146,7 +159,8 @@ typ :
 	       t)
 	@@ at()
     }
-  | tpo = typ_params? t1 = typ ARROW t2 = typ 
+ */
+  | tpo = typ_params? t1 = atom_typ ARROW t2 = typ 
     {
 	FuncT((match tpo.it with
 	       | Some tp -> tp
@@ -155,17 +169,13 @@ typ :
 	      t2)
 	@@ at()
     }
-  | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
-  | ASYNC t = typ {  AsyncT t @@ at() }
-  | LIKE t = typ {  LikeT t @@ at() }
-
 
 typ_item :
   | ID COLON t=typ { t }
   | t=typ { t }
    
 actor:
-  | ACTOR { Actor @@ at()}
+  | ACTOR { Some () @@ at()}
 
 typ_args :
   | LT ts = seplist(typ,COMMA) GT { ts.it }
@@ -177,7 +187,7 @@ typ_params :
 param:
   | t = typ { t }
 
-//TODO:  the informal grammar is actually, but I'm not sure how to understand <params>+
+//TODO:  the informal grammar is actually as below but I'm not sure how to understand <params>+
 //  | id = id typ_params? <params>+ COLON t=typ
 //     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
 fun_spec :
@@ -233,22 +243,17 @@ unop :
     | ROTROP   { RotROp }
     | CATOP    { CatOp }
 
-expr_rest :
-    | RPAR { fn e -> e }
 
-expr :
-      id = id { VarE id @@ at() }
+atomic_expr :
+    | id = id { VarE id @@ at() }
     | l = lit { LitE l @@ at() }
-    | uop = unop e = expr { UnE (uop,e) @@ at()}
-    // wouldn't it be better for BinE to have to exp arguments?
-    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at() }
     | LPAR es = seplist(expr,COMMA) RPAR
       { match es.it with
         | [e] -> e
         | es -> TupE(es) @@ at()
       }
-    | e=expr DOT n = NAT {ProjE (e,n) @@ at() }
-    | a = actor? ido = id? LCURLY es = seplist(expr_field,SEMICOLON) RCURLY
+
+    | a = sort ido = id? LCURLY es = seplist(expr_field,SEMICOLON) RCURLY
       {
          let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
@@ -257,21 +262,10 @@ expr :
        	    match ido.it with Some id -> Some id | _ -> None  in
 	 ObjE(actor,id,es.it) @@ at()
       }
-    | e=expr DOT id = id {DotE (e,id) @@ at() }
-    | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
+
     | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at() }
-    | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at() }
-    | e1=expr e2=expr { CallE(e1,e2) @@ at() }
+    | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at() }
     | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at() }
-    | NOT e = expr { NotE e @@ at() }
-    | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at() }
-    | e1 = expr OR e2 = expr { OrE(e1,e2) @@ at() }
-    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ no_region) @@ at() }
-    | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at() }
-    | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at()}
-    | WHILE b=expr e=expr { WhileE(b,e) @@ at() }
-    | LOOP e=expr eo=expr? { LoopE(e,eo.it) @@ at() }
-    | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at() }
     | LABEL id = id e = expr { LabelE (id,e) @@ at() }
     | BREAK id = id eo = expr?
       {
@@ -282,6 +276,23 @@ expr :
       	BreakE (id,es) @@ at()
       }
     | CONTINUE id = id { ContE id @@ at() }
+  
+expr :
+    | e=atomic_expr { e } 
+    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at() }
+    | e=expr DOT n = NAT {ProjE (e,n) @@ at() }
+    | e=expr DOT id = id {DotE (e,id) @@ at() }
+    | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
+    | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at() }
+    | NOT e = expr { NotE e @@ at() }
+    | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at() }
+    | e1 = expr OR e2 = expr { OrE(e1,e2) @@ at() }
+    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ no_region) @@ at() }
+    | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at() }
+    | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at()}
+    | WHILE LPAR b=expr RPAR e=expr { WhileE(b,e) @@ at() }
+    | LOOP e=expr eo=expr? { LoopE(e,eo.it) @@ at() }
+    | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at() }
     | RETURN eo = expr?
       {
         let es =
@@ -383,7 +394,7 @@ dec :
 	@@ at()
     }
 
-  | a = actor? CLASS id = id tpso = typ_params? p=pat EQ e=expr
+  | a = sort CLASS id = id tpso = typ_params? p=pat EQ e=expr
     {
         let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
@@ -396,7 +407,7 @@ dec :
     }
 
 prog:
-    ds = dec* { ds }
+    ds = dec* EOF { ds }
 
  
 
