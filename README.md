@@ -263,9 +263,9 @@ See [here](design/Syntax.md).
 
 ## Semantics
 
-TODO.
+TODO...
 
 
 ## Implementation
 
-See [here](design/Implementation.md).
+See [here](design/Implementation.md)
