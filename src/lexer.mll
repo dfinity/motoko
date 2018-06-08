@@ -1,7 +1,85 @@
 {
 open Parser
-open Operators
-open Source 
+open Source
+module Script = Wasm.Script
+module Utf8 = Wasm.Utf8
+
+exception Syntax of Source.region * string
+
+let token_to_string tok =
+    match tok with
+    | XOROP -> "XOROP"
+    | WORD _ -> "WORD"
+    | WHILE -> "WHILE"
+    | VAR -> "VAR"
+    | UNDERSCORE -> "UNDERSCORE"
+    | TYPE -> "TYPE"
+    | THEN -> "THEN"
+    | TEXT _ -> "TEXT()"
+    | SWITCH -> "SWITCH"
+    | SUBOP -> "SUBOP"
+    | STRING _ -> "STRING"
+    | SHIFTROP  -> "SHIFTROP"
+    | SHIFTLOP -> "SHIFTLOP"
+    | SEMICOLON -> "SEMICOLON"
+    | RPAR -> "RPAR"
+    | ROTROP -> "ROTROP"
+    | ROTLOP -> "ROTLOP"
+    | RETURN -> "RETURN"
+    | RCURLY -> "RCURLY"
+    | RBRACKET -> "RBRACKET"
+    | PRIVATE -> "PRIVATE"
+    | OROP -> "OROP"
+    | OR -> "OR"
+    | OBJECT -> "OBJECT"
+    | NULL -> "NULL"
+    | NOTOP -> "NOTOP"
+    | NOT -> "NOT"
+    | NAT n ->  Printf.sprintf "NAT(%i)" n
+    | MUT -> "MUL"
+    | MULOP -> "MULOP"
+    | MODOP -> "MODOP"
+    | LT -> "LT"
+    | LPAR -> "LPAR"
+    | LOOP -> "LOOP"
+    | LIKE -> "LIKE"
+    | LET -> "LET"
+    | LCURLY -> "LCURLY"
+    | LBRACKET -> "LBRACKET"
+    | LABEL -> "LABEL"
+    | IS -> "IS"
+    | INT i ->  Printf.sprintf "ID(%i)" i
+    | IN -> "IN"
+    | IF -> "IF"
+    | ID id -> Printf.sprintf "ID(%s)" id
+    | GT -> "GT"
+    | FUNC -> "FUNC"
+    | FOR -> "FOR"
+    | FLOAT _ -> "FLOAT"
+    | EQ -> "EQ"
+    | EOF -> "EOF"
+    | ELSE -> "ELSE"
+    | DOT -> "DOT"
+    | DIVOP -> "DIVOP"
+    | CONTINUE -> "CONTINUE"
+    | COMMA -> "COMMA"
+    | COLON -> "COLON"
+    | CLASS -> "CLASS"
+    | CHAR _ -> "CHAR"
+    | CATOP -> "CATOP"
+    | CASE -> "CASE"
+    | BREAK -> "BREAK"
+    | BOOL _ -> "BOOL"  
+    | AWAIT -> "AWAIT"
+    | ASYNC -> "ASYNC"
+    | ASSIGN -> "ASSING"
+    | ASSERT -> "ASSERT"
+    | ARROW -> "ARROW"
+    | ANDOP -> "ANDOP"
+    | AND -> "AND"
+    | ADDOP -> "ADDOP"
+    | ACTOR -> "ACTOR"
+
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -14,7 +92,8 @@ let region lexbuf =
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
   {Source.left = left; Source.right = right}
 
-let error lexbuf msg = raise (Script.Syntax (region lexbuf, msg))
+(* let error lexbuf msg = raise (Script.Syntax (region lexbuf, msg)) *)
+let error lexbuf msg = raise (Syntax (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
@@ -46,6 +125,7 @@ let string s =
   done;
   Buffer.contents b
 
+(*
 let value_type = function
   | "i32" -> Types.I32Type
   | "i64" -> Types.I64Type
@@ -87,6 +167,7 @@ let ext e s u =
   | _ -> assert false
 
 let opt = Lib.Option.get
+*)
 }
 
 let sign = '+' | '-'
@@ -135,11 +216,11 @@ let float =
   | sign? "nan"
   | sign? "nan:" "0x" hexnum
 let string = '"' character* '"'
-let name = '$' (letter | digit | '_' | symbol)+
+let name =  letter  ((letter | digit | '_')*)
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
 let ixx = "i" ("32" | "64")
-let fxx = "f" ("32" | "64")
+let fxx = "f" ("32" | "64")  
 let nxx = ixx | fxx
 let mixx = "i" ("8" | "16" | "32" | "64")
 let mfxx = "f" ("32" | "64")
@@ -152,7 +233,8 @@ rule token = parse
   | "[" { LBRACKET }
   | "]" { RBRACKET }
   | "{" { LCURLY }
-  | "}" { LCURLY }
+  | "}" { RCURLY }
+  | ":" { COLON }
   | ";" { SEMICOLON }
   | "," { COMMA }
   | "." { DOT }
@@ -178,9 +260,10 @@ rule token = parse
   | "->" { ARROW }
   | ":=" { ASSIGN }
   | "_" { UNDERSCORE }
-  | nat as s { NAT s }
-  | int { INT s }
-  | float as s { FLOAT s }
+(*TODO: literals need reworking*)
+  | nat as s { NAT (int_of_string s) }
+  | int as s { INT (int_of_string s) }
+  | float as s { FLOAT (float_of_string s) }
 
   | string as s { STRING (string s) }
   | '"'character*('\n'|eof) { error lexbuf "unclosed string literal" }
@@ -224,6 +307,7 @@ rule token = parse
   | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
+  | "private" { PRIVATE }
   | "return" { RETURN }
   | "switch" { SWITCH }
   | "true" {BOOL true}
@@ -232,22 +316,41 @@ rule token = parse
   | "var" { VAR }
   | "while" { WHILE }
   | name as s { ID s }
-  | ";;"utf8_no_nl*eof { EOF }
-  | ";;"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
-  | ";;"utf8_no_nl* { token lexbuf (* causes error on following position *) }
-  | "(;" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token lexbuf }
+  | "//"utf8_no_nl*eof { EOF }
+  | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
+  | "//"utf8_no_nl* { token lexbuf (* causes error on following position *) }
+  | "(*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token lexbuf }
   | space#'\n' { token lexbuf }
   | '\n' { Lexing.new_line lexbuf; token lexbuf }
   | eof { EOF }
 
-  | reserved { error lexbuf "unknown operator" }
+(*| reserved { error lexbuf "unknown operator" } *)
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
 and comment start = parse
-  | ";)" { () }
-  | "(;" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; comment start lexbuf }
+  | "*)" { () }
+  | "(*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; comment start lexbuf }
   | '\n' { Lexing.new_line lexbuf; comment start lexbuf }
   | eof { error_nest start lexbuf "unclosed comment" }
   | utf8 { comment start lexbuf }
   | _ { error lexbuf "malformed UTF-8 encoding" }
+
+(* debugging *)
+
+(* This rule looks for a single line, terminated with '\n' or eof.
+   It returns a pair of an optional string (the line that was found)
+   and a Boolean flag (false if eof was reached). *)
+
+and line = parse
+| ([^'\n']* '\n') as line
+    (* Normal case: one line, no eof. *)
+    { Some line, true }
+| eof
+    (* Normal case: no data, eof. *)
+    { None, false }
+| ([^'\n']+ as line) eof
+    (* Special case: some data but missing '\n', then eof.
+       Consider this as the last line, and add the missing '\n'. *)
+    { Some (line ^ "\n"), false }
+

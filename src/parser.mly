@@ -119,29 +119,33 @@ list(V) :
 
 seplist(V,Sep) :
   | /* empty */ { [] @@ at() }
-  | v = V Sep vs = list(V) { (v::vs.it) @@ at() } 
+  | v = V Sep vs = seplist(V,Sep) { (v::vs.it) @@ at() } 
   | v = V { [v] @@ at() }
  
-/* Types */
-
 id :
   | id = ID { id @@ at()}
 
 sort:
   | ACTOR  { Some () @@ at() }
   | OBJECT { None @@ at() }
-atom_typ:
+
+
+/* Types */
+
+atomic_typ:
   | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
   | ASYNC t = typ {  AsyncT t @@ at() }
   | LIKE t = typ {  LikeT t @@ at() }
-typ : 
   |  id = id ots = typ_args? {
      	VarT (id,
 	      match ots.it with
 	       Some ts -> ts | None -> [] )
 	@@ at()
      }
-  | a = sort LCURLY tfs = seplist(typ_field,SEMICOLON ) RCURLY
+
+typ :
+  | t = atomic_typ {t}
+  | a = sort LCURLY tfs = seplist(typ_field,SEMICOLON) RCURLY
     {
        let actor =
        	   (match a.it with Some _ -> Actor | _ -> Object)
@@ -151,7 +155,7 @@ typ :
           @@ at()
     }
 /*
-  | vo = VAR? t = atom_typ LBRACKET RBRACKET
+  | vo = VAR? t = atomic_typ LBRACKET RBRACKET
     {
 	ArrayT((match vo.it with
 	        | Some _ -> VarMut @@ vo.at
@@ -160,7 +164,7 @@ typ :
 	@@ at()
     }
  */
-  | tpo = typ_params? t1 = atom_typ ARROW t2 = typ 
+  | tpo = typ_params? t1 = atomic_typ ARROW t2 = typ 
     {
 	FuncT((match tpo.it with
 	       | Some tp -> tp
@@ -185,17 +189,20 @@ typ_params :
 
 //TBR
 param:
-  | t = typ { t }
+  | id = id COLON t = typ { AnnotP(VarP(id) @@ id.at,t) @@ at()  }
+
+params :
+  | LPAR ps = seplist(param,COMMA) RPAR { TupP(ps.it) @@ at()}
 
 //TODO:  the informal grammar is actually as below but I'm not sure how to understand <params>+
 //  | id = id typ_params? <params>+ COLON t=typ
 //     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
 fun_spec :
-  | id = id tpo = typ_params? p = param t = return_typ 
+  | id = id tpo = typ_params? t1 = typ t2 = return_typ 
     {	let tps = match tpo.it with
     	    	  | Some tp -> tp
 		  | None -> [] in
-	(id,(FuncT(tps,p,t) @@ {left = tpo.at.left;right=t.at.right}))
+	(id,(FuncT(tps,t1,t2) @@ {left = tpo.at.left;right=t2.at.right}))
     }
 
 typ_bind :
@@ -243,6 +250,8 @@ unop :
     | ROTROP   { RotROp }
     | CATOP    { CatOp }
 
+block_expr :
+    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at() }
 
 atomic_expr :
     | id = id { VarE id @@ at() }
@@ -265,7 +274,7 @@ atomic_expr :
 
     | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at() }
     | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at() }
-    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at() }
+    | e=block_expr { e }
     | LABEL id = id e = expr { LabelE (id,e) @@ at() }
     | BREAK id = id eo = expr?
       {
@@ -314,16 +323,16 @@ case :
 typ_annot :
   | COLON t=typ { t }
 
-privacy :
+%inline privacy :
   | PRIVATE { Private @@ at() }
   | /* empty */ { Public @@ at() }
 
-mutability :
+%inline mutability :
   | VAR { VarMut @@ at() }
   | /* empty */ { ConstMut @@ at() }
 
 expr_field:
-  | p=privacy m=mutability id = id ot = typ_annot? EQ e=expr
+  | p=privacy  m=mutability id = id ot = typ_annot? EQ e=expr
     {
 	let e = match ot.it with
                 | Some t -> AnnotE(e,t) @@ {left=t.at.left;right=e.at.right}
@@ -340,7 +349,6 @@ expr_field:
 	{  var = id; mut = ConstMut @@ no_region; priv = p; exp = exp}
 	@@ at() 
      }
-
 atpat :
   | p = pat COLON t=typ { AnnotP(p,t) @@ at() }
   | p = pat { p }
@@ -363,7 +371,7 @@ return_typ :
 //TBR: do we want id _ ... d x ... or id (x,...).
 // if t is NONE, should it default to unit or is it inferred from expr?
 func_def :
-  | id = id tpo = typ_params? p = pat t = return_typ? EQ e=expr 
+  | id = id tpo = typ_params? p = params t = return_typ? EQ e=expr 
     {	let tps = match tpo.it with
     	    	  | Some tp -> tp 
 		  | None -> [] in
@@ -375,7 +383,7 @@ func_def :
     }
 
 dec :
-  | LET p = pat e = expr { LetD (p,e) @@ at() }
+  | LET p = pat EQ e = expr { LetD (p,e) @@ at() }
   | VAR id = id COLON t=typ eo = init?
     { VarD(id,t,
            match eo.it with
@@ -394,6 +402,7 @@ dec :
 	@@ at()
     }
 
+/*
   | a = sort CLASS id = id tpso = typ_params? p=pat EQ e=expr
     {
         let actor =
@@ -405,9 +414,22 @@ dec :
         ClassD(actor,id,tps,p,e)
 	@@ at()
     }
+*/
+  | a = sort CLASS id = id tpso = typ_params? p=params LCURLY efs = seplist(expr_field,SEMICOLON) RCURLY
+    {
+        let actor =
+       	   (match a.it with Some _ -> Actor | _ -> Object)
+            @@ a.at in
+	let tps = match tpso.it with
+    	    	  | Some tps -> tps
+		  | None -> [] in
+        ClassD(actor,id,tps,p,efs.it)
+	@@ at()
+    }
+
 
 prog:
-    ds = dec* EOF { ds }
+    ds = seplist(dec,SEMICOLON) EOF { ds }
 
  
 

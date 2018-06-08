@@ -10,7 +10,7 @@ Productions marked * probably deferred to later versions.
   actor? { <type-field>;* }                      object
   var? <type> [ ]                                array
   <type> ?                                       option
-  <type-params>? <type> -> <type>                function
+  <type-params>? <type> -> <type>                function // why not n-ary domain?
   async <type>                                   future
   like <type>                                    structural expansion
   ( ((<id> :)? <type>),* )                       tuple
@@ -21,7 +21,8 @@ Productions marked * probably deferred to later versions.
 <type-field> ::=                               object type fields
   <id> : <type>                                  immutable
   var <id> : <type>                              mutable
-  <id> <type-params>? <params>+ : <type>         function (short-hand)
+//  <id> <type-params>? <params>+ : <type>         function (short-hand)
+  <id> <type-params>? <params> : <type>         function (short-hand)
 
 <type-args> ::=                                type arguments
   < <type>,* >
@@ -29,6 +30,9 @@ Productions marked * probably deferred to later versions.
 <type-params> ::=                              type parameters
   < <id>,* >                                     unconstrained
 * < (<id> <: <type>),* >                         constrained
+
+<params> ::=                                   parameters
+  ( <id> : <type>,*  )                        
 ```
 
 ## Expressions
@@ -77,7 +81,8 @@ Productions marked * probably deferred to later versions.
 <expr-field> ::=                               object expression fields
   private? <id> (: <type>)? = <expr>                         immutable
   private? var <id> (: <type>)? = <expr>                     mutable
-  private? <id> <type-params>? <pat>+ (: <type>)? = <expr>   function (short-hand)
+//  private? <id> <type-params>? <pat>+ (: <type>)? = <expr>   function (short-hand)
+  private? <id> <type-params>? <params> (: <type>)? = <expr>   function (short-hand)
 ```
 
 ## Patterns
@@ -105,5 +110,14 @@ Productions marked * probably deferred to later versions.
   var <id> : <type> (= <expr>)?                          mutable
   func <id> <type-params>? <pat>+ (: <type>)? = <expr>   function
   type <id> <type-params>? = <type>                      type
-  actor? class <id> <type-params>? <pat> = <expr>        class
+//  actor? class <id> <type-params>? <pat> = <expr>        class
+  actor? class <id> <type-params>? <params> { expr_field;* }        class
 ```
+
+## Programs
+```
+<prog> ::= <dec>;*                                              declaration
+
+```
+
+
