@@ -69,7 +69,7 @@ let anyT = TupT []
 %token SEMICOLON COLON COMMA DOT
 %token AND OR NOT 
 %token ASSERT
-%token OBJECT //delete me?
+%token OBJECT //TBR delete me?
 %token ADDOP SUBOP MULOP DIVOP MODOP ANDOP OROP XOROP NOTOP SHIFTLOP SHIFTROP
 %token ROTLOP ROTROP
 %token<Types.binop> BINUPDATE 
@@ -195,7 +195,7 @@ param:
 params :
   | LPAR ps = seplist(param,COMMA) RPAR { TupP(ps.it) @@ at()}
 
-//TODO:  the informal grammar is actually as below but I'm not sure how to understand <params>+
+//TBR:  the informal grammar is actually as below but I'm not sure how to understand <params>+
 //  | id = id typ_params? <params>+ COLON t=typ
 //     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
 fun_spec :
@@ -410,7 +410,7 @@ dec :
 	@@ at()
     }
 
-/*
+/* TBR: Syntax.md specifies EQ expr but the examples allow a expr_field* (sans EQ), shall we allow both?
   | a = sort CLASS id = id tpso = typ_params? p=pat EQ e=expr
     {
         let actor =
@@ -438,8 +438,5 @@ dec :
 
 prog:
     ds = seplist(dec,SEMICOLON) EOF { ds }
-
- 
-
 
 %%
