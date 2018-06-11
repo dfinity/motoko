@@ -1,6 +1,7 @@
 {
 open Parser
 open Source
+open Types 
 module Script = Wasm.Script
 module Utf8 = Wasm.Utf8
 
@@ -69,7 +70,8 @@ let token_to_string tok =
     | CATOP -> "CATOP"
     | CASE -> "CASE"
     | BREAK -> "BREAK"
-    | BOOL _ -> "BOOL"  
+    | BOOL _ -> "BOOL"
+    | BINUPDATE _ -> "BINUPDATE(-)"  
     | AWAIT -> "AWAIT"
     | ASYNC -> "ASYNC"
     | ASSIGN -> "ASSING"
@@ -250,8 +252,29 @@ rule token = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "~" { NOTOP }
+(*TBR
+  | ??  { RotLOp }
+  | ??  { RotRop }
+*) 
   | "<<" { SHIFTLOP}
   | ">>" { SHIFTROP}
+  | "+=" { BINUPDATE AddOp }
+  | "-=" { BINUPDATE SubOp }
+  | "*=" { BINUPDATE MulOp }
+  | "/=" { BINUPDATE DivOp }
+  | "%=" { BINUPDATE ModOp } (*TBR*)
+  | "&=" { BINUPDATE AndOp }
+  | "|=" { BINUPDATE OrOp }
+  | "^=" { BINUPDATE XorOp }
+  | "<<=" { BINUPDATE ShiftLOp}
+  | ">>=" { BINUPDATE ShiftROp}
+  | "&=" { BINUPDATE CatOp}
+(*TBR
+  | ??  { BINUPDATE RotLOp }
+  | ??  { BINUPDATE RotRop }
+*) 
+
+
 (* 
   | ?? { ROTLOP }
   | ?? { ROTROP }
@@ -300,6 +323,7 @@ rule token = parse
   | "if" { IF }
   | "in" { IN }
   | "is" { IS }
+  | "like" { LIKE }
   | "mut" { MUT }
   | "not" { NOT }
   | "null" { NULL }

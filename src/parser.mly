@@ -72,6 +72,7 @@ let anyT = TupT []
 %token OBJECT //delete me?
 %token ADDOP SUBOP MULOP DIVOP MODOP ANDOP OROP XOROP NOTOP SHIFTLOP SHIFTROP
 %token ROTLOP ROTROP
+%token<Types.binop> BINUPDATE 
 %token CATOP
 /* comparisons? */
 %token EQ LT GT
@@ -273,6 +274,8 @@ atomic_expr :
       }
 
     | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at() }
+    | e=atomic_expr DOT n = NAT {ProjE (e,n) @@ at() }
+    | e=atomic_expr DOT id = id {DotE (e,id) @@ at() }
     | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at() }
     | e=block_expr { e }
     | LABEL id = id e = expr { LabelE (id,e) @@ at() }
@@ -289,9 +292,9 @@ atomic_expr :
 expr :
     | e=atomic_expr { e } 
     | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at() }
-    | e=expr DOT n = NAT {ProjE (e,n) @@ at() }
-    | e=expr DOT id = id {DotE (e,id) @@ at() }
     | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
+    | e1 = expr binop=BINUPDATE e2 = expr {
+        AssignE(e1,BinE(binop,TupE [e1;e2] @@ no_region) @@ no_region) @@ at()}
     | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at() }
     | NOT e = expr { NotE e @@ at() }
     | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at() }
@@ -300,7 +303,8 @@ expr :
     | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at() }
     | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at()}
     | WHILE LPAR b=expr RPAR e=expr { WhileE(b,e) @@ at() }
-    | LOOP e=expr eo=expr? { LoopE(e,eo.it) @@ at() }
+    | LOOP e=expr { LoopE(e,None) @@ at() }
+    | LOOP e=expr WHILE LPAR b=expr RPAR { LoopE(e,Some b) @@ at() }
     | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at() }
     | RETURN eo = expr?
       {
@@ -371,7 +375,7 @@ return_typ :
 //TBR: do we want id _ ... d x ... or id (x,...).
 // if t is NONE, should it default to unit or is it inferred from expr?
 func_def :
-  | id = id tpo = typ_params? p = params t = return_typ? EQ e=expr 
+  | id = id tpo = typ_params? p = params t = return_typ? e=func_body
     {	let tps = match tpo.it with
     	    	  | Some tp -> tp 
 		  | None -> [] in
@@ -381,6 +385,10 @@ func_def :
 	(id,tps,p,t,e)
 	@@ at()
     }
+
+func_body :
+   | EQ e = expr { e }	  // acc. to grammar
+   | e = block_expr { e } // acc. to example bank.as 
 
 dec :
   | LET p = pat EQ e = expr { LetD (p,e) @@ at() }

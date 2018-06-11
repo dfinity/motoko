@@ -1,8 +1,8 @@
 actor class Bank(supply : Int) {
   private issuer = Issuer();
   private reserve = Account(supply);
-  getIssuer() : async Issuer { return issuer; };
-  getReserve() : async Account { return reserve; };
+  getIssuer() : async Issuer = { return issuer; };
+  getReserve() : async Account { return reserve ; };
 };
 
 actor class Issuer() {
