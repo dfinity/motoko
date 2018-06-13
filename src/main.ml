@@ -46,7 +46,8 @@ let main () =
     let is = open_in filename in
     let lexer = Lexing.from_channel is in
     try 
-       Parser.prog token lexer ;
+       let prog = Parser.prog token lexer in 
+       Typing.check_prog prog;
        Printf.printf "ok" ;
        close_in is
     with _ -> 
