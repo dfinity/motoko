@@ -21,7 +21,6 @@ Productions marked * probably deferred to later versions.
 <type-field> ::=                               object type fields
   <id> : <type>                                  immutable
   var <id> : <type>                              mutable
-//  <id> <type-params>? <params>+ : <type>         function (short-hand)
   <id> <type-params>? <params> : <type>         function (short-hand)
 
 <type-args> ::=                                type arguments
@@ -54,7 +53,7 @@ Productions marked * probably deferred to later versions.
   <unop>= <expr>                                 unary update
   [ <expr>,* ]                                   array
   <expr> [ <expr> ]                              array indexing
-  <expr> <expr>                                  function call
+  <expr> <type-args>? <expr>                     function call
   { <expr>;* }                                   block
   not <expr>                                     negation
   <expr> and <expr>                              conjunction
