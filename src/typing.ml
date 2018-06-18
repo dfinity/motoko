@@ -1,5 +1,6 @@
 open Syntax
 open Source
+open Types
 
 type typ =
   | VarT of string * typ list                     (* constructor *)
@@ -23,7 +24,7 @@ module Env = Map.Make(String)
 
 type kind = typ_bind list * typ
 
-type context = {values: typ Env.t; constructors: kind Env.t}
+type context = {values: (typ*mut') Env.t; constructors: kind Env.t}
 
 let sprintf = Printf.sprintf
 
@@ -42,7 +43,12 @@ let check_bounds region tys bounds =
      if List.length bounds = List.length tys
      then ()
      else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
-     
+
+let eq_typ ty1 ty2 = ty1 = ty2  (* TBC: need to use equational var env *)
+
+let typ_to_string ty = "some type" (* TBC *)
+
+let unitT = TupT[]
 
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 let rec check_typ context t = match t.it with
@@ -84,14 +90,67 @@ let rec check_typ context t = match t.it with
       ObjT(a.it,fs_sorted)
     
     
-and check_exp context e = match e.it with
+and check_exp context e =
+    let t = check_exp' context e in
+    (*TODO: record t in e *)
+    t
+
+and check_exp' context e =
+match e.it with
 | VarE x ->
   (match lookup context.values x.it with
-    | Some ty -> ty
+    | Some (ty,_) -> ty
     | None -> typeError x.at "unbound identifier %s" x.it)
-| _ -> TupT []
+| LitE l ->
+  (match l with
+    | NullLit -> PrimT NullT (* TBR *)
+    | BoolLit _ -> PrimT BoolT
+    | NatLit _ -> PrimT NatT
+    | IntLit _ -> PrimT IntT
+    | WordLit w ->
+        PrimT (WordT (match w with 
+	              | Word8 _ -> Width8
+                      | Word16 _ -> Width16
+                      | Word32 _ -> Width32
+                      | Word64 _ -> Width64))
+    | FloatLit _ -> PrimT FloatT
+    | CharLit _ -> PrimT CharT
+    | TextLit _ -> PrimT TextT)
+                      
+| TupE es ->
+   let ts = List.map (check_exp context) es in
+   TupT ts
 
-let check_prog prog = ()
+| ProjE(e,n) ->
+  (match check_exp context e with
+   | TupT(ts) ->
+     try List.nth ts n
+     with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts)
+   | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
+     
+| AssignE(e1,e2) ->
+ (match e1.it with
+  |  VarE v ->
+     (match lookup context.values v.it with
+       | Some (t1,VarMut) ->
+           let t2 = check_exp context e2 in
+	   if eq_typ t1 t2
+	   then unitT
+	   else typeError e.at "location of type %s cannot store value of type %s" (typ_to_string t1) (typ_to_string t2)
+       | Some (_,ConstMut) ->
+          typeError e.at "cannot assign to immutable location")
+  | IdxE(a,i) ->
+     failwith "NYI" (* TBC *))
+| ArrayE [] ->
+     typeError e.at "cannot infer type of empty array"
+| ArrayE ((_::_) as es) ->
+  let t1::ts = List.map (check_exp context) es in
+  if List.for_all (eq_typ t1) ts
+  then ArrayT(VarMut,t1) (* TBR how do we create immutable arrays? *)
+  else typeError e.at "array contains elements of distinct types"
+ 
+     
+let rec check_prog prog = () 
 
 
 
