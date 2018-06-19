@@ -22,6 +22,8 @@ and typ_field = {var:string; typ: typ; mut: mut'}
 
 module Env = Map.Make(String)
 
+let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+
 type kind = typ_bind list * typ
 
 type context = {values: (typ*mut') Env.t; constructors: kind Env.t}
@@ -90,12 +92,12 @@ let rec check_typ context t = match t.it with
       ObjT(a.it,fs_sorted)
     
     
-and check_exp context e =
-    let t = check_exp' context e in
+and inf_exp context e =
+    let t = inf_exp' context e in
     (*TODO: record t in e *)
     t
 
-and check_exp' context e =
+and inf_exp' context e =
 match e.it with
 | VarE x ->
   (match lookup context.values x.it with
@@ -118,22 +120,20 @@ match e.it with
     | TextLit _ -> PrimT TextT)
                       
 | TupE es ->
-   let ts = List.map (check_exp context) es in
+   let ts = List.map (inf_exp context) es in
    TupT ts
-
 | ProjE(e,n) ->
-  (match check_exp context e with
+  (match inf_exp context e with
    | TupT(ts) ->
      try List.nth ts n
      with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts)
    | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
-     
 | AssignE(e1,e2) ->
  (match e1.it with
   |  VarE v ->
      (match lookup context.values v.it with
        | Some (t1,VarMut) ->
-           let t2 = check_exp context e2 in
+           let t2 = inf_exp context e2 in
 	   if eq_typ t1 t2
 	   then unitT
 	   else typeError e.at "location of type %s cannot store value of type %s" (typ_to_string t1) (typ_to_string t2)
@@ -144,12 +144,87 @@ match e.it with
 | ArrayE [] ->
      typeError e.at "cannot infer type of empty array"
 | ArrayE ((_::_) as es) ->
-  let t1::ts = List.map (check_exp context) es in
+  let t1::ts = List.map (inf_exp context) es in
   if List.for_all (eq_typ t1) ts
   then ArrayT(VarMut,t1) (* TBR how do we create immutable arrays? *)
   else typeError e.at "array contains elements of distinct types"
- 
+| CallE(e1,e2) ->
+ (match inf_exp context e1 with
+  | FuncT([],dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
+    let t2 = inf_exp context e2 in
+    if eq_typ t2 dom
+    then rng
+    else typeError e.at "illegal application: argument of wrong type"  
+  | _ -> typeError e.at "illegal application: not a function")
+| BlockE es ->
+  let t = check_block context es in
+  t
+
+and check_block context es =
+  match es with
+  | [] -> unitT
+  | {it = DecE d;at}::es ->
+    let ve = check_dec context d in
+    check_block {context with values=union context.values ve} es
+  | e::es ->
+    match inf_exp context e with 
+    | TupT[] -> check_block context es
+    | _ -> typeError e.at "expression used as statement must have unit type"  (* TBR: is this too strict? do we want to allow implicit discard? *)
+
+and check_dec context d =
+    let ve = check_dec' context d in
+    (* TBC store ve *)
+    ve
+and check_dec' context d =     
+    match d.it with
+    | LetD (p,e) ->
+      let ve,t = inf_pat context p in (* be more clever here and use t' to check p, eg. for let _ = e *)
+      let t' = inf_exp context e in
+      if eq_typ t t'
+      then ve
+      else typeError d.at "type of pattern doesn't match type of expressions"
+
+and inf_pats context ve ts ps =
+   match ps with
+   | [] -> ve, TupT(List.rev ts)
+   | p::ps ->
+     let ve',t = inf_pat context p in
+     inf_pats context (union ve ve') (t::ts) ps
+
+and inf_pat context p =
+   match p.it with
+   | WildP ->  typeError p.at "can't infer type of pattern"
+   | VarP v -> typeError p.at "can't infer type of pattern"
+   | TupP ps ->
+     inf_pats context Env.empty [] ps
+   | AnnotP(p,t) ->
+     let t = check_typ context t in
+     check_pat context p t,t
      
+and check_pat context p t =
+   match p.it with
+   | WildP -> Env.empty
+   | VarP v -> Env.singleton v.it (t,ConstMut)
+   | TupP ps ->
+     (match t with
+      | TupT ts ->
+        check_pats p.at context Env.empty ps ts 
+      | _ -> typeError p.at "expected pattern of non-tuple type, found pattern of tuple type")
+   | AnnotP(p',t') ->
+     let t' = check_typ context t' in
+     if eq_typ t t'
+     then check_pat context p' t'
+     else typeError p.at "expected pattern of one type, found pattern of unequal type"
+and check_pats at context ve ps ts =
+   match ps,ts with
+   | [],[] -> ve
+   | p::ps,t::ts ->
+     let ve' = check_pat context p t in
+     check_pats at context (union ve ve') ps ts  (*TBR reject shadowing *)
+   | [],ts -> typeError at "tuple pattern has %i fewer components than expected type" (List.length ts)
+   | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
+         
+      
 let rec check_prog prog = () 
 
 
