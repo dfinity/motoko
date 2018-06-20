@@ -20,3 +20,4 @@ TODO and Issues
 - do we want n-ary argument function types? Yes.
 - explicit type application is missing. We should add it.
 - We should use some method to annotate typed expressions with their types (see eg. Hamlet)
+- switch patterns are useless without literal patterns. I'll just add them
