@@ -43,8 +43,8 @@ and pat' =
   | VarP of var                                (* variable *)
   | TupP of pat list                           (* tuple *)
   | AnnotP of pat * typ                        (* type annotation *)
+  | LitP of Types.lit                          (* literal *) (* only in switch case, for now *)
 (*
-  | LitP of Types.lit                          (* literal *)
   | ObjP of pat_field list                     (* object *)
   | AsP of pat * pat                           (* conjunctive *)
   | OrP of pat * pat                           (* disjunctive *)

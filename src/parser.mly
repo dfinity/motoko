@@ -356,6 +356,7 @@ expr_field:
 atpat :
   | p = pat COLON t=typ { AnnotP(p,t) @@ at() }
   | p = pat { p }
+  | l = lit { LitP l @@ at() }
   
 pat :
   | UNDERSCORE { WildP @@ at() }

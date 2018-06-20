@@ -48,9 +48,20 @@ let check_bounds region tys bounds =
 
 let eq_typ ty1 ty2 = ty1 = ty2  (* TBC: need to use equational var env *)
 
+(* types one can switch on - all primitives except floats  *)
+let switchable_type t =
+    match t with
+    | PrimT p ->
+      (match p with
+       | FloatT -> false
+       | _ -> true)
+    | _ -> false
+      
 let typ_to_string ty = "some type" (* TBC *)
 
 let unitT = TupT[]
+let boolT = PrimT(BoolT)
+
 
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 let rec check_typ context t = match t.it with
@@ -91,20 +102,8 @@ let rec check_typ context t = match t.it with
       let fs_sorted = List.sort (fun (f:typ_field)(g:typ_field) -> String.compare f.var g.var) fs in
       ObjT(a.it,fs_sorted)
     
-    
-and inf_exp context e =
-    let t = inf_exp' context e in
-    (*TODO: record t in e *)
-    t
-
-and inf_exp' context e =
-match e.it with
-| VarE x ->
-  (match lookup context.values x.it with
-    | Some (ty,_) -> ty
-    | None -> typeError x.at "unbound identifier %s" x.it)
-| LitE l ->
-  (match l with
+and inf_lit l =
+  match l with
     | NullLit -> PrimT NullT (* TBR *)
     | BoolLit _ -> PrimT BoolT
     | NatLit _ -> PrimT NatT
@@ -117,8 +116,20 @@ match e.it with
                       | Word64 _ -> Width64))
     | FloatLit _ -> PrimT FloatT
     | CharLit _ -> PrimT CharT
-    | TextLit _ -> PrimT TextT)
-                      
+    | TextLit _ -> PrimT TextT
+
+and inf_exp context e =
+    let t = inf_exp' context e in
+    (*TODO: record t in e *)
+    t
+and inf_exp' context e =
+match e.it with
+| VarE x ->
+  (match lookup context.values x.it with
+    | Some (ty,_) -> ty
+    | None -> typeError x.at "unbound identifier %s" x.it)
+| LitE l ->
+   inf_lit l
 | TupE es ->
    let ts = List.map (inf_exp context) es in
    TupT ts
@@ -159,7 +170,58 @@ match e.it with
 | BlockE es ->
   let t = check_block context es in
   t
-
+| NotE(e) ->
+  check_exp context boolT e;
+  boolT
+| AndE(e1,e2) ->
+  check_exp context boolT e1;
+  check_exp context boolT e2;
+  boolT
+| OrE(e1,e2) ->
+  check_exp context boolT e1;
+  check_exp context boolT e2;
+  boolT
+| IfE(e0,e1,e2) ->
+  check_exp context boolT e0;
+  let t1 = inf_exp context e1 in
+  let t2 = inf_exp context e2 in
+  if eq_typ t1 t2
+  then t1
+  else typeError e.at "branches of if have different types"
+| SwitchE(e,cs) ->
+  let t = inf_exp context e in
+  if switchable_type t
+  then match inf_cases context t cs None with
+       | Some t -> t
+       | None -> assert(false);
+                 typeError e.at "couldn't infer type of case"
+  else typeError e.at "illegal type for switch"
+and inf_cases context pt cs t_opt  =
+  match cs with
+  | [] -> t_opt
+  | {it={pat=p;exp=e};at}::cs ->
+    let ve = check_pat context p pt in
+    let t = inf_exp {context with values = union context.values ve} e in
+    let t_opt' = match t_opt with
+    	      | None -> Some t
+ 	      | Some t' ->
+	         if eq_typ t t'
+    		 then Some t'
+		 else typeError at "illegal case of different type from preceeding cases" in
+    inf_cases context pt cs t_opt'
+and check_exp context t e =
+  match e.it with
+  | ArrayE es ->
+    (match t with
+    | ArrayT (mut,t) ->
+      List.iter (check_exp context t) es
+    | _ -> typeError e.at "array cannot produce expected type")
+  | _ ->
+    let t' = inf_exp context e in
+    if (eq_typ t t')
+    then ()
+    else typeError e.at "expecting expression of type %s found expression of type %s" (typ_to_string t) (typ_to_string t')
+    
 and check_block context es =
   match es with
   | [] -> unitT
@@ -195,6 +257,8 @@ and inf_pat context p =
    match p.it with
    | WildP ->  typeError p.at "can't infer type of pattern"
    | VarP v -> typeError p.at "can't infer type of pattern"
+   | LitP l ->
+     Env.empty,inf_lit l
    | TupP ps ->
      inf_pats context Env.empty [] ps
    | AnnotP(p,t) ->
@@ -205,6 +269,7 @@ and check_pat context p t =
    match p.it with
    | WildP -> Env.empty
    | VarP v -> Env.singleton v.it (t,ConstMut)
+   | LitP l -> Env.empty
    | TupP ps ->
      (match t with
       | TupT ts ->
