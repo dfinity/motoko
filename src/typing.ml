@@ -2,6 +2,8 @@ open Syntax
 open Source
 open Types
 
+(* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+
 type typ =
   | VarT of string * typ list                     (* constructor *)
   | PrimT of Types.prim                        (* primitive *)
@@ -26,7 +28,18 @@ let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
 
 type kind = typ_bind list * typ
 
-type context = {values: (typ*mut') Env.t; constructors: kind Env.t}
+(* TBR: generalize unit Env  for lables to typ Env *)
+type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: unit Env.t; continues: unit Env.t}
+
+let addBreak context labelOpt =
+    match labelOpt with
+    | None -> context
+    | Some label -> { context with breaks = Env.add label () context.breaks }
+
+let addBreakAndContinue context labelOpt =
+    match labelOpt with
+    | None -> context
+    | Some label -> {{ context with breaks = Env.add label () context.breaks } with continues = Env.add label () context.continues }
 
 let sprintf = Printf.sprintf
 
@@ -46,9 +59,11 @@ let check_bounds region tys bounds =
      then ()
      else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
 
+(* todo: add context unless we normalize type abbreviations *)
 let eq_typ ty1 ty2 = ty1 = ty2  (* TBC: need to use equational var env *)
 
-(* types one can switch on - all primitives except floats  *)
+(* types one can switch on - all primitives except floats *)
+(* TBR - switch on option type? *)
 let switchable_type t =
     match t with
     | PrimT p ->
@@ -56,6 +71,17 @@ let switchable_type t =
        | FloatT -> false
        | _ -> true)
     | _ -> false
+
+(* types one can iterate over using `for`  *)
+let iterable_typ t =
+    match t with
+    | ArrayT(_,_) -> true
+    | _ -> false
+(* element type of iterable_type  *)
+let element_typ t =
+    match t with
+    | ArrayT(mut,t) -> t
+    | _ -> assert(false)
       
 let typ_to_string ty = "some type" (* TBC *)
 
@@ -123,6 +149,8 @@ and inf_exp context e =
     (*TODO: record t in e *)
     t
 and inf_exp' context e =
+let labelOpt = context.label in
+let context = {context with label = None} in
 match e.it with
 | VarE x ->
   (match lookup context.values x.it with
@@ -193,9 +221,46 @@ match e.it with
   if switchable_type t
   then match inf_cases context t cs None with
        | Some t -> t
-       | None -> assert(false);
+       | None -> (* assert(false); *)
                  typeError e.at "couldn't infer type of case"
   else typeError e.at "illegal type for switch"
+| WhileE(e0,e1) ->
+  check_exp context boolT e0;
+  check_exp (addBreakAndContinue context labelOpt) unitT e1;
+  unitT
+| LoopE(e,None) ->
+  check_exp context unitT e;
+  unitT (* absurdTy? *)
+| LoopE(e0,Some e1) ->
+  check_exp context unitT e0;
+  check_exp context boolT e1;
+  unitT
+| ForE(p,e0,e1)->
+  let t = inf_exp context e0 in (*TBR is this for arrays only? If so, what about mutability*)
+  if iterable_typ t
+  then 
+    let ve = check_pat context p (element_typ t) in
+    check_exp {context with values = union context.values ve} unitT e1;
+    unitT
+  else typeError e.at "cannot iterate over this type"
+(* labels *)
+| LabelE(l,e) ->
+  let context = {context with label = Some l.it} in
+  inf_exp context e
+| BreakE(l,es) ->
+  (match lookup context.breaks l.it  with
+   | Some ts -> 
+     (* todo: check types of es against ts! *)
+     failwith "NYI";
+    unitT (*TBR actually, this could be polymorphic at least in a checking context*)
+   | None -> typeError e.at "break to unknown label %s" l.it)
+| ContE l ->
+  match lookup context.continues l.it  with
+  | Some _ -> 
+    unitT (*TBR actually, this could be polymorphic at least in a checking context*)
+  | None -> typeError e.at "continue to unknown label %s" l.it
+  
+
 and inf_cases context pt cs t_opt  =
   match cs with
   | [] -> t_opt
