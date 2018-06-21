@@ -22,7 +22,8 @@ TODO and Issues
 - We should use some method to annotate typed expressions with their types (see eg. Hamlet)
 - switch patterns are useless without literal patterns. I'll just add them
 
-- is Null really a type or a null just a value of type `T?` for any T
+- we should really take lubs across control flow branches.
+- is Null really a type or a null just a value of type `T?` for any T. Option okay for now.
 - TODO change syntax option T to T?
 - can you label any expression or just loops - if any expression, any of what type?
 - is for just for arrays? Does iterating over a mutable array bind a mutable value?
@@ -30,8 +31,10 @@ TODO and Issues
 - add keywords for primitive types (uppercase?)
 - what subtyping do we want, just to and between like types?
 - add switch on option type?
-- what's the intuition for break es when |es| > 0: is this to break from a block or switch that returns a n-value (or just a tuple)
-- do we want blocks to return the last value in the block, of any type
-= do we want intermediate statements in a block to have any type or unit type.
-- are we using TupT([]) as unit type?
-- should BreakE and ContE be polymorphic or just unit typed.
+- what's the intuition for break es when |es| > 0: is this to break from a block or switch that returns a n-value (or just a tuple). Yes. Single exp would do in ast.a
+- do we want blocks to return the last value in the block, of any type; Yes
+= do we want intermediate statements in a block to have any type or unit type. Unit type
+- are we using TupT([]) as unit type? yes
+- should BreakE and ContE be polymorphic or just unit typed. Polymorphic.
+
+- how will we check IsE(e,t) at run-time if t contains type parameters (in the absence of type passing)

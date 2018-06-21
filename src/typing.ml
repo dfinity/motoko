@@ -29,17 +29,17 @@ let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
 type kind = typ_bind list * typ
 
 (* TBR: generalize unit Env  for lables to typ Env *)
-type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: unit Env.t; continues: unit Env.t}
+type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
 
-let addBreak context labelOpt =
+let addBreak context labelOpt t =
     match labelOpt with
     | None -> context
-    | Some label -> { context with breaks = Env.add label () context.breaks }
+    | Some label -> { context with breaks = Env.add label t context.breaks }
 
-let addBreakAndContinue context labelOpt =
+let addBreakAndContinue context labelOpt t =
     match labelOpt with
     | None -> context
-    | Some label -> {{ context with breaks = Env.add label () context.breaks } with continues = Env.add label () context.continues }
+    | Some label -> {{ context with breaks = Env.add label t context.breaks } with continues = Env.add label () context.continues }
 
 let sprintf = Printf.sprintf
 
@@ -89,8 +89,18 @@ let unitT = TupT[]
 let boolT = PrimT(BoolT)
 
 
+let rec check_typ_binds context ts =
+        let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
+        let ts = List.map (fun (bind:Syntax.typ_bind) ->
+                  {var=bind.it.Syntax.var.it;bound=check_typ bind_context bind.it.Syntax.bound}
+                 ) ts in
+        let constructors  =
+          List.fold_left (fun c bind -> Env.add bind.var ([],bind.bound) c) context.constructors ts in
+	ts,constructors
+
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
-let rec check_typ context t = match t.it with
+
+and check_typ context t = match t.it with
     | Syntax.VarT (c,tys) ->
       (match lookup context.constructors c.it with
           | Some (bounds,_) -> 
@@ -105,12 +115,7 @@ let rec check_typ context t = match t.it with
         let ts = List.map (check_typ context) ts in
         TupT ts
     | Syntax.FuncT(ts,dom,rng) ->
-        let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
-        let ts = List.map (fun (bind:Syntax.typ_bind) ->
-                  {var=bind.it.Syntax.var.it;bound=check_typ bind_context bind.it.Syntax.bound}
-                 ) ts in
-        let constructors  =
-          List.fold_left (fun c bind -> Env.add bind.var ([],bind.bound) c) context.constructors ts in
+        let ts,constructors = check_typ_binds context ts in
         let context = {context with constructors = constructors} in
         FuncT(ts,check_typ context dom, check_typ context rng)
     | Syntax.OptT t -> OptT (check_typ context t)
@@ -226,13 +231,17 @@ match e.it with
   else typeError e.at "illegal type for switch"
 | WhileE(e0,e1) ->
   check_exp context boolT e0;
-  check_exp (addBreakAndContinue context labelOpt) unitT e1;
+  let context' = addBreakAndContinue context labelOpt unitT in
+  check_exp context' unitT e1;
   unitT
 | LoopE(e,None) ->
-  check_exp context unitT e;
+  let context' = addBreakAndContinue context labelOpt unitT in
+  check_exp context' unitT e;
   unitT (* absurdTy? *)
 | LoopE(e0,Some e1) ->
-  check_exp context unitT e0;
+  let context' = addBreakAndContinue context labelOpt unitT in
+  check_exp context' unitT e0;
+  (* TBR currently can't break or continue from guard *)
   check_exp context boolT e1;
   unitT
 | ForE(p,e0,e1)->
@@ -240,27 +249,61 @@ match e.it with
   if iterable_typ t
   then 
     let ve = check_pat context p (element_typ t) in
-    check_exp {context with values = union context.values ve} unitT e1;
+    let context' = addBreakAndContinue {context with values = union context.values ve} labelOpt unitT in
+    check_exp context' unitT e1;
     unitT
   else typeError e.at "cannot iterate over this type"
 (* labels *)
 | LabelE(l,e) ->
   let context = {context with label = Some l.it} in
   inf_exp context e
-| BreakE(l,es) ->
+| BreakE(l,[e]) ->
   (match lookup context.breaks l.it  with
-   | Some ts -> 
-     (* todo: check types of es against ts! *)
-     failwith "NYI";
-    unitT (*TBR actually, this could be polymorphic at least in a checking context*)
+   | Some t -> 
+     (* todo: check type of e against ts! *)
+     check_exp context t e ;
+     unitT (*TBR actually, this could be polymorphic at least in a checking context*)
    | None -> typeError e.at "break to unknown label %s" l.it)
 | ContE l ->
-  match lookup context.continues l.it  with
-  | Some _ -> 
-    unitT (*TBR actually, this could be polymorphic at least in a checking context*)
-  | None -> typeError e.at "continue to unknown label %s" l.it
-  
-
+  (match lookup context.continues l.it  with
+   | Some _ -> 
+     unitT (*TBR actually, this could be polymorphic at least in a checking context*)
+   | None -> typeError e.at "continue to unknown label %s" l.it)
+| RetE [e0] ->
+  (match context.returns with
+   | Some t ->
+     check_exp context t e0;
+     unitT (*TBR actually, this could be polymorphic at least in a checking context*)
+   | None -> typeError e.at "illegal return")
+| AsyncE e0 ->
+    let context = {values = context.values;
+                   constructors = context.constructors;
+		   breaks = Env.empty;
+		   label = context.label;
+		   continues = Env.empty;
+		   returns = Some unitT; (* TBR *)
+		   awaitable = true} in
+    let t = inf_exp context e0 in
+    AsyncT t
+| AwaitE e0 ->
+    if context.awaitable
+    then
+      match inf_exp context e0 with
+      | AsyncT t -> t
+      | t -> typeError e0.at "expecting expression of async type, found expression of type %s" (typ_to_string t)
+    else typeError e.at "illegal await in synchronous context"
+| IsE(e,t) ->
+    let _ = inf_exp context e in
+    let _ = check_typ context t in (*TBR what if T has free type variables? How will we check this, sans type passing *) 
+    boolT
+| AnnotE(e,t) ->
+    let t = check_typ context t in 
+    check_exp context t e;
+    t
+| DecE d ->
+    let _ = check_dec context d in
+    unitT
+    
 and inf_cases context pt cs t_opt  =
   match cs with
   | [] -> t_opt
@@ -302,6 +345,7 @@ and check_dec context d =
     let ve = check_dec' context d in
     (* TBC store ve *)
     ve
+
 and check_dec' context d =     
     match d.it with
     | LetD (p,e) ->
@@ -310,6 +354,31 @@ and check_dec' context d =
       if eq_typ t t'
       then ve
       else typeError d.at "type of pattern doesn't match type of expressions"
+    | VarD (v,t,None) ->
+      let t = check_typ context t in
+      Env.singleton v.it (t,VarMut)
+    | VarD (v,t,Some e) ->
+      let t = check_typ context t in
+      check_exp context t e;
+      Env.singleton v.it (t,VarMut)
+    | FuncD(v,ts,p,t,e) ->
+      let ts,constructors = check_typ_binds context ts in
+      let context' = {context with constructors = union context.constructors constructors} in
+      let ve,dom = inf_pat context' p in
+      let rng = check_typ context' t in
+      let funcT = FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
+      let context'' =
+      	  {values = union (Env.add v.it (funcT,ConstMut)  context.values) ve;
+	   constructors = union context.constructors constructors;
+           label = None;
+	   breaks = Env.empty;
+	   continues = Env.empty;
+	   returns = Some rng;
+	   awaitable = false}
+      in
+      check_exp context'' rng e;
+      Env.singleton v.it (funcT,ConstMut)
+
 
 and inf_pats context ve ts ps =
    match ps with
