@@ -23,12 +23,12 @@ TODO and Issues
 - switch patterns are useless without literal patterns. I'll just add them
 
 - is Null really a type or a null just a value of type `T?` for any T
-- change syntax option T to T?
+- TODO change syntax option T to T?
 - can you label any expression or just loops - if any expression, any of what type?
 - is for just for arrays? Does iterating over a mutable array bind a mutable value?
 - how can we create an immutable array of arbitrary size - with a primitive?
 - add keywords for primitive types (uppercase?)
-- what subtyping do we want, just to like types?
+- what subtyping do we want, just to and between like types?
 - add switch on option type?
 - what's the intuition for break es when |es| > 0: is this to break from a block or switch that returns a n-value (or just a tuple)
 - do we want blocks to return the last value in the block, of any type
