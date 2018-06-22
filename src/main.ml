@@ -50,9 +50,20 @@ let main () =
        Typing.check_prog prog;
        Printf.printf "ok" ;
        close_in is
-    with _ -> 
-       Printf.printf "noway" ;
+
+    with 
+    | Typing.TypeError (r,m)  -> 
+       let r = Source.string_of_region r in
+       Printf.printf "Type Error %s:%s" r m;
        close_in is
+    | Typing.KindError (r,m) ->
+       let r = Source.string_of_region r in
+       Printf.printf "Kind Error %s:%s" r m;
+       close_in is
+    | e ->
+       Printf.printf "exception";
+       close_in is
+       
 
 let() = main()
 

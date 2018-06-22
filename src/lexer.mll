@@ -81,7 +81,7 @@ let token_to_string tok =
     | AND -> "AND"
     | ADDOP -> "ADDOP"
     | ACTOR -> "ACTOR"
-
+    | PRIM _ -> "PRIM()"
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -339,6 +339,17 @@ rule token = parse
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
+  | "Int" { PRIM IntT }
+  | "Bool" { PRIM BoolT }
+  | "Char"  { PRIM CharT }
+  | "Nat"  { PRIM NatT }
+  | "Null" { PRIM NullT }
+  | "Text"  { PRIM TextT }
+  | "Word8"  { PRIM (WordT(Width8)) }
+  | "Word16"  { PRIM (WordT(Width16)) }
+  | "Word32"  { PRIM (WordT(Width32)) }
+  | "Word64"  { PRIM (WordT(Width64)) }
+  
   | name as s { ID s }
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }

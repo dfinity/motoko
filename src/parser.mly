@@ -88,6 +88,8 @@ let anyT = TupT []
 %token<string> TEXT
 (* %token<string Source.phrase -> Ast.instr' * Values.value> CONST *)
 
+%token<Types.prim> PRIM
+
 %token UNDERSCORE
 
 %left ADDOP SUBOP
@@ -134,6 +136,9 @@ sort:
 /* Types */
 
 atomic_typ:
+  | p=PRIM { PrimT p @@ at() }
+  | id = id  { VarT (id,[]) @@ at() } 
+  | id = id ts = seplist(typ,COMMA) GT { VarT (id,ts.it) @@ at() } 
   | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
   | ASYNC t = typ {  AsyncT t @@ at() }
   | LIKE t = typ {  LikeT t @@ at() }
@@ -376,20 +381,30 @@ return_typ :
 //TBR: do we want id _ ... d x ... or id (x,...).
 // if t is NONE, should it default to unit or is it inferred from expr?
 func_def :
-  | id = id tpo = typ_params? p = params t = return_typ? e=func_body
+  | id = id tpo = typ_params? p = params t = return_typ? fb=func_body
     {	let tps = match tpo.it with
     	    	  | Some tp -> tp 
 		  | None -> [] in
         let t = match t.it with
 	        | Some t -> t
 	        | None -> TupT([]) @@ no_region in
+
+        (* this is a hack to support async method declarations *)
+	let e = match fb with
+	        | (false,e) -> (* body declared as EQ e *)
+		   e
+	        | (true,e) -> (* body declared as immediate block *)
+		  (match t.it with
+		   | AsyncT _ -> AsyncE(e) @@ no_region
+		   | _ -> e)
+	in
 	(id,tps,p,t,e)
 	@@ at()
     }
 
 func_body :
-   | EQ e = expr { e }	  // acc. to grammar
-   | e = block_expr { e } // acc. to example bank.as 
+   | EQ e = expr { (false,e) }	  // acc. to grammar
+   | e = block_expr { (true,e) } // acc. to example bank.as 
 
 dec :
   | LET p = pat EQ e = expr { LetD (p,e) @@ at() }

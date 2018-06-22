@@ -24,12 +24,25 @@ and typ_field = {var:string; typ: typ; mut: mut'}
 
 module Env = Map.Make(String)
 
-let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+
 
 type kind = typ_bind list * typ
 
-(* TBR: generalize unit Env  for lables to typ Env *)
 type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
+
+let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+let union_values c ve = {c with values = union c.values ve}
+let add_value c v tm = {c with values = Env.add v tm c.values}
+let union_constructors c ce = {c with constructors = union c.constructors ce}
+let add_constructor c v d = {c with constructors = Env.add v d c.constructors}
+
+let prelude = {values = Env.empty;
+    	       constructors = Env.empty;
+               label = None;
+	       breaks = Env.empty;
+	       continues = Env.empty;
+	       returns = None;
+	       awaitable = false}
 
 let addBreak context labelOpt t =
     match labelOpt with
@@ -82,12 +95,53 @@ let element_typ t =
     match t with
     | ArrayT(mut,t) -> t
     | _ -> assert(false)
-      
-let typ_to_string ty = "some type" (* TBC *)
+
+(* Poor man's pretty printing - replace with Format client *)
+let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
+let rec typ_to_string t =
+    match t with
+    | PrimT p ->
+     (match p with
+      | NullT -> "Null"
+      | IntT -> "Int"
+      | BoolT -> "Bool"
+      | FloatT -> "Float"
+      | NatT -> "Nat"
+      | CharT -> "Char"
+      | WordT w ->
+        (match w with
+	| Width8 -> "Word8"
+	| Width16 -> "Word16"
+	| Width32 -> "Word32"
+	| Width64 -> "Word66")
+      | TextT -> "Text")
+    | VarT (c,[]) ->
+       c
+    | VarT (c,ts) ->
+       sprintf "%s<%s>" c (String.concat "," (List.map typ_to_string ts))
+    | ArrayT (m,t) ->
+      sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (typ_to_string t)  
+    | TupT ts ->
+      sprintf "(%s)"  (String.concat "," (List.map typ_to_string ts))
+    | FuncT([],dom,rng) ->
+      sprintf "%s->%s" (typ_to_string dom) (typ_to_string rng)      
+    | FuncT(ts,dom,rng) ->
+      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var) ts)) (typ_to_string dom) (typ_to_string rng)
+    | OptT t ->
+      sprintf "%s?"  (typ_to_string t)
+    | AsyncT t -> 
+      sprintf "async %s" (typ_to_string t)
+    | LikeT t -> 
+      sprintf "like %s" (typ_to_string t)
+    | ObjT(a,fs) ->
+      sprintf "%s{%s}" (match a with Actor -> "actor" | Object -> "object")
+      	      	       (String.concat ";" (List.map (fun {var;mut;typ} ->
+		       		       		          sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
+				           fs))
+
 
 let unitT = TupT[]
 let boolT = PrimT(BoolT)
-
 
 let rec check_typ_binds context ts =
         let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
@@ -169,11 +223,19 @@ match e.it with
 | ProjE(e,n) ->
   (match inf_exp context e with
    | TupT(ts) ->
-     try List.nth ts n
-     with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts)
+     (try List.nth ts n
+      with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
    | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
+| DotE(e,v) ->
+  (match inf_exp context e with
+   |(ObjT(a,fts) as t) ->
+     (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+         ft.typ
+      with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it)
+   | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
 | AssignE(e1,e2) ->
  (match e1.it with
+  (*TODO: array and object update *)
   |  VarE v ->
      (match lookup context.values v.it with
        | Some (t1,VarMut) ->
@@ -334,17 +396,17 @@ and check_block context es =
   match es with
   | [] -> unitT
   | {it = DecE d;at}::es ->
-    let ve = check_dec context d in
-    check_block {context with values=union context.values ve} es
+    let ve,ce = check_dec context d in
+    check_block (union_constructors (union_values context ve) ce) es
   | e::es ->
     match inf_exp context e with 
     | TupT[] -> check_block context es
     | _ -> typeError e.at "expression used as statement must have unit type"  (* TBR: is this too strict? do we want to allow implicit discard? *)
 
 and check_dec context d =
-    let ve = check_dec' context d in
+    let ve , ce = check_dec' context d in
     (* TBC store ve *)
-    ve
+    ve, ce
 
 and check_dec' context d =     
     match d.it with
@@ -352,15 +414,16 @@ and check_dec' context d =
       let ve,t = inf_pat context p in (* be more clever here and use t' to check p, eg. for let _ = e *)
       let t' = inf_exp context e in
       if eq_typ t t'
-      then ve
+      then ve,Env.empty
       else typeError d.at "type of pattern doesn't match type of expressions"
     | VarD (v,t,None) ->
       let t = check_typ context t in
-      Env.singleton v.it (t,VarMut)
+      Env.singleton v.it (t,VarMut),Env.empty
     | VarD (v,t,Some e) ->
       let t = check_typ context t in
       check_exp context t e;
-      Env.singleton v.it (t,VarMut)
+      Env.singleton v.it (t,VarMut),
+      Env.empty
     | FuncD(v,ts,p,t,e) ->
       let ts,constructors = check_typ_binds context ts in
       let context' = {context with constructors = union context.constructors constructors} in
@@ -377,7 +440,54 @@ and check_dec' context d =
 	   awaitable = false}
       in
       check_exp context'' rng e;
-      Env.singleton v.it (funcT,ConstMut)
+      Env.singleton v.it (funcT,ConstMut), Env.empty
+    | ClassD(a,v,ts,p,efs) ->
+      let ts,constructors = check_typ_binds context ts in
+      let context_ts = union_constructors context constructors in
+      let class_ = VarT (v.it , List.map (fun tb -> (VarT (tb.var,[]))) ts) in
+      let context_ts_v = add_constructor (union_constructors context constructors) v.it (ts,class_) in
+      let ve,dom = inf_pat context_ts_v p in
+      let context_ts_v_dom =
+          {context_ts_v with values = union context_ts_v.values ve} in
+      let rec pre_members context field_env efs =
+      	  match efs with
+	  | [] -> field_env
+	  | {it={var;mut;priv;exp={it=AnnotE(e,t);at}}}::efs ->
+	    let t = check_typ context t in
+	    let field_env = Env.add var.it (mut.it,priv.it,t) field_env in
+	    pre_members context field_env efs
+	  | {it={var;mut;priv;exp={it=DecE({it=FuncD(v,us,p,t,e);at=_});at=_}}}::efs ->
+	    let us,constructors = check_typ_binds context us in
+	    let context_us = { context with constructors = union context.constructors constructors} in
+	    let _,dom = inf_pat context_us p in
+	    let rng = check_typ context_us t in
+	    let funcT = FuncT(us,dom,rng) in
+	    let field_env = Env.add var.it (mut.it,priv.it,funcT) field_env in
+    	    pre_members context field_env efs
+          | {it={var;mut;priv;exp=e}}::efs ->
+	    let t = inf_exp context e in
+	    let field_env = Env.add var.it (mut.it,priv.it,t) field_env in
+	    pre_members context field_env efs
+      in
+      let pre_members = pre_members context_ts_v_dom Env.empty efs in
+      let public_fields =
+      	  let bindings = Env.bindings pre_members in
+	  let public = List.filter (fun (v,(m,p,t)) -> p = Public) bindings in
+	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public
+      in	  
+      let private_context = Env.map (fun (m,p,t) -> (t,m)) pre_members in
+
+      let objT  = ObjT(a.it,public_fields) in
+      let class_def = objT in
+
+      let consT = FuncT(ts,dom,class_) (* TBR: we allow polymorphic recursion *) in
+
+      let field_context = add_value (union_values context_ts_v_dom private_context) v.it (consT,VarMut) in
+      (*TODO, add type def *)				  
+      let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
+      (*TODO, export type def *)
+      Env.singleton v.it (consT,ConstMut),
+      Env.singleton v.it (ts,objT)
 
 
 and inf_pats context ve ts ps =
@@ -424,8 +534,18 @@ and check_pats at context ve ps ts =
    | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
          
       
-let rec check_prog prog = () 
+let rec check_decs context ds = match ds with
+   |  [] -> context
+   |  d::ds ->
+      let ve,ce = check_dec context d in
+      check_decs (union_constructors (union_values context ve) ce) ds
 
+
+let check_prog p =
+    let context = check_decs prelude p.it in
+    () 
+    
+    
 
 
 
