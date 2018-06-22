@@ -61,7 +61,7 @@ let main () =
        Printf.printf "Kind Error %s:%s" r m;
        close_in is
     | e ->
-       Printf.printf "exception";
+       Printf.printf "exception %s" (Printexc.to_string e);
        close_in is
        
 

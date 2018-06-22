@@ -217,6 +217,12 @@ match e.it with
     | None -> typeError x.at "unbound identifier %s" x.it)
 | LitE l ->
    inf_lit l
+| BinE (binop,e) ->
+  (* TBC *)
+  (match inf_exp context e with
+   | TupT([t1;t2]) ->
+     t1
+   | t -> typeError e.at "expecting tuple found %s" (typ_to_string t))
 | TupE es ->
    let ts = List.map (inf_exp context) es in
    TupT ts
@@ -263,8 +269,9 @@ match e.it with
     else typeError e.at "illegal application: argument of wrong type"  
   | _ -> typeError e.at "illegal application: not a function")
 | BlockE es ->
-  let t = check_block context es in
-  t
+  let context = addBreak context labelOpt unitT in
+  check_block e.at context unitT es;
+  unitT
 | NotE(e) ->
   check_exp context boolT e;
   boolT
@@ -380,28 +387,66 @@ and inf_cases context pt cs t_opt  =
 		 else typeError at "illegal case of different type from preceeding cases" in
     inf_cases context pt cs t_opt'
 and check_exp context t e =
+  let labelOpt = context.label in
+  let context = {context with label = None} in
   match e.it with
   | ArrayE es ->
     (match t with
     | ArrayT (mut,t) ->
       List.iter (check_exp context t) es
-    | _ -> typeError e.at "array cannot produce expected type")
+    | _ -> typeError e.at "array expression cannot produce expected type %s" (typ_to_string t))
+  | AsyncE e0 ->
+    (match t with
+     | AsyncT t ->
+     let context = {values = context.values;
+                   constructors = context.constructors;
+		   breaks = Env.empty;
+		   label = context.label;
+		   continues = Env.empty;
+		   returns = Some t; (* TBR *)
+		   awaitable = true} in
+     check_exp context t e0
+     |_ -> typeError e.at "async expression cannot produce expected type %s" (typ_to_string t))
+  | BlockE es ->
+    let context = addBreak context labelOpt t in
+    check_block e.at context t es
+  | BreakE _ ->
+    ignore(inf_exp context e)
+  | ContE l ->
+    ignore(inf_exp context e)
+  | RetE [e0] ->
+    ignore(inf_exp context e)
   | _ ->
     let t' = inf_exp context e in
     if (eq_typ t t')
     then ()
     else typeError e.at "expecting expression of type %s found expression of type %s" (typ_to_string t) (typ_to_string t')
     
-and check_block context es =
+    
+and inf_block context es =
   match es with
   | [] -> unitT
   | {it = DecE d;at}::es ->
     let ve,ce = check_dec context d in
-    check_block (union_constructors (union_values context ve) ce) es
+    inf_block (union_constructors (union_values context ve) ce) es
+  | [e] -> inf_exp context e
   | e::es ->
-    match inf_exp context e with 
-    | TupT[] -> check_block context es
-    | _ -> typeError e.at "expression used as statement must have unit type"  (* TBR: is this too strict? do we want to allow implicit discard? *)
+    check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
+    inf_block context es
+
+and check_block r context t es =
+  match es with
+  | [] ->
+    if eq_typ t unitT
+    then ()
+    else typeError r "block  must end with expression of type" (typ_to_string t) 
+  | {it = DecE d;at}::es ->
+    let ve,ce = check_dec context d in
+    check_block r (union_constructors (union_values context ve) ce) t es
+  | [e] -> check_exp context t e
+  | e::es ->
+    check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
+    check_block r context t es 
 
 and check_dec context d =
     let ve , ce = check_dec' context d in

@@ -27,11 +27,8 @@ let positions_to_region position1 position2 =
     right = position_to_pos position2
   }
 
-let at () =
-  positions_to_region (Parsing.symbol_start_pos ()) (Parsing.symbol_end_pos ())
-let ati i =
-  positions_to_region (Parsing.rhs_start_pos i) (Parsing.rhs_end_pos i)
-
+let at(symbolstartpos,endpos) =
+  positions_to_region (symbolstartpos) (endpos)
 
 (* Literals *)
 
@@ -112,41 +109,42 @@ let anyT = TupT []
 /* Helpers */
 
 option(V) :
-  | /* empty */ { None @@ at() }
-  | v=V { (Some v) @@ at() } 
+  | /* empty */ { None @@ at($symbolstartpos,$endpos) }
+  | v=V { (Some v) @@ at($symbolstartpos,$endpos) } 
 
 
 list(V) :
-  | /* empty */ { [] @@ at() }
-  | v = V vs = list(V) { (v::vs.it) @@ at() }
+  | /* empty */ { [] @@ at($symbolstartpos,$endpos) }
+  | v = V vs = list(V) { (v::vs.it) @@ at($symbolstartpos,$endpos) }
 
 seplist(V,Sep) :
-  | /* empty */ { [] @@ at() }
-  | v = V Sep vs = seplist(V,Sep) { (v::vs.it) @@ at() } 
-  | v = V { [v] @@ at() }
+  | /* empty */ { [] @@ at($symbolstartpos,$endpos) }
+  | v = V Sep vs = seplist(V,Sep) { (v::vs.it) @@ at($symbolstartpos,$endpos) } 
+  | v = V { [v] @@ at($symbolstartpos,$endpos) }
  
 id :
-  | id = ID { id @@ at()}
+  | id = ID { id @@ at($symbolstartpos,$endpos)}
 
 sort:
-  | ACTOR  { Some () @@ at() }
-  | OBJECT { None @@ at() }
+  | ACTOR  { Some () @@ at($symbolstartpos,$endpos) }
+  | OBJECT { None @@ at($symbolstartpos,$endpos) }
 
 
 /* Types */
 
 atomic_typ:
-  | p=PRIM { PrimT p @@ at() }
-  | id = id  { VarT (id,[]) @@ at() } 
-  | id = id ts = seplist(typ,COMMA) GT { VarT (id,ts.it) @@ at() } 
-  | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at()}
-  | ASYNC t = typ {  AsyncT t @@ at() }
-  | LIKE t = typ {  LikeT t @@ at() }
+  | p=PRIM { PrimT p @@ at($symbolstartpos,$endpos) }
+/*  | id = id  { VarT (id,[]) @@ at($symbolstartpos,$endpos) }  
+  | id = id LT ts = seplist(typ,COMMA) GT { VarT (id,ts.it) @@ at($symbolstartpos,$endpos) }
+ */
+  | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at($symbolstartpos,$endpos)}
+  | ASYNC t = typ {  AsyncT t @@ at($symbolstartpos,$endpos) }
+  | LIKE t = typ {  LikeT t @@ at($symbolstartpos,$endpos) }
   |  id = id ots = typ_args? {
      	VarT (id,
 	      match ots.it with
 	       Some ts -> ts | None -> [] )
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
      }
 
 typ :
@@ -158,7 +156,7 @@ typ :
             @@ a.at
        in
           ObjT (actor,tfs.it)
-          @@ at()
+          @@ at($symbolstartpos,$endpos)
     }
 /*
   | vo = VAR? t = atomic_typ LBRACKET RBRACKET
@@ -167,7 +165,7 @@ typ :
 	        | Some _ -> VarMut @@ vo.at
 	        | None -> ConstMut @@ vo.at),
 	       t)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
  */
   | tpo = typ_params? t1 = atomic_typ ARROW t2 = typ 
@@ -177,7 +175,7 @@ typ :
 	       | None -> []),
 	      t1,
 	      t2)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 
 typ_item :
@@ -185,7 +183,7 @@ typ_item :
   | t=typ { t }
    
 actor:
-  | ACTOR { Some () @@ at()}
+  | ACTOR { Some () @@ at($symbolstartpos,$endpos)}
 
 typ_args :
   | LT ts = seplist(typ,COMMA) GT { ts.it }
@@ -195,14 +193,14 @@ typ_params :
 
 //TBR
 param:
-  | id = id COLON t = typ { AnnotP(VarP(id) @@ id.at,t) @@ at()  }
+  | id = id COLON t = typ { AnnotP(VarP(id) @@ id.at,t) @@ at($symbolstartpos,$endpos)  }
 
 params :
-  | LPAR ps = seplist(param,COMMA) RPAR { TupP(ps.it) @@ at()}
+  | LPAR ps = seplist(param,COMMA) RPAR { TupP(ps.it) @@ at($symbolstartpos,$endpos)}
 
 //TBR:  the informal grammar is actually as below but I'm not sure how to understand <params>+
 //  | id = id typ_params? <params>+ COLON t=typ
-//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at($symbolstartpos,$endpos) }
 fun_spec :
   | id = id tpo = typ_params? t1 = typ t2 = return_typ 
     {	let tps = match tpo.it with
@@ -212,19 +210,19 @@ fun_spec :
     }
 
 typ_bind :
-  | id = id { {var=id; bound = anyT @@ at()} @@ at() }
+  | id = id { {var=id; bound = anyT @@ at($symbolstartpos,$endpos)} @@ at($symbolstartpos,$endpos) }
 //| ID :> typ 
 typ_field :
   | id = id COLON t=typ
-     { {var = id; typ = t; mut = ConstMut @@ no_region} @@ at() }
+     { {var = id; typ = t; mut = ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) }
   | VAR id = id COLON t=typ
-     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at($symbolstartpos,$endpos) }
   | fs = fun_spec
     { let (id,t) = fs in
-      {var = id; typ = t; mut = ConstMut @@ no_region} @@ at() 
+      {var = id; typ = t; mut = ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) 
     }
 //  | id = id typ_params? <params>+ COLON t=typ
-//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at() }
+//     { {var = id; typ = t; mut = VarMut @@ no_region} @@ at($symbolstartpos,$endpos) }
 
 
 lit :
@@ -257,15 +255,15 @@ unop :
     | CATOP    { CatOp }
 
 block_expr :
-    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at() }
+    | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at($symbolstartpos,$endpos) }
 
 atomic_expr :
-    | id = id { VarE id @@ at() }
-    | l = lit { LitE l @@ at() }
+    | id = id { VarE id @@ at($symbolstartpos,$endpos) }
+    | l = lit { LitE l @@ at($symbolstartpos,$endpos) }
     | LPAR es = seplist(expr,COMMA) RPAR
       { match es.it with
         | [e] -> e
-        | es -> TupE(es) @@ at()
+        | es -> TupE(es) @@ at($symbolstartpos,$endpos)
       }
 
     | a = sort ido = id? LCURLY es = seplist(expr_field,SEMICOLON) RCURLY
@@ -275,70 +273,70 @@ atomic_expr :
             @@ a.at in
 	 let id =  
        	    match ido.it with Some id -> Some id | _ -> None  in
-	 ObjE(actor,id,es.it) @@ at()
+	 ObjE(actor,id,es.it) @@ at($symbolstartpos,$endpos)
       }
 
-    | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at() }
-    | e=atomic_expr DOT n = NAT {ProjE (e,n) @@ at() }
-    | e=atomic_expr DOT id = id {DotE (e,id) @@ at() }
-    | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at() }
+    | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at($symbolstartpos,$endpos) }
+    | e=atomic_expr DOT n = NAT {ProjE (e,n) @@ at($symbolstartpos,$endpos) }
+    | e=atomic_expr DOT id = id {DotE (e,id) @@ at($symbolstartpos,$endpos) }
+    | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at($symbolstartpos,$endpos) }
     | e=block_expr { e }
-    | LABEL id = id e = expr { LabelE (id,e) @@ at() }
+    | LABEL id = id e = expr { LabelE (id,e) @@ at($symbolstartpos,$endpos) }
     | BREAK id = id eo = expr?
       {
         let es =
 	    match eo.it with
 	    | Some e -> [e]
 	    | None -> [] in	    
-      	BreakE (id,es) @@ at()
+      	BreakE (id,es) @@ at($symbolstartpos,$endpos)
       }
-    | CONTINUE id = id { ContE id @@ at() }
+    | CONTINUE id = id { ContE id @@ at($symbolstartpos,$endpos) }
   
 expr :
     | e=atomic_expr { e } 
-    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at() }
-    | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at()}
+    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at($symbolstartpos,$endpos) }
+    | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at($symbolstartpos,$endpos)}
     | e1 = expr binop=BINUPDATE e2 = expr {
-        AssignE(e1,BinE(binop,TupE [e1;e2] @@ no_region) @@ no_region) @@ at()}
-    | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at() }
-    | NOT e = expr { NotE e @@ at() }
-    | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at() }
-    | e1 = expr OR e2 = expr { OrE(e1,e2) @@ at() }
-    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ no_region) @@ at() }
-    | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at() }
-    | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at()}
-    | WHILE LPAR b=expr RPAR e=expr { WhileE(b,e) @@ at() }
-    | LOOP e=expr { LoopE(e,None) @@ at() }
-    | LOOP e=expr WHILE LPAR b=expr RPAR { LoopE(e,Some b) @@ at() }
-    | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at() }
+        AssignE(e1,BinE(binop,TupE [e1;e2] @@ no_region) @@ no_region) @@ at($symbolstartpos,$endpos)}
+    | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at($symbolstartpos,$endpos) }
+    | NOT e = expr { NotE e @@ at($symbolstartpos,$endpos) }
+    | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at($symbolstartpos,$endpos) }
+    | e1 = expr OR e2 = expr { OrE(e1,e2) @@ at($symbolstartpos,$endpos) }
+    | IF b=expr THEN e1=expr %prec IFX { IfE (b,e1,BlockE([]) @@ no_region) @@ at($symbolstartpos,$endpos) }
+    | IF b=expr THEN e1=expr ELSE e2=expr { IfE(b,e1,e2) @@ at($symbolstartpos,$endpos) }
+    | SWITCH e=expr cs = case+  { SwitchE(e,cs) @@ at($symbolstartpos,$endpos)}
+    | WHILE LPAR b=expr RPAR e=expr { WhileE(b,e) @@ at($symbolstartpos,$endpos) }
+    | LOOP e=expr { LoopE(e,None) @@ at($symbolstartpos,$endpos) }
+    | LOOP e=expr WHILE LPAR b=expr RPAR { LoopE(e,Some b) @@ at($symbolstartpos,$endpos) }
+    | FOR p = pat IN e1=expr e2=expr { ForE(p,e1,e2) @@ at($symbolstartpos,$endpos) }
     | RETURN eo = expr?
       {
         let es =
 	    match eo.it with
 	    | Some e -> [e]
 	    | None -> [] in	    
-      	RetE es @@ at()
+      	RetE es @@ at($symbolstartpos,$endpos)
       }
-    | ASYNC e = expr { AsyncE e @@ at() }
-    | AWAIT e = expr { AwaitE e @@ at() }
-    | ASSERT e = expr { AssertE e @@ at() }
-    | e = expr IS t = typ { IsE(e,t) @@ at() }
-    | e = expr COLON t = typ { AnnotE(e,t) @@ at() }
-    | d=dec { DecE d @@ at() }
+    | ASYNC e = expr { AsyncE e @@ at($symbolstartpos,$endpos) }
+    | AWAIT e = expr { AwaitE e @@ at($symbolstartpos,$endpos) }
+    | ASSERT e = expr { AssertE e @@ at($symbolstartpos,$endpos) }
+    | e = expr IS t = typ { IsE(e,t) @@ at($symbolstartpos,$endpos) }
+    | e = expr COLON t = typ { AnnotE(e,t) @@ at($symbolstartpos,$endpos) }
+    | d=dec { DecE d @@ at($symbolstartpos,$endpos) }
     
 case : 
-  | CASE p=pat e=expr { {pat = p; exp = e} @@ at() }
+  | CASE p=pat e=expr { {pat = p; exp = e} @@ at($symbolstartpos,$endpos) }
 
 typ_annot :
   | COLON t=typ { t }
 
 %inline privacy :
-  | PRIVATE { Private @@ at() }
-  | /* empty */ { Public @@ at() }
+  | PRIVATE { Private @@ at($symbolstartpos,$endpos) }
+  | /* empty */ { Public @@ at($symbolstartpos,$endpos) }
 
 %inline mutability :
-  | VAR { VarMut @@ at() }
-  | /* empty */ { ConstMut @@ at() }
+  | VAR { VarMut @@ at($symbolstartpos,$endpos) }
+  | /* empty */ { ConstMut @@ at($symbolstartpos,$endpos) }
 
 expr_field:
   | p=privacy  m=mutability id = id ot = typ_annot? EQ e=expr
@@ -347,7 +345,7 @@ expr_field:
                 | Some t -> AnnotE(e,t) @@ {left=t.at.left;right=e.at.right}
                 | None -> e in
 	{  var = id; mut = m; priv=p; exp = e}
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 // TBR: should a func_def abbreviate a dec or block {dec;id}? *)
   | p=privacy fd=func_def
@@ -356,20 +354,20 @@ expr_field:
 	let dec = FuncD(id,tps,pat,t,e) @@ fd.at in
 	let exp = DecE(dec) @@ fd.at in 
 	{  var = id; mut = ConstMut @@ no_region; priv = p; exp = exp}
-	@@ at() 
+	@@ at($symbolstartpos,$endpos) 
      }
 atpat :
-  | p = pat COLON t=typ { AnnotP(p,t) @@ at() }
+  | p = pat COLON t=typ { AnnotP(p,t) @@ at($symbolstartpos,$endpos) }
   | p = pat { p }
-  | l = lit { LitP l @@ at() }
+  | l = lit { LitP l @@ at($symbolstartpos,$endpos) }
   
 pat :
-  | UNDERSCORE { WildP @@ at() }
-  | id = id { VarP(id) @@ at() }
+  | UNDERSCORE { WildP @@ at($symbolstartpos,$endpos) }
+  | id = id { VarP(id) @@ at($symbolstartpos,$endpos) }
   | LPAR ps  = seplist(atpat,COMMA) RPAR
       { match ps.it with
         | [p] -> p
-        | ps -> TupP(ps) @@ at()
+        | ps -> TupP(ps) @@ at($symbolstartpos,$endpos)
       }
 
 init :  
@@ -399,7 +397,7 @@ func_def :
 		   | _ -> e)
 	in
 	(id,tps,p,t,e)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 
 func_body :
@@ -407,23 +405,23 @@ func_body :
    | e = block_expr { (true,e) } // acc. to example bank.as 
 
 dec :
-  | LET p = pat EQ e = expr { LetD (p,e) @@ at() }
+  | LET p = pat EQ e = expr { LetD (p,e) @@ at($symbolstartpos,$endpos) }
   | VAR id = id COLON t=typ eo = init?
     { VarD(id,t,
            match eo.it with
 	   | Some e -> Some e
 	   | None -> None)
-      @@ at() } 
+      @@ at($symbolstartpos,$endpos) } 
   | FUNC fd = func_def
     {	let (id,tps,p,t,e) = fd.it in
-	FuncD(id,tps,p,t,e) @@ at()
+	FuncD(id,tps,p,t,e) @@ at($symbolstartpos,$endpos)
     }
   | TYPE id = id tpso = typ_params? EQ t=typ
     {	let tps = match tpso.it with
     	    	  | Some tps -> tps
 		  | None -> [] in
         TypD(id,tps,t)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 
 /* TBR: Syntax.md specifies EQ expr but the examples allow a expr_field* (sans EQ), shall we allow both?
@@ -436,7 +434,7 @@ dec :
     	    	  | Some tps -> tps
 		  | None -> [] in
         ClassD(actor,id,tps,p,e)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 */
   | a = sort CLASS id = id tpso = typ_params? p=params LCURLY efs = seplist(expr_field,SEMICOLON) RCURLY
@@ -448,7 +446,7 @@ dec :
     	    	  | Some tps -> tps
 		  | None -> [] in
         ClassD(actor,id,tps,p,efs.it)
-	@@ at()
+	@@ at($symbolstartpos,$endpos)
     }
 
 
