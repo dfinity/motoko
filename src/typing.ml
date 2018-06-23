@@ -143,6 +143,18 @@ let rec typ_to_string t =
 let unitT = TupT[]
 let boolT = PrimT(BoolT)
 
+let rec norm_typ context t =
+    match t with
+    | VarT(v,[]) ->
+      (match lookup context.constructors v with
+      | Some ([],t) -> norm_typ context t
+      | None -> t)
+    | VarT(v,ts) ->
+      failwith "NYI" (* TBR needs subsitution*)
+    | _ -> t  
+     
+
+
 let rec check_typ_binds context ts =
         let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
         let ts = List.map (fun (bind:Syntax.typ_bind) ->
@@ -233,7 +245,7 @@ match e.it with
       with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
    | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
 | DotE(e,v) ->
-  (match inf_exp context e with
+  (match norm_typ context (inf_exp context e) with
    |(ObjT(a,fts) as t) ->
      (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
          ft.typ
@@ -266,7 +278,7 @@ match e.it with
     let t2 = inf_exp context e2 in
     if eq_typ t2 dom
     then rng
-    else typeError e.at "illegal application: argument of wrong type"  
+    else typeError e.at "illegal function application: expecting argument of type %s found argument of type %s" (typ_to_string dom) (typ_to_string t2)
   | _ -> typeError e.at "illegal application: not a function")
 | BlockE es ->
   let context = addBreak context labelOpt unitT in
@@ -456,11 +468,9 @@ and check_dec context d =
 and check_dec' context d =     
     match d.it with
     | LetD (p,e) ->
-      let ve,t = inf_pat context p in (* be more clever here and use t' to check p, eg. for let _ = e *)
-      let t' = inf_exp context e in
-      if eq_typ t t'
-      then ve,Env.empty
-      else typeError d.at "type of pattern doesn't match type of expressions"
+      let t = inf_exp context e in
+      let ve = check_pat context p t in 
+      ve,Env.empty
     | VarD (v,t,None) ->
       let t = check_typ context t in
       Env.singleton v.it (t,VarMut),Env.empty
@@ -515,24 +525,29 @@ and check_dec' context d =
 	    pre_members context field_env efs
       in
       let pre_members = pre_members context_ts_v_dom Env.empty efs in
-      let public_fields =
-      	  let bindings = Env.bindings pre_members in
-	  let public = List.filter (fun (v,(m,p,t)) -> p = Public) bindings in
-	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public
-      in	  
       let private_context = Env.map (fun (m,p,t) -> (t,m)) pre_members in
-
-      let objT  = ObjT(a.it,public_fields) in
-      let class_def = objT in
+      let bindings = Env.bindings pre_members in
+      let all_fields = List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) bindings in
+      let private_objT =  ObjT(a.it,all_fields) in
+      let public_fields =
+      	  let public_bindings = List.filter (fun (v,(m,p,t)) -> p = Public) bindings  in
+	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public_bindings
+      in
 
       let consT = FuncT(ts,dom,class_) (* TBR: we allow polymorphic recursion *) in
 
-      let field_context = add_value (union_values context_ts_v_dom private_context) v.it (consT,VarMut) in
+      let field_context =
+          add_constructor (add_value (union_values context_ts_v_dom private_context) v.it (consT,ConstMut))
+	                  v.it (ts,private_objT)
+
+      in
       (*TODO, add type def *)				  
       let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
+      let public_objT  = ObjT(a.it,public_fields) in
+
       (*TODO, export type def *)
       Env.singleton v.it (consT,ConstMut),
-      Env.singleton v.it (ts,objT)
+      Env.singleton v.it (ts,public_objT)
 
 
 and inf_pats context ve ts ps =

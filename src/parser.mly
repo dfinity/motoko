@@ -196,7 +196,10 @@ param:
   | id = id COLON t = typ { AnnotP(VarP(id) @@ id.at,t) @@ at($symbolstartpos,$endpos)  }
 
 params :
-  | LPAR ps = seplist(param,COMMA) RPAR { TupP(ps.it) @@ at($symbolstartpos,$endpos)}
+  | LPAR ps = seplist(param,COMMA) RPAR {
+    (match ps.it with
+    | [p] -> p.it
+    | ps -> TupP(ps)) @@ at($symbolstartpos,$endpos)}
 
 //TBR:  the informal grammar is actually as below but I'm not sure how to understand <params>+
 //  | id = id typ_params? <params>+ COLON t=typ
