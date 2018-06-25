@@ -74,7 +74,7 @@ let token_to_string tok =
     | BINUPDATE _ -> "BINUPDATE(-)"  
     | AWAIT -> "AWAIT"
     | ASYNC -> "ASYNC"
-    | ASSIGN -> "ASSING"
+    | ASSIGN -> "ASSIGN"
     | ASSERT -> "ASSERT"
     | ARROW -> "ARROW"
     | ANDOP -> "ANDOP"
@@ -170,6 +170,7 @@ let ext e s u =
 
 let opt = Lib.Option.get
 *)
+
 }
 
 let sign = '+' | '-'

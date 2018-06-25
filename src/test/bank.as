@@ -1,8 +1,8 @@
 actor class Bank(supply : Int) {
   private issuer = Issuer();
   private reserve = Account(supply);
-  getIssuer() : async Issuer = { return issuer; };
-  getReserve() : async Account { return reserve ; };
+  getIssuer() : async Issuer { return issuer; };
+  getReserve() : async Account { return reserve; };
 };
 
 actor class Issuer() {
@@ -25,7 +25,7 @@ actor class Account(initial_balance : Int) {
 
   join(account : Account) {  // this implicitly asserts that account is Account
     let amount = balance;
-    balance := 0;
+    balance := (* hack *) +0;
     account.credit(amount);
   };
 
@@ -40,10 +40,8 @@ actor class Account(initial_balance : Int) {
   };
 };
 
-
- 
 // Example usage
-func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
+func transfer(sender : Account, receiver : Account, amount : Int) : async (* hack: *) ()  {
   let trx = await sender.split(amount);
   receiver.join(trx);
 };

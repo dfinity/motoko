@@ -382,7 +382,7 @@ match e.it with
     check_exp context t e;
     t
 | DecE d ->
-    let _ = check_dec context d in
+    let _ = check_decs context [d] in
     unitT
     
 and inf_cases context pt cs t_opt  =
@@ -439,7 +439,7 @@ and inf_block context es =
   match es with
   | [] -> unitT
   | {it = DecE d;at}::es ->
-    let ve,ce = check_dec context d in
+    let ve,ce = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
     inf_block (union_constructors (union_values context ve) ce) es
   | [e] -> inf_exp context e
   | e::es ->
@@ -453,33 +453,45 @@ and check_block r context t es =
     then ()
     else typeError r "block  must end with expression of type" (typ_to_string t) 
   | {it = DecE d;at}::es ->
-    let ve,ce = check_dec context d in
+    let ve,ce = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
     check_block r (union_constructors (union_values context ve) ce) t es
   | [e] -> check_exp context t e
   | e::es ->
     check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
     check_block r context t es 
 
-and check_dec context d =
-    let ve , ce = check_dec' context d in
+and check_dec pass context d =
+    let ve,ce = check_dec' pass context d in    
     (* TBC store ve *)
-    ve, ce
+    ve,ce
 
-and check_dec' context d =     
+and check_dec' pass context d =     
     match d.it with
     | LetD (p,e) ->
-      let t = inf_exp context e in
-      let ve = check_pat context p t in 
-      ve,Env.empty
+      if pass < 3 then
+	 Env.empty, Env.empty
+      else      
+         let t = inf_exp context e in
+         let ve = check_pat context p t in 
+	 ve,Env.empty
     | VarD (v,t,None) ->
+      if pass < 3 then
+      	 Env.empty, Env.empty
+      else
       let t = check_typ context t in
       Env.singleton v.it (t,VarMut),Env.empty
     | VarD (v,t,Some e) ->
-      let t = check_typ context t in
-      check_exp context t e;
-      Env.singleton v.it (t,VarMut),
-      Env.empty
+      if pass < 3 then
+         Env.empty, Env.empty
+      else
+	let t = check_typ context t in
+      	check_exp context t e;
+      	Env.singleton v.it (t,VarMut),
+	Env.empty
     | FuncD(v,ts,p,t,e) ->
+      if pass < 3 then
+      	 Env.empty,Env.empty
+      else
       let ts,constructors = check_typ_binds context ts in
       let context' = {context with constructors = union context.constructors constructors} in
       let ve,dom = inf_pat context' p in
@@ -498,10 +510,19 @@ and check_dec' context d =
       Env.singleton v.it (funcT,ConstMut), Env.empty
     | ClassD(a,v,ts,p,efs) ->
       let ts,constructors = check_typ_binds context ts in
-      let context_ts = union_constructors context constructors in
       let class_ = VarT (v.it , List.map (fun tb -> (VarT (tb.var,[]))) ts) in
-      let context_ts_v = add_constructor (union_constructors context constructors) v.it (ts,class_) in
+      let ce0 = Env.singleton v.it (ts,ObjT(a.it,[])) in
+      if pass = 0 then
+      	 Env.empty, ce0
+      else
+      let context_ts = union_constructors context constructors in
+      let context_ts_v = add_constructor context_ts v.it (ts,class_) in
       let ve,dom = inf_pat context_ts_v p in
+      let consT = FuncT(ts,dom,class_) (* TBR: we allow polymorphic recursion *) in
+      let ve1ce1 = Env.singleton v.it (consT,ConstMut),ce0 in
+      if pass = 1 then
+          ve1ce1
+      else	  
       let context_ts_v_dom =
           {context_ts_v with values = union context_ts_v.values ve} in
       let rec pre_members context field_env efs =
@@ -520,34 +541,31 @@ and check_dec' context d =
 	    let field_env = Env.add var.it (mut.it,priv.it,funcT) field_env in
     	    pre_members context field_env efs
           | {it={var;mut;priv;exp=e}}::efs ->
-	    let t = inf_exp context e in
+	    let t = inf_exp context e in (* TBR: this feels wrong as we don't know all field types yet, just the ones to the left *)
 	    let field_env = Env.add var.it (mut.it,priv.it,t) field_env in
 	    pre_members context field_env efs
       in
       let pre_members = pre_members context_ts_v_dom Env.empty efs in
       let private_context = Env.map (fun (m,p,t) -> (t,m)) pre_members in
       let bindings = Env.bindings pre_members in
-      let all_fields = List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) bindings in
-      let private_objT =  ObjT(a.it,all_fields) in
       let public_fields =
       	  let public_bindings = List.filter (fun (v,(m,p,t)) -> p = Public) bindings  in
 	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public_bindings
       in
-
-      let consT = FuncT(ts,dom,class_) (* TBR: we allow polymorphic recursion *) in
-
-      let field_context =
-          add_constructor (add_value (union_values context_ts_v_dom private_context) v.it (consT,ConstMut))
-	                  v.it (ts,private_objT)
-
-      in
-      (*TODO, add type def *)				  
-      let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
       let public_objT  = ObjT(a.it,public_fields) in
-
-      (*TODO, export type def *)
-      Env.singleton v.it (consT,ConstMut),
-      Env.singleton v.it (ts,public_objT)
+      let ve2ce2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it (ts,public_objT) in
+      if pass = 2 then
+      	  ve2ce2
+      else (* pass = 3 *)
+      	  let _ = assert(pass = 3) in
+          let all_fields = List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) bindings in
+	  let private_objT =  ObjT(a.it,all_fields) in
+	  let field_context = add_constructor (add_value (union_values context_ts_v_dom private_context) v.it (consT,ConstMut))
+	                                       v.it (ts,private_objT)
+	  in
+	  (* infer the fields *)
+      	  let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
+          ve2ce2
 
 
 and inf_pats context ve ts ps =
@@ -567,7 +585,8 @@ and inf_pat context p =
      inf_pats context Env.empty [] ps
    | AnnotP(p,t) ->
      let t = check_typ context t in
-     check_pat context p t,t
+
+check_pat context p t,t
      
 and check_pat context p t =
    match p.it with
@@ -594,11 +613,23 @@ and check_pats at context ve ps ts =
    | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
          
       
-let rec check_decs context ds = match ds with
-   |  [] -> context
+and check_decs_aux pass context ve ce ds  = match ds with
+   |  [] ->  ve,ce
    |  d::ds ->
-      let ve,ce = check_dec context d in
-      check_decs (union_constructors (union_values context ve) ce) ds
+      let ve1,ce1 = check_dec pass context d in
+      check_decs_aux pass (union_constructors (union_values context ve1) ce1) (union ve ve1) (union ce ce1) ds
+      
+
+and check_decs context ds =
+      (* declare type constructors *)
+      let ve0,ce0 = check_decs_aux 0 context Env.empty Env.empty ds in
+      (* declare instance constructors, given type constructors *)
+      let ve1,ce1 = check_decs_aux 1 (union_values (union_constructors context ce0) ve0) Env.empty Env.empty ds in
+      (* define type constructors (declare public member types) *)
+      let ve2,ce2 = check_decs_aux 2 (union_values (union_constructors context ce1) ve1) Env.empty Env.empty ds in
+      (* check classes definitions (check public and private member expressions *)
+      let ve3,ce3 = check_decs_aux 3 (union_values (union_constructors context ce2) ve2) Env.empty Env.empty ds in
+      ve3,ce3
 
 
 let check_prog p =
