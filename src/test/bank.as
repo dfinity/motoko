@@ -25,7 +25,7 @@ actor class Account(initial_balance : Int) {
 
   join(account : Account) {  // this implicitly asserts that account is Account
     let amount = balance;
-    balance := (* hack *) +0;
+    balance := 0;
     account.credit(amount);
   };
 

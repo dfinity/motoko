@@ -2,6 +2,14 @@ open Syntax
 open Source
 open Types
 
+module I32 = Wasm.I32
+module I64 = Wasm.I64
+
+
+(* TBR *)
+let nat_width = 31
+let int_width = 31
+
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
 
 type typ =
@@ -23,8 +31,6 @@ and typ_bind = {var:string; bound: typ }
 and typ_field = {var:string; typ: typ; mut: mut'}
 
 module Env = Map.Make(String)
-
-
 
 type kind = typ_bind list * typ
 
@@ -143,6 +149,84 @@ let rec typ_to_string t =
 let unitT = TupT[]
 let boolT = PrimT(BoolT)
 
+(* checking literal values are in bounds *)
+let check_I32_u p bits =
+    let module I = I32 in
+    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
+	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_I64_u p bits =
+    let module I = I64 in
+    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
+	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_nat    = check_I32_u NatT nat_width
+let check_word8  = check_I32_u (WordT Width8) 8
+let check_word16 = check_I32_u (WordT Width16) 16
+let check_word32 = check_I32_u (WordT Width32) 32
+let check_word64 = check_I64_u (WordT Width64) 64
+
+let check_I32_s p bits =
+    let module I = I32 in
+    let max = I.sub (I.shl (I.of_int_u 1) (I.of_int_u (bits-1)))
+                    (I.of_int_s 1) in
+    let min = I.sub (I.sub I.zero max) (I.of_int_s 1) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if not (I.le_s min i && I.le_s i max)
+	 then typeError at "literal under/overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_int = check_I32_s IntT int_width
+
+(* begin sanity test *)
+
+let pow2 n = 1 lsl n
+
+(* text check_nat *)
+
+let true = (check_nat no_region (string_of_int ((pow2 31) - 1))) = I32.of_int_u ((pow2 31) - 1)
+let true = (check_nat no_region (string_of_int 0) = I32.of_int_u 0)
+let true = try check_nat no_region (string_of_int (pow2 31));
+    	       false
+           with _ -> true
+let true = try check_nat no_region (string_of_int ((pow2 31)+1));
+    	       false
+           with _ -> true	   
+
+(* test check_word16 *)
+let true = (check_word16 no_region (string_of_int ((pow2 16) - 1))) = I32.of_int_u ((pow2 16) - 1)
+let true = (check_word16 no_region (string_of_int 0) = I32.of_int_u 0)
+let true = try check_word16 no_region (string_of_int (pow2 16));
+    	       false
+           with _ -> true
+let true = try check_word16 no_region (string_of_int ((pow2 16)+1));
+    	       false
+           with _ -> true	   
+	   
+(* test check_int *)
+let true = (check_int no_region (string_of_int (pow2 (int_width-1) - 1))) = I32.of_int_s (pow2 (int_width-1) - 1)
+let true = (check_int no_region (string_of_int (-(pow2 (int_width-1))))) = I32.of_int_s (-(pow2 (int_width-1)))
+let true = try check_int no_region (string_of_int (pow2 (int_width-1) - 1 + 1));
+    	       false
+           with _ -> true
+let true = try check_int no_region (string_of_int (-(pow2 (int_width-1)) - 1));
+	       false
+	   with _ -> true
+
+(* end sanity test *)
+
 let rec norm_typ context t =
     match t with
     | VarT(v,[]) ->
@@ -154,16 +238,15 @@ let rec norm_typ context t =
     | _ -> t  
      
 
-
 let rec check_typ_binds context ts =
-        let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
-        let ts = List.map (fun (bind:Syntax.typ_bind) ->
-                  {var=bind.it.Syntax.var.it;bound=check_typ bind_context bind.it.Syntax.bound}
-                 ) ts in
-        let constructors  =
+    let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
+    let ts = List.map (fun (bind:Syntax.typ_bind) ->
+                       {var=bind.it.Syntax.var.it;bound=check_typ bind_context bind.it.Syntax.bound}
+                      ) ts in
+    let constructors  =
           List.fold_left (fun c bind -> Env.add bind.var ([],bind.bound) c) context.constructors ts in
-	ts,constructors
-
+    ts,constructors
+    
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 
 and check_typ context t = match t.it with
@@ -171,7 +254,7 @@ and check_typ context t = match t.it with
       (match lookup context.constructors c.it with
           | Some (bounds,_) -> 
             let ts = List.map (check_typ context) tys in
-            check_bounds t.at ts bounds ;
+            check_bounds t.at ts bounds;
             VarT(c.it,ts)
           | None -> kindError c.at "unbound constructor %s" c.it)
     | Syntax.PrimT p -> PrimT p      
@@ -199,8 +282,8 @@ and check_typ context t = match t.it with
       let fs_sorted = List.sort (fun (f:typ_field)(g:typ_field) -> String.compare f.var g.var) fs in
       ObjT(a.it,fs_sorted)
     
-and inf_lit l =
-  match l with
+and inf_lit rl =
+  match !rl with
     | NullLit -> PrimT NullT (* TBR *)
     | BoolLit _ -> PrimT BoolT
     | NatLit _ -> PrimT NatT
@@ -214,6 +297,75 @@ and inf_lit l =
     | FloatLit _ -> PrimT FloatT
     | CharLit _ -> PrimT CharT
     | TextLit _ -> PrimT TextT
+    | PreLit s ->
+      rl := IntLit (Int32.to_int (Wasm.I32.of_string s)); (* default *)
+      PrimT IntT
+
+
+and check_lit at t rl =
+  let trap of_string s = try of_string s with _ -> typeError at "bad literal %s for type %s" s (typ_to_string t) in
+  let unexpected() = typeError at "expected literal of type %s" (typ_to_string t) in
+  let l = !rl in
+  match t with
+    | OptT t ->
+      if l = NullLit then ()
+      else check_lit at t rl 
+    | PrimT p ->
+      begin
+      match p with
+      | NullT ->
+        if l = NullLit then ()
+        else unexpected()
+      | NatT ->
+      (match l with
+       | NatLit _ -> ()
+       | PreLit s ->
+         let v = check_nat at s in 
+	 rl := NatLit (Int32.to_int v)
+       | _ -> unexpected())
+      | IntT ->
+       (match l with
+       | IntLit _ -> ()
+       | PreLit s ->
+         let v = check_int at s in
+	 rl := IntLit (Int32.to_int v)
+       | _ -> unexpected())
+     | WordT Width8 ->
+       (match l with
+       | WordLit (Word8 _) -> ()
+       | PreLit s ->
+         let v = check_word8 at s in
+	 rl := WordLit (Word8 (Int32.to_int v))
+       | _ -> unexpected())
+     | WordT Width16 ->
+       (match l with
+       | WordLit (Word16 _) -> ()
+       | PreLit s ->
+         let v = check_word16 at s in
+	 rl := WordLit (Word16 (Int32.to_int v))
+       | _ -> unexpected())
+     | WordT Width32 ->
+       (match l with
+       | WordLit (Word32 _) -> ()
+       | PreLit s ->
+         let v = check_word32 at s in
+	 rl := WordLit (Word32 v)
+       | _ -> unexpected())
+     | WordT Width64 ->
+       (match l with
+       | WordLit (Word64 _) -> ()
+       | PreLit s ->
+         let v = check_word64 at s in
+	 rl := WordLit (Word64 v)
+       | _ -> unexpected())
+     | _ ->
+       let  u = inf_lit rl in
+       if eq_typ t u
+       then ()
+       else typeError at "expect literal of type %s found literal of type %s" (typ_to_string t) (typ_to_string u)
+     end
+   | _ -> typeError at "type %s has no literals" (typ_to_string t)
+    
 
 and inf_exp context e =
     let t = inf_exp' context e in
@@ -227,8 +379,8 @@ match e.it with
   (match lookup context.values x.it with
     | Some (ty,_) -> ty
     | None -> typeError x.at "unbound identifier %s" x.it)
-| LitE l ->
-   inf_lit l
+| LitE rl ->
+   inf_lit rl
 | BinE (binop,e) ->
   (* TBC *)
   (match inf_exp context e with
@@ -402,6 +554,7 @@ and check_exp context t e =
   let labelOpt = context.label in
   let context = {context with label = None} in
   match e.it with
+  | LitE rl -> check_lit e.at t rl
   | ArrayE es ->
     (match t with
     | ArrayT (mut,t) ->
@@ -592,7 +745,9 @@ and check_pat context p t =
    match p.it with
    | WildP -> Env.empty
    | VarP v -> Env.singleton v.it (t,ConstMut)
-   | LitP l -> Env.empty
+   | LitP rl ->
+      check_lit p.at t rl;
+      Env.empty
    | TupP ps ->
      (match t with
       | TupT ts ->

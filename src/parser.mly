@@ -37,6 +37,7 @@ let literal f s =
 
 let nat s at =
   try
+    let _ = String.iter (function '0'..'9' -> () | _ -> failwith "non-numeric digit") s in
     let n = int_of_string s in
     if n >= 0 then n else raise (Failure "")
   with Failure _ -> error at "integer constant out of range"
@@ -75,7 +76,7 @@ let anyT = TupT []
 %token EQ LT GT
 %token NULL
 %token<Types.nat> NAT
-%token<int>  INT
+%token<string>  INT
 %token<float>  FLOAT
 %token<Types.unicode>   CHAR
 %token<string> STRING
@@ -230,9 +231,8 @@ typ_field :
 
 lit :
     | NULL	  { NullLit}
-    | i = INT     { IntLit i}
+    | s = INT     { PreLit s}
     | b = BOOL	  { BoolLit b}
-    | n = NAT	  { NatLit n}
     | f = FLOAT   { FloatLit f}
     | w = WORD    { WordLit w}
     | c = CHAR	  { CharLit c}
@@ -260,9 +260,10 @@ unop :
 block_expr :
     | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at($symbolstartpos,$endpos) }
 
+
 atomic_expr :
     | id = id { VarE id @@ at($symbolstartpos,$endpos) }
-    | l = lit { LitE l @@ at($symbolstartpos,$endpos) }
+    | l = lit { LitE (ref l) @@ at($symbolstartpos,$endpos) }
     | LPAR es = seplist(expr,COMMA) RPAR
       { match es.it with
         | [e] -> e
@@ -280,7 +281,10 @@ atomic_expr :
       }
 
     | LBRACKET es = seplist(expr,SEMICOLON) RBRACKET { ArrayE(es.it) @@ at($symbolstartpos,$endpos) }
-    | e=atomic_expr DOT n = NAT {ProjE (e,n) @@ at($symbolstartpos,$endpos) }
+    | e=atomic_expr DOT s = INT {
+        let n = nat s (at($startpos(s),$endpos(s))) in
+        ProjE (e,int_of_string s) @@ at($symbolstartpos,$endpos) 
+      }
     | e=atomic_expr DOT id = id {DotE (e,id) @@ at($symbolstartpos,$endpos) }
     | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at($symbolstartpos,$endpos) }
     | e=block_expr { e }
@@ -359,15 +363,13 @@ expr_field:
 	{  var = id; mut = ConstMut @@ no_region; priv = p; exp = exp}
 	@@ at($symbolstartpos,$endpos) 
      }
-atpat :
-  | p = pat COLON t=typ { AnnotP(p,t) @@ at($symbolstartpos,$endpos) }
-  | p = pat { p }
-  | l = lit { LitP l @@ at($symbolstartpos,$endpos) }
-  
+
 pat :
+  | p = pat COLON t=typ { AnnotP(p,t) @@ at($symbolstartpos,$endpos) }
+  | l = lit { LitP (ref l) @@ at($symbolstartpos,$endpos) }
   | UNDERSCORE { WildP @@ at($symbolstartpos,$endpos) }
   | id = id { VarP(id) @@ at($symbolstartpos,$endpos) }
-  | LPAR ps  = seplist(atpat,COMMA) RPAR
+  | LPAR ps  = seplist(pat,COMMA) RPAR
       { match ps.it with
         | [p] -> p
         | ps -> TupP(ps) @@ at($symbolstartpos,$endpos)

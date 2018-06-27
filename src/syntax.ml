@@ -43,7 +43,7 @@ and pat' =
   | VarP of var                                (* variable *)
   | TupP of pat list                           (* tuple *)
   | AnnotP of pat * typ                        (* type annotation *)
-  | LitP of Types.lit                          (* literal *) (* only in switch case, for now *)
+  | LitP of Types.lit ref                          (* literal *) (* only in switch case, for now *)
 (*
   | ObjP of pat_field list                     (* object *)
   | AsP of pat * pat                           (* conjunctive *)
@@ -59,10 +59,11 @@ and pat_field' = {var : var; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
+
 type exp = exp' Source.phrase
 and exp' =
   | VarE of var                                (* variable *)
-  | LitE of Types.lit                          (* literal *)
+  | LitE of  Types.lit ref                     (* literal *)
   | UnE of Types.unop * exp                    (* unary operator *)
   | BinE of Types.binop * exp                  (* binary operator *)
   | TupE of exp list                           (* tuple *)

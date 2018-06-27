@@ -18,6 +18,7 @@ type prim =
   | FloatT
   | CharT
   | TextT
+  | PreInt of string
 
 type word =
   | Word8 of int8
@@ -34,6 +35,7 @@ type lit =
   | FloatLit of float
   | CharLit of unicode
   | TextLit of string
+  | PreLit of string                             (* unresolved numeric literal *)
 
 type unop =
   | PosOp                                        (* +x *)

@@ -49,7 +49,7 @@ let token_to_string tok =
     | LBRACKET -> "LBRACKET"
     | LABEL -> "LABEL"
     | IS -> "IS"
-    | INT i ->  Printf.sprintf "ID(%i)" i
+    | INT s ->  Printf.sprintf "ID(%s)" s
     | IN -> "IN"
     | IF -> "IF"
     | ID id -> Printf.sprintf "ID(%s)" id
@@ -207,7 +207,7 @@ let character =
   | "\\u{" hexnum '}'
 
 let nat = num | "0x" hexnum
-let int = sign nat
+let int = sign? nat
 let frac = num
 let hexfrac = hexnum
 let float =
@@ -285,8 +285,7 @@ rule token = parse
   | ":=" { ASSIGN }
   | "_" { UNDERSCORE }
 (*TODO: literals need reworking*)
-  | nat as s { NAT (int_of_string s) }
-  | int as s { INT (int_of_string s) }
+  | int as s { INT s }
   | float as s { FLOAT (float_of_string s) }
 
   | string as s { STRING (string s) }
