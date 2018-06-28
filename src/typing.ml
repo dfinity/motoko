@@ -11,6 +11,8 @@ let nat_width = 31
 let int_width = 31
 
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+(* todo: rule out duplicate field defs *)
+(* todo: comparisons *)
 
 type typ =
   | VarT of string * typ list                     (* constructor *)

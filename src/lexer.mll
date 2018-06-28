@@ -47,7 +47,6 @@ let token_to_string tok =
     | LET -> "LET"
     | LCURLY -> "LCURLY"
     | LBRACKET -> "LBRACKET"
-    | LABEL -> "LABEL"
     | IS -> "IS"
     | INT s ->  Printf.sprintf "ID(%s)" s
     | IN -> "IN"
@@ -69,6 +68,7 @@ let token_to_string tok =
     | CHAR _ -> "CHAR"
     | CATOP -> "CATOP"
     | CASE -> "CASE"
+    | DO -> "DO"
     | BREAK -> "BREAK"
     | BOOL _ -> "BOOL"
     | BINUPDATE _ -> "BINUPDATE(-)"  
@@ -317,6 +317,7 @@ rule token = parse
   | "case" { CASE }
   | "class" { CLASS }
   | "continue" { CONTINUE }
+  | "do" { DO }
   | "else" { ELSE }
   | "false" {BOOL false}
   | "for" { FOR }
@@ -329,7 +330,6 @@ rule token = parse
   | "not" { NOT }
   | "null" { NULL }
   | "or" { OR }
-  | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
   | "private" { PRIVATE }

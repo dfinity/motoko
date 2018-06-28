@@ -147,7 +147,7 @@ A simple language for writing Dfinity actors.
 * While loops and iterations
   - `while (p()) ...`
   - `loop ...`
-  - `loop ... while (p())`
+  - `loop ... while (p())`a
   - `for x in f() ...`
 
 * Labels, nested break and continue

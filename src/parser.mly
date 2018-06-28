@@ -61,7 +61,7 @@ let anyT = TupT []
 
 %token MUT LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CONTINUE IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LABEL LIKE RETURN 
+%token AWAIT ASYNC BREAK CASE CONTINUE DO IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE
 %token SEMICOLON COLON COMMA DOT
@@ -288,7 +288,7 @@ atomic_expr :
     | e=atomic_expr DOT id = id {DotE (e,id) @@ at($symbolstartpos,$endpos) }
     | e1=atomic_expr e2=atomic_expr { CallE(e1,e2) @@ at($symbolstartpos,$endpos) }
     | e=block_expr { e }
-    | LABEL id = id e = expr { LabelE (id,e) @@ at($symbolstartpos,$endpos) }
+    | DO id = id e = expr { LabelE (id,e) @@ at($symbolstartpos,$endpos) }
     | BREAK id = id eo = expr?
       {
         let es =
