@@ -1,0 +1,4 @@
+typechecked bank.as
+typechecked bank_ordered.as
+Type Error control.as:9.12-9.19:illegal function application: expecting argument of type () found argument of type Int!
+Type Error literals.as:3.18-3.25:bad literal for type Word8!

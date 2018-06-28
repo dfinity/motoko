@@ -405,7 +405,7 @@ match e.it with
    | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
 | AssignE(e1,e2) ->
  (match e1.it with
-  (*TODO: array and object update *)
+  (*TBC: array and object update *)
   |  VarE v ->
      (match lookup context.values v.it with
        | Some (t1,VarMut) ->
@@ -414,7 +414,9 @@ match e.it with
 	   then unitT
 	   else typeError e.at "location of type %s cannot store value of type %s" (typ_to_string t1) (typ_to_string t2)
        | Some (_,ConstMut) ->
-          typeError e.at "cannot assign to immutable location")
+          typeError e.at "cannot assign to immutable location"
+       | None ->
+       	  typeError e1.at "unbound mutable identifier %s" v.it)
   | IdxE(a,i) ->
      failwith "NYI" (* TBC *))
 | ArrayE [] ->

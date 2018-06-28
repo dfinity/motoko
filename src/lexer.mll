@@ -82,6 +82,7 @@ let token_to_string tok =
     | ADDOP -> "ADDOP"
     | ACTOR -> "ACTOR"
     | PRIM _ -> "PRIM()"
+    | _ -> "???"
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -315,7 +316,7 @@ rule token = parse
   | "break" { BREAK }
   | "case" { CASE }
   | "class" { CLASS }
-  | "continue" { CASE }
+  | "continue" { CONTINUE }
   | "else" { ELSE }
   | "false" {BOOL false}
   | "for" { FOR }
