@@ -3,7 +3,6 @@ actor class Control() {
   Test():Bool = false;
 
   While() : () {
-
      var x : Int = 1;
      do l 
      while(Test(x))

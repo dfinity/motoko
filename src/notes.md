@@ -40,3 +40,8 @@ TODO and Issues
 - how will we check IsE(e,t) at run-time if t contains type parameters (in the absence of type passing)
 - do we want to distinguish between awaitable 'async ()' and unawaitable 'async' (C# has both I believe, the latter for true fire-and-forget asyncs)
 - why do we have a Nat type? What's wrong with (unsigned word)
+
+- operators:
+   - do we want to allow implict promotion of operands (ie word16+word8)
+   - do we want to allow logical operation (bitwise operators) on non-word types?
+   

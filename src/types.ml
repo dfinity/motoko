@@ -18,7 +18,6 @@ type prim =
   | FloatT
   | CharT
   | TextT
-  | PreInt of string
 
 type word =
   | Word8 of int8
@@ -56,3 +55,12 @@ type binop =
   | RotLOp
   | RotROp
   | CatOp                                        (* concatenation *)
+
+
+type relop =
+  | EqOp                                        (* x=y *)
+  | NeqOp                                       (* x!=y *)
+  | LtOp                                        (* x<y *)
+  | LeOp                                        (* x<=y *)
+  | GtOp                                        (* x>y *)
+  | GeOp                                        (* x>=y *)

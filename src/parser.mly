@@ -59,7 +59,7 @@ let anyT = TupT []
 
 %token EOF
 
-%token MUT LET VAR
+%token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE DO IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
@@ -70,6 +70,7 @@ let anyT = TupT []
 %token OBJECT //TBR delete me?
 %token ADDOP SUBOP MULOP DIVOP MODOP ANDOP OROP XOROP NOTOP SHIFTLOP SHIFTROP
 %token ROTLOP ROTROP
+%token NEQOP LEOP LTOP GTOP GEOP
 %token<Types.binop> BINUPDATE 
 %token CATOP
 /* comparisons? */
@@ -246,6 +247,7 @@ unop :
 %inline binop :
     | ADDOP { AddOp}
     | SUBOP { SubOp}
+    | MULOP { MulOp}
     | DIVOP { DivOp}
     | MODOP { ModOp}
     | ANDOP { AndOp}
@@ -256,6 +258,14 @@ unop :
     | ROTLOP   { RotLOp }
     | ROTROP   { RotROp }
     | CATOP    { CatOp }
+
+%inline relop :
+    | EQ    { EqOp }
+    | NEQOP { NeqOp}
+    | LTOP  { LtOp }
+    | LEOP  { LeOp }
+    | GTOP  { GtOp }
+    | GEOP  { GeOp }
 
 block_expr :
     | LCURLY es = seplist(expr,SEMICOLON) RCURLY { BlockE(es.it) @@ at($symbolstartpos,$endpos) }
@@ -301,10 +311,11 @@ atomic_expr :
   
 expr :
     | e=atomic_expr { e } 
-    | e1 = expr bop = binop e2 = expr { BinE (bop,TupE [e1;e2] @@ no_region) @@ at($symbolstartpos,$endpos) }
+    | e1 = expr bop = binop e2 = expr { BinE (e1,bop,e2) @@ at($symbolstartpos,$endpos) }
+    | e1 = expr rop = relop e2 = expr { RelE (e1,rop,e2) @@ at($symbolstartpos,$endpos) }
     | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at($symbolstartpos,$endpos)}
     | e1 = expr binop=BINUPDATE e2 = expr {
-        AssignE(e1,BinE(binop,TupE [e1;e2] @@ no_region) @@ no_region) @@ at($symbolstartpos,$endpos)}
+        AssignE(e1,BinE(e1, binop, e2) @@ at($symbolstartpos,$endpos)) @@ at($symbolstartpos,$endpos)}
     | e1=expr LBRACKET e2=expr RBRACKET { IdxE(e1,e2) @@ at($symbolstartpos,$endpos) }
     | NOT e = expr { NotE e @@ at($symbolstartpos,$endpos) }
     | e1 = expr AND e2 = expr { AndE(e1,e2) @@ at($symbolstartpos,$endpos) }

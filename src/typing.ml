@@ -104,6 +104,48 @@ let element_typ t =
     | ArrayT(mut,t) -> t
     | _ -> assert(false)
 
+let numeric_typ t =
+    match t with
+    | PrimT p ->
+      (match p with
+       | NatT
+       | IntT
+       | WordT _ 
+       | FloatT -> true
+       | _ -> false)
+    | _ -> false
+
+let logical_typ  t =
+    match t with
+    | PrimT (WordT _) -> true
+    | _ -> false
+
+let equatable_typ t =
+    match t with
+    | PrimT p ->
+      (match p with
+       | NatT
+       | IntT
+       | WordT _ 
+       | TextT  
+       | CharT -> true
+       | FloatT -> true (* TBR do we really want = and != on floats ?*)
+       | _ -> false)
+    | _ -> false
+
+let comparable_typ t =
+    match t with
+    | PrimT p ->
+      (match p with
+       | NatT
+       | IntT
+       | WordT _ 
+       | TextT -> true
+       | CharT -> true
+       | _ -> false)
+    | _ -> false
+
+
 (* Poor man's pretty printing - replace with Format client *)
 let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
 let rec typ_to_string t =
@@ -367,7 +409,64 @@ and check_lit at t rl =
        else typeError at "expect literal of type %s found literal of type %s" (typ_to_string t) (typ_to_string u)
      end
    | _ -> typeError at "type %s has no literals" (typ_to_string t)
-    
+
+
+and inf_binop context at e1 bop e2 =
+    let t1 = inf_exp context e1 in
+    let t2 = inf_exp context e2 in
+    match bop with
+    | CatOp ->
+      if eq_typ t1 (PrimT TextT) && eq_typ t1 t2 then
+         t1
+      else typeError at "arguments to concatenation operator must have Text type"
+    | AddOp | SubOp | MulOp | DivOp | ModOp ->
+      if numeric_typ t1 && eq_typ t1 t2 then
+         t1
+      else typeError at "arguments to numeric operator must have equivalent numeric types"
+    | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
+      if logical_typ t1 && t1 = t2 then
+         t1
+      else typeError at "arguments to logical operator must have equivalent logical types"
+    | _ -> typeError at "operator doesn't take operands of types %s and %s" (typ_to_string t1) (typ_to_string t2)
+
+and check_binop context at t e1 bop e2 =
+   (match bop with
+    | CatOp ->
+      if eq_typ t (PrimT TextT)
+      then ()
+      else typeError at "expecting value of type %s, but concatenation returns a value of type Text" (typ_to_string t)
+    | AddOp | SubOp | MulOp | DivOp | ModOp ->
+      if numeric_typ t
+      then ()
+      else typeError at "expecting value of type non-numeric type %s, operator returns a value of numeric type" (typ_to_string t)
+    | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
+      if logical_typ t
+      then ()
+      else typeError at "expecting value of type non-logical type %s, operator returns a value of logical type" (typ_to_string t)
+    );
+    check_exp context t e1;
+    check_exp context t e2
+
+and inf_relop context at e1 rop e2 =
+    let t1 = inf_exp context e1 in
+    let t2 = inf_exp context e2 in
+    match rop with
+    | EqOp 
+    | NeqOp ->
+      if equatable_typ t1 && eq_typ t1 t2
+      then boolT
+      else typeError at "arguments to a relational operator must have the same, equatable type"
+    | _ ->
+      if comparable_typ t1 && eq_typ t1 t2
+      then boolT
+      else typeError at "arguments to a relational operator must have the same, comparable type"
+
+and check_relop context at t e1 rop e2 =
+    if eq_typ t boolT
+    then ()
+    else typeError at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (typ_to_string t);
+    let _ = inf_relop context at e1 rop e2 in
+    ()
 
 and inf_exp context e =
     let t = inf_exp' context e in
@@ -383,12 +482,10 @@ match e.it with
     | None -> typeError x.at "unbound identifier %s" x.it)
 | LitE rl ->
    inf_lit rl
-| BinE (binop,e) ->
-  (* TBC *)
-  (match inf_exp context e with
-   | TupT([t1;t2]) ->
-     t1
-   | t -> typeError e.at "expecting tuple found %s" (typ_to_string t))
+| BinE (e1,bop,e2) ->
+   inf_binop context e.at e1 bop e2
+| RelE (e1,rop,e2) ->
+   inf_relop context e.at e1 rop e2    
 | TupE es ->
    let ts = List.map (inf_exp context) es in
    TupT ts
@@ -559,6 +656,10 @@ and check_exp context t e =
   let context = {context with label = None} in
   match e.it with
   | LitE rl -> check_lit e.at t rl
+  | BinE (e1, bop,e2) ->
+    check_binop context e.at t e1 bop e2
+  | RelE (e1,rop,e2) ->
+    check_relop context e.at t e1 rop e2
   | ArrayE es ->
     (match t with
     | ArrayT (mut,t) ->

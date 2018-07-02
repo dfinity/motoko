@@ -117,7 +117,7 @@ async () {
 ```
 
 Finally, translate as in the previous example, using ```s = ```*nextstate*```; continue loop```
-to intrepret inserted jumps approrpriately.
+to interpret inserted jumps appropriately.
 
 Roughly, the result might look something like this:
 

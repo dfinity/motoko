@@ -33,14 +33,16 @@ let token_to_string tok =
     | OROP -> "OROP"
     | OR -> "OR"
     | OBJECT -> "OBJECT"
+    | NEQOP -> "NEQOP"
     | NULL -> "NULL"
     | NOTOP -> "NOTOP"
     | NOT -> "NOT"
     | NAT n ->  Printf.sprintf "NAT(%i)" n
-    | MUT -> "MUL"
     | MULOP -> "MULOP"
     | MODOP -> "MODOP"
     | LT -> "LT"
+    | LTOP -> "LTOP"
+    | LEOP -> "LT"
     | LPAR -> "LPAR"
     | LOOP -> "LOOP"
     | LIKE -> "LIKE"
@@ -52,7 +54,9 @@ let token_to_string tok =
     | IN -> "IN"
     | IF -> "IF"
     | ID id -> Printf.sprintf "ID(%s)" id
+    | GEOP -> "GEOP"
     | GT -> "GT"
+    | GTOP -> "GTOP"
     | FUNC -> "FUNC"
     | FOR -> "FOR"
     | FLOAT _ -> "FLOAT"
@@ -275,6 +279,12 @@ rule token = parse
   | ??  { BINUPDATE RotLOp }
   | ??  { BINUPDATE RotRop }
 *) 
+  | "!=" { NEQOP }
+  | ">=" { GEOP }
+  | "<=" { LEOP }
+  | " >" { LTOP }
+  | " <" { GTOP }
+
 
 
 (* 
@@ -326,7 +336,6 @@ rule token = parse
   | "in" { IN }
   | "is" { IS }
   | "like" { LIKE }
-  | "mut" { MUT }
   | "not" { NOT }
   | "null" { NULL }
   | "or" { OR }
