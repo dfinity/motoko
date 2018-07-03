@@ -124,6 +124,7 @@ let equatable_typ t =
     match t with
     | PrimT p ->
       (match p with
+       | BoolT
        | NatT
        | IntT
        | WordT _ 
@@ -139,8 +140,9 @@ let comparable_typ t =
       (match p with
        | NatT
        | IntT
-       | WordT _ 
-       | TextT -> true
+       | WordT _
+       | FloatT
+       | TextT 
        | CharT -> true
        | _ -> false)
     | _ -> false
@@ -468,6 +470,31 @@ and check_relop context at t e1 rop e2 =
     let _ = inf_relop context at e1 rop e2 in
     ()
 
+and inf_uop context at uop e =
+    let t = inf_exp context e in
+    match uop with
+    | PosOp 
+    | NegOp ->
+      if numeric_typ t 
+      then t
+      else typeError at "argument to negation operator must have numeric type"
+    | NotOp ->
+      if logical_typ t 
+      then t
+      else typeError at "arguments to a bitwise negation operator must have logical type"
+
+and check_uop context at t uop e =
+    match uop with
+    | PosOp 
+    | NegOp ->
+      if numeric_typ t 
+      then check_exp context t e
+      else typeError at "argument to negation operator must have numeric type"
+    | NotOp ->
+      if logical_typ t 
+      then check_exp context t e
+      else typeError at "arguments to a bitwise negation operator must have logical type"
+
 and inf_exp context e =
     let t = inf_exp' context e in
     (*TODO: record t in e *)
@@ -482,6 +509,8 @@ match e.it with
     | None -> typeError x.at "unbound identifier %s" x.it)
 | LitE rl ->
    inf_lit rl
+| UnE(uop,e1) ->
+   inf_uop context e.at uop e1
 | BinE (e1,bop,e2) ->
    inf_binop context e.at e1 bop e2
 | RelE (e1,rop,e2) ->
@@ -516,8 +545,11 @@ match e.it with
           typeError e.at "cannot assign to immutable location"
        | None ->
        	  typeError e1.at "unbound mutable identifier %s" v.it)
-  | IdxE(a,i) ->
-     failwith "NYI" (* TBC *))
+  | DotE(_,_)
+  | IdxE(_,_) ->
+     failwith "NYI" (* TBC *)
+  | _ ->
+     typeError e.at "illegal assignment to immutable value")
 | ArrayE [] ->
      typeError e.at "cannot infer type of empty array"
 | ArrayE ((_::_) as es) ->
@@ -552,7 +584,7 @@ match e.it with
   check_exp context boolT e0;
   let t1 = inf_exp context e1 in
   let t2 = inf_exp context e2 in
-  if eq_typ t1 t2
+  if eq_typ t1 t2 
   then t1
   else typeError e.at "branches of if have different types"
 | SwitchE(e,cs) ->
@@ -656,7 +688,9 @@ and check_exp context t e =
   let context = {context with label = None} in
   match e.it with
   | LitE rl -> check_lit e.at t rl
-  | BinE (e1, bop,e2) ->
+  | UnE (uop,e1) ->
+    check_uop context e.at t uop e1
+  | BinE (e1,bop,e2) ->
     check_binop context e.at t e1 bop e2
   | RelE (e1,rop,e2) ->
     check_relop context e.at t e1 rop e2

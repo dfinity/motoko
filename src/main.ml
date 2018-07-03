@@ -1,6 +1,5 @@
 
 let token lb = let tok = Lexer.token lb in
-
                (* for debugging: *)
 	       (* Printf.printf "%s" (Lexer.token_to_string(tok)); *)
 	       tok

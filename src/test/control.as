@@ -1,19 +1,16 @@
 actor class Control() {
 
-  Test():Bool = false;
+  Test():Bool = false;   
 
   While() : () {
-     var x : Int = 1;
-     do l 
-     while(Test(x))
-     {
-       if true then break l 
+     do l  
+     while(Test()) {
+       if true then break l ()
        else continue l;
      };
   };
 
   Loop() : () {
-     var x : Int = 1;
      do l 
      loop
      {
@@ -23,21 +20,19 @@ actor class Control() {
   };
   
   LoopWhile() : () {
-     var x : Int = 1;
      do l 
      loop
      {
-       if true then break l
+       if true then break l ()
        else continue l;
      } while (Test());
   };
 
   NestedWhile() : () {
-     var x : Int = 1;
      do l
      while(Test())
      {
-       if true then break l
+       if true then break l ()
        else continue l;
        do m
        while(Test()) {
@@ -47,7 +42,6 @@ actor class Control() {
        };
      };
   };
-
 };
 
 

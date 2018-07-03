@@ -97,7 +97,7 @@ let anyT = TupT []
 %left ANDOP
 %left XOROP
 %left CATOP  //?
-%nonassoc USUBOP
+%nonassoc UNOP
     
 
 %nonassoc IFX
@@ -313,6 +313,7 @@ expr :
     | e=atomic_expr { e } 
     | e1 = expr bop = binop e2 = expr { BinE (e1,bop,e2) @@ at($symbolstartpos,$endpos) }
     | e1 = expr rop = relop e2 = expr { RelE (e1,rop,e2) @@ at($symbolstartpos,$endpos) }
+    | uop=unop e=expr { UnE (uop,e) @@ at($symbolstartpos,$endpos) } %prec UNOP  /* TBR: is the correct? */
     | e1 = expr ASSIGN e2 = expr { AssignE(e1,e2) @@ at($symbolstartpos,$endpos)}
     | e1 = expr binop=BINUPDATE e2 = expr {
         AssignE(e1,BinE(e1, binop, e2) @@ at($symbolstartpos,$endpos)) @@ at($symbolstartpos,$endpos)}

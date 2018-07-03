@@ -59,7 +59,7 @@ let token_to_string tok =
     | GTOP -> "GTOP"
     | FUNC -> "FUNC"
     | FOR -> "FOR"
-    | FLOAT _ -> "FLOAT"
+    | FLOAT _ -> "FLOAT(_)"
     | EQ -> "EQ"
     | EOF -> "EOF"
     | ELSE -> "ELSE"
@@ -259,8 +259,8 @@ rule token = parse
   | "^" { XOROP }
   | "~" { NOTOP }
 (*TBR
-  | ??  { RotLOp }
-  | ??  { RotRop }
+  | "??"  { RotLOp }
+  | "??"  { RotRop }
 *) 
   | "<<" { SHIFTLOP}
   | ">>" { SHIFTROP}
@@ -275,22 +275,15 @@ rule token = parse
   | "<<=" { BINUPDATE ShiftLOp}
   | ">>=" { BINUPDATE ShiftROp}
   | "&=" { BINUPDATE CatOp}
-(*TBR
-  | ??  { BINUPDATE RotLOp }
-  | ??  { BINUPDATE RotRop }
-*) 
+  | "@<="  { BINUPDATE RotLOp } (*TBR*)
+  | "@>="  { BINUPDATE RotROp } (*TBR*)
   | "!=" { NEQOP }
   | ">=" { GEOP }
   | "<=" { LEOP }
-  | " >" { LTOP }
-  | " <" { GTOP }
-
-
-
-(* 
-  | ?? { ROTLOP }
-  | ?? { ROTROP }
- *)
+  | space">"space { LTOP } (*TBR*)
+  | space"<"space { GTOP } (*TBR*)
+  | "@<" { ROTLOP } (*TBR*)
+  | "@>" { ROTROP } (*TBR*)
   | "@" { CATOP}  (*??*)
   | "->" { ARROW }
   | ":=" { ASSIGN }
@@ -353,6 +346,7 @@ rule token = parse
   | "Bool" { PRIM BoolT }
   | "Char"  { PRIM CharT }
   | "Nat"  { PRIM NatT }
+  | "Float" { PRIM FloatT }
   | "Null" { PRIM NullT }
   | "Text"  { PRIM TextT }
   | "Word8"  { PRIM (WordT(Width8)) }

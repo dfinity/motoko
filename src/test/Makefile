@@ -10,6 +10,10 @@ all:
 	$(ASC) bank_ordered.as >> result 2>&1
 	$(ASC) control.as >> result 2>&1
 	$(ASC) literals.as >> result 2>&1
+	$(ASC) numericops.as >> result 2>&1
+	$(ASC) logicalops.as >> result 2>&1
+	$(ASC) relationalops.as >> result 2>&1
+	$(ASC) concat.as >> result 2>&1
 
 	diff result result.ok
 
