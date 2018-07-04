@@ -6,3 +6,5 @@ typechecked numericops.as
 typechecked logicalops.as
 typechecked relationalops.as
 typechecked concat.as
+Type Error duplicatefield.as:4.3-4.4:duplicate field M!
+Type Error nonlinearpat.as:1.5-1.14:duplicate binding for x in pattern!

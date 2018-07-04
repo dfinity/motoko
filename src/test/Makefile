@@ -13,7 +13,9 @@ all:
 	$(ASC) numericops.as >> result 2>&1
 	$(ASC) logicalops.as >> result 2>&1
 	$(ASC) relationalops.as >> result 2>&1
-	$(ASC) concat.as >> result 2>&1
+	$(ASC) concat.as >> result 2>&1	
+	$(ASC) duplicatefield.as >> result 2>&1
+	$(ASC) nonlinearpat.as >> result 2>&1
 
 	diff result result.ok
 

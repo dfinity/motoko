@@ -6,13 +6,23 @@ module I32 = Wasm.I32
 module I64 = Wasm.I64
 
 
+exception KindError of Source.region * string
+exception TypeError of Source.region * string
+
+let kindError region fmt = 
+     Printf.ksprintf (fun s -> raise (KindError(region,s))) fmt
+
+let typeError region fmt = 
+     Printf.ksprintf (fun s -> raise (TypeError(region,s))) fmt
+
+
 (* TBR *)
 let nat_width = 31
 let int_width = 31
 
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
 (* todo: rule out duplicate field defs *)
-(* todo: comparisons *)
+
 
 type typ =
   | VarT of string * typ list                     (* constructor *)
@@ -34,6 +44,8 @@ and typ_field = {var:string; typ: typ; mut: mut'}
 
 module Env = Map.Make(String)
 
+let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
+
 type kind = typ_bind list * typ
 
 type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
@@ -43,6 +55,14 @@ let union_values c ve = {c with values = union c.values ve}
 let add_value c v tm = {c with values = Env.add v tm c.values}
 let union_constructors c ce = {c with constructors = union c.constructors ce}
 let add_constructor c v d = {c with constructors = Env.add v d c.constructors}
+
+(* raises TypeError on duplicate entries *)
+let disjoint_union at fmt env1 env2 = Env.union (fun k v1 v2 -> typeError at fmt k) env1 env2
+let disjoint_add_field at c v f = disjoint_union at "duplicate field %s" c (Env.singleton v f)
+let disjoint_union_values at c ve =   {c with values = disjoint_union at "duplicate value %s"  c.values ve }
+let disjoint_add_value at c v tm = disjoint_union_values at c (Env.singleton v tm)
+let disjoint_union_constructors at c ce = {c with constructors = disjoint_union at "duplicate constructor %s" c.constructors ce}
+let disjoint_add_constructor at c v d = disjoint_union_constructors at c (Env.singleton v d)
 
 let prelude = {values = Env.empty;
     	       constructors = Env.empty;
@@ -63,17 +83,6 @@ let addBreakAndContinue context labelOpt t =
     | Some label -> {{ context with breaks = Env.add label t context.breaks } with continues = Env.add label () context.continues }
 
 let sprintf = Printf.sprintf
-
-exception KindError of Source.region * string
-exception TypeError of Source.region * string
-
-let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
-
-let kindError region fmt = 
-     Printf.ksprintf (fun s -> raise (KindError(region,s))) fmt
-
-let typeError region fmt = 
-     Printf.ksprintf (fun s -> raise (TypeError(region,s))) fmt
 
 let check_bounds region tys bounds = 
      if List.length bounds = List.length tys
@@ -675,7 +684,7 @@ and inf_cases context pt cs t_opt  =
   | [] -> t_opt
   | {it={pat=p;exp=e};at}::cs ->
     let ve = check_pat context p pt in
-    let t = inf_exp {context with values = union context.values ve} e in
+    let t = inf_exp (union_values context ve) e in
     let t_opt' = match t_opt with
     	      | None -> Some t
  	      | Some t' ->
@@ -784,21 +793,22 @@ and check_dec' pass context d =
       if pass < 3 then
       	 Env.empty,Env.empty
       else
-      let ts,constructors = check_typ_binds context ts in
-      let context' = {context with constructors = union context.constructors constructors} in
-      let ve,dom = inf_pat context' p in
-      let rng = check_typ context' t in
+      let ts,ce = check_typ_binds context ts in
+      let context_ce = union_constructors context ce in
+      let ve,dom = inf_pat context_ce p in
+      let rng = check_typ context_ce t in
       let funcT = FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
-      let context'' =
-      	  {values = union (Env.add v.it (funcT,ConstMut)  context.values) ve;
-	   constructors = union context.constructors constructors;
-           label = None;
-	   breaks = Env.empty;
-	   continues = Env.empty;
-	   returns = Some rng;
-	   awaitable = false}
+      let context_ce_ve_v = 
+           let {values;constructors} = add_value (union_values context_ce ve) v.it (funcT,ConstMut) in
+            {values;
+             constructors;
+             label = None;
+  	     breaks = Env.empty;
+	     continues = Env.empty;
+	     returns = Some rng;
+	     awaitable = false}
       in
-      check_exp context'' rng e;
+      check_exp context_ce_ve_v rng e;
       Env.singleton v.it (funcT,ConstMut), Env.empty
     | ClassD(a,v,ts,p,efs) ->
       let ts,constructors = check_typ_binds context ts in
@@ -822,7 +832,7 @@ and check_dec' pass context d =
 	  | [] -> field_env
 	  | {it={var;mut;priv;exp={it=AnnotE(e,t);at}}}::efs ->
 	    let t = check_typ context t in
-	    let field_env = Env.add var.it (mut.it,priv.it,t) field_env in
+	    let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t)  in
 	    pre_members context field_env efs
 	  | {it={var;mut;priv;exp={it=DecE({it=FuncD(v,us,p,t,e);at=_});at=_}}}::efs ->
 	    let us,constructors = check_typ_binds context us in
@@ -830,11 +840,11 @@ and check_dec' pass context d =
 	    let _,dom = inf_pat context_us p in
 	    let rng = check_typ context_us t in
 	    let funcT = FuncT(us,dom,rng) in
-	    let field_env = Env.add var.it (mut.it,priv.it,funcT) field_env in
+	    let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,funcT) in
     	    pre_members context field_env efs
           | {it={var;mut;priv;exp=e}}::efs ->
 	    let t = inf_exp context e in (* TBR: this feels wrong as we don't know all field types yet, just the ones to the left *)
-	    let field_env = Env.add var.it (mut.it,priv.it,t) field_env in
+	    let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t) in
 	    pre_members context field_env efs
       in
       let pre_members = pre_members context_ts_v_dom Env.empty efs in
@@ -860,12 +870,12 @@ and check_dec' pass context d =
           ve2ce2
 
 
-and inf_pats context ve ts ps =
+and inf_pats at context ve ts ps =
    match ps with
    | [] -> ve, TupT(List.rev ts)
    | p::ps ->
      let ve',t = inf_pat context p in
-     inf_pats context (union ve ve') (t::ts) ps
+     inf_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') (t::ts) ps
 
 and inf_pat context p =
    match p.it with
@@ -874,11 +884,10 @@ and inf_pat context p =
    | LitP l ->
      Env.empty,inf_lit l
    | TupP ps ->
-     inf_pats context Env.empty [] ps
+     inf_pats p.at context Env.empty [] ps
    | AnnotP(p,t) ->
      let t = check_typ context t in
-
-check_pat context p t,t
+     check_pat context p t,t
      
 and check_pat context p t =
    match p.it with
@@ -902,7 +911,7 @@ and check_pats at context ve ps ts =
    | [],[] -> ve
    | p::ps,t::ts ->
      let ve' = check_pat context p t in
-     check_pats at context (union ve ve') ps ts  (*TBR reject shadowing *)
+     check_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') ps ts  (*TBR reject shadowing *)
    | [],ts -> typeError at "tuple pattern has %i fewer components than expected type" (List.length ts)
    | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
          
