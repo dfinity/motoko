@@ -147,7 +147,7 @@ but Wasm is extended with some notion of volatile state and reinitialisation.
 
    Cons:
    1. compromise between other two models
-   2. creates dangling references between bifrucated state parts
+   2. creates dangling references between bifurcated state parts
    3. incoherent with Wasm semantics (segments, start function)
 
 
@@ -157,16 +157,15 @@ We have discussed 3 approaches to realising transparent persistence:
 
 #### *High-level* implementation of persistence
 
-Hypervisor walks data graph, turns it into merkle tree.
+Hypervisor walks data graph (wherever it lives), turns it into merkle tree.
 
    Pros:
    1. agnostic to implementation details of the engine
-   2. can deal with any form of state representation
-   3. agnostic to GC
+   2. agnostic to GC (or subsumes GC)
 
    Cons:
    1. requires knowledge of and access to data graph
-   2. deep local mutations result in multiple changes in merkle tree (mutation cost is logarithmic in depth)
+   2. deep mutations result in deep changes in merkle tree (mutation cost is logarithmic in depth)
    3. unclear how to detect changes efficiently
 
 #### *Low-level* implementation of persistence
@@ -174,14 +173,15 @@ Hypervisor walks data graph, turns it into merkle tree.
 Hypervisor provides memory to Wasm engine, detects dirty pages; could be memory-mapped files.
 
    Pros:
-   1. agnostic of language and data graph
+   1. agnostic to language and data graph
    2. fast when mutation patterns have good locality
+   3. can potentially offload much of the implementation to existing hardware/OS/library mechanisms
 
    Cons:
-   1. bad interaction with language-internal GC (mutates large portions of the memory)
-   2. does not extend to Tables (contains position-dependent physical pointers)
-   3. no obvious migration path to Wasm GC heap
-   4. high dependency on VM specifics (and internals?)
+   1. bad interaction with language-internal GC (mutates large portions of the memory at once)
+   2. does not extend to tables (contain position-dependent physical pointers)
+   3. no obvious migration path to Wasm GC
+   4. dependent on VM specifics (and internals?)
 
 #### *Selectable* implementation of persistence
 
