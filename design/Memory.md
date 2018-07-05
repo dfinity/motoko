@@ -61,6 +61,7 @@ There are 3 possible ways of representing structured data in Wasm/Dfinity.
 #### Using Wasm Memory
 
 All data structures are laid out and managed in Memory by the compiler and the language runtime.
+References are stored via indirections through a Table.
 
    Pros:
    1. local data access maximally efficient
@@ -68,8 +69,9 @@ All data structures are laid out and managed in Memory by the compiler and the l
 
    Cons:
    1. message arguments require de/serialisation into Dfinity buffers on both ends (in addition to the de/serialisation steps already performed by Dfinity)
-   2. each actor must ship its own instance of a GC and de/serialisation code
-   3. more implementation effort
+   2. each actor must ship its own instance of a GC (for both memory and table) and de/serialisation code
+   3. all references require an indirection
+   4. more implementation effort
 
 #### Using Dfinity API
 
@@ -83,7 +85,8 @@ All data structures are mapped to element and data buffers created through the A
    Cons:
    1. local access to data involves system call overhead
    2. requires adding mutable buffer types to Dfinity API
-   3. Dfinity-only solution unlikely to be adopted by other languages
+   3. mixed numeric/reference structures must be split into data and element buffers
+   4. Dfinity-only solution unlikely to be adopted by other languages
 
 #### Using Wasm Heap
 
@@ -93,7 +96,8 @@ All data structures are represented as Wasm GCed objects.
    1. local access should be as fast as Memory
    2. GC is handled by VM
    3. no extra de/serialisation step for message args (provided Dfinity API can handle Wasm structs)
-   4. this is likely the route most future languages compiling to Wasm will take
+   4. can freely mix numerics and references
+   5. this is likely the route most future languages compiling to Wasm will take
 
    Cons:
    1. Wasm GC is 1-2 years out
@@ -167,7 +171,7 @@ Hypervisor walks data graph, turns it into merkle tree.
 
 #### *Low-level* implementation of persistence
 
-Hypervisor provides raw memory pages to Wasm engine, detects dirty pages, could be memory-mapped files.
+Hypervisor provides memory to Wasm engine, detects dirty pages; could be memory-mapped files.
 
    Pros:
    1. agnostic of language and data graph
@@ -175,8 +179,9 @@ Hypervisor provides raw memory pages to Wasm engine, detects dirty pages, could 
 
    Cons:
    1. bad interaction with language-internal GC (mutates large portions of the memory)
-   2. no clear migration path to Wasm GC heap
-   3. high dependency on VM specifics (and internals?)
+   2. does not extend to Tables (contains position-dependent physical pointers)
+   3. no obvious migration path to Wasm GC heap
+   4. high dependency on VM specifics (and internals?)
 
 #### *Selectable* implementation of persistence
 
