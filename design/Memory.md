@@ -8,8 +8,8 @@
 
 Wasm has two kinds of data (assuming the upcoming reference type proposal):
 
-* *Numerics* (int32/64, float32/64): *transparent* data; bit pattern observable; can be stored in linear memory
-* *References* (anyref, funcref, ...): *opaque* data; representation not exposed, usually implemented as pointers; cannot be stored in linear memory
+* *Numerics* (int32/64, float32/64): *transparent* data; bit pattern observable; can be stored in memory
+* *References* (anyref, funcref, ...): *opaque* data; representation not exposed, usually implemented as pointers; can be stored in tables but not memory
 
 #### State
 
@@ -20,6 +20,8 @@ Wasm currently has 3 forms of mutable state, all of which can be ex/imported fro
 * *Tables*: an array of references; can be mutated and grown; can store reference values
 
 A reference can also point to *host objects* provided by the embedder, which could introduce additional forms of state at the embedder's discretion.
+
+#### Further Evolution
 
 In the future (with the GC proposal), Wasm will have a 4th form of mutable state:
 
