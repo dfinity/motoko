@@ -23,9 +23,25 @@ let int_width = 31
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
 (* todo: rule out duplicate field defs *)
 
+(* unique constructors, stamped *)
+
+module Con =
+struct
+    type con = {name:string;stamp:int}
+    type t = con
+    let compare (c1:con) (c2:con) = compare c1.stamp c2.stamp
+    let stamp = ref 0
+    let fresh var =
+      stamp := (!stamp) + 1;
+      {name = var; stamp = !stamp}
+    let to_string con = Printf.sprintf "%s/%i" con.name con.stamp
+end
+
+
+type con = Con.t
 
 type typ =
-  | VarT of string * typ list                     (* constructor *)
+  | VarT of con * typ list                     (* constructor *)
   | PrimT of Types.prim                        (* primitive *)
   | ObjT of actor' * typ_field list             (* object *)
   | ArrayT of mut' * typ                        (* array *)
@@ -39,33 +55,48 @@ type typ =
   | UnionT of type * typ                       (* union *)
   | AtomT of string                            (* atom *)
 *)
-and typ_bind = {var:string; bound: typ }
+and typ_bind = {var:con; bound: typ }
 and typ_field = {var:string; typ: typ; mut: mut'}
+and kind =
+     | DefK of typ_bind list * typ
+     | ObjK of typ_bind list * actor' * typ_field list
+     | ParK of typ_bind list * typ
+
 
 module Env = Map.Make(String)
 
 let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
-type kind = typ_bind list * typ
+module ConEnv = Map.Make(Con)
 
-type context = {values: (typ*mut') Env.t; constructors: kind Env.t ; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
+let lookup_con map k = try Some (ConEnv.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
+
+type context = {values: (typ*mut') Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
 
 let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+let union_conenv env1 env2 = ConEnv.union (fun k v1 v2 -> Some v2) env1 env2
+
 let union_values c ve = {c with values = union c.values ve}
 let add_value c v tm = {c with values = Env.add v tm c.values}
 let union_constructors c ce = {c with constructors = union c.constructors ce}
-let add_constructor c v d = {c with constructors = Env.add v d c.constructors}
+
+let union_kinds c ke = {c with kinds = union_conenv c.kinds ke}
+let add_constructor c v con kind =  {{c with constructors = Env.add v con c.constructors}
+                                        with kinds = ConEnv.add con kind c.kinds}
 
 (* raises TypeError on duplicate entries *)
 let disjoint_union at fmt env1 env2 = Env.union (fun k v1 v2 -> typeError at fmt k) env1 env2
 let disjoint_add_field at c v f = disjoint_union at "duplicate field %s" c (Env.singleton v f)
+
+(* TBD
 let disjoint_union_values at c ve =   {c with values = disjoint_union at "duplicate value %s"  c.values ve }
 let disjoint_add_value at c v tm = disjoint_union_values at c (Env.singleton v tm)
 let disjoint_union_constructors at c ce = {c with constructors = disjoint_union at "duplicate constructor %s" c.constructors ce}
-let disjoint_add_constructor at c v d = disjoint_union_constructors at c (Env.singleton v d)
-
+let disjoint_add_constructor at c d = disjoint_union_constructors at c (Env.singleton v d)
+*)
 let prelude = {values = Env.empty;
     	       constructors = Env.empty;
+	       kinds = ConEnv.empty;
                label = None;
 	       breaks = Env.empty;
 	       continues = Env.empty;
@@ -174,12 +205,12 @@ let rec typ_to_string t =
 	| Width8 -> "Word8"
 	| Width16 -> "Word16"
 	| Width32 -> "Word32"
-	| Width64 -> "Word66")
+	| Width64 -> "Word64")
       | TextT -> "Text")
     | VarT (c,[]) ->
-       c
+       sprintf "%s/%i" c.name c.stamp
     | VarT (c,ts) ->
-       sprintf "%s<%s>" c (String.concat "," (List.map typ_to_string ts))
+       sprintf "%s/%i<%s>" c.name c.stamp (String.concat "," (List.map typ_to_string ts))
     | ArrayT (m,t) ->
       sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (typ_to_string t)  
     | TupT ts ->
@@ -187,7 +218,7 @@ let rec typ_to_string t =
     | FuncT([],dom,rng) ->
       sprintf "%s->%s" (typ_to_string dom) (typ_to_string rng)      
     | FuncT(ts,dom,rng) ->
-      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var) ts)) (typ_to_string dom) (typ_to_string rng)
+      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string dom) (typ_to_string rng)
     | OptT t ->
       sprintf "%s?"  (typ_to_string t)
     | AsyncT t -> 
@@ -199,7 +230,16 @@ let rec typ_to_string t =
       	      	       (String.concat ";" (List.map (fun {var;mut;typ} ->
 		       		       		          sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
 				           fs))
-
+let kind_to_string k =
+    match k with
+    | DefK(ts,t) ->
+      sprintf "= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string t)
+    | ObjK(ts,actor,ftys) -> 
+      sprintf ":= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts))
+       (typ_to_string (ObjT(actor,ftys)))
+    | ParK(ts,t) -> 
+      sprintf ":: <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string t) 
+    
 
 let unitT = TupT[]
 let boolT = PrimT(BoolT)
@@ -284,34 +324,65 @@ let true = try check_int no_region (string_of_int (-(pow2 (int_width-1)) - 1));
 
 let rec norm_typ context t =
     match t with
-    | VarT(v,[]) ->
-      (match lookup context.constructors v with
-      | Some ([],t) -> norm_typ context t
+    | VarT(con,[]) ->
+      (match lookup_con context.kinds con with
+      | Some kind ->
+      	(match kind with
+	| DefK([],t) -> norm_typ context t
+	| ObjK([],actor,ftys) -> ObjT(actor,ftys)
+	| ParK([],bound) -> t)
       | None -> t)
     | VarT(v,ts) ->
-      failwith "NYI" (* TBR needs subsitution*)
+      failwith "NYI (parametric types)" (* TBR needs substitution*)
     | _ -> t  
      
 
 let rec check_typ_binds context ts =
     let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
     let ts = List.map (fun (bind:Syntax.typ_bind) ->
-                       {var=bind.it.Syntax.var.it;bound=check_typ bind_context bind.it.Syntax.bound}
+    	               let v = bind.it.Syntax.var.it in
+    	               let con = Con.fresh v in
+                       {var=con;bound=check_typ bind_context bind.it.Syntax.bound}
                       ) ts in
-    let constructors  =
-          List.fold_left (fun c bind -> Env.add bind.var ([],bind.bound) c) context.constructors ts in
-    ts,constructors
+    let ce  =
+          List.fold_left (fun c bind -> Env.add bind.var.name bind.var c) context.constructors ts in
+    let ke  =
+          List.fold_left (fun c bind -> ConEnv.add bind.var (ParK([],bind.bound)) c) context.kinds ts in
+    ts,ce,ke
+
+
+and subst ts bounds t =
+    match ts,bounds with
+    | [],[] -> t
+    | _,_ -> failwith "NYI"
     
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 
 and check_typ context t = match t.it with
     | Syntax.VarT (c,tys) ->
-      (match lookup context.constructors c.it with
-          | Some (bounds,_) -> 
-            let ts = List.map (check_typ context) tys in
-            check_bounds t.at ts bounds;
-            VarT(c.it,ts)
-          | None -> kindError c.at "unbound constructor %s" c.it)
+      let ts = List.map (check_typ context) tys in
+      begin
+         match lookup context.constructors c.it with
+         | Some con ->
+	   begin
+	     match lookup_con context.kinds con with
+             | Some kind ->
+     (match kind with
+	     | DefK(bounds,u) ->
+	       check_bounds t.at ts bounds;
+               subst ts bounds u
+	     | ObjK(bounds,actor,ftys) ->
+	       check_bounds t.at ts bounds;
+               VarT(con,ts)
+	     | ParK(bounds,bound) ->
+       	       check_bounds t.at ts bounds;
+	       VarT(con,ts))
+	     | None ->
+	       assert(false);
+	       kindError c.at "unbound constructor %s (stamp %i)" con.name con.stamp
+	    end
+          | None -> kindError c.at "unbound type identifier %s" c.it
+      end
     | Syntax.PrimT p -> PrimT p      
     | Syntax.ArrayT (m,t) ->
       ArrayT(m.it,check_typ context t)
@@ -319,8 +390,8 @@ and check_typ context t = match t.it with
         let ts = List.map (check_typ context) ts in
         TupT ts
     | Syntax.FuncT(ts,dom,rng) ->
-        let ts,constructors = check_typ_binds context ts in
-        let context = {context with constructors = constructors} in
+        let ts,ce,ke = check_typ_binds context ts in
+        let context = union_kinds (union_constructors context ce) ke in
         FuncT(ts,check_typ context dom, check_typ context rng)
     | Syntax.OptT t -> OptT (check_typ context t)
     | Syntax.AsyncT t -> AsyncT (check_typ context t)
@@ -653,6 +724,7 @@ match e.it with
 | AsyncE e0 ->
     let context = {values = context.values;
                    constructors = context.constructors;
+		   kinds = context.kinds;
 		   breaks = Env.empty;
 		   label = context.label;
 		   continues = Env.empty;
@@ -712,12 +784,13 @@ and check_exp context t e =
     (match t with
      | AsyncT t ->
      let context = {values = context.values;
-                   constructors = context.constructors;
-		   breaks = Env.empty;
-		   label = context.label;
-		   continues = Env.empty;
-		   returns = Some t; (* TBR *)
-		   awaitable = true} in
+                    constructors = context.constructors;
+		    kinds = context.kinds;
+		    breaks = Env.empty;
+		    label = context.label;
+		    continues = Env.empty;
+		    returns = Some t; (* TBR *)
+		    awaitable = true} in
      check_exp context t e0
      |_ -> typeError e.at "async expression cannot produce expected type %s" (typ_to_string t))
   | BlockE es ->
@@ -740,8 +813,8 @@ and inf_block context es =
   match es with
   | [] -> unitT
   | {it = DecE d;at}::es ->
-    let ve,ce = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
-    inf_block (union_constructors (union_values context ve) ce) es
+    let ve,ce,ke = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
+    inf_block (union_kinds (union_constructors (union_values context ve) ce) ke) es
   | [e] -> inf_exp context e
   | e::es ->
     check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
@@ -754,54 +827,56 @@ and check_block r context t es =
     then ()
     else typeError r "block  must end with expression of type" (typ_to_string t) 
   | {it = DecE d;at}::es ->
-    let ve,ce = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
-    check_block r (union_constructors (union_values context ve) ce) t es
+    let ve,ce,ke = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
+    check_block r (union_kinds (union_constructors (union_values context ve) ce) ke) t es
   | [e] -> check_exp context t e
   | e::es ->
     check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
     check_block r context t es 
 
 and check_dec pass context d =
-    let ve,ce = check_dec' pass context d in    
+    let ve,ce,ke = check_dec' pass context d in    
     (* TBC store ve *)
-    ve,ce
+    ve,ce,ke
 
 and check_dec' pass context d =     
     match d.it with
     | LetD (p,e) ->
       if pass < 3 then
-	 Env.empty, Env.empty
+	 Env.empty, Env.empty, ConEnv.empty
       else      
          let t = inf_exp context e in
          let ve = check_pat context p t in 
-	 ve,Env.empty
+	 ve, Env.empty, ConEnv.empty
     | VarD (v,t,None) ->
       if pass < 3 then
-      	 Env.empty, Env.empty
+      	 Env.empty, Env.empty, ConEnv.empty
       else
       let t = check_typ context t in
-      Env.singleton v.it (t,VarMut),Env.empty
+      Env.singleton v.it (t,VarMut), Env.empty, ConEnv.empty
     | VarD (v,t,Some e) ->
       if pass < 3 then
-         Env.empty, Env.empty
+         Env.empty, Env.empty, ConEnv.empty
       else
 	let t = check_typ context t in
       	check_exp context t e;
       	Env.singleton v.it (t,VarMut),
-	Env.empty
+	Env.empty,
+	ConEnv.empty
     | FuncD(v,ts,p,t,e) ->
       if pass < 3 then
-      	 Env.empty,Env.empty
+      	 Env.empty, Env.empty, ConEnv.empty
       else
-      let ts,ce = check_typ_binds context ts in
-      let context_ce = union_constructors context ce in
+      let ts,ce,ke = check_typ_binds context ts in
+      let context_ce = union_kinds (union_constructors context ce) ke in
       let ve,dom = inf_pat context_ce p in
       let rng = check_typ context_ce t in
       let funcT = FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
       let context_ce_ve_v = 
-           let {values;constructors} = add_value (union_values context_ce ve) v.it (funcT,ConstMut) in
+           let {values;constructors;kinds} = add_value (union_values context_ce ve) v.it (funcT,ConstMut) in
             {values;
              constructors;
+	     kinds;
              label = None;
   	     breaks = Env.empty;
 	     continues = Env.empty;
@@ -809,21 +884,30 @@ and check_dec' pass context d =
 	     awaitable = false}
       in
       check_exp context_ce_ve_v rng e;
-      Env.singleton v.it (funcT,ConstMut), Env.empty
+      Env.singleton v.it (funcT,ConstMut), Env.empty, ConEnv.empty
     | ClassD(a,v,ts,p,efs) ->
-      let ts,constructors = check_typ_binds context ts in
-      let class_ = VarT (v.it , List.map (fun tb -> (VarT (tb.var,[]))) ts) in
-      let ce0 = Env.singleton v.it (ts,ObjT(a.it,[])) in
+      let ts,ce_ts,ke_ts = check_typ_binds context ts in
+      let con = if pass = 0
+                then Con.fresh v.it
+		else
+                match lookup context.constructors v.it with
+		| Some con -> con
+		| None -> assert(false);failwith "Impossible"
+      in
+      let kind0 = ObjK(ts,a.it,[]) in
+      let ce0 = Env.singleton v.it con in
+      let ke0 = ConEnv.singleton con (ObjK(ts,a.it,[])) in
       if pass = 0 then
-      	 Env.empty, ce0
+      	 Env.empty, ce0, ke0
       else
-      let context_ts = union_constructors context constructors in
-      let context_ts_v = add_constructor context_ts v.it (ts,class_) in
+      let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
+      let context_ts_v = add_constructor context_ts v.it con kind0 in
       let ve,dom = inf_pat context_ts_v p in
-      let consT = FuncT(ts,dom,class_) (* TBR: we allow polymorphic recursion *) in
-      let ve1ce1 = Env.singleton v.it (consT,ConstMut),ce0 in
+      let classT = VarT(con,List.map (fun t -> VarT(t.var,[])) ts) in
+      let consT = FuncT(ts,dom,classT) (* TBR: we allow polymorphic recursion *) in
+      let ve1ce1ke1 = Env.singleton v.it (consT,ConstMut),ce0,ke0 in
       if pass = 1 then
-          ve1ce1
+          ve1ce1ke1
       else	  
       let context_ts_v_dom =
           {context_ts_v with values = union context_ts_v.values ve} in
@@ -835,8 +919,8 @@ and check_dec' pass context d =
 	    let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t)  in
 	    pre_members context field_env efs
 	  | {it={var;mut;priv;exp={it=DecE({it=FuncD(v,us,p,t,e);at=_});at=_}}}::efs ->
-	    let us,constructors = check_typ_binds context us in
-	    let context_us = { context with constructors = union context.constructors constructors} in
+	    let us,ce_us,ke_us = check_typ_binds context us in
+	    let context_us = union_kinds (union_constructors context ce_us) ke_us in
 	    let _,dom = inf_pat context_us p in
 	    let rng = check_typ context_us t in
 	    let funcT = FuncT(us,dom,rng) in
@@ -854,20 +938,20 @@ and check_dec' pass context d =
       	  let public_bindings = List.filter (fun (v,(m,p,t)) -> p = Public) bindings  in
 	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public_bindings
       in
-      let public_objT  = ObjT(a.it,public_fields) in
-      let ve2ce2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it (ts,public_objT) in
+      let kind2 = ObjK(ts,a.it,public_fields) in
+      let ve2,ce2,ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, ConEnv.singleton con kind2 in
       if pass = 2 then
-      	  ve2ce2
+      	  ve2,ce2,ke2
       else (* pass = 3 *)
       	  let _ = assert(pass = 3) in
           let all_fields = List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) bindings in
-	  let private_objT =  ObjT(a.it,all_fields) in
+	  let kind3 = ObjK(ts,a.it,all_fields) in
 	  let field_context = add_constructor (add_value (union_values context_ts_v_dom private_context) v.it (consT,ConstMut))
-	                                       v.it (ts,private_objT)
+	      		                                 v.it con kind3
 	  in
 	  (* infer the fields *)
       	  let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
-          ve2ce2
+          ve2,ce2,ke2
 
 
 and inf_pats at context ve ts ps =
@@ -916,28 +1000,28 @@ and check_pats at context ve ps ts =
    | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
          
       
-and check_decs_aux pass context ve ce ds  = match ds with
-   |  [] ->  ve,ce
+and check_decs_aux pass context ve ce ke ds  = match ds with
+   |  [] ->  ve,ce,ke
    |  d::ds ->
-      let ve1,ce1 = check_dec pass context d in
-      check_decs_aux pass (union_constructors (union_values context ve1) ce1) (union ve ve1) (union ce ce1) ds
+      let ve1,ce1,ke1 = check_dec pass context d in
+      check_decs_aux pass (union_kinds (union_constructors (union_values context ve1) ce1) ke1) (union ve ve1) (union ce ce1) (union_conenv ke ke1) ds
       
 
 and check_decs context ds =
       (* declare type constructors *)
-      let ve0,ce0 = check_decs_aux 0 context Env.empty Env.empty ds in
+      let ve0,ce0,ke0 = check_decs_aux 0 context Env.empty Env.empty ConEnv.empty ds in
       (* declare instance constructors, given type constructors *)
-      let ve1,ce1 = check_decs_aux 1 (union_values (union_constructors context ce0) ve0) Env.empty Env.empty ds in
+      let ve1,ce1,ke1 = check_decs_aux 1 (union_kinds (union_constructors (union_values context ve0) ce0) ke0) Env.empty Env.empty ConEnv.empty ds in
       (* define type constructors (declare public member types) *)
-      let ve2,ce2 = check_decs_aux 2 (union_values (union_constructors context ce1) ve1) Env.empty Env.empty ds in
+      let ve2,ce2,ke2 = check_decs_aux 2 (union_kinds (union_constructors (union_values context ve1) ce1) ke1) Env.empty Env.empty ConEnv.empty ds in
       (* check classes definitions (check public and private member expressions *)
-      let ve3,ce3 = check_decs_aux 3 (union_values (union_constructors context ce2) ve2) Env.empty Env.empty ds in
-      ve3,ce3
+      let ve3,ce3,ke3 = check_decs_aux 3 (union_kinds (union_constructors (union_values context ve2) ce2) ke2) Env.empty Env.empty ConEnv.empty ds in
+      ve3,ce3,ke3
 
 
 let check_prog p =
-    let context = check_decs prelude p.it in
-    () 
+    check_decs prelude p.it
+     
     
     
 

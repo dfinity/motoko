@@ -1,4 +1,6 @@
 
+open Typing
+
 let token lb = let tok = Lexer.token lb in
                (* for debugging: *)
 	       (* Printf.printf "%s" (Lexer.token_to_string(tok)); *)
@@ -16,8 +18,12 @@ let main () =
     in
     (try
        let prog = Parser.prog token lexer in 
-       Typing.check_prog prog;
+       let (ve,ce,ke) = Typing.check_prog prog in
        Printf.printf "typechecked %s" filename;
+       print_newline();
+       Env.iter (fun v con -> Printf.printf "\n %s -> %s" v (Con.to_string con)) ce;
+       Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (typ_to_string t)) ve;
+       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke
     with 
     | Lexer.Syntax (r,m) ->
        let r = string_of_region r in
@@ -32,7 +38,8 @@ let main () =
        let r = string_of_region r in
        Printf.printf "Kind Error %s:%s!" r m;
     | e ->
-       Printf.printf "exception %s!" (Printexc.to_string e))
+       Printf.printf "exception %s:" (Printexc.to_string e));
+       Printf.printf "%s" (Printexc.get_backtrace())
     ;
     print_newline();
     close_in is
