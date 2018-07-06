@@ -355,7 +355,7 @@ let rec check_typ_binds context ts =
 and subst ts bounds t =
     match ts,bounds with
     | [],[] -> t
-    | _,_ -> failwith "NYI"
+    | _,_ -> failwith "NYI subst"
     
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 
@@ -371,7 +371,8 @@ and check_typ context t = match t.it with
                begin match kind with
 	        | DefK(bounds,u) ->
 	          check_bounds t.at ts bounds;
-                  subst ts bounds u
+                  (* subst ts bounds u  ?*)
+		  VarT(con,ts)
 	        | ObjK(bounds,actor,ftys) ->
 	          check_bounds t.at ts bounds;
                   VarT(con,ts)
@@ -629,7 +630,7 @@ match e.it with
        	  typeError e1.at "unbound mutable identifier %s" v.it)
   | DotE(_,_)
   | IdxE(_,_) ->
-     failwith "NYI" (* TBC *)
+     failwith "NYI AssignE IdxE" (* TBC *)
   | _ ->
     typeError e.at "illegal assignment to immutable value")
 | ArrayE [] ->
@@ -713,7 +714,7 @@ match e.it with
 | LabelE(l,e) ->
   let context = {context with label = Some l.it} in
   inf_exp context e
-| BreakE(l,[e]) ->
+| BreakE(l,e) ->
   (match lookup context.breaks l.it  with
    | Some t -> 
      (* todo: check type of e against ts! *)
@@ -725,7 +726,7 @@ match e.it with
    | Some _ -> 
      unitT (*TBR actually, this could be polymorphic at least in a checking context*)
    | None -> typeError e.at "continue to unknown label %s" l.it)
-| RetE [e0] ->
+| RetE e0 ->
   (match context.returns with
    | Some t ->
      check_exp context t e0;
@@ -749,6 +750,9 @@ match e.it with
       | AsyncT t -> t
       | t -> typeError e0.at "expecting expression of async type, found expression of type %s" (typ_to_string t)
     else typeError e.at "illegal await in synchronous context"
+| AssertE e ->
+    check_exp context boolT e;
+    unitT
 | IsE(e,t) ->
     let _ = inf_exp context e in
     let _ = check_typ context t in (*TBR what if T has free type variables? How will we check this, sans type passing *) 
@@ -815,9 +819,9 @@ and check_exp context t e =
     check_block e.at context t es
   | BreakE _ ->
     ignore(inf_exp context e)
-  | ContE l ->
+  | ContE _ ->
     ignore(inf_exp context e)
-  | RetE [e0] ->
+  | RetE _ ->
     ignore(inf_exp context e)
   | _ ->
     let t' = inf_exp context e in
@@ -880,6 +884,27 @@ and check_dec' pass context d =
       	Env.singleton v.it (t,VarMut),
 	Env.empty,
 	ConEnv.empty
+    | TypD(v,ts,t) ->
+      let ts,ce_ts,ke_ts = check_typ_binds context ts in
+      let con = if pass = 0
+                then Con.fresh v.it
+		else
+                match lookup context.constructors v.it with
+		| Some con -> con
+		| None -> assert(false);failwith "Impossible"
+      in
+      let kind0 = ParK(ts,VarT(con,[])) (* dummy abstract type *) in 
+      let ce0 = Env.singleton v.it con in
+      let ke0 = ConEnv.singleton con kind0 in
+      if pass = 0 then
+      	 Env.empty, ce0, ke0
+      else
+      let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
+      let t = check_typ context_ts t in
+      let kind1 = DefK(ts,t) (* dummy type *) in 
+      let ce1 = Env.singleton v.it con in
+      let ke1 = ConEnv.singleton con kind1 in
+         Env.empty, ce1, ke1
     | FuncD(v,ts,p,t,e) ->
       if pass < 3 then
       	 Env.empty, Env.empty, ConEnv.empty
@@ -888,7 +913,7 @@ and check_dec' pass context d =
       let context_ce = union_kinds (union_constructors context ce) ke in
       let ve,dom = inf_pat context_ce p in
       let rng = check_typ context_ce t in
-      let funcT = FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
+      let funcT= FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
       let context_ce_ve_v = 
            let {values;constructors;kinds} = add_value (union_values context_ce ve) v.it (funcT,ConstMut) in
             {values;
@@ -913,7 +938,7 @@ and check_dec' pass context d =
       in
       let kind0 = ObjK(ts,a.it,[]) in
       let ce0 = Env.singleton v.it con in
-      let ke0 = ConEnv.singleton con (ObjK(ts,a.it,[])) in
+      let ke0 = ConEnv.singleton con kind0 in
       if pass = 0 then
       	 Env.empty, ce0, ke0
       else

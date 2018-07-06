@@ -64,7 +64,7 @@ let anyT = TupT []
 %token AWAIT ASYNC BREAK CASE CONTINUE DO IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE
-%token SEMICOLON COLON COMMA DOT
+%token SEMICOLON COLON COMMA DOT QUERY
 %token AND OR NOT 
 %token ASSERT
 %token OBJECT //TBR delete me?
@@ -138,7 +138,7 @@ atomic_typ:
   | p=PRIM { PrimT p @@ at($symbolstartpos,$endpos) }
 /*  | id = id  { VarT (id,[]) @@ at($symbolstartpos,$endpos) }  
   | id = id LT ts = seplist(typ,COMMA) GT { VarT (id,ts.it) @@ at($symbolstartpos,$endpos) }
- */
+*/
   | LPAR ts = seplist(typ_item,COMMA) RPAR {TupT (ts.it) @@ at($symbolstartpos,$endpos)}
   | ASYNC t = typ {  AsyncT t @@ at($symbolstartpos,$endpos) }
   | LIKE t = typ {  LikeT t @@ at($symbolstartpos,$endpos) }
@@ -149,8 +149,20 @@ atomic_typ:
 	@@ at($symbolstartpos,$endpos)
      }
 
+atomic_type_cont :
+  | LCURLY RCURLY k = atomic_type_cont
+     { fun t -> k(ArrayT(ConstMut @@ no_region,t) @@ {left=t.at.left;right=position_to_pos($endpos($1))})
+     }
+  | QUERY k = atomic_type_cont
+     { fun t -> k(OptT(t) @@ {left=t.at.left;right=position_to_pos($endpos($1))})
+     }
+  | ARROW u = typ
+     { fun t -> (FuncT([],t,u)) @@ {left=t.at.left;right=position_to_pos($endpos)}
+     }
+  | /* empty */ {fun t -> t}
+
 typ :
-  | t = atomic_typ {t}
+  | t = atomic_typ k = atomic_type_cont {k(t)}
   | a = sort LCURLY tfs = seplist(typ_field,SEMICOLON) RCURLY
     {
        let actor =
@@ -160,21 +172,14 @@ typ :
           ObjT (actor,tfs.it)
           @@ at($symbolstartpos,$endpos)
     }
-/*
-  | vo = VAR? t = atomic_typ LBRACKET RBRACKET
+  | m = var t = typ LBRACKET RBRACKET
     {
-	ArrayT((match vo.it with
-	        | Some _ -> VarMut @@ vo.at
-	        | None -> ConstMut @@ vo.at),
-	       t)
+	ArrayT(m,t)
 	@@ at($symbolstartpos,$endpos)
     }
- */
-  | tpo = typ_params? t1 = atomic_typ ARROW t2 = typ 
+  | ts = typ_params t1 = atomic_typ ARROW t2 = typ 
     {
-	FuncT((match tpo.it with
-	       | Some tp -> tp
-	       | None -> []),
+	FuncT(ts,
 	      t1,
 	      t2)
 	@@ at($symbolstartpos,$endpos)
@@ -303,8 +308,8 @@ atomic_expr :
       {
         let es =
 	    match eo.it with
-	    | Some e -> [e]
-	    | None -> [] in	    
+	    | Some e -> e
+	    | None -> (TupE[] @@ no_region) in	    
       	BreakE (id,es) @@ at($symbolstartpos,$endpos)
       }
     | CONTINUE id = id { ContE id @@ at($symbolstartpos,$endpos) }
@@ -332,8 +337,8 @@ expr :
       {
         let es =
 	    match eo.it with
-	    | Some e -> [e]
-	    | None -> [] in	    
+	    | Some e -> e
+	    | None -> (TupE[]@@no_region) in	    
       	RetE es @@ at($symbolstartpos,$endpos)
       }
     | ASYNC e = expr { AsyncE e @@ at($symbolstartpos,$endpos) }
@@ -353,8 +358,11 @@ typ_annot :
   | PRIVATE { Private @@ at($symbolstartpos,$endpos) }
   | /* empty */ { Public @@ at($symbolstartpos,$endpos) }
 
-%inline mutability :
+var:
   | VAR { VarMut @@ at($symbolstartpos,$endpos) }
+
+%inline mutability :
+  | v=var { v }
   | /* empty */ { ConstMut @@ at($symbolstartpos,$endpos) }
 
 expr_field:

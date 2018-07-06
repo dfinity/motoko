@@ -16,6 +16,7 @@ all:
 	$(ASC) concat.as >> result 2>&1	
 	$(ASC) duplicatefield.as >> result 2>&1
 	$(ASC) nonlinearpat.as >> result 2>&1
+	$(ASC) typedef.as >> result 2>&1
 
 	diff result result.ok
 

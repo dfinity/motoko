@@ -1,62 +1,26 @@
-typechecked bank.as
-
- Account -> Account/3
- Bank -> Bank/1
- Issuer -> Issuer/2
- Account : Int->Account/3
- Bank : Int->Bank/1
- Issuer : ()->Issuer/2
- transfer : (Account/3,Account/3,Int)->async ()
- Bank/1 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
- Issuer/2 := <>actor{hasIssued: like Account/3->async Bool}
- Account/3 := <>actor{getBalance: ()->async Int;isCompatible: like Account/3->async Bool;join: Account/3->();split: Int->async Account/3}
-typechecked bank_ordered.as
-
- Account -> Account/1
- Bank -> Bank/3
- Issuer -> Issuer/2
- Account : Int->Account/1
- Bank : Int->Bank/3
- Issuer : ()->Issuer/2
- transfer : (Account/1,Account/1,Int)->async ()
- Account/1 := <>actor{getBalance: ()->async Int;isCompatible: like Account/1->async Bool;join: Account/1->();split: Int->async Account/1}
- Issuer/2 := <>actor{hasIssued: like Account/1->async Bool}
- Bank/3 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/1}
-typechecked control.as
-
- Control -> Control/1
- Control : ()->Control/1
- Control/1 := <>actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();Test: ()->Bool;While: ()->()}
+Syntax Error bank.as:4.32-4.38!
+Syntax Error bank_ordered.as:8.5-8.11!
+Syntax Error control.as:6.6-6.8!
 Type Error literals.as:3.18-3.25:bad literal for type Word8!
-typechecked numericops.as
-
- TestFloat : (Float,Float)->()
- TestInt : (Int,Int)->()
- TestNat : (Nat,Nat)->()
- TestWord16 : (Word16,Word16)->()
- TestWord32 : (Word32,Word32)->()
- TestWord64 : (Word64,Word64)->()
- TestWord8 : (Word8,Word8)->()
-typechecked logicalops.as
-
- TestWord16 : (Word16,Word16)->()
- TestWord32 : (Word32,Word32)->()
- TestWord64 : (Word64,Word64)->()
- TestWord8 : (Word8,Word8)->()
-typechecked relationalops.as
-
- TestBool : (Bool,Bool)->()
- TestChar : (Char,Char)->()
- TestFloat : (Float,Float)->()
- TestInt : (Int,Int)->()
- TestNat : (Nat,Nat)->()
- TestText : (Text,Text)->()
- TestWord16 : (Word16,Word16)->()
- TestWord32 : (Word32,Word32)->()
- TestWord64 : (Word64,Word64)->()
- TestWord8 : (Word8,Word8)->()
-typechecked concat.as
-
- TestText : (Text,Text)->()
+Syntax Error numericops.as:3.4-3.7!
+Syntax Error logicalops.as:2.4-2.7!
+Syntax Error relationalops.as:3.4-3.7!
+Syntax Error concat.as:2.5-2.8!
 Type Error duplicatefield.as:4.3-4.4:duplicate field M!
 Type Error nonlinearpat.as:1.5-1.14:duplicate binding for x in pattern!
+typechecked typedef.as
+
+ A -> A/12
+ Arrow -> Arrow/4
+ B -> B/13
+ Compose -> Compose/8
+ Id -> Id/9
+ IntT -> IntT/1
+ Seq -> Seq/11
+ IntT/1 = <>Int
+ Arrow/4 = <T,U>T/28->U/29
+ Compose/8 = <T,U,V>(T/30->U/31)->(U/31->V/32)->T/30->V/32
+ Id/9 = <><T>T/33->T/33
+ Seq/11 = <A>(A/34,Seq/11<A/34>?)
+ A/12 = <>(B/13,A/12)
+ B/13 = <>(A/12,B/13)

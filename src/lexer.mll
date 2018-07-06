@@ -246,6 +246,7 @@ rule token = parse
   | ";" { SEMICOLON }
   | "," { COMMA }
   | "." { DOT }
+  | "?" { QUERY }
   | "=" { EQ }
   | "<" { LT }
   | ">" { GT }
@@ -258,10 +259,6 @@ rule token = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "~" { NOTOP }
-(*TBR
-  | "??"  { RotLOp }
-  | "??"  { RotRop }
-*) 
   | "<<" { SHIFTLOP}
   | ">>" { SHIFTROP}
   | "+=" { BINUPDATE AddOp }
