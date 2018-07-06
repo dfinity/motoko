@@ -243,6 +243,7 @@ let kind_to_string k =
 
 let unitT = TupT[]
 let boolT = PrimT(BoolT)
+let intT = PrimT(IntT)
 
 (* checking literal values are in bounds *)
 let check_I32_u p bits =
@@ -367,16 +368,17 @@ and check_typ context t = match t.it with
 	   begin
 	     match lookup_con context.kinds con with
              | Some kind ->
-     (match kind with
-	     | DefK(bounds,u) ->
-	       check_bounds t.at ts bounds;
-               subst ts bounds u
-	     | ObjK(bounds,actor,ftys) ->
-	       check_bounds t.at ts bounds;
-               VarT(con,ts)
-	     | ParK(bounds,bound) ->
-       	       check_bounds t.at ts bounds;
-	       VarT(con,ts))
+               begin match kind with
+	        | DefK(bounds,u) ->
+	          check_bounds t.at ts bounds;
+                  subst ts bounds u
+	        | ObjK(bounds,actor,ftys) ->
+	          check_bounds t.at ts bounds;
+                  VarT(con,ts)
+	        | ParK(bounds,bound) ->
+       	          check_bounds t.at ts bounds;
+                  VarT(con,ts)
+	       end
 	     | None ->
 	       assert(false);
 	       kindError c.at "unbound constructor %s (stamp %i)" con.name con.stamp
@@ -537,7 +539,7 @@ and inf_relop context at e1 rop e2 =
     | NeqOp ->
       if equatable_typ t1 && eq_typ t1 t2
       then boolT
-      else typeError at "arguments to a relational operator must have the same, equatable type"
+      else typeError at "arguments to an equality operator must have the same, equatable type"
     | _ ->
       if comparable_typ t1 && eq_typ t1 t2
       then boolT
@@ -629,14 +631,22 @@ match e.it with
   | IdxE(_,_) ->
      failwith "NYI" (* TBC *)
   | _ ->
-     typeError e.at "illegal assignment to immutable value")
+    typeError e.at "illegal assignment to immutable value")
 | ArrayE [] ->
-     typeError e.at "cannot infer type of empty array"
+  typeError e.at "cannot infer type of empty array (use a type annotation)"
 | ArrayE ((_::_) as es) ->
   let t1::ts = List.map (inf_exp context) es in
   if List.for_all (eq_typ t1) ts
   then ArrayT(VarMut,t1) (* TBR how do we create immutable arrays? *)
   else typeError e.at "array contains elements of distinct types"
+| IdxE(e1,e2) ->
+  begin
+  match inf_exp context e1 with
+  | ArrayT(_,t1) -> 
+    check_exp context intT e2;
+    t1
+  | t -> typeError e.at "illegal indexing: expected an array, found" (typ_to_string t)
+  end
 | CallE(e1,e2) ->
  (match inf_exp context e1 with
   | FuncT([],dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
@@ -776,10 +786,17 @@ and check_exp context t e =
   | RelE (e1,rop,e2) ->
     check_relop context e.at t e1 rop e2
   | ArrayE es ->
-    (match t with
-    | ArrayT (mut,t) ->
-      List.iter (check_exp context t) es
-    | _ -> typeError e.at "array expression cannot produce expected type %s" (typ_to_string t))
+    begin
+      match t with
+      | ArrayT (mut,t) ->
+        List.iter (check_exp context t) es
+      | _ -> typeError e.at "array expression cannot produce expected type %s" (typ_to_string t)
+    end
+(* | IdxE(e1,e2) ->
+   TBR, unfortunately, we can't easily do IdxE in checking mode because we don't know whether to expect
+   a mutable or immutable array type (we could do better on assignment of course),
+   so we rely on inference ins
+*)
   | AsyncE e0 ->
     (match t with
      | AsyncT t ->
