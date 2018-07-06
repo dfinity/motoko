@@ -8,4 +8,6 @@ val no_region : region
 val string_of_pos : pos -> string
 val string_of_region : region -> string
 
+val span : region -> region -> region
+
 val (@@) : 'a -> region -> 'a phrase

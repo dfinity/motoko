@@ -50,8 +50,8 @@ type typ =
   | FuncT of typ_bind list * typ * typ         (* function *)
   | AsyncT of typ                              (* future *)
   | LikeT of typ                               (* expansion *)
-(*
   | AnyT                                       (* top *)
+(*
   | UnionT of type * typ                       (* union *)
   | AtomT of string                            (* atom *)
 *)
@@ -190,10 +190,12 @@ let comparable_typ t =
 
 (* Poor man's pretty printing - replace with Format client *)
 let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
-let rec typ_to_string t =
+
+let rec atomic_typ_to_string t =
     match t with
+    | AnyT -> "Any"
     | PrimT p ->
-     (match p with
+      (match p with
       | NullT -> "Null"
       | IntT -> "Int"
       | BoolT -> "Bool"
@@ -202,34 +204,42 @@ let rec typ_to_string t =
       | CharT -> "Char"
       | WordT w ->
         (match w with
-	| Width8 -> "Word8"
-	| Width16 -> "Word16"
-	| Width32 -> "Word32"
-	| Width64 -> "Word64")
+        | Width8 -> "Word8"
+        | Width16 -> "Word16"
+        | Width32 -> "Word32"
+        | Width64 -> "Word64")
       | TextT -> "Text")
     | VarT (c,[]) ->
        sprintf "%s/%i" c.name c.stamp
     | VarT (c,ts) ->
        sprintf "%s/%i<%s>" c.name c.stamp (String.concat "," (List.map typ_to_string ts))
-    | ArrayT (m,t) ->
-      sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (typ_to_string t)  
     | TupT ts ->
       sprintf "(%s)"  (String.concat "," (List.map typ_to_string ts))
+    | ObjT(Object,fs) ->
+      sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
+                        sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
+                        fs))
+    | _ ->
+      sprintf "(%s)" (typ_to_string t)
+
+and typ_to_string t =
+    match t with
+    | ArrayT (m,t) ->
+      sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (atomic_typ_to_string t)  
     | FuncT([],dom,rng) ->
-      sprintf "%s->%s" (typ_to_string dom) (typ_to_string rng)      
+      sprintf "%s->%s" (atomic_typ_to_string dom) (typ_to_string rng)
     | FuncT(ts,dom,rng) ->
-      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string dom) (typ_to_string rng)
+      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (atomic_typ_to_string dom) (typ_to_string rng)
     | OptT t ->
-      sprintf "%s?"  (typ_to_string t)
+      sprintf "%s?"  (atomic_typ_to_string t)
     | AsyncT t -> 
-      sprintf "async %s" (typ_to_string t)
+      sprintf "async %s" (atomic_typ_to_string t)
     | LikeT t -> 
-      sprintf "like %s" (typ_to_string t)
-    | ObjT(a,fs) ->
-      sprintf "%s{%s}" (match a with Actor -> "actor" | Object -> "object")
-      	      	       (String.concat ";" (List.map (fun {var;mut;typ} ->
-		       		       		          sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
-				           fs))
+      sprintf "like %s" (atomic_typ_to_string t)
+    | ObjT(Actor,fs) ->
+      sprintf "actor%s" (atomic_typ_to_string (ObjT(Object,fs)))
+    | _ -> atomic_typ_to_string t
+
 let kind_to_string k =
     match k with
     | DefK(ts,t) ->
@@ -446,7 +456,8 @@ and check_typ context t = match t.it with
       (* sort by name (for indexed access *)
       let fs_sorted = List.sort (fun (f:typ_field)(g:typ_field) -> String.compare f.var g.var) fs in
       ObjT(a.it,fs_sorted)
-    
+    | Syntax.AnyT -> AnyT
+
 and inf_lit rl =
   match !rl with
     | NullLit -> PrimT NullT (* TBR *)
