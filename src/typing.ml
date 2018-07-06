@@ -21,7 +21,7 @@ let nat_width = 31
 let int_width = 31
 
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
-(* todo: rule out duplicate field defs *)
+(* todo: type ObjE expressions (anonymous objects)*)
 
 (* unique constructors, stamped *)
 
@@ -323,6 +323,46 @@ let true = try check_int no_region (string_of_int (-(pow2 (int_width-1)) - 1));
 
 (* end sanity test *)
 
+(* first-order substitutions *)
+type subst = typ ConEnv.t
+
+let rec rename_binds sigma (binds:typ_bind list) =
+    match binds with
+    | [] -> sigma,[]
+    | {var=con;bound=typ}::binds ->
+      let con' = Con.fresh con.name in
+      let sigma' = ConEnv.add con (VarT(con',[])) sigma in
+      let (rho,binds') = rename_binds sigma' binds in
+      rho,{var=con';bound=subst rho typ}::binds'
+and subst sigma t =
+    match t with
+    | PrimT p -> t
+    | VarT (c,ts) ->
+      begin
+       match lookup_con sigma c with
+       | Some t -> assert (List.length ts = 0);
+                   t
+       | None -> VarT(c,List.map (subst sigma) ts)
+      end
+    | ArrayT (m,t) ->
+      ArrayT (m, subst sigma t)
+    | TupT ts ->
+      TupT (List.map (subst sigma) ts)
+    | FuncT(ts,dom,rng) ->
+      let (rho,ts') = rename_binds sigma ts in
+      FuncT(ts',subst rho dom, subst rho rng)
+    | OptT t ->
+      OptT (subst sigma t)
+    | AsyncT t -> 
+      AsyncT (subst sigma t)
+    | LikeT t -> 
+      LikeT (subst sigma t)
+    | ObjT(a,fs) ->
+      ObjT(a,subst_fields sigma fs)
+and subst_fields sigma fs = 
+    List.map (fun {var;mut;typ} -> {var;mut;typ = subst sigma typ}) fs
+
+
 let rec norm_typ context t =
     match t with
     | VarT(con,[]) ->
@@ -352,11 +392,7 @@ let rec check_typ_binds context ts =
     ts,ce,ke
 
 
-and subst ts bounds t =
-    match ts,bounds with
-    | [],[] -> t
-    | _,_ -> failwith "NYI subst"
-    
+
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 
 and check_typ context t = match t.it with
