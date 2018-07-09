@@ -10,6 +10,8 @@ let (@@) x region = {it = x; at = region}
 let no_pos = {file = ""; line = 0; column = 0}
 let no_region = {left = no_pos; right = no_pos}
 
+let span r1 r2 = {left = r1.left; right = r2.right}
+
 let string_of_pos pos =
   if pos.line = -1 then
     Printf.sprintf "0x%x" pos.column

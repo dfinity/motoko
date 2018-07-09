@@ -19,6 +19,5 @@ clean:
 test: all
 	$(MAKE) -C test all
 
-
 sanity:
 	ocamlfind query wasm

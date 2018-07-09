@@ -7,86 +7,82 @@ module Utf8 = Wasm.Utf8
 
 exception Syntax of Source.region * string
 
-let token_to_string tok =
-    match tok with
-    | XOROP -> "XOROP"
-    | WORD _ -> "WORD"
-    | WHILE -> "WHILE"
-    | VAR -> "VAR"
-    | UNDERSCORE -> "UNDERSCORE"
-    | TYPE -> "TYPE"
-    | THEN -> "THEN"
-    | TEXT _ -> "TEXT()"
-    | SWITCH -> "SWITCH"
-    | SUBOP -> "SUBOP"
-    | STRING _ -> "STRING"
-    | SHIFTROP  -> "SHIFTROP"
-    | SHIFTLOP -> "SHIFTLOP"
-    | SEMICOLON -> "SEMICOLON"
-    | RPAR -> "RPAR"
-    | ROTROP -> "ROTROP"
-    | ROTLOP -> "ROTLOP"
-    | RETURN -> "RETURN"
-    | RCURLY -> "RCURLY"
-    | RBRACKET -> "RBRACKET"
-    | PRIVATE -> "PRIVATE"
-    | OROP -> "OROP"
-    | OR -> "OR"
-    | OBJECT -> "OBJECT"
-    | NEQOP -> "NEQOP"
-    | NULL -> "NULL"
-    | NOTOP -> "NOTOP"
-    | NOT -> "NOT"
-    | NAT n ->  Printf.sprintf "NAT(%i)" n
-    | MULOP -> "MULOP"
-    | MODOP -> "MODOP"
-    | LT -> "LT"
-    | LTOP -> "LTOP"
-    | LEOP -> "LT"
-    | LPAR -> "LPAR"
-    | LOOP -> "LOOP"
-    | LIKE -> "LIKE"
-    | LET -> "LET"
-    | LCURLY -> "LCURLY"
-    | LBRACKET -> "LBRACKET"
-    | IS -> "IS"
-    | INT s ->  Printf.sprintf "ID(%s)" s
-    | IN -> "IN"
-    | IF -> "IF"
-    | ID id -> Printf.sprintf "ID(%s)" id
-    | GEOP -> "GEOP"
-    | GT -> "GT"
-    | GTOP -> "GTOP"
-    | FUNC -> "FUNC"
-    | FOR -> "FOR"
-    | FLOAT _ -> "FLOAT(_)"
-    | EQ -> "EQ"
-    | EOF -> "EOF"
-    | ELSE -> "ELSE"
-    | DOT -> "DOT"
-    | DIVOP -> "DIVOP"
-    | CONTINUE -> "CONTINUE"
-    | COMMA -> "COMMA"
-    | COLON -> "COLON"
-    | CLASS -> "CLASS"
-    | CHAR _ -> "CHAR"
-    | CATOP -> "CATOP"
-    | CASE -> "CASE"
-    | DO -> "DO"
-    | BREAK -> "BREAK"
-    | BOOL _ -> "BOOL"
-    | BINUPDATE _ -> "BINUPDATE(-)"  
-    | AWAIT -> "AWAIT"
-    | ASYNC -> "ASYNC"
-    | ASSIGN -> "ASSIGN"
-    | ASSERT -> "ASSERT"
-    | ARROW -> "ARROW"
-    | ANDOP -> "ANDOP"
-    | AND -> "AND"
-    | ADDOP -> "ADDOP"
-    | ACTOR -> "ACTOR"
-    | PRIM _ -> "PRIM()"
-    | _ -> "???"
+let string_of_token = function
+  | XOROP -> "XOROP"
+  | WORD _ -> "WORD"
+  | WHILE -> "WHILE"
+  | VAR -> "VAR"
+  | UNDERSCORE -> "UNDERSCORE"
+  | TYPE -> "TYPE"
+  | THEN -> "THEN"
+  | TEXT _ -> "TEXT()"
+  | SWITCH -> "SWITCH"
+  | SUBOP -> "SUBOP"
+  | SHLOP  -> "SHLOP"
+  | SHROP -> "SHROP"
+  | SEMICOLON -> "SEMICOLON"
+  | RPAR -> "RPAR"
+  | ROTROP -> "ROTROP"
+  | ROTLOP -> "ROTLOP"
+  | RETURN -> "RETURN"
+  | RCURLY -> "RCURLY"
+  | RBRACKET -> "RBRACKET"
+  | PRIVATE -> "PRIVATE"
+  | OROP -> "OROP"
+  | OR -> "OR"
+  | NEQOP -> "NEQOP"
+  | NULL -> "NULL"
+  | NOTOP -> "NOTOP"
+  | NOT -> "NOT"
+  | NAT n ->  Printf.sprintf "NAT(%i)" n
+  | MULOP -> "MULOP"
+  | MODOP -> "MODOP"
+  | LT -> "LT"
+  | LTOP -> "LTOP"
+  | LEOP -> "LT"
+  | LPAR -> "LPAR"
+  | LOOP -> "LOOP"
+  | LIKE -> "LIKE"
+  | LET -> "LET"
+  | LCURLY -> "LCURLY"
+  | LBRACKET -> "LBRACKET"
+  | IS -> "IS"
+  | INT s ->  Printf.sprintf "ID(%s)" s
+  | IN -> "IN"
+  | IF -> "IF"
+  | ID id -> Printf.sprintf "ID(%s)" id
+  | GEOP -> "GEOP"
+  | GT -> "GT"
+  | GTOP -> "GTOP"
+  | FUNC -> "FUNC"
+  | FOR -> "FOR"
+  | FLOAT _ -> "FLOAT(_)"
+  | EQ -> "EQ"
+  | EOF -> "EOF"
+  | ELSE -> "ELSE"
+  | DOT -> "DOT"
+  | DIVOP -> "DIVOP"
+  | CONTINUE -> "CONTINUE"
+  | COMMA -> "COMMA"
+  | COLON -> "COLON"
+  | CLASS -> "CLASS"
+  | CHAR _ -> "CHAR"
+  | CATOP -> "CATOP"
+  | CASE -> "CASE"
+  | DO -> "DO"
+  | BREAK -> "BREAK"
+  | BOOL _ -> "BOOL"
+  | BINUPDATE _ -> "BINUPDATE(-)"  
+  | AWAIT -> "AWAIT"
+  | ASYNC -> "ASYNC"
+  | ASSIGN -> "ASSIGN"
+  | ASSERT -> "ASSERT"
+  | ARROW -> "ARROW"
+  | ANDOP -> "ANDOP"
+  | AND -> "AND"
+  | ADDOP -> "ADDOP"
+  | ACTOR -> "ACTOR"
+  | PRIM _ -> "PRIM()"
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -105,7 +101,7 @@ let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
-let string s =
+let text s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
@@ -223,8 +219,8 @@ let float =
   | sign? "inf"
   | sign? "nan"
   | sign? "nan:" "0x" hexnum
-let string = '"' character* '"'
-let name =  letter  ((letter | digit | '_')*)
+let text = '"' character* '"'
+let id = letter ((letter | digit | '_')*)
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
 let ixx = "i" ("32" | "64")
@@ -246,7 +242,7 @@ rule token = parse
   | ";" { SEMICOLON }
   | "," { COMMA }
   | "." { DOT }
-  | "?" { QUERY }
+  | "?" { QUEST }
   | "=" { EQ }
   | "<" { LT }
   | ">" { GT }
@@ -259,40 +255,42 @@ rule token = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "~" { NOTOP }
-  | "<<" { SHIFTLOP}
-  | ">>" { SHIFTROP}
+  | "<<" { SHLOP }
+  | ">>" { SHROP }
+  | "<<>"  { ROTLOP }
+  | "<>>"  { ROTROP }
+  | "++" { CATOP }
+
+  | "!=" { NEQOP }
+  | ">=" { GEOP }
+  | "<=" { LEOP }
+  | ":=" { ASSIGN }
   | "+=" { BINUPDATE AddOp }
   | "-=" { BINUPDATE SubOp }
   | "*=" { BINUPDATE MulOp }
   | "/=" { BINUPDATE DivOp }
-  | "%=" { BINUPDATE ModOp } (*TBR*)
+  | "%=" { BINUPDATE ModOp }
   | "&=" { BINUPDATE AndOp }
   | "|=" { BINUPDATE OrOp }
   | "^=" { BINUPDATE XorOp }
-  | "<<=" { BINUPDATE ShiftLOp}
-  | ">>=" { BINUPDATE ShiftROp}
-  | "&=" { BINUPDATE CatOp}
-  | "@<="  { BINUPDATE RotLOp } (*TBR*)
-  | "@>="  { BINUPDATE RotROp } (*TBR*)
-  | "!=" { NEQOP }
-  | ">=" { GEOP }
-  | "<=" { LEOP }
+  | "<<=" { BINUPDATE ShiftLOp }
+  | ">>=" { BINUPDATE ShiftROp }
+  | "&=" { BINUPDATE CatOp }
+  | "<<>="  { BINUPDATE RotLOp }
+  | "<>>="  { BINUPDATE RotROp }
+
   | space">"space { LTOP } (*TBR*)
   | space"<"space { GTOP } (*TBR*)
-  | "@<" { ROTLOP } (*TBR*)
-  | "@>" { ROTROP } (*TBR*)
-  | "@" { CATOP}  (*??*)
   | "->" { ARROW }
-  | ":=" { ASSIGN }
   | "_" { UNDERSCORE }
 (*TODO: literals need reworking*)
   | int as s { INT s }
   | float as s { FLOAT (float_of_string s) }
 
-  | string as s { STRING (string s) }
-  | '"'character*('\n'|eof) { error lexbuf "unclosed string literal" }
+  | text as s { TEXT (text s) }
+  | '"'character*('\n'|eof) { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
-    { error lexbuf "illegal control character in string literal" }
+    { error lexbuf "illegal control character in text literal" }
   | '"'character*'\\'_
     { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
 (*
@@ -319,7 +317,7 @@ rule token = parse
   | "continue" { CONTINUE }
   | "do" { DO }
   | "else" { ELSE }
-  | "false" {BOOL false}
+  | "false" { BOOL false }
   | "for" { FOR }
   | "func" { FUNC }
   | "if" { IF }
@@ -334,7 +332,7 @@ rule token = parse
   | "private" { PRIVATE }
   | "return" { RETURN }
   | "switch" { SWITCH }
-  | "true" {BOOL true}
+  | "true" { BOOL true }
   | "then" { THEN }
   | "type" { TYPE }
   | "var" { VAR }
@@ -351,11 +349,11 @@ rule token = parse
   | "Word32"  { PRIM (WordT(Width32)) }
   | "Word64"  { PRIM (WordT(Width64)) }
   
-  | name as s { ID s }
+  | id as s { ID s }
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
   | "//"utf8_no_nl* { token lexbuf (* causes error on following position *) }
-  | "(*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token lexbuf }
+  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token lexbuf }
   | space#'\n' { token lexbuf }
   | '\n' { Lexing.new_line lexbuf; token lexbuf }
   | eof { EOF }
@@ -365,8 +363,8 @@ rule token = parse
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
 and comment start = parse
-  | "*)" { () }
-  | "(*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; comment start lexbuf }
+  | "*/" { () }
+  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; comment start lexbuf }
   | '\n' { Lexing.new_line lexbuf; comment start lexbuf }
   | eof { error_nest start lexbuf "unclosed comment" }
   | utf8 { comment start lexbuf }

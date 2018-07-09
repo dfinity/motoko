@@ -41,8 +41,7 @@ actor class Account(initial_balance : Int) {
 };
 
 // Example usage
-func transfer(sender : Account, receiver : Account, amount : Int) : async (* hack: *) ()  {
+func transfer(sender : Account, receiver : Account, amount : Int) : async /* hack: */ ()  {
   let trx = await sender.split(amount);
   receiver.join(trx);
 };
-

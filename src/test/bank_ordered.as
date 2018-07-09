@@ -1,5 +1,4 @@
-
-// like bank.as but in dependency order
+// Like bank.as but in dependency order
 
 actor class Account(initial_balance : Int) {
   private var balance : Int = initial_balance;
@@ -15,7 +14,7 @@ actor class Account(initial_balance : Int) {
 
   join(account : Account) {  // this implicitly asserts that account is Account
     let amount = balance;
-    balance := +0; (* hack *)
+    balance := +0;  // Hack!
     account.credit(amount);
   };
 

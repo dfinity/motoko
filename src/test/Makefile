@@ -11,7 +11,7 @@ all:
 	$(ASC) control.as >> result 2>&1
 	$(ASC) literals.as >> result 2>&1
 	$(ASC) numericops.as >> result 2>&1
-	$(ASC) logicalops.as >> result 2>&1
+	$(ASC) bitops.as >> result 2>&1
 	$(ASC) relationalops.as >> result 2>&1
 	$(ASC) concat.as >> result 2>&1	
 	$(ASC) duplicatefield.as >> result 2>&1

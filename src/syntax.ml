@@ -22,8 +22,8 @@ and typ' =
   | FuncT of typ_bind list * typ * typ         (* function *)
   | AsyncT of typ                              (* future *)
   | LikeT of typ                               (* expansion *)
-(*
   | AnyT                                       (* top *)
+(*
   | UnionT of type * typ                       (* union *)
   | AtomT of string                            (* atom *)
 *)
