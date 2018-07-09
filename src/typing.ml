@@ -120,26 +120,6 @@ let check_bounds region tys bounds =
      then ()
      else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
 
-(* todo: add context unless we normalize type abbreviations *)
-let rec eq context eqs ty1 ty2 =
-    match ty1,ty2 with
-    | (VarT(con1,ts1),VarT(con2,ts2)) ->
-       if con1 = con2 || List.member (con1,con2) eqs
-       then eq_all context eqs ty1 ty2
-       else false (*TBC*)
-    | _,_ -> ty1 = ty1  (* TBC *)
-           
-and eq_all contexts eqs ts1 ts2 =
-    match ts1,ts2 with
-    | [],[] -> true
-    | (t1::ts1,t2::ts2) ->
-      eq context eqs t1 t2
-      &&
-      eq_all context eqs ts1 ts2
-    
-
-let eq_typ context ty1 ty2 =
-    eq context [] ty1 ty2
 
 
 (* types one can switch on - all primitives except floats *)
@@ -391,6 +371,83 @@ and subst sigma t =
 and subst_fields sigma fs = 
     List.map (fun {var;mut;typ} -> {var;mut;typ = subst sigma typ}) fs
 
+let substitute =
+    let rec substitute_aux sigma us ts =
+      match us,ts with
+      | [],[] -> sigma
+      | u::us, {bound;var}::ts ->
+        substitute_aux (ConEnv.add var u sigma) us ts
+      | _ -> raise (Invalid_argument "substitute")
+    in
+    substitute_aux ConEnv.empty
+
+
+let rec eq context eqs t1 t2 =
+    match t1,t2 with
+    | (VarT(con1,ts1),VarT(con2,ts2)) ->
+       if con1 = con2 || List.mem (con1,con2) eqs
+       then eq_all context eqs ts1 ts2
+       else
+       begin
+       match lookup_con context.kinds con1, lookup_con context.kinds con2 with
+       | Some (ObjK _), Some (ObjK _) -> false (* only equal if equal constructors *)
+       | Some (ParK _), Some (ParK _) -> false (* ditto *)
+       | Some (DefK(ts,t)), _ -> (* TBR this may fail to terminate *)
+       	 eq context eqs (subst (substitute ts1 ts) t) t2
+       | _, Some (DefK(us,u)) -> (* TBR this may fail to terminate *)
+       	 eq context eqs t1 (subst (substitute ts2 us) u)
+       | _,_ -> false
+       end        	 
+    | PrimT p1 ,PrimT p2 ->
+       p1 = p2
+    | ObjT(a1,tfs1),ObjT(a2,tfs2) ->
+      a1 = a2 &&
+      (* assuming tf1 and tf2 are sorted by var *)
+      (try List.for_all2 (fun (tf1:typ_field) (tf2:typ_field) ->
+      		          tf1.var = tf2.var &&
+		          tf1.mut = tf2.mut &&
+		          eq context eqs tf1.typ tf2.typ) tfs1 tfs2
+       with _ -> false)
+    | ArrayT(m1,t1),ArrayT(m2,t2) ->
+      m1 = m2 && eq context eqs t1 t2
+    | OptT(t1),OptT(t2) ->
+      eq context eqs t1 t2
+    | TupT(ts1),TupT(ts2) ->
+      eq_all context eqs ts1 ts2
+    | FuncT(ts,t1,t2),FuncT(us,u1,u2) ->
+      (match eq_typ_binds context eqs [] [] ts us with
+      | Some eqs' -> eq context eqs t1 u1 &&
+                     eq context eqs' t2 u2 
+      | None -> false)
+    | AsyncT(t1),AsyncT(t2) ->
+      eq context eqs t1 t2
+    | LikeT(t1),LikeT(t2) ->
+      eq context eqs t1 t2
+    | AnyT,AnyT -> true
+    | _,_ -> false
+
+and eq_typ_binds context eqs bds1 bds2 tbs1 tbs2 =
+    match tbs1,tbs2 with
+    | [],[] ->
+      if eq_all context eqs bds1 bds2
+      then Some eqs
+      else None
+    | (tb1::tbs1,tb2::tbs2) ->
+      eq_typ_binds context ((tb1.var,tb2.var)::eqs) (tb1.bound::bds1) (tb2.bound::bds2) tbs1 tbs2
+    | _,_ -> None
+      
+and eq_all context eqs ts1 ts2 =
+    match ts1,ts2 with
+    | [],[] -> true
+    | (t1::ts1,t2::ts2) ->
+      eq context eqs t1 t2
+      &&
+      eq_all context eqs ts1 ts2
+    | _,_ -> false
+    
+
+let eq_typ (context:context) ty1 ty2 : bool =
+    eq context [] ty1 ty2 
 
 let rec norm_typ context t =
     match t with
@@ -419,8 +476,6 @@ let rec check_typ_binds context ts =
     let ke  =
           List.fold_left (fun c bind -> ConEnv.add bind.var (ParK([],bind.bound)) c) context.kinds ts in
     ts,ce,ke
-
-
 
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
 
@@ -1133,7 +1188,6 @@ let check_prog p =
      
     
     
-
 
 
 
