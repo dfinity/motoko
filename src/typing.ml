@@ -121,7 +121,26 @@ let check_bounds region tys bounds =
      else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
 
 (* todo: add context unless we normalize type abbreviations *)
-let eq_typ ty1 ty2 = ty1 = ty2  (* TBC: need to use equational var env *)
+let rec eq context eqs ty1 ty2 =
+    match ty1,ty2 with
+    | (VarT(con1,ts1),VarT(con2,ts2)) ->
+       if con1 = con2 || List.member (con1,con2) eqs
+       then eq_all context eqs ty1 ty2
+       else false (*TBC*)
+    | _,_ -> ty1 = ty1  (* TBC *)
+           
+and eq_all contexts eqs ts1 ts2 =
+    match ts1,ts2 with
+    | [],[] -> true
+    | (t1::ts1,t2::ts2) ->
+      eq context eqs t1 t2
+      &&
+      eq_all context eqs ts1 ts2
+    
+
+let eq_typ context ty1 ty2 =
+    eq context [] ty1 ty2
+
 
 (* types one can switch on - all primitives except floats *)
 (* TBR - switch on option type? *)
@@ -447,7 +466,7 @@ and check_typ context t = match t.it with
       let fs_sorted = List.sort (fun (f:typ_field)(g:typ_field) -> String.compare f.var g.var) fs in
       ObjT(a.it,fs_sorted)
     
-and inf_lit rl =
+and inf_lit context rl =
   match !rl with
     | NullLit -> PrimT NullT (* TBR *)
     | BoolLit _ -> PrimT BoolT
@@ -467,14 +486,14 @@ and inf_lit rl =
       PrimT IntT
 
 
-and check_lit at t rl =
+and check_lit at context t rl =
   let trap of_string s = try of_string s with _ -> typeError at "bad literal %s for type %s" s (typ_to_string t) in
   let unexpected() = typeError at "expected literal of type %s" (typ_to_string t) in
   let l = !rl in
   match t with
     | OptT t ->
       if l = NullLit then ()
-      else check_lit at t rl 
+      else check_lit at context t rl 
     | PrimT p ->
       begin
       match p with
@@ -524,8 +543,8 @@ and check_lit at t rl =
 	 rl := WordLit (Word64 v)
        | _ -> unexpected())
      | _ ->
-       let  u = inf_lit rl in
-       if eq_typ t u
+       let u = inf_lit context rl in
+       if eq_typ context t u
        then ()
        else typeError at "expect literal of type %s found literal of type %s" (typ_to_string t) (typ_to_string u)
      end
@@ -537,11 +556,11 @@ and inf_binop context at e1 bop e2 =
     let t2 = inf_exp context e2 in
     match bop with
     | CatOp ->
-      if eq_typ t1 (PrimT TextT) && eq_typ t1 t2 then
+      if eq_typ context t1 (PrimT TextT) && eq_typ context t1 t2 then
          t1
       else typeError at "arguments to concatenation operator must have Text type"
     | AddOp | SubOp | MulOp | DivOp | ModOp ->
-      if numeric_typ t1 && eq_typ t1 t2 then
+      if numeric_typ t1 && eq_typ context t1 t2 then
          t1
       else typeError at "arguments to numeric operator must have equivalent numeric types"
     | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
@@ -553,7 +572,7 @@ and inf_binop context at e1 bop e2 =
 and check_binop context at t e1 bop e2 =
    (match bop with
     | CatOp ->
-      if eq_typ t (PrimT TextT)
+      if eq_typ context t (PrimT TextT)
       then ()
       else typeError at "expecting value of type %s, but concatenation returns a value of type Text" (typ_to_string t)
     | AddOp | SubOp | MulOp | DivOp | ModOp ->
@@ -574,16 +593,16 @@ and inf_relop context at e1 rop e2 =
     match rop with
     | EqOp 
     | NeqOp ->
-      if equatable_typ t1 && eq_typ t1 t2
+      if equatable_typ t1 && eq_typ context t1 t2
       then boolT
       else typeError at "arguments to an equality operator must have the same, equatable type"
     | _ ->
-      if comparable_typ t1 && eq_typ t1 t2
+      if comparable_typ t1 && eq_typ context t1 t2
       then boolT
       else typeError at "arguments to a relational operator must have the same, comparable type"
 
 and check_relop context at t e1 rop e2 =
-    if eq_typ t boolT
+    if eq_typ context t boolT
     then ()
     else typeError at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (typ_to_string t);
     let _ = inf_relop context at e1 rop e2 in
@@ -627,7 +646,7 @@ match e.it with
     | Some (ty,_) -> ty
     | None -> typeError x.at "unbound identifier %s" x.it)
 | LitE rl ->
-   inf_lit rl
+   inf_lit context rl
 | UnE(uop,e1) ->
    inf_uop context e.at uop e1
 | BinE (e1,bop,e2) ->
@@ -657,7 +676,7 @@ match e.it with
      (match lookup context.values v.it with
        | Some (t1,VarMut) ->
            let t2 = inf_exp context e2 in
-	   if eq_typ t1 t2
+	   if eq_typ context t1 t2
 	   then unitT
 	   else typeError e.at "location of type %s cannot store value of type %s" (typ_to_string t1) (typ_to_string t2)
        | Some (_,ConstMut) ->
@@ -673,7 +692,7 @@ match e.it with
   typeError e.at "cannot infer type of empty array (use a type annotation)"
 | ArrayE ((_::_) as es) ->
   let t1::ts = List.map (inf_exp context) es in
-  if List.for_all (eq_typ t1) ts
+  if List.for_all (eq_typ context t1) ts
   then ArrayT(VarMut,t1) (* TBR how do we create immutable arrays? *)
   else typeError e.at "array contains elements of distinct types"
 | IdxE(e1,e2) ->
@@ -688,7 +707,7 @@ match e.it with
  (match inf_exp context e1 with
   | FuncT([],dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
     let t2 = inf_exp context e2 in
-    if eq_typ t2 dom
+    if eq_typ context t2 dom
     then rng
     else typeError e.at "illegal function application: expecting argument of type %s found argument of type %s" (typ_to_string dom) (typ_to_string t2)
   | _ -> typeError e.at "illegal application: not a function")
@@ -711,7 +730,7 @@ match e.it with
   check_exp context boolT e0;
   let t1 = inf_exp context e1 in
   let t2 = inf_exp context e2 in
-  if eq_typ t1 t2 
+  if eq_typ context t1 t2 
   then t1
   else typeError e.at "branches of if have different types"
 | SwitchE(e,cs) ->
@@ -810,7 +829,7 @@ and inf_cases context pt cs t_opt  =
     let t_opt' = match t_opt with
     	      | None -> Some t
  	      | Some t' ->
-	         if eq_typ t t'
+	         if eq_typ context t t'
     		 then Some t'
 		 else typeError at "illegal case of different type from preceeding cases" in
     inf_cases context pt cs t_opt'
@@ -818,7 +837,7 @@ and check_exp context t e =
   let labelOpt = context.label in
   let context = {context with label = None} in
   match e.it with
-  | LitE rl -> check_lit e.at t rl
+  | LitE rl -> check_lit e.at context t rl
   | UnE (uop,e1) ->
     check_uop context e.at t uop e1
   | BinE (e1,bop,e2) ->
@@ -861,7 +880,7 @@ and check_exp context t e =
     ignore(inf_exp context e)
   | _ ->
     let t' = inf_exp context e in
-    if (eq_typ t t')
+    if (eq_typ context t t')
     then ()
     else typeError e.at "expecting expression of type %s found expression of type %s" (typ_to_string t) (typ_to_string t')
     
@@ -880,7 +899,7 @@ and inf_block context es =
 and check_block r context t es =
   match es with
   | [] ->
-    if eq_typ t unitT
+    if eq_typ context t unitT
     then ()
     else typeError r "block  must end with expression of type" (typ_to_string t) 
   | {it = DecE d;at}::es ->
@@ -1044,7 +1063,7 @@ and inf_pat context p =
    | WildP ->  typeError p.at "can't infer type of pattern"
    | VarP v -> typeError p.at "can't infer type of pattern"
    | LitP l ->
-     Env.empty,inf_lit l
+     Env.empty,inf_lit context l
    | TupP ps ->
      inf_pats p.at context Env.empty [] ps
    | AnnotP(p,t) ->
@@ -1056,7 +1075,7 @@ and check_pat context p t =
    | WildP -> Env.empty
    | VarP v -> Env.singleton v.it (t,ConstMut)
    | LitP rl ->
-      check_lit p.at t rl;
+      check_lit p.at context t rl;
       Env.empty
    | TupP ps ->
      (match t with
@@ -1065,7 +1084,7 @@ and check_pat context p t =
       | _ -> typeError p.at "expected pattern of non-tuple type, found pattern of tuple type")
    | AnnotP(p',t') ->
      let t' = check_typ context t' in
-     if eq_typ t t'
+     if eq_typ context t t'
      then check_pat context p' t'
      else typeError p.at "expected pattern of one type, found pattern of unequal type"
 and check_pats at context ve ps ts =
