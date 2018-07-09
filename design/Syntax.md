@@ -10,11 +10,11 @@ Productions marked * probably deferred to later versions.
   actor? { <type-field>;* }                      object
   var? <type> [ ]                                array
   <type> ?                                       option
-  <type-params>? <type> -> <type>                function // why not n-ary domain?
+  <type-params>? <type> -> <type>                function
   async <type>                                   future
   like <type>                                    structural expansion
   ( ((<id> :)? <type>),* )                       tuple
-* any                                            top
+  any                                            top
 * <type> | <type>                                union
 * # <id>                                         atom
 
@@ -29,9 +29,6 @@ Productions marked * probably deferred to later versions.
 <type-params> ::=                              type parameters
   < <id>,* >                                     unconstrained
 * < (<id> <: <type>),* >                         constrained
-
-<params> ::=                                   parameters
-  ( <id> : <type>,*  )                        
 ```
 
 ## Expressions
@@ -82,6 +79,9 @@ Productions marked * probably deferred to later versions.
   private? var <id> (: <type>)? = <expr>                     mutable
 //  private? <id> <type-params>? <pat>+ (: <type>)? = <expr>   function (short-hand)
   private? <id> <type-params>? <params> (: <type>)? = <expr>   function (short-hand)
+
+<params> ::=                                   parameters
+  ( <id> : <type>,*  )                        
 ```
 
 ## Patterns
