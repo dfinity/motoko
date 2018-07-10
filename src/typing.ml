@@ -209,9 +209,9 @@ let rec atomic_typ_to_string t =
         | Width64 -> "Word64")
       | TextT -> "Text")
     | VarT (c,[]) ->
-       sprintf "%s/%i" c.name c.stamp
+       Con.to_string c
     | VarT (c,ts) ->
-       sprintf "%s/%i<%s>" c.name c.stamp (String.concat "," (List.map typ_to_string ts))
+       sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map typ_to_string ts))
     | TupT ts ->
       sprintf "(%s)"  (String.concat "," (List.map typ_to_string ts))
     | ObjT(Object,fs) ->
@@ -228,7 +228,7 @@ and typ_to_string t =
     | FuncT([],dom,rng) ->
       sprintf "%s->%s" (atomic_typ_to_string dom) (typ_to_string rng)
     | FuncT(ts,dom,rng) ->
-      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (atomic_typ_to_string dom) (typ_to_string rng)
+      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (atomic_typ_to_string dom) (typ_to_string rng)
     | OptT t ->
       sprintf "%s?"  (atomic_typ_to_string t)
     | AsyncT t -> 
@@ -242,12 +242,12 @@ and typ_to_string t =
 let kind_to_string k =
     match k with
     | DefK(ts,t) ->
-      sprintf "= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string t)
+      sprintf "= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t)
     | ObjK(ts,actor,ftys) -> 
-      sprintf ":= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts))
+      sprintf ":= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts))
        (typ_to_string (ObjT(actor,ftys)))
     | ParK(ts,t) -> 
-      sprintf ":: <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> var.name) ts)) (typ_to_string t) 
+      sprintf ":: <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t) 
     
 
 let unitT = TupT[]
@@ -385,19 +385,39 @@ let substitute =
 let rec eq context eqs t1 t2 =
     match t1,t2 with
     | (VarT(con1,ts1),VarT(con2,ts2)) ->
-       if con1 = con2 || List.mem (con1,con2) eqs
+       if List.mem (con1,con2) eqs
        then eq_all context eqs ts1 ts2
        else
        begin
        match lookup_con context.kinds con1, lookup_con context.kinds con2 with
-       | Some (ObjK _), Some (ObjK _) -> false (* only equal if equal constructors *)
-       | Some (ParK _), Some (ParK _) -> false (* ditto *)
+       | Some (ObjK _), Some (ObjK _) -> con1 = con2 && eq_all context eqs ts1 ts2
+       | Some (ParK _), Some (ParK _) -> con1 = con2 && eq_all context eqs ts1 ts2
        | Some (DefK(ts,t)), _ -> (* TBR this may fail to terminate *)
+         (con1 = con2 && eq_all context eqs ts1 ts2) ||
        	 eq context eqs (subst (substitute ts1 ts) t) t2
        | _, Some (DefK(us,u)) -> (* TBR this may fail to terminate *)
+         (con1 = con2 && eq_all context eqs ts1 ts2) ||
        	 eq context eqs t1 (subst (substitute ts2 us) u)
        | _,_ -> false
-       end        	 
+       end
+    | (VarT(con1,ts1),t2) ->
+       begin
+       match lookup_con context.kinds con1 with
+       | Some (ObjK _) -> false
+       | Some (ParK _) -> false
+       | Some (DefK(ts,t)) -> (* TBR this may fail to terminate *)
+       	 eq context eqs (subst (substitute ts1 ts) t) t2
+       | None -> false
+       end
+    | (t1,VarT(con2,ts2)) ->
+       begin
+       match lookup_con context.kinds con2 with
+       | Some (ObjK _) -> false (* only equal if equal constructors *)
+       | Some (ParK _) -> false (* ditto *)
+       | Some (DefK(us,u)) -> (* TBR this may fail to terminate *)
+       	 eq context eqs t1 (subst (substitute ts2 us) u)
+       | None -> false
+       end
     | PrimT p1 ,PrimT p2 ->
        p1 = p2
     | ObjT(a1,tfs1),ObjT(a2,tfs2) ->
@@ -416,7 +436,7 @@ let rec eq context eqs t1 t2 =
       eq_all context eqs ts1 ts2
     | FuncT(ts,t1,t2),FuncT(us,u1,u2) ->
       (match eq_typ_binds context eqs [] [] ts us with
-      | Some eqs' -> eq context eqs t1 u1 &&
+      | Some eqs' -> eq context eqs' t1 u1 &&
                      eq context eqs' t2 u2 
       | None -> false)
     | AsyncT(t1),AsyncT(t2) ->
@@ -502,7 +522,7 @@ and check_typ context t = match t.it with
 	       end
 	     | None ->
 	       assert(false);
-	       kindError c.at "unbound constructor %s (stamp %i)" con.name con.stamp
+	       kindError c.at "unbound constructor %s " (Con.to_string con)
 	    end
           | None -> kindError c.at "unbound type identifier %s" c.it
       end

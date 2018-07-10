@@ -255,10 +255,10 @@ rule token = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "~" { NOTOP }
-  | "<<" { SHLOP }
-  | ">>" { SHROP }
-  | "<<>"  { ROTLOP }
-  | "<>>"  { ROTROP }
+  | space"<<"space { SHLOP }
+  | space">>"space { SHROP }
+  | space"<<>"space  { ROTLOP }
+  | space"<>>"space  { ROTROP }
   | "++" { CATOP }
 
   | "!=" { NEQOP }
