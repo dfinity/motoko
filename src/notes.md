@@ -42,6 +42,9 @@ TODO and Issues
 - why do we have a Nat type? What's wrong with (unsigned word)
 
 - operators:
-   - do we want to allow implict promotion of operands (ie word16+word8)
-   - do we want to allow logical operation (bitwise operators) on non-word types?
-   
+   - do we want to allow implict promotion of operands (ie word16+word8) No
+   - do we want to allow logical operation (bitwise operators) on non-word types? No
+
+- there's a parsing ambiguity between infix application, indexing and array literals is e [] indexing or application to an array literal.
+
+- we need to discuss the semantics and typing of while/loop/loop-while and for. Should the bodies by unit typed or polymorphic?

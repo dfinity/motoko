@@ -255,8 +255,8 @@ atomic_expr :
       { match es.it with [e] -> e | es -> TupE(es) @@ at($symbolstartpos,$endpos) }
     | a=actor_opt xo=id? LCURLY es=seplist(expr_field, SEMICOLON) RCURLY
       { ObjE(a, xo.it, es.it) @@ at($symbolstartpos,$endpos) }
-    | LBRACKET es=seplist(expr, SEMICOLON) RBRACKET
-      { ArrayE(es.it) @@ at($symbolstartpos,$endpos) }
+//    | LBRACKET es=seplist(expr, SEMICOLON) RBRACKET (*TBR*)
+//      { ArrayE(es.it) @@ at($symbolstartpos,$endpos) }
     | e=atomic_expr DOT s=INT
       { ProjE (e, int_of_string s) @@ at($symbolstartpos,$endpos) }
     | e=atomic_expr DOT x=id

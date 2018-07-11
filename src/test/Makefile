@@ -18,6 +18,7 @@ all:
 	$(ASC) nonlinearpat.as >> result 2>&1
 	$(ASC) typedef.as >> result 2>&1
 	$(ASC) type_equiv.as >> result 2>&1
+	$(ASC) quicksort.as >> result 2>&1
 
 	diff result result.ok
 

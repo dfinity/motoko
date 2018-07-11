@@ -122,70 +122,6 @@ let check_bounds region tys bounds =
 
 
 
-(* types one can switch on - all primitives except floats *)
-(* TBR - switch on option type? *)
-let switchable_type t =
-    match t with
-    | PrimT p ->
-      (match p with
-       | FloatT -> false
-       | _ -> true)
-    | _ -> false
-
-(* types one can iterate over using `for`  *)
-let iterable_typ t =
-    match t with
-    | ArrayT(_,_) -> true
-    | _ -> false
-(* element type of iterable_type  *)
-let element_typ t =
-    match t with
-    | ArrayT(mut,t) -> t
-    | _ -> assert(false)
-
-let numeric_typ t =
-    match t with
-    | PrimT p ->
-      (match p with
-       | NatT
-       | IntT
-       | WordT _ 
-       | FloatT -> true
-       | _ -> false)
-    | _ -> false
-
-let logical_typ  t =
-    match t with
-    | PrimT (WordT _) -> true
-    | _ -> false
-
-let equatable_typ t =
-    match t with
-    | PrimT p ->
-      (match p with
-       | BoolT
-       | NatT
-       | IntT
-       | WordT _ 
-       | TextT  
-       | CharT -> true
-       | FloatT -> true (* TBR do we really want = and != on floats ?*)
-       | _ -> false)
-    | _ -> false
-
-let comparable_typ t =
-    match t with
-    | PrimT p ->
-      (match p with
-       | NatT
-       | IntT
-       | WordT _
-       | FloatT
-       | TextT 
-       | CharT -> true
-       | _ -> false)
-    | _ -> false
-
 
 (* Poor man's pretty printing - replace with Format client *)
 let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
@@ -471,18 +407,97 @@ let eq_typ (context:context) ty1 ty2 : bool =
 
 let rec norm_typ context t =
     match t with
-    | VarT(con,[]) ->
+    | VarT(con,ts) ->
       (match lookup_con context.kinds con with
       | Some kind ->
       	(match kind with
-	| DefK([],t) -> norm_typ context t
+	| DefK(us,u) -> norm_typ context (subst (substitute ts us) u)
+	| ObjK(_,actor,ftys) -> t
+	| ParK(_,bound) -> t) 
+      | None -> t)
+    | t -> t
+
+let rec obj_typ context t =
+    match norm_typ context t with
+    | VarT(con,ts) ->
+      (match lookup_con context.kinds con with
+      | Some kind ->
+      	(match kind with
+	| DefK(us,u) -> (assert(false);failwith "obj_typ")
 	| ObjK([],actor,ftys) -> ObjT(actor,ftys)
 	| ParK([],bound) -> t)
       | None -> t)
-    | VarT(v,ts) ->
-      failwith "NYI (parametric types)" (* TBR needs substitution*)
+    | ObjT(_,_) -> t
+    | LikeT t -> norm_typ context t (*TBR*)
     | _ -> t  
-     
+
+(* types one can switch on - all primitives except floats *)
+
+(* TBR - switch on option type? *)
+let switchable_typ context t =
+    match norm_typ context t with
+    | PrimT p ->
+      (match p with
+       | FloatT -> false
+       | _ -> true)
+    | _ -> false
+
+(* types one can iterate over using `for`  *)
+let iterable_typ context t =
+    match norm_typ context t with
+    | ArrayT(_,_) -> true
+    | _ -> false
+
+(* element type of iterable_type  *)
+let element_typ context t =
+    match norm_typ context t with
+    | ArrayT(mut,t) -> t
+    | _ -> assert(false)
+
+let numeric_typ context t =
+    match norm_typ context t with
+    | PrimT p ->
+      (match p with
+       | NatT
+       | IntT
+       | WordT _ 
+       | FloatT -> true
+       | _ -> false)
+    | _ -> false
+
+let logical_typ context t =
+    match norm_typ context t  with
+    | PrimT (WordT _) -> true
+    | _ -> false
+
+let equatable_typ context t =
+    match norm_typ context t with
+    | PrimT p ->
+      (match p with
+       | BoolT
+       | NatT
+       | IntT
+       | WordT _ 
+       | TextT  
+       | CharT -> true
+       | FloatT -> true (* TBR do we really want = and != on floats ?*)
+       | _ -> false)
+    | _ -> false
+
+let comparable_typ context t =
+    match norm_typ context t with
+    | PrimT p ->
+      (match p with
+       | NatT
+       | IntT
+       | WordT _
+       | FloatT
+       | TextT 
+       | CharT -> true
+       | _ -> false)
+    | _ -> false
+
+
 
 let rec check_typ_binds context ts =
     let bind_context = context in (* TBR: allow parameters in bounds? - not for now*)
@@ -577,7 +592,7 @@ and check_lit at context t rl =
   let trap of_string s = try of_string s with _ -> typeError at "bad literal %s for type %s" s (typ_to_string t) in
   let unexpected() = typeError at "expected literal of type %s" (typ_to_string t) in
   let l = !rl in
-  match t with
+  match norm_typ context t with
     | OptT t ->
       if l = NullLit then ()
       else check_lit at context t rl 
@@ -647,11 +662,11 @@ and inf_binop context at e1 bop e2 =
          t1
       else typeError at "arguments to concatenation operator must have Text type"
     | AddOp | SubOp | MulOp | DivOp | ModOp ->
-      if numeric_typ t1 && eq_typ context t1 t2 then
+      if numeric_typ context t1 && eq_typ context t1 t2 then
          t1
       else typeError at "arguments to numeric operator must have equivalent numeric types"
     | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-      if logical_typ t1 && t1 = t2 then
+      if logical_typ context t1 && t1 = t2 then
          t1
       else typeError at "arguments to logical operator must have equivalent logical types"
     | _ -> typeError at "operator doesn't take operands of types %s and %s" (typ_to_string t1) (typ_to_string t2)
@@ -663,11 +678,11 @@ and check_binop context at t e1 bop e2 =
       then ()
       else typeError at "expecting value of type %s, but concatenation returns a value of type Text" (typ_to_string t)
     | AddOp | SubOp | MulOp | DivOp | ModOp ->
-      if numeric_typ t
+      if numeric_typ context t
       then ()
       else typeError at "expecting value of type non-numeric type %s, operator returns a value of numeric type" (typ_to_string t)
     | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-      if logical_typ t
+      if logical_typ context t
       then ()
       else typeError at "expecting value of type non-logical type %s, operator returns a value of logical type" (typ_to_string t)
     );
@@ -680,11 +695,11 @@ and inf_relop context at e1 rop e2 =
     match rop with
     | EqOp 
     | NeqOp ->
-      if equatable_typ t1 && eq_typ context t1 t2
+      if equatable_typ context t1 && eq_typ context t1 t2
       then boolT
       else typeError at "arguments to an equality operator must have the same, equatable type"
     | _ ->
-      if comparable_typ t1 && eq_typ context t1 t2
+      if comparable_typ context t1 && eq_typ context t1 t2
       then boolT
       else typeError at "arguments to a relational operator must have the same, comparable type"
 
@@ -700,11 +715,11 @@ and inf_uop context at uop e =
     match uop with
     | PosOp 
     | NegOp ->
-      if numeric_typ t 
+      if numeric_typ context t 
       then t
       else typeError at "argument to negation operator must have numeric type"
     | NotOp ->
-      if logical_typ t 
+      if logical_typ context t 
       then t
       else typeError at "arguments to a bitwise negation operator must have logical type"
 
@@ -712,11 +727,11 @@ and check_uop context at t uop e =
     match uop with
     | PosOp 
     | NegOp ->
-      if numeric_typ t 
+      if numeric_typ context t 
       then check_exp context t e
       else typeError at "argument to negation operator must have numeric type"
     | NotOp ->
-      if logical_typ t 
+      if logical_typ context t 
       then check_exp context t e
       else typeError at "arguments to a bitwise negation operator must have logical type"
 
@@ -744,37 +759,61 @@ match e.it with
    let ts = List.map (inf_exp context) es in
    TupT ts
 | ProjE(e,n) ->
-  (match inf_exp context e with
+  (match norm_typ context (inf_exp context e) with
    | TupT(ts) ->
      (try List.nth ts n
       with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
    | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
 | DotE(e,v) ->
-  (match norm_typ context (inf_exp context e) with
+  (match obj_typ context (inf_exp context e) with
    |(ObjT(a,fts) as t) ->
      (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
          ft.typ
       with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it)
    | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
 | AssignE(e1,e2) ->
- (match e1.it with
+  begin
+  match e1.it with
   (*TBC: array and object update *)
-  |  VarE v ->
-     (match lookup context.values v.it with
+  | VarE v ->
+    begin
+    match lookup context.values v.it with
        | Some (t1,VarMut) ->
-           let t2 = inf_exp context e2 in
-	   if eq_typ context t1 t2
-	   then unitT
-	   else typeError e.at "location of type %s cannot store value of type %s" (typ_to_string t1) (typ_to_string t2)
+          check_exp context t1 e2;
+	  unitT
        | Some (_,ConstMut) ->
           typeError e.at "cannot assign to immutable location"
        | None ->
-       	  typeError e1.at "unbound mutable identifier %s" v.it)
-  | DotE(_,_)
-  | IdxE(_,_) ->
-     failwith "NYI AssignE IdxE" (* TBC *)
+   	  typeError e1.at "unbound mutable identifier %s" v.it
+    end
+  | DotE(o,v) ->
+    begin
+      match obj_typ context (inf_exp context o) with
+      | (ObjT(a,fts) as t) ->
+	 begin
+	   try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+             match ft.mut with 
+             | VarMut -> check_exp context ft.typ e2;
+	       	      	 unitT
+             | ConstMut ->  typeError e.at "cannot assign to immutable field %s"  v.it
+	   with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it
+	 end 
+      | t -> typeError e.at "expecting object type, found %s" (typ_to_string t)
+    end
+  | IdxE(ea,ei) ->
+    begin
+      match norm_typ context (inf_exp context ea) with
+      |  ArrayT(VarMut,t) ->
+         check_exp context intT ei;
+         check_exp context t e2;
+	 unitT
+      | ArrayT(ConstMut,_) as t1  -> 
+        typeError e.at "cannot assign to immutable array of type %s" (typ_to_string t1) 
+      | t -> typeError e.at "expecting array type, found %s" (typ_to_string t)
+    end
   | _ ->
-    typeError e.at "illegal assignment to immutable value")
+    typeError e.at "illegal assignment: expecting variable, mutable object field or mutable array element"
+  end
 | ArrayE [] ->
   typeError e.at "cannot infer type of empty array (use a type annotation)"
 | ArrayE ((_::_) as es) ->
@@ -784,14 +823,14 @@ match e.it with
   else typeError e.at "array contains elements of distinct types"
 | IdxE(e1,e2) ->
   begin
-  match inf_exp context e1 with
+  match norm_typ context (inf_exp context e1) with
   | ArrayT(_,t1) -> 
     check_exp context intT e2;
     t1
   | t -> typeError e.at "illegal indexing: expected an array, found" (typ_to_string t)
   end
 | CallE(e1,e2) ->
- (match inf_exp context e1 with
+ (match norm_typ context (inf_exp context e1) with
   | FuncT([],dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
     let t2 = inf_exp context e2 in
     if eq_typ context t2 dom
@@ -822,7 +861,7 @@ match e.it with
   else typeError e.at "branches of if have different types"
 | SwitchE(e,cs) ->
   let t = inf_exp context e in
-  if switchable_type t
+  if switchable_typ context t
   then match inf_cases context t cs None with
        | Some t -> t
        | None -> (* assert(false); *)
@@ -845,9 +884,9 @@ match e.it with
   unitT
 | ForE(p,e0,e1)->
   let t = inf_exp context e0 in (*TBR is this for arrays only? If so, what about mutability*)
-  if iterable_typ t
+  if iterable_typ context t
   then 
-    let ve = check_pat context p (element_typ t) in
+    let ve = check_pat context p (element_typ context t) in
     let context' = addBreakAndContinue {context with values = union context.values ve} labelOpt unitT in
     check_exp context' unitT e1;
     unitT
@@ -888,7 +927,7 @@ match e.it with
 | AwaitE e0 ->
     if context.awaitable
     then
-      match inf_exp context e0 with
+      match norm_typ context (inf_exp context e0) with
       | AsyncT t -> t
       | t -> typeError e0.at "expecting expression of async type, found expression of type %s" (typ_to_string t)
     else typeError e.at "illegal await in synchronous context"
@@ -933,7 +972,7 @@ and check_exp context t e =
     check_relop context e.at t e1 rop e2
   | ArrayE es ->
     begin
-      match t with
+      match norm_typ context t with
       | ArrayT (mut,t) ->
         List.iter (check_exp context t) es
       | _ -> typeError e.at "array expression cannot produce expected type %s" (typ_to_string t)
@@ -941,10 +980,10 @@ and check_exp context t e =
 (* | IdxE(e1,e2) ->
    TBR, unfortunately, we can't easily do IdxE in checking mode because we don't know whether to expect
    a mutable or immutable array type (we could do better on assignment of course),
-   so we rely on inference ins
+   so we rely on inference instead
 *)
   | AsyncE e0 ->
-    (match t with
+    (match norm_typ context t with
      | AsyncT t ->
      let context = {values = context.values;
                     constructors = context.constructors;
@@ -956,6 +995,9 @@ and check_exp context t e =
 		    awaitable = true} in
      check_exp context t e0
      |_ -> typeError e.at "async expression cannot produce expected type %s" (typ_to_string t))
+  | LoopE(e,None) ->
+    let context' = addBreakAndContinue context labelOpt t in
+    check_exp context' unitT e; (*TBR do we want to allow any type for the body? *)
   | BlockE es ->
     let context = addBreak context labelOpt t in
     check_block e.at context t es
@@ -965,6 +1007,8 @@ and check_exp context t e =
     ignore(inf_exp context e)
   | RetE _ ->
     ignore(inf_exp context e)
+
+  
   | _ ->
     let t' = inf_exp context e in
     if (eq_typ context t t')
@@ -1165,7 +1209,7 @@ and check_pat context p t =
       check_lit p.at context t rl;
       Env.empty
    | TupP ps ->
-     (match t with
+     (match norm_typ context t with
       | TupT ts ->
         check_pats p.at context Env.empty ps ts 
       | _ -> typeError p.at "expected pattern of non-tuple type, found pattern of tuple type")
