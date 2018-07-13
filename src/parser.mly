@@ -341,10 +341,10 @@ expr_field :
 	    @@ at($symbolstartpos,$endpos) }
   // TBR: should a func_def abbreviate a dec or block {dec;id}? *)
   | priv=private_opt fd=func_def
-    {	let (x, tps, p, t, e) = fd.it in
-	    let d = FuncD(x, tps, p, t, e) @@ fd.at in
-	    let e' = DecE(d) @@ fd.at in 
-	    {var = x; mut = ConstMut @@ no_region; priv; exp = e'}
+    { let (x, tps, p, t, e) = fd.it in
+      let d = FuncD(x, tps, p, t, e) @@ fd.at in
+      let e' = DecE(d) @@ fd.at in
+      {var = x; mut = ConstMut @@ no_region; priv; exp = e'}
       @@ at($symbolstartpos,$endpos) }
 
 // TBR
@@ -404,10 +404,10 @@ dec :
   | VAR x=id COLON t=typ eo=init?
     { VarD(x, t, eo.it) @@ at($symbolstartpos,$endpos) } 
   | FUNC fd=func_def
-    {	let (id, tps, p, t, e) = fd.it in
-	    FuncD(id,tps,p,t,e) @@ at($symbolstartpos,$endpos) }
+    { let (id, tps, p, t, e) = fd.it in
+      FuncD(id,tps,p,t,e) @@ at($symbolstartpos,$endpos) }
   | TYPE x=id tps=typ_params_opt EQ t=typ
-    {	TypD(x, tps, t) @@ at($symbolstartpos,$endpos) }
+    { TypD(x, tps, t) @@ at($symbolstartpos,$endpos) }
 (* TBR: Syntax.md specifies EQ expr but the examples allow a expr_field* (sans EQ), shall we allow both?
   | a=actor_opt CLASS x=id tps=typ_params_opt p=pat EQ e=expr
     { ClassD(a, x, tps, p, e) @@ at($symbolstartpos,$endpos) }

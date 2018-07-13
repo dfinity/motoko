@@ -918,7 +918,7 @@ match e.it with
                    constructors = context.constructors;
 		   kinds = context.kinds;
 		   breaks = Env.empty;
-		   label = context.label;
+		   label = None;
 		   continues = Env.empty;
 		   returns = Some unitT; (* TBR *)
 		   awaitable = true} in
@@ -989,7 +989,7 @@ and check_exp context t e =
                     constructors = context.constructors;
 		    kinds = context.kinds;
 		    breaks = Env.empty;
-		    label = context.label;
+		    label = None;
 		    continues = Env.empty;
 		    returns = Some t; (* TBR *)
 		    awaitable = true} in
@@ -1007,8 +1007,6 @@ and check_exp context t e =
     ignore(inf_exp context e)
   | RetE _ ->
     ignore(inf_exp context e)
-
-  
   | _ ->
     let t' = inf_exp context e in
     if (eq_typ context t t')

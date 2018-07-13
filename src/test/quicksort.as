@@ -1,6 +1,8 @@
+type array<t> = var t[];
+
 actor class QS<T>(cmp:(T,T)->Int)
 {
-   quicksort(a:var T[], lo:Int, hi:Int): () {
+   quicksort(a:array<T>, lo:Int, hi:Int): () {
    	if (lo < hi) then
 	{ let p = partition(a, lo, hi);
 	  quicksort(a, lo, p);
@@ -9,13 +11,13 @@ actor class QS<T>(cmp:(T,T)->Int)
 	else {};
    };
 
-   private swap(a:var T[], i:Int, j:Int) : () {
+   private swap(a:array<T>, i:Int, j:Int) : () {
      let temp = a[i];
      a[i] := a[j];
      a[j] := temp;
    };
 
-   private partition(a:var T[], lo:Int, hi:Int) : Int {
+   private partition(a:array<T>, lo:Int, hi:Int) : Int {
      let pivot = a[0];
      var i : Int = lo - 1;
      var j : Int = hi + 1;

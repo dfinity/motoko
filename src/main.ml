@@ -23,7 +23,9 @@ let main () =
        print_newline();
        Env.iter (fun v con -> Printf.printf "\n %s -> %s" v (Con.to_string con)) ce;
        Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (typ_to_string t)) ve;
-       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke
+       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke;
+       let res = Interpret.check_prog prog in
+       ()
     with 
     | Lexer.Syntax (r,m) ->
        let r = string_of_region r in
