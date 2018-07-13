@@ -32,11 +32,17 @@ struct
   let nullV = NullV
   let boolV b = BoolV b
   let natV n = NatV n
+  let nat_of_V (NatV n) = n
   let intV n = IntV n
+  let int_of_V (IntV n) = n
   let wordV w = WordV w
+  let word_of_V (WordV w) = w
   let floatV f = FloatV f
+  let float_of_V (FloatV f) = f
   let charV c = CharV c
+  let char_of_V (CharV c) = c
   let textV s = TextV s
+  let text_of_V (TextV s) = s
   let tupV vs = TupV vs
   let objV ve = ObjV ve
   let funcV f = FuncV f
@@ -56,6 +62,8 @@ struct
   let notV (BoolV b) = BoolV (not b)
   let async_of_V(AsyncV async) = async
   let bool_of_V (BoolV b) = b
+  let tup_of_V (TupV vs) = vs
+
 end
 
 open Values
@@ -68,6 +76,8 @@ let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_o
 
 
 type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: cont Env.t; continues: cont Env.t ; returns: cont option; awaitable: bool}
+
+let union_values c ve = {c with values = union c.values ve}
 
 let prelude = {values = Env.empty;
                constructors = Env.empty;
@@ -228,7 +238,8 @@ match e.it with
                then inf_exp context e1 k
                else inf_exp context e2 k)
 | SwitchE(e,cs) ->
-  failwith "NYI:SwitchE"
+  inf_exp context e (fun v ->
+    inf_cases context cs v k)
 | WhileE(e0,e1) ->
   let e_while = e in
   inf_exp context e0
@@ -307,26 +318,20 @@ match e.it with
   let _ = check_decs context [d] in
   k unitV
     
-and inf_cases context pt cs t_opt  =
+and inf_cases context cs v k  =
   match cs with
-  | [] -> t_opt
+  | [] -> failwith "match_cases"
   | {it={pat=p;exp=e};at}::cs ->
-    let ve = check_pat context p pt in
-    let t = inf_exp (union_values context ve) e in
-    let t_opt' = match t_opt with
-              | None -> Some t
-              | Some t' ->
-                 if eq_typ context t t'
-                 then Some t'
-                 else typeError at "illegal case of different type from preceeding cases" in
-    inf_cases context pt cs t_opt'
+    match check_pat context p v with
+    | Some ve -> inf_exp (union_values context ve) e k
+    | None -> inf_cases context cs v k
     
 and inf_block context es k =
   match es with
-  | [] -> k(unitT)
+  | [] -> k unitV
   | {it = DecE d;at}::es ->
     check_decs context [d] (fun ve ->
-    (* TBR: we currently evaluation decs sequentially, not recursively *)
+    (* TBR: we currently evaluate decs sequentially, not recursively *)
     inf_block  (union_values context ve) es k) 
   | [e] -> inf_exp context e k
   | e::es ->
@@ -492,32 +497,45 @@ and inf_pat context p =
    | AnnotP(p,t) ->
      let t = check_typ context t in
      check_pat context p t,t
+
+and match_lit p v =
+  match !rl with
+    | NullLit -> true
+    | BoolLit b -> bool_of_V v = b
+    | NatLit n -> nat_of_V v = n 
+    | IntLit i -> int_of_V v = i
+    | WordLit w -> word_of_v = w
+    | FloatLit f -> float_of_V v = f
+    | CharLit c -> char_of_V v = c
+    | TextLit s -> v = text_of_V s
+    | PreLit s -> failwith "match_lit"
      
-and check_pat context p t =
+and check_pat context p v =
    match p.it with
-   | WildP -> Env.empty
-   | VarP v -> Env.singleton v.it (t,ConstMut)
+   | WildP -> Some Env.empty
+   | VarP v -> Some (Env.singleton v.it (v,ConstMut))
    | LitP rl ->
-      check_lit p.at context t rl;
-      Env.empty
+     if match_lit context p lit 
+     then Env.empty
+     else None
    | TupP ps ->
-     (match norm_typ context t with
-      | TupT ts ->
-        check_pats p.at context Env.empty ps ts 
-      | _ -> typeError p.at "expected pattern of non-tuple type, found pattern of tuple type")
-   | AnnotP(p',t') ->
-     let t' = check_typ context t' in
-     if eq_typ context t t'
-     then check_pat context p' t'
-     else typeError p.at "expected pattern of one type, found pattern of unequal type"
+      let vs = tup_of_V v in
+      check_pats p.at context Env.empty ps vs 
+   | AnnotP(p',_) -> 
+     check_pat context p' t'
+
 and check_pats at context ve ps ts =
    match ps,ts with
-   | [],[] -> ve
+   | [],[] -> Some ve
    | p::ps,t::ts ->
-     let ve' = check_pat context p t in
-     check_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') ps ts  (*TBR reject shadowing *)
-   | [],ts -> typeError at "tuple pattern has %i fewer components than expected type" (List.length ts)
-   | ts,[] -> typeError at "tuple pattern has %i more components than expected type" (List.length ts)
+     begin
+       match check_pat context p t with 
+       | None -> None
+       | Some ve' ->
+         check_pats at context (union ve ve') ps ts
+     end  
+   | [],ts -> failwith "Wrong:match_pats"
+   | ts,[] -> failwith "Wrong:match_pats"
          
       
 and check_decs_aux pass context ve ce ke ds  = match ds with
