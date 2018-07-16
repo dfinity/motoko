@@ -23,10 +23,11 @@ struct
       | TupV of value list
       | ObjV of value Env.t
       | ArrV of value array
-      | FuncV of (value -> value)
+      | FuncV of (value -> cont -> value)
       | VarV of value ref
       | RecV of recursive
       | AsyncV of async
+
   and async = {mutable result: value option; mutable waiters : cont list}
   and recursive = {mutable definition: value option}
   and cont = value -> value
@@ -51,6 +52,7 @@ struct
   let unitV = TupV([])
   let asyncV async = AsyncV async
   let recV d = RecV {definition=d}
+  let rec_of_V (RecV r) = r
   
   let projV (TupV vs) n = List.nth vs n
   let dotV (ObjV ve) v = Env.find v ve
@@ -221,7 +223,7 @@ match e.it with
 | CallE(e1,e2) ->
     inf_exp context e1 (fun v1 ->
     inf_exp context e2 (fun v2 ->
-    k (applyV v1 v2)))
+    applyV v1 v2 k))
 | BlockE es ->
     let k_break = k in
     let context' = addBreak context labelOpt k_break in
@@ -321,8 +323,7 @@ match e.it with
 | AnnotE(e,t) ->
   inf_exp context e k
 | DecE d ->
-  let _ = check_decs context [d] in
-  k unitV
+  interpret_decs context [d] (fun ve ->  k unitV)
     
 and inf_cases context cs v k  =
   match cs with
@@ -336,7 +337,7 @@ and inf_block context es k =
   match es with
   | [] -> k unitV
   | {it = DecE d;at}::es ->
-    check_decs context [d] (fun ve ->
+    interpret_decs context [d] (fun ve ->
     (* TBR: we currently evaluate decs sequentially, not recursively *)
     inf_block  (union_values context ve) es k) 
   | [e] -> inf_exp context e k
@@ -344,151 +345,105 @@ and inf_block context es k =
      inf_exp context e (fun v ->
      inf_block context es k)
 
-and check_dec pass context d =
-    let ve,ce,ke = check_dec' pass context d in    
-    (* TBC store ve *)
-    ve,ce,ke
-
-and check_dec' pass context d K =     
+and declare_dec context d =     
     match d.it with
     | LetD (p,e) ->
-      if pass < 1 then
-         K(declare_pat context p)
-      else      
-	 inf_exp context e (fun v ->
-         define_pat context p ve v;
-         K ve)
+       declare_pat context p
     | VarD (v,t,None) ->
-      if pass < 1 then
-        K(Env.singleton v.it (recV None))
-      else
-        (*TBR leave v uninitiatilized (yuck!), blackhole on read *)
-        K
+       Env.singleton v.it (recV None)
     | VarD (v,t,Some e) ->
-      if pass < 1 then
-        K(Env.singleton v.it (recV None))
-      else
-	 inf_exp context e (fun v ->
-         define_pat context p (context.values) v;
-         K ve)
+       Env.singleton v.it (recV None)
     | TypD(v,ts,t) ->
-      let ts,ce_ts,ke_ts = check_typ_binds context ts in
-      let con = if pass = 0
-                then Con.fresh v.it
-                else
-                match lookup context.constructors v.it with
-                | Some con -> con
-                | None -> assert(false);failwith "Impossible"
-      in
-      let kind0 = ParK(ts,VarT(con,[])) (* dummy abstract type *) in 
-      let ce0 = Env.singleton v.it con in
-      let ke0 = ConEnv.singleton con kind0 in
-      if pass = 0 then
-         Env.empty, ce0, ke0
-      else
-      let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
-      let t = check_typ context_ts t in
-      let kind1 = DefK(ts,t) (* dummy type *) in 
-      let ce1 = Env.singleton v.it con in
-      let ke1 = ConEnv.singleton con kind1 in
-         Env.empty, ce1, ke1
+       Env.empty
     | FuncD(v,ts,p,t,e) ->
-      if pass < 3 then
-         Env.empty, Env.empty, ConEnv.empty
-      else
-      let ts,ce,ke = check_typ_binds context ts in
-      let context_ce = union_kinds (union_constructors context ce) ke in
-      let ve,dom = inf_pat context_ce p in
-      let rng = check_typ context_ce t in
-      let funcT= FuncT(ts,dom,rng) (* TBR: we allow polymorphic recursion *) in
-      let context_ce_ve_v = 
-           let {values;constructors;kinds} = add_value (union_values context_ce ve) v.it (funcT,ConstMut) in
-            {values;
-             constructors;
-             kinds;
-             label = None;
-             breaks = Env.empty;
-             continues = Env.empty;
-             returns = Some rng;
-             awaitable = false}
-      in
-      check_exp context_ce_ve_v rng e;
-      Env.singleton v.it (funcT,ConstMut), Env.empty, ConEnv.empty
+       Env.singleton v.it (recV None)
     | ClassD(a,v,ts,p,efs) ->
-      let ts,ce_ts,ke_ts = check_typ_binds context ts in
-      let con = if pass = 0
-                then Con.fresh v.it
-                else
-                match lookup context.constructors v.it with
-                | Some con -> con
-                | None -> assert(false);failwith "Impossible"
-      in
-      let kind0 = ObjK(ts,a.it,[]) in
-      let ce0 = Env.singleton v.it con in
-      let ke0 = ConEnv.singleton con kind0 in
-      if pass = 0 then
-         Env.empty, ce0, ke0
-      else
-      let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
-      let context_ts_v = add_constructor context_ts v.it con kind0 in
-      let ve,dom = inf_pat context_ts_v p in
-      let classT = VarT(con,List.map (fun t -> VarT(t.var,[])) ts) in
-      let consT = FuncT(ts,dom,classT) (* TBR: we allow polymorphic recursion *) in
-      let ve1ce1ke1 = Env.singleton v.it (consT,ConstMut),ce0,ke0 in
-      if pass = 1 then
-          ve1ce1ke1
-      else        
-      let context_ts_v_dom =
-          {context_ts_v with values = union context_ts_v.values ve} in
-      let rec pre_members context field_env efs =
-          match efs with
-          | [] -> field_env
-          | {it={var;mut;priv;exp={it=AnnotE(e,t);at}}}::efs ->
-            let t = check_typ context t in
-            let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t)  in
-            pre_members context field_env efs
-          | {it={var;mut;priv;exp={it=DecE({it=FuncD(v,us,p,t,e);at=_});at=_}}}::efs ->
-            let us,ce_us,ke_us = check_typ_binds context us in
-            let context_us = union_kinds (union_constructors context ce_us) ke_us in
-            let _,dom = inf_pat context_us p in
-            let rng = check_typ context_us t in
-            let funcT = FuncT(us,dom,rng) in
-            let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,funcT) in
-            pre_members context field_env efs
-          | {it={var;mut;priv;exp=e}}::efs ->
-            let t = inf_exp context e in (* TBR: this feels wrong as we don't know all field types yet, just the ones to the left *)
-            let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t) in
-            pre_members context field_env efs
-      in
-      let pre_members = pre_members context_ts_v_dom Env.empty efs in
-      let private_context = Env.map (fun (m,p,t) -> (t,m)) pre_members in
-      let bindings = Env.bindings pre_members in
-      let public_fields =
-          let public_bindings = List.filter (fun (v,(m,p,t)) -> p = Public) bindings  in
-          List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public_bindings
-      in
-      let kind2 = ObjK(ts,a.it,public_fields) in
-      let ve2,ce2,ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, ConEnv.singleton con kind2 in
-      if pass = 2 then
-          ve2,ce2,ke2
-      else (* pass = 3 *)
-          let _ = assert(pass = 3) in
-          let all_fields = List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) bindings in
-          let kind3 = ObjK(ts,a.it,all_fields) in
-          let field_context = add_constructor (add_value (union_values context_ts_v_dom private_context) v.it (consT,ConstMut))
-                                                         v.it con kind3
-          in
-          (* infer the fields *)
-          let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
-          ve2,ce2,ke2
+       Env.singleton v.it (recV None)
+
+and declare_decs context ve d =
+    match d with
+    | [] -> ve
+    | d::ds -> declare_decs context (union ve (declare_dec context d)) ds
+
+and interpret_decs context ds k =
+    let ve = declare_decs context Env.empty ds in
+    define_decs (union_values context ve) ds
+    (fun () -> k ve)
+
+and define_decs context decs k =
+    match decs with
+    | [] -> k()
+    | dec::decs ->
+     define_dec context dec (fun () ->
+     define_decs context decs k)
+
+and define_var context var v =
+    match rec_of_V (Env.find var.it context.values) with
+    | {definition=Some _} -> failwith "duplicated definition"
+    | recursive -> recursive.definition <- Some v
+    
+and define_dec context d k =     
+    match d.it with
+    | LetD (p,e) ->
+      inf_exp context e (fun v ->
+      define_pat context p v;
+      k())
+    | VarD (v,t,None) ->
+      (*TBR leave v uninitialized (yuck!), blackhole on read *)
+      k()
+    | VarD (var,t,Some e) ->
+      inf_exp context e (fun v ->
+      define_var context var (VarV (ref v));
+      k())
+    | TypD(v,ts,t) ->
+      k()
+    | FuncD(var,ts,p,t,e) ->
+      (define_var context var 
+         (funcV(fun v k ->
+              match check_pat context p v with
+              | Some ve -> inf_exp (union_values context ve) e k 
+              | None -> failwith "unexpected refuted pattern")));
+      k()
+    | ClassD(a,c,ts,p,efs) ->
+      (define_var context c
+         (funcV(fun v k ->
+              match check_pat context p v with
+              | None -> failwith "unexpected refuted pattern";
+              | Some ve -> let context = union_values context ve in
+                           let rec declare_members private_ve public_ve efs =
+                                     match efs with
+                                     | [] -> (private_ve,public_ve)
+                                     | {it={var;mut;priv;exp=_}}::efs ->
+                                        let recV = recV None in
+                                        declare_members (Env.add var.it recV private_ve)
+                                                        (Env.add var.it recV public_ve) efs
+                            in
+                            let (private_ve,public_ve) = declare_members Env.empty Env.empty efs
+                            in
+                            let rec define_members efs =
+                                     match efs with
+                                     | {it={var;mut;priv;exp;}}::efs ->
+				        let private_context = union_values context private_ve in
+                                        inf_exp private_context exp (fun v ->
+                                        let defn = match mut.it with
+                                                   | ConstMut -> v
+                                                   | VarMut -> VarV (ref v)
+                                        in
+                                          define_var private_context var defn;
+                                          define_members efs)
+				     | [] -> k (objV public_ve)
+
+                            in 
+                                 define_members efs)));
+       k() 
 
 
 and declare_pats context ve ps =
    match ps with
    | [] -> ve
    | p::ps ->
-     let ve' = declare__pat context p in
-     declare_pats context (union ve ve') (t::ts) ps
+     let ve' = declare_pat context p in
+     declare_pats context (union ve ve') ps
 
 and declare_pat context p =
    match p.it with
@@ -497,91 +452,72 @@ and declare_pat context p =
    | LitP l -> Env.empty
    | TupP ps -> declare_pats context Env.empty ps
    | AnnotP(p,t) ->
-     declare_pat context p t
+     declare_pat context p 
 
-and define_pat context p ve v =
+and define_pat context p v =
    match p.it with
    | WildP -> ()
-   | VarP v -> (find v.it ve).definition = Some v
+   | VarP var -> define_var context var v
    | LitP rl -> ()
    | TupP ps ->
      let vs = tup_of_V v in
-     define_pats context ps ve vs
+     define_pats context ps vs
    | AnnotP(p',_) -> 
-     define_pat context p' ve v
+     define_pat context p' v
 
-and define_pats context ps ve vs =
+and define_pats context ps vs =
    match ps,vs with
-   | [] -> ()
+   | [],[] -> ()
    | p::ps,v::vs ->
      begin
-       define_pat context p ve v;
-       define_pats context ve ps vs
+       define_pat context p v;
+       define_pats context ps vs
      end  
    | [],ts -> failwith "Wrong:define_pats"
    | ts,[] -> failwith "Wrong:define_pats"
 
-and match_lit p v =
+and match_lit p v rl =
   match !rl with
     | NullLit -> true
     | BoolLit b -> bool_of_V v = b
     | NatLit n -> nat_of_V v = n 
     | IntLit i -> int_of_V v = i
-    | WordLit w -> word_of_v = w
+    | WordLit w -> word_of_V v = w
     | FloatLit f -> float_of_V v = f
     | CharLit c -> char_of_V v = c
-    | TextLit s -> v = text_of_V s
+    | TextLit s -> text_of_V v = s
     | PreLit s -> failwith "match_lit"
      
 and check_pat context p v =
    match p.it with
    | WildP -> Some Env.empty
-   | VarP v -> Some (Env.singleton v.it v)
+   | VarP var -> Some (Env.singleton var.it v)
    | LitP rl ->
-     if match_lit context p lit 
-     then Env.empty
+     if match_lit p v rl 
+     then Some Env.empty
      else None
    | TupP ps ->
       let vs = tup_of_V v in
-      check_pats p.at context Env.empty ps vs 
+      check_pats context Env.empty ps vs 
    | AnnotP(p',_) -> 
-     check_pat context p' t'
+     check_pat context p' v
 
-and check_pats at context ve ps ts =
-   match ps,ts with
+and check_pats context ve ps vs =
+   match ps,vs with
    | [],[] -> Some ve
-   | p::ps,t::ts ->
+   | p::ps,v::vs ->
      begin
-       match check_pat context p t with 
+       match check_pat context p v with 
        | None -> None
        | Some ve' ->
-         check_pats at context (union ve ve') ps ts
+         check_pats context (union ve ve') ps vs
      end  
-   | [],ts -> failwith "Wrong:match_pats"
-   | ts,[] -> failwith "Wrong:match_pats"
-
-
-and check_decs_aux pass context ve ce ke ds  = match ds with
-   |  [] ->  ve,ce,ke
-   |  d::ds ->
-      let ve1,ce1,ke1 = check_dec pass context d in
-      check_decs_aux pass (union_kinds (union_constructors (union_values context ve1) ce1) ke1) (union ve ve1) (union ce ce1) (union_conenv ke ke1) ds
-      
-
-and check_decs context ds =
-      (* declare type constructors *)
-      let ve0,ce0,ke0 = check_decs_aux 0 context Env.empty Env.empty ConEnv.empty ds in
-      (* declare instance constructors, given type constructors *)
-      let ve1,ce1,ke1 = check_decs_aux 1 (union_kinds (union_constructors (union_values context ve0) ce0) ke0) Env.empty Env.empty ConEnv.empty ds in
-      (* define type constructors (declare public member types) *)
-      let ve2,ce2,ke2 = check_decs_aux 2 (union_kinds (union_constructors (union_values context ve1) ce1) ke1) Env.empty Env.empty ConEnv.empty ds in
-      (* check classes definitions (check public and private member expressions *)
-      let ve3,ce3,ke3 = check_decs_aux 3 (union_kinds (union_constructors (union_values context ve2) ce2) ke2) Env.empty Env.empty ConEnv.empty ds in
-      ve3,ce3,ke3
+   | [],vs -> failwith "Wrong:match_pats"
+   | vs,[] -> failwith "Wrong:match_pats"
 
 
 let check_prog p =
-    check_decs prelude p.it
+    interpret_decs prelude p.it
      
 
     
