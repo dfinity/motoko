@@ -715,9 +715,9 @@ and inf_uop context at uop e =
     match uop with
     | PosOp 
     | NegOp ->
-      if numeric_typ context t 
+      if numeric_typ context t (* TBR: rule out Naturals *)
       then t
-      else typeError at "argument to negation operator must have numeric type"
+      else typeError at "argument to operator must have numeric type"
     | NotOp ->
       if logical_typ context t 
       then t

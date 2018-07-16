@@ -25,8 +25,10 @@ struct
       | ArrV of value array
       | FuncV of (value -> value)
       | VarV of value ref
+      | RecV of recursive
       | AsyncV of async
   and async = {mutable result: value option; mutable waiters : cont list}
+  and recursive = {mutable definition: value option}
   and cont = value -> value
 
   let nullV = NullV
@@ -48,6 +50,7 @@ struct
   let funcV f = FuncV f
   let unitV = TupV([])
   let asyncV async = AsyncV async
+  let recV d = RecV {definition=d}
   
   let projV (TupV vs) n = List.nth vs n
   let dotV (ObjV ve) v = Env.find v ve
@@ -55,10 +58,15 @@ struct
   let updateV (ArrV a) (IntV i) v  = a.(i) <- v;unitV
   let indexV (ArrV a) (IntV i) = a.(i)
   let applyV (FuncV f) v = f v
-  let derefV v =
+  let rec derefV v =
       match v with
       | VarV r -> !r
+      | RecV r ->
+        (match r.definition with
+         | Some v -> derefV v
+         | None -> failwith "BlackHole" (*TBR*))
       | v -> v
+
   let notV (BoolV b) = BoolV (not b)
   let async_of_V(AsyncV async) = async
   let bool_of_V (BoolV b) = b
@@ -72,7 +80,6 @@ exception Trap of Source.region * string
 
 
 let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
-
 
 
 type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: cont Env.t; continues: cont Env.t ; returns: cont option; awaitable: bool}
@@ -155,7 +162,7 @@ and inf_uop context uop e = unitV
     | NegOp ->
       if numeric_typ context t 
       then t
-      else typeError at "argument to negation operator must have numeric type"
+      else typeError at "argument to operator must have numeric type"
     | NotOp ->
       if logical_typ context t 
       then t
@@ -190,7 +197,6 @@ match e.it with
 | AssignE(e1,e2) ->
     begin
     match e1.it with
-    (*TBC: array and object update *)
     | VarE v ->
       let v1 = Env.find v.it context.values in
       inf_exp context e2 (fun v2 ->
@@ -337,36 +343,34 @@ and inf_block context es k =
   | e::es ->
      inf_exp context e (fun v ->
      inf_block context es k)
-     
+
 and check_dec pass context d =
     let ve,ce,ke = check_dec' pass context d in    
     (* TBC store ve *)
     ve,ce,ke
 
-and check_dec' pass context d =     
+and check_dec' pass context d K =     
     match d.it with
     | LetD (p,e) ->
-      if pass < 3 then
-         Env.empty, Env.empty, ConEnv.empty
+      if pass < 1 then
+         K(declare_pat context p)
       else      
-         let t = inf_exp context e in
-         let ve = check_pat context p t in 
-         ve, Env.empty, ConEnv.empty
+	 inf_exp context e (fun v ->
+         define_pat context p ve v;
+         K ve)
     | VarD (v,t,None) ->
-      if pass < 3 then
-         Env.empty, Env.empty, ConEnv.empty
+      if pass < 1 then
+        K(Env.singleton v.it (recV None))
       else
-      let t = check_typ context t in
-      Env.singleton v.it (t,VarMut), Env.empty, ConEnv.empty
+        (*TBR leave v uninitiatilized (yuck!), blackhole on read *)
+        K
     | VarD (v,t,Some e) ->
-      if pass < 3 then
-         Env.empty, Env.empty, ConEnv.empty
+      if pass < 1 then
+        K(Env.singleton v.it (recV None))
       else
-        let t = check_typ context t in
-        check_exp context t e;
-        Env.singleton v.it (t,VarMut),
-        Env.empty,
-        ConEnv.empty
+	 inf_exp context e (fun v ->
+         define_pat context p (context.values) v;
+         K ve)
     | TypD(v,ts,t) ->
       let ts,ce_ts,ke_ts = check_typ_binds context ts in
       let con = if pass = 0
@@ -479,24 +483,43 @@ and check_dec' pass context d =
           ve2,ce2,ke2
 
 
-and inf_pats at context ve ts ps =
+and declare_pats context ve ps =
    match ps with
-   | [] -> ve, TupT(List.rev ts)
+   | [] -> ve
    | p::ps ->
-     let ve',t = inf_pat context p in
-     inf_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') (t::ts) ps
+     let ve' = declare__pat context p in
+     declare_pats context (union ve ve') (t::ts) ps
 
-and inf_pat context p =
+and declare_pat context p =
    match p.it with
-   | WildP ->  typeError p.at "can't infer type of pattern"
-   | VarP v -> typeError p.at "can't infer type of pattern"
-   | LitP l ->
-     Env.empty,inf_lit context l
-   | TupP ps ->
-     inf_pats p.at context Env.empty [] ps
+   | WildP ->  Env.empty
+   | VarP v -> Env.singleton v.it (recV None)
+   | LitP l -> Env.empty
+   | TupP ps -> declare_pats context Env.empty ps
    | AnnotP(p,t) ->
-     let t = check_typ context t in
-     check_pat context p t,t
+     declare_pat context p t
+
+and define_pat context p ve v =
+   match p.it with
+   | WildP -> ()
+   | VarP v -> (find v.it ve).definition = Some v
+   | LitP rl -> ()
+   | TupP ps ->
+     let vs = tup_of_V v in
+     define_pats context ps ve vs
+   | AnnotP(p',_) -> 
+     define_pat context p' ve v
+
+and define_pats context ps ve vs =
+   match ps,vs with
+   | [] -> ()
+   | p::ps,v::vs ->
+     begin
+       define_pat context p ve v;
+       define_pats context ve ps vs
+     end  
+   | [],ts -> failwith "Wrong:define_pats"
+   | ts,[] -> failwith "Wrong:define_pats"
 
 and match_lit p v =
   match !rl with
@@ -513,7 +536,7 @@ and match_lit p v =
 and check_pat context p v =
    match p.it with
    | WildP -> Some Env.empty
-   | VarP v -> Some (Env.singleton v.it (v,ConstMut))
+   | VarP v -> Some (Env.singleton v.it v)
    | LitP rl ->
      if match_lit context p lit 
      then Env.empty
@@ -536,8 +559,8 @@ and check_pats at context ve ps ts =
      end  
    | [],ts -> failwith "Wrong:match_pats"
    | ts,[] -> failwith "Wrong:match_pats"
-         
-      
+
+
 and check_decs_aux pass context ve ce ke ds  = match ds with
    |  [] ->  ve,ce,ke
    |  d::ds ->
