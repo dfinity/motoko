@@ -26,9 +26,11 @@ let main () =
        ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke;
        let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.prelude  ve) ce) ke in
        let _ = Interpret.interpret_prog prog (fun dyn_ve ->
-					  Env.iter (fun v (t,mut) -> Printf.printf "\n %s -> %s" v (Interpret.Values.val_to_string context t (Env.find v dyn_ve))) ve;
+					  Env.iter (fun v (t,mut) -> Printf.printf "\n %s -> %s" v (
+						        Interpret.Values.val_to_string context t (Interpret.Values.derefV (Env.find v dyn_ve)))) ve;
 					  Interpret.Values.unitV)
-       in
+
+	 in
        ()
     with 
     | Lexer.Syntax (r,m) ->

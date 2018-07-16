@@ -138,7 +138,7 @@ and val_to_string context t v =
       sprintf "like %s" (atomic_typ_to_string t)
     | ObjT(Actor,fs) ->
       sprintf "actor%s" (atomic_typ_to_string (ObjT(Object,fs)))
-    | _ -> atomic_typ_to_string t
+    | _ -> atomic_val_to_string context t v
 
 end
 
@@ -148,7 +148,6 @@ exception Trap of Source.region * string
 
 
 let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
-
 
 type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: cont Env.t; continues: cont Env.t ; returns: cont option; awaitable: bool}
 
@@ -257,7 +256,7 @@ match e.it with
 | RelE (e1,rop,e2) ->
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_relop context v1 rop v2 )))
 | TupE es ->
-    interpret_exps context [] es (fun vs -> k (tupV (List.rev vs)))
+    interpret_exps context [] es (fun vs -> k (tupV vs))
 | ProjE(e1,n) ->
     interpret_exp context e1 (fun v1 -> k (projV v1 n))
 | DotE(e1,v) ->
@@ -281,7 +280,7 @@ match e.it with
     end
 | ArrayE es ->
     interpret_exps context [] es (fun vs ->
-    k (arrV (Array.of_list (List.rev vs))))
+    k (arrV (Array.of_list vs)))
 | IdxE(e1,e2) ->
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
