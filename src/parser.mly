@@ -343,7 +343,7 @@ expr_field :
   | priv=private_opt fd=func_def
     { let (x, tps, p, t, e) = fd.it in
       let d = FuncD(x, tps, p, t, e) @@ fd.at in
-      let e' = DecE(d) @@ fd.at in
+      let e' = BlockE([DecE(d)@@fd.at;VarE x @@ fd.at]) @@ fd.at in
       {var = x; mut = ConstMut @@ no_region; priv; exp = e'}
       @@ at($symbolstartpos,$endpos) }
 
