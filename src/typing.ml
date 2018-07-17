@@ -581,7 +581,7 @@ and check_uop context at t uop e =
 
 and inf_exp context e =
     let t = inf_exp' context e in
-    (*TODO: record t in e *)
+    e.note <- norm_typ context t;
     t
 and inf_exp' context e =
 let labelOpt = context.label in
@@ -806,6 +806,7 @@ and inf_cases context pt cs t_opt  =
 and check_exp context t e =
   let labelOpt = context.label in
   let context = {context with label = None} in
+  begin 
   match e.it with
   | LitE rl -> check_lit e.at context t rl
   | UnE (uop,e1) ->
@@ -856,7 +857,8 @@ and check_exp context t e =
     if (eq_typ context t t')
     then ()
     else typeError e.at "expecting expression of type %s found expression of type %s" (typ_to_string t) (typ_to_string t')
-    
+  end;
+  e.note <- norm_typ context t    
     
 and inf_block context es =
   match es with

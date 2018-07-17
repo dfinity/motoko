@@ -57,8 +57,7 @@ and pat_field' = {var : var; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-
-type exp = exp' Source.phrase
+type exp = (exp',Types.typ) Source.annotated_phrase
 and exp' =
   | VarE of var                                (* variable *)
   | LitE of  Types.lit ref                     (* literal *)
