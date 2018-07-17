@@ -5,11 +5,9 @@ type var = string Source.phrase
 
 (* Types *)
 
-type mut = mut' Source.phrase
-and mut' = ConstMut | VarMut
+type mut = Types.mut Source.phrase
 
-type actor = actor' Source.phrase
-and actor' = Object | Actor
+type actor = Types.actor Source.phrase
 
 type typ = typ' Source.phrase
 and typ' =

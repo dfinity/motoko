@@ -37,6 +37,7 @@ let string_of_token = function
   | NAT n ->  Printf.sprintf "NAT(%i)" n
   | MULOP -> "MULOP"
   | MODOP -> "MODOP"
+  | QUEST -> "?"
   | LT -> "LT"
   | LTOP -> "LTOP"
   | LEOP -> "LT"

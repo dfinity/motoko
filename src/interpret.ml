@@ -2,6 +2,8 @@ open Syntax
 open Source
 open Types
 open Typing
+open Printf
+
 
 module I32 = Wasm.I32
 module I64 = Wasm.I64

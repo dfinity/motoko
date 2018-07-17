@@ -1,6 +1,7 @@
 open Syntax
 open Source
 open Types
+open Con
 
 module I32 = Wasm.I32
 module I64 = Wasm.I64
@@ -20,58 +21,13 @@ let typeError region fmt =
 let nat_width = 31
 let int_width = 31
 
-(* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
-(* todo: type ObjE expressions (anonymous objects)*)
-
-(* unique constructors, stamped *)
-
-module Con =
-struct
-    type con = {name:string;stamp:int}
-    type t = con
-    let compare (c1:con) (c2:con) = compare c1.stamp c2.stamp
-    let stamp = ref 0
-    let fresh var =
-      stamp := (!stamp) + 1;
-      {name = var; stamp = !stamp}
-    let to_string con = Printf.sprintf "%s/%i" con.name con.stamp
-end
-
-
-type con = Con.t
-
-type typ =
-  | VarT of con * typ list                     (* constructor *)
-  | PrimT of Types.prim                        (* primitive *)
-  | ObjT of actor' * typ_field list             (* object *)
-  | ArrayT of mut' * typ                        (* array *)
-  | OptT of typ                                (* option *)
-  | TupT of typ list                           (* tuple *)
-  | FuncT of typ_bind list * typ * typ         (* function *)
-  | AsyncT of typ                              (* future *)
-  | LikeT of typ                               (* expansion *)
-  | AnyT                                       (* top *)
-(*
-  | UnionT of type * typ                       (* union *)
-  | AtomT of string                            (* atom *)
-*)
-and typ_bind = {var:con; bound: typ }
-and typ_field = {var:string; typ: typ; mut: mut'}
-and kind =
-     | DefK of typ_bind list * typ
-     | ObjK of typ_bind list * actor' * typ_field list
-     | ParK of typ_bind list * typ
-
-
 module Env = Map.Make(String)
 
 let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
-module ConEnv = Map.Make(Con)
 
-let lookup_con map k = try Some (ConEnv.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
-type context = {values: (typ*mut') Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
+type context = {values: (typ*mut) Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: typ Env.t; continues: unit Env.t ; returns: typ option; awaitable: bool}
 
 let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
 let union_conenv env1 env2 = ConEnv.union (fun k v1 v2 -> Some v2) env1 env2
@@ -103,6 +59,9 @@ let prelude = {values = Env.empty;
 	       returns = None;
 	       awaitable = false}
 
+
+
+
 let addBreak context labelOpt t =
     match labelOpt with
     | None -> context
@@ -112,211 +71,6 @@ let addBreakAndContinue context labelOpt t =
     match labelOpt with
     | None -> context
     | Some label -> {{ context with breaks = Env.add label t context.breaks } with continues = Env.add label () context.continues }
-
-let sprintf = Printf.sprintf
-
-let check_bounds region tys bounds = 
-     if List.length bounds = List.length tys
-     then ()
-     else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
-
-
-
-
-(* Poor man's pretty printing - replace with Format client *)
-let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
-
-let rec atomic_typ_to_string t =
-    match t with
-    | AnyT -> "Any"
-    | PrimT p ->
-      (match p with
-      | NullT -> "Null"
-      | IntT -> "Int"
-      | BoolT -> "Bool"
-      | FloatT -> "Float"
-      | NatT -> "Nat"
-      | CharT -> "Char"
-      | WordT w ->
-        (match w with
-        | Width8 -> "Word8"
-        | Width16 -> "Word16"
-        | Width32 -> "Word32"
-        | Width64 -> "Word64")
-      | TextT -> "Text")
-    | VarT (c,[]) ->
-       Con.to_string c
-    | VarT (c,ts) ->
-       sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map typ_to_string ts))
-    | TupT ts ->
-      sprintf "(%s)"  (String.concat "," (List.map typ_to_string ts))
-    | ObjT(Object,fs) ->
-      sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
-                        sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
-                        fs))
-    | _ ->
-      sprintf "(%s)" (typ_to_string t)
-
-and typ_to_string t =
-    match t with
-    | ArrayT (m,t) ->
-      sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (atomic_typ_to_string t)  
-    | FuncT([],dom,rng) ->
-      sprintf "%s->%s" (atomic_typ_to_string dom) (typ_to_string rng)
-    | FuncT(ts,dom,rng) ->
-      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (atomic_typ_to_string dom) (typ_to_string rng)
-    | OptT t ->
-      sprintf "%s?"  (atomic_typ_to_string t)
-    | AsyncT t -> 
-      sprintf "async %s" (atomic_typ_to_string t)
-    | LikeT t -> 
-      sprintf "like %s" (atomic_typ_to_string t)
-    | ObjT(Actor,fs) ->
-      sprintf "actor%s" (atomic_typ_to_string (ObjT(Object,fs)))
-    | _ -> atomic_typ_to_string t
-
-let kind_to_string k =
-    match k with
-    | DefK(ts,t) ->
-      sprintf "= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t)
-    | ObjK(ts,actor,ftys) -> 
-      sprintf ":= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts))
-       (typ_to_string (ObjT(actor,ftys)))
-    | ParK(ts,t) -> 
-      sprintf ":: <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t) 
-    
-
-let unitT = TupT[]
-let boolT = PrimT(BoolT)
-let intT = PrimT(IntT)
-
-(* checking literal values are in bounds *)
-let check_I32_u p bits =
-    let module I = I32 in
-    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
-    fun at s ->
-    try  let i = I.of_string s in
-    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
-	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
-
-let check_I64_u p bits =
-    let module I = I64 in
-    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
-    fun at s ->
-    try  let i = I.of_string s in
-    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
-	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
-
-let check_nat    = check_I32_u NatT nat_width
-let check_word8  = check_I32_u (WordT Width8) 8
-let check_word16 = check_I32_u (WordT Width16) 16
-let check_word32 = check_I32_u (WordT Width32) 32
-let check_word64 = check_I64_u (WordT Width64) 64
-
-let check_I32_s p bits =
-    let module I = I32 in
-    let max = I.sub (I.shl (I.of_int_u 1) (I.of_int_u (bits-1)))
-                    (I.of_int_s 1) in
-    let min = I.sub (I.sub I.zero max) (I.of_int_s 1) in
-    fun at s ->
-    try  let i = I.of_string s in
-    	 if not (I.le_s min i && I.le_s i max)
-	 then typeError at "literal under/overflow for type %s" (typ_to_string (PrimT p))
-	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
-
-let check_int = check_I32_s IntT int_width
-
-(* begin sanity test *)
-
-let pow2 n = 1 lsl n
-
-(* text check_nat *)
-
-let true = (check_nat no_region (string_of_int ((pow2 31) - 1))) = I32.of_int_u ((pow2 31) - 1)
-let true = (check_nat no_region (string_of_int 0) = I32.of_int_u 0)
-let true = try check_nat no_region (string_of_int (pow2 31));
-    	       false
-           with _ -> true
-let true = try check_nat no_region (string_of_int ((pow2 31)+1));
-    	       false
-           with _ -> true	   
-
-(* test check_word16 *)
-let true = (check_word16 no_region (string_of_int ((pow2 16) - 1))) = I32.of_int_u ((pow2 16) - 1)
-let true = (check_word16 no_region (string_of_int 0) = I32.of_int_u 0)
-let true = try check_word16 no_region (string_of_int (pow2 16));
-    	       false
-           with _ -> true
-let true = try check_word16 no_region (string_of_int ((pow2 16)+1));
-    	       false
-           with _ -> true	   
-	   
-(* test check_int *)
-let true = (check_int no_region (string_of_int (pow2 (int_width-1) - 1))) = I32.of_int_s (pow2 (int_width-1) - 1)
-let true = (check_int no_region (string_of_int (-(pow2 (int_width-1))))) = I32.of_int_s (-(pow2 (int_width-1)))
-let true = try check_int no_region (string_of_int (pow2 (int_width-1) - 1 + 1));
-    	       false
-           with _ -> true
-let true = try check_int no_region (string_of_int (-(pow2 (int_width-1)) - 1));
-	       false
-	   with _ -> true
-
-(* end sanity test *)
-
-(* first-order substitutions *)
-type subst = typ ConEnv.t
-
-let rec rename_binds sigma (binds:typ_bind list) =
-    match binds with
-    | [] -> sigma,[]
-    | {var=con;bound=typ}::binds ->
-      let con' = Con.fresh con.name in
-      let sigma' = ConEnv.add con (VarT(con',[])) sigma in
-      let (rho,binds') = rename_binds sigma' binds in
-      rho,{var=con';bound=subst rho typ}::binds'
-and subst sigma t =
-    match t with
-    | PrimT p -> t
-    | VarT (c,ts) ->
-      begin
-       match lookup_con sigma c with
-       | Some t -> assert (List.length ts = 0);
-                   t
-       | None -> VarT(c,List.map (subst sigma) ts)
-      end
-    | ArrayT (m,t) ->
-      ArrayT (m, subst sigma t)
-    | TupT ts ->
-      TupT (List.map (subst sigma) ts)
-    | FuncT(ts,dom,rng) ->
-      let (rho,ts') = rename_binds sigma ts in
-      FuncT(ts',subst rho dom, subst rho rng)
-    | OptT t ->
-      OptT (subst sigma t)
-    | AsyncT t -> 
-      AsyncT (subst sigma t)
-    | LikeT t -> 
-      LikeT (subst sigma t)
-    | ObjT(a,fs) ->
-      ObjT(a,subst_fields sigma fs)
-and subst_fields sigma fs = 
-    List.map (fun {var;mut;typ} -> {var;mut;typ = subst sigma typ}) fs
-
-let substitute =
-    let rec substitute_aux sigma us ts =
-      match us,ts with
-      | [],[] -> sigma
-      | u::us, {bound;var}::ts ->
-        substitute_aux (ConEnv.add var u sigma) us ts
-      | _ -> raise (Invalid_argument "substitute")
-    in
-    substitute_aux ConEnv.empty
-
 
 let rec eq context eqs t1 t2 =
     match t1,t2 with
@@ -497,6 +251,96 @@ let comparable_typ context t =
        | _ -> false)
     | _ -> false
 
+(* let sprintf = Printf.sprintf *)
+
+let check_bounds region tys bounds = 
+     if List.length bounds = List.length tys
+     then ()
+     else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
+
+(* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+(* todo: type ObjE expressions (anonymous objects)*)
+
+
+(* checking literal values are in bounds *)
+let check_I32_u p bits =
+    let module I = I32 in
+    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
+	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_I64_u p bits =
+    let module I = I64 in
+    let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
+	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_nat    = check_I32_u NatT nat_width
+let check_word8  = check_I32_u (WordT Width8) 8
+let check_word16 = check_I32_u (WordT Width16) 16
+let check_word32 = check_I32_u (WordT Width32) 32
+let check_word64 = check_I64_u (WordT Width64) 64
+
+let check_I32_s p bits =
+    let module I = I32 in
+    let max = I.sub (I.shl (I.of_int_u 1) (I.of_int_u (bits-1)))
+                    (I.of_int_s 1) in
+    let min = I.sub (I.sub I.zero max) (I.of_int_s 1) in
+    fun at s ->
+    try  let i = I.of_string s in
+    	 if not (I.le_s min i && I.le_s i max)
+	 then typeError at "literal under/overflow for type %s" (typ_to_string (PrimT p))
+	 else I.to_bits i
+    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+
+let check_int = check_I32_s IntT int_width
+
+(* begin sanity test *)
+
+let pow2 n = 1 lsl n
+
+(* text check_nat *)
+
+let true = (check_nat no_region (string_of_int ((pow2 31) - 1))) = I32.of_int_u ((pow2 31) - 1)
+let true = (check_nat no_region (string_of_int 0) = I32.of_int_u 0)
+let true = try check_nat no_region (string_of_int (pow2 31));
+    	       false
+           with _ -> true
+let true = try check_nat no_region (string_of_int ((pow2 31)+1));
+    	       false
+           with _ -> true	   
+
+(* test check_word16 *)
+let true = (check_word16 no_region (string_of_int ((pow2 16) - 1))) = I32.of_int_u ((pow2 16) - 1)
+let true = (check_word16 no_region (string_of_int 0) = I32.of_int_u 0)
+let true = try check_word16 no_region (string_of_int (pow2 16));
+    	       false
+           with _ -> true
+let true = try check_word16 no_region (string_of_int ((pow2 16)+1));
+    	       false
+           with _ -> true	   
+	   
+(* test check_int *)
+let true = (check_int no_region (string_of_int (pow2 (int_width-1) - 1))) = I32.of_int_s (pow2 (int_width-1) - 1)
+let true = (check_int no_region (string_of_int (-(pow2 (int_width-1))))) = I32.of_int_s (-(pow2 (int_width-1)))
+let true = try check_int no_region (string_of_int (pow2 (int_width-1) - 1 + 1));
+    	       false
+           with _ -> true
+let true = try check_int no_region (string_of_int (-(pow2 (int_width-1)) - 1));
+	       false
+	   with _ -> true
+
+(* end sanity test *)
+
+
 
 
 let rec check_typ_binds context ts =
@@ -504,12 +348,12 @@ let rec check_typ_binds context ts =
     let ts = List.map (fun (bind:Syntax.typ_bind) ->
     	               let v = bind.it.Syntax.var.it in
     	               let con = Con.fresh v in
-                       {var=con;bound=check_typ bind_context bind.it.Syntax.bound}
+                       {Types.var=con;bound=check_typ bind_context bind.it.Syntax.bound}
                       ) ts in
     let ce  =
-          List.fold_left (fun c bind -> Env.add bind.var.name bind.var c) context.constructors ts in
+          List.fold_left (fun c (bind:Types.typ_bind) -> Env.add bind.var.name bind.var c) context.constructors ts in
     let ke  =
-          List.fold_left (fun c bind -> ConEnv.add bind.var (ParK([],bind.bound)) c) context.kinds ts in
+          List.fold_left (fun c (bind:Types.typ_bind) -> ConEnv.add bind.var (ParK([],bind.bound)) c) context.kinds ts in
     ts,ce,ke
 
 (*TBD do we want F-bounded checking with mutually recursive bounds? *)
@@ -1129,7 +973,7 @@ and check_dec' pass context d =
       let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
       let context_ts_v = add_constructor context_ts v.it con kind0 in
       let ve,dom = inf_pat context_ts_v p in
-      let classT = VarT(con,List.map (fun t -> VarT(t.var,[])) ts) in
+      let classT = VarT(con,List.map (fun (t:Types.typ_bind) -> VarT(t.var,[])) ts) in
       let consT = FuncT(ts,dom,classT) (* TBR: we allow polymorphic recursion *) in
       let ve1ce1ke1 = Env.singleton v.it (consT,ConstMut),ce0,ke0 in
       if pass = 1 then
