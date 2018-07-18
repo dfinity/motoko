@@ -10,6 +10,10 @@ typechecked bank.as
  Bank/1 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
  Issuer/2 := <>actor{hasIssued: (like Account/3)->async Bool}
  Account/3 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
+ Account = <func>
+ Bank = <func>
+ Issuer = <func>
+ transfer = <func>
 typechecked bank_ordered.as
 
  Account -> Account/1
@@ -22,11 +26,16 @@ typechecked bank_ordered.as
  Account/1 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/1)->async Bool;join: Account/1->();split: Int->async Account/1}
  Issuer/2 := <>actor{hasIssued: (like Account/1)->async Bool}
  Bank/3 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/1}
+ Account = <func>
+ Bank = <func>
+ Issuer = <func>
+ transfer = <func>
 typechecked control.as
 
  Control -> Control/1
  Control : ()->Control/1
  Control/1 := <>actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();Test: ()->Bool;While: ()->()}
+ Control = <func>
 Type Error literals.as:3.18-3.25:bad literal for type Word8!
 typechecked numericops.as
 
@@ -37,12 +46,23 @@ typechecked numericops.as
  TestWord32 : (Word32,Word32)->()
  TestWord64 : (Word64,Word64)->()
  TestWord8 : (Word8,Word8)->()
+ TestFloat = <func>
+ TestInt = <func>
+ TestNat = <func>
+ TestWord16 = <func>
+ TestWord32 = <func>
+ TestWord64 = <func>
+ TestWord8 = <func>
 typechecked bitops.as
 
  TestWord16 : (Word16,Word16)->()
  TestWord32 : (Word32,Word32)->()
  TestWord64 : (Word64,Word64)->()
  TestWord8 : (Word8,Word8)->()
+ TestWord16 = <func>
+ TestWord32 = <func>
+ TestWord64 = <func>
+ TestWord8 = <func>
 typechecked relationalops.as
 
  TestBool : (Bool,Bool)->()
@@ -55,9 +75,20 @@ typechecked relationalops.as
  TestWord32 : (Word32,Word32)->()
  TestWord64 : (Word64,Word64)->()
  TestWord8 : (Word8,Word8)->()
+ TestBool = <func>
+ TestChar = <func>
+ TestFloat = <func>
+ TestInt = <func>
+ TestNat = <func>
+ TestText = <func>
+ TestWord16 = <func>
+ TestWord32 = <func>
+ TestWord64 = <func>
+ TestWord8 = <func>
 typechecked concat.as
 
  TestText : (Text,Text)->()
+ TestText = <func>
 Type Error duplicatefield.as:4.3-4.4:duplicate field M!
 Type Error nonlinearpat.as:1.5-1.14:duplicate binding for x in pattern!
 typechecked typedef.as
@@ -90,6 +121,14 @@ typechecked type_equiv.as
  Test6 : <t/26>(A/5<T/3<t/26,Int>>,A/5<T/3<t/26,Bool>>)->A/5<T/3<t/26,Word8>>
  T/3 = <a/12,b/13>a/12
  A/5 := <t/14>actor{}
+ A = <func>
+ Test0 = <func>
+ Test1 = <func>
+ Test2 = <func>
+ Test3 = <func>
+ Test4 = <func>
+ Test5 = <func>
+ Test6 = <func>
 typechecked quicksort.as
 
  QS -> QS/4
@@ -97,3 +136,32 @@ typechecked quicksort.as
  QS : <T/10>((T/10,T/10)->Int)->QS/4<T/10>
  array/2 = <t/9> var t/9[]
  QS/4 := <T/10>actor{quicksort: (array/2<T/10>,Int,Int)->()}
+ QS = <func>
+typechecked hoare.as
+
+ a :  var Int[]
+ partition : ( var Int[],Int,Int)->Int
+ quicksort : ( var Int[],Int,Int)->()
+ swap : ( var Int[],Int,Int)->()
+ x : ()
+quicksort(([8;3;9;5;2],0,4))
+partition(([8;3;9;5;2],0,4))
+swap(([8;3;9;5;2],0,4)) -> ()
+swap(([2;3;9;5;8],2,3)) -> () -> 2
+quicksort(([2;3;5;9;8],0,2))
+partition(([2;3;5;9;8],0,2)) -> 0
+quicksort(([2;3;5;9;8],0,0)) -> ()
+quicksort(([2;3;5;9;8],1,2))
+partition(([2;3;5;9;8],1,2)) -> 1
+quicksort(([2;3;5;9;8],1,1)) -> ()
+quicksort(([2;3;5;9;8],2,2)) -> () -> () -> ()
+quicksort(([2;3;5;9;8],3,4))
+partition(([2;3;5;9;8],3,4))
+swap(([2;3;5;9;8],3,4)) -> () -> 3
+quicksort(([2;3;5;8;9],3,3)) -> ()
+quicksort(([2;3;5;8;9],4,4)) -> () -> () -> ()
+ a =  var [2;3;5;8;9]
+ partition = <func>
+ quicksort = <func>
+ swap = <func>
+ x = ()
