@@ -26,8 +26,13 @@ let main () =
        ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke;
        let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.prelude  ve) ce) ke in
        let _ = Interpret.interpret_prog prog (fun dyn_ve ->
-					  Env.iter (fun v (t,mut) -> Printf.printf "\n %s -> %s" v (
-						        Interpret.Values.val_to_string context t (Interpret.Values.derefV (Env.find v dyn_ve)))) ve;
+					  Env.iter (fun v (t,mut) -> 
+					            let w = Interpret.Values.checkV (Env.find v dyn_ve) in
+						    let w = match mut with
+						        | ConstMut -> w
+						   	| VarMut -> Interpret.Values.derefV w
+					            in
+						    Printf.printf "\n %s = %s" v (Interpret.Values.val_to_string context t w)) ve;
 					  Interpret.Values.unitV)
 
 	 in
@@ -46,7 +51,12 @@ let main () =
        let r = string_of_region r in
        Printf.printf "Kind Error %s:%s!" r m;
     | e ->
-       Printf.printf "exception %s:" (Printexc.to_string e));
+       let r = string_of_region (!Interpret.last_region) in
+       let context = !Interpret.last_context in
+       let ve = context.values in
+       Env.iter (fun v w -> 
+      	         Printf.printf "\n %s = %s" v (Interpret.Values.debug_val_to_string w)) ve;
+       Printf.printf "region: %s \n exception %s:"  r (Printexc.to_string e));
        Printf.printf "%s" (Printexc.get_backtrace())
     ;
     print_newline();

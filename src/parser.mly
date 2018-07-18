@@ -54,6 +54,7 @@ let name s at =
 *)
 
 let (@?) x region = {it = x; at = region; note = Types.AnyT}
+let (@!) x region = {it = x; at = region; note = Types.ConstMut}
 
 %}
 
@@ -125,6 +126,9 @@ seplist(X, SEP) :
 
 %inline id :
   | id=ID { id @@ at($symbolstartpos,$endpos)}
+
+%inline var_ref :
+  | id=ID { id @! at($symbolstartpos,$endpos)}
 
 %inline var :
   | VAR { VarMut @@ at($symbolstartpos,$endpos) }
@@ -250,7 +254,7 @@ block_expr :
 
 
 atomic_expr :
-    | x=id
+    | x=var_ref
       { VarE(x) @? at($symbolstartpos,$endpos) }
     | l=lit
       { LitE(ref l) @? at($symbolstartpos,$endpos) }
@@ -262,7 +266,7 @@ atomic_expr :
 //      { ArrayE(es.it) @? at($symbolstartpos,$endpos) }
     | e=atomic_expr DOT s=INT
       { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
-    | e=atomic_expr DOT x=id
+    | e=atomic_expr DOT x=var_ref
       { DotE(e, x) @? at($symbolstartpos,$endpos) }
     | e1=atomic_expr e2=atomic_expr
       { CallE(e1,e2) @? at($symbolstartpos,$endpos) }
@@ -327,6 +331,9 @@ expr :
       { AnnotE(e, t) @? at($symbolstartpos,$endpos) }
     | d=dec
       { DecE(d) @? at($symbolstartpos,$endpos) }
+    | LBRACKET es=seplist(expr, SEMICOLON) RBRACKET (*TBR*)
+      { ArrayE(es.it) @? at($symbolstartpos,$endpos) }
+      
     
 case : 
   | CASE p=pat e=expr

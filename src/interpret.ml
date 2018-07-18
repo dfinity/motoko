@@ -68,6 +68,14 @@ struct
   
   let projV (TupV vs) n = List.nth vs n
   let dotV (ObjV ve) v = Env.find v ve
+  let checkV v =
+       match v with
+       | RecV r ->
+          (match r.definition with
+           | Some v -> v
+	   | None -> failwith "BlackHole" (*TBR*))
+       | v -> v
+
   let assignV (VarV r) v  = r := v;unitV
   let updateV (ArrV a) (IntV i) v  = a.(i) <- v;unitV
   let indexV (ArrV a) (IntV i) = a.(i)
@@ -75,16 +83,41 @@ struct
   let rec derefV v =
       match v with
       | VarV r -> !r
-      | RecV r ->
-        (match r.definition with
-         | Some v -> derefV v
-         | None -> failwith "BlackHole" (*TBR*))
-      | v -> v
 
   let notV (BoolV b) = BoolV (not b)
   let async_of_V(AsyncV async) = async
 
-
+  let rec debug_val_to_string v =
+      match v with
+      | NullV  -> "null"
+      | BoolV b -> if b then "true" else "false"
+      | NatV n -> sprintf "(Nat %i)" n
+      | IntV i -> sprintf "%i" i
+      | WordV (Word8 w) -> sprintf "%x" w
+      | WordV (Word16 w) -> sprintf "%x" w
+      | WordV (Word32 w) -> sprintf "%lx" w
+      | WordV (Word64 w) -> sprintf "%Lx" w
+      | FloatV f -> sprintf "%f" f
+      | CharV d -> sprintf "(Char %li)" d (* TBR *)
+      | TextV t -> t (* TBR *)
+      | TupV vs -> sprintf "(%s)" (String.concat "," (List.map (debug_val_to_string) vs))
+      | ObjV ve -> sprintf "{%s}" (String.concat ";" (List.map (fun (v,w) ->
+      	              	                  sprintf "%s=%s " v (debug_val_to_string w)) (Env.bindings ve)))
+      | ArrV a ->
+         sprintf "[%s]" (String.concat ";" (List.map debug_val_to_string  (Array.to_list a)))
+      | OptV o ->
+        (match o with
+        | None -> "null"
+        | Some v -> sprintf "Some %s" (debug_val_to_string v))
+      | FuncV f ->
+      	"<func>"
+      | VarV r ->
+      	sprintf "(Var %s)" (debug_val_to_string !r) (*TBR show address ?*)
+      | RecV r ->
+  	sprintf "(Rec %s)" (debug_val_to_string (OptV r.definition))
+      | AsyncV async ->
+        "<async>"
+  
   let rec atomic_val_to_string context t v =
     match norm_typ context t with
     | AnyT -> "any"
@@ -114,7 +147,11 @@ struct
     | ObjT(Object,fs) ->
       let ve = obj_of_V v in
       sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
-      	              	                 let v = derefV (Env.find var ve) in
+      	              	                 let v = checkV (Env.find var ve) in
+					 let v = match mut with
+					         | VarMut -> derefV v
+						 | ConstMut -> v
+				         in
                                          sprintf "%s=%s " var (atomic_val_to_string context typ v))
                       fs))
     | _ ->
@@ -125,21 +162,25 @@ and val_to_string context t v =
     | ArrayT (m,t) ->
       let a = arr_of_V v in
       sprintf "%s[%s]" (match m with VarMut -> " var " |  ConstMut -> "")
-      	       (String.concat "," (List.map (val_to_string context t) (Array.to_list a)))
+      	       (String.concat ";" (List.map (val_to_string context t) (Array.to_list a)))
     | FuncT(_,_,_) ->
-      let f = func_of_V v in (* catch errors *)
-      "func"
+      func_of_V v; (* catch errors *)
+      "<func>"
     | OptT t ->
       let v = opt_of_V v in
       (match v with
       | None -> "null"
       | Some v -> sprintf "Some %s" (val_to_string context t v))
-    | AsyncT t -> 
-      sprintf "async %s" (atomic_typ_to_string t)
+    | AsyncT t ->
+      let {result;waiters} = async_of_V v in
+      sprintf "async{%s,%i}" (match result with
+                              | None -> "?"
+             		      | Some v -> val_to_string context t v)
+			      (List.length waiters)
     | LikeT t -> 
-      sprintf "like %s" (atomic_typ_to_string t)
+      sprintf "like %s" (atomic_typ_to_string t) (* TBR *)
     | ObjT(Actor,fs) ->
-      sprintf "actor%s" (atomic_typ_to_string (ObjT(Object,fs)))
+      sprintf "actor%s" (atomic_val_to_string context (ObjT(Object,fs)) v)
     | _ -> atomic_val_to_string context t v
 
 end
@@ -147,7 +188,6 @@ end
 open Values
 
 exception Trap of Source.region * string
-
 
 let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
@@ -163,6 +203,20 @@ let prelude = {values = Env.empty;
                continues = Env.empty;
                returns = None;
                awaitable = false}
+
+let last_context = ref prelude
+let last_region = ref Source.no_region
+
+let callee_context context ve k_return =
+    {values = union context.values ve;
+     constructors = Env.empty; (*TBR*)
+     kinds = ConEnv.empty;    (*TBR*)
+     label = None;
+     breaks = Env.empty; 
+     continues = Env.empty;
+     returns =  Some k_return;
+     awaitable = false}
+
 
 let addBreak context labelOpt k_break =
     match labelOpt with
@@ -188,86 +242,136 @@ let rec interpret_lit context rl =
     | TextLit s -> textV s
     | PreLit s -> failwith "interpret_lit"
 
-and interpret_binop context e1 bop e2 = unitV
-(*
-    let t1 = interpret_exp context e1 in
-    let t2 = interpret_exp context e2 in
+and interpret_binop context (PrimT p1) (PrimT p2) v1 bop v2 = 
     match bop with
     | CatOp ->
-      if eq_typ context t1 (PrimT TextT) && eq_typ context t1 t2 then
-         t1
-      else typeError at "arguments to concatenation operator must have Text type"
-    | AddOp | SubOp | MulOp | DivOp | ModOp ->
-      if numeric_typ context t1 && eq_typ context t1 t2 then
-         t1
-      else typeError at "arguments to numeric operator must have equivalent numeric types"
+      textV ((text_of_V v1) ^ (text_of_V v2)) (*TBR will @ work on unicode *)
+    | AddOp ->
+      (match p1,p2 with
+      | IntT,IntT -> intV (int_of_V v1 + int_of_V v2)   (*TBR overflow*)
+      | NatT,NatT -> natV (nat_of_V v1 + nat_of_V v2)  (*TBR overflow*)
+      | FloatT,FloatT -> floatV (float_of_V v1 +. float_of_V v2)
+      | _, _ -> failwith "NYI")
+    | SubOp ->
+      (match p1,p2 with
+      | IntT,IntT -> intV (int_of_V v1 - int_of_V v2)   (*TBR underflow*)
+      | NatT,NatT -> natV (nat_of_V v1 - nat_of_V v2)  (*TBR underflow*)
+      | FloatT,FloatT -> floatV (float_of_V v1 -. float_of_V v2)
+      | _, _ -> failwith "NYI")
+    | MulOp ->
+      (match p1,p2 with
+      | IntT,IntT -> intV (int_of_V v1 * int_of_V v2)   (*TBR overflow*)
+      | NatT,NatT -> natV (nat_of_V v1 * nat_of_V v2)  (*TBR overflow*)
+      | FloatT,FloatT -> floatV (float_of_V v1 *. float_of_V v2)
+      | _, _ -> failwith "NYI")
+    | DivOp ->
+      (match p1,p2 with
+      | IntT,IntT -> intV (int_of_V v1 / int_of_V v2)   (*TBR overflow*)
+      | NatT,NatT -> natV (nat_of_V v1 / nat_of_V v2)  (*TBR overflow*)
+      | FloatT,FloatT -> floatV (float_of_V v1 /. float_of_V v2)
+      | _, _ -> failwith "NYI")
+    | ModOp ->
+      (match p1,p2 with
+      | IntT,IntT -> intV (int_of_V v1 mod int_of_V v2)   (*TBR overflow*)
+      | NatT,NatT -> natV (nat_of_V v1 mod nat_of_V v2)  (*TBR overflow*)
+      | FloatT,FloatT -> floatV (mod_float (float_of_V v1) (float_of_V v2))
+      | _, _ -> failwith "NYI")
     | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-      if logical_typ context t1 && t1 = t2 then
-         t1
-      else typeError at "arguments to logical operator must have equivalent logical types"
-    | _ -> typeError at "operator doesn't take operands of types %s and %s" (typ_to_string t1) (typ_to_string t2)
-*)
-and interpret_relop context e1 rop e2 = unitV
-(*
-    let t1 = interpret_exp context e1 in
-    let t2 = interpret_exp context e2 in
-    match rop with
-    | EqOp 
-    | NeqOp ->
-      if equatable_typ context t1 && eq_typ context t1 t2
-      then boolT
-      else typeError at "arguments to an equality operator must have the same, equatable type"
-    | _ ->
-      if comparable_typ context t1 && eq_typ context t1 t2
-      then boolT
-      else typeError at "arguments to a relational operator must have the same, comparable type"
-*)
+      failwith "NYI"
 
-and interpret_uop context uop e = unitV
-(*
-    let t = interpret_exp context e in
+and interpret_relop context (PrimT p1) (PrimT p2) v1 rop v2 =
+    (* this is a terrible cheat and probably wrong *)
+      match rop with
+      | EqOp -> boolV(v1 = v2)
+      | NeqOp -> boolV(v1 <> v2)
+      | LtOp -> 
+       (match p1,p2 with
+        | IntT,IntT -> boolV (int_of_V v1 < int_of_V v2)  
+        | NatT,NatT -> boolV (nat_of_V v1 < nat_of_V v2)  
+        | FloatT,FloatT -> boolV (float_of_V v1 < float_of_V v2)
+        | _, _ -> failwith "NYI")
+      | LeOp -> 
+        (match p1,p2 with
+        | IntT,IntT -> boolV (int_of_V v1 <= int_of_V v2) 
+        | NatT,NatT -> boolV (nat_of_V v1 <= nat_of_V v2) 
+        | FloatT,FloatT -> boolV (float_of_V v1 <= float_of_V v2)
+        | _, _ -> failwith "NYI")
+      | GtOp -> 
+        (match p1,p2 with
+        | IntT,IntT -> boolV (int_of_V v1 > int_of_V v2)  
+        | NatT,NatT -> boolV (nat_of_V v1 > nat_of_V v2)  
+        | FloatT,FloatT -> boolV (float_of_V v1 > float_of_V v2)
+        | _, _ -> failwith "NYI")
+      | GeOp -> 
+        (match p1,p2 with
+        | IntT,IntT -> boolV (int_of_V v1 >= int_of_V v2) 
+        | NatT,NatT -> boolV (nat_of_V v1 >= nat_of_V v2) 
+        | FloatT,FloatT -> boolV (float_of_V v1 >= float_of_V v2)
+        | _, _ -> failwith "NYI")
+
+
+and interpret_uop context (PrimT p) uop v = 
     match uop with
-    | PosOp 
+    | PosOp ->
+      (match p with
+       | IntT -> intV (~+ (int_of_V v))
+       | NatT -> v
+       | FloatT -> floatV (~+. (float_of_V v)))
     | NegOp ->
-      if numeric_typ context t 
-      then t
-      else typeError at "argument to operator must have numeric type"
+      (match p with
+       | IntT -> intV (~- (int_of_V v))
+       | NatT -> v
+       | FloatT -> floatV (~-. (float_of_V v)))
     | NotOp ->
-      if logical_typ context t 
-      then t
-      else typeError at "arguments to a bitwise negation operator must have logical type"
-*)
+       failwith "NYI"
+ 
 and interpret_exps context vs es k =
     match es with
     | [] -> k (List.rev vs)
     | (e::es) -> interpret_exp context e (fun v -> interpret_exps context (v::vs) es k)
 and interpret_exp context e k  =
+    last_region := e.at; (* debugging *)
+    last_context := context;
     interpret_exp' context e k 
+
 and interpret_exp' context e k =
 let labelOpt = context.label in
 let context = {context with label = None} in
 match e.it with
 | VarE x ->
-    k (derefV (Env.find x.it context.values))
+    (match x.note with
+     | VarMut -> k (derefV (checkV (Env.find x.it context.values)))
+     | ConstMut -> k (checkV (Env.find x.it context.values)))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
-    interpret_exp context e1 (fun v1 -> k (interpret_uop context uop v1))
+    let t1 = e1.note in
+    interpret_exp context e1 (fun v1 -> k (interpret_uop context t1 uop v1))
 | BinE (e1,bop,e2) ->
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_binop context v1 bop v2 )))
+   let t1 = e1.note in
+   let t2 = e2.note in
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_binop context t1 t2 v1 bop v2 )))
 | RelE (e1,rop,e2) ->
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_relop context v1 rop v2 )))
+   let t1 = e1.note in
+   let t2 = e2.note in
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_relop context t1 t2 v1 rop v2 )))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (tupV vs))
 | ProjE(e1,n) ->
     interpret_exp context e1 (fun v1 -> k (projV v1 n))
 | DotE(e1,v) ->
-    interpret_exp context e1 (fun v1 -> k (derefV (dotV v1 v.it)))
+    let mut = v.note in
+    let it = v.it in
+    interpret_exp context e1 (fun v1 ->
+    k (match mut with
+       | VarMut -> (derefV (checkV (dotV v1 it)))
+       | ConstMut -> (checkV (dotV v1 it)))
+    )
 | AssignE(e1,e2) ->
     begin
     match e1.it with
     | VarE v ->
-      let v1 = Env.find v.it context.values in
+      let v1 = checkV (Env.find v.it context.values) in
       interpret_exp context e2 (fun v2 ->
       k (assignV v1 v2))
     | DotE(e,v) ->
@@ -288,8 +392,12 @@ match e.it with
     interpret_exp context e2 (fun v2 ->
     k (indexV v1 v2)))
 | CallE(e1,e2) ->
+    let k = fun v -> (printf " -> %s" (debug_val_to_string v);k v) in
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
+    (match e1.it with
+     | VarE v -> printf "\n%s(%s)" v.it (debug_val_to_string v2)
+     | _ -> ());
     applyV v1 v2 k))
 | BlockE es ->
     let k_break = k in
@@ -317,29 +425,28 @@ match e.it with
     interpret_cases context cs v k)
 | WhileE(e0,e1) ->
   let e_while = e in
-  interpret_exp context e0
-  (fun v -> let k_continue = fun v -> interpret_exp context e_while k in
-            let context' = addBreakAndContinue context labelOpt k k_continue in
-            if (bool_of_V v)
-            then interpret_exp context e1 k_continue
-            else k unitV)
+  let k_continue = fun v ->
+      interpret_exp context e_while k in
+  let context' = addBreakAndContinue context labelOpt k k_continue in
+  interpret_exp context e0 (fun v0 ->
+  if (bool_of_V v0)
+  then interpret_exp context' e1 k_continue
+  else k unitV)
 | LoopE(e0,None) ->
   let e_loop = e in
-  interpret_exp context e0
-  (fun v -> let k_continue = fun v -> interpret_exp context e_loop k in
-            let context' = addBreakAndContinue context labelOpt k k_continue in
-            interpret_exp context' e0 k_continue)
+  let k_continue = fun v -> interpret_exp context e_loop k in
+  let context' = addBreakAndContinue context labelOpt k k_continue in
+  interpret_exp context' e0 k_continue
 | LoopE(e0,Some e1) ->
   let e_loop = e in
-  interpret_exp context e0
-  (fun v -> let k_continue =
-                fun v -> interpret_exp context e1
-                         (fun v1 -> if (bool_of_V v1)
-                                    then k(unitV)
-                                    else interpret_exp context e_loop k)
-            in
-            let context' = addBreakAndContinue context labelOpt k k_continue in
-            interpret_exp context' e0 k_continue)
+  let k_continue = fun v ->
+      interpret_exp context e1 (fun v1 ->
+      if (bool_of_V v1)
+      then interpret_exp context e_loop k
+      else k unitV)
+  in
+  let context' = addBreakAndContinue context labelOpt k k_continue in
+  interpret_exp context' e0 k_continue
 | ForE(p,e0,e1)->
   failwith "NYI:ForE"
 (* labels *)
@@ -354,7 +461,7 @@ match e.it with
   k unitV
 | RetE e0 ->
   let (Some k_return) = context.returns in
-  interpret_exp context e k_return
+  interpret_exp context e0 k_return
 | AsyncE e0 ->
   let async = {result=None;waiters=[]} in
   let k_return = fun v -> async.result <- Some v;
@@ -465,10 +572,13 @@ and define_dec context d k =
     | TypD(v,ts,t) ->
       k()
     | FuncD(var,ts,p,t,e) ->
+      (* TBC: trim callee_context *)
       (define_var context var 
          (funcV(fun v k ->
               match interpret_pat p v with
-              | Some ve -> interpret_exp (union_values context ve) e k 
+              | Some ve ->
+                let callee_context = callee_context context ve k in
+	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern")));
       k()
     | ClassD(a,c,ts,p,efs) ->

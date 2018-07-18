@@ -1,7 +1,7 @@
 (* Variables *)
 
 type var = string Source.phrase
-
+type var_ref = (string,Types.mut) Source.annotated_phrase
 
 (* Types *)
 
@@ -54,12 +54,14 @@ and pat_field' = {var : var; pat : pat}
 
 (* Expressions *)
 
+
+
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
 type exp = (exp',Types.typ) Source.annotated_phrase
 and exp' =
-  | VarE of var                                (* variable *)
+  | VarE of var_ref                                (* variable *)
   | LitE of  Types.lit ref                     (* literal *)
   | UnE of Types.unop * exp                    (* unary operator *)
   | BinE of exp * Types.binop * exp            (* binary operator *)
@@ -67,7 +69,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * Types.nat                   (* tuple projection *)
   | ObjE of actor * var option * exp_field list  (* object *)
-  | DotE of exp * var                          (* object projection *)
+  | DotE of exp * var_ref                       (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
   | IdxE of exp * exp                          (* array indexing *)

@@ -589,7 +589,9 @@ let context = {context with label = None} in
 match e.it with
 | VarE x ->
   (match lookup context.values x.it with
-    | Some (ty,_) -> ty
+    | Some (ty,mut) -> 
+        x.note <- mut;
+        ty 
     | None -> typeError x.at "unbound identifier %s" x.it)
 | LitE rl ->
    inf_lit context rl
@@ -611,7 +613,8 @@ match e.it with
 | DotE(e,v) ->
   (match obj_typ context (inf_exp context e) with
    |(ObjT(a,fts) as t) ->
-     (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+   (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+	 v.note <- ft.mut;
          ft.typ
       with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it)
    | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
@@ -623,6 +626,7 @@ match e.it with
     begin
     match lookup context.values v.it with
        | Some (t1,VarMut) ->
+          v.note <- VarMut;
           check_exp context t1 e2;
 	  unitT
        | Some (_,ConstMut) ->
@@ -636,8 +640,10 @@ match e.it with
       | (ObjT(a,fts) as t) ->
 	 begin
 	   try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+	     v.note <- ft.mut;
              match ft.mut with 
-             | VarMut -> check_exp context ft.typ e2;
+             | VarMut -> 
+                         check_exp context ft.typ e2;
 	       	      	 unitT
              | ConstMut ->  typeError e.at "cannot assign to immutable field %s"  v.it
 	   with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it

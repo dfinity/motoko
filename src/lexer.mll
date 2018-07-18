@@ -280,8 +280,8 @@ rule token = parse
   | "<<>="  { BINUPDATE RotLOp }
   | "<>>="  { BINUPDATE RotROp }
 
-  | space">"space { LTOP } (*TBR*)
-  | space"<"space { GTOP } (*TBR*)
+  | space">"space { GTOP } (*TBR*)
+  | space"<"space { LTOP } (*TBR*)
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 (*TODO: literals need reworking*)
