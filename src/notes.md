@@ -48,3 +48,11 @@ TODO and Issues
 - there's a parsing ambiguity between infix application, indexing and array literals is e [] indexing or application to an array literal.
 
 - we need to discuss the semantics and typing of while/loop/loop-while and for. Should the bodies by unit typed or polymorphic?
+
+Claudio's TODOS:
+- we should add a PrimE form for primitive functions.
+- all the prim ops are dodgy and don't check for overflow etc.
+- introduce tables for the operators,types and implementations and then annotate operators with their implementations to avoid redoing the dispatch at interp time.
+- type tests either need type-passing or unpack like parameteric semantics (for erasure)
+- Interpreter: it would be better to distinguish statically between bindings (RecV and VarV) and values
+
