@@ -391,13 +391,13 @@ match e.it with
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
     k (indexV v1 v2)))
-| CallE(e1,e2) ->
+| CallE(e1,ts,e2) ->
     let k = fun v -> (printf " -> %s" (debug_val_to_string v);k v) in
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
     (match e1.it with
      | VarE v -> printf "\n%s(%s)" v.it (debug_val_to_string v2)
-     | _ -> ());
+     | _ -> printf "\nAPPLY %s(%s)" (debug_val_to_string v1) (debug_val_to_string v2));
     applyV v1 v2 k))
 | BlockE es ->
     let k_break = k in
@@ -496,6 +496,11 @@ match e.it with
   failwith "NYI:IsE"
 | AnnotE(e,t) ->
   interpret_exp context e k
+| DecE ({it=FuncD(v,_,_,_,_)} as d) ->
+  interpret_decs context [d] (fun ve ->
+  (match lookup ve v.it with
+  | Some w -> k (checkV w)
+  | None -> failwith "interpret_exp decE"))
 | DecE d ->
   interpret_decs context [d] (fun ve ->  k unitV)
     

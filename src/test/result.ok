@@ -133,10 +133,57 @@ typechecked quicksort.as
 
  QS -> QS/4
  array -> array/2
- QS : <T/10>((T/10,T/10)->Int)->QS/4<T/10>
- array/2 = <t/9> var t/9[]
- QS/4 := <T/10>actor{quicksort: (array/2<T/10>,Int,Int)->()}
+ QS : <T/11>((T/11,T/11)->Int)->QS/4<T/11>
+ a :  var Int[]
+ cmpi : (Int,Int)->Int
+ qs : QS/4<Int>
+ u : ()
+ array/2 = <t/10> var t/10[]
+ QS/4 := <T/11>{quicksort: (array/2<T/11>,Int,Int)->()}
+QS(<func>) -> {partition=(Rec Some <func>) ;quicksort=(Rec Some <func>) ;swap=(Rec Some <func>) ;trace=(Rec Some <func>) }
+APPLY <func>(([8;3;9;5;2],0,4))
+partition(([8;3;9;5;2],0,4))
+trace([8;3;9;5;2]) -> ()
+cmp((8,8)) -> 0
+cmp((2,8)) -> -6
+swap(([8;3;9;5;2],0,4)) -> ()
+cmp((3,8)) -> -5
+cmp((9,8)) -> 1
+cmp((5,8)) -> -3
+swap(([2;3;9;5;8],2,3)) -> ()
+cmp((9,8)) -> 1
+cmp((5,8)) -> -3 -> 2
+quicksort(([2;3;5;9;8],0,2))
+partition(([2;3;5;9;8],0,2))
+trace([2;3;5;9;8]) -> ()
+cmp((2,2)) -> 0
+cmp((5,2)) -> 3
+cmp((3,2)) -> 1
+cmp((2,2)) -> 0 -> 0
+quicksort(([2;3;5;9;8],0,0)) -> ()
+quicksort(([2;3;5;9;8],1,2))
+partition(([2;3;5;9;8],1,2))
+trace([2;3;5;9;8]) -> ()
+cmp((3,3)) -> 0
+cmp((5,3)) -> 2
+cmp((3,3)) -> 0 -> 1
+quicksort(([2;3;5;9;8],1,1)) -> ()
+quicksort(([2;3;5;9;8],2,2)) -> () -> () -> ()
+quicksort(([2;3;5;9;8],3,4))
+partition(([2;3;5;9;8],3,4))
+trace([2;3;5;9;8]) -> ()
+cmp((9,9)) -> 0
+cmp((8,9)) -> -1
+swap(([2;3;5;9;8],3,4)) -> ()
+cmp((9,9)) -> 0
+cmp((8,9)) -> -1 -> 3
+quicksort(([2;3;5;8;9],3,3)) -> ()
+quicksort(([2;3;5;8;9],4,4)) -> () -> () -> ()
  QS = <func>
+ a =  var [2;3;5;8;9]
+ cmpi = <func>
+ qs = QS/4<Int>
+ u = ()
 typechecked hoare.as
 
  a :  var Int[]

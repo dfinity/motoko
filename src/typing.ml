@@ -178,8 +178,8 @@ let rec obj_typ context t =
       | Some kind ->
       	(match kind with
 	| DefK(us,u) -> (assert(false);failwith "obj_typ")
-	| ObjK([],actor,ftys) -> ObjT(actor,ftys)
-	| ParK([],bound) -> t)
+	| ObjK(us,actor,ftys) -> subst (substitute ts us) (ObjT(actor,ftys))
+	| ParK(us,bound) -> t) (*TBR ?*)
       | None -> t)
     | ObjT(_,_) -> t
     | LikeT t -> norm_typ context t (*TBR*)
@@ -253,10 +253,10 @@ let comparable_typ context t =
 
 (* let sprintf = Printf.sprintf *)
 
-let check_bounds region tys bounds = 
+let check_bounds at tys bounds = 
      if List.length bounds = List.length tys
      then ()
-     else kindError region "constructor expecting %i arguments used with %i arguments" (List.length bounds) (List.length tys)
+     else typeError at "expecting %i type arguments found %i arguments" (List.length bounds) (List.length tys)
 
 (* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
 (* todo: type ObjE expressions (anonymous objects)*)
@@ -679,9 +679,14 @@ match e.it with
     t1
   | t -> typeError e.at "illegal indexing: expected an array, found" (typ_to_string t)
   end
-| CallE(e1,e2) ->
- (match norm_typ context (inf_exp context e1) with
-  | FuncT([],dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
+| CallE(e1,ts,e2) ->
+ (let ts = List.map (check_typ context) ts in
+  match norm_typ context (inf_exp context e1) with
+  | FuncT(us,dom,rng) -> (* TBC polymorphic instantiation, perhaps by matching? *)
+    check_bounds e.at ts us;
+    let sigma = substitute ts us in
+    let dom = subst sigma dom in
+    let rng = subst sigma rng in
     let t2 = inf_exp context e2 in
     if eq_typ context t2 dom
     then rng
@@ -792,6 +797,12 @@ match e.it with
     let t = check_typ context t in 
     check_exp context t e;
     t
+| DecE ({it=FuncD(v,_,_,_,_)} as d) ->
+    let ve = check_decs context [d] in
+    (match lookup context.values v.it with
+    | Some (t,mut) -> t
+    | None -> assert(false);
+              failwith "Impossible: inf_exp DecE")
 | DecE d ->
     let _ = check_decs context [d] in
     unitT
@@ -996,7 +1007,7 @@ and check_dec' pass context d =
 	    let t = check_typ context t in
 	    let field_env = disjoint_add_field var.at field_env var.it (mut.it,priv.it,t)  in
 	    pre_members context field_env efs
-	  | {it={var;mut;priv;exp={it=DecE({it=FuncD(v,us,p,t,e);at=_});at=_}}}::efs ->
+	  | {it={var;mut;priv;exp={it=DecE {it=FuncD(v,us,p,t,e)}}}}::efs ->
 	    let us,ce_us,ke_us = check_typ_binds context us in
 	    let context_us = union_kinds (union_constructors context ce_us) ke_us in
 	    let _,dom = inf_pat context_us p in

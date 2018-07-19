@@ -1,6 +1,6 @@
 type array<t> = var t[];
 
-actor class QS<T>(cmp:(T,T)->Int)
+class QS<T>(cmp:(T,T)->Int)
 {
    quicksort(a:array<T>, lo:Int, hi:Int): () {
    	if (lo < hi) then
@@ -17,12 +17,14 @@ actor class QS<T>(cmp:(T,T)->Int)
      a[j] := temp;
    };
 
+   private trace<T>(v:T):(){};
+   
    private partition(a:array<T>, lo:Int, hi:Int) : Int {
-     let pivot = a[0];
+     trace<array<T>>(a);
+     let pivot = a[lo];
      var i : Int = lo - 1;
      var j : Int = hi + 1;
      loop {
-
        loop {
           i += 1;
        } while (cmp(a[i], pivot) < 0);
@@ -32,10 +34,17 @@ actor class QS<T>(cmp:(T,T)->Int)
        } while (cmp(a[j], pivot) > 0);
 
        if (i >= j)
-       then return j
-       else {};
-
+       then return j;
+     
        swap(a,i,j);
      };
   };
 };
+
+func cmpi(i:Int,j:Int):Int = i - j;
+
+let qs = QS<Int>(cmpi);
+
+let a = [8;3;9;5;2];
+
+let u : () = qs.quicksort(a,0,4);

@@ -268,8 +268,8 @@ atomic_expr :
       { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
     | e=atomic_expr DOT x=var_ref
       { DotE(e, x) @? at($symbolstartpos,$endpos) }
-    | e1=atomic_expr e2=atomic_expr
-      { CallE(e1,e2) @? at($symbolstartpos,$endpos) }
+    | e1=atomic_expr tso=typ_args?  e2=atomic_expr
+      { CallE(e1,Lib.Option.get tso.it [],e2) @? at($symbolstartpos,$endpos) }
     | e=block_expr
       { e }
     | DO x=id e=expr
@@ -353,8 +353,8 @@ expr_field :
   | priv=private_opt fd=func_def
     { let (x, tps, p, t, e) = fd.it in
       let d = FuncD(x, tps, p, t, e) @@ fd.at in
-      let e' = DecE(d) @? fd.at in 
-       (*      let e' = BlockE([DecE(d)@? fd.at;VarE x @? fd.at]) @@ fd.at in *)
+      let e' = DecE(d) @? fd.at in  
+        (* let e' = BlockE([DecE(d)@? fd.at;(VarE (x.it @! fd.at)) @? fd.at]) @? fd.at in  *)
       {var = x; mut = ConstMut @@ no_region; priv; exp = e'}
       @@ at($symbolstartpos,$endpos) }
 
