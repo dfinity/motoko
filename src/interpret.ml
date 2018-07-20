@@ -86,6 +86,17 @@ struct
 
   let notV (BoolV b) = BoolV (not b)
   let async_of_V(AsyncV async) = async
+  let set_result async v =
+    	match async with
+	| {result=None;waiters=waiters} ->
+          async.result <- Some v;
+          async.waiters <- [];
+          List.fold_left (fun runnables waiter -> (fun () -> waiter v)::runnables) [] waiters; 
+	| {result=Some _} -> failwith "set_result"
+  let get_result async k =
+    	match async with
+	| {result=Some v} -> k v
+	| {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
 
   let rec debug_val_to_string v =
       match v with
@@ -108,13 +119,13 @@ struct
       | OptV o ->
         (match o with
         | None -> "null"
-        | Some v -> sprintf "Some %s" (debug_val_to_string v))
+        | Some v -> sprintf "Some (%s)" (debug_val_to_string v))
       | FuncV f ->
       	"<func>"
       | VarV r ->
-      	sprintf "(Var %s)" (debug_val_to_string !r) (*TBR show address ?*)
+      	sprintf "Var (%s)" (debug_val_to_string !r) (*TBR show address ?*)
       | RecV r ->
-  	sprintf "(Rec %s)" (debug_val_to_string (OptV r.definition))
+  	sprintf "Rec (%s)" (debug_val_to_string (OptV r.definition))
       | AsyncV async ->
         "<async>"
   
@@ -123,7 +134,7 @@ struct
     | AnyT -> "any"
     | PrimT p ->
       (match p with
-      | NullT -> let v = null_of_V v in "()"
+      | NullT -> let _ = null_of_V v in "null"
       | IntT -> let i = int_of_V v in sprintf "%i" i
       | BoolT -> if (bool_of_V v) then "true" else "false"
       | FloatT -> string_of_float(float_of_V v)
@@ -155,7 +166,7 @@ struct
                                          sprintf "%s=%s " var (atomic_val_to_string context typ v))
                       fs))
     | _ ->
-      sprintf "(%s)" (typ_to_string t)
+      sprintf "(%s)" (val_to_string context t v)
 
 and val_to_string context t v =
     match norm_typ context t with
@@ -185,7 +196,30 @@ and val_to_string context t v =
 
 end
 
+
 open Values
+
+module Scheduler =
+  struct
+    let q = (Queue.create() : (unit -> value) Queue.t)
+    let queue work  = Queue.add work q
+    let yield() =
+        (* printf "\n YIELD "; *)
+    	let work = Queue.take q in
+	work() 
+
+    let rec run() =
+        (* printf "\n RUN "; *)
+    	if not (Queue.is_empty q)
+	then
+	   (yield();
+	    run())
+        else unitV
+  end
+
+open Scheduler
+       
+let debug = ref true
 
 exception Trap of Source.region * string
 
@@ -392,12 +426,8 @@ match e.it with
     interpret_exp context e2 (fun v2 ->
     k (indexV v1 v2)))
 | CallE(e1,ts,e2) ->
-    let k = fun v -> (printf " -> %s" (debug_val_to_string v);k v) in
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
-    (match e1.it with
-     | VarE v -> printf "\n%s(%s)" v.it (debug_val_to_string v2)
-     | _ -> printf "\nAPPLY %s(%s)" (debug_val_to_string v1) (debug_val_to_string v2));
     applyV v1 v2 k))
 | BlockE es ->
     let k_break = k in
@@ -458,16 +488,14 @@ match e.it with
   interpret_exp context e k_break
 | ContE l ->
   let k_continue = Env.find l.it context.continues in
-  k unitV
+  k_continue unitV
 | RetE e0 ->
-  let (Some k_return) = context.returns in
+  let (Some k_return) = context.returns in 
   interpret_exp context e0 k_return
 | AsyncE e0 ->
   let async = {result=None;waiters=[]} in
-  let k_return = fun v -> async.result <- Some v;
-                          let ws = async.waiters in
-                          async.waiters <- [];
-                          List.map (fun k -> k v) ws; 
+  let k_return = fun v -> let runnables = set_result async v in
+                          List.iter queue runnables; 
                           unitV
   in      
   let context = {values = context.values;
@@ -479,14 +507,15 @@ match e.it with
                  returns = Some k_return; 
                  awaitable = true}
   in
-  interpret_exp context e0 k_return
+  queue (fun()->interpret_exp context e0 k_return);
+  k (asyncV async)
 | AwaitE e0 ->
   interpret_exp context e0 (fun v ->
   let async = async_of_V v in
   match async.result with
   | Some v -> k v
-  | None -> async.waiters = k::async.waiters;
-  unitV) 
+  | None -> (async.waiters <- k::async.waiters;
+             yield())) 
 | AssertE e ->
   interpret_exp context e (fun  v ->
   if bool_of_V v
@@ -580,8 +609,10 @@ and define_dec context d k =
       (* TBC: trim callee_context *)
       (define_var context var 
          (funcV(fun v k ->
+	      if !debug then printf "\n%s(%s)" var.it (debug_val_to_string v);
               match interpret_pat p v with
               | Some ve ->
+	        let k = if !debug then fun w -> (printf "\n%s(%s)<-%s" var.it (debug_val_to_string v) (debug_val_to_string w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern")));
@@ -604,21 +635,43 @@ and define_dec context d k =
                             in
                             let rec define_members efs =
                                      match efs with
-                                     | {it={var;mut;priv;exp;}}::efs ->
+				     | {it={var;mut;priv;exp;}}::efs ->
 				        let private_context = union_values context private_ve in
                                         interpret_exp private_context exp (fun v ->
+					let v = expand a.it priv.it mut.it exp.note v in 
                                         let defn = match mut.it with
                                                    | ConstMut -> v
                                                    | VarMut -> VarV (ref v)
                                         in
                                           define_var private_context var defn;
                                           define_members efs)
-				     | [] -> k (objV public_ve)
+				     | [] -> k (objV public_ve) 
 
                             in 
                                  define_members efs)));
-       k() 
+       k()
+       
+and expand actor priv mut t v =
+    match (actor,priv,mut,t) with
+    | Actor,Public,ConstMut,FuncT(_,_,TupT[]) ->
+      let f = func_of_V v in
+      funcV (fun w k -> queue(fun () -> f w (fun a->a));
+                        k unitV)
+    | Actor,Public,ConstMut,FuncT(_,_,AsyncT(_)) ->
+      let f = func_of_V v in
+      funcV (fun w k ->
+      	     let async = {result=None;waiters=[]} in
+	     queue(fun () ->
+	           f w (fun a ->
+		          get_result (async_of_V a) (fun r ->
+			     let runnables = set_result async r in
+                             List.iter queue runnables;
+			     unitV)
+                        ));
+             k(asyncV async))
+    | _ -> v
 
+			  
 
 and declare_pats context ve ps =
    match ps with
@@ -698,8 +751,10 @@ and interpret_pats ve ps vs =
    | vs,[] -> failwith "Wrong:match_pats"
 
 
-let interpret_prog p k  =
-    interpret_decs prelude p.it k
+let interpret_prog p k =
+    let k' = fun v -> (run();k(v)) in
+    interpret_decs prelude p.it k'
+
      
 
     

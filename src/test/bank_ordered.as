@@ -46,6 +46,6 @@ actor class Bank(supply : Int) {
 // Example usage
 func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
   let trx = await sender.split(amount);
-  receiver.join(trx);
+  trx.join(receiver);
 };
 

@@ -49,6 +49,9 @@ TODO and Issues
 
 - we need to discuss the semantics and typing of while/loop/loop-while and for. Should the bodies by unit typed or polymorphic?
 
+- since we have a notion of (non)-shareable type do we want a notion of sharable kind so we can abstract over one or the other?
+- the transfer function in the README is wrong receiver.join(trx) should be trx.join(receiver).
+
 Claudio's TODOS:
 - we should add a PrimE form for primitive functions.
 - all the prim ops are dodgy and don't check for overflow etc.

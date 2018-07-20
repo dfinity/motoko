@@ -613,9 +613,9 @@ match e.it with
 | DotE(e,v) ->
   (match obj_typ context (inf_exp context e) with
    |(ObjT(a,fts) as t) ->
-   (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
-	 v.note <- ft.mut;
-         ft.typ
+     (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
+	 (v.note <- ft.mut;
+          ft.typ)
       with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it)
    | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
 | AssignE(e1,e2) ->
