@@ -20,6 +20,9 @@ all:
 	$(ASC) type_equiv.as >> result 2>&1
 	$(ASC) quicksort.as >> result 2>&1
 	$(ASC) hoare.as >> result 2>&1
+	$(ASC) bankex.as >> result 2>&1
+	$(ASC) counter.as >> result 2>&1
+	$(ASC) testwhile.as >> result 2>&1
 
 	diff result result.ok
 

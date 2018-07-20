@@ -140,45 +140,82 @@ typechecked quicksort.as
  u : ()
  array/2 = <t/10> var t/10[]
  QS/4 := <T/11>{quicksort: (array/2<T/11>,Int,Int)->()}
-QS(<func>) -> {partition=(Rec Some <func>) ;quicksort=(Rec Some <func>) ;swap=(Rec Some <func>) ;trace=(Rec Some <func>) }
-APPLY <func>(([8;3;9;5;2],0,4))
+quicksort(([8;3;9;5;2],0,4))
 partition(([8;3;9;5;2],0,4))
-trace([8;3;9;5;2]) -> ()
-cmp((8,8)) -> 0
-cmp((2,8)) -> -6
-swap(([8;3;9;5;2],0,4)) -> ()
-cmp((3,8)) -> -5
-cmp((9,8)) -> 1
-cmp((5,8)) -> -3
-swap(([2;3;9;5;8],2,3)) -> ()
-cmp((9,8)) -> 1
-cmp((5,8)) -> -3 -> 2
+trace([8;3;9;5;2])
+trace([8;3;9;5;2])<-()
+cmpi((8,8))
+cmpi((8,8))<-0
+cmpi((2,8))
+cmpi((2,8))<--6
+swap(([8;3;9;5;2],0,4))
+swap(([2;3;9;5;8],0,4))<-()
+cmpi((3,8))
+cmpi((3,8))<--5
+cmpi((9,8))
+cmpi((9,8))<-1
+cmpi((5,8))
+cmpi((5,8))<--3
+swap(([2;3;9;5;8],2,3))
+swap(([2;3;5;9;8],2,3))<-()
+cmpi((9,8))
+cmpi((9,8))<-1
+cmpi((5,8))
+cmpi((5,8))<--3
+partition(([2;3;5;9;8],0,4))<-2
 quicksort(([2;3;5;9;8],0,2))
 partition(([2;3;5;9;8],0,2))
-trace([2;3;5;9;8]) -> ()
-cmp((2,2)) -> 0
-cmp((5,2)) -> 3
-cmp((3,2)) -> 1
-cmp((2,2)) -> 0 -> 0
-quicksort(([2;3;5;9;8],0,0)) -> ()
+trace([2;3;5;9;8])
+trace([2;3;5;9;8])<-()
+cmpi((2,2))
+cmpi((2,2))<-0
+cmpi((5,2))
+cmpi((5,2))<-3
+cmpi((3,2))
+cmpi((3,2))<-1
+cmpi((2,2))
+cmpi((2,2))<-0
+partition(([2;3;5;9;8],0,2))<-0
+quicksort(([2;3;5;9;8],0,0))
+quicksort(([2;3;5;9;8],0,0))<-()
 quicksort(([2;3;5;9;8],1,2))
 partition(([2;3;5;9;8],1,2))
-trace([2;3;5;9;8]) -> ()
-cmp((3,3)) -> 0
-cmp((5,3)) -> 2
-cmp((3,3)) -> 0 -> 1
-quicksort(([2;3;5;9;8],1,1)) -> ()
-quicksort(([2;3;5;9;8],2,2)) -> () -> () -> ()
+trace([2;3;5;9;8])
+trace([2;3;5;9;8])<-()
+cmpi((3,3))
+cmpi((3,3))<-0
+cmpi((5,3))
+cmpi((5,3))<-2
+cmpi((3,3))
+cmpi((3,3))<-0
+partition(([2;3;5;9;8],1,2))<-1
+quicksort(([2;3;5;9;8],1,1))
+quicksort(([2;3;5;9;8],1,1))<-()
+quicksort(([2;3;5;9;8],2,2))
+quicksort(([2;3;5;9;8],2,2))<-()
+quicksort(([2;3;5;9;8],1,2))<-()
+quicksort(([2;3;5;9;8],0,2))<-()
 quicksort(([2;3;5;9;8],3,4))
 partition(([2;3;5;9;8],3,4))
-trace([2;3;5;9;8]) -> ()
-cmp((9,9)) -> 0
-cmp((8,9)) -> -1
-swap(([2;3;5;9;8],3,4)) -> ()
-cmp((9,9)) -> 0
-cmp((8,9)) -> -1 -> 3
-quicksort(([2;3;5;8;9],3,3)) -> ()
-quicksort(([2;3;5;8;9],4,4)) -> () -> () -> ()
+trace([2;3;5;9;8])
+trace([2;3;5;9;8])<-()
+cmpi((9,9))
+cmpi((9,9))<-0
+cmpi((8,9))
+cmpi((8,9))<--1
+swap(([2;3;5;9;8],3,4))
+swap(([2;3;5;8;9],3,4))<-()
+cmpi((9,9))
+cmpi((9,9))<-0
+cmpi((8,9))
+cmpi((8,9))<--1
+partition(([2;3;5;8;9],3,4))<-3
+quicksort(([2;3;5;8;9],3,3))
+quicksort(([2;3;5;8;9],3,3))<-()
+quicksort(([2;3;5;8;9],4,4))
+quicksort(([2;3;5;8;9],4,4))<-()
+quicksort(([2;3;5;8;9],3,4))<-()
+quicksort(([2;3;5;8;9],0,4))<-()
  QS = <func>
  a =  var [2;3;5;8;9]
  cmpi = <func>
@@ -193,22 +230,152 @@ typechecked hoare.as
  x : ()
 quicksort(([8;3;9;5;2],0,4))
 partition(([8;3;9;5;2],0,4))
-swap(([8;3;9;5;2],0,4)) -> ()
-swap(([2;3;9;5;8],2,3)) -> () -> 2
+swap(([8;3;9;5;2],0,4))
+swap(([2;3;9;5;8],0,4))<-()
+swap(([2;3;9;5;8],2,3))
+swap(([2;3;5;9;8],2,3))<-()
+partition(([2;3;5;9;8],0,4))<-2
 quicksort(([2;3;5;9;8],0,2))
-partition(([2;3;5;9;8],0,2)) -> 0
-quicksort(([2;3;5;9;8],0,0)) -> ()
+partition(([2;3;5;9;8],0,2))
+partition(([2;3;5;9;8],0,2))<-0
+quicksort(([2;3;5;9;8],0,0))
+quicksort(([2;3;5;9;8],0,0))<-()
 quicksort(([2;3;5;9;8],1,2))
-partition(([2;3;5;9;8],1,2)) -> 1
-quicksort(([2;3;5;9;8],1,1)) -> ()
-quicksort(([2;3;5;9;8],2,2)) -> () -> () -> ()
+partition(([2;3;5;9;8],1,2))
+partition(([2;3;5;9;8],1,2))<-1
+quicksort(([2;3;5;9;8],1,1))
+quicksort(([2;3;5;9;8],1,1))<-()
+quicksort(([2;3;5;9;8],2,2))
+quicksort(([2;3;5;9;8],2,2))<-()
+quicksort(([2;3;5;9;8],1,2))<-()
+quicksort(([2;3;5;9;8],0,2))<-()
 quicksort(([2;3;5;9;8],3,4))
 partition(([2;3;5;9;8],3,4))
-swap(([2;3;5;9;8],3,4)) -> () -> 3
-quicksort(([2;3;5;8;9],3,3)) -> ()
-quicksort(([2;3;5;8;9],4,4)) -> () -> () -> ()
+swap(([2;3;5;9;8],3,4))
+swap(([2;3;5;8;9],3,4))<-()
+partition(([2;3;5;8;9],3,4))<-3
+quicksort(([2;3;5;8;9],3,3))
+quicksort(([2;3;5;8;9],3,3))<-()
+quicksort(([2;3;5;8;9],4,4))
+quicksort(([2;3;5;8;9],4,4))<-()
+quicksort(([2;3;5;8;9],3,4))<-()
+quicksort(([2;3;5;8;9],0,4))<-()
  a =  var [2;3;5;8;9]
  partition = <func>
  quicksort = <func>
  swap = <func>
  x = ()
+typechecked bankex.as
+
+ Account -> Account/3
+ Bank -> Bank/1
+ Issuer -> Issuer/2
+ Account : Int->Account/3
+ Bank : Int->Bank/1
+ Issuer : ()->Issuer/2
+ b : Bank/1
+ main : async (Account/3,Account/3)
+ show : (Text,Account/3)->()
+ test : ()->async (Account/3,Account/3)
+ transfer : (Account/3,Account/3,Int)->async ()
+ Bank/1 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
+ Issuer/2 := <>actor{hasIssued: (like Account/3)->async Bool}
+ Account/3 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
+test(())
+test(())<-<async>
+getReserve(())
+getReserve(())<-<async>
+split(10)
+split(10)<-<async>
+split(10)
+split(10)<-<async>
+show((reserve,{balance=Rec (Some (Var (80))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((reserve,{balance=Rec (Some (Var (80))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+show((a1,{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((a1,{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+show((a2,{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((a2,{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+transfer(({balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) },{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) },5))
+transfer(({balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) },{balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) },5))<-<async>
+split(5)
+split(5)<-<async>
+join({balance=Rec (Some (Var (10))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) })
+credit(5)
+credit(5)<-()
+join({balance=Rec (Some (Var (15))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) })<-()
+show((reserve,{balance=Rec (Some (Var (80))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((reserve,{balance=Rec (Some (Var (80))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+show((a1,{balance=Rec (Some (Var (5))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((a1,{balance=Rec (Some (Var (5))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+show((a2,{balance=Rec (Some (Var (15))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))
+show((a2,{balance=Rec (Some (Var (15))) ;credit=Rec (Some (<func>)) ;getBalance=Rec (Some (<func>)) ;isCompatible=Rec (Some (<func>)) ;join=Rec (Some (<func>)) ;split=Rec (Some (<func>)) }))<-()
+ Account = <func>
+ Bank = <func>
+ Issuer = <func>
+ b = Bank/1
+ main = async{(Account/3,Account/3),0}
+ show = <func>
+ test = <func>
+ transfer = <func>
+typechecked counter.as
+
+ Counter -> Counter/1
+ Counter : Int->Counter/1
+ Show : Int->()
+ Test : ()->()
+ c : Counter/1
+ Counter/1 := <>actor{Dec: ()->();Read: ()->async Int;c: var  Int}
+Test(())
+Test(())<-()
+Dec(())
+Show(10)
+Show(10)<-()
+Dec(())<-()
+Dec(())
+Show(9)
+Show(9)<-()
+Dec(())<-()
+Dec(())
+Show(8)
+Show(8)<-()
+Dec(())<-()
+Dec(())
+Show(7)
+Show(7)<-()
+Dec(())<-()
+Dec(())
+Show(6)
+Show(6)<-()
+Dec(())<-()
+Dec(())
+Show(5)
+Show(5)<-()
+Dec(())<-()
+Dec(())
+Show(4)
+Show(4)<-()
+Dec(())<-()
+Dec(())
+Show(3)
+Show(3)<-()
+Dec(())<-()
+Dec(())
+Show(2)
+Show(2)<-()
+Dec(())<-()
+Dec(())
+Show(1)
+Show(1)<-()
+Dec(())<-()
+ Counter = <func>
+ Show = <func>
+ Test = <func>
+ c = Counter/1
+typechecked testwhile.as
+
+ Test : ()->Int
+ passed : Bool
+Test(())
+Test(())<-0
+ Test = <func>
+ passed = true

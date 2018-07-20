@@ -368,7 +368,7 @@ and interpret_exp context e k  =
     last_context := context;
     interpret_exp' context e k 
 
-and interpret_exp' context e k =
+and interpret_exp' (context as context_with_label) e k =
 let labelOpt = context.label in
 let context = {context with label = None} in
 match e.it with
@@ -456,7 +456,7 @@ match e.it with
 | WhileE(e0,e1) ->
   let e_while = e in
   let k_continue = fun v ->
-      interpret_exp context e_while k in
+      interpret_exp context_with_label e_while k in
   let context' = addBreakAndContinue context labelOpt k k_continue in
   interpret_exp context e0 (fun v0 ->
   if (bool_of_V v0)
@@ -464,7 +464,7 @@ match e.it with
   else k unitV)
 | LoopE(e0,None) ->
   let e_loop = e in
-  let k_continue = fun v -> interpret_exp context e_loop k in
+  let k_continue = fun v -> interpret_exp context_with_label e_loop k in
   let context' = addBreakAndContinue context labelOpt k k_continue in
   interpret_exp context' e0 k_continue
 | LoopE(e0,Some e1) ->
@@ -472,7 +472,7 @@ match e.it with
   let k_continue = fun v ->
       interpret_exp context e1 (fun v1 ->
       if (bool_of_V v1)
-      then interpret_exp context e_loop k
+      then interpret_exp context_with_label e_loop k
       else k unitV)
   in
   let context' = addBreakAndContinue context labelOpt k k_continue in
