@@ -98,7 +98,7 @@ struct
 	| {result=Some v} -> k v
 	| {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
 
-  let rec debug_val_to_string v =
+  let rec debug_string_of_val v =
       match v with
       | NullV  -> "null"
       | BoolV b -> if b then "true" else "false"
@@ -111,25 +111,25 @@ struct
       | FloatV f -> sprintf "%f" f
       | CharV d -> sprintf "(Char %li)" d (* TBR *)
       | TextV t -> t (* TBR *)
-      | TupV vs -> sprintf "(%s)" (String.concat "," (List.map (debug_val_to_string) vs))
+      | TupV vs -> sprintf "(%s)" (String.concat "," (List.map (debug_string_of_val) vs))
       | ObjV ve -> sprintf "{%s}" (String.concat ";" (List.map (fun (v,w) ->
-      	              	                  sprintf "%s=%s " v (debug_val_to_string w)) (Env.bindings ve)))
+      	              	                  sprintf "%s=%s " v (debug_string_of_val w)) (Env.bindings ve)))
       | ArrV a ->
-         sprintf "[%s]" (String.concat ";" (List.map debug_val_to_string  (Array.to_list a)))
+         sprintf "[%s]" (String.concat ";" (List.map debug_string_of_val  (Array.to_list a)))
       | OptV o ->
         (match o with
         | None -> "null"
-        | Some v -> sprintf "Some (%s)" (debug_val_to_string v))
+        | Some v -> sprintf "Some (%s)" (debug_string_of_val v))
       | FuncV f ->
       	"<func>"
       | VarV r ->
-      	sprintf "Var (%s)" (debug_val_to_string !r) (*TBR show address ?*)
+      	sprintf "Var (%s)" (debug_string_of_val !r) (*TBR show address ?*)
       | RecV r ->
-  	sprintf "Rec (%s)" (debug_val_to_string (OptV r.definition))
+  	sprintf "Rec (%s)" (debug_string_of_val (OptV r.definition))
       | AsyncV async ->
         "<async>"
   
-  let rec atomic_val_to_string context t v =
+  let rec string_of_atomic_val context t v =
     match norm_typ context t with
     | AnyT -> "any"
     | PrimT p ->
@@ -151,10 +151,10 @@ struct
     | VarT (c,[]) ->
        Con.to_string c
     | VarT (c,ts) ->
-       sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map typ_to_string ts))
+       sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map string_of_typ ts))
     | TupT ts ->
       let vs = tup_of_V v in
-      sprintf "(%s)"  (String.concat "," (List.map2 (val_to_string context) ts vs))
+      sprintf "(%s)"  (String.concat "," (List.map2 (string_of_val context) ts vs))
     | ObjT(Object,fs) ->
       let ve = obj_of_V v in
       sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
@@ -163,17 +163,17 @@ struct
 					         | VarMut -> derefV v
 						 | ConstMut -> v
 				         in
-                                         sprintf "%s=%s " var (atomic_val_to_string context typ v))
+                                         sprintf "%s=%s " var (string_of_atomic_val context typ v))
                       fs))
     | _ ->
-      sprintf "(%s)" (val_to_string context t v)
+      sprintf "(%s)" (string_of_val context t v)
 
-and val_to_string context t v =
+and string_of_val context t v =
     match norm_typ context t with
     | ArrayT (m,t) ->
       let a = arr_of_V v in
       sprintf "%s[%s]" (match m with VarMut -> " var " |  ConstMut -> "")
-      	       (String.concat ";" (List.map (val_to_string context t) (Array.to_list a)))
+      	       (String.concat ";" (List.map (string_of_val context t) (Array.to_list a)))
     | FuncT(_,_,_) ->
       func_of_V v; (* catch errors *)
       "<func>"
@@ -181,18 +181,18 @@ and val_to_string context t v =
       let v = opt_of_V v in
       (match v with
       | None -> "null"
-      | Some v -> sprintf "Some %s" (val_to_string context t v))
+      | Some v -> sprintf "Some %s" (string_of_val context t v))
     | AsyncT t ->
       let {result;waiters} = async_of_V v in
       sprintf "async{%s,%i}" (match result with
                               | None -> "?"
-             		      | Some v -> val_to_string context t v)
+             		      | Some v -> string_of_val context t v)
 			      (List.length waiters)
     | LikeT t -> 
-      sprintf "like %s" (atomic_typ_to_string t) (* TBR *)
+      sprintf "like %s" (string_of_atomic_typ t) (* TBR *)
     | ObjT(Actor,fs) ->
-      sprintf "actor%s" (atomic_val_to_string context (ObjT(Object,fs)) v)
-    | _ -> atomic_val_to_string context t v
+      sprintf "actor%s" (string_of_atomic_val context (ObjT(Object,fs)) v)
+    | _ -> string_of_atomic_val context t v
 
 end
 
@@ -609,10 +609,10 @@ and define_dec context d k =
       (* TBC: trim callee_context *)
       (define_var context var 
          (funcV(fun v k ->
-	      if !debug then printf "\n%s(%s)" var.it (debug_val_to_string v);
+	      if !debug then printf "\n%s(%s)" var.it (debug_string_of_val v);
               match interpret_pat p v with
               | Some ve ->
-	        let k = if !debug then fun w -> (printf "\n%s(%s)<-%s" var.it (debug_val_to_string v) (debug_val_to_string w);k w) else k in
+	        let k = if !debug then fun w -> (printf "\n%s(%s)<-%s" var.it (debug_string_of_val v) (debug_string_of_val w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern")));
