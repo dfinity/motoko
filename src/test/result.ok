@@ -34,7 +34,7 @@ typechecked control.as
 
  Control -> Control/1
  Control : ()->Control/1
- Control/1 := <>actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();While: ()->()}
+ Control/1 := actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();While: ()->()}
  Control = <func>
 Type Error literals.as:3.18-3.25:bad literal for type Word8!
 typechecked numericops.as
@@ -324,7 +324,7 @@ typechecked counter.as
  Show : Int->()
  Test : ()->()
  c : Counter/1
- Counter/1 := actor{Dec: ()->();Read: ()->async Int;c: var  Int}
+ Counter/1 := actor{Dec: ()->();Read: ()->async Int}
 Test(())
 Test(())<-()
 Dec(())

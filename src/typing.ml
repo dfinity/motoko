@@ -480,7 +480,7 @@ and check_typ_field context at actor {var;mut;typ} =
       if mut=VarMut
       then typeError at "public field %s of actor is mutable (an actor's public fields must be immutable)" var
       else if sharable_typ context typ then ()
-           else typeError at "public field %s of actor has non-sharable type %s (the type of an actor's public field must be shareable)" var (typ_to_string typ)
+           else typeError at "public field %s of actor has non-sharable type %s (the type of an actor's public field must be shareable)" var (string_of_typ typ)
     
 and inf_lit context rl =
   match !rl with
