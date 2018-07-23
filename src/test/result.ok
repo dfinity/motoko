@@ -111,16 +111,16 @@ typechecked type_equiv.as
 
  A -> A/5
  T -> T/3
- A : <t/14>()->A/5<t/14>
+ A : <t/26>()->A/5<t/26>
  Test0 : (T/3<Int,Bool>,T/3<Int,Nat>)->T/3<Int,Word8>
- Test1 : (<t/15>t/15->t/15,<u/16>u/16->u/16)-><c/17>c/17->c/17
- Test2 : (<t/18,u/19>t/18->u/19,<t/20,u/21>t/20->u/21)-><t/22,u/23>t/22->u/23
+ Test1 : (<t/27>t/27->t/27,<u/28>u/28->u/28)-><c/29>c/29->c/29
+ Test2 : (<t/30,u/31>t/30->u/31,<t/32,u/33>t/32->u/33)-><t/34,u/35>t/34->u/35
  Test3 : (A/5<Int>,A/5<Int>)->A/5<Int>
- Test4 : <t/24>(A/5<t/24>,A/5<t/24>)->A/5<t/24>
- Test5 : <t/25>(A/5<T/3<t/25,Int>>,A/5<T/3<t/25,Bool>>)->A/5<T/3<t/25,Word8>>
- Test6 : <t/26>(A/5<T/3<t/26,Int>>,A/5<T/3<t/26,Bool>>)->A/5<T/3<t/26,Word8>>
- T/3 = <a/12,b/13>a/12
- A/5 := <t/14>actor{}
+ Test4 : <t/36>(A/5<t/36>,A/5<t/36>)->A/5<t/36>
+ Test5 : <t/37>(A/5<T/3<t/37,Int>>,A/5<T/3<t/37,Bool>>)->A/5<T/3<t/37,Word8>>
+ Test6 : <t/38>(A/5<T/3<t/38,Int>>,A/5<T/3<t/38,Bool>>)->A/5<T/3<t/38,Word8>>
+ T/3 = <a/24,b/25>a/24
+ A/5 := <t/26>actor{}
  A = <func>
  Test0 = <func>
  Test1 = <func>

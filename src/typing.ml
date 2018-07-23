@@ -910,20 +910,20 @@ and check_dec pass context d =
 and check_dec' pass context d =     
     match d.it with
     | LetD (p,e) ->
-      if pass < 3 then
+      if pass < 2 then
 	 Env.empty, Env.empty, ConEnv.empty
       else      
          let t = inf_exp context e in
          let ve = check_pat context p t in 
 	 ve, Env.empty, ConEnv.empty
     | VarD (v,t,None) ->
-      if pass < 3 then
+      if pass < 2 then
       	 Env.empty, Env.empty, ConEnv.empty
       else
       let t = check_typ context t in
       Env.singleton v.it (t,VarMut), Env.empty, ConEnv.empty
     | VarD (v,t,Some e) ->
-      if pass < 3 then
+      if pass < 2 then
          Env.empty, Env.empty, ConEnv.empty
       else
 	let t = check_typ context t in
@@ -953,7 +953,7 @@ and check_dec' pass context d =
       let ke1 = ConEnv.singleton con kind1 in
          Env.empty, ce1, ke1
     | FuncD(v,ts,p,t,e) ->
-      if pass < 3 then
+      if pass < 2 then
       	 Env.empty, Env.empty, ConEnv.empty
       else
       let ts,ce,ke = check_typ_binds context ts in
@@ -1103,7 +1103,7 @@ and check_decs context ds =
       let ve1,ce1,ke1 = check_decs_aux 1 (union_kinds (union_constructors (union_values context ve0) ce0) ke0) Env.empty Env.empty ConEnv.empty ds in
       (* define type constructors (declare public member types) *)
       let ve2,ce2,ke2 = check_decs_aux 2 (union_kinds (union_constructors (union_values context ve1) ce1) ke1) Env.empty Env.empty ConEnv.empty ds in
-      (* check classes definitions (check public and private member expressions *)
+      (* check class definitions (check public and private member expressions *)
       let ve3,ce3,ke3 = check_decs_aux 3 (union_kinds (union_constructors (union_values context ve2) ce2) ke2) Env.empty Env.empty ConEnv.empty ds in
       ve3,ce3,ke3
 

@@ -1,5 +1,3 @@
-func Show(c:Int):(){};
-
 actor class Counter(i : Int) {
   var c = i;    
 
@@ -13,7 +11,7 @@ actor class Counter(i : Int) {
   };
 };
 
-
+func Show(c:Int):(){};
 
 let c = Counter(10);
 
