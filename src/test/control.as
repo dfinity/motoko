@@ -1,6 +1,6 @@
 actor class Control() {
 
-  Test():Bool = false;   
+  private Test():Bool = false;   
 
   While() : () {
      do l  

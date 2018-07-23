@@ -58,4 +58,4 @@ Claudio's TODOS:
 - introduce tables for the operators,types and implementations and then annotate operators with their implementations to avoid redoing the dispatch at interp time.
 - type tests either need type-passing or unpack like parameteric semantics (for erasure)
 - Interpreter: it would be better to distinguish statically between bindings (RecV and VarV) and values
-
+- local decs are not mutually recursive and scoped sequentially - relax this.

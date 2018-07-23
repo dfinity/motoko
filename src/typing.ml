@@ -162,25 +162,33 @@ let eq_typ (context:context) ty1 ty2 : bool =
 let rec norm_typ context t =
     match t with
     | VarT(con,ts) ->
-      (match lookup_con context.kinds con with
+      begin
+      match lookup_con context.kinds con with
       | Some kind ->
       	(match kind with
 	| DefK(us,u) -> norm_typ context (subst (substitute ts us) u)
 	| ObjK(_,actor,ftys) -> t
 	| ParK(_,bound) -> t) 
-      | None -> t)
+      | None ->
+      	assert(false);
+	failwith "norm_typ: Impossible"
+      end
     | t -> t
 
 let rec obj_typ context t =
     match norm_typ context t with
     | VarT(con,ts) ->
-      (match lookup_con context.kinds con with
+      begin
+      match lookup_con context.kinds con with
       | Some kind ->
       	(match kind with
 	| DefK(us,u) -> (assert(false);failwith "obj_typ")
 	| ObjK(us,actor,ftys) -> subst (substitute ts us) (ObjT(actor,ftys))
 	| ParK(us,bound) -> t) (*TBR ?*)
-      | None -> t)
+      | None ->
+        assert(false);
+	failwith "norm_typ: Impossible"
+      end
     | ObjT(_,_) -> t
     | LikeT t -> norm_typ context t (*TBR*)
     | _ -> t  
@@ -250,6 +258,59 @@ let comparable_typ context t =
        | CharT -> true
        | _ -> false)
     | _ -> false
+
+
+(* TBR: the whole notion of sharable typ needs to be reviewed in the presence of subtyping *)
+let rec sharable_typ (context:context) (t:typ) : bool =
+    match norm_typ context t with
+    | VarT (c,ts) ->
+      begin
+        match lookup_con context.kinds c with
+        | Some kind ->
+          begin match kind with
+          | DefK(bounds,u) ->
+            assert(false);
+            failwith "shareable_typ: Impossible"
+	  | ObjK(bounds,actor,fds) ->
+            sharable_typ context (subst (substitute ts bounds) (ObjT(actor,fds))) (* TBR *)
+	  | ParK(bounds,bound) ->
+            false (*TBR: use bound? *)
+	  end
+        | None ->
+          assert(false);
+          failwith "sharable_typ: Impossible" 
+      end
+    | PrimT p -> true
+    | ArrayT (m,t) ->
+       (m = ConstMut) && sharable_typ context t
+    | TupT ts ->
+        List.for_all (sharable_typ context) ts 
+    | FuncT(ts,dom,rng) ->
+        let ce,ke = sharable_typ_binds context ts in
+        let context = union_kinds (union_constructors context ce) ke in
+	List.for_all (fun tb -> sharable_typ context tb.bound) ts && (* TBR *)
+        sharable_typ context dom &&
+	(match norm_typ context rng with
+	 | TupT([]) -> true
+	 | AsyncT _ -> true
+	 | _ -> false)
+	(* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
+    | OptT t -> sharable_typ context t
+    | AsyncT t -> sharable_typ context t
+    | LikeT t -> sharable_typ context t
+    | ObjT(Object,fs) ->
+      List.for_all (fun {var;typ;mut}-> mut = ConstMut && sharable_typ context typ) fs (*TBR: this isn't stable with subtyping *)
+    | ObjT(Actor,fs) ->
+      true
+    | AnyT -> false (* TBR *)
+
+and sharable_typ_binds context ts =
+    let ce  =
+          List.fold_left (fun c (bind:Types.typ_bind) -> Env.add bind.var.name bind.var c) context.constructors ts in
+    let ke  =
+          List.fold_left (fun c (bind:Types.typ_bind) -> ConEnv.add bind.var (ParK([],bind.bound)) c) context.kinds ts in
+    ce,ke
+
 
 (* let sprintf = Printf.sprintf *)
 
@@ -406,11 +467,20 @@ and check_typ context t = match t.it with
                                else (var.it::dom)) ([]:string list) fs in
       let fs = List.map (fun (f:Syntax.typ_field) ->
       	  {var=f.it.var.it;typ=check_typ context f.it.typ;mut=f.it.mut.it}) fs in
-      (* sort by name (for indexed access *)
+      List.map (check_typ_field context a.at a.it) fs;
+      (* sort by name (for indexed access) *)
       let fs_sorted = List.sort (fun (f:typ_field)(g:typ_field) -> String.compare f.var g.var) fs in
       ObjT(a.it,fs_sorted)
     | Syntax.AnyT -> AnyT
 
+and check_typ_field context at actor {var;mut;typ} =
+    match actor with
+    | Object -> ()
+    | Actor ->
+      if mut=VarMut
+      then typeError at "public field %s of actor is mutable (an actor's public fields must be immutable)" var
+      else if sharable_typ context typ then ()
+           else typeError at "public field %s of actor has non-sharable type %s (the type of an actor's public field must be shareable)" var (typ_to_string typ)
     
 and inf_lit context rl =
   match !rl with
@@ -1027,6 +1097,8 @@ and check_dec' pass context d =
       	  let public_bindings = List.filter (fun (v,(m,p,t)) -> p = Public) bindings  in
 	  List.map (fun (v,(m,p,t)) -> {var=v;typ=t;mut=m}) public_bindings
       in
+      (* reject mutable or non-sharable public actor fields *)
+      List.iter (check_typ_field context_ts_v_dom a.at a.it) public_fields;
       let kind2 = ObjK(ts,a.it,public_fields) in
       let ve2,ce2,ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, ConEnv.singleton con kind2 in
       if pass = 2 then
@@ -1040,7 +1112,7 @@ and check_dec' pass context d =
 	  in
 	  (* infer the fields *)
       	  let _ = List.map (fun {it={var;mut;exp}} -> inf_exp field_context exp) efs in
-          ve2,ce2,ke2
+	  ve2,ce2,ke2
 
 
 and inf_pats at context ve ts ps =
