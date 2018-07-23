@@ -59,3 +59,4 @@ Claudio's TODOS:
 - type tests either need type-passing or unpack like parameteric semantics (for erasure)
 - Interpreter: it would be better to distinguish statically between bindings (RecV and VarV) and values
 - local decs are not mutually recursive and scoped sequentially - relax this.
+- what's the semantics of a message send to self? Do we go through the scheduler or short-cut and execute synchronously as an ordinary call?
