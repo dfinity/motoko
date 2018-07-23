@@ -56,7 +56,6 @@ type binop =
   | RotROp
   | CatOp                                        (* concatenation *)
 
-
 type relop =
   | EqOp                                        (* x=y *)
   | NeqOp                                       (* x!=y *)
@@ -66,19 +65,22 @@ type relop =
   | GeOp                                        (* x>=y *)
 
 
-(* unique constructors, stamped *)
+(* Unique constructors, stamped *)
 
 module Con =
 struct
-    type con = {name:string;stamp:int}
-    type t = con
-    let compare (c1:con) (c2:con) = compare c1.stamp c2.stamp
-    let stamp = ref 0
-    let fresh var =
-      stamp := (!stamp) + 1;
-      {name = var; stamp = !stamp}
-    let to_string con = Printf.sprintf "%s/%i" con.name con.stamp
+  type t = {name : string; stamp : int}
+  let compare (c1 : t) (c2 : t) = compare c1.stamp c2.stamp
+  let stamp = ref 0
+  let fresh var =
+    stamp := !stamp + 1;
+    {name = var; stamp = !stamp}
+  let to_string con = Printf.sprintf "%s/%i" con.name con.stamp
 end
+
+module ConEnv = Map.Make(Con)
+
+let lookup_con map k = try Some (ConEnv.find k map) with _ -> None (* TODO: use find_opt in 4.05 *)
 
 
 type con = Con.t
@@ -102,88 +104,98 @@ type typ =
   | UnionT of type * typ                       (* union *)
   | AtomT of string                            (* atom *)
 *)
-and typ_bind = {var:con; bound: typ }
-and typ_field = {var:string; typ: typ; mut: mut}
-and kind =
-     | DefK of typ_bind list * typ
-     | ObjK of typ_bind list * actor * typ_field list
-     | ParK of typ_bind list * typ
+
+and typ_bind = {var : con; bound : typ}
+and typ_field = {var : string; typ : typ; mut : mut}
+
+type kind =
+  | DefK of typ_bind list * typ
+  | ObjK of typ_bind list * actor * typ_field list
+  | ParK of typ_bind list * typ
 
 
-module ConEnv = Map.Make(Con)
+let unitT = TupT []
+let boolT = PrimT BoolT
+let intT = PrimT IntT
 
-let lookup_con map k = try Some (ConEnv.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
 (* Poor man's pretty printing - replace with Format client *)
-let mut_to_string m = (match m with VarMut -> " var " |  ConstMut -> "")
 
 open Printf
 
-let rec atomic_typ_to_string t =
-    match t with
-    | AnyT -> "Any"
-    | PrimT p ->
-      (match p with
-      | NullT -> "Null"
-      | IntT -> "Int"
-      | BoolT -> "Bool"
-      | FloatT -> "Float"
-      | NatT -> "Nat"
-      | CharT -> "Char"
-      | WordT w ->
-        (match w with
-        | Width8 -> "Word8"
-        | Width16 -> "Word16"
-        | Width32 -> "Word32"
-        | Width64 -> "Word64")
-      | TextT -> "Text")
-    | VarT (c,[]) ->
-       Con.to_string c
-    | VarT (c,ts) ->
-       sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map typ_to_string ts))
-    | TupT ts ->
-      sprintf "(%s)"  (String.concat "," (List.map typ_to_string ts))
-    | ObjT(Object,fs) ->
-      sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
-                        sprintf "%s:%s %s" var (mut_to_string mut) (typ_to_string typ))
-                        fs))
-    | _ ->
-      sprintf "(%s)" (typ_to_string t)
+let string_of_mut = function
+  | VarMut -> " var "
+  | ConstMut -> ""
 
-and typ_to_string t =
-    match t with
-    | ArrayT (m,t) ->
-      sprintf "%s%s[]" (match m with VarMut -> " var " |  ConstMut -> "") (atomic_typ_to_string t)  
-    | FuncT([],dom,rng) ->
-      sprintf "%s->%s" (atomic_typ_to_string dom) (typ_to_string rng)
-    | FuncT(ts,dom,rng) ->
-      sprintf "<%s>%s->%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (atomic_typ_to_string dom) (typ_to_string rng)
-    | OptT t ->
-      sprintf "%s?"  (atomic_typ_to_string t)
-    | AsyncT t -> 
-      sprintf "async %s" (atomic_typ_to_string t)
-    | LikeT t -> 
-      sprintf "like %s" (atomic_typ_to_string t)
-    | ObjT(Actor,fs) ->
-      sprintf "actor%s" (atomic_typ_to_string (ObjT(Object,fs)))
-    | _ -> atomic_typ_to_string t
+let string_of_width = function
+  | Width8 -> "8"
+  | Width16 -> "16"
+  | Width32 -> "32"
+  | Width64 -> "64"
 
-let kind_to_string k =
-    match k with
-    | DefK(ts,t) ->
-      sprintf "= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t)
-    | ObjK(ts,actor,ftys) -> 
-      sprintf ":= <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts))
-       (typ_to_string (ObjT(actor,ftys)))
-    | ParK(ts,t) -> 
-      sprintf ":: <%s>%s"  (String.concat "," (List.map (fun {var;bound} -> Con.to_string var) ts)) (typ_to_string t) 
-    
+let string_of_prim = function
+  | NullT -> "Null"
+  | IntT -> "Int"
+  | BoolT -> "Bool"
+  | FloatT -> "Float"
+  | NatT -> "Nat"
+  | WordT w -> "Word" ^ string_of_width w
+  | CharT -> "Char"
+  | TextT -> "Text"
 
-let unitT = TupT[]
-let boolT = PrimT(BoolT)
-let intT = PrimT(IntT)
+let rec string_of_atomic_typ = function
+  | AnyT -> "Any"
+  | PrimT p -> string_of_prim p
+  | VarT (c, []) -> Con.to_string c
+  | VarT (c, ts) ->
+    sprintf "%s<%s>"
+      (Con.to_string c) (String.concat "," (List.map string_of_typ ts))
+  | TupT ts ->
+    sprintf "(%s)" (String.concat "," (List.map string_of_typ ts))
+  | ObjT (Object, fs) ->
+    sprintf "{%s}" (String.concat ";" (List.map string_of_typ_field fs))
+  | t ->
+    sprintf "(%s)" (string_of_typ t)
 
-(* first-order substitutions *)
+and string_of_typ t =
+  match t with
+  | ArrayT (m, t) ->
+    sprintf "%s%s[]" (string_of_mut m) (string_of_atomic_typ t)  
+  | FuncT (tbs, t1, t2) ->
+    sprintf "%s%s->%s"
+      (string_of_typ_binds tbs) (string_of_atomic_typ t1) (string_of_typ t2)
+  | OptT t ->
+    sprintf "%s?"  (string_of_atomic_typ t)
+  | AsyncT t -> 
+    sprintf "async %s" (string_of_atomic_typ t)
+  | LikeT t -> 
+    sprintf "like %s" (string_of_atomic_typ t)
+  | ObjT (Actor, fs) ->
+    sprintf "actor%s" (string_of_atomic_typ (ObjT (Object, fs)))
+  | t -> string_of_atomic_typ t
+
+and string_of_typ_field {var; mut; typ} =
+  sprintf "%s:%s %s" var (string_of_mut mut) (string_of_typ typ)
+
+and string_of_typ_bind {var; bound} =
+  (* TODO: print bound *)
+  Con.to_string var
+
+and string_of_typ_binds = function
+  | [] -> ""
+  | tbs -> "<" ^ (String.concat "," (List.map string_of_typ_bind tbs)) ^ ">"
+
+let string_of_kind = function
+  | DefK (tbs, t) ->
+    sprintf "= %s%s" (string_of_typ_binds tbs) (string_of_typ t)
+  | ObjK (tbs, actor, fs) -> 
+    sprintf ":= %s%s" (string_of_typ_binds tbs) (string_of_typ (ObjT (actor, fs)))
+  | ParK (tbs, t) -> 
+    sprintf ":: %s%s" (string_of_typ_binds tbs) (string_of_typ t) 
+
+
+(* First-order substitutions *)
+
 type subst = typ ConEnv.t
 
 let rec rename_binds sigma (binds:typ_bind list) =
@@ -194,6 +206,7 @@ let rec rename_binds sigma (binds:typ_bind list) =
       let sigma' = ConEnv.add con (VarT(con',[])) sigma in
       let (rho,binds') = rename_binds sigma' binds in
       rho,{var=con';bound=subst rho typ}::binds'
+
 and subst sigma t =
     match t with
     | PrimT p -> t
@@ -219,8 +232,9 @@ and subst sigma t =
       LikeT (subst sigma t)
     | ObjT(a,fs) ->
       ObjT(a,subst_fields sigma fs)
+
 and subst_fields sigma fs = 
-    List.map (fun {var;mut;typ} -> {var;mut;typ = subst sigma typ}) fs
+    List.map (fun {var; mut; typ} -> {var; mut; typ = subst sigma typ}) fs
 
 and substitute_aux sigma us ts =
       match us,ts with
@@ -230,5 +244,3 @@ and substitute_aux sigma us ts =
       | _ -> raise (Invalid_argument "substitute")
 
 let substitute us ts = substitute_aux ConEnv.empty us ts
-
-

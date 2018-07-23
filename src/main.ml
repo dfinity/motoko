@@ -22,8 +22,8 @@ let main () =
        Printf.printf "typechecked %s" filename;
        print_newline();
        Env.iter (fun v con -> Printf.printf "\n %s -> %s" v (Con.to_string con)) ce;
-       Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (typ_to_string t)) ve;
-       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (kind_to_string k)) ke;
+       Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
+       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
        let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.prelude  ve) ce) ke in
        let _ = Interpret.interpret_prog prog (fun dyn_ve ->
 					  Env.iter (fun v (t,mut) -> 
@@ -32,7 +32,7 @@ let main () =
 						        | ConstMut -> w
 						   	| VarMut -> Interpret.Values.derefV w
 					            in
-						    Printf.printf "\n %s = %s" v (Interpret.Values.val_to_string context t w)) ve;
+						    Printf.printf "\n %s = %s" v (Interpret.Values.string_of_val context t w)) ve;
 					  Interpret.Values.unitV)
 
 	 in
@@ -55,7 +55,7 @@ let main () =
        let context = !Interpret.last_context in
        let ve = context.values in
        Env.iter (fun v w -> 
-      	         Printf.printf "\n %s = %s" v (Interpret.Values.debug_val_to_string w)) ve;
+      	         Printf.printf "\n %s = %s" v (Interpret.Values.debug_string_of_val w)) ve;
        Printf.printf "region: %s \n exception %s:"  r (Printexc.to_string e));
        Printf.printf "%s" (Printexc.get_backtrace())
     ;

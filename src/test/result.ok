@@ -7,9 +7,9 @@ typechecked bank.as
  Bank : Int->Bank/1
  Issuer : ()->Issuer/2
  transfer : (Account/3,Account/3,Int)->async ()
- Bank/1 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
- Issuer/2 := <>actor{hasIssued: (like Account/3)->async Bool}
- Account/3 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
+ Bank/1 := actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
+ Issuer/2 := actor{hasIssued: (like Account/3)->async Bool}
+ Account/3 := actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
  Account = <func>
  Bank = <func>
  Issuer = <func>
@@ -23,9 +23,9 @@ typechecked bank_ordered.as
  Bank : Int->Bank/3
  Issuer : ()->Issuer/2
  transfer : (Account/1,Account/1,Int)->async ()
- Account/1 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/1)->async Bool;join: Account/1->();split: Int->async Account/1}
- Issuer/2 := <>actor{hasIssued: (like Account/1)->async Bool}
- Bank/3 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/1}
+ Account/1 := actor{getBalance: ()->async Int;isCompatible: (like Account/1)->async Bool;join: Account/1->();split: Int->async Account/1}
+ Issuer/2 := actor{hasIssued: (like Account/1)->async Bool}
+ Bank/3 := actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/1}
  Account = <func>
  Bank = <func>
  Issuer = <func>
@@ -34,7 +34,7 @@ typechecked control.as
 
  Control -> Control/1
  Control : ()->Control/1
- Control/1 := <>actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();Test: ()->Bool;While: ()->()}
+ Control/1 := actor{Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();Test: ()->Bool;While: ()->()}
  Control = <func>
 Type Error literals.as:3.18-3.25:bad literal for type Word8!
 typechecked numericops.as
@@ -100,13 +100,13 @@ typechecked typedef.as
  Id -> Id/9
  IntT -> IntT/1
  Seq -> Seq/11
- IntT/1 = <>Int
+ IntT/1 = Int
  Arrow/4 = <T/28,U/29>T/28->U/29
  Compose/8 = <T/30,U/31,V/32>(T/30->U/31)->(U/31->V/32)->T/30->V/32
- Id/9 = <><T/33>T/33->T/33
+ Id/9 = <T/33>T/33->T/33
  Seq/11 = <A/34>(A/34,Seq/11<A/34>?)
- A/12 = <>(B/13,A/12)
- B/13 = <>(A/12,B/13)
+ A/12 = (B/13,A/12)
+ B/13 = (A/12,B/13)
 typechecked type_equiv.as
 
  A -> A/5
@@ -278,9 +278,9 @@ typechecked bankex.as
  show : (Text,Account/3)->()
  test : ()->async (Account/3,Account/3)
  transfer : (Account/3,Account/3,Int)->async ()
- Bank/1 := <>actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
- Issuer/2 := <>actor{hasIssued: (like Account/3)->async Bool}
- Account/3 := <>actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
+ Bank/1 := actor{getIssuer: ()->async Issuer/2;getReserve: ()->async Account/3}
+ Issuer/2 := actor{hasIssued: (like Account/3)->async Bool}
+ Account/3 := actor{getBalance: ()->async Int;isCompatible: (like Account/3)->async Bool;join: Account/3->();split: Int->async Account/3}
 test(())
 test(())<-<async>
 getReserve(())
@@ -324,7 +324,7 @@ typechecked counter.as
  Show : Int->()
  Test : ()->()
  c : Counter/1
- Counter/1 := <>actor{Dec: ()->();Read: ()->async Int;c: var  Int}
+ Counter/1 := actor{Dec: ()->();Read: ()->async Int;c: var  Int}
 Test(())
 Test(())<-()
 Dec(())

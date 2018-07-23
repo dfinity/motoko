@@ -269,9 +269,9 @@ let check_I32_u p bits =
     fun at s ->
     try  let i = I.of_string s in
     	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 then typeError at "literal overflow for type %s" (string_of_typ (PrimT p))
 	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+    with _ -> typeError at "bad literal for type %s" (string_of_typ (PrimT p))
 
 let check_I64_u p bits =
     let module I = I64 in
@@ -279,9 +279,9 @@ let check_I64_u p bits =
     fun at s ->
     try  let i = I.of_string s in
     	 if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	 then typeError at "literal overflow for type %s" (typ_to_string (PrimT p))
+	 then typeError at "literal overflow for type %s" (string_of_typ (PrimT p))
 	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+    with _ -> typeError at "bad literal for type %s" (string_of_typ (PrimT p))
 
 let check_nat    = check_I32_u NatT nat_width
 let check_word8  = check_I32_u (WordT Width8) 8
@@ -297,9 +297,9 @@ let check_I32_s p bits =
     fun at s ->
     try  let i = I.of_string s in
     	 if not (I.le_s min i && I.le_s i max)
-	 then typeError at "literal under/overflow for type %s" (typ_to_string (PrimT p))
+	 then typeError at "literal under/overflow for type %s" (string_of_typ (PrimT p))
 	 else I.to_bits i
-    with _ -> typeError at "bad literal for type %s" (typ_to_string (PrimT p))
+    with _ -> typeError at "bad literal for type %s" (string_of_typ (PrimT p))
 
 let check_int = check_I32_s IntT int_width
 
@@ -433,8 +433,8 @@ and inf_lit context rl =
 
 
 and check_lit at context t rl =
-  let trap of_string s = try of_string s with _ -> typeError at "bad literal %s for type %s" s (typ_to_string t) in
-  let unexpected() = typeError at "expected literal of type %s" (typ_to_string t) in
+  let trap of_string s = try of_string s with _ -> typeError at "bad literal %s for type %s" s (string_of_typ t) in
+  let unexpected() = typeError at "expected literal of type %s" (string_of_typ t) in
   let l = !rl in
   match norm_typ context t with
     | OptT t ->
@@ -492,9 +492,9 @@ and check_lit at context t rl =
        let u = inf_lit context rl in
        if eq_typ context t u
        then ()
-       else typeError at "expect literal of type %s found literal of type %s" (typ_to_string t) (typ_to_string u)
+       else typeError at "expect literal of type %s found literal of type %s" (string_of_typ t) (string_of_typ u)
      end
-   | _ -> typeError at "type %s has no literals" (typ_to_string t)
+   | _ -> typeError at "type %s has no literals" (string_of_typ t)
 
 
 and inf_binop context at e1 bop e2 =
@@ -513,22 +513,22 @@ and inf_binop context at e1 bop e2 =
       if logical_typ context t1 && t1 = t2 then
          t1
       else typeError at "arguments to logical operator must have equivalent logical types"
-    | _ -> typeError at "operator doesn't take operands of types %s and %s" (typ_to_string t1) (typ_to_string t2)
+    | _ -> typeError at "operator doesn't take operands of types %s and %s" (string_of_typ t1) (string_of_typ t2)
 
 and check_binop context at t e1 bop e2 =
    (match bop with
     | CatOp ->
       if eq_typ context t (PrimT TextT)
       then ()
-      else typeError at "expecting value of type %s, but concatenation returns a value of type Text" (typ_to_string t)
+      else typeError at "expecting value of type %s, but concatenation returns a value of type Text" (string_of_typ t)
     | AddOp | SubOp | MulOp | DivOp | ModOp ->
       if numeric_typ context t
       then ()
-      else typeError at "expecting value of type non-numeric type %s, operator returns a value of numeric type" (typ_to_string t)
+      else typeError at "expecting value of type non-numeric type %s, operator returns a value of numeric type" (string_of_typ t)
     | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
       if logical_typ context t
       then ()
-      else typeError at "expecting value of type non-logical type %s, operator returns a value of logical type" (typ_to_string t)
+      else typeError at "expecting value of type non-logical type %s, operator returns a value of logical type" (string_of_typ t)
     );
     check_exp context t e1;
     check_exp context t e2
@@ -550,7 +550,7 @@ and inf_relop context at e1 rop e2 =
 and check_relop context at t e1 rop e2 =
     if eq_typ context t boolT
     then ()
-    else typeError at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (typ_to_string t);
+    else typeError at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (string_of_typ t);
     let _ = inf_relop context at e1 rop e2 in
     ()
 
@@ -609,15 +609,15 @@ match e.it with
    | TupT(ts) ->
      (try List.nth ts n
       with Failure _ -> typeError e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
-   | t -> typeError e.at "expecting tuple type, found %s" (typ_to_string t))
+   | t -> typeError e.at "expecting tuple type, found %s" (string_of_typ t))
 | DotE(e,v) ->
   (match obj_typ context (inf_exp context e) with
    |(ObjT(a,fts) as t) ->
      (try let ft = List.find (fun (fts:typ_field) -> fts.var = v.it) fts in
 	 (v.note <- ft.mut;
           ft.typ)
-      with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it)
-   | t -> typeError e.at "expecting object type, found %s" (typ_to_string t))   
+      with  _ -> typeError e.at "object of type %s has no field named %s" (string_of_typ t) v.it)
+   | t -> typeError e.at "expecting object type, found %s" (string_of_typ t))   
 | AssignE(e1,e2) ->
   begin
   match e1.it with
@@ -646,9 +646,9 @@ match e.it with
                          check_exp context ft.typ e2;
 	       	      	 unitT
              | ConstMut ->  typeError e.at "cannot assign to immutable field %s"  v.it
-	   with  _ -> typeError e.at "object of type %s has no field named %s" (typ_to_string t) v.it
+	   with  _ -> typeError e.at "object of type %s has no field named %s" (string_of_typ t) v.it
 	 end 
-      | t -> typeError e.at "expecting object type, found %s" (typ_to_string t)
+      | t -> typeError e.at "expecting object type, found %s" (string_of_typ t)
     end
   | IdxE(ea,ei) ->
     begin
@@ -658,8 +658,8 @@ match e.it with
          check_exp context t e2;
 	 unitT
       | ArrayT(ConstMut,_) as t1  -> 
-        typeError e.at "cannot assign to immutable array of type %s" (typ_to_string t1) 
-      | t -> typeError e.at "expecting array type, found %s" (typ_to_string t)
+        typeError e.at "cannot assign to immutable array of type %s" (string_of_typ t1) 
+      | t -> typeError e.at "expecting array type, found %s" (string_of_typ t)
     end
   | _ ->
     typeError e.at "illegal assignment: expecting variable, mutable object field or mutable array element"
@@ -677,7 +677,7 @@ match e.it with
   | ArrayT(_,t1) -> 
     check_exp context intT e2;
     t1
-  | t -> typeError e.at "illegal indexing: expected an array, found" (typ_to_string t)
+  | t -> typeError e.at "illegal indexing: expected an array, found" (string_of_typ t)
   end
 | CallE(e1,ts,e2) ->
  (let ts = List.map (check_typ context) ts in
@@ -690,7 +690,7 @@ match e.it with
     let t2 = inf_exp context e2 in
     if eq_typ context t2 dom
     then rng
-    else typeError e.at "illegal function application: expecting argument of type %s found argument of type %s" (typ_to_string dom) (typ_to_string t2)
+    else typeError e.at "illegal function application: expecting argument of type %s found argument of type %s" (string_of_typ dom) (string_of_typ t2)
   | _ -> typeError e.at "illegal application: not a function")
 | BlockE es ->
   let context = addBreak context labelOpt unitT in
@@ -784,7 +784,7 @@ match e.it with
     then
       match norm_typ context (inf_exp context e0) with
       | AsyncT t -> t
-      | t -> typeError e0.at "expecting expression of async type, found expression of type %s" (typ_to_string t)
+      | t -> typeError e0.at "expecting expression of async type, found expression of type %s" (string_of_typ t)
     else typeError e.at "illegal await in synchronous context"
 | AssertE e ->
     check_exp context boolT e;
@@ -837,7 +837,7 @@ and check_exp context t e =
       match norm_typ context t with
       | ArrayT (mut,t) ->
         List.iter (check_exp context t) es
-      | _ -> typeError e.at "array expression cannot produce expected type %s" (typ_to_string t)
+      | _ -> typeError e.at "array expression cannot produce expected type %s" (string_of_typ t)
     end
 (* | IdxE(e1,e2) ->
    TBR, unfortunately, we can't easily do IdxE in checking mode because we don't know whether to expect
@@ -856,7 +856,7 @@ and check_exp context t e =
 		    returns = Some t; (* TBR *)
 		    awaitable = true} in
      check_exp context t e0
-     |_ -> typeError e.at "async expression cannot produce expected type %s" (typ_to_string t))
+     |_ -> typeError e.at "async expression cannot produce expected type %s" (string_of_typ t))
   | LoopE(e,None) ->
     let context' = addBreakAndContinue context labelOpt t in
     check_exp context' unitT e; (*TBR do we want to allow any type for the body? *)
@@ -873,7 +873,7 @@ and check_exp context t e =
     let t' = inf_exp context e in
     if (eq_typ context t t')
     then ()
-    else typeError e.at "expecting expression of type %s found expression of type %s" (typ_to_string t) (typ_to_string t')
+    else typeError e.at "expecting expression of type %s found expression of type %s" (string_of_typ t) (string_of_typ t')
   end;
   e.note <- norm_typ context t    
     
@@ -893,7 +893,7 @@ and check_block r context t es =
   | [] ->
     if eq_typ context t unitT
     then ()
-    else typeError r "block  must end with expression of type" (typ_to_string t) 
+    else typeError r "block  must end with expression of type" (string_of_typ t) 
   | {it = DecE d;at}::es ->
     let ve,ce,ke = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
     check_block r (union_kinds (union_constructors (union_values context ve) ce) ke) t es
