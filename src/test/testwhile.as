@@ -4,7 +4,7 @@ func Test():Int {
       while (i > -10)
       {
 	i-=1;
-	if (i = 0) then break count;
+	if (i = 0) break count;
 	continue count;
 	return -1;
       };

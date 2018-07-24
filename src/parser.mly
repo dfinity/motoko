@@ -302,19 +302,19 @@ expr :
       { AndE(e1, e2) @? at($symbolstartpos,$endpos) }
     | e1=expr OR e2=expr
       { OrE(e1, e2) @? at($symbolstartpos,$endpos) }
-    | IF b=expr THEN e1=expr %prec IFX
+    | IF b=atomic_expr e1=expr %prec IFX
       { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
-    | IF b=expr THEN e1=expr ELSE e2=expr
+    | IF b=atomic_expr e1=expr ELSE e2=expr
       { IfE(b, e1, e2) @? at($symbolstartpos,$endpos) }
-    | SWITCH e=expr cs=case+
+    | SWITCH e=atomic_expr cs=case+
       { SwitchE(e, cs) @? at($symbolstartpos,$endpos) }
-    | WHILE LPAR e1=expr RPAR e2=expr
+    | WHILE e1=atomic_expr e2=expr
       { WhileE(e1, e2) @? at($symbolstartpos,$endpos) }
     | LOOP e=expr
       { LoopE(e, None) @? at($symbolstartpos,$endpos) }
-    | LOOP e1=expr WHILE LPAR e2=expr RPAR
+    | LOOP e1=expr WHILE e2=expr
       { LoopE(e1, Some e2) @? at($symbolstartpos,$endpos) }
-    | FOR p=pat IN e1=expr e2=expr
+    | FOR p=pat IN e1=atomic_expr e2=expr
       { ForE(p, e1, e2) @? at($symbolstartpos,$endpos) }
     | RETURN eo=expr?
       { let e = Lib.Option.get eo.it (TupE([]) @? eo.at) in

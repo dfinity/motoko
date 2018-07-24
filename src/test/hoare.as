@@ -19,14 +19,14 @@ func partition(a:var Int[], lo:Int, hi:Int) : Int {
          j -= 1;
        } while (a[j] > pivot);
 
-       if (i >= j) then return j;
+       if (i >= j) return j;
 
        swap(a,i,j);
      };
   };
 
 func quicksort(a:var Int[], lo:Int, hi:Int): () {
-   	if (lo < hi) then
+   	if (lo < hi)
 	{ let p = partition(a, lo, hi);
 	  quicksort(a, lo, p);
 	  quicksort(a, p + 1, hi);  
