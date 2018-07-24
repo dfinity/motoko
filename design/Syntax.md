@@ -48,7 +48,7 @@ Productions marked * probably deferred to later versions.
   <expr> := <expr>                               assignment
   <expr> <binop>= <expr>                         binary update
   <unop>= <expr>                                 unary update
-  [ <expr>,* ]                                   array
+  [ var? <expr>,* ]                              array
   <expr> [ <expr> ]                              array indexing
   <expr> <type-args>? <expr>                     function call
   { <expr>;* }                                   block

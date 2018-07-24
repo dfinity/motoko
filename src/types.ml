@@ -80,18 +80,16 @@ end
 
 module ConEnv = Map.Make(Con)
 
-let lookup_con map k = try Some (ConEnv.find k map) with _ -> None (* TODO: use find_opt in 4.05 *)
+let lookup_con map k = try Some (ConEnv.find k map) with Not_found -> None (* TODO: use find_opt in 4.05 *)
 
 
 type con = Con.t
-
 type mut = ConstMut | VarMut
-
 type actor = Object | Actor
 
 type typ =
   | VarT of con * typ list                     (* constructor *)
-  | PrimT of prim                        (* primitive *)
+  | PrimT of prim                              (* primitive *)
   | ObjT of actor * typ_field list             (* object *)
   | ArrayT of mut * typ                        (* array *)
   | OptT of typ                                (* option *)
@@ -198,49 +196,45 @@ let string_of_kind = function
 
 type subst = typ ConEnv.t
 
-let rec rename_binds sigma (binds:typ_bind list) =
-    match binds with
-    | [] -> sigma,[]
-    | {var=con;bound=typ}::binds ->
-      let con' = Con.fresh con.name in
-      let sigma' = ConEnv.add con (VarT(con',[])) sigma in
-      let (rho,binds') = rename_binds sigma' binds in
-      rho,{var=con';bound=subst rho typ}::binds'
+let rec rename_binds sigma = function
+  | [] -> sigma, []
+  | {var = con; bound}::binds ->
+    let con' = Con.fresh con.name in
+    let sigma' = ConEnv.add con (VarT (con', [])) sigma in
+    let (rho, binds') = rename_binds sigma' binds in
+    rho, {var = con'; bound = subst rho bound}::binds'
 
-and subst sigma t =
-    match t with
-    | PrimT p -> t
-    | VarT (c,ts) ->
-      begin
-       match lookup_con sigma c with
-       | Some t -> assert (List.length ts = 0);
-                   t
-       | None -> VarT(c,List.map (subst sigma) ts)
-      end
-    | ArrayT (m,t) ->
-      ArrayT (m, subst sigma t)
-    | TupT ts ->
-      TupT (List.map (subst sigma) ts)
-    | FuncT(ts,dom,rng) ->
-      let (rho,ts') = rename_binds sigma ts in
-      FuncT(ts',subst rho dom, subst rho rng)
-    | OptT t ->
-      OptT (subst sigma t)
-    | AsyncT t -> 
-      AsyncT (subst sigma t)
-    | LikeT t -> 
-      LikeT (subst sigma t)
-    | ObjT(a,fs) ->
-      ObjT(a,subst_fields sigma fs)
+and subst sigma = function
+  | PrimT p -> PrimT p
+  | VarT (c, ts) ->
+    (match lookup_con sigma c with
+    | Some t -> assert (List.length ts = 0); t
+    | None -> VarT (c, List.map (subst sigma) ts)
+    )
+  | ArrayT (m, t) ->
+    ArrayT (m, subst sigma t)
+  | TupT ts ->
+    TupT (List.map (subst sigma) ts)
+  | FuncT(ts, t1, t2) ->
+    let (rho, ts') = rename_binds sigma ts in
+    FuncT (ts', subst rho t1, subst rho t2)
+  | OptT t ->
+    OptT (subst sigma t)
+  | AsyncT t ->
+    AsyncT (subst sigma t)
+  | LikeT t ->
+    LikeT (subst sigma t)
+  | ObjT (a, fs) ->
+    ObjT (a, subst_fields sigma fs)
 
 and subst_fields sigma fs = 
-    List.map (fun {var; mut; typ} -> {var; mut; typ = subst sigma typ}) fs
+  List.map (fun {var; mut; typ} -> {var; mut; typ = subst sigma typ}) fs
 
-and substitute_aux sigma us ts =
-      match us,ts with
-      | [],[] -> sigma
-      | u::us, {bound;var}::ts ->
-        substitute_aux (ConEnv.add var u sigma) us ts
-      | _ -> raise (Invalid_argument "substitute")
 
-let substitute us ts = substitute_aux ConEnv.empty us ts
+let rec substitute us ts = substitute' ConEnv.empty us ts
+and substitute' sigma us ts =
+  match us, ts with
+  | [], [] -> sigma
+  | u::us, {var; bound}::ts ->
+    substitute' (ConEnv.add var u sigma) us ts
+  | _ -> raise (Invalid_argument "substitute")

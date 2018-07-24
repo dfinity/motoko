@@ -24,7 +24,7 @@ let main () =
        Env.iter (fun v con -> Printf.printf "\n %s -> %s" v (Con.to_string con)) ce;
        Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
        ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
-       let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.prelude  ve) ce) ke in
+       let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.empty_env ve) ce) ke in
        let _ = Interpret.interpret_prog prog (fun dyn_ve ->
 					  Env.iter (fun v (t,mut) -> 
 					            let w = Interpret.Values.checkV (Env.find v dyn_ve) in

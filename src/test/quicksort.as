@@ -45,6 +45,6 @@ func cmpi(i:Int,j:Int):Int = i - j;
 
 let qs = QS<Int>(cmpi);
 
-let a = [8;3;9;5;2];
+let a = [var 8, 3, 9, 5, 2];
 
 let u : () = qs.quicksort(a,0,4);

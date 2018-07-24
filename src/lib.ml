@@ -176,6 +176,10 @@ struct
     | Some y -> y
     | None -> x
 
+  let value = function
+    | Some x -> x
+    | None -> raise Not_found
+
   let map f = function
     | Some x -> Some (f x)
     | None -> None

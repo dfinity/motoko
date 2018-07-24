@@ -418,7 +418,7 @@ match e.it with
       interpret_exp context ei (fun vi ->
       interpret_exp context e2 (fun v2 -> k(updateV va vi v2))))
     end
-| ArrayE es ->
+| ArrayE (m, es) ->
     interpret_exps context [] es (fun vs ->
     k (arrV (Array.of_list vs)))
 | IdxE(e1,e2) ->
