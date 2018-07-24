@@ -8,8 +8,6 @@ open Printf
 module I32 = Wasm.I32
 module I64 = Wasm.I64
 
-module Env = Map.Make(String)
-
 module Values =
 struct
 
@@ -222,8 +220,6 @@ open Scheduler
 let debug = ref true
 
 exception Trap of Source.region * string
-
-let lookup map k = try Some (Env.find k map)  with _ -> None (* TODO: use find_opt in 4.05 *)
 
 type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: cont Env.t; continues: cont Env.t ; returns: cont option; awaitable: bool}
 

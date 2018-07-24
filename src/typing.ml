@@ -23,16 +23,20 @@ let int_width = 31
 
 module Env = Map.Make(String)
 
-let lookup map k =
-  try Some (Env.find k map)  with Not_found -> None (* TODO: use find_opt in 4.05 *)
+let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+let lookup env k =
+  try Some (Env.find k env)  with Not_found -> None (* TODO: use find_opt in 4.05 *)
 
 
+type val_env = (typ * mut) Env.t
+type con_env = con Env.t
+type kind_env = kind ConEnv.t
 
 type context =
   {
-    values : (typ * mut) Env.t;
-    constructors : con Env.t;
-    kinds : kind ConEnv.t;
+    values : val_env;
+    constructors : con_env;
+    kinds : kind_env;
     label : string option;
     breaks : typ Env.t;
     continues : unit Env.t;
@@ -40,7 +44,6 @@ type context =
     awaitable : bool
   }
 
-let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
 let union_conenv env1 env2 = ConEnv.union (fun k v1 v2 -> Some v2) env1 env2
 
 let union_values c ve = {c with values = union c.values ve}
@@ -63,7 +66,7 @@ let disjoint_add_constructor at c d = disjoint_union_constructors at c (Env.sing
 *)
 
 
-let empty_env =
+let empty_context =
   {
     values = Env.empty;
     constructors = Env.empty;
@@ -1087,4 +1090,4 @@ and check_decs context ds =
   ve3, ce3, ke3
 
 let check_prog p =
-  check_decs empty_env p.it
+  check_decs empty_context p.it
