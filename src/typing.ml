@@ -25,7 +25,7 @@ module Env = Map.Make(String)
 
 let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
 let lookup env k =
-  try Some (Env.find k env)  with Not_found -> None (* TODO: use find_opt in 4.05 *)
+  try Some (Env.find k env) with Not_found -> None (* TODO: use find_opt in 4.05 *)
 
 
 type val_env = (typ * mut) Env.t
@@ -37,7 +37,6 @@ type context =
     values : val_env;
     constructors : con_env;
     kinds : kind_env;
-    label : string option;
     breaks : typ Env.t;
     continues : unit Env.t;
     returns : typ option;
@@ -71,26 +70,11 @@ let empty_context =
     values = Env.empty;
     constructors = Env.empty;
 	  kinds = ConEnv.empty;
-    label = None;
 	  breaks = Env.empty;
 	  continues = Env.empty;
 	  returns = None;
 	  awaitable = false
   }
-
-
-let add_break context label_opt t =
-  match label_opt with
-  | None -> context
-  | Some label -> {context with breaks = Env.add label t context.breaks}
-
-let add_break_and_continue context label_opt t =
-  match label_opt with
-  | None -> context
-  | Some label ->
-    { context with
-      breaks = Env.add label t context.breaks;
-      continues = Env.add label () context.continues }
 
 
 let rec eq context eqs t1 t2 =
@@ -450,7 +434,7 @@ and check_typ_field context at actor {var; mut; typ} =
     then type_error at "public field %s of actor has non-sharable type %s (the type of an actor's public field must be shareable)" var (string_of_typ typ)
 
 
-and inf_lit context rl =
+and infer_lit context rl =
   match !rl with
   | NullLit -> PrimT NullT (* TBR *)
   | BoolLit _ -> PrimT BoolT
@@ -501,16 +485,16 @@ and check_lit at context t rl =
     rl := WordLit (Word64 v)
 
   | PrimT _, _ ->
-    let u = inf_lit context rl in
+    let u = infer_lit context rl in
     if not (eq_typ context t u)
     then type_error at "expect literal of type %s, found literal of type %s" (string_of_typ t) (string_of_typ u)
 
   | _ -> type_error at "type %s has no literals" (string_of_typ t)
 
 
-and inf_binop context at e1 bop e2 =
-  let t1 = inf_exp context e1 in
-  let t2 = inf_exp context e2 in
+and infer_binop context at e1 bop e2 =
+  let t1 = infer_exp context e1 in
+  let t2 = infer_exp context e2 in
   match bop with
   | CatOp ->
     if eq_typ context t1 (PrimT TextT) && eq_typ context t1 t2
@@ -540,9 +524,9 @@ and check_binop context at t e1 bop e2 =
   check_exp context t e1;
   check_exp context t e2
 
-and inf_relop context at e1 rop e2 =
-  let t1 = inf_exp context e1 in
-  let t2 = inf_exp context e2 in
+and infer_relop context at e1 rop e2 =
+  let t1 = infer_exp context e1 in
+  let t2 = infer_exp context e2 in
   match rop with
   | EqOp 
   | NeqOp ->
@@ -557,10 +541,10 @@ and inf_relop context at e1 rop e2 =
 and check_relop context at t e1 rop e2 =
   if not (eq_typ context t boolT)
   then type_error at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (string_of_typ t);
-  ignore (inf_relop context at e1 rop e2)
+  ignore (infer_relop context at e1 rop e2)
 
-and inf_unop context at uop e =
-  let t = inf_exp context e in
+and infer_unop context at uop e =
+  let t = infer_exp context e in
   match uop with
   | PosOp | NegOp ->
     if numeric_typ context t (* TBR: rule out Naturals *)
@@ -582,14 +566,12 @@ and check_unop context at t uop e =
     then check_exp context t e
     else type_error at "arguments to a bitwise negation operator must have logical type"
 
-and inf_exp context e =
-  let t = inf_exp' context e in
+and infer_exp context e =
+  let t = infer_exp' context e in
   e.note <- norm_typ context t;
   t
 
-and inf_exp' context e =
-  let label_opt = context.label in
-  let context = {context with label = None} in
+and infer_exp' context e =
   match e.it with
   | VarE x ->
     (match lookup context.values x.it with
@@ -597,25 +579,25 @@ and inf_exp' context e =
     | None -> type_error x.at "unbound identifier %s" x.it
     )
   | LitE rl ->
-    inf_lit context rl
+    infer_lit context rl
   | UnE (uop, e1) ->
-    inf_unop context e.at uop e1
+    infer_unop context e.at uop e1
   | BinE (e1, bop, e2) ->
-    inf_binop context e.at e1 bop e2
+    infer_binop context e.at e1 bop e2
   | RelE (e1, rop, e2) ->
-    inf_relop context e.at e1 rop e2    
+    infer_relop context e.at e1 rop e2    
   | TupE es ->
-    let ts = List.map (inf_exp context) es in
+    let ts = List.map (infer_exp context) es in
     TupT ts
   | ProjE (e, n) ->
-    (match norm_typ context (inf_exp context e) with
+    (match norm_typ context (infer_exp context e) with
     | TupT ts ->
       (try List.nth ts n
       with Failure _ -> type_error e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
     | t -> type_error e.at "expecting tuple type, found %s" (string_of_typ t)
     )
   | DotE (e, v) ->
-    (match obj_typ context (inf_exp context e) with
+    (match obj_typ context (infer_exp context e) with
     | ObjT (a, fts) as t ->
       (try
         let ft = List.find (fun (fts : typ_field) -> fts.var = v.it) fts in
@@ -639,7 +621,7 @@ and inf_exp' context e =
      	  type_error e1.at "unbound mutable identifier %s" v.it
       )
     | DotE (o, v) ->
-      (match obj_typ context (inf_exp context o) with
+      (match obj_typ context (infer_exp context o) with
       | ObjT (a, fts) as t ->
   	    (try
           let ft = List.find (fun (fts : typ_field) -> fts.var = v.it) fts in
@@ -654,7 +636,7 @@ and inf_exp' context e =
       | t -> type_error e.at "expecting object type, found %s" (string_of_typ t)
       )
     | IdxE (ea, ei) ->
-      (match norm_typ context (inf_exp context ea) with
+      (match norm_typ context (infer_exp context ea) with
       | ArrayT (VarMut, t) ->
         check_exp context intT ei;
         check_exp context t e2;
@@ -669,13 +651,13 @@ and inf_exp' context e =
   | ArrayE (_, []) ->
     type_error e.at "cannot infer type of empty array (use a type annotation)"
   | ArrayE (mut, es) ->
-    let ts = List.map (inf_exp context) es in
+    let ts = List.map (infer_exp context) es in
     let t1 = List.hd ts in
     if List.for_all (eq_typ context t1) (List.tl ts)
     then ArrayT (mut.it, t1)
     else type_error e.at "array contains elements of distinct types"
   | IdxE (e1, e2) ->
-    (match norm_typ context (inf_exp context e1) with
+    (match norm_typ context (infer_exp context e1) with
     | ArrayT (_, t1) -> 
       check_exp context intT e2;
       t1
@@ -683,20 +665,19 @@ and inf_exp' context e =
     )
   | CallE (e1, ts, e2) ->
     let ts = List.map (check_typ context) ts in
-    (match norm_typ context (inf_exp context e1) with
+    (match norm_typ context (infer_exp context e1) with
     | FuncT (tbs, t3, t4) -> (* TBC polymorphic instantiation, perhaps by matching? *)
       check_bounds e.at ts tbs;
       let sigma = substitute ts tbs in
       let t3' = subst sigma t3 in
       let t4' = subst sigma t4 in
-      let t2 = inf_exp context e2 in
+      let t2 = infer_exp context e2 in
       if eq_typ context t2 t3'
       then t4'
       else type_error e.at "illegal function application: expecting argument of type %s found argument of type %s" (string_of_typ t3') (string_of_typ t2)
     | _ -> type_error e.at "illegal application: not a function"
     )
   | BlockE es ->
-    let context = add_break context label_opt unitT in
     check_block e.at context unitT es;
     unitT
   | NotE e ->
@@ -712,47 +693,45 @@ and inf_exp' context e =
     boolT
   | IfE (e0, e1, e2) ->
     check_exp context boolT e0;
-    let t1 = inf_exp context e1 in
-    let t2 = inf_exp context e2 in
+    let t1 = infer_exp context e1 in
+    let t2 = infer_exp context e2 in
     if eq_typ context t1 t2 
     then t1
     else type_error e.at "branches of if have different types"
   | SwitchE (e, cs) ->
-    let t = inf_exp context e in
-    if switchable_typ context t
-    then
-      match inf_cases context t cs None with
-      | Some t -> t
-      | None -> type_error e.at "couldn't infer type of case"
-    else type_error e.at "illegal type for switch"
+    let t = infer_exp context e in
+    if not (switchable_typ context t) then type_error e.at "illegal type for switch";
+    (match infer_cases context t cs None with
+    | Some t -> t
+    | None -> type_error e.at "couldn't infer type of case"
+    ) 
   | WhileE (e0, e1) ->
     check_exp context boolT e0;
-    let context' = add_break_and_continue context label_opt unitT in
-    check_exp context' unitT e1;
+    check_exp context unitT e1;
     unitT
   | LoopE (e, None) ->
-    let context' = add_break_and_continue context label_opt unitT in
-    check_exp context' unitT e;
+    check_exp context unitT e;
     unitT (* absurdTy? *)
   | LoopE (e0, Some e1) ->
-    let context' = add_break_and_continue context label_opt unitT in
-    check_exp context' unitT e0;
+    check_exp context unitT e0;
     (* TBR currently can't break or continue from guard *)
     check_exp context boolT e1;
     unitT
   | ForE (p, e0, e1)->
-    let t = inf_exp context e0 in (*TBR is this for arrays only? If so, what about mutability*)
-    if iterable_typ context t
-    then 
-      let ve = check_pat context p (element_typ context t) in
-      let context' = add_break_and_continue {context with values = union context.values ve} label_opt unitT in
-      check_exp context' unitT e1;
-      unitT
-    else type_error e.at "cannot iterate over this type"
-  (* labels *)
+    let t = infer_exp context e0 in (*TBR is this for arrays only? If so, what about mutability*)
+    if not (iterable_typ context t) then type_error e.at "cannot iterate over this type";
+    let ve = check_pat context p (element_typ context t) in
+    let context' = {context with values = union context.values ve} in
+    check_exp context' unitT e1;
+    unitT
   | LabelE (l, e) ->
-    let context' = {context with label = Some l.it} in
-    inf_exp context' e
+    let context' = {context with breaks = Env.add l.it unitT context.breaks} in
+    let context'' =
+      match e.it with
+      | WhileE _ | LoopE _ | ForE _ ->
+        {context' with continues = Env.add l.it () context.continues}
+      | _ -> context'
+    in infer_exp context'' e
   | BreakE (l, e) ->
     (match lookup context.breaks l.it  with
     | Some t -> 
@@ -778,17 +757,16 @@ and inf_exp' context e =
     let context' =
       { context with
   		  breaks = Env.empty;
-  		  label = None;
   		  continues = Env.empty;
   		  returns = Some unitT; (* TBR *)
   		  awaitable = true
       } in
-    let t = inf_exp context' e0 in
+    let t = infer_exp context' e0 in
     AsyncT t
   | AwaitE e0 ->
     if context.awaitable
     then
-      match norm_typ context (inf_exp context e0) with
+      match norm_typ context (infer_exp context e0) with
       | AsyncT t -> t
       | t -> type_error e0.at "expecting expression of async type, found expression of type %s" (string_of_typ t)
     else type_error e.at "illegal await in synchronous context"
@@ -796,7 +774,7 @@ and inf_exp' context e =
     check_exp context boolT e;
     unitT
   | IsE (e, t) ->
-    let _ = inf_exp context e in
+    let _ = infer_exp context e in
     let _ = check_typ context t in (*TBR what if T has free type variables? How will we check this, sans type passing *) 
     boolT
   | AnnotE (e, t) ->
@@ -814,22 +792,20 @@ and inf_exp' context e =
     let _ = check_decs context [d] in
     unitT
     
-and inf_cases context pt cs t_opt  =
+and infer_cases context pt cs t_opt  =
   match cs with
   | [] -> t_opt
   | {it = {pat; exp}; at}::cs ->
     let ve = check_pat context pat pt in
-    let t = inf_exp (union_values context ve) exp in
+    let t = infer_exp (union_values context ve) exp in
     let t_opt' =
       match t_opt with
     	| None -> Some t
  	    | Some t' when eq_typ context t t' -> Some t
 		  | _ -> type_error at "illegal case of different type from preceeding cases"
-    in inf_cases context pt cs t_opt'
+    in infer_cases context pt cs t_opt'
 
 and check_exp context t e =
-  let label_opt = context.label in
-  let context = {context with label = None} in
   (match e.it with
   | LitE rl ->
     check_lit e.at context t rl
@@ -856,7 +832,6 @@ and check_exp context t e =
       let context =
         { context with
           breaks = Env.empty;
-		      label = None;
 		      continues = Env.empty;
 		      returns = Some t; (* TBR *)
 		      awaitable = true
@@ -864,34 +839,40 @@ and check_exp context t e =
       check_exp context t e0
     | _ -> type_error e.at "async expression cannot produce expected type %s" (string_of_typ t))
   | LoopE (e, None) ->
-    let context' = add_break_and_continue context label_opt t in
-    check_exp context' unitT e; (*TBR do we want to allow any type for the body? *)
+    check_exp context unitT e; (*TBR do we want to allow any type for the body? *)
   | BlockE es ->
-    let context' = add_break context label_opt t in
-    check_block e.at context' t es
+    check_block e.at context t es
   | BreakE _ ->
-    ignore (inf_exp context e)
+    ignore (infer_exp context e)
   | ContE _ ->
-    ignore (inf_exp context e)
+    ignore (infer_exp context e)
   | RetE _ ->
-    ignore (inf_exp context e)
+    ignore (infer_exp context e)
+  | LabelE (l, e) ->
+    let context' = {context with breaks = Env.add l.it t context.breaks} in
+    let context'' =
+      match e.it with
+      | WhileE _ | LoopE _ | ForE _ ->
+        {context' with continues = Env.add l.it () context.continues}
+      | _ -> context'
+    in check_exp context'' t e
   | _ ->
-    let t' = inf_exp context e in
+    let t' = infer_exp context e in
     if not (eq_typ context t t')
     then type_error e.at "expecting expression of type %s found expression of type %s" (string_of_typ t) (string_of_typ t')
   );
   e.note <- norm_typ context t    
     
-and inf_block context es =
+and infer_block context es =
   match es with
   | [] -> unitT
   | {it = DecE d; at}::es ->
     let ve, ce, ke = check_decs context [d] in (* TBR: we currently check local decs sequentially, not recursively *)
-    inf_block (union_kinds (union_constructors (union_values context ve) ce) ke) es
-  | [e] -> inf_exp context e
+    infer_block (union_kinds (union_constructors (union_values context ve) ce) ke) es
+  | [e] -> infer_exp context e
   | e::es ->
     check_exp context unitT e; (* TBR: is this too strict? do we want to allow implicit discard? *)
-    inf_block context es
+    infer_block context es
 
 and check_block r context t es =
   match es with
@@ -907,24 +888,24 @@ and check_block r context t es =
     check_block r context t es 
 
 
-and inf_pats at context ve ts ps =
+and infer_pats at context ve ts ps =
   match ps with
   | [] -> ve, TupT (List.rev ts)
   | p::ps ->
-    let ve',t = inf_pat context p in
-    inf_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') (t::ts) ps
+    let ve',t = infer_pat context p in
+    infer_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') (t::ts) ps
 
-and inf_pat context p =
+and infer_pat context p =
   match p.it with
   | WildP ->  type_error p.at "can't infer type of pattern"
   | VarP v -> type_error p.at "can't infer type of pattern"
   | LitP l ->
-    Env.empty,inf_lit context l
+    Env.empty, infer_lit context l
   | TupP ps ->
-    inf_pats p.at context Env.empty [] ps
+    infer_pats p.at context Env.empty [] ps
   | AnnotP (p, t) ->
     let t = check_typ context t in
-    check_pat context p t,t
+    check_pat context p t, t
 
 and check_pats at context ve ps ts =
   match ps,ts with
@@ -963,7 +944,7 @@ and check_dec' pass context d =
   match d.it with
   | LetD (p, e) ->
     if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else      
-    let t = inf_exp context e in
+    let t = infer_exp context e in
     let ve = check_pat context p t in 
     ve, Env.empty, ConEnv.empty
   | VarD (v, t, None) ->
@@ -996,12 +977,11 @@ and check_dec' pass context d =
     if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else
     let tbs, ce, ke = check_typ_binds context tps in
     let context_ce = union_kinds (union_constructors context ce) ke in
-    let ve, t1 = inf_pat context_ce p in
+    let ve, t1 = infer_pat context_ce p in
     let t2 = check_typ context_ce t in
     let funcT = FuncT (tbs, t1, t2) in  (* TBR: we allow polymorphic recursion *)
     let context_ce_ve_v =
       { (add_value (union_values context_ce ve) v.it (funcT, ConstMut)) with
-        label = None;
 	      breaks = Env.empty;
         continues = Env.empty;
         returns = Some t2;
@@ -1022,7 +1002,7 @@ and check_dec' pass context d =
     if pass = TypDecPass then Env.empty, ce0, ke0 else
     let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
     let context_ts_v = add_constructor context_ts v.it con kind0 in
-    let ve, domT = inf_pat context_ts_v p in
+    let ve, domT = infer_pat context_ts_v p in
     let classT = VarT (con, List.map (fun (t : Types.typ_bind) -> VarT (t.var, [])) tbs) in
     let consT = FuncT (tbs, domT, classT) (* TBR: we allow polymorphic recursion *) in
     let ve1ce1ke1 = Env.singleton v.it (consT, ConstMut), ce0, ke0 in
@@ -1038,13 +1018,13 @@ and check_dec' pass context d =
       | {it = {var; mut; priv; exp = {it = DecE {it = FuncD (v, us, p, t, e)}}}}::efs ->
         let us,ce_us,ke_us = check_typ_binds context us in
         let context_us = union_kinds (union_constructors context ce_us) ke_us in
-        let _, domT = inf_pat context_us p in
+        let _, domT = infer_pat context_us p in
         let rngT = check_typ context_us t in
         let funcT = FuncT (us, domT, rngT) in
         let field_env = disjoint_add_field var.at field_env var.it (mut.it, priv.it, funcT) in
   	    pre_members context field_env efs
       | {it = {var; mut; priv; exp = e}}::efs ->
-        let t = inf_exp context e in (* TBR: this feels wrong as we don't know all field types yet, just the ones to the left *)
+        let t = infer_exp context e in (* TBR: this feels wrong as we don't know all field types yet, just the ones to the left *)
         let field_env = disjoint_add_field var.at field_env var.it (mut.it, priv.it, t) in
         pre_members context field_env efs
     in
@@ -1067,7 +1047,7 @@ and check_dec' pass context d =
       	v.it con kind3
     in
     (* infer the fields *)
-    List.iter (fun {it = {var; mut; exp}} -> ignore (inf_exp field_context exp)) efs;
+    List.iter (fun {it = {var; mut; exp}} -> ignore (infer_exp field_context exp)) efs;
     ve2, ce2, ke2
 
 
