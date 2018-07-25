@@ -173,7 +173,7 @@ and string_of_val context t v =
       sprintf "%s[%s]" (match m with VarMut -> " var " |  ConstMut -> "")
       	       (String.concat ";" (List.map (string_of_val context t) (Array.to_list a)))
     | FuncT(_,_,_) ->
-      func_of_V v; (* catch errors *)
+      ignore (func_of_V v); (* catch errors *)
       "<func>"
     | OptT t ->
       let v = opt_of_V v in
@@ -199,20 +199,18 @@ open Values
 
 module Scheduler =
   struct
-    let q = (Queue.create() : (unit -> value) Queue.t)
+    let q : (unit -> value) Queue.t = Queue.create ()
     let queue work  = Queue.add work q
-    let yield() =
-        (* printf "\n YIELD "; *)
+    let yield () =
+      (* printf "\n YIELD "; *)
     	let work = Queue.take q in
-	work() 
+      work ()
 
-    let rec run() =
-        (* printf "\n RUN "; *)
-    	if not (Queue.is_empty q)
-	then
-	   (yield();
-	    run())
-        else unitV
+    let rec run () =
+      (* printf "\n RUN "; *)
+      if not (Queue.is_empty q)
+      then (ignore (yield ()); run ())
+      else unitV
   end
 
 open Scheduler
@@ -234,6 +232,11 @@ let prelude = {values = Env.empty;
                returns = None;
                awaitable = false}
 
+let add_continue context label_opt k =
+    match label_opt with
+    | None -> context
+    | Some label -> {context with continues = Env.add label k context.continues}
+
 let last_context = ref prelude
 let last_region = ref Source.no_region
 
@@ -247,16 +250,6 @@ let callee_context context ve k_return =
      returns =  Some k_return;
      awaitable = false}
 
-
-let addBreak context labelOpt k_break =
-    match labelOpt with
-    | None -> context
-    | Some label -> { context with breaks = Env.add label k_break context.breaks }
-
-let addBreakAndContinue context labelOpt k_break k_continue =
-    match labelOpt with
-    | None -> context
-    | Some label -> {{ context with breaks = Env.add label k_break context.breaks } with continues = Env.add label k_continue context.continues }
 
 let sprintf = Printf.sprintf
 
@@ -364,9 +357,8 @@ and interpret_exp context e k  =
     last_context := context;
     interpret_exp' context e k 
 
-and interpret_exp' (context as context_with_label) e k =
-let labelOpt = context.label in
-let context = {context with label = None} in
+and interpret_exp' context_with_label e k =
+let context = {context_with_label with label = None} in
 match e.it with
 | VarE x ->
     (match x.note with
@@ -426,9 +418,7 @@ match e.it with
     interpret_exp context e2 (fun v2 ->
     applyV v1 v2 k))
 | BlockE es ->
-    let k_break = k in
-    let context' = addBreak context labelOpt k_break in
-    interpret_block context' es k
+    interpret_block context es k
 | NotE(e1) ->
     interpret_exp context e1 (fun v -> k (notV v))
 | AndE(e1,e2) ->
@@ -453,32 +443,33 @@ match e.it with
   let e_while = e in
   let k_continue = fun v ->
       interpret_exp context_with_label e_while k in
-  let context' = addBreakAndContinue context labelOpt k k_continue in
-  interpret_exp context e0 (fun v0 ->
+  let context' = add_continue context context_with_label.label k_continue in
+  interpret_exp context' e0 (fun v0 ->
   if (bool_of_V v0)
   then interpret_exp context' e1 k_continue
   else k unitV)
 | LoopE(e0,None) ->
   let e_loop = e in
   let k_continue = fun v -> interpret_exp context_with_label e_loop k in
-  let context' = addBreakAndContinue context labelOpt k k_continue in
+  let context' = add_continue context context_with_label.label k_continue in
   interpret_exp context' e0 k_continue
 | LoopE(e0,Some e1) ->
   let e_loop = e in
+  let context' = ref context in  (* to tie recursive knot *)
   let k_continue = fun v ->
-      interpret_exp context e1 (fun v1 ->
+      interpret_exp !context' e1 (fun v1 ->
       if (bool_of_V v1)
       then interpret_exp context_with_label e_loop k
       else k unitV)
   in
-  let context' = addBreakAndContinue context labelOpt k k_continue in
-  interpret_exp context' e0 k_continue
+  context' := add_continue context context_with_label.label k_continue;
+  interpret_exp !context' e0 k_continue
 | ForE(p,e0,e1)->
   failwith "NYI:ForE"
 (* labels *)
 | LabelE(l,e) ->
-  let context = {context with label = Some l.it} in
-  interpret_exp context e k
+  let context' = {context with breaks = Env.add l.it k context.breaks; label = Some l.it} in
+  interpret_exp context' e k
 | BreakE(l,e) ->
   let k_break = Env.find l.it context.breaks in
   interpret_exp context e k_break
