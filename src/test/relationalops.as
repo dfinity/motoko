@@ -1,8 +1,8 @@
 // Relational operators
 
 func TestInt(a : Int, b : Int) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -17,16 +17,16 @@ func TestInt(a : Int, b : Int) : () {
 
 
 func TestBool(a : Bool, b : Bool) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
 };
 
 
 func TestNat(a : Nat, b : Nat) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -41,8 +41,8 @@ func TestNat(a : Nat, b : Nat) : () {
 
 
 func TestFloat(a : Float, b : Float) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -56,8 +56,8 @@ func TestFloat(a : Float, b : Float) : () {
 };
 
 func TestWord8(a : Word8, b : Word8) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -71,8 +71,8 @@ func TestWord8(a : Word8, b : Word8) : () {
 };
 
 func TestWord16(a : Word16, b : Word16) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -86,8 +86,8 @@ func TestWord16(a : Word16, b : Word16) : () {
 };
 
 func TestWord32(a : Word32, b : Word32) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -101,8 +101,8 @@ func TestWord32(a : Word32, b : Word32) : () {
 };
 
 func TestWord64(a : Word64, b : Word64) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -117,8 +117,8 @@ func TestWord64(a : Word64, b : Word64) : () {
 
 
 func TestChar(a : Char, b : Char) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;
@@ -132,8 +132,8 @@ func TestChar(a : Char, b : Char) : () {
 };
 
 func TestText(a : Text, b : Text) : () {
-   let eq1 = a = b;
-   let eq2 = (a = b) : Bool;
+   let eq1 = a == b;
+   let eq2 = (a == b) : Bool;
    let neq1 = a != b;
    let neq2 = (a != b) : Bool;
    let lt1 = a < b;

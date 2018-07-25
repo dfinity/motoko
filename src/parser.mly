@@ -62,24 +62,24 @@ let (@!) x region = {it = x; at = region; note = Types.ConstMut}
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CONTINUE DO IF IN IS THEN ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
+%token AWAIT ASYNC BREAK CASE CONTINUE LABEL IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE
 %token SEMICOLON COLON COMMA DOT QUEST
 %token AND OR NOT 
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP
-%token ANDOP OROP XOROP NOTOP SHLOP SHROP ROTLOP ROTROP
-%token NEQOP LEOP LTOP GTOP GEOP
-%token<Types.binop> BINUPDATE
+%token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
+%token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token CATOP
 %token EQ LT GT
+%token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN CATASSIGN
+%token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
-%token<Types.nat> NAT
+%token<string> NAT
 %token<string> INT
 %token<float> FLOAT
 %token<Types.unicode> CHAR
-%token<Types.word> WORD
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
@@ -89,18 +89,22 @@ let (@!) x region = {it = x; at = region; note = Types.ConstMut}
 
 %token UNDERSCORE
 
+%nonassoc IFX
+%nonassoc ELSE
+
+%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
+%left IS COLON
+%left OR
+%left AND
+%nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
 %left ADDOP SUBOP CATOP
-%left MULOP DIVOP
+%left MULOP DIVOP MODOP
 %left OROP
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
-%nonassoc UNOP
     
-%nonassoc IFX
-%nonassoc ELSE
-
-%type<Syntax.exp> expr atomic_expr
+%type<Syntax.exp> expr expr_nullary
 %start<Syntax.prog> prog
 
 %%
@@ -128,7 +132,7 @@ seplist(X, SEP) :
   | id=ID { id @@ at($symbolstartpos,$endpos)}
 
 %inline var_ref :
-  | id=ID { id @! at($symbolstartpos,$endpos)}
+  | id=ID { id @! at($symbolstartpos,$endpos) }
 
 %inline var :
   | VAR { VarMut @@ at($symbolstartpos,$endpos) }
@@ -212,125 +216,156 @@ typ_bind :
 (* Expressions *)
 
 lit :
-    | NULL { NullLit }
-    | s=INT { PreLit s }
-    | b=BOOL { BoolLit b }
-    | f=FLOAT { FloatLit f }
-    | w=WORD { WordLit w }
-    | c=CHAR { CharLit c }
-    | t=TEXT { TextLit t }
+  | NULL { NullLit }
+  | s=NAT { PreLit s }
+  | s=INT { PreLit s }
+  | b=BOOL { BoolLit b }
+  | f=FLOAT { FloatLit f }
+  | c=CHAR { CharLit c }
+  | t=TEXT { TextLit t }
 
 %inline unop :
-    | ADDOP { PosOp }
-    | SUBOP { NegOp } 
-    | NOTOP { NotOp }
+  | ADDOP { PosOp }
+  | SUBOP { NegOp }
+  | XOROP { NotOp }
 
 %inline binop :
-    | ADDOP { AddOp }
-    | SUBOP { SubOp }
-    | MULOP { MulOp }
-    | DIVOP { DivOp }
-    | MODOP { ModOp }
-    | ANDOP { AndOp }
-    | OROP  { OrOp }
-    | XOROP { XorOp }
-    | SHLOP { ShiftLOp }
-    | SHROP { ShiftROp }
-    | ROTLOP { RotLOp }
-    | ROTROP { RotROp }
-    | CATOP { CatOp }
+  | ADDOP { AddOp }
+  | SUBOP { SubOp }
+  | MULOP { MulOp }
+  | DIVOP { DivOp }
+  | MODOP { ModOp }
+  | ANDOP { AndOp }
+  | OROP  { OrOp }
+  | XOROP { XorOp }
+  | SHLOP { ShiftLOp }
+  | SHROP { ShiftROp }
+  | ROTLOP { RotLOp }
+  | ROTROP { RotROp }
+  | CATOP { CatOp }
 
 %inline relop :
-    | EQ    { EqOp }
-    | NEQOP { NeqOp }
-    | LTOP  { LtOp }
-    | LEOP  { LeOp }
-    | GTOP  { GtOp }
-    | GEOP  { GeOp }
+  | EQOP  { EqOp }
+  | NEQOP { NeqOp }
+  | LTOP  { LtOp }
+  | LEOP  { LeOp }
+  | GTOP  { GtOp }
+  | GEOP  { GeOp }
 
-block_expr :
-    | LCURLY es=seplist(expr, SEMICOLON) RCURLY
-      { BlockE(es.it) @? at($symbolstartpos,$endpos) }
+%inline unassign :
+  | PLUSASSIGN { PosOp }
+  | MINUSASSIGN { NegOp }
+  | XORASSIGN { NotOp }
+
+%inline binassign :
+  | PLUSASSIGN { AddOp }
+  | MINUSASSIGN { SubOp }
+  | MULASSIGN { MulOp }
+  | DIVASSIGN { DivOp }
+  | MODASSIGN { ModOp }
+  | ANDASSIGN { AndOp }
+  | ORASSIGN { OrOp }
+  | XORASSIGN { XorOp }
+  | SHLASSIGN { ShiftLOp }
+  | SHRASSIGN { ShiftROp }
+  | ROTLASSIGN { RotLOp }
+  | ROTRASSIGN { RotROp }
+  | CATASSIGN { CatOp }
 
 
-atomic_expr :
-    | x=var_ref
-      { VarE(x) @? at($symbolstartpos,$endpos) }
-    | l=lit
-      { LitE(ref l) @? at($symbolstartpos,$endpos) }
-    | LPAR es = seplist(expr, COMMA) RPAR
-      { match es.it with [e] -> e | es -> TupE(es) @? at($symbolstartpos,$endpos) }
-    | a=actor_opt xo=id? LCURLY es=seplist(expr_field, SEMICOLON) RCURLY
-      { ObjE(a, xo.it, es.it) @? at($symbolstartpos,$endpos) }
-    | e=atomic_expr DOT s=INT
-      { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
-    | e=atomic_expr DOT x=var_ref
-      { DotE(e, x) @? at($symbolstartpos,$endpos) }
-    | e1=atomic_expr tso=typ_args?  e2=atomic_expr
-      { CallE(e1,Lib.Option.get tso.it [],e2) @? at($symbolstartpos,$endpos) }
-    | e=block_expr
-      { e }
-    | DO x=id e=expr
-      { LabelE(x, e) @? at($symbolstartpos,$endpos) }
-    | BREAK x=id eo=expr?
-      {	let e = Lib.Option.get eo.it (TupE([]) @? no_region) in
-        BreakE(x, e) @? at($symbolstartpos,$endpos) }
-    | CONTINUE x=id
-      { ContE(x) @? at($symbolstartpos,$endpos) }
-  
+expr_nullary :
+  | x=var_ref
+    { VarE(x) @? at($symbolstartpos,$endpos) }
+  | l=lit
+    { LitE(ref l) @? at($symbolstartpos,$endpos) }
+  | LPAR es = seplist(expr, COMMA) RPAR
+    { match es.it with [e] -> e | es -> TupE(es) @? at($symbolstartpos,$endpos) }
+  | LCURLY es=seplist(expr, SEMICOLON) RCURLY
+    { BlockE(es.it) @? at($symbolstartpos,$endpos) }
+  | a=actor_opt xo=id? LCURLY es=seplist(expr_field, SEMICOLON) RCURLY
+    { ObjE(a, xo.it, es.it) @? at($symbolstartpos,$endpos) }
+
+expr_post :
+  | e=expr_nullary
+    { e }
+  | LBRACKET mut=var_opt es=seplist(expr, COMMA) RBRACKET
+    { ArrayE(mut, es.it) @? at($symbolstartpos,$endpos) }
+  | e1=expr_post LBRACKET e2=expr RBRACKET
+    { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
+  | e=expr_post DOT s=NAT
+    { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
+  | e=expr_post DOT x=var_ref
+    { DotE(e, x) @? at($symbolstartpos,$endpos) }
+  | e1=expr_post tso=typ_args? e2=expr_nullary
+    { CallE(e1, Lib.Option.get tso.it [], e2) @? at($symbolstartpos,$endpos) }
+
+expr_pre :
+  | e=expr_post
+    { e } 
+  | op=unop e=expr_pre
+    { UnE(op ,e) @? at($symbolstartpos,$endpos) }
+  | op=unassign e=expr_pre
+    (* TODO: this is incorrect, since it duplicates e *)
+    { AssignE(e, UnE(op, e) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
+  | NOT e=expr_pre
+    { NotE e @? at($symbolstartpos,$endpos) }
+
+expr_infix :
+  | e=expr_pre
+    { e } 
+  | e1=expr_infix op=binop e2=expr_infix
+    { BinE(e1, op, e2) @? at($symbolstartpos,$endpos) }
+  | e1=expr_infix op=relop e2=expr_infix
+    { RelE(e1, op, e2) @? at($symbolstartpos,$endpos) }
+  | e1=expr_infix ASSIGN e2=expr_infix
+    { AssignE(e1, e2) @? at($symbolstartpos,$endpos)}
+  | e1=expr_infix op=binassign e2=expr_infix
+    (* TODO: this is incorrect, since it duplicates e1 *)
+    { AssignE(e1, BinE(e1, op, e2) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
+  | e1=expr_infix AND e2=expr_infix
+    { AndE(e1, e2) @? at($symbolstartpos,$endpos) }
+  | e1=expr_infix OR e2=expr_infix
+    { OrE(e1, e2) @? at($symbolstartpos,$endpos) }
+  | e=expr_infix IS t=typ
+    { IsE(e, t) @? at($symbolstartpos,$endpos) }
+  | e=expr_infix COLON t=typ
+    { AnnotE(e, t) @? at($symbolstartpos,$endpos) }
+
 expr :
-    | e=atomic_expr
-      { e } 
-    | LBRACKET mut=var_opt es=seplist(expr, COMMA) RBRACKET
-      { ArrayE(mut, es.it) @? at($symbolstartpos,$endpos) }
-    | e1=expr op=binop e2=expr
-      { BinE(e1, op, e2) @? at($symbolstartpos,$endpos) }
-    | e1=expr op=relop e2=expr
-      { RelE(e1, op, e2) @? at($symbolstartpos,$endpos) }
-    | op=unop e=expr
-      { UnE(op ,e) @? at($symbolstartpos,$endpos) } %prec UNOP  (* TBR: is the correct? *)
-    | e1=expr ASSIGN e2=expr
-      { AssignE(e1, e2) @? at($symbolstartpos,$endpos)}
-    | e1=expr op=BINUPDATE e2=expr
-      (* TODO: this is incorrect, since it duplicates e1 *)
-      { AssignE(e1, BinE(e1, op, e2) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
-    | e1=expr LBRACKET e2=expr RBRACKET
-      { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
-    | NOT e=expr
-      { NotE e @? at($symbolstartpos,$endpos) }
-    | e1=expr AND e2=expr
-      { AndE(e1, e2) @? at($symbolstartpos,$endpos) }
-    | e1=expr OR e2=expr
-      { OrE(e1, e2) @? at($symbolstartpos,$endpos) }
-    | IF b=atomic_expr e1=expr %prec IFX
-      { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
-    | IF b=atomic_expr e1=expr ELSE e2=expr
-      { IfE(b, e1, e2) @? at($symbolstartpos,$endpos) }
-    | SWITCH e=atomic_expr cs=case+
-      { SwitchE(e, cs) @? at($symbolstartpos,$endpos) }
-    | WHILE e1=atomic_expr e2=expr
-      { WhileE(e1, e2) @? at($symbolstartpos,$endpos) }
-    | LOOP e=expr
-      { LoopE(e, None) @? at($symbolstartpos,$endpos) }
-    | LOOP e1=expr WHILE e2=expr
-      { LoopE(e1, Some e2) @? at($symbolstartpos,$endpos) }
-    | FOR p=pat IN e1=atomic_expr e2=expr
-      { ForE(p, e1, e2) @? at($symbolstartpos,$endpos) }
-    | RETURN eo=expr?
-      { let e = Lib.Option.get eo.it (TupE([]) @? eo.at) in
-      	RetE(e) @? at($symbolstartpos,$endpos) }
-    | ASYNC e=expr 
-      { AsyncE(e) @? at($symbolstartpos,$endpos) }
-    | AWAIT e=expr
-      { AwaitE(e) @? at($symbolstartpos,$endpos) }
-    | ASSERT e=expr
-      { AssertE(e) @? at($symbolstartpos,$endpos) }
-    | e=expr IS t=typ
-      { IsE(e, t) @? at($symbolstartpos,$endpos) }
-    | e=expr COLON t=typ
-      { AnnotE(e, t) @? at($symbolstartpos,$endpos) }
-    | d=dec
-      { DecE(d) @? at($symbolstartpos,$endpos) }
+  | e=expr_infix
+    { e } 
+  | LABEL x=id e=expr
+    { LabelE(x, e) @? at($symbolstartpos,$endpos) }
+  | BREAK x=id eo=expr_nullary?
+    { let e = Lib.Option.get eo.it (TupE([]) @? no_region) in
+      BreakE(x, e) @? at($symbolstartpos,$endpos) }
+  | CONTINUE x=id
+    { ContE(x) @? at($symbolstartpos,$endpos) }
+  | IF b=expr_nullary e1=expr %prec IFX
+    { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
+  | IF b=expr_nullary e1=expr ELSE e2=expr
+    { IfE(b, e1, e2) @? at($symbolstartpos,$endpos) }
+  | SWITCH e=expr_nullary cs=case+
+    { SwitchE(e, cs) @? at($symbolstartpos,$endpos) }
+  | WHILE e1=expr_nullary e2=expr
+    { WhileE(e1, e2) @? at($symbolstartpos,$endpos) }
+  | LOOP e=expr
+    { LoopE(e, None) @? at($symbolstartpos,$endpos) }
+  | LOOP e1=expr WHILE e2=expr
+    { LoopE(e1, Some e2) @? at($symbolstartpos,$endpos) }
+  | FOR p=pat IN e1=expr_nullary e2=expr
+    { ForE(p, e1, e2) @? at($symbolstartpos,$endpos) }
+  | RETURN eo=expr?
+    { let e = Lib.Option.get eo.it (TupE([]) @? eo.at) in
+    	RetE(e) @? at($symbolstartpos,$endpos) }
+  | ASYNC e=expr 
+    { AsyncE(e) @? at($symbolstartpos,$endpos) }
+  | AWAIT e=expr
+    { AwaitE(e) @? at($symbolstartpos,$endpos) }
+  | ASSERT e=expr
+    { AssertE(e) @? at($symbolstartpos,$endpos) }
+  | d=dec
+    { DecE(d) @? at($symbolstartpos,$endpos) }
       
     
 case : 
@@ -402,7 +437,7 @@ func_def :
 
 func_body :
    | EQ e=expr { (false, e) }	  // acc. to grammar
-   | e=block_expr { (true, e) } // acc. to example bank.as 
+   | e=expr { (true, e) } // acc. to example bank.as 
 
 
 (* Declarations *)

@@ -3,51 +3,43 @@ actor class Control() {
   private Test():Bool = false;   
 
   Block() : () {
-    do l1 {
+    label l1 {
       break l1
     };
-    do l2 break l2();
-    do l2 (let m = 1 + break l2 : Int);
-    let n = (do l3 (break l3(2))) : Int;
-    let (x, y, z) = (do l3 (break l3(2, true, ""))) : (Int, Bool, Text);
+    label l2 break l2();
+    label l2 (let m = 1 + (break l2) : Int);
+    let n = (label l3 (break l3(2))) : Int;
+    let (x, y, z) = (label l3 (break l3(2, true, ""))) : (Int, Bool, Text);
   };
 
   While() : () {
-     do l  
-     while(Test()) {
+     label l while(Test()) {
        if true break l
        else continue l;
      };
   };
 
   Loop() : () {
-     do l 
-     loop
-     {
+     label l loop {
        if true break l
        else continue l;
      };
   };
   
   LoopWhile() : () {
-     do l 
-     loop
-     {
+     label l loop {
        if true break l
        else continue l;
      } while (Test());
   };
 
   NestedWhile() : () {
-     do l
-     while(Test())
-     {
+     label l while (Test()) {
        if true break l ()
        else continue l;
-       do m
-       while(Test()) {
+       label m while(Test()) {
           if true continue l
-	  else break m ();
+          else break m ();
        };
      };
   };

@@ -7,6 +7,7 @@ module Utf8 = Wasm.Utf8
 
 exception Syntax of Source.region * string
 
+(*
 let string_of_token = function
   | XOROP -> "XOROP"
   | WORD _ -> "WORD"
@@ -70,7 +71,7 @@ let string_of_token = function
   | CHAR _ -> "CHAR"
   | CATOP -> "CATOP"
   | CASE -> "CASE"
-  | DO -> "DO"
+  | LABEL -> "LABEL"
   | BREAK -> "BREAK"
   | BOOL _ -> "BOOL"
   | BINUPDATE _ -> "BINUPDATE(-)"  
@@ -84,6 +85,7 @@ let string_of_token = function
   | ADDOP -> "ADDOP"
   | ACTOR -> "ACTOR"
   | PRIM _ -> "PRIM()"
+*)
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -255,36 +257,37 @@ rule token = parse
   | "&" { ANDOP }
   | "|" { OROP }
   | "^" { XOROP }
-  | "~" { NOTOP }
-  | space"<<"space { SHLOP }
-  | space">>"space { SHROP }
-  | space"<<>"space  { ROTLOP }
-  | space"<>>"space  { ROTROP }
+  | "<<" { SHLOP }
+  | space">>" { SHROP } (*TBR*)
+  | "<<>" { ROTLOP }
+  | "<>>" { ROTROP }
   | "++" { CATOP }
 
+  | "==" { EQOP }
   | "!=" { NEQOP }
   | ">=" { GEOP }
   | "<=" { LEOP }
   | ":=" { ASSIGN }
-  | "+=" { BINUPDATE AddOp }
-  | "-=" { BINUPDATE SubOp }
-  | "*=" { BINUPDATE MulOp }
-  | "/=" { BINUPDATE DivOp }
-  | "%=" { BINUPDATE ModOp }
-  | "&=" { BINUPDATE AndOp }
-  | "|=" { BINUPDATE OrOp }
-  | "^=" { BINUPDATE XorOp }
-  | "<<=" { BINUPDATE ShiftLOp }
-  | ">>=" { BINUPDATE ShiftROp }
-  | "&=" { BINUPDATE CatOp }
-  | "<<>="  { BINUPDATE RotLOp }
-  | "<>>="  { BINUPDATE RotROp }
+
+  | "+=" { PLUSASSIGN }
+  | "-=" { MINUSASSIGN }
+  | "*=" { MULASSIGN }
+  | "/=" { DIVASSIGN }
+  | "%=" { MODASSIGN }
+  | "&=" { ANDASSIGN }
+  | "|=" { ORASSIGN }
+  | "^=" { XORASSIGN }
+  | "<<=" { SHLASSIGN }
+  | ">>=" { SHRASSIGN }
+  | "<<>="  { ROTLASSIGN }
+  | "<>>="  { ROTRASSIGN }
+  | "++=" { CATASSIGN }
 
   | space">"space { GTOP } (*TBR*)
   | space"<"space { LTOP } (*TBR*)
   | "->" { ARROW }
   | "_" { UNDERSCORE }
-(*TODO: literals need reworking*)
+  | nat as s { NAT s }
   | int as s { INT s }
   | float as s { FLOAT (float_of_string s) }
 
@@ -294,20 +297,6 @@ rule token = parse
     { error lexbuf "illegal control character in text literal" }
   | '"'character*'\\'_
     { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
-(*
-  | (nxx as t)".const"
-    { let open Source in
-      CONST (numop t
-        (fun s -> let n = I32.of_string s.it in
-          i32_const (n @@ s.at), Values.I32 n)
-        (fun s -> let n = I64.of_string s.it in
-          i64_const (n @@ s.at), Values.I64 n)
-        (fun s -> let n = F32.of_string s.it in
-          f32_const (n @@ s.at), Values.F32 n)
-        (fun s -> let n = F64.of_string s.it in
-          f64_const (n @@ s.at), Values.F64 n))
-    }
-*)
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }
@@ -316,7 +305,7 @@ rule token = parse
   | "case" { CASE }
   | "class" { CLASS }
   | "continue" { CONTINUE }
-  | "do" { DO }
+  | "label" { LABEL }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "for" { FOR }
@@ -334,7 +323,6 @@ rule token = parse
   | "return" { RETURN }
   | "switch" { SWITCH }
   | "true" { BOOL true }
-  | "then" { THEN }
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
