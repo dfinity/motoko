@@ -16,8 +16,7 @@ type context =
     values : val_env;
     constructors : con_env;
     kinds : kind_env;
-    breaks : typ Env.t;
-    continues : unit Env.t;
+    labels : typ Env.t;
     returns : typ option;
     awaitable : bool
   }

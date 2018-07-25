@@ -335,12 +335,20 @@ expr :
   | e=expr_infix
     { e } 
   | LABEL x=id e=expr
-    { LabelE(x, e) @? at($symbolstartpos,$endpos) }
+    { let x' = ("continue " ^ x.it) @@ x.at in
+      let e' =
+        match e.it with
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', e2) @? e2.at) @? e.at
+        | _ -> e
+      in LabelE(x, e') @? at($symbolstartpos,$endpos) }
   | BREAK x=id eo=expr_nullary?
     { let e = Lib.Option.get eo.it (TupE([]) @? no_region) in
       BreakE(x, e) @? at($symbolstartpos,$endpos) }
   | CONTINUE x=id
-    { ContE(x) @? at($symbolstartpos,$endpos) }
+    { let x' = ("continue " ^ x.it) @@ x.at in
+      BreakE(x', TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
   | IF b=expr_nullary e1=expr %prec IFX
     { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
   | IF b=expr_nullary e1=expr ELSE e2=expr

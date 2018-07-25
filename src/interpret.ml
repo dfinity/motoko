@@ -219,23 +219,16 @@ let debug = ref true
 
 exception Trap of Source.region * string
 
-type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; label: string option;  breaks: cont Env.t; continues: cont Env.t ; returns: cont option; awaitable: bool}
+type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; labels: cont Env.t; returns: cont option; awaitable: bool}
 
 let union_values c ve = {c with values = union c.values ve}
 
 let prelude = {values = Env.empty;
                constructors = Env.empty;
                kinds = ConEnv.empty;
-               label = None;
-               breaks = Env.empty;
-               continues = Env.empty;
+               labels = Env.empty;
                returns = None;
                awaitable = false}
-
-let add_continue context label_opt k =
-    match label_opt with
-    | None -> context
-    | Some label -> {context with continues = Env.add label k context.continues}
 
 let last_context = ref prelude
 let last_region = ref Source.no_region
@@ -244,9 +237,7 @@ let callee_context context ve k_return =
     {values = union context.values ve;
      constructors = Env.empty; (*TBR*)
      kinds = ConEnv.empty;    (*TBR*)
-     label = None;
-     breaks = Env.empty; 
-     continues = Env.empty;
+     labels = Env.empty; 
      returns =  Some k_return;
      awaitable = false}
 
@@ -357,8 +348,7 @@ and interpret_exp context e k  =
     last_context := context;
     interpret_exp' context e k 
 
-and interpret_exp' context_with_label e k =
-let context = {context_with_label with label = None} in
+and interpret_exp' context e k =
 match e.it with
 | VarE x ->
     (match x.note with
@@ -441,41 +431,33 @@ match e.it with
     interpret_cases context cs v k)
 | WhileE(e0,e1) ->
   let e_while = e in
-  let k_continue = fun v ->
-      interpret_exp context_with_label e_while k in
-  let context' = add_continue context context_with_label.label k_continue in
-  interpret_exp context' e0 (fun v0 ->
+  let k_continue = fun v -> interpret_exp context e_while k in
+  interpret_exp context e0 (fun v0 ->
   if (bool_of_V v0)
-  then interpret_exp context' e1 k_continue
+  then interpret_exp context e1 k_continue
   else k unitV)
 | LoopE(e0,None) ->
   let e_loop = e in
-  let k_continue = fun v -> interpret_exp context_with_label e_loop k in
-  let context' = add_continue context context_with_label.label k_continue in
-  interpret_exp context' e0 k_continue
+  let k_continue = fun v -> interpret_exp context e_loop k in
+  interpret_exp context e0 k_continue
 | LoopE(e0,Some e1) ->
   let e_loop = e in
-  let context' = ref context in  (* to tie recursive knot *)
   let k_continue = fun v ->
-      interpret_exp !context' e1 (fun v1 ->
+      interpret_exp context e1 (fun v1 ->
       if (bool_of_V v1)
-      then interpret_exp context_with_label e_loop k
+      then interpret_exp context e_loop k
       else k unitV)
   in
-  context' := add_continue context context_with_label.label k_continue;
-  interpret_exp !context' e0 k_continue
+  interpret_exp context e0 k_continue
 | ForE(p,e0,e1)->
   failwith "NYI:ForE"
 (* labels *)
 | LabelE(l,e) ->
-  let context' = {context with breaks = Env.add l.it k context.breaks; label = Some l.it} in
+  let context' = {context with labels = Env.add l.it k context.labels} in
   interpret_exp context' e k
 | BreakE(l,e) ->
-  let k_break = Env.find l.it context.breaks in
+  let k_break = Env.find l.it context.labels in
   interpret_exp context e k_break
-| ContE l ->
-  let k_continue = Env.find l.it context.continues in
-  k_continue unitV
 | RetE e0 ->
   let (Some k_return) = context.returns in 
   interpret_exp context e0 k_return
@@ -488,9 +470,7 @@ match e.it with
   let context = {values = context.values;
                  constructors = context.constructors;
                  kinds = context.kinds;
-                 breaks = Env.empty;
-                 label = None;
-                 continues = Env.empty;
+                 labels = Env.empty;
                  returns = Some k_return; 
                  awaitable = true}
   in

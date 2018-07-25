@@ -37,8 +37,7 @@ type context =
     values : val_env;
     constructors : con_env;
     kinds : kind_env;
-    breaks : typ Env.t;
-    continues : unit Env.t;
+    labels : typ Env.t;
     returns : typ option;
     awaitable : bool
   }
@@ -50,8 +49,8 @@ let add_value c v tm = {c with values = Env.add v tm c.values}
 let union_constructors c ce = {c with constructors = union c.constructors ce}
 
 let union_kinds c ke = {c with kinds = union_conenv c.kinds ke}
-let add_constructor c v con kind =  {{c with constructors = Env.add v con c.constructors}
-                                        with kinds = ConEnv.add con kind c.kinds}
+let add_constructor c v con kind = {c with constructors = Env.add v con c.constructors;
+                                           kinds = ConEnv.add con kind c.kinds}
 
 (* raises TypeError on duplicate entries *)
 let disjoint_union at fmt env1 env2 = Env.union (fun k v1 v2 -> type_error at fmt k) env1 env2
@@ -70,8 +69,7 @@ let empty_context =
     values = Env.empty;
     constructors = Env.empty;
 	  kinds = ConEnv.empty;
-	  breaks = Env.empty;
-	  continues = Env.empty;
+	  labels = Env.empty;
 	  returns = None;
 	  awaitable = false
   }
@@ -79,7 +77,7 @@ let empty_context =
 
 let rec eq context eqs t1 t2 =
   match t1, t2 with
-  | VarT(con1, ts1), VarT(con2, ts2) ->
+  | VarT (con1, ts1), VarT (con2, ts2) ->
     if List.mem (con1, con2) eqs
     then eq_all context eqs ts1 ts2
     else begin
@@ -725,26 +723,18 @@ and infer_exp' context e =
     check_exp context' unitT e1;
     unitT
   | LabelE (l, e) ->
-    let context' = {context with breaks = Env.add l.it unitT context.breaks} in
-    let context'' =
-      match e.it with
-      | WhileE _ | LoopE _ | ForE _ ->
-        {context' with continues = Env.add l.it () context.continues}
-      | _ -> context'
-    in infer_exp context'' e
+    let context' = {context with labels = Env.add l.it unitT context.labels} in
+    infer_exp context' e
   | BreakE (l, e) ->
-    (match lookup context.breaks l.it  with
+    (match lookup context.labels l.it  with
     | Some t -> 
       (* todo: check type of e against ts! *)
       check_exp context t e ;
       unitT (*TBR actually, this could be polymorphic at least in a checking context*)
-    | None -> type_error e.at "break to unknown label %s" l.it
-    )
-  | ContE l ->
-    (match lookup context.continues l.it  with
-    | Some _ -> 
-      unitT (*TBR actually, this could be polymorphic at least in a checking context*)
-    | None -> type_error e.at "continue to unknown label %s" l.it
+    | None ->
+      match String.split_on_char ' ' l.it with
+      | ["continue"; l'] -> type_error e.at "continue to unknown label %s" l'
+      | _ -> type_error e.at "break to unknown label %s" l.it
     )
   | RetE e0 ->
     (match context.returns with
@@ -756,8 +746,7 @@ and infer_exp' context e =
   | AsyncE e0 ->
     let context' =
       { context with
-  		  breaks = Env.empty;
-  		  continues = Env.empty;
+  		  labels = Env.empty;
   		  returns = Some unitT; (* TBR *)
   		  awaitable = true
       } in
@@ -831,31 +820,24 @@ and check_exp context t e =
     | AsyncT t ->
       let context =
         { context with
-          breaks = Env.empty;
-		      continues = Env.empty;
+          labels = Env.empty;
 		      returns = Some t; (* TBR *)
 		      awaitable = true
         } in
       check_exp context t e0
-    | _ -> type_error e.at "async expression cannot produce expected type %s" (string_of_typ t))
+    | _ -> type_error e.at "async expression cannot produce expected type %s" (string_of_typ t)
+    )
   | LoopE (e, None) ->
-    check_exp context unitT e; (*TBR do we want to allow any type for the body? *)
+    check_exp context unitT e (*TBR do we want to allow any type for the body? *)
   | BlockE es ->
     check_block e.at context t es
   | BreakE _ ->
     ignore (infer_exp context e)
-  | ContE _ ->
-    ignore (infer_exp context e)
   | RetE _ ->
     ignore (infer_exp context e)
   | LabelE (l, e) ->
-    let context' = {context with breaks = Env.add l.it t context.breaks} in
-    let context'' =
-      match e.it with
-      | WhileE _ | LoopE _ | ForE _ ->
-        {context' with continues = Env.add l.it () context.continues}
-      | _ -> context'
-    in check_exp context'' t e
+    let context' = {context with labels = Env.add l.it t context.labels} in
+    check_exp context' t e
   | _ ->
     let t' = infer_exp context e in
     if not (eq_typ context t t')
@@ -982,8 +964,7 @@ and check_dec' pass context d =
     let funcT = FuncT (tbs, t1, t2) in  (* TBR: we allow polymorphic recursion *)
     let context_ce_ve_v =
       { (add_value (union_values context_ce ve) v.it (funcT, ConstMut)) with
-	      breaks = Env.empty;
-        continues = Env.empty;
+	      labels = Env.empty;
         returns = Some t2;
         awaitable = false
       } in
