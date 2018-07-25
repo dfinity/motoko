@@ -85,7 +85,6 @@ and exp' =
   | ForE of pat * exp * exp                    (* iteration *)
   | LabelE of var * exp                        (* label *)
   | BreakE of var * exp                        (* break *)
-  | ContE of var                               (* continue *)
   | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
