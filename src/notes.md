@@ -1,4 +1,4 @@
-TODO and Issues
+>TODO and Issues
 
 - Address TBR and TBD comments in source.
 - Why does BinE not take two immediate sub-expressions.  Currently it only has one so the parser has to use TupE to create a tuple. A: this is a typo, make it binary.
@@ -60,3 +60,4 @@ Claudio's TODOS:
 - Interpreter: it would be better to distinguish statically between bindings (RecV and VarV) and values
 - local decs are not mutually recursive and scoped sequentially - relax this.
 - what's the semantics of a message send to self? Do we go through the scheduler or short-cut and execute synchronously as an ordinary call?
+- prevent escape of locally defined types

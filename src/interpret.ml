@@ -5,18 +5,52 @@ open Typing
 open Printf
 
 
-module I32 = Wasm.I32
-module I64 = Wasm.I64
+module Word8 =
+  Wasm.Int.Make(struct
+            include Int32
+            let bitwidth = 8
+           end)
+
+module Word16 =
+  Wasm.Int.Make(struct
+            include Int32
+            let bitwidth = 16
+           end)
+
+module Word32 =
+  Wasm.Int.Make(struct
+            include Int32
+            let bitwidth = 32
+           end)
+
+module Word64 =
+  Wasm.Int.Make(struct
+            include Int64
+            let bitwidth = 64
+           end)
+module Integer =
+  Wasm.Int.Make(struct
+            include Int32
+            let bitwidth = 31 (* TBR *)
+           end)
+
+module Natural =
+  Wasm.Int.Make(struct
+            include Int32
+            let bitwidth = 31 (* TBR *)
+           end)
 
 module Values =
 struct
-
   type value =
       | NullV 
       | BoolV of bool
       | NatV of nat
       | IntV of int
-      | WordV of word
+      | Word8V of Word8.t
+      | Word16V of Word16.t
+      | Word32V of Word32.t
+      | Word64V of Word64.t
       | FloatV of float
       | CharV of unicode
       | TextV of string
@@ -41,8 +75,15 @@ struct
   let nat_of_V (NatV n) = n
   let intV n = IntV n
   let int_of_V (IntV n) = n
-  let wordV w = WordV w
-  let word_of_V (WordV w) = w
+  let word8V w = Word8V w
+  let word8_of_V (Word8V w) = w
+  let word16V w = Word16V w
+  let word16_of_V (Word16V w) = w
+  let word32V w = Word32V w
+  let word32_of_V (Word32V w) = w
+  let word64V w = Word64V w
+  let word64_of_V (Word64V w) = w
+
   let floatV f = FloatV f
   let float_of_V (FloatV f) = f
   let charV c = CharV c
@@ -102,10 +143,10 @@ struct
       | BoolV b -> if b then "true" else "false"
       | NatV n -> sprintf "(Nat %i)" n
       | IntV i -> sprintf "%i" i
-      | WordV (Word8 w) -> sprintf "%x" w
-      | WordV (Word16 w) -> sprintf "%x" w
-      | WordV (Word32 w) -> sprintf "%lx" w
-      | WordV (Word64 w) -> sprintf "%Lx" w
+      | Word8V w -> sprintf "%lx" w
+      | Word16V w -> sprintf "%lx" w
+      | Word32V w -> sprintf "%lx" w
+      | Word64V w -> sprintf "%Lx" w
       | FloatV f -> sprintf "%f" f
       | CharV d -> sprintf "(Char %li)" d (* TBR *)
       | TextV t -> t (* TBR *)
@@ -138,13 +179,18 @@ struct
       | FloatT -> string_of_float(float_of_V v)
       | NatT -> string_of_int(nat_of_V v)
       | CharT -> sprintf "%i" (Int32.to_int(char_of_V v)) (* TBR *)
-      | WordT w ->
-      	let w = word_of_V v in
-        (match w with
-        | Word8 w -> sprintf "%x" w
-        | Word16 w -> sprintf "%x" w
-        | Word32 w -> sprintf "%lx" w
-        | Word64 w -> sprintf "%Lx" w)
+      | WordT Width8 ->
+          let w = word8_of_V v in
+          sprintf "%lx" w
+      | WordT Width16 ->
+          let w = word16_of_V v in
+          sprintf "%lx" w
+      | WordT Width32 ->
+          let w = word32_of_V v in
+          sprintf "%lx" w
+      | WordT Width64-> 
+          let w = word64_of_V v in
+          sprintf "%Lx" w
       | TextT -> text_of_V v)
     | VarT (c,[]) ->
        Con.to_string c
@@ -259,7 +305,10 @@ let rec interpret_lit context rl =
     | BoolLit b -> boolV b
     | NatLit n -> natV n
     | IntLit i -> intV i
-    | WordLit w -> wordV w
+    | WordLit (Word8 w) -> word8V (Word8.of_int_u w)
+    | WordLit (Word16 w) -> word16V (Word16.of_int_u w)
+    | WordLit (Word32 w) -> word32V  w
+    | WordLit (Word64 w) -> word64V w
     | FloatLit f -> floatV f
     | CharLit c -> charV c
     | TextLit s -> textV s
@@ -704,7 +753,10 @@ and match_lit p v rl =
     | BoolLit b -> bool_of_V v = b
     | NatLit n -> nat_of_V v = n 
     | IntLit i -> int_of_V v = i
-    | WordLit w -> word_of_V v = w
+    | WordLit (Word8 w) -> word8_of_V v = (Word8.of_int_u w)
+    | WordLit (Word16 w) -> word16_of_V v = (Word16.of_int_u w)
+    | WordLit (Word32 w) -> word32_of_V v = w
+    | WordLit (Word64 w) -> word64_of_V v = w
     | FloatLit f -> float_of_V v = f
     | CharLit c -> char_of_V v = c
     | TextLit s -> text_of_V v = s
