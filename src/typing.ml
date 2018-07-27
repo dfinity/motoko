@@ -467,7 +467,7 @@ and infer_binop context at e1 bop e2 =
     then t1
     else type_error at "arguments to numeric operator must have equivalent numeric types"
   | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-    if logical_typ context t1 && t1 = t2
+    if logical_typ context t1 && eq_typ context t1 t2
     then t1
     else type_error at "arguments to logical operator must have equivalent logical types"
 
