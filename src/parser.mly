@@ -220,7 +220,7 @@ lit :
   | s=NAT { PreLit s }
   | s=INT { PreLit s }
   | b=BOOL { BoolLit b }
-  | f=FLOAT { FloatLit f }
+  | f=FLOAT { FloatLit (Float.of_float f)}
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
 
@@ -293,7 +293,7 @@ expr_post :
   | e1=expr_post LBRACKET e2=expr RBRACKET
     { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
   | e=expr_post DOT s=NAT
-    { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
+    { ProjE (e, Natural.of_string s) @? at($symbolstartpos,$endpos) }
   | e=expr_post DOT x=var_ref
     { DotE(e, x) @? at($symbolstartpos,$endpos) }
   | e1=expr_post tso=typ_args? e2=expr_nullary

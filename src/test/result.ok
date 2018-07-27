@@ -36,7 +36,7 @@ typechecked control.as
  Control : ()->Control/1
  Control/1 := actor{Block: ()->();Loop: ()->();LoopWhile: ()->();NestedWhile: ()->();While: ()->()}
  Control = <func>
-Type Error literals.as:3.18-3.25:bad literal for type Word8!
+Type Error literals.as:3.18-3.25:bad or out-of-range literal for type Word8!
 typechecked numericops.as
 
  TestFloat : (Float,Float)->()

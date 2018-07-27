@@ -5,7 +5,7 @@ MENHIR := menhir
 
 MENHIRFLAGS     := --infer --dump --explain
 
-OCAMLBUILD      := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" -I src -I lib -pkg wasm
+OCAMLBUILD      := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" -I src -I lib -pkg wasm 
 
 MAIN            := main
 

@@ -17,10 +17,6 @@ let type_error region fmt =
   Printf.ksprintf (fun s -> raise (TypeError (region, s))) fmt
 
 
-(* TBR *)
-let nat_width = 31
-let int_width = 31
-
 module Env = Map.Make(String)
 
 let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
@@ -270,64 +266,33 @@ let check_bounds at ts bounds =
 
 
 (* checking literal values are in bounds *)
-let check_i32_u p bits =
-  let module I = I32 in
-  let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
-  fun at s ->
-    try
-      let i = I.of_string s in
-    	if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	    then type_error at "literal overflow for type %s" (string_of_typ (PrimT p))
-	    else I.to_bits i
-    with _ -> type_error at "bad literal for type %s" (string_of_typ (PrimT p))
 
-let check_i64_u p bits =
-  let module I = I64 in
-  let max = I.shl (I.of_int_s 1) (I.of_int_s bits) in
-  fun at s ->
-    try
-      let i = I.of_string s in
-    	if  (I.gt_u max I.zero) && not (I.lt_u i max)
-	    then type_error at "literal overflow for type %s" (string_of_typ (PrimT p))
-	    else I.to_bits i
-    with _ -> type_error at "bad literal for type %s" (string_of_typ (PrimT p))
+let check_lit p f at s = 
+    try f s with 
+    |  _ -> type_error at "bad or out-of-range literal for type %s" (string_of_typ (PrimT p))
 
-let check_nat    = check_i32_u NatT nat_width
-let check_word8  = check_i32_u (WordT Width8) 8
-let check_word16 = check_i32_u (WordT Width16) 16
-let check_word32 = check_i32_u (WordT Width32) 32
-let check_word64 = check_i64_u (WordT Width64) 64
-
-let check_i32_s p bits =
-  let module I = I32 in
-  let max = I.sub (I.shl (I.of_int_u 1) (I.of_int_u (bits-1))) (I.of_int_s 1) in
-  let min = I.sub (I.sub I.zero max) (I.of_int_s 1) in
-  fun at s ->
-    try
-      let i = I.of_string s in
-    	if not (I.le_s min i && I.le_s i max)
-	    then type_error at "literal under/overflow for type %s" (string_of_typ (PrimT p))
-	    else I.to_bits i
-    with _ -> type_error at "bad literal for type %s" (string_of_typ (PrimT p))
-
-let check_int = check_i32_s IntT int_width
-
-
+let check_nat = check_lit NatT Natural.of_string_u
+let check_int = check_lit IntT Integer.of_string_s
+let check_word8 = check_lit (WordT Width8) Word8.of_string_u
+let check_word16 = check_lit (WordT Width16) Word16.of_string_u
+let check_word32 = check_lit (WordT Width32)  Word32.of_string_u
+let check_word64 = check_lit (WordT Width64)  Word64.of_string_u
 
 (* begin sanity test *)
 
 let pow2 n = 1 lsl n
+let lpow2 n = Int64.shift_left (Int64.of_int 1) n
 let raises f r x = try f r x; false; with _ -> true
 
 let _ =
   (* text check_nat *)
-  assert (check_nat no_region (string_of_int (pow2 31 - 1)) = I32.of_int_u (pow2 31 - 1));
+  assert (check_nat no_region (string_of_int (pow2 nat_width - 1)) = I32.of_int_u (pow2 nat_width - 1));
   assert (check_nat no_region (string_of_int 0) = I32.of_int_u 0);
-  assert (raises check_nat no_region (string_of_int (pow2 31)));
-  assert (raises check_nat no_region (string_of_int (pow2 31 + 1)));
+  assert (raises check_nat no_region (string_of_int (pow2 32)));
+  assert (raises check_nat no_region (string_of_int (pow2 32 + 1)));
 
   (* test check_word16 *)
-  assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = I32.of_int_u (pow2 16 - 1));
+  assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = Word16.of_int_u (pow2 16 - 1));
   assert (check_word16 no_region (string_of_int 0) = I32.of_int_u 0);
   assert (raises check_word16 no_region (string_of_int (pow2 16)));
   assert (raises check_word16 no_region (string_of_int (pow2 16 + 1)));
@@ -335,9 +300,8 @@ let _ =
   (* test check_int *)
   assert (check_int no_region (string_of_int (pow2 (int_width - 1) - 1)) = I32.of_int_s (pow2 (int_width - 1) - 1));
   assert (check_int no_region (string_of_int (- pow2 (int_width - 1))) = I32.of_int_s (- pow2 (int_width - 1)));
-  assert (raises check_int no_region (string_of_int (pow2 (int_width - 1))));
-  assert (raises check_int no_region (string_of_int (- pow2 (int_width - 1) - 1)))
-
+  assert (raises check_int no_region (Int64.to_string (lpow2 (int_width-1))));
+  assert (raises check_int no_region (Int64.to_string (Int64.neg (Int64.add (lpow2 (int_width-1)) 1L))));
 (* end sanity test *)
 
 
@@ -446,7 +410,7 @@ and infer_lit context rl =
   | CharLit _ -> PrimT CharT
   | TextLit _ -> PrimT TextT
   | PreLit s ->
-    rl := IntLit (Int32.to_int (Wasm.I32.of_string s)); (* default *)
+    rl := IntLit (Integer.of_string s); (* default *)
     PrimT IntT
 
 
@@ -465,16 +429,16 @@ and check_lit at context t rl =
 
   | PrimT NatT, PreLit s ->
     let v = check_nat at s in 
-    rl := NatLit (Int32.to_int v)
+    rl := NatLit v 
   | PrimT IntT, PreLit s ->
     let v = check_int at s in
-    rl := IntLit (Int32.to_int v)
+    rl := IntLit v
   | PrimT (WordT Width8), PreLit s ->
     let v = check_word8 at s in
-    rl := WordLit (Word8 (Int32.to_int v))
+    rl := WordLit (Word8 v ) 
   | PrimT (WordT Width16), PreLit s ->
     let v = check_word16 at s in
-    rl := WordLit (Word16 (Int32.to_int v))
+    rl := WordLit (Word16 v)
   | PrimT (WordT Width32), PreLit s ->
     let v = check_word32 at s in
     rl := WordLit (Word32 v)
@@ -590,8 +554,8 @@ and infer_exp' context e =
   | ProjE (e, n) ->
     (match norm_typ context (infer_exp context e) with
     | TupT ts ->
-      (try List.nth ts n
-      with Failure _ -> type_error e.at "tuple projection %i >= %n is out-of-bounds" n (List.length ts))
+      (try List.nth ts (Int32.to_int n)
+      with Failure _ -> type_error e.at "tuple projection %li >= %n is out-of-bounds" n (List.length ts))
     | t -> type_error e.at "expecting tuple type, found %s" (string_of_typ t)
     )
   | DotE (e, v) ->

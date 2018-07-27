@@ -1,6 +1,58 @@
-type nat = int
-type int8 = int
-type int16 = int
+
+(*we represent a n-bit integers using k-bit (n<=k) integers by shifting left/right by k-n bits *)
+module SubRep(Rep:Wasm.Int.RepType)(Width:sig val bitwidth:int end):Wasm.Int.RepType with type t = Rep.t =
+struct
+    type t = Rep.t
+    let bitwidth = Width.bitwidth
+    let _ = assert(Width.bitwidth < Rep.bitwidth)
+    let bitdiff = Rep.bitwidth - Width.bitwidth
+    let inj r  = Rep.shift_left r bitdiff
+    let proj i = Rep.shift_right i bitdiff
+    let zero = inj Rep.zero
+    let one = inj Rep.one
+    let minus_one = inj Rep.minus_one
+    let max_int = inj (Rep.shift_right_logical Rep.max_int bitdiff)
+    let min_int = inj (Rep.shift_right_logical Rep.min_int bitdiff)
+    let neg i = inj (Rep.neg (proj i))
+    let add i j = inj (Rep.add (proj i) (proj j))
+    let sub i j = inj (Rep.sub (proj i) (proj j))
+    let mul i j = inj (Rep.mul (proj i) (proj j)) 
+    let div i j = inj (Rep.div (proj i) (proj j))
+    let rem i j = inj (Rep.rem (proj i) (proj j))
+    let logand = Rep.logand
+    let logor = Rep.logor
+    let lognot i = inj (Rep.lognot (proj i))
+    let logxor i j = inj (Rep.logxor (proj i) (proj j))
+    let shift_left i j = Rep.shift_left i j
+    let shift_right = Rep.shift_right
+    let shift_right_logical = Rep.shift_right_logical
+    let of_int i = inj (Rep.of_int i)
+    let to_int i = Rep.to_int (proj i)
+    let to_string i = Rep.to_string (proj i)
+end
+
+module Int32Rep =
+           struct
+            include Int32
+            let bitwidth = 32
+           end
+
+module Int8Rep = SubRep(Int32Rep)(struct let bitwidth = 8 end)
+module Int16Rep = SubRep(Int32Rep)(struct let bitwidth = 16 end)
+
+module Word8 = Wasm.Int.Make(Int8Rep)
+module Word16 = Wasm.Int.Make(Int16Rep)
+module Word32 = Wasm.I32
+module Word64 = Wasm.I64
+
+module Natural = Wasm.Int.Make(Int32Rep)
+module Integer = Wasm.Int.Make(Int32Rep)
+module Float = Wasm.F64
+
+let nat_width = 32
+let int_width = 32
+
+type nat = Natural.t
 type unicode = int32
 
 type width =
@@ -20,18 +72,18 @@ type prim =
   | TextT
 
 type word =
-  | Word8 of int8
-  | Word16 of int16
-  | Word32 of int32
-  | Word64 of int64
+  | Word8 of Word8.t
+  | Word16 of Word16.t
+  | Word32 of Word32.t
+  | Word64 of Word64.t
 
 type lit =
   | NullLit
   | BoolLit of bool
-  | NatLit of nat
-  | IntLit of int
+  | NatLit of Natural.t
+  | IntLit of Integer.t
   | WordLit of word
-  | FloatLit of float
+  | FloatLit of Float.t
   | CharLit of unicode
   | TextLit of string
   | PreLit of string                             (* unresolved numeric literal *)
