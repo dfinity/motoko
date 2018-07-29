@@ -2,6 +2,7 @@ open Syntax
 open Source
 open Types
 open Con
+open Operators
 
 module I32 = Wasm.I32
 module I64 = Wasm.I64
@@ -16,12 +17,6 @@ let kind_error region fmt =
 let type_error region fmt =
   Printf.ksprintf (fun s -> raise (TypeError (region, s))) fmt
 
-
-module Env = Map.Make(String)
-
-let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
-let lookup env k =
-  try Some (Env.find k env) with Not_found -> None (* TODO: use find_opt in 4.05 *)
 
 
 type val_env = (typ * mut) Env.t
@@ -453,80 +448,55 @@ and check_lit at context t rl =
 
   | _ -> type_error at "type %s has no literals" (string_of_typ t)
 
-
 and infer_binop context at e1 bop e2 =
   let t1 = infer_exp context e1 in
   let t2 = infer_exp context e2 in
-  match bop with
-  | CatOp ->
-    if eq_typ context t1 (PrimT TextT) && eq_typ context t1 t2
-    then t1
-    else type_error at "arguments to concatenation operator must have Text type"
-  | AddOp | SubOp | MulOp | DivOp | ModOp ->
-    if numeric_typ context t1 && eq_typ context t1 t2
-    then t1
-    else type_error at "arguments to numeric operator must have equivalent numeric types"
-  | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-    if logical_typ context t1 && eq_typ context t1 t2
-    then t1
-    else type_error at "arguments to logical operator must have equivalent logical types"
-
+  if eq_typ context t1 t2
+  then try
+	 ignore (Operators.bop (norm_typ context t1) bop);
+	 t1
+       with
+       | Not_found -> type_error at "binary operator not available at argument type %s" (string_of_typ t1)
+  else
+      type_error at "arguments to binary operator must have equivalent types, found distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
+ 
 and check_binop context at t e1 bop e2 =
-  (match bop with
-  | CatOp ->
-    if not (eq_typ context t (PrimT TextT))
-    then type_error at "expecting value of type %s, but concatenation returns a value of type Text" (string_of_typ t)
-  | AddOp | SubOp | MulOp | DivOp | ModOp ->
-    if not (numeric_typ context t)
-    then type_error at "expecting value of type non-numeric type %s, operator returns a value of numeric type" (string_of_typ t)
-  | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-    if not (logical_typ context t)
-    then type_error at "expecting value of type non-logical type %s, operator returns a value of logical type" (string_of_typ t)
-  );
+  (try ignore(Operators.bop t bop) with
+   | Not_found -> type_error at "binary operator not available at expected type %s" (string_of_typ t));
   check_exp context t e1;
   check_exp context t e2
 
 and infer_relop context at e1 rop e2 =
   let t1 = infer_exp context e1 in
   let t2 = infer_exp context e2 in
-  match rop with
-  | EqOp 
-  | NeqOp ->
-    if equatable_typ context t1 && eq_typ context t1 t2
-    then boolT
-    else type_error at "arguments to an equality operator must have the same, equatable type"
-  | _ ->
-    if comparable_typ context t1 && eq_typ context t1 t2
-    then boolT
-    else type_error at "arguments to a relational operator must have the same, comparable type"
+  if eq_typ context t1 t2
+  then try
+         ignore (Operators.rop (norm_typ context t1) rop);
+         boolT
+       with
+       | Not_found -> type_error at "relational operator not available at argument type %s" (string_of_typ t1)
+  else
+      type_error at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
 
 and check_relop context at t e1 rop e2 =
   if not (eq_typ context t boolT)
   then type_error at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (string_of_typ t);
-  ignore (infer_relop context at e1 rop e2)
-
+  ignore(infer_relop context at e1 rop e2)
+ 
 and infer_unop context at uop e =
   let t = infer_exp context e in
-  match uop with
-  | PosOp | NegOp ->
-    if numeric_typ context t (* TBR: rule out Naturals *)
-    then t
-    else type_error at "argument to operator must have numeric type"
-  | NotOp ->
-    if logical_typ context t 
-    then t
-    else type_error at "arguments to a bitwise negation operator must have logical type"
-
+  try
+    ignore(Operators.uop (norm_typ context t) uop);
+    t
+  with
+  | Not_found -> type_error at "unary operator not available at argument type %s" (string_of_typ t)
+  
 and check_unop context at t uop e =
-  match uop with
-  | PosOp | NegOp ->
-    if numeric_typ context t 
-    then check_exp context t e
-    else type_error at "argument to negation operator must have numeric type"
-  | NotOp ->
-    if logical_typ context t 
-    then check_exp context t e
-    else type_error at "arguments to a bitwise negation operator must have logical type"
+  (try
+    ignore(Operators.uop (norm_typ context t) uop)
+   with
+   | Not_found -> type_error at "unary operator not available at expected type %s" (string_of_typ t));
+  check_exp context t e;
 
 and infer_exp context e =
   let t = infer_exp' context e in

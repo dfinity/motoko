@@ -117,6 +117,15 @@ type relop =
   | GeOp                                        (* x>=y *)
 
 
+(* Environments *)
+
+module Env = Map.Make(String) 
+
+let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+let lookup env k =
+  try Some (Env.find k env) with Not_found -> None (* TODO: use find_opt in 4.05 *)
+
+
 (* Unique constructors, stamped *)
 
 module Con =

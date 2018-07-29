@@ -33,7 +33,7 @@ let main () =
 						        | ConstMut -> w
 						   	| VarMut -> Values.derefV w
 					            in
-						    Printf.printf "\n %s = %s" v (Values.string_of_val context t w)) ve;
+						    Printf.printf "\n %s = %s" v (PrintValues.string_of_val context t w)) ve;
 					  Values.unitV)
 
 	 in

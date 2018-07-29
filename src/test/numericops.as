@@ -31,8 +31,6 @@ func TestFloat(a : Float, b : Float) : () {
    let prod2 = (a * b) : Float;
    let rat1 = a / b;
    let rat2 = (a / b) : Float;
-   let mod1 = a % b;
-   let mod2 = (a % b) : Float;
 };
 
 func TestNat(a : Nat, b : Nat) : () {
@@ -50,10 +48,6 @@ func TestNat(a : Nat, b : Nat) : () {
 
 
 func TestWord8(a : Word8, b : Word8) : () {
-   let pos1 = + a;
-   let pos2 = (+ a) : Word8;
-   let neg1 = - a;
-   let neg2 = (- a) : Word8;
    let sum1 = a + b;
    let sum2 = (a + b) : Word8;
    let diff1 = a - b;
@@ -67,10 +61,6 @@ func TestWord8(a : Word8, b : Word8) : () {
 };
 
 func TestWord16(a : Word16, b : Word16) : () {
-   let pos1 = + a;
-   let pos2 = (+ a) : Word16;
-   let neg1 = - a;
-   let neg2 = (- a) : Word16;
    let sum1 = a + b;
    let sum2 = (a + b) : Word16;
    let diff1 = a - b;
@@ -84,10 +74,6 @@ func TestWord16(a : Word16, b : Word16) : () {
 };
 
 func TestWord32(a : Word32, b : Word32) : () {
-   let pos1 = + a;
-   let pos2 = (+ a) : Word32;
-   let neg1 = - a;
-   let neg2 = (- a) : Word32;
    let sum1 = a + b;
    let sum2 = (a + b) : Word32;
    let diff1 = a - b;
@@ -101,10 +87,6 @@ func TestWord32(a : Word32, b : Word32) : () {
 };
 
 func TestWord64(a : Word64, b : Word64) : () {
-   let pos1 = + a;
-   let pos2 = (+ a) : Word64;
-   let neg1 = - a;
-   let neg2 = (- a) : Word64;
    let sum1 = a + b;
    let sum2 = (a + b) : Word64;
    let diff1 = a - b;

@@ -4,7 +4,7 @@ open Types
 open Typing
 open Printf
 open Values
-
+open Operators
 
 module Scheduler =
   struct

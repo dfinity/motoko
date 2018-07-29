@@ -1,12 +1,12 @@
 open Types
 
-
+(*
 module Env : Map.S with type key = string
 
 val lookup : 'a Env.t -> string -> 'a option
 val union : 'a Env.t -> 'a Env.t -> 'a Env.t
 
-
+*)
 type val_env = (typ * mut) Env.t
 type con_env = con Env.t
 type kind_env = kind ConEnv.t
