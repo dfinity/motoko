@@ -1,88 +1,10 @@
 open Types
 open Values
 
-let rop (PrimT p) rop =
-      match rop with
-      | EqOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.eq (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.eq (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.eq (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.eq (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.eq (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.eq (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.eq (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 = bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 = char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 = text_of_V v2)
-        | _ -> raise Not_found)
-      | NeqOp ->
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.ne (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.ne (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.ne (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.ne (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.ne (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.ne (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.ne (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 <> bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 <> char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 <> text_of_V v2)
-        | _ -> raise Not_found)
-      | LtOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.lt_s (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.lt_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.lt (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.lt_u (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.lt_u (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.lt_u (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.lt_u (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 < bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 < char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 < text_of_V v2)
-        | _ -> raise Not_found)
-      | LeOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.le_s (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.le_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.le (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.le_u (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.le_u (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.le_u (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.le_u (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 <= bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 <= char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 <= text_of_V v2)
-        | _ -> raise Not_found)
-      | GtOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.gt_s (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.gt_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.gt (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 ->  boolV (Word8.gt_u (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.gt_u (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.gt_u (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.gt_u (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 > bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 > char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 > text_of_V v2)
-        | _ -> raise Not_found)
-      | GeOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> boolV (Integer.ge_s (int_of_V v1) (int_of_V v2))
-        | NatT -> fun v1 v2 ->  boolV (Natural.ge_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT -> fun v1 v2 -> boolV (Float.ge (float_of_V v1) (float_of_V v2))
-        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.ge_u  (word8_of_V v1) (word8_of_V v2))
-        | WordT Width16 -> fun v1 v2 -> boolV (Word16.ge_u (word16_of_V v1) (word16_of_V v2))
-        | WordT Width32 -> fun v1 v2 -> boolV (Word32.ge_u (word32_of_V v1) (word32_of_V v2))
-        | WordT Width64 -> fun v1 v2 -> boolV (Word64.ge_u (word64_of_V v1) (word64_of_V v2))
-        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 >= bool_of_V v2)
-        | CharT -> fun v1 v2 -> boolV (char_of_V v1 >= char_of_V v2)
-        | TextT -> fun v1 v2 -> boolV (text_of_V v1 >= text_of_V v2)
-        | _ -> raise Not_found)
-
-let uop (PrimT p) uop =
+let find_unop t uop =
+  match t with
+  | PrimT p ->
+  begin
     match uop with
     | PosOp ->
       (match p with
@@ -101,8 +23,13 @@ let uop (PrimT p) uop =
        | WordT Width32 -> fun v -> let w = word32_of_V v in (word32V (Word32.xor w w))
        | WordT Width64 -> fun v -> let w = word64_of_V v in (word64V (Word64.xor w w))
        | _ -> raise Not_found)
+  end
+  | _ -> raise Not_found
 
-let bop (PrimT p) bop =
+let find_binop t bop =
+  match t with
+  | PrimT p ->
+  begin
     match bop with
     | CatOp ->
       fun v1 v2 -> textV ((text_of_V v1) ^ (text_of_V v2)) (*TBR will ^ work on unicode *)
@@ -204,4 +131,96 @@ let bop (PrimT p) bop =
       | WordT Width32 -> fun v1 v2 -> word32V (Word32.rotr (word32_of_V v1) (word32_of_V v2))
       | WordT Width64 -> fun v1 v2 -> word64V (Word64.rotr (word64_of_V v1) (word64_of_V v2))
       | _ -> raise Not_found)
+  end
+  | _ -> raise Not_found
 
+let find_relop t rop =
+  match t with
+    | PrimT p -> 
+    begin
+      match rop with
+      | EqOp -> 
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.eq (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.eq (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.eq (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.eq (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.eq (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.eq (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.eq (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 = bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 = char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 = text_of_V v2)
+        | _ -> raise Not_found)
+      | NeqOp ->
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.ne (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.ne (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.ne (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.ne (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.ne (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.ne (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.ne (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 <> bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 <> char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 <> text_of_V v2)
+        | _ -> raise Not_found)
+      | LtOp -> 
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.lt_s (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.lt_u (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.lt (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.lt_u (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.lt_u (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.lt_u (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.lt_u (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 < bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 < char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 < text_of_V v2)
+        | _ -> raise Not_found)
+      | LeOp -> 
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.le_s (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.le_u (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.le (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.le_u (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.le_u (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.le_u (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.le_u (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 <= bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 <= char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 <= text_of_V v2)
+        | _ -> raise Not_found)
+      | GtOp -> 
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.gt_s (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.gt_u (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.gt (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 ->  boolV (Word8.gt_u (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.gt_u (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.gt_u (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.gt_u (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 > bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 > char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 > text_of_V v2)
+        | _ -> raise Not_found)
+      | GeOp -> 
+       (match p with
+        | IntT -> fun v1 v2 -> boolV (Integer.ge_s (int_of_V v1) (int_of_V v2))
+        | NatT -> fun v1 v2 ->  boolV (Natural.ge_u (nat_of_V v1) (nat_of_V v2))
+        | FloatT -> fun v1 v2 -> boolV (Float.ge (float_of_V v1) (float_of_V v2))
+        | WordT Width8 ->  fun v1 v2 -> boolV (Word8.ge_u  (word8_of_V v1) (word8_of_V v2))
+        | WordT Width16 -> fun v1 v2 -> boolV (Word16.ge_u (word16_of_V v1) (word16_of_V v2))
+        | WordT Width32 -> fun v1 v2 -> boolV (Word32.ge_u (word32_of_V v1) (word32_of_V v2))
+        | WordT Width64 -> fun v1 v2 -> boolV (Word64.ge_u (word64_of_V v1) (word64_of_V v2))
+        | BoolT -> fun v1 v2 -> boolV (bool_of_V v1 >= bool_of_V v2)
+        | CharT -> fun v1 v2 -> boolV (char_of_V v1 >= char_of_V v2)
+        | TextT -> fun v1 v2 -> boolV (text_of_V v1 >= text_of_V v2)
+        | _ -> raise Not_found)
+    end
+  | _ -> raise Not_found
+
+
+let has_unop t uop = try find_unop t uop;true with Not_found -> false
+let has_binop t bop = try find_binop t bop;true with Not_found -> false
+let has_relop t rop = try find_relop t rop;true with Not_found -> false

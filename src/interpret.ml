@@ -170,16 +170,14 @@ match e.it with
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
-    let t1 = e1.note in
-    interpret_exp context e1 (fun v1 -> k (interpret_uop context t1 uop v1))
+   let t1 = e1.note in
+   interpret_exp context e1 (fun v1 -> k (Operators.find_unop t1 uop v1))
 | BinE (e1,bop,e2) ->
    let t1 = e1.note in
-   let t2 = e2.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_binop context t1 t2 v1 bop v2 )))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_binop e1.note bop v1 v2)))
 | RelE (e1,rop,e2) ->
    let t1 = e1.note in
-   let t2 = e2.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (interpret_relop context t1 t2 v1 rop v2 )))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_relop e1.note rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (tupV vs))
 | ProjE(e1,n) ->

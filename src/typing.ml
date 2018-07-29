@@ -452,31 +452,25 @@ and infer_binop context at e1 bop e2 =
   let t1 = infer_exp context e1 in
   let t2 = infer_exp context e2 in
   if eq_typ context t1 t2
-  then try
-	 ignore (Operators.bop (norm_typ context t1) bop);
-	 t1
-       with
-       | Not_found -> type_error at "binary operator not available at argument type %s" (string_of_typ t1)
-  else
-      type_error at "arguments to binary operator must have equivalent types, found distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
+  then if has_binop e1.note bop
+       then t1
+       else type_error at "binary operator not available at argument type %s" (string_of_typ t1)
+  else type_error at "arguments to binary operator must have equivalent types, found distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
  
 and check_binop context at t e1 bop e2 =
-  (try ignore(Operators.bop t bop) with
-   | Not_found -> type_error at "binary operator not available at expected type %s" (string_of_typ t));
-  check_exp context t e1;
-  check_exp context t e2
-
+  if has_binop t bop
+  then (check_exp context t e1;
+        check_exp context t e2)
+  else type_error at "binary operator not available at expected type %s" (string_of_typ t)
+ 
 and infer_relop context at e1 rop e2 =
   let t1 = infer_exp context e1 in
   let t2 = infer_exp context e2 in
   if eq_typ context t1 t2
-  then try
-         ignore (Operators.rop (norm_typ context t1) rop);
-         boolT
-       with
-       | Not_found -> type_error at "relational operator not available at argument type %s" (string_of_typ t1)
-  else
-      type_error at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
+  then if has_relop e1.note rop
+       then boolT
+       else type_error at "relational operator not available at argument type %s" (string_of_typ t1)
+  else type_error at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s" (string_of_typ t1) (string_of_typ t2)
 
 and check_relop context at t e1 rop e2 =
   if not (eq_typ context t boolT)
@@ -485,18 +479,16 @@ and check_relop context at t e1 rop e2 =
  
 and infer_unop context at uop e =
   let t = infer_exp context e in
-  try
-    ignore(Operators.uop (norm_typ context t) uop);
+  if has_unop e.note uop then
     t
-  with
-  | Not_found -> type_error at "unary operator not available at argument type %s" (string_of_typ t)
+  else type_error at "unary operator not available at argument type %s" (string_of_typ t)
   
 and check_unop context at t uop e =
-  (try
-    ignore(Operators.uop (norm_typ context t) uop)
-   with
-   | Not_found -> type_error at "unary operator not available at expected type %s" (string_of_typ t));
   check_exp context t e;
+  if has_unop e.note uop
+  then ()
+  else type_error at "unary operator not available at expected type %s" (string_of_typ t);
+
 
 and infer_exp context e =
   let t = infer_exp' context e in
