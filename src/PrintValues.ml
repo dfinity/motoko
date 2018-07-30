@@ -7,6 +7,10 @@ open Values
 (*TBR*)
 
 
+let rec string_of_mut = function
+  | ConstMut -> ""
+  | VarMut -> "var "
+
 let rec string_of_atomic_val context t v =
   match norm_typ context t with
   | AnyT -> "any"
@@ -34,47 +38,47 @@ let rec string_of_atomic_val context t v =
   | VarT (c,[]) ->
      Con.to_string c
   | VarT (c,ts) ->
-     sprintf "%s<%s>" (Con.to_string c) (String.concat "," (List.map string_of_typ ts))
+     sprintf "%s<%s>" (Con.to_string c) (String.concat ", " (List.map string_of_typ ts))
   | TupT ts ->
     let vs = tup_of_V v in
-    sprintf "(%s)"  (String.concat "," (List.map2 (string_of_val context) ts vs))
+    sprintf "(%s)"  (String.concat ", " (List.map2 (string_of_val context) ts vs))
+  | ArrayT (m,t) ->
+    let a = arr_of_V v in
+    sprintf "[%s%s]" (string_of_mut m)
+             (String.concat ", " (List.map (string_of_val context t) (Array.to_list a)))
   | ObjT(Object,fs) ->
     let ve = obj_of_V v in
-    sprintf "{%s}" (String.concat ";" (List.map (fun {var;mut;typ} ->
+    sprintf "{%s}" (String.concat "; " (List.map (fun {var;mut;typ} ->
     	              	                 let v = checkV (Env.find var ve) in
 					 let v = match mut with
 					         | VarMut -> derefV v
 						 | ConstMut -> v
 				         in
-                                       sprintf "%s=%s " var (string_of_atomic_val context typ v))
+                                       sprintf "%s%s = %s" (string_of_mut mut) var (string_of_atomic_val context typ v))
                     fs))
   | _ ->
     sprintf "(%s)" (string_of_val context t v)
 
 and string_of_val context t v =
   match norm_typ context t with
-  | ArrayT (m,t) ->
-    let a = arr_of_V v in
-    sprintf "%s[%s]" (match m with VarMut -> " var " |  ConstMut -> "")
-    	       (String.concat ";" (List.map (string_of_val context t) (Array.to_list a)))
   | FuncT(_,_,_) ->
     ignore (func_of_V v); (* catch errors *)
-    "<func>"
+    "func ..."
   | OptT t ->
     let v = opt_of_V v in
     (match v with
     | None -> "null"
-    | Some v -> sprintf "Some %s" (string_of_val context t v))
+    | Some v -> string_of_val context t v)
   | AsyncT t ->
     let {result;waiters} = async_of_V v in
-    sprintf "async{%s,%i}" (match result with
+    sprintf "async {%s, %i}" (match result with
                             | None -> "?"
            		      | Some v -> string_of_val context t v)
 			      (List.length waiters)
   | LikeT t -> 
     sprintf "like %s" (string_of_atomic_typ t) (* TBR *)
   | ObjT(Actor,fs) ->
-    sprintf "actor%s" (string_of_atomic_val context (ObjT(Object,fs)) v)
+    sprintf "actor %s" (string_of_atomic_val context (ObjT(Object,fs)) v)
   | _ -> string_of_atomic_val context t v
 
 

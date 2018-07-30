@@ -1,27 +1,24 @@
 actor class Counter(i : Int) {
   private var c = i;    
 
-  Dec() : () {
-   Show(c);
+  dec() {
+   show(c);
    c -= 1;
   };
 
-  Read() : async Int {
-   c;
-  };
+  read() : async Int { c };
 };
 
-func Show(c:Int):(){};
+func show(c : Int) {};
 
 let c = Counter(10);
 
-func Test(){
-      var i:Int = 10;
-      while (i  > 0)
-      {
-        c.Dec();
-	i-=1;
-      }
-    };
+func test() {
+  var i : Int = 10;
+  while (i  > 0) {
+    c.dec();
+	  i -= 1;
+  }
+};
 
-let _ = Test();
+let _ = test();

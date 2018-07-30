@@ -22,7 +22,7 @@ let main () =
        let ve, ce, ke = Typing.check_prog prog in
        Printf.printf "typechecked %s" filename;
        print_newline();
-       Env.iter (fun v con -> Printf.printf "\n %s -> %s" v (Con.to_string con)) ce;
+       Env.iter (fun v con -> Printf.printf "\n %s := %s" v (Con.to_string con)) ce;
        Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
        ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
        let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.empty_context ve) ce) ke in

@@ -1,8 +1,8 @@
 actor class Control() {
 
-  private Test():Bool = false;   
+  private condition() : Bool = false;   
 
-  Block() : () {
+  testBlock() {
     label l1 {
       break l1
     };
@@ -12,38 +12,35 @@ actor class Control() {
     let (x, y, z) = (label l3 (break l3(2, true, ""))) : (Int, Bool, Text);
   };
 
-  While() : () {
-     label l while(Test()) {
-       if true break l
-       else continue l;
-     };
+  testWhile() {
+    label l while (condition()) {
+      if true break l
+      else continue l;
+    };
   };
 
-  Loop() : () {
-     label l loop {
-       if true break l
-       else continue l;
-     };
+  testLoop() {
+    label l loop {
+      if true break l
+      else continue l;
+    };
   };
   
-  LoopWhile() : () {
-     label l loop {
-       if true break l
-       else continue l;
-     } while (Test());
+  testLoopWhile() {
+    label l loop {
+      if true break l
+      else continue l;
+    } while (condition());
   };
 
-  NestedWhile() : () {
-     label l while (Test()) {
-       if true break l ()
-       else continue l;
-       label m while(Test()) {
-          if true continue l
-          else break m ();
-       };
-     };
+  testNestedWhile() {
+    label l while (condition()) {
+      if true break l
+      else continue l;
+      label m while (condition()) {
+        if true continue l
+        else break m;
+      };
+    };
   };
 };
-
-
-

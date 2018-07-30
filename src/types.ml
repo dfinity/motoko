@@ -183,7 +183,7 @@ let intT = PrimT IntT
 open Printf
 
 let string_of_mut = function
-  | VarMut -> " var "
+  | VarMut -> "var "
   | ConstMut -> ""
 
 let string_of_width = function
@@ -208,11 +208,11 @@ let rec string_of_atomic_typ = function
   | VarT (c, []) -> Con.to_string c
   | VarT (c, ts) ->
     sprintf "%s<%s>"
-      (Con.to_string c) (String.concat "," (List.map string_of_typ ts))
+      (Con.to_string c) (String.concat ", " (List.map string_of_typ ts))
   | TupT ts ->
-    sprintf "(%s)" (String.concat "," (List.map string_of_typ ts))
+    sprintf "(%s)" (String.concat ", " (List.map string_of_typ ts))
   | ObjT (Object, fs) ->
-    sprintf "{%s}" (String.concat ";" (List.map string_of_typ_field fs))
+    sprintf "{%s}" (String.concat "; " (List.map string_of_typ_field fs))
   | t ->
     sprintf "(%s)" (string_of_typ t)
 
@@ -221,7 +221,7 @@ and string_of_typ t =
   | ArrayT (m, t) ->
     sprintf "%s%s[]" (string_of_mut m) (string_of_atomic_typ t)  
   | FuncT (tbs, t1, t2) ->
-    sprintf "%s%s->%s"
+    sprintf "%s%s -> %s"
       (string_of_typ_binds tbs) (string_of_atomic_typ t1) (string_of_typ t2)
   | OptT t ->
     sprintf "%s?"  (string_of_atomic_typ t)
@@ -230,11 +230,11 @@ and string_of_typ t =
   | LikeT t -> 
     sprintf "like %s" (string_of_atomic_typ t)
   | ObjT (Actor, fs) ->
-    sprintf "actor%s" (string_of_atomic_typ (ObjT (Object, fs)))
+    sprintf "actor %s" (string_of_atomic_typ (ObjT (Object, fs)))
   | t -> string_of_atomic_typ t
 
 and string_of_typ_field {var; mut; typ} =
-  sprintf "%s:%s %s" var (string_of_mut mut) (string_of_typ typ)
+  sprintf "%s : %s%s" var (string_of_mut mut) (string_of_typ typ)
 
 and string_of_typ_bind {var; bound} =
   (* TODO: print bound *)
@@ -242,7 +242,7 @@ and string_of_typ_bind {var; bound} =
 
 and string_of_typ_binds = function
   | [] -> ""
-  | tbs -> "<" ^ (String.concat "," (List.map string_of_typ_bind tbs)) ^ ">"
+  | tbs -> "<" ^ String.concat ", " (List.map string_of_typ_bind tbs) ^ "> "
 
 let string_of_kind = function
   | DefK (tbs, t) ->

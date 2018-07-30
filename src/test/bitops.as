@@ -1,6 +1,6 @@
 // Bit operators
 
-func TestWord8(a : Word8, b : Word8) : () {
+func testWord8(a : Word8, b : Word8) {
    let not1 = ^ a;
    let not2 = (^ a) : Word8;
    let or1 = a | b;
@@ -20,7 +20,7 @@ func TestWord8(a : Word8, b : Word8) : () {
 };
 
 
-func TestWord16(a : Word16, b : Word16) : () {
+func testWord16(a : Word16, b : Word16) {
    let not1 = ^ a;
    let not2 = (^ a) : Word16;
    let or1 = a | b;
@@ -39,7 +39,7 @@ func TestWord16(a : Word16, b : Word16) : () {
    let rotr = a <>> b : Word16;
 };
 
-func TestWord32(a : Word32, b : Word32) : () {
+func testWord32(a : Word32, b : Word32) {
    let not1 = ^ a;
    let not2 = (^ a) : Word32;
    let or1 = a | b;
@@ -58,7 +58,7 @@ func TestWord32(a : Word32, b : Word32) : () {
    let rotr = a <>> b : Word32;
 };
 
-func TestWord64(a : Word64, b : Word64) : () {
+func testWord64(a : Word64, b : Word64) {
    let not1 = ^ a;
    let not2 = (^ a) : Word64;
    let or1 = a | b;

@@ -1,5 +1,5 @@
-actor class Account(initial_balance : Int) {
-  private var balance : Int = initial_balance;
+actor class Account(initialBalance : Int) {
+  private var balance : Int = initialBalance;
 
   getBalance() : async Int {
     return balance;

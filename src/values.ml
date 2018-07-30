@@ -99,8 +99,7 @@ let get_result async k =
 	| {result=Some v} -> k v
 	| {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
 
-let rec debug_string_of_val v =
-    match v with
+let rec debug_string_of_val = function
     | NullV  -> "null"
     | BoolV b -> if b then "true" else "false"
     | NatV n -> Natural.to_string_u n
@@ -112,21 +111,25 @@ let rec debug_string_of_val v =
     | FloatV f -> Float.to_string f
     | CharV d -> sprintf "(Char %li)" d (* TBR *)
     | TextV t -> t (* TBR *)
-    | TupV vs -> sprintf "(%s)" (String.concat "," (List.map (debug_string_of_val) vs))
-    | ObjV ve -> sprintf "{%s}" (String.concat ";" (List.map (fun (v,w) ->
-    	              	                  sprintf "%s=%s " v (debug_string_of_val w)) (Env.bindings ve)))
+    | TupV vs -> sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
+    | ObjV ve -> sprintf "{%s}" (String.concat "; " (List.map (fun (v,w) ->
+    	              	                  sprintf "%s = %s" v (debug_string_of_val w)) (Env.bindings ve)))
     | ArrV a ->
-       sprintf "[%s]" (String.concat ";" (List.map debug_string_of_val  (Array.to_list a)))
+       sprintf "[%s]" (String.concat ", " (List.map debug_string_of_val  (Array.to_list a)))
     | OptV o ->
       (match o with
       | None -> "null"
-      | Some v -> sprintf "Some (%s)" (debug_string_of_val v))
+      | Some v -> debug_string_of_val v)
     | FuncV f ->
-    	"<func>"
+    	"(func ...)"
     | VarV r ->
     	sprintf "Var (%s)" (debug_string_of_val !r) (*TBR show address ?*)
     | RecV r ->
 	sprintf "Rec (%s)" (debug_string_of_val (OptV r.definition))
     | AsyncV async ->
-      "<async>"
+      "(async ...)"
+
+let debug_string_of_tuple_val = function
+  | TupV _ as v -> debug_string_of_val v
+  | v -> "(" ^ debug_string_of_val v ^ ")"
 

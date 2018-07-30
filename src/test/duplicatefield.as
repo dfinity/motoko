@@ -1,5 +1,5 @@
 actor class C() {
-  M(){};
-  N(){};
-  M(){};  // Illegal!
+  m() {};
+  n() {};
+  m() {};  // Illegal!
 };

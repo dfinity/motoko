@@ -1,6 +1,6 @@
 // Numeric operators
 
-func TestInt(a : Int, b : Int) : () {
+func testInt(a : Int, b : Int) {
    let pos1 = + a;
    let pos2 = (+ a) : Int;
    let neg1 = - a;
@@ -18,7 +18,7 @@ func TestInt(a : Int, b : Int) : () {
 };
 
 
-func TestFloat(a : Float, b : Float) : () {
+func testFloat(a : Float, b : Float) {
    let pos1 = + a;
    let pos2 = (+ a) : Float;
    let neg1 = - a;
@@ -33,7 +33,7 @@ func TestFloat(a : Float, b : Float) : () {
    let rat2 = (a / b) : Float;
 };
 
-func TestNat(a : Nat, b : Nat) : () {
+func testNat(a : Nat, b : Nat) {
    let sum1 = a + b;
    let sum2 = (a + b) : Nat;
    let diff1 = a - b;
@@ -47,7 +47,7 @@ func TestNat(a : Nat, b : Nat) : () {
 };
 
 
-func TestWord8(a : Word8, b : Word8) : () {
+func testWord8(a : Word8, b : Word8) {
    let sum1 = a + b;
    let sum2 = (a + b) : Word8;
    let diff1 = a - b;
@@ -60,7 +60,7 @@ func TestWord8(a : Word8, b : Word8) : () {
    let mod2 = (a % b) : Word8;
 };
 
-func TestWord16(a : Word16, b : Word16) : () {
+func testWord16(a : Word16, b : Word16) {
    let sum1 = a + b;
    let sum2 = (a + b) : Word16;
    let diff1 = a - b;
@@ -73,7 +73,7 @@ func TestWord16(a : Word16, b : Word16) : () {
    let mod2 = (a % b) : Word16;
 };
 
-func TestWord32(a : Word32, b : Word32) : () {
+func testWord32(a : Word32, b : Word32) {
    let sum1 = a + b;
    let sum2 = (a + b) : Word32;
    let diff1 = a - b;
@@ -86,7 +86,7 @@ func TestWord32(a : Word32, b : Word32) : () {
    let mod2 = (a % b) : Word32;
 };
 
-func TestWord64(a : Word64, b : Word64) : () {
+func testWord64(a : Word64, b : Word64) {
    let sum1 = a + b;
    let sum2 = (a + b) : Word64;
    let diff1 = a - b;

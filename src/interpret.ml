@@ -387,10 +387,10 @@ and define_dec context d k =
       (* TBC: trim callee_context *)
       (define_var context var 
          (funcV(fun v k ->
-	      if !debug then printf "\n%s(%s)" var.it (debug_string_of_val v);
+	      if !debug then printf "\n%s%s" var.it (debug_string_of_tuple_val v);
               match interpret_pat p v with
               | Some ve ->
-	        let k = if !debug then fun w -> (printf "\n%s(%s)<-%s" var.it (debug_string_of_val v) (debug_string_of_val w);k w) else k in
+	        let k = if !debug then fun w -> (printf "\n%s%s => %s" var.it (debug_string_of_tuple_val v) (debug_string_of_val w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern")));
