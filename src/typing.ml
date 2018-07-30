@@ -4,10 +4,6 @@ open Types
 open Con
 open Operators
 
-module I32 = Wasm.I32
-module I64 = Wasm.I64
-
-
 exception KindError of Source.region * string
 exception TypeError of Source.region * string
 
@@ -16,8 +12,6 @@ let kind_error region fmt =
 
 let type_error region fmt =
   Printf.ksprintf (fun s -> raise (TypeError (region, s))) fmt
-
-
 
 type val_env = (typ * mut) Env.t
 type con_env = con Env.t
@@ -54,17 +48,15 @@ let disjoint_union_constructors at c ce = {c with constructors = disjoint_union 
 let disjoint_add_constructor at c d = disjoint_union_constructors at c (Env.singleton v d)
 *)
 
-
 let empty_context =
   {
     values = Env.empty;
     constructors = Env.empty;
-	  kinds = ConEnv.empty;
-	  labels = Env.empty;
-	  returns = None;
-	  awaitable = false
+    kinds = ConEnv.empty;
+    labels = Env.empty;
+    returns = None;
+    awaitable = false
   }
-
 
 let rec eq context eqs t1 t2 =
   match t1, t2 with
@@ -280,6 +272,7 @@ let lpow2 n = Int64.shift_left (Int64.of_int 1) n
 let raises f r x = try f r x; false; with _ -> true
 
 let _ =
+  let module I32 = Wasm.I32 in
   (* text check_nat *)
   assert (check_nat no_region (string_of_int (pow2 nat_width - 1)) = I32.of_int_u (pow2 nat_width - 1));
   assert (check_nat no_region (string_of_int 0) = I32.of_int_u 0);

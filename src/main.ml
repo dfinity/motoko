@@ -30,7 +30,7 @@ let main () =
 					  Env.iter (fun v (t,mut) -> 
 					            let w = Values.checkV (Env.find v dyn_ve) in
 						    let w = match mut with
-						        | ConstMut -> w
+						        | ConstMut -> Values.val_of_B w
 						   	| VarMut -> Values.derefV w
 					            in
 						    Printf.printf "\n %s = %s" v (PrintValues.string_of_val context t w)) ve;
@@ -56,7 +56,7 @@ let main () =
        let context = !Interpret.last_context in
        let ve = context.Interpret.values in
        Env.iter (fun v w -> 
-      	         Printf.printf "\n %s = %s" v (Values.debug_string_of_val w)) ve;
+      	         Printf.printf "\n %s = %s" v (Values.debug_string_of_recbind w)) ve;
        Printf.printf "region: %s \n exception %s:"  r (Printexc.to_string e));
        Printf.printf "%s" (Printexc.get_backtrace())
     ;

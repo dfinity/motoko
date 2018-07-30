@@ -17,17 +17,27 @@ type value =
     | CharV of unicode
     | TextV of string
     | TupV of value list
-    | ObjV of value Env.t
+    | ObjV of recbinding Env.t
     | ArrV of value array
     | OptV of value option (* TBR *)
     | FuncV of (value -> cont -> value)
-    | VarV of value ref
-    | RecV of recursive
     | AsyncV of async
 
 and async = {mutable result: value option; mutable waiters : cont list}
-and recursive = {mutable definition: value option}
+
 and cont = value -> value
+
+and binding = 
+    | ValB of value
+    | VarB of value ref
+and recursive = {mutable definition: binding option}
+and recbinding = 
+    | RecR of recursive
+(*TBR: we could statically distinguish lambda-pat bound variables from other bindings to avoid
+       the unnessary indirection and definedness check for references to lambda-bound variables, in which
+    case we could add:
+    | ValR of value 
+*)
 
 let nullV = NullV
 let null_of_V (NullV) = ()
@@ -64,26 +74,33 @@ let funcV f = FuncV f
 let func_of_V (FuncV f) = f
 let unitV = TupV([])
 let asyncV async = AsyncV async
-let recV d = RecV {definition=d} 
-let rec_of_V (RecV r) = r
 
-let projV (TupV vs) n = List.nth vs (Int32.to_int n)
-let dotV (ObjV ve) v = Env.find v ve
+
+let varB r = VarB r
+let rec derefV v =
+    match v with
+    | VarB r -> !r
+
+let valB v = ValB v
+let rec val_of_B v =
+    match v with
+    | ValB v -> v
+
+let recR d = RecR {definition=d} 
+let rec_of_R (RecR r) = r
 let checkV v =
      match v with
-     | RecV r ->
+     | RecR r ->
         (match r.definition with
          | Some v -> v
 	   | None -> failwith "BlackHole" (*TBR*))
-     | v -> v
 
-let assignV (VarV r) v  = r := v;unitV
+let projV (TupV vs) n = List.nth vs (Int32.to_int n)
+let dotV (ObjV ve) v = Env.find v ve
+let assignV (VarB r) v  = r := v;unitV
 let updateV (ArrV a) (IntV i) v  = a.(Int32Rep.to_int i) <- v;unitV (* TBR *)
 let indexV (ArrV a) (IntV i) = a.(Int32Rep.to_int i) (*TBR*)
 let applyV (FuncV f) v k = f v k
-let rec derefV v =
-    match v with
-    | VarV r -> !r
 
 let notV (BoolV b) = BoolV (not b)
 let async_of_V(AsyncV async) = async
@@ -97,8 +114,9 @@ let set_result async v =
 let get_result async k =
   	match async with
 	| {result=Some v} -> k v
-	| {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
+        | {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
 
+(* dynamic pretty printing *)
 let rec debug_string_of_val = function
     | NullV  -> "null"
     | BoolV b -> if b then "true" else "false"
@@ -113,7 +131,7 @@ let rec debug_string_of_val = function
     | TextV t -> t (* TBR *)
     | TupV vs -> sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
     | ObjV ve -> sprintf "{%s}" (String.concat "; " (List.map (fun (v,w) ->
-    	              	                  sprintf "%s = %s" v (debug_string_of_val w)) (Env.bindings ve)))
+    	              	                  sprintf "%s = %s" v (debug_string_of_recbind w)) (Env.bindings ve)))
     | ArrV a ->
        sprintf "[%s]" (String.concat ", " (List.map debug_string_of_val  (Array.to_list a)))
     | OptV o ->
@@ -122,12 +140,21 @@ let rec debug_string_of_val = function
       | Some v -> debug_string_of_val v)
     | FuncV f ->
     	"(func ...)"
-    | VarV r ->
-    	sprintf "Var (%s)" (debug_string_of_val !r) (*TBR show address ?*)
-    | RecV r ->
-	sprintf "Rec (%s)" (debug_string_of_val (OptV r.definition))
     | AsyncV async ->
       "(async ...)"
+
+and debug_string_of_bind = function
+  | VarB r -> 
+      sprintf "Var (%s)" (debug_string_of_val !r) (*TBR show address ?*) 
+  | ValB v ->
+    debug_string_of_val v
+
+and debug_string_of_recbind = function
+  | RecR {definition = Some bind} -> 
+    sprintf "Rec (%s)" (debug_string_of_bind bind) 
+  | RecR {definition = None} -> 
+    "Rec (?)" 
+
 
 let debug_string_of_tuple_val = function
   | TupV _ as v -> debug_string_of_val v

@@ -28,7 +28,7 @@ let debug = ref true
 
 exception Trap of Source.region * string
 
-type context = {values: value Env.t; constructors: con Env.t; kinds: kind ConEnv.t; labels: cont Env.t; returns: cont option; awaitable: bool}
+type context = {values: recbinding Env.t; constructors: con Env.t; kinds: kind ConEnv.t; labels: cont Env.t; returns: cont option; awaitable: bool}
 
 let union_values c ve = {c with values = union c.values ve}
 
@@ -68,90 +68,6 @@ let rec interpret_lit context rl =
     | TextLit s -> textV s
     | PreLit s -> failwith "interpret_lit"
 
-and interpret_binop context (PrimT p1) (PrimT p2) v1 bop v2 = 
-    match bop with
-    | CatOp ->
-      textV ((text_of_V v1) ^ (text_of_V v2)) (*TBR will ^ work on unicode *)
-    | AddOp ->
-      (match p1,p2 with
-      | IntT,IntT -> intV (Integer.add (int_of_V v1) (int_of_V v2))   (*TBR overflow*)
-      | NatT,NatT -> natV (Natural.add (nat_of_V v1) (nat_of_V v2))  (*TBR overflow*)
-      | FloatT,FloatT -> floatV (Float.add (float_of_V v1) (float_of_V v2))
-      | _, _ -> failwith "NYI")
-    | SubOp ->
-      (match p1,p2 with
-      | IntT,IntT -> intV (Integer.sub (int_of_V v1) (int_of_V v2))   (*TBR underflow*)
-      | NatT,NatT -> natV (Natural.sub (nat_of_V v1) (nat_of_V v2))  (*TBR underflow*)
-      | FloatT,FloatT -> floatV (Float.sub(float_of_V v1) (float_of_V v2))
-      | _, _ -> failwith "NYI")
-    | MulOp ->
-      (match p1,p2 with
-      | IntT,IntT -> intV (Integer.mul (int_of_V v1) (int_of_V v2))   (*TBR overflow*)
-      | NatT,NatT -> natV (Natural.mul (nat_of_V v1) (nat_of_V v2))  (*TBR overflow*)
-      | FloatT,FloatT -> floatV (Float.mul (float_of_V v1) (float_of_V v2))
-      | _, _ -> failwith "NYI")
-    | DivOp ->
-      (match p1,p2 with
-      | IntT,IntT -> intV (Integer.div_s (int_of_V v1) (int_of_V v2))  
-      | NatT,NatT -> natV (Natural.div_u (nat_of_V v1) (nat_of_V v2))  
-      | FloatT,FloatT -> floatV (Float.div (float_of_V v1) (float_of_V v2))
-      | _, _ -> failwith "NYI")
-    | ModOp ->
-      (match p1,p2 with
-      | IntT,IntT -> intV (Integer.rem_s (int_of_V v1) (int_of_V v2))
-      | NatT,NatT -> natV (Natural.rem_u (nat_of_V v1) (nat_of_V v2))
-      | FloatT,FloatT -> failwith "NYI"
-      | _, _ -> failwith "NYI")
-    | AndOp | OrOp | XorOp | ShiftLOp | ShiftROp | RotLOp | RotROp ->
-      failwith "NYI"
-
-and interpret_relop context (PrimT p1) (PrimT p2) v1 rop v2 =
-       match rop with
-      | EqOp -> boolV(v1 = v2)
-      | NeqOp -> boolV(v1 <> v2)
-      | LtOp -> 
-       (match p1,p2 with
-        | IntT,IntT -> boolV (Integer.lt_s (int_of_V v1) (int_of_V v2))
-        | NatT,NatT -> boolV (Natural.lt_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT,FloatT -> boolV (Float.lt (float_of_V v1) (float_of_V v2))
-        | _, _ -> failwith "NYI")
-      | LeOp -> 
-        (match p1,p2 with
-        | IntT,IntT -> boolV (Integer.le_s (int_of_V v1) (int_of_V v2))
-        | NatT,NatT -> boolV (Natural.le_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT,FloatT -> boolV (Float.le (float_of_V v1) (float_of_V v2))
-        | _, _ -> failwith "NYI")
-      | GtOp -> 
-        (match p1,p2 with
-        | IntT,IntT -> boolV (Integer.gt_s (int_of_V v1) (int_of_V v2))
-        | NatT,NatT -> boolV (Natural.gt_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT,FloatT -> boolV (Float.gt (float_of_V v1) (float_of_V v2))
-        | _, _ -> failwith "NYI")
-      | GeOp -> 
-        (match p1,p2 with
-        | IntT,IntT -> boolV (Integer.ge_s (int_of_V v1) (int_of_V v2))
-        | NatT,NatT -> boolV (Natural.ge_u (nat_of_V v1) (nat_of_V v2))
-        | FloatT,FloatT -> boolV (Float.ge (float_of_V v1) (float_of_V v2))
-        | _, _ -> failwith "NYI")
-
-
-and interpret_uop context (PrimT p) uop v = 
-    match uop with
-    | PosOp ->
-      (match p with
-       | IntT -> v
-       | FloatT -> v)
-    | NegOp ->
-      (match p with
-       | IntT -> intV (Int32Rep.neg (int_of_V v)) (*TBR overflow*)
-       | FloatT -> floatV (Float.neg (float_of_V v)))
-    | NotOp ->
-      (match p with
-       | WordT Width8  -> let w = word8_of_V v in (word8V (Word8.xor w w))
-       | WordT Width16 -> let w = word16_of_V v in (word16V (Word16.xor w w))
-       | WordT Width32 -> let w = word32_of_V v in (word32V (Word32.xor w w))
-       | WordT Width64 -> let w = word64_of_V v in (word64V (Word64.xor w w)))
-
 and interpret_exps context vs es k =
     match es with
     | [] -> k (List.rev vs)
@@ -166,7 +82,7 @@ match e.it with
 | VarE x ->
     (match x.note with
      | VarMut -> k (derefV (checkV (Env.find x.it context.values)))
-     | ConstMut -> k (checkV (Env.find x.it context.values)))
+     | ConstMut -> k (val_of_B (checkV (Env.find x.it context.values))))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
@@ -174,10 +90,10 @@ match e.it with
    interpret_exp context e1 (fun v1 -> k (Operators.find_unop t1 uop v1))
 | BinE (e1,bop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_binop e1.note bop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_binop t1 bop v1 v2)))
 | RelE (e1,rop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_relop e1.note rop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (tupV vs))
 | ProjE(e1,n) ->
@@ -188,7 +104,7 @@ match e.it with
     interpret_exp context e1 (fun v1 ->
     k (match mut with
        | VarMut -> (derefV (checkV (dotV v1 it)))
-       | ConstMut -> (checkV (dotV v1 it)))
+       | ConstMut -> (val_of_B (checkV (dotV v1 it))))
     )
 | AssignE(e1,e2) ->
     begin
@@ -200,7 +116,7 @@ match e.it with
     | DotE(e,v) ->
       interpret_exp context e1 (fun v1 ->
       interpret_exp context e2 (fun v2 ->
-      let loc = dotV v1 v.it in
+      let loc = checkV (dotV v1 v.it) in
       k(assignV loc v2)))
     | IdxE(ea,ei) ->
       interpret_exp context ea (fun va ->
@@ -306,7 +222,7 @@ match e.it with
 | DecE ({it=FuncD(v,_,_,_,_)} as d) ->
   interpret_decs context [d] (fun ve ->
   (match lookup ve v.it with
-  | Some w -> k (checkV w)
+  | Some w -> k (val_of_B(checkV w))
   | None -> failwith "interpret_exp decE"))
 | DecE d ->
   interpret_decs context [d] (fun ve ->  k unitV)
@@ -336,15 +252,15 @@ and declare_dec context d =
     | LetD (p,e) ->
        declare_pat context p
     | VarD (v,t,None) ->
-       Env.singleton v.it (recV None)
+       Env.singleton v.it (recR None)
     | VarD (v,t,Some e) ->
-       Env.singleton v.it (recV None)
+       Env.singleton v.it (recR None)
     | TypD(v,ts,t) ->
        Env.empty
     | FuncD(v,ts,p,t,e) ->
-       Env.singleton v.it (recV None)
+       Env.singleton v.it (recR None)
     | ClassD(a,v,ts,p,efs) ->
-       Env.singleton v.it (recV None)
+       Env.singleton v.it (recR None)
 
 and declare_decs context ve d =
     match d with
@@ -364,7 +280,7 @@ and define_decs context decs k =
      define_decs context decs k)
 
 and define_var context var v =
-    match rec_of_V (Env.find var.it context.values) with
+    match rec_of_R (Env.find var.it context.values) with
     | {definition=Some _} -> failwith "duplicated definition"
     | recursive -> recursive.definition <- Some v
     
@@ -379,25 +295,25 @@ and define_dec context d k =
       k()
     | VarD (var,t,Some e) ->
       interpret_exp context e (fun v ->
-      define_var context var (VarV (ref v));
+      define_var context var (varB (ref v));
       k())
     | TypD(v,ts,t) ->
       k()
     | FuncD(var,ts,p,t,e) ->
       (* TBC: trim callee_context *)
-      (define_var context var 
-         (funcV(fun v k ->
+      (define_var context var
+        (valB(funcV(fun v k ->
 	      if !debug then printf "\n%s%s" var.it (debug_string_of_tuple_val v);
               match interpret_pat p v with
               | Some ve ->
 	        let k = if !debug then fun w -> (printf "\n%s%s => %s" var.it (debug_string_of_tuple_val v) (debug_string_of_val w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
-              | None -> failwith "unexpected refuted pattern")));
+              | None -> failwith "unexpected refuted pattern"))));
       k()
     | ClassD(a,c,ts,p,efs) ->
       (define_var context c
-         (funcV(fun v k ->
+        (valB(funcV(fun v k ->
               match interpret_pat p v with
               | None -> failwith "unexpected refuted pattern";
               | Some ve -> let context = union_values context ve in
@@ -405,9 +321,9 @@ and define_dec context d k =
                                      match efs with
                                      | [] -> (private_ve,public_ve)
                                      | {it={var;mut;priv;exp=_}}::efs ->
-                                        let recV = recV None in
-                                        declare_members (Env.add var.it recV private_ve)
-                                                        (Env.add var.it recV public_ve) efs
+                                        let recR = recR None in
+                                        declare_members (Env.add var.it recR private_ve)
+                                                        (Env.add var.it recR public_ve) efs
                             in
                             let (private_ve,public_ve) = declare_members Env.empty Env.empty efs
                             in
@@ -418,15 +334,15 @@ and define_dec context d k =
                                         interpret_exp private_context exp (fun v ->
 					let v = expand a.it priv.it mut.it exp.note v in 
                                         let defn = match mut.it with
-                                                   | ConstMut -> v
-                                                   | VarMut -> VarV (ref v)
+                                                   | ConstMut -> valB v
+                                                   | VarMut -> varB (ref v)
                                         in
                                           define_var private_context var defn;
                                           define_members efs)
 				     | [] -> k (objV public_ve) 
 
                             in 
-                                 define_members efs)));
+                                 define_members efs))));
        k()
        
 and expand actor priv mut t v =
@@ -461,7 +377,7 @@ and declare_pats context ve ps =
 and declare_pat context p =
    match p.it with
    | WildP ->  Env.empty
-   | VarP v -> Env.singleton v.it (recV None)
+   | VarP v -> Env.singleton v.it (recR None)
    | LitP l -> Env.empty
    | TupP ps -> declare_pats context Env.empty ps
    | AnnotP(p,t) ->
@@ -470,7 +386,7 @@ and declare_pat context p =
 and define_pat context p v =
    match p.it with
    | WildP -> ()
-   | VarP var -> define_var context var v
+   | VarP var -> define_var context var (valB v)
    | LitP rl -> ()
    | TupP ps ->
      let vs = tup_of_V v in
@@ -505,9 +421,9 @@ and match_lit p v rl =
     | PreLit s -> failwith "match_lit"
      
 and interpret_pat p v =
-   match p.it with
+   match p.it with 
    | WildP -> Some Env.empty
-   | VarP var -> Some (Env.singleton var.it v)
+   | VarP var -> Some (Env.singleton var.it (recR (Some (valB v))))
    | LitP rl ->
      if match_lit p v rl 
      then Some Env.empty

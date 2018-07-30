@@ -52,7 +52,7 @@ let rec string_of_atomic_val context t v =
     	              	                 let v = checkV (Env.find var ve) in
 					 let v = match mut with
 					         | VarMut -> derefV v
-						 | ConstMut -> v
+						 | ConstMut -> val_of_B v
 				         in
                                        sprintf "%s%s = %s" (string_of_mut mut) var (string_of_atomic_val context typ v))
                     fs))
