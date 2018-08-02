@@ -1,0 +1,54 @@
+
+
+Typechecking hoare.as:
+
+ a : var Int[]
+ partition : (var Int[], Int, Int) -> Int
+ quicksort : (var Int[], Int, Int) -> ()
+ swap : (var Int[], Int, Int) -> ()
+ x : ()
+
+
+Interpreting hoare.as (tracing function calls):
+
+quicksort([8, 3, 9, 5, 2], 0, 4)
+partition([8, 3, 9, 5, 2], 0, 4)
+swap([8, 3, 9, 5, 2], 0, 4)
+swap([2, 3, 9, 5, 8], 0, 4) => ()
+swap([2, 3, 9, 5, 8], 2, 3)
+swap([2, 3, 5, 9, 8], 2, 3) => ()
+partition([2, 3, 5, 9, 8], 0, 4) => 2
+quicksort([2, 3, 5, 9, 8], 0, 2)
+partition([2, 3, 5, 9, 8], 0, 2)
+partition([2, 3, 5, 9, 8], 0, 2) => 0
+quicksort([2, 3, 5, 9, 8], 0, 0)
+quicksort([2, 3, 5, 9, 8], 0, 0) => ()
+quicksort([2, 3, 5, 9, 8], 1, 2)
+partition([2, 3, 5, 9, 8], 1, 2)
+partition([2, 3, 5, 9, 8], 1, 2) => 1
+quicksort([2, 3, 5, 9, 8], 1, 1)
+quicksort([2, 3, 5, 9, 8], 1, 1) => ()
+quicksort([2, 3, 5, 9, 8], 2, 2)
+quicksort([2, 3, 5, 9, 8], 2, 2) => ()
+quicksort([2, 3, 5, 9, 8], 1, 2) => ()
+quicksort([2, 3, 5, 9, 8], 0, 2) => ()
+quicksort([2, 3, 5, 9, 8], 3, 4)
+partition([2, 3, 5, 9, 8], 3, 4)
+swap([2, 3, 5, 9, 8], 3, 4)
+swap([2, 3, 5, 8, 9], 3, 4) => ()
+partition([2, 3, 5, 8, 9], 3, 4) => 3
+quicksort([2, 3, 5, 8, 9], 3, 3)
+quicksort([2, 3, 5, 8, 9], 3, 3) => ()
+quicksort([2, 3, 5, 8, 9], 4, 4)
+quicksort([2, 3, 5, 8, 9], 4, 4) => ()
+quicksort([2, 3, 5, 8, 9], 3, 4) => ()
+quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+
+Final state hoare.as:
+
+ a = [var 2, 3, 5, 8, 9]
+ partition = func ...
+ quicksort = func ...
+ swap = func ...
+ x = ()
+

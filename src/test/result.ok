@@ -1,4 +1,6 @@
-typechecked bank.as
+
+
+Typechecking bank.as:
 
  Account := Account/3
  Bank := Bank/1
@@ -10,11 +12,21 @@ typechecked bank.as
  Bank/1 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
  Issuer/2 := actor {hasIssued : (like Account/3) -> async Bool}
  Account/3 := actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+
+
+Interpreting bank.as (tracing function calls):
+
+
+Final state bank.as:
+
  Account = func ...
  Bank = func ...
  Issuer = func ...
  transfer = func ...
-typechecked bank_ordered.as
+
+
+
+Typechecking bank_ordered.as:
 
  Account := Account/1
  Bank := Bank/3
@@ -26,18 +38,38 @@ typechecked bank_ordered.as
  Account/1 := actor {getBalance : () -> async Int; isCompatible : (like Account/1) -> async Bool; join : Account/1 -> (); split : Int -> async Account/1}
  Issuer/2 := actor {hasIssued : (like Account/1) -> async Bool}
  Bank/3 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/1}
+
+
+Interpreting bank_ordered.as (tracing function calls):
+
+
+Final state bank_ordered.as:
+
  Account = func ...
  Bank = func ...
  Issuer = func ...
  transfer = func ...
-typechecked control.as
+
+
+
+Typechecking control.as:
 
  Control := Control/1
  Control : () -> Control/1
  Control/1 := actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
+
+
+Interpreting control.as (tracing function calls):
+
+
+Final state control.as:
+
  Control = func ...
+
 Type Error literals.as:3.20-3.27:bad or out-of-range literal for type Word8!
-typechecked numericops.as
+
+
+Typechecking numericops.as:
 
  testFloat : (Float, Float) -> ()
  testInt : (Int, Int) -> ()
@@ -46,6 +78,13 @@ typechecked numericops.as
  testWord32 : (Word32, Word32) -> ()
  testWord64 : (Word64, Word64) -> ()
  testWord8 : (Word8, Word8) -> ()
+
+
+Interpreting numericops.as (tracing function calls):
+
+
+Final state numericops.as:
+
  testFloat = func ...
  testInt = func ...
  testNat = func ...
@@ -53,17 +92,30 @@ typechecked numericops.as
  testWord32 = func ...
  testWord64 = func ...
  testWord8 = func ...
-typechecked bitops.as
+
+
+
+Typechecking bitops.as:
 
  testWord16 : (Word16, Word16) -> ()
  testWord32 : (Word32, Word32) -> ()
  testWord64 : (Word64, Word64) -> ()
  testWord8 : (Word8, Word8) -> ()
+
+
+Interpreting bitops.as (tracing function calls):
+
+
+Final state bitops.as:
+
  testWord16 = func ...
  testWord32 = func ...
  testWord64 = func ...
  testWord8 = func ...
-typechecked relationalops.as
+
+
+
+Typechecking relationalops.as:
 
  testBool : (Bool, Bool) -> ()
  testChar : (Char, Char) -> ()
@@ -75,6 +127,13 @@ typechecked relationalops.as
  testWord32 : (Word32, Word32) -> ()
  testWord64 : (Word64, Word64) -> ()
  testWord8 : (Word8, Word8) -> ()
+
+
+Interpreting relationalops.as (tracing function calls):
+
+
+Final state relationalops.as:
+
  testBool = func ...
  testChar = func ...
  testFloat = func ...
@@ -85,13 +144,26 @@ typechecked relationalops.as
  testWord32 = func ...
  testWord64 = func ...
  testWord8 = func ...
-typechecked concat.as
+
+
+
+Typechecking concat.as:
 
  testText : (Text, Text) -> ()
+
+
+Interpreting concat.as (tracing function calls):
+
+
+Final state concat.as:
+
  testText = func ...
+
 Type Error duplicatefield.as:4.3-4.4:duplicate field m!
 Type Error nonlinearpat.as:1.5-1.14:duplicate binding for x in pattern!
-typechecked typedef.as
+
+
+Typechecking typedef.as:
 
  A := A/12
  Arrow := Arrow/4
@@ -107,7 +179,17 @@ typechecked typedef.as
  Seq/11 = <A/34> (A/34, Seq/11<A/34>?)
  A/12 = (B/13, A/12)
  B/13 = (A/12, B/13)
-typechecked type_equiv.as
+
+
+Interpreting typedef.as (tracing function calls):
+
+
+Final state typedef.as:
+
+
+
+
+Typechecking type_equiv.as:
 
  A := A/5
  T := T/3
@@ -121,6 +203,13 @@ typechecked type_equiv.as
  test6 : <t/38> (A/5<T/3<t/38, Int>>, A/5<T/3<t/38, Bool>>) -> A/5<T/3<t/38, Word8>>
  T/3 = <a/24, b/25> a/24
  A/5 := <t/26> actor {}
+
+
+Interpreting type_equiv.as (tracing function calls):
+
+
+Final state type_equiv.as:
+
  A = func ...
  test0 = func ...
  test1 = func ...
@@ -129,7 +218,10 @@ typechecked type_equiv.as
  test4 = func ...
  test5 = func ...
  test6 = func ...
-typechecked quicksort.as
+
+
+
+Typechecking quicksort.as:
 
  QS := QS/4
  array := array/2
@@ -139,6 +231,10 @@ typechecked quicksort.as
  qs : QS/4<Int>
  array/2 = <t/10> var t/10[]
  QS/4 := <T/11> {quicksort : (array/2<T/11>, Int, Int) -> ()}
+
+
+Interpreting quicksort.as (tracing function calls):
+
 quicksort([8, 3, 9, 5, 2], 0, 4)
 partition([8, 3, 9, 5, 2], 0, 4)
 trace([8, 3, 9, 5, 2])
@@ -215,17 +311,27 @@ quicksort([2, 3, 5, 8, 9], 4, 4)
 quicksort([2, 3, 5, 8, 9], 4, 4) => ()
 quicksort([2, 3, 5, 8, 9], 3, 4) => ()
 quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+
+Final state quicksort.as:
+
  QS = func ...
  a = [var 2, 3, 5, 8, 9]
  cmpi = func ...
  qs = QS/4<Int>
-typechecked hoare.as
+
+
+
+Typechecking hoare.as:
 
  a : var Int[]
  partition : (var Int[], Int, Int) -> Int
  quicksort : (var Int[], Int, Int) -> ()
  swap : (var Int[], Int, Int) -> ()
  x : ()
+
+
+Interpreting hoare.as (tracing function calls):
+
 quicksort([8, 3, 9, 5, 2], 0, 4)
 partition([8, 3, 9, 5, 2], 0, 4)
 swap([8, 3, 9, 5, 2], 0, 4)
@@ -258,12 +364,18 @@ quicksort([2, 3, 5, 8, 9], 4, 4)
 quicksort([2, 3, 5, 8, 9], 4, 4) => ()
 quicksort([2, 3, 5, 8, 9], 3, 4) => ()
 quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+
+Final state hoare.as:
+
  a = [var 2, 3, 5, 8, 9]
  partition = func ...
  quicksort = func ...
  swap = func ...
  x = ()
-typechecked bankex.as
+
+
+
+Typechecking bankex.as:
 
  Account := Account/3
  Bank := Bank/1
@@ -279,6 +391,10 @@ typechecked bankex.as
  Bank/1 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
  Issuer/2 := actor {hasIssued : (like Account/3) -> async Bool}
  Account/3 := actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+
+
+Interpreting bankex.as (tracing function calls):
+
 test()
 test() => async {?, 0}
 getReserve()
@@ -307,6 +423,9 @@ show(a1, {balance = Rec (Var (5)); credit = Rec ((func ...)); getBalance = Rec (
 show(a1, {balance = Rec (Var (5)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
 show(a2, {balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
 show(a2, {balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
+
+Final state bankex.as:
+
  Account = func ...
  Bank = func ...
  Issuer = func ...
@@ -315,7 +434,10 @@ show(a2, {balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec 
  show = func ...
  test = func ...
  transfer = func ...
-typechecked counter.as
+
+
+
+Typechecking counter.as:
 
  Counter := Counter/1
  Counter : Int -> Counter/1
@@ -323,6 +445,10 @@ typechecked counter.as
  show : Int -> ()
  test : () -> ()
  Counter/1 := actor {dec : () -> (); read : () -> async Int}
+
+
+Interpreting counter.as (tracing function calls):
+
 test()
 test() => ()
 dec()
@@ -365,15 +491,29 @@ dec()
 show(1)
 show(1) => ()
 dec() => ()
+
+Final state counter.as:
+
  Counter = func ...
  c = Counter/1
  show = func ...
  test = func ...
-typechecked testwhile.as
+
+
+
+Typechecking testwhile.as:
 
  passed : Bool
  test : () -> Int
+
+
+Interpreting testwhile.as (tracing function calls):
+
 test()
 test() => 0
+
+Final state testwhile.as:
+
  passed = true
  test = func ...
+

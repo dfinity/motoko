@@ -1,0 +1,100 @@
+
+
+Typechecking quicksort.as:
+
+ QS := QS/4
+ array := array/2
+ QS : <T/11> ((T/11, T/11) -> Int) -> QS/4<T/11>
+ a : var Int[]
+ cmpi : (Int, Int) -> Int
+ qs : QS/4<Int>
+ array/2 = <t/10> var t/10[]
+ QS/4 := <T/11> {quicksort : (array/2<T/11>, Int, Int) -> ()}
+
+
+Interpreting quicksort.as (tracing function calls):
+
+quicksort([8, 3, 9, 5, 2], 0, 4)
+partition([8, 3, 9, 5, 2], 0, 4)
+trace([8, 3, 9, 5, 2])
+trace([8, 3, 9, 5, 2]) => ()
+cmpi(8, 8)
+cmpi(8, 8) => 0
+cmpi(2, 8)
+cmpi(2, 8) => -6
+swap([8, 3, 9, 5, 2], 0, 4)
+swap([2, 3, 9, 5, 8], 0, 4) => ()
+cmpi(3, 8)
+cmpi(3, 8) => -5
+cmpi(9, 8)
+cmpi(9, 8) => 1
+cmpi(5, 8)
+cmpi(5, 8) => -3
+swap([2, 3, 9, 5, 8], 2, 3)
+swap([2, 3, 5, 9, 8], 2, 3) => ()
+cmpi(9, 8)
+cmpi(9, 8) => 1
+cmpi(5, 8)
+cmpi(5, 8) => -3
+partition([2, 3, 5, 9, 8], 0, 4) => 2
+quicksort([2, 3, 5, 9, 8], 0, 2)
+partition([2, 3, 5, 9, 8], 0, 2)
+trace([2, 3, 5, 9, 8])
+trace([2, 3, 5, 9, 8]) => ()
+cmpi(2, 2)
+cmpi(2, 2) => 0
+cmpi(5, 2)
+cmpi(5, 2) => 3
+cmpi(3, 2)
+cmpi(3, 2) => 1
+cmpi(2, 2)
+cmpi(2, 2) => 0
+partition([2, 3, 5, 9, 8], 0, 2) => 0
+quicksort([2, 3, 5, 9, 8], 0, 0)
+quicksort([2, 3, 5, 9, 8], 0, 0) => ()
+quicksort([2, 3, 5, 9, 8], 1, 2)
+partition([2, 3, 5, 9, 8], 1, 2)
+trace([2, 3, 5, 9, 8])
+trace([2, 3, 5, 9, 8]) => ()
+cmpi(3, 3)
+cmpi(3, 3) => 0
+cmpi(5, 3)
+cmpi(5, 3) => 2
+cmpi(3, 3)
+cmpi(3, 3) => 0
+partition([2, 3, 5, 9, 8], 1, 2) => 1
+quicksort([2, 3, 5, 9, 8], 1, 1)
+quicksort([2, 3, 5, 9, 8], 1, 1) => ()
+quicksort([2, 3, 5, 9, 8], 2, 2)
+quicksort([2, 3, 5, 9, 8], 2, 2) => ()
+quicksort([2, 3, 5, 9, 8], 1, 2) => ()
+quicksort([2, 3, 5, 9, 8], 0, 2) => ()
+quicksort([2, 3, 5, 9, 8], 3, 4)
+partition([2, 3, 5, 9, 8], 3, 4)
+trace([2, 3, 5, 9, 8])
+trace([2, 3, 5, 9, 8]) => ()
+cmpi(9, 9)
+cmpi(9, 9) => 0
+cmpi(8, 9)
+cmpi(8, 9) => -1
+swap([2, 3, 5, 9, 8], 3, 4)
+swap([2, 3, 5, 8, 9], 3, 4) => ()
+cmpi(9, 9)
+cmpi(9, 9) => 0
+cmpi(8, 9)
+cmpi(8, 9) => -1
+partition([2, 3, 5, 8, 9], 3, 4) => 3
+quicksort([2, 3, 5, 8, 9], 3, 3)
+quicksort([2, 3, 5, 8, 9], 3, 3) => ()
+quicksort([2, 3, 5, 8, 9], 4, 4)
+quicksort([2, 3, 5, 8, 9], 4, 4) => ()
+quicksort([2, 3, 5, 8, 9], 3, 4) => ()
+quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+
+Final state quicksort.as:
+
+ QS = func ...
+ a = [var 2, 3, 5, 8, 9]
+ cmpi = func ...
+ qs = QS/4<Int>
+
