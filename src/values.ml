@@ -141,7 +141,12 @@ let rec debug_string_of_val = function
     | FuncV f ->
     	"(func ...)"
     | AsyncV async ->
-      "(async ...)"
+      let {result;waiters} = async in
+      sprintf "async {%s, %i}" (match result with
+                                | None -> "?"
+           		        | Some v -> debug_string_of_val v)
+			       (List.length waiters)
+
 
 and debug_string_of_bind = function
   | VarB r -> 

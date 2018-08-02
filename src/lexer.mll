@@ -300,6 +300,7 @@ rule token = parse
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }
+  | "assert" { ASSERT }
   | "await" { AWAIT }
   | "break" { BREAK }
   | "case" { CASE }

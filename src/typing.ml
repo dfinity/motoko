@@ -621,7 +621,7 @@ and infer_exp' context e =
     (match infer_cases context t cs None with
     | Some t -> t
     | None -> type_error e.at "couldn't infer type of case"
-    ) 
+    )
   | WhileE (e0, e1) ->
     check_exp context boolT e0;
     check_exp context unitT e1;
@@ -705,13 +705,14 @@ and infer_cases context pt cs t_opt  =
   | [] -> t_opt
   | {it = {pat; exp}; at}::cs ->
     let ve = check_pat context pat pt in
-    let t = infer_exp (union_values context ve) exp in
-    let t_opt' =
-      match t_opt with
-    	| None -> Some t
- 	    | Some t' when eq_typ context t t' -> Some t
-		  | _ -> type_error at "illegal case of different type from preceeding cases"
-    in infer_cases context pt cs t_opt'
+    let t =
+    	match t_opt with
+	| None -> infer_exp (union_values context ve) exp 
+	| Some t ->
+	  check_exp (union_values context ve) t exp;
+	  t
+    in
+    infer_cases context pt cs (Some t)
 
 and check_exp context t e =
   (match e.it with
@@ -750,6 +751,19 @@ and check_exp context t e =
     check_exp context unitT e (*TBR do we want to allow any type for the body? *)
   | BlockE es ->
     check_block e.at context t es
+  | IfE (e0, e1, e2) ->
+    check_exp context boolT e0;
+    check_exp context t e1;
+    check_exp context t e2
+  | SwitchE (e1, cs) ->
+    let t1 = infer_exp context e1 in
+    if not (switchable_typ context t1) then type_error e1.at "illegal type for switch";
+    (match infer_cases context t1 cs (Some t) with
+    | Some t' -> assert (eq_typ context t t');
+      	         ()
+    | None -> assert(false);
+              type_error e.at "couldn't check type of case"
+    ) 
   | BreakE _ ->
     ignore (infer_exp context e)
   | RetE _ ->

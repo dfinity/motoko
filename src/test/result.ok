@@ -280,13 +280,13 @@ typechecked bankex.as
  Issuer/2 := actor {hasIssued : (like Account/3) -> async Bool}
  Account/3 := actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
 test()
-test() => (async ...)
+test() => async {?, 0}
 getReserve()
-getReserve() => (async ...)
+getReserve() => async {?, 0}
 split(10)
-split(10) => (async ...)
+split(10) => async {?, 0}
 split(10)
-split(10) => (async ...)
+split(10) => async {?, 0}
 show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
 show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
 show(a1, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
@@ -294,9 +294,9 @@ show(a1, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec 
 show(a2, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
 show(a2, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
 transfer({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, 5)
-transfer({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, 5) => (async ...)
+transfer({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, 5) => async {?, 0}
 split(5)
-split(5) => (async ...)
+split(5) => async {?, 0}
 join({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
 credit(5)
 credit(5) => ()
