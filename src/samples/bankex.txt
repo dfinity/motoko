@@ -8,7 +8,7 @@ Typechecking bankex.as:
  Account : Int -> Account/3
  Bank : Int -> Bank/1
  Issuer : () -> Issuer/2
- b : Bank/1
+ bank : Bank/1
  main : async (Account/3, Account/3)
  show : (Text, Account/3) -> ()
  test : () -> async (Account/3, Account/3)
@@ -21,42 +21,42 @@ Typechecking bankex.as:
 Interpreting bankex.as (tracing function calls):
 
 test()
-test() => async {?, 0}
+test() => async ?#0
 getReserve()
-getReserve() => async {?, 0}
+getReserve() => async ?#0
 split(10)
-split(10) => async {?, 0}
+split(10) => async ?#0
 split(10)
-split(10) => async {?, 0}
-show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-show(a1, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(a1, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-show(a2, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(a2, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-transfer({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, 5)
-transfer({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, {balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}, 5) => async {?, 0}
+split(10) => async ?#0
+show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
+transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5) => async ?#0
 split(5)
-split(5) => async {?, 0}
-join({balance = Rec (Var (10)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
+split(5) => async ?#0
+join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 credit(5)
 credit(5) => ()
-join({balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(reserve, {balance = Rec (Var (80)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-show(a1, {balance = Rec (Var (5)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(a1, {balance = Rec (Var (5)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
-show(a2, {balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))})
-show(a2, {balance = Rec (Var (15)); credit = Rec ((func ...)); getBalance = Rec ((func ...)); isCompatible = Rec ((func ...)); join = Rec ((func ...)); split = Rec ((func ...))}) => ()
+join({balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
 
 Final state bankex.as:
 
- Account = func ...
- Bank = func ...
- Issuer = func ...
- b = Bank/1
- main = async {(Account/3, Account/3), 0}
- show = func ...
- test = func ...
- transfer = func ...
+ Account = func
+ Bank = func
+ Issuer = func
+ bank = Bank/1
+ main = async (Account/3, Account/3)#0
+ show = func
+ test = func
+ transfer = func
 

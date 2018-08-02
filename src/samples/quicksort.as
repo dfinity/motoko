@@ -43,9 +43,6 @@ class QS<T>(cmp : (T, T) -> Int) {
 };
 
 func cmpi(i : Int, j : Int) : Int = i - j;
-
 let qs = QS<Int>(cmpi);
-
 let a = [var 8, 3, 9, 5, 2];
-
-let _ = qs.quicksort(a, 0, 4);
+qs.quicksort(a, 0, 4);

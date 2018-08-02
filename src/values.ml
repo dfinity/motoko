@@ -117,7 +117,7 @@ let get_result async k =
         | {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
 
 (* dynamic pretty printing *)
-let rec debug_string_of_val = function
+let rec debug_string_of_atomic_val = function
     | NullV  -> "null"
     | BoolV b -> if b then "true" else "false"
     | NatV n -> Natural.to_string_u n
@@ -127,36 +127,41 @@ let rec debug_string_of_val = function
     | Word32V w -> Word32.to_string_u w
     | Word64V w -> Word64.to_string_u w
     | FloatV f -> Float.to_string f
-    | CharV d -> sprintf "(Char %li)" d (* TBR *)
-    | TextV t -> t (* TBR *)
+    | CharV d -> sprintf "'\\u%lx'" d (* TBR *)
+    | TextV t -> "\"" ^ String.escaped t ^ "\"" (* TBR *)
     | TupV vs -> sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
     | ObjV ve -> sprintf "{%s}" (String.concat "; " (List.map (fun (v,w) ->
     	              	                  sprintf "%s = %s" v (debug_string_of_recbind w)) (Env.bindings ve)))
     | ArrV a ->
-       sprintf "[%s]" (String.concat ", " (List.map debug_string_of_val  (Array.to_list a)))
+       sprintf "[%s]" (String.concat ", " (List.map debug_string_of_val (Array.to_list a)))
+    | OptV o ->
+      (match o with
+      | None -> "null"
+      | Some v -> debug_string_of_atomic_val v)
+    | v -> "(" ^ debug_string_of_val v ^ ")"
+
+and debug_string_of_val = function
     | OptV o ->
       (match o with
       | None -> "null"
       | Some v -> debug_string_of_val v)
-    | FuncV f ->
-    	"(func ...)"
+    | FuncV f -> "func"
     | AsyncV async ->
-      let {result;waiters} = async in
-      sprintf "async {%s, %i}" (match result with
-                                | None -> "?"
-           		        | Some v -> debug_string_of_val v)
-			       (List.length waiters)
-
+      let {result; waiters} = async in
+      sprintf "async %s#%i"
+        (match result with None -> "?" | Some v -> debug_string_of_atomic_val v)
+        (List.length waiters)
+    | v -> debug_string_of_atomic_val v
 
 and debug_string_of_bind = function
   | VarB r -> 
-      sprintf "Var (%s)" (debug_string_of_val !r) (*TBR show address ?*) 
+    (*sprintf "Var (%s)"*) (debug_string_of_val !r) (*TBR show address ?*) 
   | ValB v ->
     debug_string_of_val v
 
 and debug_string_of_recbind = function
   | RecR {definition = Some bind} -> 
-    sprintf "Rec (%s)" (debug_string_of_bind bind) 
+    (*sprintf "Rec (%s)"*) (debug_string_of_bind bind) 
   | RecR {definition = None} -> 
     "Rec (?)" 
 

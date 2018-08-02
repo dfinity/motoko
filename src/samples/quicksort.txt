@@ -93,8 +93,8 @@ quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
 Final state quicksort.as:
 
- QS = func ...
+ QS = func
  a = [var 2, 3, 5, 8, 9]
- cmpi = func ...
+ cmpi = func
  qs = QS/4<Int>
 

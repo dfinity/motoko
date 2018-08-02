@@ -35,5 +35,4 @@ func quicksort(a : var Int[], lo : Int, hi : Int) {
 };
 
 let a = [var 8, 3, 9, 5, 2];
-
-let x = quicksort(a, 0, 4); 
+quicksort(a, 0, 4);

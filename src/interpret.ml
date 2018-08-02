@@ -262,10 +262,10 @@ and declare_dec context d =
     | ClassD(a,v,ts,p,efs) ->
        Env.singleton v.it (recR None)
 
-and declare_decs context ve d =
-    match d with
+and declare_decs context ve ds =
+    match ds with
     | [] -> ve
-    | d::ds -> declare_decs context (union ve (declare_dec context d)) ds
+    | d::ds' -> declare_decs context (union ve (declare_dec context d)) ds'
 
 and interpret_decs context ds k =
     let ve = declare_decs context Env.empty ds in

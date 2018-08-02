@@ -965,8 +965,7 @@ and check_dec' pass context d =
     ve2, ce2, ke2
 
 
-and check_decs_aux pass context ve ce ke ds =
-  match ds with
+and check_decs_aux pass context ve ce ke = function
   | [] -> ve, ce, ke
   | d::ds ->
     let ve1, ce1, ke1 = check_dec pass context d in

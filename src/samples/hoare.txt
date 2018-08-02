@@ -6,7 +6,6 @@ Typechecking hoare.as:
  partition : (var Int[], Int, Int) -> Int
  quicksort : (var Int[], Int, Int) -> ()
  swap : (var Int[], Int, Int) -> ()
- x : ()
 
 
 Interpreting hoare.as (tracing function calls):
@@ -47,8 +46,7 @@ quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 Final state hoare.as:
 
  a = [var 2, 3, 5, 8, 9]
- partition = func ...
- quicksort = func ...
- swap = func ...
- x = ()
+ partition = func
+ quicksort = func
+ swap = func
 

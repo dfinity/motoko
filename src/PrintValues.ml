@@ -63,7 +63,7 @@ and string_of_val context t v =
   match norm_typ context t with
   | FuncT(_,_,_) ->
     ignore (func_of_V v); (* catch errors *)
-    "func ..."
+    "func"
   | OptT t ->
     let v = opt_of_V v in
     (match v with
@@ -71,9 +71,9 @@ and string_of_val context t v =
     | Some v -> string_of_val context t v)
   | AsyncT t ->
     let {result;waiters} = async_of_V v in
-    sprintf "async {%s, %i}" (match result with
+    sprintf "async %s#%i" (match result with
                             | None -> "?"
-           		      | Some v -> string_of_val context t v)
+           		      | Some v -> string_of_atomic_val context t v)
 			      (List.length waiters)
   | LikeT t -> 
     sprintf "like %s" (string_of_atomic_typ t) (* TBR *)

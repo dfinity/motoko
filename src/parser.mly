@@ -104,7 +104,7 @@ let (@!) x region = {it = x; at = region; note = Types.ConstMut}
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
     
-%type<Syntax.exp> expr expr_nullary
+%type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> prog
 
 %%
@@ -273,68 +273,68 @@ lit :
   | CATASSIGN { CatOp }
 
 
-expr_nullary :
+exp_nullary :
   | x=var_ref
     { VarE(x) @? at($symbolstartpos,$endpos) }
   | l=lit
     { LitE(ref l) @? at($symbolstartpos,$endpos) }
-  | LPAR es = seplist(expr, COMMA) RPAR
+  | LPAR es = seplist(exp, COMMA) RPAR
     { match es.it with [e] -> e | es -> TupE(es) @? at($symbolstartpos,$endpos) }
-  | LCURLY es=seplist(expr, SEMICOLON) RCURLY
+  | LCURLY es=seplist(exp, SEMICOLON) RCURLY
     { BlockE(es.it) @? at($symbolstartpos,$endpos) }
-  | a=actor_opt xo=id? LCURLY es=seplist(expr_field, SEMICOLON) RCURLY
+  | a=actor_opt xo=id? LCURLY es=seplist(exp_field, SEMICOLON) RCURLY
     { ObjE(a, xo.it, es.it) @? at($symbolstartpos,$endpos) }
 
-expr_post :
-  | e=expr_nullary
+exp_post :
+  | e=exp_nullary
     { e }
-  | LBRACKET mut=var_opt es=seplist(expr, COMMA) RBRACKET
+  | LBRACKET mut=var_opt es=seplist(exp, COMMA) RBRACKET
     { ArrayE(mut, es.it) @? at($symbolstartpos,$endpos) }
-  | e1=expr_post LBRACKET e2=expr RBRACKET
+  | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
-  | e=expr_post DOT s=NAT
+  | e=exp_post DOT s=NAT
     { ProjE (e, Natural.of_string s) @? at($symbolstartpos,$endpos) }
-  | e=expr_post DOT x=var_ref
+  | e=exp_post DOT x=var_ref
     { DotE(e, x) @? at($symbolstartpos,$endpos) }
-  | e1=expr_post tso=typ_args? e2=expr_nullary
+  | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso.it [], e2) @? at($symbolstartpos,$endpos) }
 
-expr_pre :
-  | e=expr_post
+exp_pre :
+  | e=exp_post
     { e } 
-  | op=unop e=expr_pre
+  | op=unop e=exp_pre
     { UnE(op ,e) @? at($symbolstartpos,$endpos) }
-  | op=unassign e=expr_pre
+  | op=unassign e=exp_pre
     (* TODO: this is incorrect, since it duplicates e *)
     { AssignE(e, UnE(op, e) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
-  | NOT e=expr_pre
+  | NOT e=exp_pre
     { NotE e @? at($symbolstartpos,$endpos) }
 
-expr_infix :
-  | e=expr_pre
+exp_infix :
+  | e=exp_pre
     { e } 
-  | e1=expr_infix op=binop e2=expr_infix
+  | e1=exp_infix op=binop e2=exp_infix
     { BinE(e1, op, e2) @? at($symbolstartpos,$endpos) }
-  | e1=expr_infix op=relop e2=expr_infix
+  | e1=exp_infix op=relop e2=exp_infix
     { RelE(e1, op, e2) @? at($symbolstartpos,$endpos) }
-  | e1=expr_infix ASSIGN e2=expr_infix
+  | e1=exp_infix ASSIGN e2=exp_infix
     { AssignE(e1, e2) @? at($symbolstartpos,$endpos)}
-  | e1=expr_infix op=binassign e2=expr_infix
+  | e1=exp_infix op=binassign e2=exp_infix
     (* TODO: this is incorrect, since it duplicates e1 *)
     { AssignE(e1, BinE(e1, op, e2) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
-  | e1=expr_infix AND e2=expr_infix
+  | e1=exp_infix AND e2=exp_infix
     { AndE(e1, e2) @? at($symbolstartpos,$endpos) }
-  | e1=expr_infix OR e2=expr_infix
+  | e1=exp_infix OR e2=exp_infix
     { OrE(e1, e2) @? at($symbolstartpos,$endpos) }
-  | e=expr_infix IS t=typ
+  | e=exp_infix IS t=typ
     { IsE(e, t) @? at($symbolstartpos,$endpos) }
-  | e=expr_infix COLON t=typ
+  | e=exp_infix COLON t=typ
     { AnnotE(e, t) @? at($symbolstartpos,$endpos) }
 
-expr :
-  | e=expr_infix
+exp :
+  | e=exp_infix
     { e } 
-  | LABEL x=id e=expr
+  | LABEL x=id e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
       let e' =
         match e.it with
@@ -343,51 +343,51 @@ expr :
         | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', e2) @? e2.at) @? e.at
         | _ -> e
       in LabelE(x, e') @? at($symbolstartpos,$endpos) }
-  | BREAK x=id eo=expr_nullary?
+  | BREAK x=id eo=exp_nullary?
     { let e = Lib.Option.get eo.it (TupE([]) @? no_region) in
       BreakE(x, e) @? at($symbolstartpos,$endpos) }
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
-  | IF b=expr_nullary e1=expr %prec IFX
+  | IF b=exp_nullary e1=exp %prec IFX
     { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
-  | IF b=expr_nullary e1=expr ELSE e2=expr
+  | IF b=exp_nullary e1=exp ELSE e2=exp
     { IfE(b, e1, e2) @? at($symbolstartpos,$endpos) }
-  | SWITCH e=expr_nullary cs=case+
+  | SWITCH e=exp_nullary cs=case+
     { SwitchE(e, cs) @? at($symbolstartpos,$endpos) }
-  | WHILE e1=expr_nullary e2=expr
+  | WHILE e1=exp_nullary e2=exp
     { WhileE(e1, e2) @? at($symbolstartpos,$endpos) }
-  | LOOP e=expr
+  | LOOP e=exp
     { LoopE(e, None) @? at($symbolstartpos,$endpos) }
-  | LOOP e1=expr WHILE e2=expr
+  | LOOP e1=exp WHILE e2=exp
     { LoopE(e1, Some e2) @? at($symbolstartpos,$endpos) }
-  | FOR p=pat IN e1=expr_nullary e2=expr
+  | FOR p=pat IN e1=exp_nullary e2=exp
     { ForE(p, e1, e2) @? at($symbolstartpos,$endpos) }
-  | RETURN eo=expr?
+  | RETURN eo=exp?
     { let e = Lib.Option.get eo.it (TupE([]) @? eo.at) in
     	RetE(e) @? at($symbolstartpos,$endpos) }
-  | ASYNC e=expr 
+  | ASYNC e=exp 
     { AsyncE(e) @? at($symbolstartpos,$endpos) }
-  | AWAIT e=expr
+  | AWAIT e=exp
     { AwaitE(e) @? at($symbolstartpos,$endpos) }
-  | ASSERT e=expr
+  | ASSERT e=exp
     { AssertE(e) @? at($symbolstartpos,$endpos) }
   | d=dec
     { DecE(d) @? at($symbolstartpos,$endpos) }
       
     
 case : 
-  | CASE p=pat e=expr
+  | CASE p=pat e=exp
     { {pat = p; exp = e} @@ at($symbolstartpos,$endpos) }
 
 %inline private_opt :
   | (* empty *) { Public @@ at($symbolstartpos,$endpos) }
   | PRIVATE { Private @@ at($symbolstartpos,$endpos) }
 
-expr_field :
-  | p=private_opt m=var_opt x=id EQ e=expr
+exp_field :
+  | p=private_opt m=var_opt x=id EQ e=exp
     { {var = x; mut = m; priv = p; exp = e} @@ at($symbolstartpos,$endpos) }
-  | p=private_opt m=var_opt x=id COLON t=typ EQ e=expr
+  | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { {var = x; mut = m; priv = p; exp = AnnotE(e, t) @? span t.at e.at}
 	    @@ at($symbolstartpos,$endpos) }
   // TBR: should a func_def abbreviate a dec or block {dec;id}? *)
@@ -424,13 +424,13 @@ pat :
     { match ps.it with [p] -> p | ps -> TupP(ps) @@ at($symbolstartpos,$endpos) }
 
 init :  
-  | EQ e=expr { e }
+  | EQ e=exp { e }
 
 return_typ :
   | COLON t=typ { t }
 
 //TBR: do we want id _ ... d x ... or id (x,...).
-// if t is NONE, should it default to unit or is it inferred from expr?
+// if t is NONE, should it default to unit or is it inferred from exp?
 func_def :
   | x=id tps=typ_params_opt ps=params rt=return_typ? fb=func_body
     {	let t = Lib.Option.get rt.it (TupT([]) @@ rt.at) in
@@ -444,14 +444,14 @@ func_def :
 	    in (x, tps, ps, t, e) @@ at($symbolstartpos,$endpos) }
 
 func_body :
-   | EQ e=expr { (false, e) }	  // acc. to grammar
-   | e=expr { (true, e) } // acc. to example bank.as 
+   | EQ e=exp { (false, e) }	  // acc. to grammar
+   | e=exp { (true, e) } // acc. to example bank.as 
 
 
 (* Declarations *)
 
 dec :
-  | LET p=pat EQ e=expr
+  | LET p=pat EQ e=exp
     { LetD (p,e) @@ at($symbolstartpos,$endpos) }
   | VAR x=id COLON t=typ eo=init?
     { VarD(x, t, eo.it) @@ at($symbolstartpos,$endpos) } 
@@ -460,18 +460,23 @@ dec :
       FuncD(id,tps,p,t,e) @@ at($symbolstartpos,$endpos) }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at($symbolstartpos,$endpos) }
-(* TBR: Syntax.md specifies EQ expr but the examples allow a expr_field* (sans EQ), shall we allow both?
-  | a=actor_opt CLASS x=id tps=typ_params_opt p=pat EQ e=expr
+(* TBR: Syntax.md specifies EQ exp but the examples allow a exp_field* (sans EQ), shall we allow both?
+  | a=actor_opt CLASS x=id tps=typ_params_opt p=pat EQ e=exp
     { ClassD(a, x, tps, p, e) @@ at($symbolstartpos,$endpos) }
 *)
   | a=actor_opt CLASS x=id tps=typ_params_opt p=params
-      LCURLY efs=seplist(expr_field, SEMICOLON) RCURLY
+      LCURLY efs=seplist(exp_field, SEMICOLON) RCURLY
     { ClassD(a, x, tps, p, efs.it) @@ at($symbolstartpos,$endpos) }
 
 
 (* Programs *)
 
 prog :
-  | ds=seplist(dec, SEMICOLON) EOF { ds }
+  | es=seplist(exp, SEMICOLON) EOF
+    { List.map (fun e ->
+        match e.it with
+        | DecE d -> d
+        | _ -> LetD(WildP @@ e.at, e) @@ e.at
+      ) es.it @@ es.at }
 
 %%

@@ -1,26 +1,26 @@
-/* a simple Counter actor */
+// A simple Counter actor.
+
 actor class Counter(i : Int) {
   private var c = i;    
 
-  /* decrement() message */
+  // Decrement counter
   dec() {
-   show(c);
+   show("dec", c);
    c -= 1;
   };
 
-  /* awaitable read() method */
+  // Read counter, asynchronous
   read() : async Int { c };
 };
 
-/* dummy functions to show intermediate value in trace */
-func show(c : Int) {};
+// Dummy functions to show intermediate value in trace.
+func show(note : Text, c : Int) {};
+func showAsync(note : Text, a : async Int) {};
 
-func showAsync(t:Text, a : async Int) {};
-
-/* create an actor */
+// Create an actor.
 let c = Counter(10);
 
-/* issue ten calls to dec() */
+// Issue ten `dec` messages.
 func testDec() {
   var i : Int = 10;
   while (i > 0) {
@@ -29,20 +29,19 @@ func testDec() {
   }
 };
 
+testDec();
 
-let _ = testDec();
-
-/* issue ten calls to dec() & read() */
+// Issue ten `dec` & `read` messages.
 func testRead() : async () {
   var i : Int = 10;
   while (i > 0) {
     c.dec();
     let t = c.read();
-    showAsync("before",t);
-    show(await t);
-    showAsync("after",t);
+    showAsync("before", t);
+    show("await", await t);
+    showAsync("after", t);
     i -= 1;
   }
 };
 
-let _ = testRead();
+testRead();
