@@ -1,3 +1,7 @@
+/* a *generic* quicksort class
+   - inplace sorting of mutable arrays of T, for any type T
+*/
+
 type array<t> = var t[];
 
 class QS<T>(cmp : (T, T) -> Int) {

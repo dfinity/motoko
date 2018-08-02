@@ -1,3 +1,5 @@
+// the bank example from the README
+
 actor class Bank(supply : Int) {
   private issuer = Issuer();
   private reserve = Account(supply);
@@ -42,7 +44,7 @@ actor class Account(initialBalance : Int) {
 };
 
 // Example usage
-func transfer(sender : Account, receiver : Account, amount : Int) : async /* hack: */ ()  {
+func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
   let trx = await sender.split(amount);
   trx.join(receiver);
 };
@@ -67,10 +69,3 @@ func test() : async (Account,Account){
 };
     
 let main = test();
-/*
-let main = async ({let reserve = await b.getReserve();
-                   let a1 = await (reserve.split(10));
-		   let a2 = await (reserve.split(10));
-   		    await transfer(a1,a2,5);
-		   (a1,a2);} : (Account,Account)) ;
-*/		  

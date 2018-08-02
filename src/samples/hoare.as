@@ -1,3 +1,4 @@
+/* integer quicksort as top-level functions */
 
 func swap(a : var Int[], i : Int, j : Int) {
   let temp = a[i];
