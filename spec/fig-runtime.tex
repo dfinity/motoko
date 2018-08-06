@@ -1,0 +1,155 @@
+%!TEX root = main.tex
+
+\begin{figure*}
+\footnotesize\fontsize{9pt}{9pt}
+
+%\subsection*{Auxiliary Syntax}
+
+$$
+\begin{array}{@{}ll@{}}
+\begin{array}[b]{@{}llcl@{}}
+\text{(configurations)} & \x{conf} &::=&
+  s; \x{tr} \\
+[1ex]
+\text{(address)} & a \\
+\text{(timestamp)} & h \\
+\text{(label)} & l \\
+[1ex]
+\text{(store)} & s &::=&
+  \{(a \; \x{obj})^\ast\} \\
+\text{(trace)} & \x{tr} &::=&
+  \{(h \; a \; \x{ev})^\ast\} \\
+%  \{{\K{func}} \; \x{fi}^\ast,\; {\K{global}} \; {gi}^\ast,\; {\K{table}} \; \x{ti}^\ast,\; {\K{mem} \; \x{mi}^\ast,\; {\K{ev}} \; \x{ev}^\ast}\} \\
+\text{(events)} & \x{ev} &::=&
+%  \{{\K{order}} \; o,\; {\K{mem}} \; a,\; {\K{off}} \; n,\; {\K{rd}} \; (b^\ast)^?,\; {\K{wr}} \; (b^\ast)^?\} \\
+%  \{{\K{act}} \; \x{act}^\ast,\; {\K{sync}} \; \x{ev}^\ast\} \\
+  \x{act}^\ast \\
+\text{(actions)} & \x{act} &::=&
+  \K{new}~a~\x{obj} ~|~
+  \K{use}~a \x{obj} ~|~
+  \K{rd}_{\x{ord}}~a~d~w^\ast ~|~
+  \K{wr}_{\x{ord}}~a~d~w^\ast ~|~
+  \K{rmw}~a~d~w^m~w^m ~|~
+  \K{sync}~h ~|~
+  \x{hostact} \\
+%\text{(order)} & o &::=&
+%  \x{ord} ~|~ \K{init} \\
+\text{(position)} & p &::=&
+  n ~|~ \x{l} \\
+[1ex]
+\text{(instance objects)} & \x{obj} &::=&
+  m ~|~ \x{fi} ~|~ \x{gi} ~|~ \x{ti} ~|~ \x{mi} ~|~ \x{pi} \\
+\text{(module instances)} & \x{m} &::=&
+  \{{\K{func}} \; \x{a}^\ast,\; {\K{global}} \; \x{a}^\ast,\; {\K{table}} \; \x{a}^?,\; {\K{mem}} \; \x{a}^?\} \\
+\text{(function instances)} & \x{fi} &::=&
+  \K{func}~\x{m}~\x{func}
+%~|~  \K{hostfunc}~\x{ft}
+  \hfill \quad \text{(where $\x{func}$ is not an import and has all exports $\x{ex}^\ast$ erased)} \\
+\text{(global instances)} & \x{gi} &::=&
+  \K{global}~~\K{shared}^?~\K{mut}^? \\
+\text{(table instances)} & \x{ti} &::=&
+  \K{table}~~\K{shared}^? \\
+%  \{{\K{data}} = \x{fi}^\ast,\; {\K{max}} = n^?\} \\
+\text{(memory instances)} & \x{mi} &::=&
+  \K{mem}~~\K{shared}^? \\%
+%  \{{\K{data}} = b^\ast,\; {\K{max}} = n^?\} \\
+[1ex]
+\text{(thread instances)} & \x{pi} &::=&
+  \K{thread}~h~e^\ast \\
+\text{(frames)} & f &::=&
+  \{{\K{module}} \; \x{m},\; {\K{local}} \; v^\ast\} \\
+[1ex]
+%\end{array}
+%\qquad
+%\begin{array}{@{}llcl@{}}
+\text{(administrative instr's)} & e &::=&
+  \dots ~|~
+  \KK{ref}~a ~|~
+  \KK{trap} ~|~
+  \KK{call}~\x{fi} ~|~
+  \KK{label}_n\!\{e^\ast\}~e^\ast~\KK{end} ~|~
+  \KK{frame}_n\!\{f\}~e^\ast~\KK{end} ~|~
+  \KK{suspend}~a~i ~|~
+  \KK{host}~\x{ft} \\
+\text{(values)} & v &::=&
+  \x{nt}\KK{.const}~c ~|~
+  \KK{ref.null} ~|~
+  \KK{ref}~a \\
+\text{(store values)} & \x{w} &::=&
+  b ~|~ v \\
+[1ex]
+%\text{(evaluation contexts)} & E &::=&
+%  [\textunderscore] ~|~
+%  v^\ast~E~e^\ast ~|~
+%  \KK{label}\{t^\ast; e^\ast\}~E~\KK{end} ~|~
+%  \KK{local}\{i; v^\ast\}~E~\KK{end} \\
+\text{(local contexts)} & L^0 &::=&
+%  [\K\textunderscore] ~|~
+  v^\ast~[\K\textunderscore]~e^\ast \\ %~|~ \\
+ & L^{k+1} &::=&
+  v^\ast~\KK{label}_n\!\{e^\ast\}~L^k~\KK{end}~e^\ast \\
+%\text{} & L\{i\} &::=&
+%  \KK{local}\{i; v^\ast\}~L~\KK{end} \\
+%\text{} & L\{v^\ast\} &::=&
+%  \KK{local}\{i; v^\ast\}~L~\KK{end} \\
+\end{array}
+%\hspace{-6ex}
+%\begin{array}[b]{@{}r@{~}c@{~}l@{}}
+%\lfloor [\textunderscore] \rfloor &=& 0 \\
+%\lfloor v^\ast~L~e^\ast \rfloor &=& \lfloor L \rfloor \\
+%\lfloor \KK{label}\{t^\ast;e^\ast\}~L~\KK{end} \rfloor &=& \lfloor L \rfloor + 1 \\
+%\end{array}
+\end{array}
+$$
+
+\vspace{1ex}
+
+$$
+\begin{array}{lcll}
+\f{new}(\K{new}~a~\x{obj}) &:=& a~\x{obj} \\
+\f{new}(\x{act}) &:=& \epsilon \\
+[1ex]
+\f{use}(\K{use}~a~\x{obj}) &:=& a~\x{obj} \\
+\f{use}(\x{act}) &:=& \epsilon \\
+[1ex]
+%\f{time}(\K{new}~a~(\K{thread}~h~e^\ast)) &:=& h \\
+%\f{time}(\x{act}) &:=& \epsilon \\
+%[1ex]
+\f{order}(\K{rd}_o~a~p~w^\ast) &:=& o \\
+\f{order}(\K{wr}_o~a~p~w^\ast) &:=& o \\
+\f{order}(\K{rmw}~a~p~w_1^\ast~w_2^\ast) &:=& \K{seqcst} \\
+[1ex]
+\f{addr}(\K{rd}_o~a~p~w^\ast) &:=& a \\
+\f{addr}(\K{wr}_o~a~p~w^\ast) &:=& a \\
+\f{addr}(\K{rmw}~a~p~w_1^\ast~w_2^\ast) &:=& a \\
+[1ex]
+\f{pos}(\K{rd}_o~a~p~w^\ast) &:=& p \\
+\f{pos}(\K{wr}_o~a~p~w^\ast) &:=& p \\
+\f{pos}(\K{rmw}~a~p~w_1^\ast~w_2^\ast) &:=& p \\
+[1ex]
+\f{range}(\K{rd}_o~a~n~w^m) &:=& [n, n+m[ \\
+\f{range}(\K{wr}_o~a~n~w^m) &:=& [n, n+m[ \\
+\f{range}(\K{rmw}~a~n~w_1^m~w_2^m) &:=& [n, n+m[ \\
+\f{range}(\x{act}) &:=& \{l\} \qquad \mbox{if $\f{pos}(\x{act}) = l$} \\
+[1ex]
+\f{read}(\K{rd}_o~a~p~w^\ast) &:=& w^\ast \\
+\f{read}(\K{wr}_o~a~p~w^\ast) &:=& \epsilon \\
+\f{read}(\K{rmw}~a~p~w_1^\ast~w_2^\ast) &:=& w_1^\ast \\
+[1ex]
+\f{written}(\K{rd}_o~a~p~w^\ast) &:=& \epsilon \\
+\f{written}(\K{wr}_o~a~p~w^\ast) &:=& w^\ast \\
+\f{written}(\K{rmw}~a~p~w_1^\ast~w_2^\ast) &:=& w_2^\ast \\
+[1ex]
+\f{aligned}(\x{act}) &:\Leftrightarrow& \f{pos}(\x{act}) = l \vee \exists n,\,\f{pos}(\x{act}) = n \cdot |\f{range}(\x{act})| \\
+\f{tearing}(\x{act}) &:\Leftrightarrow& \neg (\f{order}(\x{act}) = \K{seqcst} \vee (\f{aligned}(\x{act}) \wedge |\f{range}(\x{act})| \leq 4)) \\
+\f{same}(\x{act}_1, \x{act}_2) &:\Leftrightarrow& \f{addr}(\x{act}_1) = \f{addr}(\x{act}_2) \wedge \f{range}(\x{act}_1) = \f{range}(\x{act}_2) \\
+\f{overlap}(\x{act}_1, \x{act}_2) &:\Leftrightarrow& \f{addr}(\x{act}_1) = \f{addr}(\x{act}_2) \wedge \f{range}(\x{act}_1) \cap \f{range}(\x{act}_2) \neq \emptyset \\
+[1ex]
+\f{access}_a(\x{ev}) &:=& \x{act} \quad\mbox{iff}~ \{\x{act}\} = \{\x{act}' \in \x{ev}_{\K{act}} ~|~ \f{addr}(\x{act}') = a\} \\
+\end{array}
+$$
+
+\caption{Runtime}
+\label{fig:runtime}
+
+\end{figure*}
