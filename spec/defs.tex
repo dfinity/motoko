@@ -1,0 +1,177 @@
+
+%!TEX root = main.tex
+
+\newcommand\void[1]{}
+\newcommand\todo[1]{(\textbf{To do:} #1)}
+
+
+% Environments
+
+%\theoremstyle{break}
+%\theorembodyfont{\normalfont}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+%\newenvironment{proof}{\noindent\textbf{Proof.~}}{\hfill $\Box$}
+
+%%% Proof mode
+\newdimen\proofadjustabove
+\newdimen\proofadjustbelow
+\proofadjustabove=-5pt
+\proofadjustbelow=-5pt
+\newenvironment{proof}{\setcounter{proofcase}{0}\vspace{\proofadjustabove}\rm{\bf Proof}šš\vspace{\proofadjustbelow}\begin{list}{}{\leftmargin=1.5em\labelsep=1.5em\labelwidth=0pt}\item}{\end{list}}
+\newenvironment{proofsketch}{\setcounter{proofcase}{0}\vspace{\proofadjustabove}\rm{\bf Proof Sketch}\vspace{\proofadjustbelow}\begin{list}{}{\leftmargin=1.5em\labelsep=1.5em\labelwidth=0pt}\item}{\end{list}}
+\newcounter{proofcase}
+\newcommand{\proofcase}{{\addtocounter{proofcase}{1}\setcounter{proofsubcase}{0}\bf Case \arabic{proofcase}:\quad}}
+\newcounter{proofsubcase}
+\newcommand{\proofsubcase}{{\addtocounter{proofsubcase}{1}\bf Subcase \arabic{proofcase}.\arabic{proofsubcase}:\quad}}
+\newcommand{\qed}{\quad\ensuremath{\blacksquare}\parfillskip 0pt\linebreak}
+\renewenvironment{proof}{\noindent{\bf Proof:}\hspace*{0.5em}}{\hspace*{\fill}\qed}
+\renewenvironment{proofsketch}{\noindent{\bf Proof (sketch):}\hspace*{0.5em}}{\hspace*{\fill}\qed}
+
+
+% Calculus notation
+
+\newcommand\x[1]{\ensuremath{\operatorname{\mathit{#1}}}\xspace}
+\newcommand\f[1]{\ensuremath{\mathop{\operatorname{\mathrm{#1\null}}}\nolimits}\xspace}
+\newcommand\ff[1]{\ensuremath{\mathbin{\operatorname{\mathrm{#1\null}}}}\xspace}
+\newcommand\y[1]{\ensuremath{{}\hspace{-0.25em}\mathrel{\operatorname{\mathsf{#1\null}}}}\xspace}
+\newcommand\yy[1]{\ensuremath{\mathrel{\operatorname{\mathsf{#1\null}}}}\xspace}
+\newcommand\R[1]{\ensuremath{\operatorname{\textsc{#1}}}\xspace}
+\newcommand\RR[1]{\R{\small#1}}
+
+\newcommand\setdisj{\mathrel{\not\!\cap}}
+\newcommand\lsem{{[\![}}
+\newcommand\rsem{{]\!]}}
+\newcommand\sem[1]{\lsem#1\rsem}
+\renewcommand\vec[1]{\overline{#1}}
+\newcommand\tup[1]{\langle#1\rangle}
+
+\newcommand\append{\mathbin{{+\!\!+}}}
+\newcommand\wild{\mathbin{{\_}}}
+
+\newcommand\too{\Rightarrow}
+\newcommand\evalto{\hookrightarrow}
+\newcommand\elabto{\rightsquigarrow}
+\newcommand\elabtox[1]{\stackrel{#1}\rightsquigarrow}
+\newcommand\yields{\uparrow}
+\newcommand\anal{:^\Leftarrow}
+\newcommand\synth{:^\Rightarrow}
+\newcommand\analsynth{:^\Leftrightarrow}
+
+\newcommand\LET{\y{let}}
+\newcommand\PACK{\y{pack}}
+\newcommand\UNPACK{\y{unpack}}
+\newcommand\WRAP{\y{wrap}}
+\newcommand\UNWRAP{\y{unwrap}}
+\newcommand\NEW{\y{new}}
+\newcommand\IN{\yy{in}}
+\newcommand\AS{\yy{as}}
+\newcommand\CAST{\y{cast}}
+\newcommand\NAM{{\y{nam}}}
+\newcommand\BOOL{{\y{bool}}}
+\newcommand\TRUE{{\y{true}}}
+\newcommand\FALSE{{\y{false}}}
+\newcommand\IF{\y{if}}
+\newcommand\THEN{\yy{then}}
+\newcommand\ELSE{\yy{else}}
+\newcommand\CASE{\y{case}}
+\newcommand\OF{\yy{of}}
+\newcommand\FIX{\y{fix}}
+\newcommand\INJ{\y{inj}}
+\newcommand\ROLL{\y{roll}}
+\newcommand\UNROLL{\y{unroll}}
+
+\newcommand{\VAL}{\K{val}}
+\newcommand{\TYP}{\K{typ}}
+\newcommand{\SIG}{\K{sig}}
+
+\newcommand\Dom{\ff{dom}}
+\newcommand\Rng{\ff{rng}}
+\newcommand\FTV{\ff{fv}}
+\newcommand\Norm{\ff{norm}}
+
+\newcommand\conty{\chi}
+\newcommand\pathty{\pi}
+\newcommand\smallty{\sigma}
+\newcommand\bigty{\Sigma}
+\newcommand\polyty{\Phi}
+\newcommand\absty{\Xi}
+\newcommand\eff{\iota}
+%\newcommand\eff{\varphi}
+
+\newcommand\emptysubst{\f{id}}
+
+\newcommand\Rho{{\f{R}}}
+\newcommand\pure{{\f{\texttt P}}}
+\newcommand\impure{{\f{\texttt I}}}
+\newcommand\implicit{{\f{\texttt A}}}
+
+\newcommand\deter{\epsilon}
+\newcommand\inst{{\f{ins}}}
+
+\newcommand\typ[1]{\tup{#1}}
+\newcommand\match[1]{\leq_{#1}}
+\newcommand\subvdash[2]{\mathrel{{\raisebox{-.4ex}{\scriptsize$#1$}}{\vdash}{\raisebox{-.4ex}{\scriptsize$#2$}}}}
+
+
+% Code notation
+
+\newenvironment{code}{%
+  \begin{alltt}%
+  \small\sffamily
+}{
+  \end{alltt}%
+}
+
+\newcommand\K[1]{\ensuremath{\textsf{\sf#1}}}
+%\newcommand\K[1]{\ensuremath{\texttt{#1}}}
+\newcommand\KK[1]{\ensuremath{\K{\textbf{#1}}}}
+
+\newcommand\Kto{\ensuremath{\rightarrow}\xspace}
+\newcommand\Ktoo{\ensuremath{\Rightarrow}\xspace}
+\newcommand\Ktoq{\ensuremath{\leadsto}\xspace}
+%\newcommand\Ktop{\Kto}
+%\newcommand\Ktoi{\Ktoq}
+\newcommand\Ktop{\Ktoo}
+\newcommand\Ktoi{\Kto}
+\newcommand\Ktoc{\Ktoi}
+\newcommand\Kfrom{\ensuremath{\leftarrow}\xspace}
+\newcommand\Kfroom{\ensuremath{\Leftarrow}\xspace}
+
+\newcommand\Kback{\ensuremath{\backslash\!}}
+\newcommand\Ktimes{\ensuremath{\times}\xspace}
+\newcommand\Kappend{\ensuremath{\append}\xspace}
+\newcommand\Kwild{\ensuremath{\wild}\xspace}
+\newcommand\Kbar{\ensuremath{|}\xspace}
+\newcommand\Kneq{\ensuremath{\neq}\xspace}
+\newcommand\Kleq{\ensuremath{\leq}\xspace}
+\newcommand\Klt{\ensuremath{<}\xspace}
+\newcommand\Kgt{\ensuremath{>}\xspace}
+\newcommand\Ksub{\ensuremath{<:}\xspace}
+\newcommand\Kseal{\ensuremath{:>}\xspace}
+\newcommand\Kdot{\ensuremath{\cdot}\xspace}
+\newcommand\Kcirc{\ensuremath{\circ}\xspace}
+\newcommand\Kalpha{\ensuremath{\alpha}}
+\newcommand\Kbeta{\ensuremath{\beta}}
+\newcommand\Kgamma{\ensuremath{\gamma}}
+\newcommand\Ksb[1]{\ensuremath{_{#1}}}
+
+\DeclareTextCommand{\_}{OT1}{\leavevmode \kern.06em\vbox{\hrule width.3em}}
+
+
+% Coloring
+
+%\definecolor{hilite}{rgb}{0,0,0.9}
+\definecolor{hilite}{rgb}{0.7,0,0}
+%\newcommand{\hilite}[1]{\color{hilite}#1\color{black}}
+\newcommand\hilite[1]{#1}
+
+\definecolor{shade}{rgb}{0.6,0.6,0.6}
+\newcommand{\shade}[1]{\color{shade}#1\color{black}}
+
+\definecolor{hishade}{rgb}{1,0.4,0.4}
+\newcommand{\hishade}[1]{\color{hishade}#1\color{shade}}

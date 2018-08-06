@@ -1,0 +1,250 @@
+%!TEX root = main.tex
+
+\begin{figure*}
+\footnotesize\fontsize{9pt}{9pt}
+
+%\subsection*{Reduction \hfill $\boxed{s; f; e^\ast \evalto s; f; e^\ast}$}
+%\vspace{-1.5\baselineskip}
+
+\newcommand\resultstore[1]{}
+
+$$
+\begin{array}{@{}rcl@{}}
+L^0[\KK{trap}] &\evalto&
+  \KK{trap}
+  \hfill \text{if $L^0 \neq [\K\textunderscore]$} \\
+[1ex]
+
+\KK{unreachable} &\evalto&
+  \KK{trap} \\
+%E[\KK{trap}] &\evalto&
+%  \KK{trap} \\
+\KK{nop} &\evalto&
+  \epsilon \\
+v~\KK{drop} &\evalto&
+  \epsilon \\
+v_1~v_2~(\KK{i32.const}~0)~\KK{select} &\evalto&
+  v_2 \\
+v_1~v_2~(\KK{i32.const}~k+1)~\KK{select} &\evalto&
+  v_1 \\
+[1ex]
+
+(t.\KK{const}~c)~t\KK{.}\x{unop} &\evalto&
+  t.\KK{const}~\x{unop}_t(c) \\
+%(t.\KK{const}~c_1)~(t.\KK{const}~c_2)~t\KK{.}\x{binop} &\evalto&
+%  t.\KK{const}~\x{binop}_t(c_1, c_2) \\
+(t.\KK{const}~c_1)~(t.\KK{const}~c_2)~t\KK{.}\x{binop} &\evalto&
+  t.\KK{const}~\x{binop}_t(c_1, c_2)
+\void{ % EXCERPT
+  t.\KK{const}~c
+  \hfill \text{if $c = \x{binop}_t(c_1, c_2)$} \\
+(t.\KK{const}~c_1)~(t.\KK{const}~c_2)~t\KK{.}\x{binop} &\evalto&
+  \KK{trap}
+  \hfill \text{otherwise} \\
+} \\
+(t.\KK{const}~c)~t\KK{.}\x{testop} &\evalto&
+  \KK{i32.const}~\x{testop}_t(c) \\
+(t.\KK{const}~c_1)~(t.\KK{const}~c_2)~t\KK{.}\x{relop} &\evalto&
+  \KK{i32.const}~\x{relop}_t(c_1, c_2) \\
+
+%(t_1.\KK{const}~c)~t_2\KK{.convert/}t_1 &\evalto&
+%  t_2.\KK{const}~\f{cvt}_{t_1}^{t_2}(c) \\
+(t_1.\KK{const}~c)~t_2\KK{.convert}~t_1\K{\textunderscore}\x{sx}^? &\evalto&
+  t_2.\KK{const}~\f{cvt}_{t_1,t_2}^{\x{sx}^?}(c) \\
+\void{ % EXCERPT
+(t_1.\KK{const}~c)~t_2\KK{.convert}~t_1\K{\textunderscore}\x{sx}^? &\evalto&
+  t_2.\KK{const}~c'
+  \hfill \text{if $c' = \f{cvt}_{t_1,t_2}^{\x{sx}^?}(c)$} \\
+%(t_1.\KK{const}~c)~t_2\KK{.convert}~t_1\K{\textunderscore}\x{sx} &\evalto&
+%  t_2.\KK{const}~c'
+%  \hfill \text{if $c' = \f{cvt}_{t_1}^{\K{i64}}(\f{ext}_{\x{sx}}(\f{bits}_{t_2}^{}(c), |\K{i64}|))$} \\
+(t_1.\KK{const}~c)~t_2\KK{.convert}~t_1\K{\textunderscore}\x{sx}^? &\evalto&
+  \KK{trap}
+  \hfill \text{otherwise} \\
+}
+(t_1.\KK{const}~c)~t_2\KK{.reinterpret}~t_1 &\evalto&
+  t_2.\KK{const}~\f{const}_{t_2}(\f{bits}_{t_1}(c)) \\
+[1ex]
+
+\hilite{v^n}~\KK{block}~\hilite{(t_1^n \to t_2^m)}~e^\ast~\KK{end} &\evalto&
+  \KK{label}_{\hilite{m}}\!\{\epsilon\}~\hilite{v^n}~e^\ast~\KK{end} \\
+\hilite{v^n}~\KK{loop}~\hilite{(t_1^n \to t_2^m)}~e^\ast~\KK{end} &\evalto&
+  \KK{label}_{\hilite{n}}\!\{\KK{loop}~\hilite{(t_1^n \to t_2^m)}~e^\ast~\KK{end}\}~\hilite{v^n}~e^\ast~\KK{end} \\
+(\KK{i32.const}~0)~\KK{if}~\hilite{\x{ft}}~e_1^\ast~\KK{else}~e_2^\ast~\KK{end} &\evalto&
+  \KK{block}~\hilite{\x{ft}}~e_2^\ast~\KK{end} \\
+(\KK{i32.const}~k+1)~\KK{if}~\hilite{\x{ft}}~e_1^\ast~\KK{else}~e_2^\ast~\KK{end} &\evalto&
+  \KK{block}~\hilite{\x{ft}}~e_1^\ast~\KK{end} \\
+[1ex]
+\KK{label}_n\!\{e^\ast\}~v^\ast~\KK{end} &\evalto&
+  v^\ast \\
+\KK{label}_n\!\{e^\ast\}~\KK{trap}~\KK{end} &\evalto&
+  \KK{trap} \\
+%\KK{label}\{t^n; e_0^\ast\}~v^\ast~v^n~(\KK{br}~0)~e^\ast~\KK{end} &\evalto&
+%  v^n~e_0^\ast \\
+%\KK{label}\{t^n; e_0^\ast\}~v^\ast~v^n~(\KK{br}~i+1)~e^\ast~\KK{end} &\evalto&
+%  v^n~(\KK{br}~i) \\
+\KK{label}_n\!\{e^\ast\}~L^i[v^n~(\KK{br}~i)]~\KK{end} &\evalto&
+  v^n~e^\ast \\
+  %\hfill \text{where $L^0 ::= v^\ast~[\K\textunderscore]~e^\ast$ and
+  %  $L^{k+1} ::= v^\ast~\KK{label}_n\!\{e^\ast\}~L^k~\KK{end}~e^\ast$} \\
+[1ex]
+
+(\KK{i32.const}~0)~(\KK{br\textunderscore{}if}~i) &\evalto&
+  \epsilon \\
+(\KK{i32.const}~k+1)~(\KK{br\textunderscore{}if}~i) &\evalto&
+  \KK{br}~i \\
+(\KK{i32.const}~k)~(\KK{br\textunderscore{}table}~i_1^k~i~i_2^\ast) &\evalto&
+  \KK{br}~i \\
+(\KK{i32.const}~k+n)~(\KK{br\textunderscore{}table}~i_1^k~i) &\evalto&
+  \KK{br}~i \\
+[1ex]
+
+f; (\KK{local.get}~i) &\evalto&
+  \resultstore{f;} v
+  \hfill \text{if $\x{f}_{\K{local}}(i) = v$} \\
+f; v'~(\KK{local.set}~i) &\evalto&
+  f'; \epsilon
+  \hfill \text{if $\x{f}' = \x{f}~\text{with}~{\K{local}}(i) = v$} \\
+v~(\KK{local.tee}~i) &\evalto&
+  v~v~(\KK{local.set}~i) \\
+[1ex]
+\void{
+s; f; (\KK{global.get}~i) &\evalto&
+  \resultstore{s; f;} \x{s}_{\K{global}}(f, i) \\
+s; f; v~(\KK{global.set}~i) &\evalto&
+  s'; f; \epsilon
+  \hfill \text{if $\x{s}' = \x{s}~\text{with}~{\K{global}}(f, i) = v$} \\
+[1ex]
+}
+
+\void{
+f; (\KK{ref.func}~i) &\evalto&
+  \resultstore{f;} \KK{ref}~f_{\K{func}}(i) \\
+f; (\KK{call}~i) &\evalto&
+  \resultstore{f;} \KK{call}~f_{\K{func}}(i) \\
+s; f; (\KK{i32.const}~i)~(\KK{call\textunderscore{}indirect}~\x{ft}) &\evalto&
+  \resultstore{s; f;} \KK{call}~\x{s}_{\K{table}}(f_{\K{table}})(i)
+  \hfill \hspace{4em}
+  \text{if $\x{s}_{\K{func}}(\x{s}_{\K{table}}(f_{\K{table}})(i))_{\K{func}} = \x{ft}$} \\
+s; f; (\KK{i32.const}~i)~(\KK{call\textunderscore{}indirect}~\x{ft}) &\evalto&
+  \resultstore{s; f;} \KK{trap}
+  \hfill \text{otherwise} \\
+s; v^n~(\KK{call}~a) &\evalto&
+  \resultstore{s;} v^n~e^\ast
+  \hfill
+  \text{if $\x{s}_{\K{func}}(a)_{\K{host}} = e^\ast$} \\
+s; v^n~(\KK{call}~a) &\evalto&
+  \resultstore{s;}
+  \KK{frame}_m\!\{\K{module}~\x{fi}_{\K{module}}, \K{local}~v^n~(t\KK{.const}~0)^k\}~\void{EXCERPT \KK{block}~(\epsilon \to t_2^m)~}e^\ast~\void{EXCERPT \KK{end}~}\KK{end}
+  ~~~\text{...} \\
+  %\hfill ~~~~
+  %\text{if $s(a) = \x{fi} \wedge $\x{fi}_{\K{code}} =$}~~~~~ \\ % (\KK{func}~(t_1^n \to t_2^m)~\KK{local}~t^k~e^\ast)$} \\
+%[2ex]
+}
+
+\KK{frame}_n\!\{f\}~v^n~\KK{end} &\evalto&
+  v^n \\
+  %\hfill (\KK{func}~(t_1^n \to t_2^m)~\KK{local}~t^k~e^\ast) \\
+%  \hfill
+%  \text{$|$~~~\dots where $\x{fi}_{\K{code}} = (\KK{func}~(t_1^n \to t_2^m)~\KK{local}~t^k~e^\ast)$} \\
+\KK{frame}_n\!\{f\}~\KK{trap}~\KK{end} &\evalto&
+  \KK{trap} \\
+%\KK{local}\{t^n; i; v_l^\ast\}~v^\ast~v^n~(\KK{br}~0)~\KK{end} &\evalto&
+%  v^n \\
+%\KK{local}\{t^n; i; v_l^\ast\}~L[v^n~\KK{return}]~\KK{end} &\evalto&
+%  v^n \\
+%L\{i\}[\KK{return}] &\evalto&
+%  L\{i\}[\KK{br}~\f{depth}(L)-1] \\
+\KK{frame}_n\!\{f\}~L^k[v^n~\KK{return}]~\KK{end} &\evalto&
+  v^n \\
+%f_0; \KK{frame}_n\!\{f\}~e^\ast~\KK{end} &\evalto^{\x{act}^\ast}&
+%  f_0; \KK{frame}_n\!\{f'\}~{e'}^\ast~\KK{end}
+%  \hfill ~~\text{if $f; e^\ast \evalto^{\x{act}^\ast} f'; {e'}^\ast$} \\
+%s; \KK{host}~\x{ft} &\evalto&
+%  s'; e^\ast
+%  \hfill
+%  \text{if $\vdash s' : S \wedge s \preceq s'  \wedge S; \epsilon \vdash e^\ast : \x{ft}$} \\
+[1ex]
+
+\void{
+s; f; (\KK{i32.const}~k)~(t\KK{.load}~a~o) &\evalto&
+  \resultstore{s; f;} t\KK{.const}~\f{const}_t(b^\ast)
+  \hfill \text{if $\x{s}_{\K{mem}}(f, k+o, |t|) = b^\ast$} \\
+s; f; (\KK{i32.const}~k)~(t\KK{.load}~\x{pt}\K\textunderscore\x{sx}~a~o) &\evalto&
+  \resultstore{s; f;} t\KK{.const}~\f{const}_t^{\x{sx}}(b^\ast)
+  \hfill \text{if $\x{s}_{\K{mem}}(f, k+o, |\x{pt}|) = b^\ast$} \\
+s; f; (\KK{i32.const}~k)~(t\KK{.load}~\x{pt}\K\textunderscore\x{sx}^?~a~o) &\evalto&
+  \resultstore{s; f;} \KK{trap}
+  \hfill \text{otherwise} \\
+s; f; (\KK{i32.const}~k)~(t\KK{.const}~c)~(t\KK{.store}~a~o) &\evalto&
+  s'; f; \epsilon
+  \hfill \text{if $\x{s}' = \x{s}~\text{with}~\K{mem}(f, k+o, |t|) = \f{bits}_t^{|t|}(c)$} \\
+s; f; (\KK{i32.const}~k)~(t\KK{.const}~c)~(t\KK{.store}~\x{pt}~a~o) &\evalto&
+  s'; f; \epsilon
+  \hfill \text{if $\x{s}' = \x{s}~\text{with}~\K{mem}(f, k+o, |\x{pt}|) = \f{bits}_t^{|\x{pt}|}(c)$} \\
+s; f; (\KK{i32.const}~k)~(t\KK{.const}~c)~(t\KK{.store}~\x{pt}^?~a~o) &\evalto&
+  \resultstore{s; f;} \KK{trap}
+  \hfill \text{otherwise} \\
+[1ex]
+
+s; f; \KK{memory.size} &\evalto&
+  \resultstore{s;} \KK{i32.const}~|\x{s}_{\K{mem}}(f, \ast)|/64\f{Ki}
+  \\ %\hfill \text{if $|\x{s}_{\K{mem}}| = 64\f{Ki} \cdot n$} \\
+s; f; (\KK{i32.const}~k)~\KK{memory.grow} &\evalto&
+  s'; f
+  %\x{s}~\text{with}~\K{mem}(i, \ast) = \x{s}_{\K{mem}}(i, \ast)~(0)^{k \cdot 64\f{Ki}}
+  ; \KK{i32.const}~|\x{s}_{\K{mem}}(i, \ast)|/64\f{Ki}
+  \hfill ~~~\text{if $\x{s}' = \x{s}$ with $\K{mem}(f, \ast) \mathrel{{+}{=}} \void{\x{s}_{\K{mem}}(f, \ast)~}(0)^{k \cdot 64\f{Ki}}$} \\ %and $|\x{s}_{\K{mem}}| = 64\f{Ki} \cdot n$} \\
+s; f; (\KK{i32.const}~k)~\KK{memory.grow} &\evalto&
+  \resultstore{s; f;} \KK{i32.const}~({-1})
+  %\hfill \text{otherwise} \\
+}
+\end{array}
+$$
+
+\void{
+$$
+\frac{
+  s; p \evalto s'; p'
+}{
+  s; p_1^\ast~p~p_2^\ast \evalto s'; p_1^\ast~p'~p_2^\ast
+}
+$$
+}
+
+$$
+\frac{
+  f; e^\ast \evalto^{\x{act}^\ast} f'; {e'}^\ast
+}{
+  f; L^k[e^\ast] \evalto^{\x{act}^\ast} f'; L^k[{e'}^\ast]
+}
+%$$
+\quad~~
+%$$
+%\frac{
+%}{
+%  s; v^\ast; L[\KK{trap}] \evalto s; v^\ast; \KK{trap}
+%}
+%\hspace{8em}
+%$$
+%
+%$$
+\frac{
+  f; e^\ast \evalto^{\x{act}^\ast} f'; {e'}^\ast
+}{
+  f_0; \KK{frame}_n\!\{f\}~e^\ast~\KK{end} \evalto^{\x{act}^\ast} f_0; \KK{frame}_n\!\{f'\}~{e'}^\ast~\KK{end}
+}
+%%$$
+%\qquad\qquad
+%%$$
+%\frac{
+%}{
+%  s; v^\ast; \KK{local}\{i;v^\ast\}~\KK{trap}~\KK{end} \evalto_{j^?} s'; v^\ast; \KK{trap}
+%}
+%\hspace{6em}
+$$
+
+\caption{Reduction rules (sequential instructions)}
+\label{fig:reduction}
+
+\end{figure*}

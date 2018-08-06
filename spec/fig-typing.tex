@@ -1,0 +1,241 @@
+%!TEX root = main.tex
+
+\begin{figure*}
+
+$$
+\begin{array}{@{}lrcl@{}}
+\text{(type)} & \x{typ} & ::= &
+  \dots ~|~
+  \K{var} \x{typ} ~|~
+  \K{label} \x{typ} \\
+\text{(context)} & C & ::= &
+  \x{id} <: \x{typ} ~|~
+  \x{id} : \x{typ} ~|~
+  \K{return} : \x{typ}
+\end{array}
+$$
+
+\subsection*{Expressions \hfill $\boxed{C \vdash \x{exp} \analsynth \x{typ} \dashv C'}$}
+
+$$
+\frac{
+  C(\x{id}) = \x{typ}
+}{
+  C \vdash \x{id} \synth \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  (C \vdash \x{exp} \analsynth \x{typ} \dashv \cdot)^\ast
+}{
+  C \vdash \K( \x{exp}\K,^\ast \K) \analsynth \K( \x{typ}\K,^\ast \K) \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  (C \vdash \x{exp} \synth \K(\x{typ}\K,^\ast\K) \dashv \cdot)^\ast
+  \qquad
+  |\x{typ}^\ast| < i
+}{
+  C \vdash \x{exp} \K. \x{i} \synth \x{typ}^\ast_i \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  (C \vdash \x{exp} \anal \x{typ} \dashv \cdot)^\ast
+}{
+  C \vdash \K[ \KK{var}^? \x{exp}\K,^\ast \K] \anal \K{var}^? \x{typ} \K{[]} \dashv \cdot
+}
+\quad
+\frac{
+  (C \vdash \x{exp} \synth \x{typ} \dashv \cdot)^\ast
+}{
+  C \vdash \K[ \KK{var}^? \x{exp}\K,^\ast \K] \synth \K{var}^? (\sqcap\x{typ}^\ast) \K{[]} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C \vdash \x{exp}_1 \synth \x{typ}\K{[]} \dashv \cdot
+  \qquad
+  C \vdash \x{exp}_2 \anal \K{nat} \dashv \cdot
+}{
+  C \vdash \x{exp}_1 \K[ \x{exp}_2 \K] \synth \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C \vdash \x{exp}_1 \synth \K{var} \x{typ} \dashv \cdot
+  \qquad
+  C \vdash \x{exp}_1 \anal \x{typ} \dashv \cdot
+}{
+  C \vdash \x{exp}_1 \K{:=} \x{exp}_2 \synth \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C \vdash \x{exp}_1 \anal \K{()} \dashv C_1
+  \quad~
+  C \vdash \x{exp}_2 \analsynth \x{typ} \dashv C_2
+  \quad~
+  \Dom(C_2) \setdisj \Dom(C_2)
+}{
+  C \vdash \x{exp}_1 \K; \x{exp}_2 \analsynth \x{typ} \dashv C_1, C_2
+}
+$$
+
+$$
+\frac{
+  C, \x{id} : \K{label} \x{typ} \vdash \x{exp} \anal \x{typ} \dashv \cdot
+}{
+  C \vdash \KK{label} \x{id} \x{exp} \anal \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C(\x{id}) = \K{label} \x{typ}'
+  \qquad
+  C \vdash \x{exp} \anal \x{typ}' \dashv \cdot
+}{
+  C \vdash \KK{break} \x{id} \x{exp} \anal \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C(\K{return}) = \x{typ}'
+  \qquad
+  C \vdash \x{exp} \anal \x{typ}' \dashv \cdot
+}{
+  C \vdash \KK{return} \x{exp} \anal \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C, \K{return} : \K{async} \x{typ} \vdash \x{exp} \anal \x{typ} \dashv \cdot
+}{
+  C \vdash \KK{async} \x{exp} \anal \K{async} \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C(\K{return}) = \K{async} \x{typ}'
+  \qquad
+  C \vdash \x{exp} \analsynth \K{async} \x{typ} \dashv \cdot
+}{
+  C \vdash \KK{await} \x{exp} \analsynth \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C \vdash \x{exp} \anal \x{typ} \dashv \cdot
+}{
+  C \vdash \x{exp} \K: \x{typ} \synth \x{typ} \dashv \cdot
+}
+$$
+
+$$
+\frac{
+  C \vdash \x{exp} \synth \x{typ}' \dashv C'
+  \qquad
+  C \vdash \x{typ}' <: \x{typ}
+}{
+  C \vdash \x{exp} \anal \x{typ} \dashv C'
+}
+$$
+
+$$
+\frac{
+  C, C' \vdash \x{exp} \analsynth \x{typ} \dashv C'
+}{
+  C \vdash \K\{ \x{exp} \K\} \analsynth \x{typ} \dashv \cdot
+}
+$$
+
+
+\caption{Typing Rules: Expressions}
+\label{fig:typing.exp}
+
+\end{figure*}
+
+
+\begin{figure*}
+
+\subsection*{Patterns \hfill $\boxed{C \vdash \x{pat} \anal \x{typ} \dashv C'}$}
+
+$$
+\frac{
+}{
+  C \vdash \KK\textunderscore \anal \x{typ} \dashv C'
+}
+$$
+
+$$
+\frac{
+}{
+  C \vdash \x{id} \anal \x{typ} \dashv \x{id} : \x{typ}
+}
+$$
+
+$$
+\frac{
+  (C \vdash \x{pat} \anal \x{typ} \dashv C')^\ast
+  \qquad
+  \Dom(C')
+}{
+  C \vdash \K( \x{pat}\K,^\ast \K) \anal \K( \x{typ}\K,^\ast \K) \dashv C',^\ast
+}
+$$
+
+
+\subsection*{Declarations \hfill $\boxed{C \vdash \x{dec} \analsynth \x{typ} \dashv C'}$}
+
+$$
+\frac{
+  C \vdash \x{exp} \analsynth \x{typ} \dashv \cdot
+  \qquad
+  C \vdash \x{pat} \anal \x{typ} \dashv C'
+}{
+  C \vdash \KK{let} \x{pat} \K= \x{exp} \analsynth \x{typ} \dashv C'
+}
+$$
+
+$$
+\frac{
+  (C \vdash \x{exp} \anal \x{typ} \dashv \cdot)^?
+  \qquad
+  \x{exp} \neq \epsilon \vee \x{typ} = \x{typ}' \K?
+}{
+  C \vdash \KK{var} \x{id} \K: \x{typ} (\K= \x{exp})^? \synth \K{var} \x{typ} \dashv \x{id} : \K{var} \x{typ}
+}
+$$
+
+$$
+\frac{
+  \begin{array}{@{}r@{\qquad}l@{}}
+  C \vdash \x{typ-params}^? \dashv C_1
+  &
+  C, C_1 \vdash \x{exp-params} : \x{typ}' \dashv C_2
+  \\
+  C_3 = (\x{id} : \K{typ-params}^? \x{typ}' \Kto \x{typ})^?
+  &
+  C, C_1, C_2, C_3, \K{return} : \x{typ} \vdash \x{exp} \anal \x{typ} \dashv \cdot
+  \end{array}
+}{
+  C \vdash \KK{func} \x{id}^? \x{typ-params}^? \x{exp-params} \K: \x{typ} \K= \x{exp} \synth \x{typ-params}^? \x{typ}' \Kto \x{typ} \dashv C_3
+}
+$$
+
+\caption{Typing Rules: Declarations}
+\label{fig:typing.dec}
+
+\end{figure*}
