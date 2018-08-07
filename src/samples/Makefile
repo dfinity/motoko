@@ -10,6 +10,7 @@ all:
 	$(ASC) hoare.as >> hoare.txt 2>&1
 	$(ASC) quicksort.as >> quicksort.txt 2>&1
 	$(ASC) bankex.as >> bankex.txt 2>&1
+	$(ASC) chequeex.as >> chequeex.txt 2>&1
 
 
 # refresh
