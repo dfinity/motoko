@@ -1,16 +1,25 @@
 %!TEX root = main.tex
 
-\begin{figure*}
+\section{Syntax}
+
+\subsection*{Identifiers}
 
 $$
 \begin{array}{@{}lrcl@{\qquad}l}
 \text{(identifier)} & \x{id} &::=&
   \dots \\
-[2ex]
+\end{array}
+$$
+
+
+\subsection*{Types}
+
+$$
+\begin{array}{@{}lrcl@{\qquad}l}
 \text{(type)} & \x{typ} &::=&
   \x{id}~\x{typ-args}
     & \text{constructor} \\&&|&
-  \KK{actor}^? \K\{~\x{typ-field}\K;^\ast~\K\}
+  \KK{actor}^? \K\{~\x{typ-fields}~\K\}
     & \text{object} \\&&|&
   \KK{var}^? \x{typ}~\K[~\K]
     & \text{array} \\&&|&
@@ -25,11 +34,13 @@ $$
   \KK{any}
     & \text{top} \\
 [1ex]
-\text{(type field)} & \x{typ-field} &::=&
+\text{(type fields)} & \x{typ-fields} &::=&
   \KK{var}^? \x{id}~\K:~\x{typ}
     & \text{field} \\&&|&
   \x{id}~\x{typ-params}~\x{exp-params}~\K:~\x{typ}
-    & \text{function field} \\
+    & \text{function field} \\&&|&
+  \x{typ-fields}~\K;~\x{typ-fields}
+    & \text{composition} \\
 [1ex]
 \text{(type parameters)} & \x{typ-params} &::=&
   (\Klt~(\x{id}~(\Ksub \x{typ})^?)\K,^\ast~\Kgt)^? \\
@@ -39,50 +50,96 @@ $$
 \end{array}
 $$
 
-\caption{Abstract Syntax: Types}
-\label{fig:syntax.typ}
+\subsubsection*{Desugaring}
 
-\end{figure*}
+$$
+\begin{array}{@{}lrcl@{}}
+\text{(type)} &
+\K( \dots \K, \x{id} \K: \x{typ} \K, \dots \K) &:=&
+  \K( \dots \K, \x{typ} \K, \dots \K) \\
+[1ex]
+\text{(type field)} &
+\x{id} \x{typ-params} \x{exp-params} \K: \x{typ} &:=&
+  \x{id} \K: \x{typ-params} \x{exp-params} \Kto \x{typ} \\
+[1ex]
+\text{(type parameters)} &
+\Klt \dots \K, \x{id} \K, \dots \Kgt &:=&
+  \Klt \dots \K, \x{id} \Ksub \KK{any} \K, \dots \Kgt \\&
+\epsilon &:=&
+  \Klt \Kgt \\
+\text{(type arguments)} &
+\epsilon &:=&
+  \Klt \Kgt \\
+\end{array}
+$$
 
 
-\begin{figure*}
+\subsection*{Expressions}
 
 $$
 \begin{array}{@{}lrcl@{\qquad}l}
 \text{(literal)} & \x{lit} &::=&
-  \dots \\
+  \x{nat}
+    & \text{natural number} \\&&|&
+  \x{int}
+    & \text{negative number} \\&&|&
+  \x{float}
+    & \text{floating-point number} \\&&|&
+  \x{char}
+    & \text{unicode character} \\&&|&
+  \x{text}
+    & \text{unicode text string} \\
 [2ex]
+\text{(unary operators)} & \x{unop} &:=&
+  \K{+} ~|~ \K\textendash ~|~ \K{\^{}} \\
+[1ex]
+\text{(count operators)} & \x{cntop} &:=&
+  \K{++} ~|~ \K{\textendash\,\textendash} \\
+[1ex]
+\text{(binary operators)} & \x{binop} &:=&
+  \K{+} ~|~ \K\textendash ~|~ \K{*} ~|~ \K{/} ~|~ \K{\%} \\&&|&
+  \K{\&} ~|~ \;\K\textbar\; ~|~ \K{\^{}} ~|~ \Klt\Klt ~|~ \Kgt\Kgt ~|~ \Kgt\Kgt\Kgt ~|~ \Klt\Klt\Kgt ~|~ \Klt\Kgt\Kgt \\
+[1ex]
+\text{(relational operators)} & \x{relop} &:=&
+  \K= ~|~ \K{!=} ~|~ \Klt ~|~ \Kgt ~|~ {\Klt}{\K=} ~|~ {\Kgt}{\K=} \\
+\end{array}
+$$
+
+$$
+\begin{array}{@{}lrcl@{\qquad}l}
 \text{(expression)} & \x{exp} &::=&
-  \x{id}
-    & \text{variable} \\&&|&
   \x{lit}
     & \text{literal} \\&&|&
+  \x{id}
+    & \text{variable} \\&&|&
   \x{unop}~\x{exp}
     & \text{unary operation} \\&&|&
   \x{exp}~\x{binop}~\x{exp}
     & \text{binary operation} \\&&|&
+  \x{exp}~\x{relop}~\x{exp}
+    & \text{relational operation} \\&&|&
   \K(~\x{exp}\K,^\ast~\K)
     & \text{tuple} \\&&|&
   \x{exp}~\K.~\x{nat}
     & \text{tuple projection} \\&&|&
-  \KK{actor}^? \K\{~\x{exp-field}\K;^\ast~\K\}
+  \KK{actor}^? \K\{~\x{exp-fields}~\K\}
     & \text{object} \\&&|&
   \x{exp}~\K.~\x{id}
     & \text{object projection} \\&&|&
   \x{exp}~\K{:=}~\K{exp}
     & \text{assignment} \\&&|&
-  \x{unop}\K{=}~\x{exp}
+  \x{cntop}~\x{exp}
+    & \text{count update} \\&&|&
+  \x{unop}{\!\K=}~\x{exp}
     & \text{unary update} \\&&|&
-  \x{exp}~\x{binop}\K{=}~\x{exp}
+  \x{exp}~\x{binop}{\!\K=}~\x{exp}
     & \text{binary update} \\&&|&
   \K[~\KK{var}^? \x{exp}\K,^\ast~\K]
     & \text{array} \\&&|&
   \x{exp}~\K[~\x{exp}~\K]
     & \text{array indexing} \\&&|&
-  \x{exp}~\x{typ-args} \x{exp}
+  \x{exp}~\x{typ-args}~\x{exp}
     & \text{function call} \\&&|&
-  \x{exp}~\K;~\x{exp}
-    & \text{sequence} \\&&|&
   \KK{not}~\x{exp}
     & \text{negation} \\&&|&
   \x{exp}~\KK{and}~\x{exp}
@@ -91,7 +148,7 @@ $$
     & \text{disjunction} \\&&|&
   \KK{if}~\x{exp}~\x{exp}~(\KK{else}~\x{exp})^?
     & \text{conditional} \\&&|&
-  \KK{switch}~\x{exp}~(\KK{case}~\x{pat}~\x{exp})^+
+  \KK{switch}~\x{exp}~(\KK{case}~\x{pat}~\x{exp})^\ast
     & \text{pattern match} \\&&|&
   \KK{while}~\x{exp}~\x{exp}
     & \text{guarded loop} \\&&|&
@@ -117,86 +174,30 @@ $$
     & \text{instance check} \\&&|&
   \x{exp}~\K:~\x{typ}
     & \text{type annotatione} \\&&|&
+  \x{exp}~\K;~\x{exp}
+    & \text{sequence} \\&&|&
   \K\{~\x{exp}^?~\K\}
     & \text{block} \\&&|&
   \x{dec}
     & \text{declaration} \\
 [1ex]
-\text{(expression field)} & \x{exp-field} &::=&
+\text{(expression fields)} & \x{exp-fields} &::=&
   \KK{private}^? \KK{var}^? \x{id}~(\K:~\x{typ})^?~\K=~\x{exp}
     & \text{field} \\&&|&
-  \KK{private}^? \x{id} \x{typ-params} \x{exp-params}~(\K:~\x{typ})^?~\K=^?~\x{exp}
-    & \text{function field} \\
+  \KK{private}^? \x{id}~\x{typ-params}~\x{exp-params}~(\K:~\x{typ})^?~\K=^?~\x{exp}
+    & \text{function field} \\&&|&
+  \x{exp-fields}~\K;~\x{exp-fields}
+    & \text{composition} \\
 [1ex]
 \text{(expression parameters)} & \x{exp-params} &::=&
   \K(~(\x{id}~\K:~\x{typ})\K,^\ast~\K) \\
 \end{array}
 $$
 
-\caption{Abstract Syntax: Expressions}
-\label{fig:syntax.exp}
-
-\end{figure*}
-
-
-\begin{figure*}
+\subsubsection*{Desugaring}
 
 $$
-\begin{array}{@{}lrcl@{\qquad}l}
-\text{(pattern)} & \x{pat} &::=&
-  \K\textunderscore
-    & \text{wildcard} \\&&|&
-  \x{id}
-    & \text{variable} \\&&|&
-  \x{lit}
-    & \text{literal} \\&&|&
-  \K(~\x{pat}\K,^\ast~\K)
-    & \text{tuple} \\&&|&
-  \x{pat}~\K:~\x{typ}
-    & \text{type annotation} \\
-[2ex]
-\text{(declarations)} & \x{dec} &::=&
-  \KK{let}~\x{pat}~\K=~\x{exp}
-    & \text{immutable} \\&&|&
-  \KK{var}~\x{id}~\K:~\x{typ}~(\K=~\x{exp})^?
-    & \text{mutable} \\&&|&
-  \KK{async}^?\, \KK{func}~\x{id}^? \x{typ-params}~\x{exp-params}~(\K:~\x{typ})^?~\K=^?~\x{exp}
-    & \text{function} \\&&|&
-  \KK{actor}^?\, \KK{class}~\x{id}^? \x{typ-params}~\x{exp-params}~\K=^?~\K\{~\x{exp-field}\K;^\ast~\K\}
-    & \text{class} \\
-[2ex]
-\text{(program)} & \x{prog} &::=&
-  \x{exp}\K;^\ast
-\end{array}
-$$
-
-\caption{Abstract Syntax: Declarations}
-\label{fig:syntax.dec}
-
-\end{figure*}
-
-
-\begin{figure*}
-
-$$
-\begin{array}{lrcl}
-\text{(type)} &
-\K( \dots \K, \x{id} \K: \x{typ} \K, \dots \K) &:=&
-  \K( \dots \K, \x{typ} \K, \dots \K) \\
-[1ex]
-\text{(type field)} &
-\x{id} \x{typ-params} \x{exp-params} \K: \x{typ} &:=&
-  \x{id} \K: \x{typ-params} \x{exp-params} \Kto \x{typ} \\
-[1ex]
-\text{(type parameters)} &
-\Klt \dots \K, \x{id} \K, \dots \Kgt &:=&
-  \Klt \dots \K, \x{id} \Ksub \KK{any} \K, \dots \Kgt \\&
-\epsilon &:=&
-  \Klt \Kgt \\
-\text{(type arguments)} &
-\epsilon &:=&
-  \Klt \Kgt \\
-[2ex]
+\begin{array}{@{}lrcl@{}}
 \text{(expression)} &
 \K\{ \K\} &:=&
   \K\{ \K{()} \K\} \\&
@@ -219,11 +220,57 @@ $$
 \end{array}
 $$
 $$
-\begin{array}{rcl}
+\begin{array}{@{}rcl@{}}
 \text{(expression field)} \hfill \\
-\KK{private}^? \x{id} \x{typ-params} \x{exp-params} \K: \x{typ} \K= \x{exp} &:=&
-  \KK{private}^? \x{id} \K= \, \KK{func} \x{id} \x{typ-params} \x{exp-params} \K: \x{typ} \K= \x{exp} \\
-[1ex]
+\KK{private}^? \KK{var}^? \x{id} \K: \x{typ} \K= \x{exp} &:=&
+  \KK{private}^? \KK{var}^? \x{id} \K= \x{exp} \K: \x{typ} \\
+\KK{private}^? \x{id} \x{typ-params} \x{exp-params} \, (\K: \x{typ})^? \K= \x{exp} &:=&
+  \KK{private}^? \x{id} \K= \, \KK{func} \x{id} \x{typ-params} \x{exp-params} \, (\K: \x{typ})^? \K= \x{exp} \\
+\end{array}
+$$
+
+
+\subsection*{Patterns}
+
+$$
+\begin{array}{@{}lrcl@{\qquad}l}
+\text{(pattern)} & \x{pat} &::=&
+  \K\textunderscore
+    & \text{wildcard} \\&&|&
+  \x{id}
+    & \text{variable} \\&&|&
+  \x{lit}
+    & \text{literal} \\&&|&
+  \K(~\x{pat}\K,^\ast~\K)
+    & \text{tuple} \\&&|&
+  \x{pat}~\K:~\x{typ}
+    & \text{type annotation} \\
+\end{array}
+$$
+
+
+\subsection*{Declarations}
+
+$$
+\begin{array}{@{}lrcl@{\qquad}l}
+\text{(declarations)} & \x{dec} &::=&
+  \KK{let}~\x{pat}~\K=~\x{exp}
+    & \text{immutable} \\&&|&
+  \KK{var}~\x{id}~\K:~\x{typ}~(\K=~\x{exp})^?
+    & \text{mutable} \\&&|&
+  \KK{async}^?\, \KK{func}~\x{id}^? \x{typ-params}~\x{exp-params}~(\K:~\x{typ})^?~\K=^?~\x{exp}
+    & \text{function} \\&&|&
+  \KK{actor}^?\, \KK{class}~\x{id}^? \x{typ-params}~\x{exp-params}~\K=^?~\K\{~\x{exp-fields}~\K\}
+    & \text{class} \\&&|&
+  \KK{type}~\x{id}~\x{typ-params}~\K=~\x{typ}
+    & \text{type} \\
+\end{array}
+$$
+
+\subsubsection*{Desugaring}
+
+$$
+\begin{array}{@{}rcl@{}}
 \text{(declaration)} \hfill \\
 \KK{let} \x{pat} \K: \x{typ} \K= \x{exp} &:=&
   \KK{let} \x{pat} \K= \x{exp} \K: \x{typ} \\
@@ -234,7 +281,12 @@ $$
 \end{array}
 $$
 
-\caption{Syntax Desugaring}
-\label{fig:syntax.sugar}
 
-\end{figure*}
+\subsection*{Programs}
+
+$$
+\begin{array}{@{}lrcl@{\qquad}l}
+\text{(program)} & \x{prog} &::=&
+  \x{exp}
+\end{array}
+$$
