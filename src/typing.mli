@@ -1,4 +1,4 @@
-open Types
+open Type
 
 (*
 module Env : Map.S with type key = string
@@ -9,7 +9,7 @@ val union : 'a Env.t -> 'a Env.t -> 'a Env.t
 *)
 type val_env = (typ * mut) Env.t
 type con_env = con Env.t
-type kind_env = kind ConEnv.t
+type kind_env = kind Con.Env.t
 
 type context =
   {
@@ -29,7 +29,5 @@ val union_kinds : context -> kind_env -> context
 
 exception KindError of Source.region * string
 exception TypeError of Source.region * string
-
-val norm_typ : context -> Types.typ -> Types.typ
 
 val check_prog : Syntax.prog -> val_env * con_env * kind_env

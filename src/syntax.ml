@@ -1,18 +1,19 @@
 (* Variables *)
 
 type var = string Source.phrase
-type var_ref = (string,Types.mut) Source.annotated_phrase
+type var_ref = (string, Type.mut) Source.annotated_phrase
+
 
 (* Types *)
 
-type mut = Types.mut Source.phrase
+type mut = Type.mut Source.phrase
 
-type actor = Types.actor Source.phrase
+type actor = Type.actor Source.phrase
 
 type typ = typ' Source.phrase
 and typ' =
   | VarT of var * typ list                     (* constructor *)
-  | PrimT of Types.prim                        (* primitive *)
+  | PrimT of Type.prim                         (* primitive *)
   | ObjT of actor * typ_field list             (* object *)
   | ArrayT of mut * typ                        (* array *)
   | OptT of typ                                (* option *)
@@ -33,6 +34,19 @@ and typ_bind = typ_bind' Source.phrase
 and typ_bind' = {var : var; bound : typ}
 
 
+(* Literals *)
+
+type lit =
+  | NullLit
+  | BoolLit of bool
+  | NatLit of Value.Nat.t
+  | IntLit of Value.Int.t
+  | WordLit of Value.word
+  | FloatLit of Value.Float.t
+  | CharLit of Value.unicode
+  | TextLit of string
+  | PreLit of string                             (* unresolved numeric literal *)
+
 (* Patterns *)
 
 type pat = pat' Source.phrase
@@ -41,7 +55,7 @@ and pat' =
   | VarP of var                                (* variable *)
   | TupP of pat list                           (* tuple *)
   | AnnotP of pat * typ                        (* type annotation *)
-  | LitP of Types.lit ref                          (* literal *) (* only in switch case, for now *)
+  | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
 (*
   | ObjP of pat_field list                     (* object *)
   | AsP of pat * pat                           (* conjunctive *)
@@ -52,20 +66,51 @@ and pat_field' = {var : var; pat : pat}
 *)
 
 
+(* Operators *)
+
+type unop =
+  | PosOp                                       (* +x *)
+  | NegOp                                       (* -x *)
+  | NotOp                                       (* bitwise negation *)
+
+type binop =
+  | AddOp                                       (* x+y *)
+  | SubOp                                       (* x-y *)
+  | MulOp                                       (* x*y *)
+  | DivOp                                       (* x/y *)
+  | ModOp                                       (* x%y *)
+  | AndOp                                       (* bitwise operators... *)
+  | OrOp
+  | XorOp
+  | ShiftLOp
+  | ShiftROp
+  | RotLOp
+  | RotROp
+  | CatOp                                       (* concatenation *)
+
+type relop =
+  | EqOp                                        (* x=y *)
+  | NeqOp                                       (* x!=y *)
+  | LtOp                                        (* x<y *)
+  | GtOp                                        (* x>y *)
+  | LeOp                                        (* x<=y *)
+  | GeOp                                        (* x>=y *)
+
+
 (* Expressions *)
 
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-type exp = (exp',Types.typ) Source.annotated_phrase
+type exp = (exp', Type.typ) Source.annotated_phrase
 and exp' =
-  | VarE of var_ref                                (* variable *)
-  | LitE of  Types.lit ref                     (* literal *)
-  | UnE of Types.unop * exp                    (* unary operator *)
-  | BinE of exp * Types.binop * exp            (* binary operator *)
-  | RelE of exp * Types.relop * exp            (* relational operator *)
+  | VarE of var_ref                            (* variable *)
+  | LitE of lit ref                            (* literal *)
+  | UnE of unop * exp                          (* unary operator *)
+  | BinE of exp * binop * exp                  (* binary operator *)
+  | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
-  | ProjE of exp * Types.nat                   (* tuple projection *)
+  | ProjE of exp * Value.nat                   (* tuple projection *)
   | ObjE of actor * var option * exp_field list (* object *)
   | DotE of exp * var_ref                      (* object projection *)
   | AssignE of exp * exp                       (* assignment *)

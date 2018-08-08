@@ -1,7 +1,6 @@
 open Syntax
 open Source
-open Types
-open Con
+open Type
 open Operators
 
 exception KindError of Source.region * string
@@ -15,7 +14,7 @@ let type_error region fmt =
 
 type val_env = (typ * mut) Env.t
 type con_env = con Env.t
-type kind_env = kind ConEnv.t
+type kind_env = kind Con.Env.t
 
 type context =
   {
@@ -27,7 +26,7 @@ type context =
     awaitable : bool
   }
 
-let union_conenv env1 env2 = ConEnv.union (fun k v1 v2 -> Some v2) env1 env2
+let union_conenv env1 env2 = Con.Env.union (fun k v1 v2 -> Some v2) env1 env2
 
 let union_values c ve = {c with values = union c.values ve}
 let add_value c v tm = {c with values = Env.add v tm c.values}
@@ -35,7 +34,7 @@ let union_constructors c ce = {c with constructors = union c.constructors ce}
 
 let union_kinds c ke = {c with kinds = union_conenv c.kinds ke}
 let add_constructor c v con kind = {c with constructors = Env.add v con c.constructors;
-                                           kinds = ConEnv.add con kind c.kinds}
+                                           kinds = Con.Env.add con kind c.kinds}
 
 (* raises TypeError on duplicate entries *)
 let disjoint_union at fmt env1 env2 = Env.union (fun k v1 v2 -> type_error at fmt k) env1 env2
@@ -52,7 +51,7 @@ let empty_context =
   {
     values = Env.empty;
     constructors = Env.empty;
-    kinds = ConEnv.empty;
+    kinds = Con.Env.empty;
     labels = Env.empty;
     returns = None;
     awaitable = false
@@ -65,23 +64,23 @@ let rec eq context eqs t1 t2 =
     then eq_all context eqs ts1 ts2
     else begin
       con1 = con2 && eq_all context eqs ts1 ts2 ||
-      match lookup_con context.kinds con1, lookup_con context.kinds con2 with
+      match Con.Env.find_opt con1 context.kinds, Con.Env.find_opt con2 context.kinds with
       | Some (DefK (tbs, t)), _ -> (* TBR this may fail to terminate *)
-       	eq context eqs (subst (substitute ts1 tbs) t) t2
+       	eq context eqs (subst (make_subst ts1 tbs) t) t2
       | _, Some (DefK (tbs, t)) -> (* TBR this may fail to terminate *)
-       	eq context eqs t1 (subst (substitute ts2 tbs) t)
+       	eq context eqs t1 (subst (make_subst ts2 tbs) t)
       | _, _ -> false
     end
   | VarT (con1, ts1), t2 ->
-    (match lookup_con context.kinds con1 with
+    (match Con.Env.find_opt con1 context.kinds with
     | Some (DefK (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq context eqs (subst (substitute ts1 tbs) t) t2
+      eq context eqs (subst (make_subst ts1 tbs) t) t2
     | _ -> false
     )
   | t1, VarT (con2, ts2) ->
-    (match lookup_con context.kinds con2 with
+    (match Con.Env.find_opt con2 context.kinds with
     | Some (DefK (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq context eqs t1 (subst (substitute ts2 tbs) t)
+      eq context eqs t1 (subst (make_subst ts2 tbs) t)
     | _ -> false
     )
   | PrimT p1, PrimT p2 ->
@@ -131,84 +130,72 @@ let eq_typ (context : context) ty1 ty2 : bool =
     eq context [] ty1 ty2 
 
 
-let rec norm_typ context = function
-  | VarT (con, ts) as t ->
-    (match lookup_con context.kinds con with
-    | Some kind ->
-      (match kind with
-	    | DefK (tbs, t) -> norm_typ context (subst (substitute ts tbs) t)
-	    | ObjK _ | ParK _ -> t
-      ) 
-    | None -> assert false
-  )
-  | t -> t
-
 let rec obj_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | VarT (con, ts) ->
-    (match lookup_con context.kinds con with
+    (match Con.Env.find_opt con context.kinds with
     | Some kind ->
       (match kind with
 	    | DefK (tbs, t) -> assert false
-	    | ObjK (tbs, actor, fs) -> subst (substitute ts tbs) (ObjT (actor, fs))
+	    | ObjK (tbs, actor, fs) -> subst (make_subst ts tbs) (ObjT (actor, fs))
 	    | ParK (tbs, bound) -> t (*TBR ?*)
       )
     | None -> assert false
     )
   | ObjT _ -> t
-  | LikeT t -> norm_typ context t (*TBR*)
+  | LikeT t -> normalize context.kinds t (*TBR*)
   | _ -> t
 
 (* types one can switch on - all primitives except floats *)
 
 (* TBR - switch on option type? *)
 let switchable_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | PrimT p -> p <> FloatT
   | _ -> false
 
 (* types one can iterate over using `for`  *)
 let iterable_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | ArrayT _ -> true
   | _ -> false
 
 (* element type of iterable_type  *)
 let element_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | ArrayT (_, t) -> t
   | _ -> assert false
 
 let numeric_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | PrimT (NatT | IntT | WordT _ | FloatT) -> true
   | _ -> false
 
 let logical_typ context t =
-  match norm_typ context t  with
+  match normalize context.kinds t  with
   | PrimT (WordT _) -> true
   | _ -> false
 
 let equatable_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | PrimT (BoolT | NatT | IntT | WordT _ | FloatT | TextT | CharT) -> true
     (* TBR do we really want = and != on floats ?*)
   | _ -> false
 
 let comparable_typ context t =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | PrimT (NatT | IntT | WordT _ | FloatT | TextT | CharT) -> true
   | _ -> false
 
 
 (* TBR: the whole notion of sharable typ needs to be reviewed in the presence of subtyping *)
 let rec sharable_typ (context : context) (t : typ) : bool =
-  match norm_typ context t with
+  match normalize context.kinds t with
   | VarT (c, ts) ->
-    (match lookup_con context.kinds c with
+    (match Con.Env.find_opt c context.kinds with
     | Some (DefK _) -> assert false
     | Some (ObjK (tbs, actor, fds)) ->
-      sharable_typ context (subst (substitute ts tbs) (ObjT (actor, fds))) (* TBR *)
+      sharable_typ context (subst (make_subst ts tbs) (ObjT (actor, fds))) (* TBR *)
     | Some (ParK (tbs, bound)) -> false (*TBR: use bound? *)
     | None -> assert false
     )
@@ -222,7 +209,7 @@ let rec sharable_typ (context : context) (t : typ) : bool =
     let context' = union_kinds (union_constructors context ce) ke in
     List.for_all (fun tb -> sharable_typ context' tb.bound) tbs && (* TBR *)
     sharable_typ context' t1 &&
-    (match norm_typ context' t2 with
+    (match normalize context'.kinds t2 with
     | TupT [] | AsyncT _ -> true
     | _ -> false
     )
@@ -237,8 +224,8 @@ let rec sharable_typ (context : context) (t : typ) : bool =
   | AnyT -> false (* TBR *)
 
 and sharable_typ_binds context ts =
-  let ce = List.fold_left (fun c (bind : Types.typ_bind) -> Env.add bind.var.name bind.var c) context.constructors ts in
-  let ke = List.fold_left (fun c (bind : Types.typ_bind) -> ConEnv.add bind.var (ParK ([], bind.bound)) c) context.kinds ts in
+  let ce = List.fold_left (fun c (bind : Type.typ_bind) -> Env.add (Con.name bind.var) bind.var c) context.constructors ts in
+  let ke = List.fold_left (fun c (bind : Type.typ_bind) -> Con.Env.add bind.var (ParK ([], bind.bound)) c) context.kinds ts in
   ce, ke
 
 
@@ -258,12 +245,12 @@ let check_lit p f at s =
     try f s with 
     |  _ -> type_error at "bad or out-of-range literal for type %s" (string_of_typ (PrimT p))
 
-let check_nat = check_lit NatT Natural.of_string_u
-let check_int = check_lit IntT Integer.of_string_s
-let check_word8 = check_lit (WordT Width8) Word8.of_string_u
-let check_word16 = check_lit (WordT Width16) Word16.of_string_u
-let check_word32 = check_lit (WordT Width32)  Word32.of_string_u
-let check_word64 = check_lit (WordT Width64)  Word64.of_string_u
+let check_nat = check_lit NatT Value.Nat.of_string_u
+let check_int = check_lit IntT Value.Int.of_string_s
+let check_word8 = check_lit (WordT Width8) Value.Word8.of_string_u
+let check_word16 = check_lit (WordT Width16) Value.Word16.of_string_u
+let check_word32 = check_lit (WordT Width32) Value.Word32.of_string_u
+let check_word64 = check_lit (WordT Width64) Value.Word64.of_string_u
 
 (* begin sanity test *)
 
@@ -274,22 +261,22 @@ let raises f r x = try f r x; false; with _ -> true
 let _ =
   let module I32 = Wasm.I32 in
   (* text check_nat *)
-  assert (check_nat no_region (string_of_int (pow2 nat_width - 1)) = I32.of_int_u (pow2 nat_width - 1));
+  assert (check_nat no_region (string_of_int (pow2 Value.nat_width - 1)) = I32.of_int_u (pow2 Value.nat_width - 1));
   assert (check_nat no_region (string_of_int 0) = I32.of_int_u 0);
   assert (raises check_nat no_region (string_of_int (pow2 32)));
   assert (raises check_nat no_region (string_of_int (pow2 32 + 1)));
 
   (* test check_word16 *)
-  assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = Word16.of_int_u (pow2 16 - 1));
+  assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = Value.Word16.of_int_u (pow2 16 - 1));
   assert (check_word16 no_region (string_of_int 0) = I32.of_int_u 0);
   assert (raises check_word16 no_region (string_of_int (pow2 16)));
   assert (raises check_word16 no_region (string_of_int (pow2 16 + 1)));
 
   (* test check_int *)
-  assert (check_int no_region (string_of_int (pow2 (int_width - 1) - 1)) = I32.of_int_s (pow2 (int_width - 1) - 1));
-  assert (check_int no_region (string_of_int (- pow2 (int_width - 1))) = I32.of_int_s (- pow2 (int_width - 1)));
-  assert (raises check_int no_region (Int64.to_string (lpow2 (int_width-1))));
-  assert (raises check_int no_region (Int64.to_string (Int64.neg (Int64.add (lpow2 (int_width-1)) 1L))));
+  assert (check_int no_region (string_of_int (pow2 (Value.int_width - 1) - 1)) = I32.of_int_s (pow2 (Value.int_width - 1) - 1));
+  assert (check_int no_region (string_of_int (- pow2 (Value.int_width - 1))) = I32.of_int_s (- pow2 (Value.int_width - 1)));
+  assert (raises check_int no_region (Int64.to_string (lpow2 (Value.int_width - 1))));
+  assert (raises check_int no_region (Int64.to_string (Int64.neg (Int64.add (lpow2 (Value.int_width - 1)) 1L))));
 (* end sanity test *)
 
 
@@ -308,15 +295,15 @@ let rec check_typ_binds context ts =
     List.map (fun (bind : Syntax.typ_bind) ->
     	let v = bind.it.Syntax.var.it in
     	let con = Con.fresh v in
-      {Types.var = con; bound = check_typ bind_context bind.it.Syntax.bound}
+      {Type.var = con; bound = check_typ bind_context bind.it.Syntax.bound}
     ) ts in
   let ce =
-    List.fold_left (fun c (bind : Types.typ_bind) ->
-      Env.add bind.var.name bind.var c
+    List.fold_left (fun c (bind : Type.typ_bind) ->
+      Env.add (Con.name bind.var) bind.var c
     ) context.constructors ts in
   let ke =
-    List.fold_left (fun c (bind : Types.typ_bind) ->
-      ConEnv.add bind.var (ParK ([], bind.bound)) c
+    List.fold_left (fun c (bind : Type.typ_bind) ->
+      Con.Env.add bind.var (ParK ([], bind.bound)) c
     ) context.kinds ts in
   ts, ce, ke
 
@@ -326,9 +313,9 @@ and check_typ context t =
   match t.it with
   | Syntax.VarT (c, tys) ->
     let ts = List.map (check_typ context) tys in
-    (match lookup context.constructors c.it with
+    (match Env.find_opt c.it context.constructors with
     | Some con ->
-      (match lookup_con context.kinds con with
+      (match Con.Env.find_opt con context.kinds with
       | Some (DefK (bounds, u)) ->
         check_bounds t.at ts bounds;
         (* subst ts bounds u ? *)
@@ -398,12 +385,12 @@ and infer_lit context rl =
   | CharLit _ -> PrimT CharT
   | TextLit _ -> PrimT TextT
   | PreLit s ->
-    rl := IntLit (Integer.of_string s); (* default *)
+    rl := IntLit (Value.Int.of_string s); (* default *)
     PrimT IntT
 
 
 and check_lit at context t rl =
-  match norm_typ context t, !rl with
+  match normalize context.kinds t, !rl with
   | OptT _, NullLit
   | PrimT NullT, NullLit
   | PrimT NatT, NatLit _
@@ -485,13 +472,13 @@ and check_unop context at t uop e =
 
 and infer_exp context e =
   let t = infer_exp' context e in
-  e.note <- norm_typ context t;
+  e.note <- normalize context.kinds t;
   t
 
 and infer_exp' context e =
   match e.it with
   | VarE x ->
-    (match lookup context.values x.it with
+    (match Env.find_opt x.it context.values with
     | Some (t, mut) -> x.note <- mut; t
     | None -> type_error x.at "unbound identifier %s" x.it
     )
@@ -507,7 +494,7 @@ and infer_exp' context e =
     let ts = List.map (infer_exp context) es in
     TupT ts
   | ProjE (e, n) ->
-    (match norm_typ context (infer_exp context e) with
+    (match normalize context.kinds (infer_exp context e) with
     | TupT ts ->
       (try List.nth ts (Int32.to_int n)
       with Failure _ -> type_error e.at "tuple projection %li >= %n is out-of-bounds" n (List.length ts))
@@ -527,7 +514,7 @@ and infer_exp' context e =
     (*TBC: array and object update *)
     (match e1.it with
     | VarE v ->
-      (match lookup context.values v.it with
+      (match Env.find_opt v.it context.values with
       | Some (t1, VarMut) ->
         v.note <- VarMut;
         check_exp context t1 e2;
@@ -553,7 +540,7 @@ and infer_exp' context e =
       | t -> type_error e.at "expecting object type, found %s" (string_of_typ t)
       )
     | IdxE (ea, ei) ->
-      (match norm_typ context (infer_exp context ea) with
+      (match normalize context.kinds (infer_exp context ea) with
       | ArrayT (VarMut, t) ->
         check_exp context intT ei;
         check_exp context t e2;
@@ -574,7 +561,7 @@ and infer_exp' context e =
     then ArrayT (mut.it, t1)
     else type_error e.at "array contains elements of distinct types"
   | IdxE (e1, e2) ->
-    (match norm_typ context (infer_exp context e1) with
+    (match normalize context.kinds (infer_exp context e1) with
     | ArrayT (_, t1) -> 
       check_exp context intT e2;
       t1
@@ -582,10 +569,10 @@ and infer_exp' context e =
     )
   | CallE (e1, ts, e2) ->
     let ts = List.map (check_typ context) ts in
-    (match norm_typ context (infer_exp context e1) with
+    (match normalize context.kinds (infer_exp context e1) with
     | FuncT (tbs, t3, t4) -> (* TBC polymorphic instantiation, perhaps by matching? *)
       check_bounds e.at ts tbs;
-      let sigma = substitute ts tbs in
+      let sigma = make_subst ts tbs in
       let t3' = subst sigma t3 in
       let t4' = subst sigma t4 in
       let t2 = infer_exp context e2 in
@@ -645,7 +632,7 @@ and infer_exp' context e =
     let context' = {context with labels = Env.add l.it unitT context.labels} in
     infer_exp context' e
   | BreakE (l, e) ->
-    (match lookup context.labels l.it  with
+    (match Env.find_opt l.it context.labels  with
     | Some t -> 
       (* todo: check type of e against ts! *)
       check_exp context t e ;
@@ -674,7 +661,7 @@ and infer_exp' context e =
   | AwaitE e0 ->
     if context.awaitable
     then
-      match norm_typ context (infer_exp context e0) with
+      match normalize context.kinds (infer_exp context e0) with
       | AsyncT t -> t
       | t -> type_error e0.at "expecting expression of async type, found expression of type %s" (string_of_typ t)
     else type_error e.at "illegal await in synchronous context"
@@ -692,7 +679,7 @@ and infer_exp' context e =
   | DecE ({it = FuncD (v, _, _, _, _)} as d) ->
     (* TODO: don't special-case functions *)
     let ve = check_decs context [d] in
-    (match lookup context.values v.it with
+    (match Env.find_opt v.it context.values with
     | Some (t, mut) -> t
     | None -> assert false
     )
@@ -725,7 +712,7 @@ and check_exp context t e =
   | RelE (e1, rop, e2) ->
     check_relop context e.at t e1 rop e2
   | ArrayE (mut, es) ->
-    (match norm_typ context t with
+    (match normalize context.kinds t with
     | ArrayT (mut', t) when mut' = mut.it ->
       List.iter (check_exp context t) es
     | _ -> type_error e.at "array expression cannot produce expected type %s" (string_of_typ t)
@@ -736,7 +723,7 @@ and check_exp context t e =
    so we rely on inference instead
 *)
   | AsyncE e0 ->
-    (match norm_typ context t with
+    (match normalize context.kinds t with
     | AsyncT t ->
       let context =
         { context with
@@ -776,7 +763,7 @@ and check_exp context t e =
     if not (eq_typ context t t')
     then type_error e.at "expecting expression of type %s found expression of type %s" (string_of_typ t) (string_of_typ t')
   );
-  e.note <- norm_typ context t    
+  e.note <- normalize context.kinds t    
     
 and infer_block context es =
   match es with
@@ -839,7 +826,7 @@ and check_pat context p t =
     check_lit p.at context t rl;
     Env.empty
   | TupP ps ->
-    (match norm_typ context t with
+    (match normalize context.kinds t with
     | TupT ts -> check_pats p.at context Env.empty ps ts 
     | _ -> type_error p.at "expected pattern of non-tuple type, found pattern of tuple type"
     )
@@ -858,38 +845,38 @@ and check_dec pass context d =
 and check_dec' pass context d =     
   match d.it with
   | LetD (p, e) ->
-    if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else      
+    if pass < TypDefPass then Env.empty, Env.empty, Con.Env.empty else      
     let t = infer_exp context e in
     let ve = check_pat context p t in 
-    ve, Env.empty, ConEnv.empty
+    ve, Env.empty, Con.Env.empty
   | VarD (v, t, None) ->
-    if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else
+    if pass < TypDefPass then Env.empty, Env.empty, Con.Env.empty else
     let t = check_typ context t in
-    Env.singleton v.it (t, VarMut), Env.empty, ConEnv.empty
+    Env.singleton v.it (t, VarMut), Env.empty, Con.Env.empty
   | VarD (v, t, Some e) ->
-    if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else
+    if pass < TypDefPass then Env.empty, Env.empty, Con.Env.empty else
     let t = check_typ context t in
     check_exp context t e;
-    Env.singleton v.it (t, VarMut), Env.empty, ConEnv.empty
+    Env.singleton v.it (t, VarMut), Env.empty, Con.Env.empty
   | TypD (v, tps, t) ->
     let tbs, ce_tbs, ke_tbs = check_typ_binds context tps in
     let con =
       if pass = TypDecPass
       then Con.fresh v.it
-	    else Lib.Option.value (lookup context.constructors v.it)
+	    else Lib.Option.value (Env.find_opt v.it context.constructors)
     in
     let kind0 = ParK (tbs, VarT (con, [])) in  (* dummy abstract type *)
     let ce0 = Env.singleton v.it con in
-    let ke0 = ConEnv.singleton con kind0 in
+    let ke0 = Con.Env.singleton con kind0 in
     if pass = TypDecPass then Env.empty, ce0, ke0 else
     let context_tbs = union_kinds (union_constructors context ce_tbs) ke_tbs in
     let t = check_typ context_tbs t in
     let kind1 = DefK (tbs, t) in  (* dummy type *)
     let ce1 = Env.singleton v.it con in
-    let ke1 = ConEnv.singleton con kind1 in
+    let ke1 = Con.Env.singleton con kind1 in
     Env.empty, ce1, ke1
   | FuncD (v, tps, p, t, e) ->
-    if pass < TypDefPass then Env.empty, Env.empty, ConEnv.empty else
+    if pass < TypDefPass then Env.empty, Env.empty, Con.Env.empty else
     let tbs, ce, ke = check_typ_binds context tps in
     let context_ce = union_kinds (union_constructors context ce) ke in
     let ve, t1 = infer_pat context_ce p in
@@ -902,22 +889,22 @@ and check_dec' pass context d =
         awaitable = false
       } in
     check_exp context_ce_ve_v t2 e;
-    Env.singleton v.it (funcT, ConstMut), Env.empty, ConEnv.empty
+    Env.singleton v.it (funcT, ConstMut), Env.empty, Con.Env.empty
   | ClassD (a, v, tps, p, efs) ->
     let tbs, ce_ts, ke_ts = check_typ_binds context tps in
     let con =
       if pass = TypDecPass
       then Con.fresh v.it
-	    else Lib.Option.value (lookup context.constructors v.it)
+	    else Lib.Option.value (Env.find_opt v.it context.constructors)
     in
     let kind0 = ObjK (tbs, a.it, []) in
     let ce0 = Env.singleton v.it con in
-    let ke0 = ConEnv.singleton con kind0 in
+    let ke0 = Con.Env.singleton con kind0 in
     if pass = TypDecPass then Env.empty, ce0, ke0 else
     let context_ts = union_kinds (union_constructors context ce_ts) ke_ts in
     let context_ts_v = add_constructor context_ts v.it con kind0 in
     let ve, domT = infer_pat context_ts_v p in
-    let classT = VarT (con, List.map (fun (t : Types.typ_bind) -> VarT (t.var, [])) tbs) in
+    let classT = VarT (con, List.map (fun (t : Type.typ_bind) -> VarT (t.var, [])) tbs) in
     let consT = FuncT (tbs, domT, classT) (* TBR: we allow polymorphic recursion *) in
     let ve1ce1ke1 = Env.singleton v.it (consT, ConstMut), ce0, ke0 in
     if pass = ValDecPass then ve1ce1ke1 else
@@ -950,7 +937,7 @@ and check_dec' pass context d =
     (* reject mutable or non-sharable public actor fields *)
     List.iter (check_typ_field context_ts_v_dom a.at a.it) public_fields;
     let kind2 = ObjK (tbs, a.it, public_fields) in
-    let ve2, ce2, ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, ConEnv.singleton con kind2 in
+    let ve2, ce2, ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, Con.Env.singleton con kind2 in
     if pass = TypDefPass then ve2,ce2,ke2 else
     let _ = assert (pass = ValDefPass) in
     let all_fields = List.map (fun (v, (m, p, t)) -> {var = v; typ = t; mut = m}) bindings in
@@ -973,13 +960,13 @@ and check_decs_aux pass context ve ce ke = function
       
 and check_decs context ds =
   (* declare type constructors *)
-  let ve0, ce0, ke0 = check_decs_aux TypDecPass context Env.empty Env.empty ConEnv.empty ds in
+  let ve0, ce0, ke0 = check_decs_aux TypDecPass context Env.empty Env.empty Con.Env.empty ds in
   (* declare instance constructors, given type constructors *)
-  let ve1, ce1, ke1 = check_decs_aux ValDecPass (union_kinds (union_constructors (union_values context ve0) ce0) ke0) Env.empty Env.empty ConEnv.empty ds in
+  let ve1, ce1, ke1 = check_decs_aux ValDecPass (union_kinds (union_constructors (union_values context ve0) ce0) ke0) Env.empty Env.empty Con.Env.empty ds in
   (* define type constructors (declare public member types) *)
-  let ve2, ce2, ke2 = check_decs_aux TypDefPass (union_kinds (union_constructors (union_values context ve1) ce1) ke1) Env.empty Env.empty ConEnv.empty ds in
+  let ve2, ce2, ke2 = check_decs_aux TypDefPass (union_kinds (union_constructors (union_values context ve1) ce1) ke1) Env.empty Env.empty Con.Env.empty ds in
   (* check class definitions (check public and private member expressions *)
-  let ve3, ce3, ke3 = check_decs_aux ValDefPass (union_kinds (union_constructors (union_values context ve2) ce2) ke2) Env.empty Env.empty ConEnv.empty ds in
+  let ve3, ce3, ke3 = check_decs_aux ValDefPass (union_kinds (union_constructors (union_values context ve2) ce2) ke2) Env.empty Env.empty Con.Env.empty ds in
   ve3, ce3, ke3
 
 let check_prog p =

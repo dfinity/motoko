@@ -1,6 +1,5 @@
 %{
 
-open Types
 open Syntax
 open Source 
 
@@ -53,8 +52,8 @@ let name s at =
 
 *)
 
-let (@?) x region = {it = x; at = region; note = Types.AnyT}
-let (@!) x region = {it = x; at = region; note = Types.ConstMut}
+let (@?) x region = {it = x; at = region; note = Type.AnyT}
+let (@!) x region = {it = x; at = region; note = Type.ConstMut}
 
 %}
 
@@ -79,13 +78,13 @@ let (@!) x region = {it = x; at = region; note = Types.ConstMut}
 %token<string> NAT
 %token<string> INT
 %token<float> FLOAT
-%token<Types.unicode> CHAR
+%token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
 // %token<string Source.phrase -> Ast.instr' * Values.value> CONST
 
-%token<Types.prim> PRIM
+%token<Type.prim> PRIM
 
 %token UNDERSCORE
 
@@ -135,15 +134,15 @@ seplist(X, SEP) :
   | id=ID { id @! at($symbolstartpos,$endpos) }
 
 %inline var :
-  | VAR { VarMut @@ at($symbolstartpos,$endpos) }
+  | VAR { Type.VarMut @@ at($symbolstartpos,$endpos) }
 
 %inline var_opt :
-  | (* empty *) { ConstMut @@ at($symbolstartpos,$endpos) }
-  | VAR { VarMut @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Type.ConstMut @@ at($symbolstartpos,$endpos) }
+  | VAR { Type.VarMut @@ at($symbolstartpos,$endpos) }
 
 %inline actor_opt :
-  | (* empty *) { Object @@ at($symbolstartpos,$endpos) }
-  | ACTOR { Actor @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Type.Object @@ at($symbolstartpos,$endpos) }
+  | ACTOR { Type.Actor @@ at($symbolstartpos,$endpos) }
 
 
 (* Types *)
@@ -168,7 +167,7 @@ typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post LBRACKET RBRACKET
-    { ArrayT(ConstMut @@ no_region, t) @@ at($symbolstartpos,$endpos) }
+    { ArrayT(Type.ConstMut @@ no_region, t) @@ at($symbolstartpos,$endpos) }
   | t=typ_post QUEST
     { OptT(t) @@ at($symbolstartpos,$endpos) }
 
@@ -204,7 +203,7 @@ typ_field :
     { {var = x; typ = t; mut} @@ at($symbolstartpos,$endpos) }
   | x=id tps=typ_params_opt t1=typ t2=return_typ 
     { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
-      {var = x; typ = t; mut = ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) }
+      {var = x; typ = t; mut = Type.ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) }
 
 typ_bind :
   | x=id
@@ -220,7 +219,7 @@ lit :
   | s=NAT { PreLit s }
   | s=INT { PreLit s }
   | b=BOOL { BoolLit b }
-  | f=FLOAT { FloatLit (Float.of_float f)}
+  | f=FLOAT { FloatLit (Value.Float.of_float f)}
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
 
@@ -293,7 +292,7 @@ exp_post :
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
   | e=exp_post DOT s=NAT
-    { ProjE (e, Natural.of_string s) @? at($symbolstartpos,$endpos) }
+    { ProjE (e, Value.Nat.of_string s) @? at($symbolstartpos,$endpos) }
   | e=exp_post DOT x=var_ref
     { DotE(e, x) @? at($symbolstartpos,$endpos) }
   | e1=exp_post tso=typ_args? e2=exp_nullary
@@ -396,7 +395,7 @@ exp_field :
       let d = FuncD(x, tps, p, t, e) @@ fd.at in
       let e' = DecE(d) @? fd.at in  
         (* let e' = BlockE([DecE(d)@? fd.at;(VarE (x.it @! fd.at)) @? fd.at]) @? fd.at in  *)
-      {var = x; mut = ConstMut @@ no_region; priv; exp = e'}
+      {var = x; mut = Type.ConstMut @@ no_region; priv; exp = e'}
       @@ at($symbolstartpos,$endpos) }
 
 // TBR

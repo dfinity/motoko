@@ -1,4 +1,4 @@
-open Types
+open Type
 open Typing
 
 
@@ -18,27 +18,29 @@ let main () =
         Source.string_of_region r
     in
     (try
-       let prog = Parser.prog token lexer in 
-       let ve, ce, ke = Typing.check_prog prog in
-       Printf.printf "\n\nTypechecking %s:\n" filename;
-       Env.iter (fun v con -> Printf.printf "\n %s := %s" v (Con.to_string con)) ce;
-       Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
-       ConEnv.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
-       print_newline();
-       let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.empty_context ve) ce) ke in
-       Printf.printf "\n\nInterpreting %s (tracing function calls):\n" filename;
-       let _ = Interpret.interpret_prog prog (fun dyn_ve ->
-					  Printf.printf "\n\nFinal state %s:\n" filename;
-					  Env.iter (fun v (t,mut) -> 
-					            let w = Values.checkV (Env.find v dyn_ve) in
-						    let w = match mut with
-						        | ConstMut -> Values.val_of_B w
-						   	| VarMut -> Values.derefV w
-					            in
-						    Printf.printf "\n %s = %s" v (PrintValues.string_of_val context t w)) ve;
-              			          print_newline();
-					  Values.unitV)
-
+      let prog = Parser.prog token lexer in 
+      let ve, ce, ke = Typing.check_prog prog in
+      Printf.printf "\n\nTypechecking %s:\n" filename;
+      Env.iter (fun v con -> Printf.printf "\n %s := %s" v (Con.to_string con)) ce;
+      Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
+      Con.Env.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
+      print_newline();
+      let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.empty_context ve) ce) ke in
+      Printf.printf "\n\nInterpreting %s (tracing function calls):\n" filename;
+      let _ = Interpret.interpret_prog prog (fun dyn_ve ->
+				Printf.printf "\n\nFinal state %s:\n" filename;
+				Type.Env.iter (fun v (t,mut) -> 
+					let w = Interpret.unrollV (Value.Env.find v dyn_ve) in
+					let w =
+            match mut with
+						| ConstMut -> Value.as_val_bind w
+						| VarMut -> !(Value.as_var_bind w)
+					in
+          Printf.printf "\n %s = %s" v (Value.string_of_val context.kinds t w)
+        ) ve;
+        print_newline();
+			  Value.unitV
+      )
 	 in
        ()
     with 
@@ -58,8 +60,8 @@ let main () =
        let r = string_of_region (!Interpret.last_region) in
        let context = !Interpret.last_context in
        let ve = context.Interpret.values in
-       Env.iter (fun v w -> 
-      	         Printf.printf "\n %s = %s" v (Values.debug_string_of_recbind w)) ve;
+       Value.Env.iter (fun v w -> 
+      	         Printf.printf "\n %s = %s" v (Value.debug_string_of_recbind w)) ve;
        Printf.printf "region: %s \n exception %s:"  r (Printexc.to_string e));
        Printf.printf "%s" (Printexc.get_backtrace())
     ;

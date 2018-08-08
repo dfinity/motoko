@@ -629,7 +629,11 @@ $$
 
 $$
 \frac{
-  C, C' \vdash \x{exp} \analsynth \x{typ} \dashv C'
+  C, C' \vdash \x{exp} \analsynth \x{typ}' \dashv C'
+  \qquad
+  C, C' \vdash \x{typ}' = \x{typ}
+  \qquad
+  C \vdash \x{typ}
 }{
   C \vdash \K\{ \x{exp} \K\} \analsynth \x{typ} \dashv \cdot
 }

@@ -1,7 +1,7 @@
 {
 open Parser
 open Source
-open Types 
+open Type
 module Script = Wasm.Script
 module Utf8 = Wasm.Utf8
 
