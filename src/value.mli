@@ -1,17 +1,19 @@
 (* Numeric Representations *)
 
+(*
 module Int32Rep : Wasm.Int.RepType with type t = int32
 module Int16Rep : Wasm.Int.RepType with type t = int32
 module Int8Rep : Wasm.Int.RepType with type t = int32
+*)
 
-module Word8 : Wasm.Int.S with type t = int32
-module Word16 : Wasm.Int.S with type t = int32
-module Word32 : Wasm.Int.S with type t = int32
-module Word64 : Wasm.Int.S with type t = int64
+module Word8 : Wasm.Int.S with type bits = int32
+module Word16 : Wasm.Int.S with type bits = int32
+module Word32 : Wasm.Int.S with type bits = int32 and type t = Wasm.I32.t
+module Word64 : Wasm.Int.S with type bits = int64 and type t = Wasm.I64.t
+module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
 
 module Nat : Wasm.Int.S with type t = int32
 module Int : Wasm.Int.S with type t = int32
-module Float : Wasm.Float.S with type t = Wasm.F64.t
 
 val nat_width : int
 val int_width : int

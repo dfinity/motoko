@@ -268,7 +268,7 @@ let _ =
 
   (* test check_word16 *)
   assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = Value.Word16.of_int_u (pow2 16 - 1));
-  assert (check_word16 no_region (string_of_int 0) = I32.of_int_u 0);
+  assert (check_word16 no_region (string_of_int 0) = Value.Word16.of_int_u 0);
   assert (raises check_word16 no_region (string_of_int (pow2 16)));
   assert (raises check_word16 no_region (string_of_int (pow2 16 + 1)));
 

@@ -2,223 +2,113 @@ open Syntax
 open Type
 open Value
 
-let find_unop t uop =
+
+(* Unary operators *)
+
+let word_unop fword8 fword16 fword32 fword64 = function
+  | WordT Width8 -> fun v -> Word8V (fword8 (as_word8 v))
+  | WordT Width16 -> fun v -> Word16V (fword16 (as_word16 v))
+  | WordT Width32 -> fun v -> Word32V (fword32 (as_word32 v))
+  | WordT Width64 -> fun v -> Word64V (fword64 (as_word64 v))
+  | _ -> assert false
+
+let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
+  | IntT -> fun v -> IntV (fint (as_int v))
+  | FloatT -> fun v -> FloatV (ffloat (as_float v))
+  | WordT _ as t -> word_unop fword8 fword16 fword32 fword64 t
+  | _ -> assert false
+
+let find_unop t op =
   match t with
   | PrimT p ->
-  begin
-    match uop with
-    | PosOp ->
-      (match p with
-       | IntT -> fun v -> v
-       | FloatT -> fun v -> v
-       | _ -> raise Not_found)
+    (match op with
+    | PosOp -> let id v = v in num_unop id id id id id id p
     | NegOp ->
-      (match p with
-       | IntT -> fun v -> IntV (Int32Rep.neg (as_int v)) (*TBR overflow*)
-       | FloatT -> fun v -> FloatV (Float.neg (as_float v))
-       | _ -> raise Not_found)
+      num_unop Int32.neg (Word8.sub Word8.zero) (Word16.sub Word16.zero) (Word32.sub Word32.zero) (Word64.sub Word64.zero) Float.neg p
     | NotOp ->
-      (match p with
-       | WordT Width8  -> fun v -> let w = as_word8 v in (Word8V (Word8.xor w w))
-       | WordT Width16 -> fun v -> let w = as_word16 v in (Word16V (Word16.xor w w))
-       | WordT Width32 -> fun v -> let w = as_word32 v in (Word32V (Word32.xor w w))
-       | WordT Width64 -> fun v -> let w = as_word64 v in (Word64V (Word64.xor w w))
-       | _ -> raise Not_found)
-  end
+      word_unop (fun w -> Word8.xor w w) (fun w -> Word16.xor w w) (fun w -> Word32.xor w w) (fun w -> Word64.xor w w) p
+    )
   | _ -> raise Not_found
 
-let find_binop t bop =
+
+(* Binary operators *)
+
+let text_binop ftext = function
+  | TextT -> fun v1 v2 -> TextV (ftext (as_text v1) (as_text v2))
+  | _ -> assert false
+
+let word_binop fword8 fword16 fword32 fword64 = function
+  | WordT Width8 -> fun v1 v2 -> Word8V (fword8 (as_word8 v1) (as_word8 v2))
+  | WordT Width16 -> fun v1 v2 -> Word16V (fword16 (as_word16 v1) (as_word16 v2))
+  | WordT Width32 -> fun v1 v2 -> Word32V (fword32 (as_word32 v1) (as_word32 v2))
+  | WordT Width64 -> fun v1 v2 -> Word64V (fword64 (as_word64 v1) (as_word64 v2))
+  | _ -> assert false
+
+let num_binop fnat fint fword8 fword16 fword32 fword64 ffloat = function
+  | NatT -> fun v1 v2 -> NatV (fnat (as_nat v1) (as_nat v2))
+  | IntT -> fun v1 v2 -> IntV (fint (as_int v1) (as_int v2))
+  | FloatT -> fun v1 v2 -> FloatV (ffloat (as_float v1) (as_float v2))
+  | WordT _ as t -> word_binop fword8 fword16 fword32 fword64 t
+  | _ -> assert false
+
+let find_binop t op =
   match t with
   | PrimT p ->
-  begin
-    match bop with
-    | CatOp ->
-      fun v1 v2 -> TextV (as_text v1 ^ as_text v2) (*TBR will ^ work on unicode *)
-    | AddOp ->
-      (match p with
-      | IntT -> fun v1 v2 -> IntV (Int.add (as_int v1) (as_int v2))   (*TBR overflow*)
-      | NatT -> fun v1 v2 -> NatV (Nat.add (as_nat v1) (as_nat v2))  (*TBR overflow*)
-      | FloatT -> fun v1 v2 -> FloatV (Float.add (as_float v1) (as_float v2))
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.add (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.add (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.add (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.add (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | SubOp ->
-      (match p with
-      | IntT -> fun v1 v2 -> IntV (Int.sub (as_int v1) (as_int v2)) (*TBR underflow*)
-      | NatT -> fun v1 v2 -> NatV (Nat.sub (as_nat v1) (as_nat v2))  (*TBR underflow*)
-      | FloatT -> fun v1 v2 -> FloatV (Float.sub (as_float v1) (as_float v2))
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.sub (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.sub (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.sub (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.sub (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | MulOp ->
-      (match p with
-      | IntT -> fun v1 v2 -> IntV (Int.mul (as_int v1) (as_int v2))  (*TBR overflow*)
-      | NatT -> fun v1 v2 -> NatV (Nat.mul (as_nat v1) (as_nat v2))  (*TBR overflow*)
-      | FloatT -> fun v1 v2 -> FloatV (Float.mul (as_float v1) (as_float v2))
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.mul (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.mul (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.mul (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.mul  (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | DivOp ->
-      (match p with
-      | IntT -> fun v1 v2 -> IntV (Int.div_s (as_int v1) (as_int v2))
-      | NatT -> fun v1 v2 -> NatV (Nat.div_u (as_nat v1) (as_nat v2))
-      | FloatT -> fun v1 v2 -> FloatV (Float.div (as_float v1) (as_float v2))
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.div_u (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.div_u (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.div_u (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.div_u  (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | ModOp ->
-      (match p with
-      | IntT -> fun v1 v2 -> IntV (Int.rem_s (as_int v1) (as_int v2))
-      | NatT -> fun v1 v2 -> NatV (Nat.rem_u (as_nat v1) (as_nat v2))
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.rem_u (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.rem_u (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.rem_u (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.rem_u  (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | AndOp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.and_ (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.and_ (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.and_ (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.and_ (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | OrOp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.or_ (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.or_ (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.or_ (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.or_ (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | XorOp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.xor (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.xor (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.xor (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.xor (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | ShiftLOp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.shl (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.shl (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.shl (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.shl (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | ShiftROp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.shr_u (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.shr_u (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.shr_u (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.shr_u (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | RotLOp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.rotl (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.rotl (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.rotl (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.rotl (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-    | RotROp ->
-      (match p with
-      | WordT Width8 ->  fun v1 v2 -> Word8V (Word8.rotr (as_word8 v1) (as_word8 v2))
-      | WordT Width16 -> fun v1 v2 -> Word16V (Word16.rotr (as_word16 v1) (as_word16 v2))
-      | WordT Width32 -> fun v1 v2 -> Word32V (Word32.rotr (as_word32 v1) (as_word32 v2))
-      | WordT Width64 -> fun v1 v2 -> Word64V (Word64.rotr (as_word64 v1) (as_word64 v2))
-      | _ -> raise Not_found)
-  end
+    (match op with
+    | AddOp -> num_binop Nat.add Int.add Word8.add Word16.add Word32.add Word64.add Float.add p
+    | SubOp -> num_binop Nat.sub Int.sub Word8.sub Word16.sub Word32.sub Word64.sub Float.sub p
+    | MulOp -> num_binop Nat.mul Int.mul Word8.mul Word16.mul Word32.mul Word64.mul Float.mul p
+    | DivOp -> num_binop Nat.div_u Int.div_s Word8.div_u Word16.div_u Word32.div_u Word64.div_u Float.div p
+    | ModOp -> num_binop Nat.rem_u Int.rem_s Word8.rem_u Word16.rem_u Word32.rem_u Word64.rem_u Float.div p (* TBR *)
+    | AndOp -> word_binop Word8.and_ Word16.and_ Word32.and_ Word64.and_ p
+    | OrOp  -> word_binop Word8.or_ Word16.or_ Word32.or_ Word64.or_ p
+    | XorOp  -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p
+    | ShiftLOp  -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
+    | ShiftROp  -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
+    | RotLOp  -> word_binop Word8.rotl Word16.rotl Word32.rotl Word64.rotl p
+    | RotROp  -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
+    | CatOp -> text_binop (^) p (*TBR will ^ work on unicode *)
+    )
   | _ -> raise Not_found
 
-let find_relop t rop =
+
+(* Relational operators *)
+
+let word_relop fword8 fword16 fword32 fword64 = function
+  | WordT Width8 -> fun v1 v2 -> BoolV (fword8 (as_word8 v1) (as_word8 v2))
+  | WordT Width16 -> fun v1 v2 -> BoolV (fword16 (as_word16 v1) (as_word16 v2))
+  | WordT Width32 -> fun v1 v2 -> BoolV (fword32 (as_word32 v1) (as_word32 v2))
+  | WordT Width64 -> fun v1 v2 -> BoolV (fword64 (as_word64 v1) (as_word64 v2))
+  | _ -> assert false
+
+let num_relop fnat fint fword8 fword16 fword32 fword64 ffloat = function
+  | NatT -> fun v1 v2 -> BoolV (fnat (as_nat v1) (as_nat v2))
+  | IntT -> fun v1 v2 -> BoolV (fint (as_int v1) (as_int v2))
+  | FloatT -> fun v1 v2 -> BoolV (ffloat (as_float v1) (as_float v2))
+  | WordT _ as t -> word_relop fword8 fword16 fword32 fword64 t
+  | _ -> assert false
+
+let ord_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext = function
+  | CharT -> fun v1 v2 -> BoolV (fchar (as_char v1) (as_char v2))
+  | TextT -> fun v1 v2 -> BoolV (ftext (as_text v1) (as_text v2))
+  | t -> num_relop fnat fint fword8 fword16 fword32 fword64 ffloat t
+
+let eq_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext fnull fbool = function
+  | NullT -> fun v1 v2 -> BoolV (fnull (as_null v1) (as_null v2))
+  | BoolT -> fun v1 v2 -> BoolV (fbool (as_bool v1) (as_bool v2))
+  | t -> ord_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext t
+
+let find_relop t op =
   match t with
-    | PrimT p -> 
-    begin
-      match rop with
-      | EqOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.eq (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 -> BoolV (Nat.eq (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.eq (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.eq (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.eq (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.eq (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.eq (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 = as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 = as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 = as_text v2)
-        | _ -> raise Not_found)
-      | NeqOp ->
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.ne (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 -> BoolV (Nat.ne (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.ne (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.ne (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.ne (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.ne (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.ne (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 <> as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 <> as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 <> as_text v2)
-        | _ -> raise Not_found)
-      | LtOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.lt_s (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 ->  BoolV (Nat.lt_u (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.lt (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.lt_u (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.lt_u (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.lt_u (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.lt_u (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 < as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 < as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 < as_text v2)
-        | _ -> raise Not_found)
-      | LeOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.le_s (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 -> BoolV (Nat.le_u (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.le (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.le_u (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.le_u (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.le_u (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.le_u (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 <= as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 <= as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 <= as_text v2)
-        | _ -> raise Not_found)
-      | GtOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.gt_s (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 -> BoolV (Nat.gt_u (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.gt (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.gt_u (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.gt_u (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.gt_u (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.gt_u (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 > as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 > as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 > as_text v2)
-        | _ -> raise Not_found)
-      | GeOp -> 
-       (match p with
-        | IntT -> fun v1 v2 -> BoolV (Int.ge_s (as_int v1) (as_int v2))
-        | NatT -> fun v1 v2 -> BoolV (Nat.ge_u (as_nat v1) (as_nat v2))
-        | FloatT -> fun v1 v2 -> BoolV (Float.ge (as_float v1) (as_float v2))
-        | WordT Width8 ->  fun v1 v2 -> BoolV (Word8.ge_u  (as_word8 v1) (as_word8 v2))
-        | WordT Width16 -> fun v1 v2 -> BoolV (Word16.ge_u (as_word16 v1) (as_word16 v2))
-        | WordT Width32 -> fun v1 v2 -> BoolV (Word32.ge_u (as_word32 v1) (as_word32 v2))
-        | WordT Width64 -> fun v1 v2 -> BoolV (Word64.ge_u (as_word64 v1) (as_word64 v2))
-        | BoolT -> fun v1 v2 -> BoolV (as_bool v1 >= as_bool v2)
-        | CharT -> fun v1 v2 -> BoolV (as_char v1 >= as_char v2)
-        | TextT -> fun v1 v2 -> BoolV (as_text v1 >= as_text v2)
-        | _ -> raise Not_found)
-    end
+  | PrimT p -> 
+    (match op with
+    | EqOp -> eq_relop Nat.eq Int.eq Word8.eq Word16.eq Word32.eq Word64.eq Float.eq (=) (=) (=) (=) p
+    | NeqOp -> eq_relop Nat.ne Int.ne Word8.ne Word16.ne Word32.ne Word64.ne Float.ne (<>) (<>) (<>) (<>) p
+    | LtOp -> ord_relop Nat.lt_u Int.lt_s Word8.lt_u Word16.lt_u Word32.lt_u Word64.lt_u Float.lt (<) (<) p
+    | GtOp -> ord_relop Nat.gt_u Int.gt_s Word8.gt_u Word16.gt_u Word32.gt_u Word64.gt_u Float.gt (>) (>) p
+    | LeOp -> ord_relop Nat.le_u Int.le_s Word8.le_u Word16.le_u Word32.le_u Word64.le_u Float.le (<=) (<=) p
+    | GeOp -> ord_relop Nat.ge_u Int.ge_s Word8.ge_u Word16.ge_u Word32.ge_u Word64.ge_u Float.ge (>=) (>=) p
+    )
   | _ -> raise Not_found
 
 

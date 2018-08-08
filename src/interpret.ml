@@ -56,8 +56,8 @@ let dotV (ObjV ve) v = Env.find v ve
 let derefV (VarB r) = !r
 let assignV (VarB r) v  = r := v; unitV
 let unrollV = unroll_rec_bind
-let updateV (ArrV a) (IntV i) v  = a.(Int32Rep.to_int i) <- v;unitV (* TBR *)
-let indexV (ArrV a) (IntV i) = a.(Int32Rep.to_int i) (*TBR*)
+let updateV (ArrV a) (IntV i) v  = a.(Int32.to_int i) <- v;unitV (* TBR *)
+let indexV (ArrV a) (IntV i) = a.(Int32.to_int i) (*TBR*)
 let applyV (FuncV f) v k = f v k
 
 let notV (BoolV b) = BoolV (not b)
