@@ -9,9 +9,9 @@ Typechecking bank.as:
  Bank : Int -> Bank/1
  Issuer : () -> Issuer/2
  transfer : (Account/3, Account/3, Int) -> async ()
- Bank/1 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
- Issuer/2 := actor {hasIssued : (like Account/3) -> async Bool}
- Account/3 := actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+ Bank/1 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
+ Issuer/2 <: actor {hasIssued : (like Account/3) -> async Bool}
+ Account/3 <: actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
 
 
 Interpreting bank.as (tracing function calls):
@@ -35,9 +35,9 @@ Typechecking bank_ordered.as:
  Bank : Int -> Bank/3
  Issuer : () -> Issuer/2
  transfer : (Account/1, Account/1, Int) -> async ()
- Account/1 := actor {getBalance : () -> async Int; isCompatible : (like Account/1) -> async Bool; join : Account/1 -> (); split : Int -> async Account/1}
- Issuer/2 := actor {hasIssued : (like Account/1) -> async Bool}
- Bank/3 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/1}
+ Account/1 <: actor {getBalance : () -> async Int; isCompatible : (like Account/1) -> async Bool; join : Account/1 -> (); split : Int -> async Account/1}
+ Issuer/2 <: actor {hasIssued : (like Account/1) -> async Bool}
+ Bank/3 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/1}
 
 
 Interpreting bank_ordered.as (tracing function calls):
@@ -56,7 +56,7 @@ Typechecking control.as:
 
  Control := Control/1
  Control : () -> Control/1
- Control/1 := actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
+ Control/1 <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
 
 
 Interpreting control.as (tracing function calls):
@@ -202,7 +202,7 @@ Typechecking type_equiv.as:
  test5 : <t/37> (A/5<T/3<t/37, Int>>, A/5<T/3<t/37, Bool>>) -> A/5<T/3<t/37, Word8>>
  test6 : <t/38> (A/5<T/3<t/38, Int>>, A/5<T/3<t/38, Bool>>) -> A/5<T/3<t/38, Word8>>
  T/3 = <a/24, b/25> a/24
- A/5 := <t/26> actor {}
+ A/5 <: <t/26> actor {}
 
 
 Interpreting type_equiv.as (tracing function calls):
@@ -230,7 +230,7 @@ Typechecking quicksort.as:
  cmpi : (Int, Int) -> Int
  qs : QS/4<Int>
  array/2 = <t/10> var t/10[]
- QS/4 := <T/11> {quicksort : (array/2<T/11>, Int, Int) -> ()}
+ QS/4 <: <T/11> {quicksort : (array/2<T/11>, Int, Int) -> ()}
 
 
 Interpreting quicksort.as (tracing function calls):
@@ -388,9 +388,9 @@ Typechecking bankex.as:
  show : (Text, Account/3) -> ()
  test : () -> async (Account/3, Account/3)
  transfer : (Account/3, Account/3, Int) -> async ()
- Bank/1 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
- Issuer/2 := actor {hasIssued : (like Account/3) -> async Bool}
- Account/3 := actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+ Bank/1 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
+ Issuer/2 <: actor {hasIssued : (like Account/3) -> async Bool}
+ Account/3 <: actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
 
 
 Interpreting bankex.as (tracing function calls):
@@ -444,7 +444,7 @@ Typechecking counter.as:
  c : Counter/1
  show : Int -> ()
  test : () -> ()
- Counter/1 := actor {dec : () -> (); read : () -> async Int}
+ Counter/1 <: actor {dec : () -> (); read : () -> async Int}
 
 
 Interpreting counter.as (tracing function calls):

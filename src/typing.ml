@@ -130,20 +130,15 @@ let eq_typ (context : context) ty1 ty2 : bool =
     eq context [] ty1 ty2 
 
 
-let rec obj_typ context t =
+let rec structural context t =
   match normalize context.kinds t with
   | VarT (con, ts) ->
     (match Con.Env.find_opt con context.kinds with
-    | Some kind ->
-      (match kind with
-	    | DefK (tbs, t) -> assert false
-	    | ObjK (tbs, actor, fs) -> subst (make_subst ts tbs) (ObjT (actor, fs))
-	    | ParK (tbs, bound) -> t (*TBR ?*)
-      )
+    | Some (DefK (tbs, t) | AbsK (tbs, t)) ->
+	    structural context (subst (make_subst ts tbs) t)
     | None -> assert false
     )
-  | ObjT _ -> t
-  | LikeT t -> normalize context.kinds t (*TBR*)
+  | LikeT t -> structural context t (*TBR*)
   | _ -> t
 
 (* types one can switch on - all primitives except floats *)
@@ -193,10 +188,8 @@ let rec sharable_typ (context : context) (t : typ) : bool =
   match normalize context.kinds t with
   | VarT (c, ts) ->
     (match Con.Env.find_opt c context.kinds with
-    | Some (DefK _) -> assert false
-    | Some (ObjK (tbs, actor, fds)) ->
-      sharable_typ context (subst (make_subst ts tbs) (ObjT (actor, fds))) (* TBR *)
-    | Some (ParK (tbs, bound)) -> false (*TBR: use bound? *)
+    | Some (DefK (tbs, t) | AbsK (tbs, t)) ->
+      sharable_typ context (subst (make_subst ts tbs) t) (* TBR *)
     | None -> assert false
     )
   | PrimT p -> true
@@ -225,7 +218,7 @@ let rec sharable_typ (context : context) (t : typ) : bool =
 
 and sharable_typ_binds context ts =
   let ce = List.fold_left (fun c (bind : Type.typ_bind) -> Env.add (Con.name bind.var) bind.var c) context.constructors ts in
-  let ke = List.fold_left (fun c (bind : Type.typ_bind) -> Con.Env.add bind.var (ParK ([], bind.bound)) c) context.kinds ts in
+  let ke = List.fold_left (fun c (bind : Type.typ_bind) -> Con.Env.add bind.var (AbsK ([], bind.bound)) c) context.kinds ts in
   ce, ke
 
 
@@ -303,7 +296,7 @@ let rec check_typ_binds context ts =
     ) context.constructors ts in
   let ke =
     List.fold_left (fun c (bind : Type.typ_bind) ->
-      Con.Env.add bind.var (ParK ([], bind.bound)) c
+      Con.Env.add bind.var (AbsK ([], bind.bound)) c
     ) context.kinds ts in
   ts, ce, ke
 
@@ -316,16 +309,10 @@ and check_typ context t =
     (match Env.find_opt c.it context.constructors with
     | Some con ->
       (match Con.Env.find_opt con context.kinds with
-      | Some (DefK (bounds, u)) ->
-        check_bounds t.at ts bounds;
+      | Some (DefK (tbs, u) | AbsK (tbs, u)) ->
+        check_bounds t.at ts tbs;
         (* subst ts bounds u ? *)
 	      VarT (con, ts)
-      | Some (ObjK (bounds, actor, ftys)) ->
-        check_bounds t.at ts bounds;
-        VarT(con,ts)
-      | Some (ParK (bounds,bound)) ->
-     	  check_bounds t.at ts bounds;
-        VarT (con, ts)
       | None ->
         kind_error c.at "unbound constructor %s " (Con.to_string con)
       )
@@ -501,7 +488,7 @@ and infer_exp' context e =
     | t -> type_error e.at "expecting tuple type, found %s" (string_of_typ t)
     )
   | DotE (e, v) ->
-    (match obj_typ context (infer_exp context e) with
+    (match structural context (infer_exp context e) with
     | ObjT (a, fts) as t ->
       (try
         let ft = List.find (fun (fts : typ_field) -> fts.var = v.it) fts in
@@ -525,7 +512,7 @@ and infer_exp' context e =
      	  type_error e1.at "unbound mutable identifier %s" v.it
       )
     | DotE (o, v) ->
-      (match obj_typ context (infer_exp context o) with
+      (match structural context (infer_exp context o) with
       | ObjT (a, fts) as t ->
   	    (try
           let ft = List.find (fun (fts : typ_field) -> fts.var = v.it) fts in
@@ -865,7 +852,7 @@ and check_dec' pass context d =
       then Con.fresh v.it
 	    else Lib.Option.value (Env.find_opt v.it context.constructors)
     in
-    let kind0 = ParK (tbs, VarT (con, [])) in  (* dummy abstract type *)
+    let kind0 = AbsK (tbs, VarT (con, [])) in  (* dummy abstract type *)
     let ce0 = Env.singleton v.it con in
     let ke0 = Con.Env.singleton con kind0 in
     if pass = TypDecPass then Env.empty, ce0, ke0 else
@@ -897,7 +884,7 @@ and check_dec' pass context d =
       then Con.fresh v.it
 	    else Lib.Option.value (Env.find_opt v.it context.constructors)
     in
-    let kind0 = ObjK (tbs, a.it, []) in
+    let kind0 = AbsK (tbs, ObjT (a.it, [])) in
     let ce0 = Env.singleton v.it con in
     let ke0 = Con.Env.singleton con kind0 in
     if pass = TypDecPass then Env.empty, ce0, ke0 else
@@ -936,12 +923,12 @@ and check_dec' pass context d =
     let public_fields = List.map (fun (v, (m, p, t)) -> {var = v; typ = t; mut = m}) public_bindings in
     (* reject mutable or non-sharable public actor fields *)
     List.iter (check_typ_field context_ts_v_dom a.at a.it) public_fields;
-    let kind2 = ObjK (tbs, a.it, public_fields) in
+    let kind2 = AbsK (tbs, ObjT (a.it, public_fields)) in
     let ve2, ce2, ke2 = Env.singleton v.it (consT,ConstMut),Env.singleton v.it con, Con.Env.singleton con kind2 in
     if pass = TypDefPass then ve2,ce2,ke2 else
     let _ = assert (pass = ValDefPass) in
     let all_fields = List.map (fun (v, (m, p, t)) -> {var = v; typ = t; mut = m}) bindings in
-    let kind3 = ObjK (tbs, a.it, all_fields) in
+    let kind3 = AbsK (tbs, ObjT (a.it, all_fields)) in
     let field_context =
       add_constructor
         (add_value (union_values context_ts_v_dom private_context) v.it (consT, ConstMut))

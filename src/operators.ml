@@ -62,12 +62,12 @@ let find_binop t op =
     | ModOp -> num_binop Nat.rem_u Int.rem_s Word8.rem_u Word16.rem_u Word32.rem_u Word64.rem_u Float.div p (* TBR *)
     | AndOp -> word_binop Word8.and_ Word16.and_ Word32.and_ Word64.and_ p
     | OrOp  -> word_binop Word8.or_ Word16.or_ Word32.or_ Word64.or_ p
-    | XorOp  -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p
-    | ShiftLOp  -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
-    | ShiftROp  -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
-    | RotLOp  -> word_binop Word8.rotl Word16.rotl Word32.rotl Word64.rotl p
-    | RotROp  -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
-    | CatOp -> text_binop (^) p (*TBR will ^ work on unicode *)
+    | XorOp -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p
+    | ShiftLOp -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
+    | ShiftROp -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
+    | RotLOp -> word_binop Word8.rotl Word16.rotl Word32.rotl Word64.rotl p
+    | RotROp -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
+    | CatOp -> text_binop (^) p
     )
   | _ -> raise Not_found
 

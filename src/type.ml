@@ -41,8 +41,7 @@ and typ_field = {var : string; typ : typ; mut : mut}
 
 type kind =
   | DefK of typ_bind list * typ
-  | ObjK of typ_bind list * actor * typ_field list
-  | ParK of typ_bind list * typ
+  | AbsK of typ_bind list * typ
 
 
 (* Short-hands *)
@@ -121,10 +120,8 @@ and string_of_typ_binds = function
 let string_of_kind = function
   | DefK (tbs, t) ->
     sprintf "= %s%s" (string_of_typ_binds tbs) (string_of_typ t)
-  | ObjK (tbs, actor, fs) -> 
-    sprintf ":= %s%s" (string_of_typ_binds tbs) (string_of_typ (ObjT (actor, fs)))
-  | ParK (tbs, t) -> 
-    sprintf ":: %s%s" (string_of_typ_binds tbs) (string_of_typ t) 
+  | AbsK (tbs, t) -> 
+    sprintf "<: %s%s" (string_of_typ_binds tbs) (string_of_typ t) 
 
 
 (* First-order substitution *)

@@ -41,8 +41,7 @@ and typ_field = {var : string; typ : typ; mut : mut}
 
 type kind =
   | DefK of typ_bind list * typ
-  | ObjK of typ_bind list * actor * typ_field list
-  | ParK of typ_bind list * typ
+  | AbsK of typ_bind list * typ
 
 
 (* Short-hands *)
