@@ -1,15 +1,12 @@
 
 Checking bank.as:
-  Account := Account/3
-  Bank := Bank/1
-  Issuer := Issuer/2
-  Account : Int -> Account/3
-  Bank : Int -> Bank/1
-  Issuer : () -> Issuer/2
-  transfer : (Account/3, Account/3, Int) -> async ()
-  Bank/1 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
-  Issuer/2 <: actor {hasIssued : (like Account/3) -> async Bool}
-  Account/3 <: actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+  type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+  Account : Int -> Account
+  Bank : Int -> Bank
+  Issuer : () -> Issuer
+  transfer : (Account, Account, Int) -> async ()
 
 Interpreting bank.as (tracing function calls):
 
@@ -20,16 +17,13 @@ Final state bank.as:
   transfer = func
 
 Checking bank_ordered.as:
-  Account := Account/1
-  Bank := Bank/3
-  Issuer := Issuer/2
-  Account : Int -> Account/1
-  Bank : Int -> Bank/3
-  Issuer : () -> Issuer/2
-  transfer : (Account/1, Account/1, Int) -> async ()
-  Account/1 <: actor {getBalance : () -> async Int; isCompatible : (like Account/1) -> async Bool; join : Account/1 -> (); split : Int -> async Account/1}
-  Issuer/2 <: actor {hasIssued : (like Account/1) -> async Bool}
-  Bank/3 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/1}
+  type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+  Account : Int -> Account
+  Bank : Int -> Bank
+  Issuer : () -> Issuer
+  transfer : (Account, Account, Int) -> async ()
 
 Interpreting bank_ordered.as (tracing function calls):
 
@@ -40,15 +34,17 @@ Final state bank_ordered.as:
   transfer = func
 
 Checking control.as:
-  Control := Control/1
-  Control : () -> Control/1
-  Control/1 <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
+  type Control <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
+  Control : () -> Control
 
 Interpreting control.as (tracing function calls):
 
 Final state control.as:
   Control = func
+
+Checking literals.as:
 literals.as:3.20-3.27: type error, bad or out-of-range literal for type Word8
+
 Checking numericops.as:
   testFloat : (Float, Float) -> ()
   testInt : (Int, Int) -> ()
@@ -116,22 +112,21 @@ Interpreting concat.as (tracing function calls):
 
 Final state concat.as:
   testText = func
-duplicatefield.as:4.3-4.4: type error, duplicate field mnonlinearpat.as:1.5-1.14: type error, duplicate binding for x in pattern
+
+Checking duplicatefield.as:
+duplicatefield.as:4.3-4.4: type error, duplicate field m
+
+Checking nonlinearpat.as:
+nonlinearpat.as:1.5-1.14: type error, duplicate binding for x in pattern
+
 Checking typedef.as:
-  A := A/12
-  Arrow := Arrow/4
-  B := B/13
-  Compose := Compose/8
-  Id := Id/9
-  IntT := IntT/1
-  Seq := Seq/11
-  IntT/1 = Int
-  Arrow/4 = <T/28, U/29> T/28 -> U/29
-  Compose/8 = <T/30, U/31, V/32> (T/30 -> U/31) -> (U/31 -> V/32) -> T/30 -> V/32
-  Id/9 = <T/33> T/33 -> T/33
-  Seq/11 = <A/34> (A/34, Seq/11<A/34>?)
-  A/12 = (B/13, A/12)
-  B/13 = (A/12, B/13)
+  type A/1 = (B, A/1)
+  type Arrow = <T/8, U/6> T/8 -> U/6
+  type B = (A/1, B)
+  type Compose = <T/9, U/7, V/3> (T/9 -> U/7) -> (U/7 -> V/3) -> T/9 -> V/3
+  type Id = <T/10> T/10 -> T/10
+  type IntT = Int
+  type Seq = <A/4> (A/4, Seq<A/4>?)
 
 Interpreting typedef.as (tracing function calls):
 
@@ -144,14 +139,12 @@ Interpreting type_equiv.as (tracing function calls):
 Final state type_equiv.as:
 
 Checking quicksort.as:
-  QS := QS/4
-  array := array/2
-  QS : <T/11> ((T/11, T/11) -> Int) -> QS/4<T/11>
+  type QS <: <T/4> {quicksort : (array<T/4>, Int, Int) -> ()}
+  type array = <t/3> var t/3[]
+  QS : <T/4> ((T/4, T/4) -> Int) -> QS<T/4>
   a : var Int[]
   cmpi : (Int, Int) -> Int
-  qs : QS/4<Int>
-  array/2 = <t/10> var t/10[]
-  QS/4 <: <T/11> {quicksort : (array/2<T/11>, Int, Int) -> ()}
+  qs : QS<Int>
 
 Interpreting quicksort.as (tracing function calls):
   quicksort([8, 3, 9, 5, 2], 0, 4)
@@ -235,7 +228,7 @@ Final state quicksort.as:
   QS = func
   a = [var 2, 3, 5, 8, 9]
   cmpi = func
-  qs = QS/4<Int>
+  qs = QS<Int>
 
 Checking hoare.as:
   a : var Int[]
@@ -286,20 +279,17 @@ Final state hoare.as:
   x = ()
 
 Checking bankex.as:
-  Account := Account/3
-  Bank := Bank/1
-  Issuer := Issuer/2
-  Account : Int -> Account/3
-  Bank : Int -> Bank/1
-  Issuer : () -> Issuer/2
-  b : Bank/1
-  main : async (Account/3, Account/3)
-  show : (Text, Account/3) -> ()
-  test : () -> async (Account/3, Account/3)
-  transfer : (Account/3, Account/3, Int) -> async ()
-  Bank/1 <: actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/3}
-  Issuer/2 <: actor {hasIssued : (like Account/3) -> async Bool}
-  Account/3 <: actor {getBalance : () -> async Int; isCompatible : (like Account/3) -> async Bool; join : Account/3 -> (); split : Int -> async Account/3}
+  type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+  Account : Int -> Account
+  Bank : Int -> Bank
+  Issuer : () -> Issuer
+  b : Bank
+  main : async (Account, Account)
+  show : (Text, Account) -> ()
+  test : () -> async (Account, Account)
+  transfer : (Account, Account, Int) -> async ()
 
 Interpreting bankex.as (tracing function calls):
   test()
@@ -335,19 +325,18 @@ Final state bankex.as:
   Account = func
   Bank = func
   Issuer = func
-  b = Bank/1
-  main = async (Account/3, Account/3)#0
+  b = Bank
+  main = async (Account, Account)#0
   show = func
   test = func
   transfer = func
 
 Checking counter.as:
-  Counter := Counter/1
-  Counter : Int -> Counter/1
-  c : Counter/1
+  type Counter <: actor {dec : () -> (); read : () -> async Int}
+  Counter : Int -> Counter
+  c : Counter
   show : Int -> ()
   test : () -> ()
-  Counter/1 <: actor {dec : () -> (); read : () -> async Int}
 
 Interpreting counter.as (tracing function calls):
   test()
@@ -395,7 +384,7 @@ Interpreting counter.as (tracing function calls):
 
 Final state counter.as:
   Counter = func
-  c = Counter/1
+  c = Counter
   show = func
   test = func
 

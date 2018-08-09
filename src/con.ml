@@ -1,17 +1,23 @@
 type con = {name : string; stamp : int}
 type t = con
 
-let compare c1 c2 = compare c1.stamp c2.stamp
+module Stamps = Env.Make(String)
 
-let stamp = ref 0
+let stamps : int Stamps.t ref = ref Stamps.empty
 
 let fresh name =
-  stamp := !stamp + 1;
-  {name; stamp = !stamp}
+  let n =
+    match Stamps.find_opt name !stamps with
+    | Some n -> n
+    | None -> 0
+  in
+  stamps := Stamps.add name (n + 1) !stamps;
+  {name; stamp = n}
 
 let name c = c.name
 
-let to_string c = Printf.sprintf "%s/%i" c.name c.stamp
+let to_string c =
+  if c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
 
 
 module Env = Env.Make(struct type t = con let compare = compare end)

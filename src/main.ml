@@ -20,11 +20,11 @@ let main () =
   in
   try
     let prog = Parser.prog token lexer in 
-    let ve, te, ke = Typing.check_prog prog in
     Printf.printf "\nChecking %s:\n" filename;
-    Env.iter (fun v con -> Printf.printf "  %s := %s\n" v (Con.to_string con)) te;
+    let ve, te, ke = Typing.check_prog prog in
+    (* Env.iter (fun v con -> Printf.printf "  type %s := %s\n" v (Con.to_string con)) te; *)
+    Con.Env.iter (fun con k -> Printf.printf "  type %s %s\n" (Con.to_string con) (string_of_kind k)) ke;
     Env.iter (fun v (t, mut) -> Printf.printf "  %s : %s\n" v (string_of_typ t)) ve;
-    Con.Env.iter (fun con k -> Printf.printf "  %s %s\n" (Con.to_string con) (string_of_kind k)) ke;
     let context = Typing.adjoin_cons (Typing.adjoin_typs (Typing.adjoin_vals Typing.empty_context ve) te) ke in
     Printf.printf "\nInterpreting %s (tracing function calls):\n" filename;
     ignore (Interpret.interpret_prog prog (fun dyn_ve ->
@@ -42,23 +42,23 @@ let main () =
   with
   | Lexer.Syntax (r, m) ->
     let r = string_of_region r in
-    Printf.printf "%s: syntax error, %s" r m;
+    Printf.printf "%s: syntax error, %s\n" r m;
   | Parser.Error ->
     let r = string_of_region (Lexer.region lexer) in
-    Printf.printf " %s: syntax error" r;
+    Printf.printf " %s: syntax error\n" r;
   | Typing.TypeError (r, m)  -> 
     let r = string_of_region r in
-    Printf.printf "%s: type error, %s" r m;
+    Printf.printf "%s: type error, %s\n" r m;
   | Typing.KindError (r, m) ->
     let r = string_of_region r in
-    Printf.printf "%s: type error, %s" r m;
+    Printf.printf "%s: type error, %s\n" r m;
   | e ->
      let r = string_of_region !Interpret.last_region in
      let context = !Interpret.last_context in
      let ve = context.Interpret.vals in
      Value.Env.iter (fun v w -> 
     	 Printf.printf "  %s = %s\n" v (Value.debug_string_of_recbind w)) ve;
-     Printf.printf "%s: %s" r
+     Printf.printf "%s: %s\n" r
        (match e with
        | Operator.Overflow -> "arithmetic overflow"
        | _ -> Printexc.to_string e);

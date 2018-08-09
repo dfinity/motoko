@@ -872,7 +872,7 @@ and check_decs_aux pass context ve te ke = function
   | d::ds ->
     let ve1, te1, ke1 = check_dec pass context d in
     check_decs_aux pass (adjoin_cons (adjoin_typs (adjoin_vals context ve1) te1) ke1) (Env.adjoin ve ve1) (Env.adjoin te te1) (Con.Env.adjoin ke ke1) ds
-      
+
 and check_decs context ds =
   (* declare type constructors *)
   let ve0, te0, ke0 = check_decs_aux TypDecPass context Env.empty Env.empty Con.Env.empty ds in
