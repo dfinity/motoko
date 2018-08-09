@@ -293,7 +293,7 @@ exp_post :
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
   | e=exp_post DOT s=NAT
-    { ProjE (e, Value.Nat.of_string s) @? at($symbolstartpos,$endpos) }
+    { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
   | e=exp_post DOT x=var_ref
     { DotE(e, x) @? at($symbolstartpos,$endpos) }
   | e1=exp_post tso=typ_args? e2=exp_nullary

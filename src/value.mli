@@ -12,8 +12,8 @@ module Word32 : Wasm.Int.S with type bits = int32 and type t = Wasm.I32.t
 module Word64 : Wasm.Int.S with type bits = int64 and type t = Wasm.I64.t
 module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : Wasm.Int.S with type t = int32
-module Int : Wasm.Int.S with type t = int32
+module Nat : Wasm.Int.S with type bits = int64 and type t = int64
+module Int : Wasm.Int.S with type bits = int64 and type t = int64
 
 val nat_width : int
 val int_width : int

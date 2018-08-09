@@ -53,12 +53,12 @@ module Word16 = Wasm.Int.Make(Int16Rep)
 module Word32 = Wasm.I32
 module Word64 = Wasm.I64
 
-module Nat = Wasm.Int.Make(Int32Rep)
-module Int = Wasm.Int.Make(Int32Rep)
+module Nat = Wasm.Int.Make(struct include Int64 let bitwidth = 64 end)
+module Int = Wasm.Int.Make(struct include Int64 let bitwidth = 64 end)
 module Float = Wasm.F64
 
-let nat_width = 32
-let int_width = 32
+let nat_width = 64
+let int_width = 64
 
 
 (* Types *)

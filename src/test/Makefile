@@ -23,6 +23,7 @@ all:
 	$(ASC) bankex.as >> result 2>&1
 	$(ASC) counter.as >> result 2>&1
 	$(ASC) testwhile.as >> result 2>&1
+	$(ASC) overflow.as >> result 2>&1
 
 	diff result result.ok
 

@@ -1,10 +1,8 @@
 open Syntax
 open Source
 open Type
-open Typing
 open Printf
 open Value
-open Operators
 
 module Scheduler =
   struct
@@ -62,13 +60,13 @@ let callee_context context ve k_return =
      awaitable = false}
 
 
-let projV (TupV vs) n = List.nth vs (Int32.to_int n)
+let projV (TupV vs) n = List.nth vs n
 let dotV (ObjV ve) v = Env.find v ve
 let derefV (VarB r) = !r
 let assignV (VarB r) v  = r := v; unitV
 let unrollV = unroll_rec_bind
-let updateV (ArrV a) (IntV i) v  = a.(Int32.to_int i) <- v;unitV (* TBR *)
-let indexV (ArrV a) (IntV i) = a.(Int32.to_int i) (*TBR*)
+let updateV (ArrV a) (IntV i) v  = a.(Int64.to_int i) <- v;unitV (* TBR *)
+let indexV (ArrV a) (IntV i) = a.(Int64.to_int i) (*TBR*)
 let applyV (FuncV f) v k = f v k
 
 let notV (BoolV b) = BoolV (not b)
@@ -122,13 +120,13 @@ match e.it with
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> k (Operators.find_unop t1 uop v1))
+   interpret_exp context e1 (fun v1 -> k (Operator.find_unop t1 uop v1))
 | BinE (e1,bop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_binop t1 bop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.find_binop t1 bop v1 v2)))
 | RelE (e1,rop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operators.find_relop t1 rop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.find_relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (TupV vs))
 | ProjE(e1,n) ->
@@ -336,10 +334,10 @@ and define_dec context d k =
       (* TBC: trim callee_context *)
       (define_var context var
         (ValB(FuncV(fun v k ->
-	      if !debug then printf "\n%s%s" var.it (debug_string_of_tuple_val v);
+	      if !debug then printf "  %s%s\n" var.it (debug_string_of_tuple_val v);
               match interpret_pat p v with
               | Some ve ->
-	        let k = if !debug then fun w -> (printf "\n%s%s => %s" var.it (debug_string_of_tuple_val v) (debug_string_of_val w);k w) else k in
+	        let k = if !debug then fun w -> (printf "  %s%s => %s\n" var.it (debug_string_of_tuple_val v) (debug_string_of_val w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern"))));

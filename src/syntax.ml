@@ -110,7 +110,7 @@ and exp' =
   | BinE of exp * binop * exp                  (* binary operator *)
   | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
-  | ProjE of exp * Value.nat                   (* tuple projection *)
+  | ProjE of exp * int                         (* tuple projection *)
   | ObjE of actor * var option * exp_field list (* object *)
   | DotE of exp * var_ref                      (* object projection *)
   | AssignE of exp * exp                       (* assignment *)

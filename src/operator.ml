@@ -3,6 +3,37 @@ open Type
 open Value
 
 
+(* Overflow checks *)
+
+exception Overflow
+
+let add_nat n1 n2 =
+  let n = Nat.add n1 n2 in
+  if Nat.lt_u n n1 then raise Overflow else n
+
+let sub_nat n1 n2 =
+  let n = Nat.sub n1 n2 in
+  if Nat.lt_s n Nat.zero then raise Overflow else n
+
+let mul_nat n1 n2 =
+  let n = Nat.mul n1 n2 in
+  if n1 <> Nat.zero && Nat.div_u n n1 <> n2 then raise Overflow else n
+
+let add_int i1 i2 =
+  let i = Int.add i1 i2 in
+  if (if Int.ge_s i2 Int.zero then Int.lt_s i i1 else Int.gt_s i i1)
+  then raise Overflow else i
+
+let sub_int i1 i2 =
+  let i = Int.sub i1 i2 in
+  if (if Int.lt_s i2 Int.zero then Int.lt_s i i1 else Int.gt_s i i1)
+  then raise Overflow else i
+
+let mul_int i1 i2 =
+  let i = Int.mul i1 i2 in
+  if i1 <> Int.zero && Int.div_s i i1 <> i2 then raise Overflow else i
+
+
 (* Unary operators *)
 
 let word_unop fword8 fword16 fword32 fword64 = function
@@ -24,7 +55,7 @@ let find_unop t op =
     (match op with
     | PosOp -> let id v = v in num_unop id id id id id id p
     | NegOp ->
-      num_unop Int32.neg (Word8.sub Word8.zero) (Word16.sub Word16.zero) (Word32.sub Word32.zero) (Word64.sub Word64.zero) Float.neg p
+      num_unop Int64.neg (Word8.sub Word8.zero) (Word16.sub Word16.zero) (Word32.sub Word32.zero) (Word64.sub Word64.zero) Float.neg p
     | NotOp ->
       word_unop (fun w -> Word8.xor w w) (fun w -> Word16.xor w w) (fun w -> Word32.xor w w) (fun w -> Word64.xor w w) p
     )
@@ -55,9 +86,9 @@ let find_binop t op =
   match t with
   | PrimT p ->
     (match op with
-    | AddOp -> num_binop Nat.add Int.add Word8.add Word16.add Word32.add Word64.add Float.add p
-    | SubOp -> num_binop Nat.sub Int.sub Word8.sub Word16.sub Word32.sub Word64.sub Float.sub p
-    | MulOp -> num_binop Nat.mul Int.mul Word8.mul Word16.mul Word32.mul Word64.mul Float.mul p
+    | AddOp -> num_binop add_nat add_int Word8.add Word16.add Word32.add Word64.add Float.add p
+    | SubOp -> num_binop sub_nat sub_int Word8.sub Word16.sub Word32.sub Word64.sub Float.sub p
+    | MulOp -> num_binop mul_nat mul_int Word8.mul Word16.mul Word32.mul Word64.mul Float.mul p
     | DivOp -> num_binop Nat.div_u Int.div_s Word8.div_u Word16.div_u Word32.div_u Word64.div_u Float.div p
     | ModOp -> num_binop Nat.rem_u Int.rem_s Word8.rem_u Word16.rem_u Word32.rem_u Word64.rem_u Float.div p (* TBR *)
     | AndOp -> word_binop Word8.and_ Word16.and_ Word32.and_ Word64.and_ p
