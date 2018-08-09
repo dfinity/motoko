@@ -241,9 +241,10 @@ rule token = parse
   | "]" { RBRACKET }
   | "{" { LCURLY }
   | "}" { RCURLY }
-  | ":" { COLON }
   | ";" { SEMICOLON }
   | "," { COMMA }
+  | ":" { COLON }
+  | "<:" { SUB }
   | "." { DOT }
   | "?" { QUEST }
   | "=" { EQ }

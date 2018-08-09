@@ -14,4 +14,4 @@ let name c = c.name
 let to_string c = Printf.sprintf "%s/%i" c.name c.stamp
 
 
-module Env = Map.Make(struct type t = con let compare = compare end)
+module Env = Env.Make(struct type t = con let compare = compare end)

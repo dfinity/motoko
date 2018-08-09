@@ -1,13 +1,9 @@
-open Source
-open Type
 open Printf
 (*TBR*)
 
 (* Environments *)
 
-module Env = Map.Make(String) 
-
-let union env1 env2 = Env.union (fun k v1 v2 -> Some v2) env1 env2
+module Env = Env.Make(String) 
 
 
 (* Numeric Representations *)
@@ -170,8 +166,8 @@ let unroll_rec_bind = function
 (* Pretty Printing *)
 
 let string_of_mut = function
-  | ConstMut -> ""
-  | VarMut -> "var "
+  | Type.ConstMut -> ""
+  | Type.VarMut -> "var "
 
 let rec string_of_val_nullary kindenv t v =
   match Type.normalize kindenv t with
@@ -191,7 +187,7 @@ let rec string_of_val_nullary kindenv t v =
   | VarT (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)
-      (String.concat ", " (List.map string_of_typ ts))
+      (String.concat ", " (List.map Type.string_of_typ ts))
   | TupT ts ->
     let vs = as_tup v in
     sprintf "(%s)"
@@ -204,12 +200,12 @@ let rec string_of_val_nullary kindenv t v =
   | ObjT (Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {var; mut; typ} ->
-        let b = unroll_rec_bind (Env.find var ve) in
+      (String.concat "; " (List.map (fun {Type.lab; mut; typ} ->
+        let b = unroll_rec_bind (Env.find lab ve) in
         let v = match mut with
           | VarMut -> !(as_var_bind b)
           | ConstMut -> as_val_bind b
-        in sprintf "%s%s = %s" (string_of_mut mut) var (string_of_val kindenv typ v)
+        in sprintf "%s%s = %s" (string_of_mut mut) lab (string_of_val kindenv typ v)
       ) fs))
   | FuncT _ ->
     ignore (as_func v); (* catch errors *)
@@ -234,7 +230,7 @@ and string_of_val kindenv t v =
       )
       (List.length waiters)
   | LikeT t -> 
-    sprintf "like %s" (string_of_typ t) (* TBR *)
+    sprintf "like %s" (Type.string_of_typ t) (* TBR *)
   | ObjT (Actor, fs) ->
     sprintf "actor %s" (string_of_val_nullary kindenv (ObjT (Object,fs)) v)
   | _ -> string_of_val_nullary kindenv t v

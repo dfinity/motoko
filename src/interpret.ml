@@ -28,24 +28,35 @@ let debug = ref true
 
 exception Trap of Source.region * string
 
-type context = {values: recbinding Env.t; constructors: con Env.t; kinds: kind Con.Env.t; labels: cont Env.t; returns: cont option; awaitable: bool}
+type context =
+  {
+    vals : recbinding Env.t;
+    typs : con Env.t;
+    cons : kind Con.Env.t;
+    labels : cont Env.t;
+    returns : cont option;
+    awaitable : bool
+  }
 
-let union_values c ve = {c with values = union c.values ve}
+let adjoin_vals c ve = {c with vals = Env.adjoin c.vals ve}
 
-let prelude = {values = Env.empty;
-               constructors = Env.empty;
-               kinds = Con.Env.empty;
-               labels = Env.empty;
-               returns = None;
-               awaitable = false}
+let empty_context =
+  {
+    vals = Env.empty;
+    typs = Env.empty;
+    cons = Con.Env.empty;
+    labels = Env.empty;
+    returns = None;
+    awaitable = false
+  }
 
-let last_context = ref prelude
+let last_context = ref empty_context
 let last_region = ref Source.no_region
 
 let callee_context context ve k_return =
-    {values = union context.values ve;
-     constructors = Env.empty; (*TBR*)
-     kinds = Con.Env.empty;    (*TBR*)
+    {vals = Env.adjoin context.vals ve;
+     typs = Env.empty; (*TBR*)
+     cons = Con.Env.empty;    (*TBR*)
      labels = Env.empty; 
      returns =  Some k_return;
      awaitable = false}
@@ -105,8 +116,8 @@ and interpret_exp' context e k =
 match e.it with
 | VarE x ->
     (match x.note with
-     | VarMut -> k (derefV (unrollV (Env.find x.it context.values)))
-     | ConstMut -> k (as_val_bind (unrollV (Env.find x.it context.values))))
+     | VarMut -> k (derefV (unrollV (Env.find x.it context.vals)))
+     | ConstMut -> k (as_val_bind (unrollV (Env.find x.it context.vals))))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
@@ -134,7 +145,7 @@ match e.it with
     begin
     match e1.it with
     | VarE v ->
-      let v1 = unrollV (Env.find v.it context.values) in
+      let v1 = unrollV (Env.find v.it context.vals) in
       interpret_exp context e2 (fun v2 ->
       k (assignV v1 v2))
     | DotE(e,v) ->
@@ -218,9 +229,7 @@ match e.it with
                           List.iter queue runnables; 
                           unitV
   in      
-  let context = {values = context.values;
-                 constructors = context.constructors;
-                 kinds = context.kinds;
+  let context = {context with
                  labels = Env.empty;
                  returns = Some k_return; 
                  awaitable = true}
@@ -256,7 +265,7 @@ and interpret_cases context cs v k  =
   | [] -> failwith "match_cases"
   | {it={pat=p;exp=e};at}::cs ->
     match interpret_pat p v with
-    | Some ve -> interpret_exp (union_values context ve) e k
+    | Some ve -> interpret_exp (adjoin_vals context ve) e k
     | None -> interpret_cases context cs v k
     
 and interpret_block context es k =
@@ -265,7 +274,7 @@ and interpret_block context es k =
   | {it = DecE d;at}::es ->
     interpret_decs context [d] (fun ve ->
     (* TBR: we currently evaluate decs sequentially, not recursively *)
-    interpret_block  (union_values context ve) es k) 
+    interpret_block  (adjoin_vals context ve) es k) 
   | [e] -> interpret_exp context e k
   | e::es ->
      interpret_exp context e (fun v ->
@@ -289,11 +298,11 @@ and declare_dec context d =
 and declare_decs context ve ds =
     match ds with
     | [] -> ve
-    | d::ds' -> declare_decs context (union ve (declare_dec context d)) ds'
+    | d::ds' -> declare_decs context (Env.adjoin ve (declare_dec context d)) ds'
 
 and interpret_decs context ds k =
     let ve = declare_decs context Env.empty ds in
-    define_decs (union_values context ve) ds
+    define_decs (adjoin_vals context ve) ds
     (fun () -> k ve)
 
 and define_decs context decs k =
@@ -304,7 +313,7 @@ and define_decs context decs k =
      define_decs context decs k)
 
 and define_var context var v =
-    match as_rec_bind (Env.find var.it context.values) with
+    match as_rec_bind (Env.find var.it context.vals) with
     | {definition = Some _} -> failwith "duplicated definition"
     | recursive -> recursive.definition <- Some v
     
@@ -340,7 +349,7 @@ and define_dec context d k =
         (ValB(FuncV(fun v k ->
               match interpret_pat p v with
               | None -> failwith "unexpected refuted pattern";
-              | Some ve -> let context = union_values context ve in
+              | Some ve -> let context = adjoin_vals context ve in
                            let rec declare_members private_ve public_ve efs =
                                      match efs with
                                      | [] -> (private_ve,public_ve)
@@ -354,7 +363,7 @@ and define_dec context d k =
                             let rec define_members efs =
                                      match efs with
 				     | {it={var;mut;priv;exp;}}::efs ->
-				        let private_context = union_values context private_ve in
+				        let private_context = adjoin_vals context private_ve in
                                         interpret_exp private_context exp (fun v ->
 					let v = expand a.it priv.it mut.it exp.note v in 
                                         let defn = match mut.it with
@@ -396,7 +405,7 @@ and declare_pats context ve ps =
    | [] -> ve
    | p::ps ->
      let ve' = declare_pat context p in
-     declare_pats context (union ve ve') ps
+     declare_pats context (Env.adjoin ve ve') ps
 
 and declare_pat context p =
    match p.it with
@@ -466,7 +475,7 @@ and interpret_pats ve ps vs =
        match interpret_pat p v with 
        | None -> None
        | Some ve' ->
-         interpret_pats (union ve ve') ps vs
+         interpret_pats (Env.adjoin ve ve') ps vs
      end  
    | [],vs -> failwith "Wrong:match_pats"
    | vs,[] -> failwith "Wrong:match_pats"
@@ -474,13 +483,4 @@ and interpret_pats ve ps vs =
 
 let interpret_prog p k =
     let k' = fun v -> (run();k(v)) in
-    interpret_decs prelude p.it k'
-
-     
-
-    
-
-
-
-
-
+    interpret_decs empty_context p.it k'

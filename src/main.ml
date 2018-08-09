@@ -19,13 +19,13 @@ let main () =
     in
     (try
       let prog = Parser.prog token lexer in 
-      let ve, ce, ke = Typing.check_prog prog in
+      let ve, te, ke = Typing.check_prog prog in
       Printf.printf "\n\nTypechecking %s:\n" filename;
-      Env.iter (fun v con -> Printf.printf "\n %s := %s" v (Con.to_string con)) ce;
+      Env.iter (fun v con -> Printf.printf "\n %s := %s" v (Con.to_string con)) te;
       Env.iter (fun v (t,mut) -> Printf.printf "\n %s : %s" v (string_of_typ t)) ve;
       Con.Env.iter (fun (con:con) k -> Printf.printf "\n %s %s" (Con.to_string con) (string_of_kind k)) ke;
       print_newline();
-      let context = Typing.union_kinds (Typing.union_constructors (Typing.union_values Typing.empty_context ve) ce) ke in
+      let context = Typing.adjoin_cons (Typing.adjoin_typs (Typing.adjoin_vals Typing.empty_context ve) te) ke in
       Printf.printf "\n\nInterpreting %s (tracing function calls):\n" filename;
       let _ = Interpret.interpret_prog prog (fun dyn_ve ->
 				Printf.printf "\n\nFinal state %s:\n" filename;
@@ -36,7 +36,7 @@ let main () =
 						| ConstMut -> Value.as_val_bind w
 						| VarMut -> !(Value.as_var_bind w)
 					in
-          Printf.printf "\n %s = %s" v (Value.string_of_val context.kinds t w)
+          Printf.printf "\n %s = %s" v (Value.string_of_val context.cons t w)
         ) ve;
         print_newline();
 			  Value.unitV
@@ -59,7 +59,7 @@ let main () =
     | e ->
        let r = string_of_region (!Interpret.last_region) in
        let context = !Interpret.last_context in
-       let ve = context.Interpret.values in
+       let ve = context.Interpret.vals in
        Value.Env.iter (fun v w -> 
       	         Printf.printf "\n %s = %s" v (Value.debug_string_of_recbind w)) ve;
        Printf.printf "region: %s \n exception %s:"  r (Printexc.to_string e));
@@ -67,8 +67,6 @@ let main () =
     ;
     print_newline();
     close_in is
-       
-
-let() = main()
 
 
+let () = main ()

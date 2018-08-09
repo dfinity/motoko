@@ -21,9 +21,7 @@ val int_width : int
 
 (* Environment *)
 
-module Env : Map.S with type key = string
-
-val union : 'a Env.t -> 'a Env.t -> 'a Env.t
+module Env : Env.S with type key = string
 
 
 (* Types *)

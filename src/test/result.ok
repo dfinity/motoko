@@ -191,18 +191,6 @@ Final state typedef.as:
 
 Typechecking type_equiv.as:
 
- A := A/5
- T := T/3
- A : <t/26> () -> A/5<t/26>
- test0 : (T/3<Int, Bool>, T/3<Int, Nat>) -> T/3<Int, Word8>
- test1 : (<t/27> t/27 -> t/27, <u/28> u/28 -> u/28) -> <c/29> c/29 -> c/29
- test2 : (<t/30, u/31> t/30 -> u/31, <t/32, u/33> t/32 -> u/33) -> <t/34, u/35> t/34 -> u/35
- test3 : (A/5<Int>, A/5<Int>) -> A/5<Int>
- test4 : <t/36> (A/5<t/36>, A/5<t/36>) -> A/5<t/36>
- test5 : <t/37> (A/5<T/3<t/37, Int>>, A/5<T/3<t/37, Bool>>) -> A/5<T/3<t/37, Word8>>
- test6 : <t/38> (A/5<T/3<t/38, Int>>, A/5<T/3<t/38, Bool>>) -> A/5<T/3<t/38, Word8>>
- T/3 = <a/24, b/25> a/24
- A/5 <: <t/26> actor {}
 
 
 Interpreting type_equiv.as (tracing function calls):
@@ -210,14 +198,6 @@ Interpreting type_equiv.as (tracing function calls):
 
 Final state type_equiv.as:
 
- A = func
- test0 = func
- test1 = func
- test2 = func
- test3 = func
- test4 = func
- test5 = func
- test6 = func
 
 
 

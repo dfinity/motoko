@@ -64,7 +64,7 @@ let (@!) x region = {it = x; at = region; note = Type.ConstMut}
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE
-%token SEMICOLON COLON COMMA DOT QUEST
+%token SEMICOLON COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP
@@ -206,9 +206,10 @@ typ_field :
       {var = x; typ = t; mut = Type.ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) }
 
 typ_bind :
+  | x=id SUB t=typ
+    { {var = x; bound = t} @@ at($symbolstartpos,$endpos) }
   | x=id
     { {var = x; bound = AnyT @@ at($symbolstartpos,$endpos)} @@ at($symbolstartpos,$endpos) }
-// | ID :> typ 
 
 
 

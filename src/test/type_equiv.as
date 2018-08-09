@@ -1,21 +1,134 @@
-type T<a,b> = a;
+// Object Types
 
-actor class A<t>() {};
+{
+type A = {x : Int};
+type B = {x : Int};
+func f(x : A) : A = x : B;
+};
 
-func test0(a : T<Int, Bool>, b : T<Int, Nat>) : T<Int, Word8> = (if true a else b) : Int;
+{
+type A = {x : Int; y : Bool};
+type B = {y : Bool; x : Int};
+func f(x : A) : A = x : B;
+};
 
-func test1(a : <t> t->t, b : <u> u->u) : <c> c->c = if true a else b;
 
-func test2(a : <t, u> t->u, b : <t, u> t->u) : <t, u> t->u = if true a else b;
+// Function Types
 
-func test3(a : A<Int>, b : A<Int>) : A<Int> = if true a else b;
+{
+type A = (Int, Bool) -> (Word8, Float);
+type B = (Int, Bool) -> (Word8, Float);
+func f(x : A) : A = x : B;
+};
 
-func test4<t>(a : A<t>, b : A<t>) : A<t> = if true a else b;
+{
+type A = <X> X -> X;
+type B = <Y> Y -> Y;
+func f(x : A) : A = x : B;
+};
 
-func test5<t>(a : A<(T<t, Int>)>, b : A<(T<t, Bool>)>) : A<(T<t, Word8>)> = if true a else b;
+{
+type A = <X, Y> X -> Y;
+type B = <Y, X> Y -> X;
+func f(x : A) : A = x : B;
+};
 
-func test6<t>(a : A<T<t, Int>>, b : A<T<t, Bool>>) : A<T<t, Word8>> = if true a else b;
 
-// func wrong7<t, u>(a : A<t>, b : A<u>) : A<t> = if true then a else b;
+// Type Abbreviations
 
-// func test3(a : <t,u> t->u, b : <t, u> u->t) : <t, u> t->u = if true then a else b;
+{
+type T<X, Y> = X;
+type A = T<Int, Bool>;
+type B = T<Int, Nat>;
+func f(x : A) : A = x : B;
+};
+
+
+// Classes
+
+{
+class C<X>() {};
+type A = C<Int>;
+type B = C<Int>;
+func f(x : A) : A = x : B;
+};
+
+{
+class C<X, Y>() {};
+type A<X> = C<X, Int>;
+type B<X> = C<X, Int>;
+func f<X>(x : A<X>) : A<X> = x : B<X>;
+};
+
+{
+class C<X>() {};
+type T<X, Y> = X;
+type A<X> = C<T<X, Int>>;
+type B<X> = C<T<X, Bool>>;
+func f<X>(x : A<X>) : A<X> = x : B<X>;
+};
+
+
+// Bounds
+
+{
+type A = <X <: Int, Y <: {}> X -> Y;
+type B = <X <: Int, Y <: {}> X -> Y;
+func f(x : A) : A = x : B;
+};
+
+{
+type T<X, Y> = X;
+type A = <X <: Int, Y <: Int> X -> Y;
+type B = <X <: Int, Y <: T<Int, Bool>> X -> Y;
+func f(x : A) : A = x : B;
+};
+
+/* TBR: Dependent bounds don't work yet
+{
+type T<X, Y> = X;
+type A = <X <: Int, Y <: X> X -> Y;
+type B = <X <: Int, Y <: T<X, Int>> X -> Y;
+func f(x : A) : A = x : B;
+};
+*/
+
+
+// Recursion
+
+/* TBR: Should this work? It's fine coinductively.
+{
+type A = A;
+type B = B;
+func f(x : A) : A = x : B;
+};
+*/
+
+{
+type A = {x : A};
+type B = {x : B};
+func f(x : A) : A = x : B;
+};
+
+/* TBR: Forward references don't work yet.
+{
+type A = {x : B};
+type B = {x : A};
+func f(x : A) : A = x : B;
+};
+*/
+
+{
+type A0 = {x : A0};
+type A = {x : A0};
+type B = {x : B};
+func f(x : A) : A = x : B;
+};
+
+/* TBR: WTF, why does this seg-fault???
+{
+type A = {x : {x : A}};
+type B = {x : B};
+func f(x : A) : A = x : B;
+};
+*/
