@@ -66,21 +66,17 @@ let int_width = 64
 
 (* Types *)
 
-type nat = Nat.t
 type unicode = int32
-
-type word =
-  | Word8 of Word8.t
-  | Word16 of Word16.t
-  | Word32 of Word32.t
-  | Word64 of Word64.t
 
 type value =
   | Null 
   | Bool of bool
   | Nat of Nat.t
   | Int of Int.t
-  | Word of word
+  | Word8 of Word8.t
+  | Word16 of Word16.t
+  | Word32 of Word32.t
+  | Word64 of Word64.t
   | Float of Float.t
   | Char of unicode
   | Text of string
@@ -115,10 +111,10 @@ let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
 let as_nat = function Nat n -> n | _ -> invalid "as_nat"
 let as_int = function Int n -> n | _ -> invalid "as_int"
-let as_word8 = function Word (Word8 w) -> w | _ -> invalid "as_word8"
-let as_word16 = function Word (Word16 w) -> w | _ -> invalid "as_word16"
-let as_word32 = function Word (Word32 w) -> w | _ -> invalid "as_word32"
-let as_word64 = function Word (Word64 w) -> w | _ -> invalid "as_word64"
+let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
+let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
+let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
+let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
@@ -152,10 +148,10 @@ let rec string_of_val_nullary conenv t v =
   | T.Prim T.Float -> Float.to_string (as_float v)
   | T.Prim T.Nat -> Nat.to_string_u (as_nat v)
   | T.Prim T.Char -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
-  | T.Prim (T.Word T.Width8) -> Word8.to_string_u (as_word8 v)
-  | T.Prim (T.Word T.Width16) -> Word16.to_string_u (as_word16 v)
-  | T.Prim (T.Word T.Width32) -> Word32.to_string_u (as_word32 v)
-  | T.Prim (T.Word T.Width64) -> Word64.to_string_u (as_word64 v)
+  | T.Prim T.Word8 -> Word8.to_string_u (as_word8 v)
+  | T.Prim T.Word16 -> Word16.to_string_u (as_word16 v)
+  | T.Prim T.Word32 -> Word32.to_string_u (as_word32 v)
+  | T.Prim T.Word64 -> Word64.to_string_u (as_word64 v)
   | T.Prim T.Text -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
   | T.Var (c, []) -> Con.to_string c
   | T.Var (c, ts) ->
@@ -217,10 +213,10 @@ let rec debug_string_of_val_nullary = function
   | Bool b -> if b then "true" else "false"
   | Nat n -> Nat.to_string_u n
   | Int i -> Int.to_string_s i
-  | Word (Word8 w) -> Word8.to_string_u w
-  | Word (Word16 w) -> Word16.to_string_u w
-  | Word (Word32 w) -> Word32.to_string_u w
-  | Word (Word64 w) -> Word64.to_string_u w
+  | Word8 w -> Word8.to_string_u w
+  | Word16 w -> Word16.to_string_u w
+  | Word32 w -> Word32.to_string_u w
+  | Word64 w -> Word64.to_string_u w
   | Float f -> Float.to_string f
   | Char d -> sprintf "'\\u%lx'" d (* TBR *)
   | Text t -> "\"" ^ String.escaped t ^ "\"" (* TBR *)

@@ -4,18 +4,15 @@ type con = Con.t
 type mut = Const | Mut
 type actor = Object | Actor
 
-type width =
-  | Width8
-  | Width16
-  | Width32
-  | Width64
-
 type prim =
   | Null
   | Bool
   | Nat
   | Int
-  | Word of width
+  | Word8
+  | Word16
+  | Word32
+  | Word64
   | Float
   | Char
   | Text
@@ -63,19 +60,16 @@ let string_of_mut = function
   | Const -> ""
   | Mut -> "var "
 
-let string_of_width = function
-  | Width8 -> "8"
-  | Width16 -> "16"
-  | Width32 -> "32"
-  | Width64 -> "64"
-
 let string_of_prim = function
   | Null -> "Null"
   | Int -> "Int"
   | Bool -> "Bool"
   | Float -> "Float"
   | Nat -> "Nat"
-  | Word w -> "Word" ^ string_of_width w
+  | Word8 -> "Word8"
+  | Word16 -> "Word16"
+  | Word32 -> "Word32"
+  | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
 

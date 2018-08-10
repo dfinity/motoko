@@ -94,10 +94,10 @@ let rec interpret_lit context rl =
     | BoolLit b -> V.Bool b
     | NatLit n -> V.Nat n
     | IntLit i -> V.Int i
-    | WordLit (V.Word8 w) -> V.Word (V.Word8 w)
-    | WordLit (V.Word16 w) -> V.Word (V.Word16 w)
-    | WordLit (V.Word32 w) -> V.Word (V.Word32 w)
-    | WordLit (V.Word64 w) -> V.Word (V.Word64 w)
+    | Word8Lit w -> V.Word8 w
+    | Word16Lit w -> V.Word16 w
+    | Word32Lit w -> V.Word32 w
+    | Word64Lit w -> V.Word64 w
     | FloatLit f -> V.Float f
     | CharLit c -> V.Char c
     | TextLit s -> V.Text s
@@ -451,10 +451,10 @@ and match_lit p v rl =
     | BoolLit b -> V.as_bool v = b
     | NatLit n -> V.as_nat v = n 
     | IntLit i -> V.as_int v = i
-    | WordLit (V.Word8 w) -> V.as_word8 v = w
-    | WordLit (V.Word16 w) -> V.as_word16 v = w
-    | WordLit (V.Word32 w) -> V.as_word32 v = w
-    | WordLit (V.Word64 w) -> V.as_word64 v = w
+    | Word8Lit w -> V.as_word8 v = w
+    | Word16Lit w -> V.as_word16 v = w
+    | Word32Lit w -> V.as_word32 v = w
+    | Word64Lit w -> V.as_word64 v = w
     | FloatLit f -> V.as_float v = f
     | CharLit c -> V.as_char v = c
     | TextLit s -> V.as_text v = s

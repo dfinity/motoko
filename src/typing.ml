@@ -74,22 +74,22 @@ let disjoint_add_typ at c con = disjoint_union_typs at c (T.Env.singleton v con)
 (*
 let is_num_typ context t =
   match T.normalize context.cons t with
-  | T.Prim (T.Nat | T.Int | T.Word _ | T.Float) -> true
+  | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float) -> true
   | _ -> false
 
 let is_bit_typ context t =
   match T.normalize context.cons t  with
-  | T.Prim (T.Word _) -> true
+  | T.Prim (T.Word8 | T.Word16 | T.Word32 | T.Word64) -> true
   | _ -> false
 
 let is_ord_typ context t =
   match T.normalize context.cons t with
-  | T.Prim (T.Nat | T.Int | T.Word _ | T.Float | T.Text | T.Char) -> true
+  | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
   | _ -> false
 
 let is_eq_typ context t =
   match T.normalize context.cons t with
-  | T.Prim (T.Bool | T.Nat | T.Int | T.Word _ | T.Float | T.Text | T.Char) -> true
+  | T.Prim (T.Bool | T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
     (* TBR do we really want = and != on floats ?*)
   | _ -> false
 *)
@@ -252,10 +252,10 @@ let check_lit_val p f at s =
 
 let check_nat = check_lit_val T.Nat Value.Nat.of_string_u
 let check_int = check_lit_val T.Int Value.Int.of_string_s
-let check_word8 = check_lit_val (T.Word T.Width8) Value.Word8.of_string_u
-let check_word16 = check_lit_val (T.Word T.Width16) Value.Word16.of_string_u
-let check_word32 = check_lit_val (T.Word T.Width32) Value.Word32.of_string_u
-let check_word64 = check_lit_val (T.Word T.Width64) Value.Word64.of_string_u
+let check_word8 = check_lit_val T.Word8 Value.Word8.of_string_u
+let check_word16 = check_lit_val T.Word16 Value.Word16.of_string_u
+let check_word32 = check_lit_val T.Word32 Value.Word32.of_string_u
+let check_word64 = check_lit_val T.Word64 Value.Word64.of_string_u
 
 (* begin sanity test *)
 
@@ -295,10 +295,10 @@ let infer_lit context rl =
   | BoolLit _ -> T.Prim T.Bool
   | NatLit _ -> T.Prim T.Nat
   | IntLit _ -> T.Prim T.Int
-  | WordLit (Value.Word8 _) -> T.Prim (T.Word T.Width8)
-  | WordLit (Value.Word16 _) -> T.Prim (T.Word T.Width16)
-  | WordLit (Value.Word32 _) -> T.Prim (T.Word T.Width32)
-  | WordLit (Value.Word64 _) -> T.Prim (T.Word T.Width64)
+  | Word8Lit _ -> T.Prim T.Word8
+  | Word16Lit _ -> T.Prim T.Word16
+  | Word32Lit _ -> T.Prim T.Word32
+  | Word64Lit _ -> T.Prim T.Word64
   | FloatLit _ -> T.Prim T.Float
   | CharLit _ -> T.Prim T.Char
   | TextLit _ -> T.Prim T.Text
@@ -311,28 +311,17 @@ let rec check_lit at context t rl =
   | T.Prim T.Null, NullLit
   | T.Prim T.Nat, NatLit _
   | T.Prim T.Int, IntLit _
-  | T.Prim (T.Word T.Width8), WordLit (Value.Word8 _)
-  | T.Prim (T.Word T.Width16), WordLit (Value.Word16 _)
-  | T.Prim (T.Word T.Width32), WordLit (Value.Word32 _)
-  | T.Prim (T.Word T.Width64), WordLit (Value.Word64 _) -> ()
-  | T.Prim T.Nat, PreLit s ->
-    let v = check_nat at s in 
-    rl := NatLit v 
-  | T.Prim T.Int, PreLit s ->
-    let v = check_int at s in
-    rl := IntLit v
-  | T.Prim (T.Word T.Width8), PreLit s ->
-    let v = check_word8 at s in
-    rl := WordLit (Value.Word8 v ) 
-  | T.Prim (T.Word T.Width16), PreLit s ->
-    let v = check_word16 at s in
-    rl := WordLit (Value.Word16 v)
-  | T.Prim (T.Word T.Width32), PreLit s ->
-    let v = check_word32 at s in
-    rl := WordLit (Value.Word32 v)
-  | T.Prim (T.Word T.Width64), PreLit s ->
-    let v = check_word64 at s in
-    rl := WordLit (Value.Word64 v)
+  | T.Prim T.Word8, Word8Lit _
+  | T.Prim T.Word16, Word16Lit _
+  | T.Prim T.Word32, Word32Lit _
+  | T.Prim T.Word64, Word64Lit _
+  | T.Prim T.Float, FloatLit _ -> ()
+  | T.Prim T.Nat, PreLit s -> rl := NatLit (check_nat at s)
+  | T.Prim T.Int, PreLit s -> rl := IntLit (check_int at s)
+  | T.Prim T.Word8, PreLit s -> rl := Word8Lit (check_word8 at s)
+  | T.Prim T.Word16, PreLit s -> rl := Word16Lit (check_word16 at s)
+  | T.Prim T.Word32, PreLit s -> rl := Word32Lit (check_word32 at s)
+  | T.Prim T.Word64, PreLit s -> rl := Word64Lit (check_word64 at s)
   | T.Prim _, _ ->
     let u = infer_lit context rl in
     if not (T.eq context.cons t u) then

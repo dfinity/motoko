@@ -4,18 +4,15 @@ type con = Con.t
 type mut = Const | Mut
 type actor = Object | Actor
 
-type width =
-  | Width8
-  | Width16
-  | Width32
-  | Width64
-
 type prim =
   | Null
   | Bool
   | Nat
   | Int
-  | Word of width
+  | Word8
+  | Word16
+  | Word32
+  | Word64
   | Float
   | Char
   | Text
@@ -79,7 +76,6 @@ module Env : Env.S with type key = string
 (* Pretty printing *)
 
 val string_of_mut : mut -> string
-val string_of_width : width -> string
 val string_of_prim : prim -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string

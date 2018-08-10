@@ -332,10 +332,10 @@ rule token = parse
   | "Float" { PRIM Type.Float }
   | "Null" { PRIM Type.Null }
   | "Text"  { PRIM Type.Text }
-  | "Word8"  { PRIM (Type.Word Type.Width8) }
-  | "Word16"  { PRIM (Type.Word Type.Width16) }
-  | "Word32"  { PRIM (Type.Word Type.Width32) }
-  | "Word64"  { PRIM (Type.Word Type.Width64) }
+  | "Word8"  { PRIM Type.Word8 }
+  | "Word16"  { PRIM Type.Word16 }
+  | "Word32"  { PRIM Type.Word32 }
+  | "Word64"  { PRIM Type.Word64 }
   
   | id as s { ID s }
   | "//"utf8_no_nl*eof { EOF }

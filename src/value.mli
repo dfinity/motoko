@@ -26,21 +26,17 @@ module Env : Env.S with type key = string
 
 (* Types *)
 
-type nat = Nat.t
 type unicode = int32
-
-type word =
-  | Word8 of Word8.t
-  | Word16 of Word16.t
-  | Word32 of Word32.t
-  | Word64 of Word64.t
 
 type value =
   | Null
   | Bool of bool
   | Nat of Nat.t
   | Int of Int.t
-  | Word of word
+  | Word8 of Word8.t
+  | Word16 of Word16.t
+  | Word32 of Word32.t
+  | Word64 of Word64.t
   | Float of Float.t
   | Char of unicode
   | Text of string
