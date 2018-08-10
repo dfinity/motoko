@@ -1,6 +1,9 @@
 open Printf
 (*TBR*)
 
+module T = Type
+
+
 (* Environments *)
 
 module Env = Env.Make(String) 
@@ -73,93 +76,64 @@ type word =
   | Word64 of Word64.t
 
 type value =
-  | NullV 
-  | BoolV of bool
-  | NatV of Nat.t
-  | IntV of Int.t
-  | Word8V of Word8.t
-  | Word16V of Word16.t
-  | Word32V of Word32.t
-  | Word64V of Word64.t
-  | FloatV of Float.t
-  | CharV of unicode
-  | TextV of string
-  | TupV of value list
-  | ObjV of recbinding Env.t
-  | ArrV of value array
-  | OptV of value option (* TBR *)
-  | FuncV of (value -> cont -> value)
-  | AsyncV of async
+  | Null 
+  | Bool of bool
+  | Nat of Nat.t
+  | Int of Int.t
+  | Word of word
+  | Float of Float.t
+  | Char of unicode
+  | Text of string
+  | Tup of value list
+  | Obj of recbinding Env.t
+  | Array of value array
+  | Opt of value option (* TBR *)
+  | Func of (value -> cont -> value)
+  | Async of async
 
 and async = {mutable result: value option; mutable waiters : cont list}
 
 and cont = value -> value
 
 and binding = 
-  | ValB of value
-  | VarB of value ref
+  | Val of value
+  | Var of value ref
 and recursive = {mutable definition : binding option}
 and recbinding =
-  | RecR of recursive
+  | Rec of recursive
 (*TBR: we could statically distinguish lambda-pat bound variables from other bindings to avoid
        the unnessary indirection and definedness check for references to lambda-bound variables, in which
     case we could add:
-  | ValR of value 
+  | Val of value 
 *)
 
-(*
-let nullV = NullV
-let boolV b = BoolV b
-let natV n = NatV n
-let intV n = IntV n
-let word8V w = Word8V w
-let word16V w = Word16V w
-let word32V w = Word32V w
-let word64V w = Word64V w
-let floatV f = FloatV f
-let charV c = CharV c
-let textV s = TextV s
-let arrV a = ArrV a
-let tupV vs = TupV vs
-let objV ve = ObjV ve
-let optV vo = OptV vo
-let funcV f = FuncV f
-let asyncV async = AsyncV async
-*)
-
-let unitV = TupV []
+let unit = Tup []
 
 let invalid s = raise (Invalid_argument s)
 
-let as_null = function NullV -> () | _ -> invalid "as_null"
-let as_bool = function BoolV b -> b | _ -> invalid "as_bool"
-let as_nat = function NatV n -> n | _ -> invalid "as_nat"
-let as_int = function IntV n -> n | _ -> invalid "as_int"
-let as_word8 = function Word8V w -> w | _ -> invalid "as_word8"
-let as_word16 = function Word16V w -> w | _ -> invalid "as_word16"
-let as_word32 = function Word32V w -> w | _ -> invalid "as_word32"
-let as_word64 = function Word64V w -> w | _ -> invalid "as_word64"
-let as_float = function FloatV f -> f | _ -> invalid "as_float"
-let as_char = function CharV c -> c | _ -> invalid "as_char"
-let as_text = function TextV s -> s | _ -> invalid "as_text"
-let as_arr = function ArrV a -> a | _ -> invalid "as_arr"
-let as_tup = function TupV vs -> vs | _ -> invalid "as_tup"
-let as_obj = function ObjV ve -> ve | _ -> invalid "as_obj"
-let as_opt = function OptV vo -> vo | _ -> invalid "as_opt"
-let as_func = function FuncV f -> f | _ -> invalid "as_func"
-let as_async = function AsyncV a -> a | _ -> invalid "as_async"
+let as_null = function Null -> () | _ -> invalid "as_null"
+let as_bool = function Bool b -> b | _ -> invalid "as_bool"
+let as_nat = function Nat n -> n | _ -> invalid "as_nat"
+let as_int = function Int n -> n | _ -> invalid "as_int"
+let as_word8 = function Word (Word8 w) -> w | _ -> invalid "as_word8"
+let as_word16 = function Word (Word16 w) -> w | _ -> invalid "as_word16"
+let as_word32 = function Word (Word32 w) -> w | _ -> invalid "as_word32"
+let as_word64 = function Word (Word64 w) -> w | _ -> invalid "as_word64"
+let as_float = function Float f -> f | _ -> invalid "as_float"
+let as_char = function Char c -> c | _ -> invalid "as_char"
+let as_text = function Text s -> s | _ -> invalid "as_text"
+let as_array = function Array a -> a | _ -> invalid "as_array"
+let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
+let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
+let as_opt = function Opt vo -> vo | _ -> invalid "as_opt"
+let as_func = function Func f -> f | _ -> invalid "as_func"
+let as_async = function Async a -> a | _ -> invalid "as_async"
 
-
-(*
-let varB r = VarB r
-let valB v = ValB v
-let recR d = RecR {definition = d} 
-*)
-let as_var_bind = function VarB r -> r | _ -> invalid "as_var_bind"
-let as_val_bind = function ValB v -> v | _ -> invalid "as_val_bind"
-let as_rec_bind = function RecR r -> r (*| _ -> invalid "as_rec_bind"*)
+let as_var_bind = function Var r -> r | _ -> invalid "as_var_bind"
+let as_val_bind = function Val v -> v | _ -> invalid "as_val_bind"
+let as_rec_bind = function Rec r -> r (*| _ -> invalid "as_rec_bind"*)
 let unroll_rec_bind = function
-  | RecR {definition = Some v} -> v
+  | Rec {definition = Some v} -> v
   | _ -> failwith "BlackHole" (* TBR *)
 
 
@@ -170,44 +144,42 @@ let string_of_mut = function
   | Type.Mut -> "var "
 
 let rec string_of_val_nullary conenv t v =
-  let module ValueEnv = Env in
-  let open Type in
-  match Type.normalize conenv t with
-  | Any -> "any"
-  | Prim Null -> as_null v; "null"
-  | Prim Int ->  Int.to_string_s (as_int v)
-  | Prim Bool -> if as_bool v then "true" else "false"
-  | Prim Float -> Float.to_string (as_float v)
-  | Prim Nat -> Nat.to_string_u (as_nat v)
-  | Prim Char -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
-  | Prim (Word Width8) -> Word8.to_string_u (as_word8 v)
-  | Prim (Word Width16) -> Word16.to_string_u (as_word16 v)
-  | Prim (Word Width32) -> Word32.to_string_u (as_word32 v)
-  | Prim (Word Width64) -> Word64.to_string_u (as_word64 v)
-  | Prim Text -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
-  | Var (c, []) -> Con.to_string c
-  | Var (c, ts) ->
+  match T.normalize conenv t with
+  | T.Any -> "any"
+  | T.Prim T.Null -> as_null v; "null"
+  | T.Prim T.Int ->  Int.to_string_s (as_int v)
+  | T.Prim T.Bool -> if as_bool v then "true" else "false"
+  | T.Prim T.Float -> Float.to_string (as_float v)
+  | T.Prim T.Nat -> Nat.to_string_u (as_nat v)
+  | T.Prim T.Char -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
+  | T.Prim (T.Word T.Width8) -> Word8.to_string_u (as_word8 v)
+  | T.Prim (T.Word T.Width16) -> Word16.to_string_u (as_word16 v)
+  | T.Prim (T.Word T.Width32) -> Word32.to_string_u (as_word32 v)
+  | T.Prim (T.Word T.Width64) -> Word64.to_string_u (as_word64 v)
+  | T.Prim T.Text -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
+  | T.Var (c, []) -> Con.to_string c
+  | T.Var (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)
-      (String.concat ", " (List.map Type.string_of_typ ts))
-  | Tup ts ->
+      (String.concat ", " (List.map T.string_of_typ ts))
+  | T.Tup ts ->
     let vs = as_tup v in
     sprintf "(%s)"
       (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
-  | Array (m, t) ->
-    let a = as_arr v in
+  | T.Array (m, t) ->
+    let a = as_array v in
     sprintf "[%s%s]"
       (string_of_mut m)
       (String.concat ", " (List.map (string_of_val conenv t) (Array.to_list a)))
-  | Obj (Object, fs) ->
+  | T.Obj (T.Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {lab; mut; typ} ->
-        let b = unroll_rec_bind (ValueEnv.find lab ve) in
+      (String.concat "; " (List.map (fun {T.lab; mut; typ} ->
+        let b = unroll_rec_bind (Env.find lab ve) in
         let v = match mut with
-          | Mut -> !(as_var_bind b)
-          | Const -> as_val_bind b
-        in sprintf "%s%s = %s" (string_of_mut mut) lab (string_of_val conenv typ v)
+          | T.Mut -> !(as_var_bind b)
+          | T.Const -> as_val_bind b
+        in sprintf "%s%s = %s" (T.string_of_mut mut) lab (string_of_val conenv typ v)
       ) fs))
   | Func _ ->
     ignore (as_func v); (* catch errors *)
@@ -216,15 +188,14 @@ let rec string_of_val_nullary conenv t v =
     sprintf "(%s)" (string_of_val conenv t v)
 
 and string_of_val conenv t v =
-  let open Type in
   match Type.normalize conenv t with
-  | Opt t ->
+  | T.Opt t ->
     let v = as_opt v in
     (match v with
     | None -> "null"
     | Some v -> string_of_val conenv t v
     )
-  | Async t ->
+  | T.Async t ->
     let {result; waiters} = as_async v in
     sprintf "async %s#%i"
       (match result with
@@ -232,47 +203,47 @@ and string_of_val conenv t v =
       | Some v -> string_of_val_nullary conenv t v
       )
       (List.length waiters)
-  | Like t -> 
-    sprintf "like %s" (Type.string_of_typ t) (* TBR *)
-  | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_val_nullary conenv (Obj (Object, fs)) v)
+  | T.Like t -> 
+    sprintf "like %s" (T.string_of_typ t) (* TBR *)
+  | T.Obj (T.Actor, fs) ->
+    sprintf "actor %s" (string_of_val_nullary conenv (T.Obj (T.Object, fs)) v)
   | _ -> string_of_val_nullary conenv t v
 
 
 (* Debug pretty printing *)
 
 let rec debug_string_of_val_nullary = function
-  | NullV  -> "null"
-  | BoolV b -> if b then "true" else "false"
-  | NatV n -> Nat.to_string_u n
-  | IntV i -> Int.to_string_s i
-  | Word8V w -> Word8.to_string_u w
-  | Word16V w -> Word16.to_string_u w
-  | Word32V w -> Word32.to_string_u w
-  | Word64V w -> Word64.to_string_u w
-  | FloatV f -> Float.to_string f
-  | CharV d -> sprintf "'\\u%lx'" d (* TBR *)
-  | TextV t -> "\"" ^ String.escaped t ^ "\"" (* TBR *)
-  | TupV vs ->
+  | Null  -> "null"
+  | Bool b -> if b then "true" else "false"
+  | Nat n -> Nat.to_string_u n
+  | Int i -> Int.to_string_s i
+  | Word (Word8 w) -> Word8.to_string_u w
+  | Word (Word16 w) -> Word16.to_string_u w
+  | Word (Word32 w) -> Word32.to_string_u w
+  | Word (Word64 w) -> Word64.to_string_u w
+  | Float f -> Float.to_string f
+  | Char d -> sprintf "'\\u%lx'" d (* TBR *)
+  | Text t -> "\"" ^ String.escaped t ^ "\"" (* TBR *)
+  | Tup vs ->
     sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
-  | ObjV ve ->
+  | Obj ve ->
     sprintf "{%s}" (String.concat "; " (List.map (fun (v, w) ->
   	  sprintf "%s = %s" v (debug_string_of_recbind w)) (Env.bindings ve)))
-  | ArrV a ->
+  | Array a ->
     sprintf "[%s]"
       (String.concat ", " (List.map debug_string_of_val (Array.to_list a)))
-  | OptV o ->
+  | Opt o ->
     (match o with
     | None -> "null"
     | Some v -> debug_string_of_val_nullary v
     )
-  | FuncV f -> "func"
+  | Func f -> "func"
   | v -> "(" ^ debug_string_of_val v ^ ")"
 
 and debug_string_of_val = function
-  | OptV None -> "null"
-  | OptV (Some v) -> debug_string_of_val v
-  | AsyncV {result; waiters} ->
+  | Opt None -> "null"
+  | Opt (Some v) -> debug_string_of_val v
+  | Async {result; waiters} ->
     sprintf "async %s#%i"
       (match result with
       | None -> "?"
@@ -282,19 +253,18 @@ and debug_string_of_val = function
   | v -> debug_string_of_val_nullary v
 
 and debug_string_of_bind = function
-  | VarB r -> 
+  | Var r -> 
     (*sprintf "Var (%s)"*) (debug_string_of_val !r) (*TBR show address ?*) 
-  | ValB v ->
+  | Val v ->
     debug_string_of_val v
 
 and debug_string_of_recbind = function
-  | RecR {definition = Some bind} -> 
+  | Rec {definition = Some bind} -> 
     (*sprintf "Rec (%s)"*) (debug_string_of_bind bind) 
-  | RecR {definition = None} -> 
+  | Rec {definition = None} -> 
     "Rec (?)" 
 
 
 let debug_string_of_tuple_val = function
-  | TupV _ as v -> debug_string_of_val v
+  | Tup _ as v -> debug_string_of_val v
   | v -> "(" ^ debug_string_of_val v ^ ")"
-

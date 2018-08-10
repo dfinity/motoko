@@ -36,43 +36,35 @@ type word =
   | Word64 of Word64.t
 
 type value =
-  | NullV
-  | BoolV of bool
-  | NatV of Nat.t
-  | IntV of Int.t
-  | Word8V of Word8.t
-  | Word16V of Word16.t
-  | Word32V of Word32.t
-  | Word64V of Word64.t
-  | FloatV of Float.t
-  | CharV of unicode
-  | TextV of string
-  | TupV of value list
-  | ObjV of recbinding Env.t
-  | ArrV of value array
-  | OptV of value option (* TBR *)
-  | FuncV of (value -> cont -> value)
-  | AsyncV of async
+  | Null
+  | Bool of bool
+  | Nat of Nat.t
+  | Int of Int.t
+  | Word of word
+  | Float of Float.t
+  | Char of unicode
+  | Text of string
+  | Tup of value list
+  | Obj of recbinding Env.t
+  | Array of value array
+  | Opt of value option (* TBR *)
+  | Func of (value -> cont -> value)
+  | Async of async
 
 and async = {mutable result: value option; mutable waiters : cont list}
 
 and cont = value -> value
 
 and binding = 
-  | ValB of value
-  | VarB of value ref
+  | Val of value
+  | Var of value ref
 and recursive = {mutable definition : binding option}
-and recbinding = RecR of recursive
-(*TBR: we could statically distinguish lambda-pat bound variables from other bindings to avoid
-       the unnessary indirection and definedness check for references to lambda-bound variables, in which
-    case we could add:
-    | ValR of value 
-*)
+and recbinding = Rec of recursive
 
 
 (* Projections *)
 
-val unitV : value
+val unit : value
 
 val as_null : value -> unit
 val as_bool : value -> bool
@@ -85,7 +77,7 @@ val as_word64 : value -> Word64.t
 val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string
-val as_arr : value -> value array
+val as_array : value -> value array
 val as_tup : value -> value list
 val as_obj : value -> recbinding Env.t
 val as_opt : value -> value option

@@ -33,7 +33,7 @@ let main () =
 					| Type.Mut -> !(Value.as_var_bind w)
 				in Printf.printf "  %s = %s\n" v (Value.string_of_val context.cons t w)
       ) ve;
-		  Value.unitV
+		  Value.unit
     ))
   with
   | Lexer.Syntax (r, m) ->
