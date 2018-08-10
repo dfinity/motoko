@@ -1,6 +1,5 @@
 open Syntax
 open Source
-open Type
 open Printf
 open Value
 
@@ -29,8 +28,8 @@ exception Trap of Source.region * string
 type context =
   {
     vals : recbinding Env.t;
-    typs : con Env.t;
-    cons : kind Con.Env.t;
+    typs : Type.con Env.t;
+    cons : Type.kind Con.Env.t;
     labels : cont Env.t;
     returns : cont option;
     awaitable : bool
@@ -65,8 +64,8 @@ let dotV (ObjV ve) v = Env.find v ve
 let derefV (VarB r) = !r
 let assignV (VarB r) v  = r := v; unitV
 let unrollV = unroll_rec_bind
-let updateV (ArrV a) (IntV i) v  = a.(Int64.to_int i) <- v;unitV (* TBR *)
-let indexV (ArrV a) (IntV i) = a.(Int64.to_int i) (*TBR*)
+let updateV (ArrV a) (NatV i) v  = a.(Int64.to_int i) <- v;unitV (* TBR *)
+let indexV (ArrV a) (NatV i) = a.(Int64.to_int i) (*TBR*)
 let applyV (FuncV f) v k = f v k
 
 let notV (BoolV b) = BoolV (not b)
@@ -114,8 +113,8 @@ and interpret_exp' context e k =
 match e.it with
 | VarE x ->
     (match x.note with
-     | VarMut -> k (derefV (unrollV (Env.find x.it context.vals)))
-     | ConstMut -> k (as_val_bind (unrollV (Env.find x.it context.vals))))
+     | Mut -> k (derefV (unrollV (Env.find x.it context.vals)))
+     | Const -> k (as_val_bind (unrollV (Env.find x.it context.vals))))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
@@ -136,8 +135,8 @@ match e.it with
     let it = v.it in
     interpret_exp context e1 (fun v1 ->
     k (match mut with
-       | VarMut -> (derefV (unrollV (dotV v1 it)))
-       | ConstMut -> (as_val_bind (unrollV (dotV v1 it))))
+       | Mut -> (derefV (unrollV (dotV v1 it)))
+       | Const -> (as_val_bind (unrollV (dotV v1 it))))
     )
 | AssignE(e1,e2) ->
     begin
@@ -168,7 +167,7 @@ match e.it with
     interpret_exp context e2 (fun v2 ->
     applyV v1 v2 k))
 | BlockE es ->
-    interpret_block context es k
+    interpret_block_local context es k
 | NotE(e1) ->
     interpret_exp context e1 (fun v -> k (notV v))
 | AndE(e1,e2) ->
@@ -250,13 +249,13 @@ match e.it with
   failwith "NYI:IsE"
 | AnnotE(e,t) ->
   interpret_exp context e k
-| DecE ({it=FuncD(v,_,_,_,_)} as d) ->
-  interpret_decs context [d] (fun ve ->
+| DecE {it=FuncD(v,_,_,_,_)} ->
+  interpret_block context [e] (fun ve ->
   (match Env.find_opt v.it ve with
   | Some w -> k (as_val_bind (unrollV w))
   | None -> failwith "interpret_exp decE"))
-| DecE d ->
-  interpret_decs context [d] (fun ve ->  k unitV)
+| DecE _ ->
+  interpret_block context [e] (fun ve ->  k unitV)
     
 and interpret_cases context cs v k  =
   match cs with
@@ -266,17 +265,17 @@ and interpret_cases context cs v k  =
     | Some ve -> interpret_exp (adjoin_vals context ve) e k
     | None -> interpret_cases context cs v k
     
-and interpret_block context es k =
+and interpret_block_local context es k =
   match es with
   | [] -> k unitV
-  | {it = DecE d;at}::es ->
-    interpret_decs context [d] (fun ve ->
+  | ({it = DecE d; _} as e)::es ->
+    interpret_block context [e] (fun ve ->
     (* TBR: we currently evaluate decs sequentially, not recursively *)
-    interpret_block  (adjoin_vals context ve) es k) 
+    interpret_block_local  (adjoin_vals context ve) es k) 
   | [e] -> interpret_exp context e k
   | e::es ->
      interpret_exp context e (fun v ->
-     interpret_block context es k)
+     interpret_block_local context es k)
 
 and declare_dec context d =     
     match d.it with
@@ -293,22 +292,30 @@ and declare_dec context d =
     | ClassD(a,v,ts,p,efs) ->
        Env.singleton v.it (RecR {definition = None})
 
-and declare_decs context ve ds =
-    match ds with
+and declare_block context ve es =
+    match es with
     | [] -> ve
-    | d::ds' -> declare_decs context (Env.adjoin ve (declare_dec context d)) ds'
+    | e::es' ->
+      let ve' =
+        match e.it with
+        | DecE d -> Env.adjoin ve (declare_dec context d)
+        | _ -> ve
+      in declare_block context ve' es'
 
-and interpret_decs context ds k =
-    let ve = declare_decs context Env.empty ds in
-    define_decs (adjoin_vals context ve) ds
+and interpret_block context es k =
+    let ve = declare_block context Env.empty es in
+    define_block (adjoin_vals context ve) es
     (fun () -> k ve)
 
-and define_decs context decs k =
-    match decs with
+and define_block context es k =
+    match es with
     | [] -> k()
-    | dec::decs ->
-     define_dec context dec (fun () ->
-     define_decs context decs k)
+    | e::es' ->
+      let d =
+        match e.it with
+        | DecE d -> d
+        | _ -> LetD (WildP @@e.at, e) @@ e.at
+      in define_dec context d (fun () -> define_block context es' k)
 
 and define_var context var v =
     match as_rec_bind (Env.find var.it context.vals) with
@@ -365,8 +372,8 @@ and define_dec context d k =
                                         interpret_exp private_context exp (fun v ->
 					let v = expand a.it priv.it mut.it exp.note v in 
                                         let defn = match mut.it with
-                                                   | ConstMut -> ValB v
-                                                   | VarMut -> VarB (ref v)
+                                                   | Const -> ValB v
+                                                   | Mut -> VarB (ref v)
                                         in
                                           define_var private_context var defn;
                                           define_members efs)
@@ -378,11 +385,11 @@ and define_dec context d k =
        
 and expand actor priv mut t v =
     match (actor,priv,mut,t) with
-    | Actor,Public,ConstMut,FuncT(_,_,TupT[]) ->
+    | Type.Actor, Public, Type.Const, Type.Func (_, _, Type.Tup []) ->
       let f = as_func v in
       FuncV (fun w k -> queue(fun () -> f w (fun a->a));
                         k unitV)
-    | Actor,Public,ConstMut,FuncT(_,_,AsyncT(_)) ->
+    | Type.Actor, Public, Type.Const, Type.Func (_, _, Type.Async _) ->
       let f = as_func v in
       FuncV (fun w k ->
       	     let async = {result=None;waiters=[]} in
@@ -481,4 +488,4 @@ and interpret_pats ve ps vs =
 
 let interpret_prog p k =
     let k' = fun v -> (run();k(v)) in
-    interpret_decs empty_context p.it k'
+    interpret_block empty_context p.it k'

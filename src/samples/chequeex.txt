@@ -1,74 +1,64 @@
 
-
-Typechecking chequeex.as:
-
- Account := Account/4
- Bank := Bank/1
- Cheque := Cheque/3
- Issuer := Issuer/2
- Account : Int -> Account/4
- Bank : Int -> Bank/1
- Cheque : (Int, Account/4) -> Cheque/3
- Issuer : () -> Issuer/2
- bank : Bank/1
- main : async (Account/4, Account/4)
- show : (Text, Account/4) -> ()
- showBalance : (Text, Int) -> ()
- test : () -> async (Account/4, Account/4)
- transfer : (Account/4, Account/4, Int) -> async ()
- Bank/1 := actor {getIssuer : () -> async Issuer/2; getReserve : () -> async Account/4}
- Issuer/2 := actor {hasIssued : (like Account/4) -> async Bool}
- Cheque/3 := actor {deposit : () -> ()}
- Account/4 := actor {credit : Int -> (); deposit : Cheque/3 -> (); getBalance : () -> async Int; invoice : (Int, Account/4) -> async Cheque/3; isCompatible : (like Account/4) -> async Bool; join : Account/4 -> (); split : Int -> async Account/4}
-
+Checking chequeex.as:
+  type Account <: actor {credit : Int -> (); deposit : Cheque -> (); getBalance : () -> async Int; invoice : (Int, Account) -> async Cheque; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+  type Cheque <: actor {deposit : () -> ()}
+  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+  Account : Int -> Account
+  Bank : Int -> Bank
+  Cheque : (Int, Account) -> Cheque
+  Issuer : () -> Issuer
+  bank : Bank
+  main : async (Account, Account)
+  show : (Text, Account) -> ()
+  showBalance : (Text, Int) -> ()
+  test : () -> async (Account, Account)
+  transfer : (Account, Account, Int) -> async ()
 
 Interpreting chequeex.as (tracing function calls):
-
-test()
-test() => async ?#0
-getReserve()
-getReserve() => async ?#0
-split(10)
-split(10) => async ?#0
-split(10)
-split(10) => async ?#0
-show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
-show("a1", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-show("a1", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
-show("a2", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-show("a2", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
-transfer({balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, 5)
-transfer({balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, 5) => async ?#0
-invoice(5, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-invoice(5, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => async ?#0
-deposit({current = 5; deposit = func})
-deposit({current = 5; deposit = func}) => ()
-show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
-deposit()
-deposit() => ()
-getBalance()
-getBalance() => async ?#0
-credit(5)
-credit(5) => ()
-showBalance("b1", 5)
-showBalance("b1", 5) => ()
-getBalance()
-getBalance() => async ?#0
-showBalance("b2", 15)
-showBalance("b2", 15) => ()
+  test()
+  test() => async ?#0
+  getReserve()
+  getReserve() => async ?#0
+  split(10)
+  split(10) => async ?#0
+  split(10)
+  split(10) => async ?#0
+  show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
+  show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
+  show("a1", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
+  show("a1", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
+  show("a2", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
+  show("a2", {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
+  transfer({balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, 5)
+  transfer({balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, 5) => async ?#0
+  invoice(5, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
+  invoice(5, {balance = 10; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => async ?#0
+  deposit({current = 5; deposit = func})
+  deposit({current = 5; deposit = func}) => ()
+  show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
+  show("reserve", {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}) => ()
+  deposit()
+  deposit() => ()
+  getBalance()
+  getBalance() => async ?#0
+  credit(5)
+  credit(5) => ()
+  showBalance("b1", 5)
+  showBalance("b1", 5) => ()
+  getBalance()
+  getBalance() => async ?#0
+  showBalance("b2", 15)
+  showBalance("b2", 15) => ()
 
 Final state chequeex.as:
-
- Account = func
- Bank = func
- Cheque = func
- Issuer = func
- bank = Bank/1
- main = async (Account/4, Account/4)#0
- show = func
- showBalance = func
- test = func
- transfer = func
-
+  Account = func
+  Bank = func
+  Cheque = func
+  Issuer = func
+  bank = Bank
+  main = async (Account, Account)#0
+  show = func
+  showBalance = func
+  test = func
+  transfer = func

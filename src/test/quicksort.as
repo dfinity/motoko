@@ -1,7 +1,5 @@
-type array<t> = var t[];
-
 class QS<T>(cmp : (T, T) -> Int) {
-  quicksort(a : array<T>, lo : Int, hi : Int) {
+  quicksort(a : var T[], lo : Nat, hi : Nat) {
    	if (lo < hi) {
       let p = partition(a, lo, hi);
 	    quicksort(a, lo, p);
@@ -9,7 +7,7 @@ class QS<T>(cmp : (T, T) -> Int) {
 	  }
   };
 
-  private swap(a : array<T>, i : Int, j : Int) {
+  private swap(a : var T[], i : Nat, j : Nat) {
     let temp = a[i];
     a[i] := a[j];
     a[j] := temp;
@@ -17,19 +15,20 @@ class QS<T>(cmp : (T, T) -> Int) {
 
   private trace<T>(v : T) {};
    
-  private partition(a : array<T>, lo : Int, hi : Int) : Int {
-    trace<array<T>>(a);
+  private partition(a : var T[], lo : Nat, hi : Nat) : Nat {
+    trace<var T[]>(a);
     let pivot = a[lo];
-    var i : Int = lo - 1;
-    var j : Int = hi + 1;
-    loop {
-      loop {
-        i += 1;
-      } while (cmp(a[i], pivot) < 0);
+    var i : Nat = lo;
+    var j : Nat = hi;
 
-      loop {
+    loop {
+      while (cmp(a[i], pivot) < 0) {
+        i += 1;
+      };
+
+      while (cmp(a[j], pivot) > 0) {
         j -= 1;
-      } while (cmp(a[j], pivot) > 0);
+      };
 
       if (i >= j) return j;
 
@@ -44,4 +43,4 @@ let qs = QS<Int>(cmpi);
 
 let a = [var 8, 3, 9, 5, 2];
 
-let _ = qs.quicksort(a, 0, 4);
+qs.quicksort(a, 0, 4);

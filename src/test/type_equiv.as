@@ -84,14 +84,12 @@ type B = <X <: Int, Y <: T<Int, Bool>> X -> Y;
 func f(x : A) : A = x : B;
 };
 
-/* TBR: Dependent bounds don't work yet
 {
 type T<X, Y> = X;
 type A = <X <: Int, Y <: X> X -> Y;
 type B = <X <: Int, Y <: T<X, Int>> X -> Y;
 func f(x : A) : A = x : B;
 };
-*/
 
 
 // Recursion

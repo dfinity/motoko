@@ -164,4 +164,4 @@ and dec' =
 (* Program *)
 
 type prog = prog' Source.phrase
-and prog' = dec list
+and prog' = exp list

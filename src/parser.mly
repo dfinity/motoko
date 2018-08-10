@@ -52,8 +52,8 @@ let name s at =
 
 *)
 
-let (@?) x region = {it = x; at = region; note = Type.AnyT}
-let (@!) x region = {it = x; at = region; note = Type.ConstMut}
+let (@?) x region = {it = x; at = region; note = Type.Any}
+let (@!) x region = {it = x; at = region; note = Type.Const}
 
 %}
 
@@ -134,11 +134,11 @@ seplist(X, SEP) :
   | id=ID { id @! at($symbolstartpos,$endpos) }
 
 %inline var :
-  | VAR { Type.VarMut @@ at($symbolstartpos,$endpos) }
+  | VAR { Type.Mut @@ at($symbolstartpos,$endpos) }
 
 %inline var_opt :
-  | (* empty *) { Type.ConstMut @@ at($symbolstartpos,$endpos) }
-  | VAR { Type.VarMut @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Type.Const @@ at($symbolstartpos,$endpos) }
+  | VAR { Type.Mut @@ at($symbolstartpos,$endpos) }
 
 %inline actor_opt :
   | (* empty *) { Type.Object @@ at($symbolstartpos,$endpos) }
@@ -167,7 +167,7 @@ typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Type.ConstMut @@ no_region, t) @@ at($symbolstartpos,$endpos) }
+    { ArrayT(Type.Const @@ no_region, t) @@ at($symbolstartpos,$endpos) }
   | t=typ_post QUEST
     { OptT(t) @@ at($symbolstartpos,$endpos) }
 
@@ -203,7 +203,7 @@ typ_field :
     { {var = x; typ = t; mut} @@ at($symbolstartpos,$endpos) }
   | x=id tps=typ_params_opt t1=typ t2=return_typ 
     { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
-      {var = x; typ = t; mut = Type.ConstMut @@ no_region} @@ at($symbolstartpos,$endpos) }
+      {var = x; typ = t; mut = Type.Const @@ no_region} @@ at($symbolstartpos,$endpos) }
 
 typ_bind :
   | x=id SUB t=typ
@@ -396,7 +396,7 @@ exp_field :
       let d = FuncD(x, tps, p, t, e) @@ fd.at in
       let e' = DecE(d) @? fd.at in  
         (* let e' = BlockE([DecE(d)@? fd.at;(VarE (x.it @! fd.at)) @? fd.at]) @? fd.at in  *)
-      {var = x; mut = Type.ConstMut @@ no_region; priv; exp = e'}
+      {var = x; mut = Type.Const @@ no_region; priv; exp = e'}
       @@ at($symbolstartpos,$endpos) }
 
 // TBR
@@ -472,11 +472,6 @@ dec :
 (* Programs *)
 
 prog :
-  | es=seplist(exp, SEMICOLON) EOF
-    { List.map (fun e ->
-        match e.it with
-        | DecE d -> d
-        | _ -> LetD(WildP @@ e.at, e) @@ e.at
-      ) es.it @@ es.at }
+  | es=seplist(exp, SEMICOLON) EOF { es }
 
 %%

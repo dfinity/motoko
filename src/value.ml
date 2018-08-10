@@ -166,74 +166,77 @@ let unroll_rec_bind = function
 (* Pretty Printing *)
 
 let string_of_mut = function
-  | Type.ConstMut -> ""
-  | Type.VarMut -> "var "
+  | Type.Const -> ""
+  | Type.Mut -> "var "
 
-let rec string_of_val_nullary kindenv t v =
-  match Type.normalize kindenv t with
-  | AnyT -> "any"
-  | PrimT NullT -> as_null v; "null"
-  | PrimT IntT ->  Int.to_string_s (as_int v)
-  | PrimT BoolT -> if as_bool v then "true" else "false"
-  | PrimT FloatT -> Float.to_string (as_float v)
-  | PrimT NatT -> Nat.to_string_u (as_nat v)
-  | PrimT CharT -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
-  | PrimT (WordT Width8) -> Word8.to_string_u (as_word8 v)
-  | PrimT (WordT Width16) -> Word16.to_string_u (as_word16 v)
-  | PrimT (WordT Width32) -> Word32.to_string_u (as_word32 v)
-  | PrimT (WordT Width64) -> Word64.to_string_u (as_word64 v)
-  | PrimT TextT -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
-  | VarT (c, []) -> Con.to_string c
-  | VarT (c, ts) ->
+let rec string_of_val_nullary conenv t v =
+  let module ValueEnv = Env in
+  let open Type in
+  match Type.normalize conenv t with
+  | Any -> "any"
+  | Prim Null -> as_null v; "null"
+  | Prim Int ->  Int.to_string_s (as_int v)
+  | Prim Bool -> if as_bool v then "true" else "false"
+  | Prim Float -> Float.to_string (as_float v)
+  | Prim Nat -> Nat.to_string_u (as_nat v)
+  | Prim Char -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
+  | Prim (Word Width8) -> Word8.to_string_u (as_word8 v)
+  | Prim (Word Width16) -> Word16.to_string_u (as_word16 v)
+  | Prim (Word Width32) -> Word32.to_string_u (as_word32 v)
+  | Prim (Word Width64) -> Word64.to_string_u (as_word64 v)
+  | Prim Text -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
+  | Var (c, []) -> Con.to_string c
+  | Var (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)
       (String.concat ", " (List.map Type.string_of_typ ts))
-  | TupT ts ->
+  | Tup ts ->
     let vs = as_tup v in
     sprintf "(%s)"
-      (String.concat ", " (List.map2 (string_of_val kindenv) ts vs))
-  | ArrayT (m, t) ->
+      (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
+  | Array (m, t) ->
     let a = as_arr v in
     sprintf "[%s%s]"
       (string_of_mut m)
-      (String.concat ", " (List.map (string_of_val kindenv t) (Array.to_list a)))
-  | ObjT (Object, fs) ->
+      (String.concat ", " (List.map (string_of_val conenv t) (Array.to_list a)))
+  | Obj (Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {Type.lab; mut; typ} ->
-        let b = unroll_rec_bind (Env.find lab ve) in
+      (String.concat "; " (List.map (fun {lab; mut; typ} ->
+        let b = unroll_rec_bind (ValueEnv.find lab ve) in
         let v = match mut with
-          | VarMut -> !(as_var_bind b)
-          | ConstMut -> as_val_bind b
-        in sprintf "%s%s = %s" (string_of_mut mut) lab (string_of_val kindenv typ v)
+          | Mut -> !(as_var_bind b)
+          | Const -> as_val_bind b
+        in sprintf "%s%s = %s" (string_of_mut mut) lab (string_of_val conenv typ v)
       ) fs))
-  | FuncT _ ->
+  | Func _ ->
     ignore (as_func v); (* catch errors *)
     "func"
   | _ ->
-    sprintf "(%s)" (string_of_val kindenv t v)
+    sprintf "(%s)" (string_of_val conenv t v)
 
-and string_of_val kindenv t v =
-  match Type.normalize kindenv t with
-  | OptT t ->
+and string_of_val conenv t v =
+  let open Type in
+  match Type.normalize conenv t with
+  | Opt t ->
     let v = as_opt v in
     (match v with
     | None -> "null"
-    | Some v -> string_of_val kindenv t v
+    | Some v -> string_of_val conenv t v
     )
-  | AsyncT t ->
+  | Async t ->
     let {result; waiters} = as_async v in
     sprintf "async %s#%i"
       (match result with
       | None -> "?"
-      | Some v -> string_of_val_nullary kindenv t v
+      | Some v -> string_of_val_nullary conenv t v
       )
       (List.length waiters)
-  | LikeT t -> 
+  | Like t -> 
     sprintf "like %s" (Type.string_of_typ t) (* TBR *)
-  | ObjT (Actor, fs) ->
-    sprintf "actor %s" (string_of_val_nullary kindenv (ObjT (Object,fs)) v)
-  | _ -> string_of_val_nullary kindenv t v
+  | Obj (Actor, fs) ->
+    sprintf "actor %s" (string_of_val_nullary conenv (Obj (Object, fs)) v)
+  | _ -> string_of_val_nullary conenv t v
 
 
 (* Debug pretty printing *)

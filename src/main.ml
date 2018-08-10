@@ -1,7 +1,3 @@
-open Type
-open Typing
-
-
 let token lb =
   let tok = Lexer.token lb in
 	(* Printf.printf "%s" (Lexer.token_to_string(tok)); *)
@@ -22,9 +18,9 @@ let main () =
     let prog = Parser.prog token lexer in 
     Printf.printf "\nChecking %s:\n" filename;
     let ve, te, ke = Typing.check_prog prog in
-    (* Env.iter (fun v con -> Printf.printf "  type %s := %s\n" v (Con.to_string con)) te; *)
-    Con.Env.iter (fun con k -> Printf.printf "  type %s %s\n" (Con.to_string con) (string_of_kind k)) ke;
-    Env.iter (fun v (t, mut) -> Printf.printf "  %s : %s\n" v (string_of_typ t)) ve;
+    (* Type.Env.iter (fun v con -> Printf.printf "  type %s := %s\n" v (Con.to_string con)) te; *)
+    Con.Env.iter (fun con k -> Printf.printf "  type %s %s\n" (Con.to_string con) (Type.string_of_kind k)) ke;
+    Type.Env.iter (fun v (t, mut) -> Printf.printf "  %s : %s\n" v (Type.string_of_typ t)) ve;
     let context = Typing.adjoin_cons (Typing.adjoin_typs (Typing.adjoin_vals Typing.empty_context ve) te) ke in
     Printf.printf "\nInterpreting %s (tracing function calls):\n" filename;
     ignore (Interpret.interpret_prog prog (fun dyn_ve ->
@@ -33,8 +29,8 @@ let main () =
 				let w = Interpret.unrollV (Value.Env.find v dyn_ve) in
 				let w =
           match mut with
-					| ConstMut -> Value.as_val_bind w
-					| VarMut -> !(Value.as_var_bind w)
+					| Type.Const -> Value.as_val_bind w
+					| Type.Mut -> !(Value.as_var_bind w)
 				in Printf.printf "  %s = %s\n" v (Value.string_of_val context.cons t w)
       ) ve;
 		  Value.unitV

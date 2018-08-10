@@ -1,6 +1,7 @@
 open Syntax
-open Type
 open Value
+
+module T = Type
 
 
 (* Overflow checks *)
@@ -37,21 +38,21 @@ let mul_int i1 i2 =
 (* Unary operators *)
 
 let word_unop fword8 fword16 fword32 fword64 = function
-  | WordT Width8 -> fun v -> Word8V (fword8 (as_word8 v))
-  | WordT Width16 -> fun v -> Word16V (fword16 (as_word16 v))
-  | WordT Width32 -> fun v -> Word32V (fword32 (as_word32 v))
-  | WordT Width64 -> fun v -> Word64V (fword64 (as_word64 v))
+  | T.Word T.Width8 -> fun v -> Word8V (fword8 (as_word8 v))
+  | T.Word T.Width16 -> fun v -> Word16V (fword16 (as_word16 v))
+  | T.Word T.Width32 -> fun v -> Word32V (fword32 (as_word32 v))
+  | T.Word T.Width64 -> fun v -> Word64V (fword64 (as_word64 v))
   | _ -> assert false
 
 let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
-  | IntT -> fun v -> IntV (fint (as_int v))
-  | FloatT -> fun v -> FloatV (ffloat (as_float v))
-  | WordT _ as t -> word_unop fword8 fword16 fword32 fword64 t
+  | T.Int -> fun v -> IntV (fint (as_int v))
+  | T.Float -> fun v -> FloatV (ffloat (as_float v))
+  | T.Word _ as t -> word_unop fword8 fword16 fword32 fword64 t
   | _ -> assert false
 
 let find_unop t op =
   match t with
-  | PrimT p ->
+  | T.Prim p ->
     (match op with
     | PosOp -> let id v = v in num_unop id id id id id id p
     | NegOp ->
@@ -65,26 +66,26 @@ let find_unop t op =
 (* Binary operators *)
 
 let text_binop ftext = function
-  | TextT -> fun v1 v2 -> TextV (ftext (as_text v1) (as_text v2))
+  | T.Text -> fun v1 v2 -> TextV (ftext (as_text v1) (as_text v2))
   | _ -> assert false
 
 let word_binop fword8 fword16 fword32 fword64 = function
-  | WordT Width8 -> fun v1 v2 -> Word8V (fword8 (as_word8 v1) (as_word8 v2))
-  | WordT Width16 -> fun v1 v2 -> Word16V (fword16 (as_word16 v1) (as_word16 v2))
-  | WordT Width32 -> fun v1 v2 -> Word32V (fword32 (as_word32 v1) (as_word32 v2))
-  | WordT Width64 -> fun v1 v2 -> Word64V (fword64 (as_word64 v1) (as_word64 v2))
+  | T.Word T.Width8 -> fun v1 v2 -> Word8V (fword8 (as_word8 v1) (as_word8 v2))
+  | T.Word T.Width16 -> fun v1 v2 -> Word16V (fword16 (as_word16 v1) (as_word16 v2))
+  | T.Word T.Width32 -> fun v1 v2 -> Word32V (fword32 (as_word32 v1) (as_word32 v2))
+  | T.Word T.Width64 -> fun v1 v2 -> Word64V (fword64 (as_word64 v1) (as_word64 v2))
   | _ -> assert false
 
 let num_binop fnat fint fword8 fword16 fword32 fword64 ffloat = function
-  | NatT -> fun v1 v2 -> NatV (fnat (as_nat v1) (as_nat v2))
-  | IntT -> fun v1 v2 -> IntV (fint (as_int v1) (as_int v2))
-  | FloatT -> fun v1 v2 -> FloatV (ffloat (as_float v1) (as_float v2))
-  | WordT _ as t -> word_binop fword8 fword16 fword32 fword64 t
+  | T.Nat -> fun v1 v2 -> NatV (fnat (as_nat v1) (as_nat v2))
+  | T.Int -> fun v1 v2 -> IntV (fint (as_int v1) (as_int v2))
+  | T.Float -> fun v1 v2 -> FloatV (ffloat (as_float v1) (as_float v2))
+  | T.Word _ as t -> word_binop fword8 fword16 fword32 fword64 t
   | _ -> assert false
 
 let find_binop t op =
   match t with
-  | PrimT p ->
+  | T.Prim p ->
     (match op with
     | AddOp -> num_binop add_nat add_int Word8.add Word16.add Word32.add Word64.add Float.add p
     | SubOp -> num_binop sub_nat sub_int Word8.sub Word16.sub Word32.sub Word64.sub Float.sub p
@@ -106,32 +107,32 @@ let find_binop t op =
 (* Relational operators *)
 
 let word_relop fword8 fword16 fword32 fword64 = function
-  | WordT Width8 -> fun v1 v2 -> BoolV (fword8 (as_word8 v1) (as_word8 v2))
-  | WordT Width16 -> fun v1 v2 -> BoolV (fword16 (as_word16 v1) (as_word16 v2))
-  | WordT Width32 -> fun v1 v2 -> BoolV (fword32 (as_word32 v1) (as_word32 v2))
-  | WordT Width64 -> fun v1 v2 -> BoolV (fword64 (as_word64 v1) (as_word64 v2))
+  | T.Word T.Width8 -> fun v1 v2 -> BoolV (fword8 (as_word8 v1) (as_word8 v2))
+  | T.Word T.Width16 -> fun v1 v2 -> BoolV (fword16 (as_word16 v1) (as_word16 v2))
+  | T.Word T.Width32 -> fun v1 v2 -> BoolV (fword32 (as_word32 v1) (as_word32 v2))
+  | T.Word T.Width64 -> fun v1 v2 -> BoolV (fword64 (as_word64 v1) (as_word64 v2))
   | _ -> assert false
 
 let num_relop fnat fint fword8 fword16 fword32 fword64 ffloat = function
-  | NatT -> fun v1 v2 -> BoolV (fnat (as_nat v1) (as_nat v2))
-  | IntT -> fun v1 v2 -> BoolV (fint (as_int v1) (as_int v2))
-  | FloatT -> fun v1 v2 -> BoolV (ffloat (as_float v1) (as_float v2))
-  | WordT _ as t -> word_relop fword8 fword16 fword32 fword64 t
+  | T.Nat -> fun v1 v2 -> BoolV (fnat (as_nat v1) (as_nat v2))
+  | T.Int -> fun v1 v2 -> BoolV (fint (as_int v1) (as_int v2))
+  | T.Float -> fun v1 v2 -> BoolV (ffloat (as_float v1) (as_float v2))
+  | T.Word _ as t -> word_relop fword8 fword16 fword32 fword64 t
   | _ -> assert false
 
 let ord_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext = function
-  | CharT -> fun v1 v2 -> BoolV (fchar (as_char v1) (as_char v2))
-  | TextT -> fun v1 v2 -> BoolV (ftext (as_text v1) (as_text v2))
+  | T.Char -> fun v1 v2 -> BoolV (fchar (as_char v1) (as_char v2))
+  | T.Text -> fun v1 v2 -> BoolV (ftext (as_text v1) (as_text v2))
   | t -> num_relop fnat fint fword8 fword16 fword32 fword64 ffloat t
 
 let eq_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext fnull fbool = function
-  | NullT -> fun v1 v2 -> BoolV (fnull (as_null v1) (as_null v2))
-  | BoolT -> fun v1 v2 -> BoolV (fbool (as_bool v1) (as_bool v2))
+  | T.Null -> fun v1 v2 -> BoolV (fnull (as_null v1) (as_null v2))
+  | T.Bool -> fun v1 v2 -> BoolV (fbool (as_bool v1) (as_bool v2))
   | t -> ord_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext t
 
 let find_relop t op =
   match t with
-  | PrimT p -> 
+  | T.Prim p -> 
     (match op with
     | EqOp -> eq_relop Nat.eq Int.eq Word8.eq Word16.eq Word32.eq Word64.eq Float.eq (=) (=) (=) (=) p
     | NeqOp -> eq_relop Nat.ne Int.ne Word8.ne Word16.ne Word32.ne Word64.ne Float.ne (<>) (<>) (<>) (<>) p

@@ -1,8 +1,5 @@
 {
 open Parser
-open Source
-open Type
-module Script = Wasm.Script
 module Utf8 = Wasm.Utf8
 
 exception Syntax of Source.region * string
@@ -328,17 +325,17 @@ rule token = parse
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
-  | "Int" { PRIM IntT }
-  | "Bool" { PRIM BoolT }
-  | "Char"  { PRIM CharT }
-  | "Nat"  { PRIM NatT }
-  | "Float" { PRIM FloatT }
-  | "Null" { PRIM NullT }
-  | "Text"  { PRIM TextT }
-  | "Word8"  { PRIM (WordT(Width8)) }
-  | "Word16"  { PRIM (WordT(Width16)) }
-  | "Word32"  { PRIM (WordT(Width32)) }
-  | "Word64"  { PRIM (WordT(Width64)) }
+  | "Int" { PRIM Type.Int }
+  | "Bool" { PRIM Type.Bool }
+  | "Char"  { PRIM Type.Char }
+  | "Nat"  { PRIM Type.Nat }
+  | "Float" { PRIM Type.Float }
+  | "Null" { PRIM Type.Null }
+  | "Text"  { PRIM Type.Text }
+  | "Word8"  { PRIM (Type.Word Type.Width8) }
+  | "Word16"  { PRIM (Type.Word Type.Width16) }
+  | "Word32"  { PRIM (Type.Word Type.Width32) }
+  | "Word64"  { PRIM (Type.Word Type.Width64) }
   
   | id as s { ID s }
   | "//"utf8_no_nl*eof { EOF }

@@ -1,7 +1,7 @@
 (* Representation *)
 
 type con = Con.t
-type mut = ConstMut | VarMut
+type mut = Const | Mut
 type actor = Object | Actor
 
 type width =
@@ -11,52 +11,55 @@ type width =
   | Width64
 
 type prim =
-  | NullT
-  | BoolT
-  | NatT
-  | IntT
-  | WordT of width
-  | FloatT
-  | CharT
-  | TextT
+  | Null
+  | Bool
+  | Nat
+  | Int
+  | Word of width
+  | Float
+  | Char
+  | Text
 
-type typ =
-  | VarT of con * typ list                     (* constructor *)
-  | PrimT of prim                              (* primitive *)
-  | ObjT of actor * typ_field list             (* object *)
-  | ArrayT of mut * typ                        (* array *)
-  | OptT of typ                                (* option *)
-  | TupT of typ list                           (* tuple *)
-  | FuncT of typ_bind list * typ * typ         (* function *)
-  | AsyncT of typ                              (* future *)
-  | LikeT of typ                               (* expansion *)
-  | AnyT                                       (* top *)
+type t = typ
+and typ =
+  | Var of con * typ list                     (* constructor *)
+  | Prim of prim                              (* primitive *)
+  | Obj of actor * field list                 (* object *)
+  | Array of mut * typ                        (* array *)
+  | Opt of typ                                (* option *)
+  | Tup of typ list                           (* tuple *)
+  | Func of bind list * typ * typ             (* function *)
+  | Async of typ                              (* future *)
+  | Like of typ                               (* expansion *)
+  | Any                                       (* top *)
 (*
-  | UnionT of type * typ                       (* union *)
-  | AtomT of string                            (* atom *)
+  | Union of type * typ                       (* union *)
+  | Atom of string                            (* atom *)
 *)
 
-and typ_bind = {con : con; bound : typ}
-and typ_field = {lab : string; typ : typ; mut : mut}
+and bind = {con : con; bound : typ}
+and field = {lab : string; typ : typ; mut : mut}
 
 type kind =
-  | DefK of typ_bind list * typ
-  | AbsK of typ_bind list * typ
+  | Def of bind list * typ
+  | Abs of bind list * typ
 
 type con_env = kind Con.Env.t
 
 
 (* Short-hands *)
 
-val unitT : typ
-val boolT : typ
-val intT : typ
+val unit : typ
+val bool : typ
+val nat : typ
+val int : typ
 
 
 (* Equivalence and Normalization *)
 
 val eq : con_env -> typ -> typ -> bool
 val normalize : con_env -> typ -> typ
+val structural : con_env -> typ -> typ
 
 
 (* First-order substitution *)
@@ -64,7 +67,8 @@ val normalize : con_env -> typ -> typ
 type subst = typ Con.Env.t
 
 val subst : subst -> typ -> typ
-val make_subst : typ list -> typ_bind list -> subst
+val subst_binds : subst -> bind list -> bind list
+val make_subst : typ list -> bind list -> subst
 
 
 (* Environments *)

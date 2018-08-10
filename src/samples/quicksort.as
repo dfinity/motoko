@@ -2,10 +2,10 @@
    - inplace sorting of mutable arrays of T, for any type T
 */
 
-type array<t> = var t[];
+type Array<T> = var T[];
 
 class QS<T>(cmp : (T, T) -> Int) {
-  quicksort(a : array<T>, lo : Int, hi : Int) {
+  quicksort(a : Array<T>, lo : Nat, hi : Nat) {
    	if (lo < hi) {
       let p = partition(a, lo, hi);
 	    quicksort(a, lo, p);
@@ -13,7 +13,7 @@ class QS<T>(cmp : (T, T) -> Int) {
 	  }
   };
 
-  private swap(a : array<T>, i : Int, j : Int) {
+  private swap(a : Array<T>, i : Nat, j : Nat) {
     let temp = a[i];
     a[i] := a[j];
     a[j] := temp;
@@ -21,19 +21,19 @@ class QS<T>(cmp : (T, T) -> Int) {
 
   private trace<T>(v : T) {};
    
-  private partition(a : array<T>, lo : Int, hi : Int) : Int {
-    trace<array<T>>(a);
+  private partition(a : Array<T>, lo : Nat, hi : Nat) : Nat {
+    trace<Array<T>>(a);
     let pivot = a[lo];
-    var i : Int = lo - 1;
-    var j : Int = hi + 1;
+    var i : Nat = lo;
+    var j : Nat = hi;
     loop {
-      loop {
+      while (cmp(a[i], pivot) < 0) {
         i += 1;
-      } while (cmp(a[i], pivot) < 0);
+      };
 
-      loop {
+      while (cmp(a[j], pivot) > 0) {
         j -= 1;
-      } while (cmp(a[j], pivot) > 0);
+      };
 
       if (i >= j) return j;
 
