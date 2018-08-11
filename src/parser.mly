@@ -396,9 +396,6 @@ pat :
   | p=pat COLON t=typ
     { AnnotP(p, t) @@ at($symbolstartpos,$endpos) }
 
-init :  
-  | EQ e=exp { e }
-
 return_typ :
   | COLON t=typ { t }
 
@@ -412,8 +409,8 @@ dec :
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
       in LetD (p', e') @@ at($symbolstartpos,$endpos) }
-  | VAR x=id COLON t=typ eo=init?
-    { VarD(x, t, eo) @@ at($symbolstartpos,$endpos) } 
+  | VAR x=id COLON t=typ EQ e=exp
+    { VarD(x, t, e) @@ at($symbolstartpos,$endpos) } 
   | FUNC xo=id? fd=func_dec
     { let x = Lib.Option.get xo ("" @@ at($symbolstartpos,$endpos)) in
       (fd x).it @@ at($symbolstartpos,$endpos) }

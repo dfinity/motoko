@@ -158,7 +158,7 @@ and is_shared_typ_binds context ts =
 
 
 
-(* Checking Types *)
+(* Types *)
 
 let check_labs vars = ignore
   (List.fold_left
@@ -243,8 +243,7 @@ and check_typ_bounds context (tbs : T.bind list) typs at : T.typ list =
   | _, [] -> type_error at "too few type arguments"
 
 
-
-(* Checking Literals *)
+(* Literals *)
 
 let check_lit_val t of_string at s =
   try of_string s with _ ->
@@ -343,7 +342,7 @@ let rec check_lit context t lit at =
       (T.string_of_typ (T.Prim (infer_lit context lit at)))
 
 
-(* Checking Expressions *)
+(* Expressions *)
 
 let rec infer_exp context exp : T.typ =
   let t, _ = infer_exp' context exp in
@@ -650,18 +649,19 @@ and check_exp' context t exp =
         (T.string_of_typ t) (T.string_of_typ t')
 
 
-(* Checking Cases *)
+(* Cases *)
 
 (* TBR: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
 
-and infer_cases context t1 = function
+and infer_cases context t1 cases : T.typ =
+  match cases with
   | [] ->
     (* TBR: T.Bottom? *)
     T.unit
-  | {it = {pat; exp}; _}::cases ->
+  | {it = {pat; exp}; _}::cases' ->
     let ve = check_pat context t1 pat in
     let t = infer_exp (adjoin_vals context ve) exp in
-    let t' = infer_cases context t cases in
+    let t' = infer_cases context t cases' in
     (* TBR: join *)
     if not (T.eq context.cons t t') then
       type_error exp.at
@@ -669,7 +669,8 @@ and infer_cases context t1 = function
         (T.string_of_typ t) (T.string_of_typ t');
     t
 
-and check_cases context t1 t2 = function
+and check_cases context t1 t2 cases =
+  match cases with
   | [] -> ()
   | {it = {pat; exp}; _}::cases' ->
     let ve = check_pat context t1 pat in
@@ -677,7 +678,72 @@ and check_cases context t1 t2 = function
     check_cases context t1 t2 cases'
 
 
-(* Checking Blocks *)
+(* Patterns *)
+
+and infer_pat context pat : T.typ * val_env =
+  match pat.it with
+  | WildP ->
+    type_error pat.at "cannot infer type of wildcard"
+  | VarP _ ->
+    type_error pat.at "cannot infer type of variable"
+  | LitP lit ->
+    T.Prim (infer_lit context lit pat.at), T.Env.empty
+  | TupP pats ->
+    let ts, ve = infer_pats pat.at context pats [] T.Env.empty in
+    T.Tup ts, ve
+  | AnnotP (pat1, typ) ->
+    let t = check_typ context typ in
+    t, check_pat context t pat1
+
+and infer_pats at context pats ts ve : T.typ list * val_env =
+  match pats with
+  | [] -> List.rev ts, ve
+  | pat::pats' ->
+    let t, ve1 = infer_pat context pat in
+    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
+    infer_pats at context pats' (t::ts) ve'
+
+
+and check_pat context t pat : val_env =
+  match pat.it with
+  | WildP ->
+    T.Env.empty
+  | VarP id ->
+    T.Env.singleton id.it (t, T.Const)
+  | LitP lit ->
+    check_lit context t lit pat.at;
+    T.Env.empty
+  | TupP pats ->
+    (match T.structural context.cons t with
+    | T.Tup ts ->
+      check_pats context ts pats T.Env.empty pat.at
+    | _ ->
+      type_error pat.at "tuple pattern cannot produce expected type %s"
+        (T.string_of_typ t)
+    )
+  | _ ->
+    let t', ve = infer_pat context pat in
+    if not (T.eq context.cons t t') then
+      type_error pat.at "expected type %s, found %s"
+        (T.string_of_typ t) (T.string_of_typ t');
+    ve
+
+and check_pats context ts pats ve at : val_env =
+  match pats, ts with
+  | [], [] -> ve
+  | pat::pats', t::ts ->
+    let ve1 = check_pat context t pat in
+    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
+    check_pats context ts pats' ve' at
+  | [], ts ->
+    type_error at "tuple pattern has %i fewer components than expected type"
+      (List.length ts)
+  | ts, [] ->
+    type_error at "tuple pattern has %i more components than expected type"
+      (List.length ts)
+
+      
+(* Blocks *)
 
 and infer_block context es =
   match es with
@@ -704,53 +770,8 @@ and check_block_local context t es at =
     check_block_local context t es' at
 
 
-and infer_pats at context ve ts ps =
-  match ps with
-  | [] -> ve, T.Tup (List.rev ts)
-  | p::ps ->
-    let ve', t = infer_pat context p in
-    infer_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') (t::ts) ps
+(* Declarations *)
 
-and infer_pat context p =
-  match p.it with
-  | WildP ->  type_error p.at "can't infer type of pattern"
-  | VarP v -> type_error p.at "can't infer type of pattern"
-  | LitP lit ->
-    T.Env.empty, T.Prim (infer_lit context lit p.at)
-  | TupP ps ->
-    infer_pats p.at context T.Env.empty [] ps
-  | AnnotP (p, t) ->
-    let t = check_typ context t in
-    check_pat context t p, t
-
-and check_pats context ve ts ps at =
-  match ps, ts with
-  | [], [] -> ve
-  | p::ps, t::ts ->
-    let ve' = check_pat context t p in
-    check_pats context (disjoint_union at "duplicate binding for %s in pattern" ve ve') ts ps at  (*TBR reject shadowing *)
-  | [], ts -> type_error at "tuple pattern has %i fewer components than expected type" (List.length ts)
-  | ts, [] -> type_error at "tuple pattern has %i more components than expected type" (List.length ts)
-
-and check_pat context t p =
-  match p.it with
-  | WildP -> T.Env.empty
-  | VarP v -> T.Env.singleton v.it (t, T.Const)
-  | LitP lit ->
-    check_lit context t lit p.at;
-    T.Env.empty
-  | TupP ps ->
-    (match T.structural context.cons t with
-    | T.Tup ts -> check_pats context T.Env.empty ts ps p.at
-    | _ -> type_error p.at "expected pattern of non-tuple type, found pattern of tuple type"
-    )
-  | AnnotP (p', t') ->
-    let t' = check_typ context t' in
-    if T.eq context.cons t t'
-    then check_pat context t' p'
-    else type_error p.at "expected pattern of one type, found pattern of unequal type"
-
-      
 and check_dec pass context d =
   match d.it with
   | LetD (p, e) ->
@@ -758,11 +779,7 @@ and check_dec pass context d =
     let t = infer_exp context e in
     let ve = check_pat context t p in 
     ve, T.Env.empty, Con.Env.empty
-  | VarD (v, t, None) ->
-    if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
-    let t = check_typ context t in
-    T.Env.singleton v.it (t, T.Mut), T.Env.empty, Con.Env.empty
-  | VarD (v, t, Some e) ->
+  | VarD (v, t, e) ->
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
     let t = check_typ context t in
     check_exp context t e;
@@ -788,7 +805,7 @@ and check_dec pass context d =
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
     let tbs, te, ke = check_typ_binds context tps in
     let context_te = adjoin_cons (adjoin_typs context te) ke in
-    let ve, t1 = infer_pat context_te p in
+    let t1, ve = infer_pat context_te p in
     let t2 = check_typ context_te t in
     let func_t = T.Func (tbs, t1, t2) in  (* TBR: we allow polymorphic recursion *)
     let context_te_ve_v =
@@ -812,7 +829,7 @@ and check_dec pass context d =
     if pass = TypDecPass then T.Env.empty, te0, ke0 else
     let context_ts = adjoin_cons (adjoin_typs context te_ts) ke_ts in
     let context_ts_v = add_typ context_ts v.it con kind0 in
-    let ve, dom_t = infer_pat context_ts_v p in
+    let dom_t, ve = infer_pat context_ts_v p in
     let class_t = T.Var (con, List.map (fun tb -> T.Var (tb.T.con, [])) tbs) in
     let cons_t = T.Func (tbs, dom_t, class_t) (* TBR: we allow polymorphic recursion *) in
     let ve1te1ke1 = T.Env.singleton v.it (cons_t, T.Const), te0, ke0 in
@@ -828,7 +845,7 @@ and check_dec pass context d =
       | {it = {var; mut; priv; exp = {it = DecE {it = FuncD (v, us, p, t, e); _}; _}}; _}::efs ->
         let us, te_us, ke_us = check_typ_binds context us in
         let context_us = adjoin_cons (adjoin_typs context te_us) ke_us in
-        let _, dom_t = infer_pat context_us p in
+        let dom_t, _ = infer_pat context_us p in
         let rng_t = check_typ context_us t in
         let func_t = T.Func (us, dom_t, rng_t) in
         let field_env = disjoint_add var.at "duplicate field %s" var.it (mut.it, priv.it, func_t) field_env in
@@ -883,5 +900,8 @@ and check_block' pass context ve te ke = function
     let ve1, te1, ke1 = check_dec pass context d in
     check_block' pass (adjoin_cons (adjoin_typs (adjoin_vals context ve1) te1) ke1) (T.Env.adjoin ve ve1) (T.Env.adjoin te te1) (Con.Env.adjoin ke ke1) es
 
-let check_prog p =
-  check_block empty_context p.it
+
+(* Programs *)
+
+let check_prog prog =
+  check_block empty_context prog.it

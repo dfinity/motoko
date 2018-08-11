@@ -158,10 +158,9 @@ and case' = {pat : pat; exp : exp}
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                                  (* immutable *)
-  | VarD of var * typ * exp option                     (* mutable *)  (* why do we need the type when given an exp *)
-  | FuncD of var * typ_bind list * pat * typ * exp     (* function *) (* why do we need the range type? *)
+  | VarD of var * typ * exp                            (* mutable *)
+  | FuncD of var * typ_bind list * pat * typ * exp     (* function *)
   | TypD of var * typ_bind list * typ                  (* type *)
-(* | ClassD of actor * var * typ_bind list * pat * exp (* class *) *)
   | ClassD of actor * var * typ_bind list * pat * exp_field list (* class *)
 
 
