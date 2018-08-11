@@ -66,7 +66,7 @@ let int_width = 64
 
 (* Types *)
 
-type unicode = int32
+type unicode = int
 
 type value =
   | Null 
@@ -139,20 +139,43 @@ let string_of_mut = function
   | Type.Const -> ""
   | Type.Mut -> "var "
 
+let add_unicode buf = function
+  | 0x09 -> Buffer.add_string buf "\\t"
+  | 0x0a -> Buffer.add_string buf "\\n"
+  | 0x22 -> Buffer.add_string buf "\\\""
+  | 0x27 -> Buffer.add_string buf "\\\'"
+  | 0x5c -> Buffer.add_string buf "\\\\"
+  | c when 0x20 <= c && c < 0x7f -> Buffer.add_char buf (Char.chr c)
+  | c -> Printf.bprintf buf "\\u{%02x}" c
+
+let string_of_char c =
+  let buf = Buffer.create 10 in
+  Buffer.add_char buf '\"';
+  add_unicode buf c;
+  Buffer.add_char buf '\"';
+  Buffer.contents buf
+
+let string_of_text s =
+  let buf = Buffer.create (String.length s + 256) in
+  Buffer.add_char buf '\"';
+  List.iter (add_unicode buf) (Wasm.Utf8.decode s);
+  Buffer.add_char buf '\"';
+  Buffer.contents buf
+
 let rec string_of_val_nullary conenv t v =
   match T.normalize conenv t with
   | T.Any -> "any"
   | T.Prim T.Null -> as_null v; "null"
-  | T.Prim T.Int ->  Int.to_string_s (as_int v)
   | T.Prim T.Bool -> if as_bool v then "true" else "false"
-  | T.Prim T.Float -> Float.to_string (as_float v)
   | T.Prim T.Nat -> Nat.to_string_u (as_nat v)
-  | T.Prim T.Char -> sprintf "'\\u%lx'" (as_char v) (* TBR *)
+  | T.Prim T.Int ->  Int.to_string_s (as_int v)
   | T.Prim T.Word8 -> Word8.to_string_u (as_word8 v)
   | T.Prim T.Word16 -> Word16.to_string_u (as_word16 v)
   | T.Prim T.Word32 -> Word32.to_string_u (as_word32 v)
   | T.Prim T.Word64 -> Word64.to_string_u (as_word64 v)
-  | T.Prim T.Text -> "\"" ^ String.escaped (as_text v) ^ "\"" (* TBR *)
+  | T.Prim T.Float -> Float.to_string (as_float v)
+  | T.Prim T.Char -> string_of_char (as_char v)
+  | T.Prim T.Text -> string_of_text (as_text v)
   | T.Var (c, []) -> Con.to_string c
   | T.Var (c, ts) ->
     sprintf "%s<%s>"
@@ -218,8 +241,8 @@ let rec debug_string_of_val_nullary = function
   | Word32 w -> Word32.to_string_u w
   | Word64 w -> Word64.to_string_u w
   | Float f -> Float.to_string f
-  | Char d -> sprintf "'\\u%lx'" d (* TBR *)
-  | Text t -> "\"" ^ String.escaped t ^ "\"" (* TBR *)
+  | Char c -> string_of_char c
+  | Text t -> string_of_text t
   | Tup vs ->
     sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
   | Obj ve ->

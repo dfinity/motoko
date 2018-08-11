@@ -1,5 +1,9 @@
+let n : Nat = 0;
+let i : Int = 0;
 let i1 : Int = -1;
 let i2 : Int = 0xfff;
-let byte : Word8 = 0xFFFFF : Word8;
+let byte : Word8 = 0xFF : Word8;
 let short : Word16 = 0xFFFF : Word16;
-let word : Word32 = 0xFFFF_FFFF_F : Word32;
+let word : Word32 = 0xFFFF_FFFF : Word32;
+let u = '\u{a34}';
+let s = "a \t\22\00bb\'bc\\de \74xx\\x\"\u{000_234_42}\n";

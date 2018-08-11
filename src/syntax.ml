@@ -48,7 +48,8 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
-  | PreLit of string                             (* unresolved numeric literal *)
+  | PreLit of string * Type.prim
+
 
 (* Patterns *)
 

@@ -26,7 +26,7 @@ module Env : Env.S with type key = string
 
 (* Types *)
 
-type unicode = int32
+type unicode = int
 
 type value =
   | Null

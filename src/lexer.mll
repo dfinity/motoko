@@ -4,86 +4,6 @@ module Utf8 = Wasm.Utf8
 
 exception Syntax of Source.region * string
 
-(*
-let string_of_token = function
-  | XOROP -> "XOROP"
-  | WORD _ -> "WORD"
-  | WHILE -> "WHILE"
-  | VAR -> "VAR"
-  | UNDERSCORE -> "UNDERSCORE"
-  | TYPE -> "TYPE"
-  | THEN -> "THEN"
-  | TEXT _ -> "TEXT()"
-  | SWITCH -> "SWITCH"
-  | SUBOP -> "SUBOP"
-  | SHLOP  -> "SHLOP"
-  | SHROP -> "SHROP"
-  | SEMICOLON -> "SEMICOLON"
-  | RPAR -> "RPAR"
-  | ROTROP -> "ROTROP"
-  | ROTLOP -> "ROTLOP"
-  | RETURN -> "RETURN"
-  | RCURLY -> "RCURLY"
-  | RBRACKET -> "RBRACKET"
-  | PRIVATE -> "PRIVATE"
-  | OROP -> "OROP"
-  | OR -> "OR"
-  | NEQOP -> "NEQOP"
-  | NULL -> "NULL"
-  | NOTOP -> "NOTOP"
-  | NOT -> "NOT"
-  | NAT n ->  Printf.sprintf "NAT(%i)" n
-  | MULOP -> "MULOP"
-  | MODOP -> "MODOP"
-  | QUEST -> "?"
-  | LT -> "LT"
-  | LTOP -> "LTOP"
-  | LEOP -> "LT"
-  | LPAR -> "LPAR"
-  | LOOP -> "LOOP"
-  | LIKE -> "LIKE"
-  | LET -> "LET"
-  | LCURLY -> "LCURLY"
-  | LBRACKET -> "LBRACKET"
-  | IS -> "IS"
-  | INT s ->  Printf.sprintf "ID(%s)" s
-  | IN -> "IN"
-  | IF -> "IF"
-  | ID id -> Printf.sprintf "ID(%s)" id
-  | GEOP -> "GEOP"
-  | GT -> "GT"
-  | GTOP -> "GTOP"
-  | FUNC -> "FUNC"
-  | FOR -> "FOR"
-  | FLOAT _ -> "FLOAT(_)"
-  | EQ -> "EQ"
-  | EOF -> "EOF"
-  | ELSE -> "ELSE"
-  | DOT -> "DOT"
-  | DIVOP -> "DIVOP"
-  | CONTINUE -> "CONTINUE"
-  | COMMA -> "COMMA"
-  | COLON -> "COLON"
-  | CLASS -> "CLASS"
-  | CHAR _ -> "CHAR"
-  | CATOP -> "CATOP"
-  | CASE -> "CASE"
-  | LABEL -> "LABEL"
-  | BREAK -> "BREAK"
-  | BOOL _ -> "BOOL"
-  | BINUPDATE _ -> "BINUPDATE(-)"  
-  | AWAIT -> "AWAIT"
-  | ASYNC -> "ASYNC"
-  | ASSIGN -> "ASSIGN"
-  | ASSERT -> "ASSERT"
-  | ARROW -> "ARROW"
-  | ANDOP -> "ANDOP"
-  | AND -> "AND"
-  | ADDOP -> "ADDOP"
-  | ACTOR -> "ACTOR"
-  | PRIM _ -> "PRIM()"
-*)
-
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
     Source.line = pos.Lexing.pos_lnum;
@@ -95,83 +15,44 @@ let region lexbuf =
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
   {Source.left = left; Source.right = right}
 
-(* let error lexbuf msg = raise (Script.Syntax (region lexbuf, msg)) *)
 let error lexbuf msg = raise (Syntax (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
-let text s =
+let unicode lexbuf s i =
+  let u =
+    if s.[!i] <> '\\' then Char.code s.[!i] else
+    match (incr i; s.[!i]) with
+    | 'n' -> Char.code '\n'
+    | 'r' -> Char.code '\r'
+    | 't' -> Char.code '\t'
+    | '\\' -> Char.code '\\'
+    | '\'' -> Char.code '\''
+    | '\"' -> Char.code '\"'
+    | 'u' ->
+      let j = !i + 2 in
+      i := String.index_from s j '}';
+      (try
+        let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
+        if 0 <= n && n < 0x110000 then n else raise (Failure "")
+      with Failure _ -> error lexbuf "unicode escape out of range")
+    | h ->
+      incr i;
+      int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i])
+  in incr i; u
+
+let char lexbuf s =
+  unicode lexbuf s (ref 1)
+
+let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let c = if s.[!i] <> '\\' then s.[!i] else
-      match (incr i; s.[!i]) with
-      | 'n' -> '\n'
-      | 'r' -> '\r'
-      | 't' -> '\t'
-      | '\\' -> '\\'
-      | '\'' -> '\''
-      | '\"' -> '\"'
-      | 'u' ->
-        let j = !i + 2 in
-        i := String.index_from s j '}';
-        let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
-        let bs = Utf8.encode [n] in
-        Buffer.add_substring b bs 0 (String.length bs - 1);
-        bs.[String.length bs - 1]
-      | h ->
-        incr i;
-        Char.chr (int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i]))
-    in Buffer.add_char b c;
-    incr i
+    let bs = Utf8.encode [unicode lexbuf s i] in
+    Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
-
-(*
-let value_type = function
-  | "i32" -> Types.I32Type
-  | "i64" -> Types.I64Type
-  | "f32" -> Types.F32Type
-  | "f64" -> Types.F64Type
-  | _ -> assert false
-
-let intop t i32 i64 =
-  match t with
-  | "i32" -> i32
-  | "i64" -> i64
-  | _ -> assert false
-
-let floatop t f32 f64 =
-  match t with
-  | "f32" -> f32
-  | "f64" -> f64
-  | _ -> assert false
-
-let numop t i32 i64 f32 f64 =
-  match t with
-  | "i32" -> i32
-  | "i64" -> i64
-  | "f32" -> f32
-  | "f64" -> f64
-  | _ -> assert false
-
-let memsz sz m8 m16 m32 =
-  match sz with
-  | "8" -> m8
-  | "16" -> m16
-  | "32" -> m32
-  | _ -> assert false
-
-let ext e s u =
-  match e with
-  | 's' -> s
-  | 'u' -> u
-  | _ -> assert false
-
-let opt = Lib.Option.get
-*)
-
 }
 
 let sign = '+' | '-'
@@ -216,20 +97,10 @@ let float =
   | sign? num ('.' frac?)? ('e' | 'E') sign? num
   | sign? "0x" hexnum '.' hexfrac?
   | sign? "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
-  | sign? "inf"
-  | sign? "nan"
-  | sign? "nan:" "0x" hexnum
+let char = '\'' character '\''
 let text = '"' character* '"'
 let id = letter ((letter | digit | '_')*)
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
-
-let ixx = "i" ("32" | "64")
-let fxx = "f" ("32" | "64")  
-let nxx = ixx | fxx
-let mixx = "i" ("8" | "16" | "32" | "64")
-let mfxx = "f" ("32" | "64")
-let sign = "s" | "u"
-let mem_size = "8" | "16" | "32"
 
 rule token = parse
   | "(" { LPAR }
@@ -285,16 +156,19 @@ rule token = parse
   | space"<"space { LTOP } (*TBR*)
   | "->" { ARROW }
   | "_" { UNDERSCORE }
+
   | nat as s { NAT s }
   | int as s { INT s }
-  | float as s { FLOAT (float_of_string s) }
-
-  | text as s { TEXT (text s) }
-  | '"'character*('\n'|eof) { error lexbuf "unclosed text literal" }
+  | float as s { FLOAT s }
+  | char as s { CHAR (char lexbuf s) }
+  | text as s { TEXT (text lexbuf s) }
+  | '"'character*('\n'|eof)
+    { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
     { error lexbuf "illegal control character in text literal" }
   | '"'character*'\\'_
     { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
+
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }
@@ -338,6 +212,7 @@ rule token = parse
   | "Word64"  { PRIM Type.Word64 }
   
   | id as s { ID s }
+
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
   | "//"utf8_no_nl* { token lexbuf (* causes error on following position *) }
@@ -346,7 +221,6 @@ rule token = parse
   | '\n' { Lexing.new_line lexbuf; token lexbuf }
   | eof { EOF }
 
-(*| reserved { error lexbuf "unknown operator" } *)
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 

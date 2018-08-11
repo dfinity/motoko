@@ -101,7 +101,7 @@ let rec interpret_lit context rl =
     | FloatLit f -> V.Float f
     | CharLit c -> V.Char c
     | TextLit s -> V.Text s
-    | PreLit s -> failwith "interpret_lit"
+    | PreLit _ -> assert false
 
 and interpret_exps context vs es k =
     match es with
@@ -458,8 +458,8 @@ and match_lit p v rl =
     | FloatLit f -> V.as_float v = f
     | CharLit c -> V.as_char v = c
     | TextLit s -> V.as_text v = s
-    | PreLit s -> failwith "match_lit"
-     
+    | PreLit _ -> assert false
+
 and interpret_pat p v =
    match p.it with 
    | WildP -> Some V.Env.empty

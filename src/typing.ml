@@ -73,50 +73,50 @@ let disjoint_add_typ at c con = disjoint_union_typs at c (T.Env.singleton v con)
 
 (*
 let is_num_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float) -> true
   | _ -> false
 
 let is_bit_typ context t =
-  match T.normalize context.cons t  with
+  match T.structural context.cons t  with
   | T.Prim (T.Word8 | T.Word16 | T.Word32 | T.Word64) -> true
   | _ -> false
 
 let is_ord_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
   | _ -> false
 
 let is_eq_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Prim (T.Bool | T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
     (* TBR do we really want = and != on floats ?*)
   | _ -> false
 *)
 
 (* types one can switch on - all primitives except floats *)
-(* TBR - switch on option type? *)
+(* TBR: switch on option type? *)
 let is_switch_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Prim p -> p <> T.Float
   | _ -> false
 
 (* types one can iterate over using `for`  *)
 let is_iter_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Array _ -> true
   | _ -> false
 
 (* element type of iterable_type  *)
 let elem_typ context t =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Array (_, t) -> t
   | _ -> assert false
 
 
 (* TBR: the whole notion of sharable typ needs to be reviewed in the presence of subtyping *)
 let rec is_shared_typ (context : context) (t : T.typ) : bool =
-  match T.normalize context.cons t with
+  match T.structural context.cons t with
   | T.Var (c, ts) ->
     (match Con.Env.find_opt c context.cons with
     | Some (T.Def (tbs, t) | T.Abs (tbs, t)) ->
@@ -129,20 +129,20 @@ let rec is_shared_typ (context : context) (t : T.typ) : bool =
   | T.Tup ts ->
     List.for_all (is_shared_typ context) ts 
   | T.Func (tbs, t1, t2) ->
+    (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
     let te, ce = is_shared_typ_binds context tbs in
     let context' = adjoin_cons (adjoin_typs context te) ce in
     List.for_all (fun tb -> is_shared_typ context' tb.T.bound) tbs && (* TBR *)
     is_shared_typ context' t1 &&
-    (match T.normalize context'.cons t2 with
+    (match T.structural context'.cons t2 with
     | T.Tup [] | T.Async _ -> true
     | _ -> false
     )
-    (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
   | T.Opt t -> is_shared_typ context t
   | T.Async t -> is_shared_typ context t
   | T.Like t -> is_shared_typ context t
   | T.Obj (T.Object, fs) ->
-    (*TBR: this isn't stable with subtyping *)
+    (* TBR: this isn't stable with subtyping *)
     List.for_all
       (fun {T.lab; typ; mut} -> mut = T.Const && is_shared_typ context typ) fs
   | T.Obj (T.Actor, fs) -> true
@@ -245,10 +245,10 @@ and check_typ_bounds context (tbs : T.bind list) typs at : T.typ list =
 
 (* Checking Literals *)
 
-let check_lit_val p f at s =
-  try f s with _ ->
+let check_lit_val t of_string at s =
+  try of_string s with _ ->
     type_error at "literal out of range for type %s"
-      (T.string_of_typ (T.Prim p))
+      (T.string_of_typ (T.Prim t))
 
 let check_nat = check_lit_val T.Nat Value.Nat.of_string_u
 let check_int = check_lit_val T.Int Value.Int.of_string_s
@@ -256,6 +256,7 @@ let check_word8 = check_lit_val T.Word8 Value.Word8.of_string_u
 let check_word16 = check_lit_val T.Word16 Value.Word16.of_string_u
 let check_word32 = check_lit_val T.Word32 Value.Word32.of_string_u
 let check_word64 = check_lit_val T.Word64 Value.Word64.of_string_u
+let check_float = check_lit_val T.Float Value.Float.of_string
 
 (* begin sanity test *)
 
@@ -269,7 +270,7 @@ let _ =
   assert (check_nat no_region (string_of_int (pow2 Value.nat_width - 1)) = I64.of_int_u (pow2 Value.nat_width - 1));
   assert (check_nat no_region (string_of_int 0) = I64.of_int_u 0);
 (*
-  assert (raises check_nat no_region (string_of_int (pow2 63)));
+  assert (raises check_nat no_region (string_of_int (-1)));
   assert (raises check_nat no_region (string_of_int (pow2 64 + 1)));
 *)
 
@@ -289,98 +290,62 @@ let _ =
 (* end sanity test *)
 
 
-let infer_lit context rl =
-  match !rl with
-  | NullLit -> T.Prim T.Null
-  | BoolLit _ -> T.Prim T.Bool
-  | NatLit _ -> T.Prim T.Nat
-  | IntLit _ -> T.Prim T.Int
-  | Word8Lit _ -> T.Prim T.Word8
-  | Word16Lit _ -> T.Prim T.Word16
-  | Word32Lit _ -> T.Prim T.Word32
-  | Word64Lit _ -> T.Prim T.Word64
-  | FloatLit _ -> T.Prim T.Float
-  | CharLit _ -> T.Prim T.Char
-  | TextLit _ -> T.Prim T.Text
-  | PreLit s ->
-    rl := IntLit (Value.Int.of_string s); (* default *)
-    T.Prim T.Int
+let infer_lit context lit at : T.prim =
+  match !lit with
+  | NullLit -> T.Null
+  | BoolLit _ -> T.Bool
+  | NatLit _ -> T.Nat
+  | IntLit _ -> T.Int
+  | Word8Lit _ -> T.Word8
+  | Word16Lit _ -> T.Word16
+  | Word32Lit _ -> T.Word32
+  | Word64Lit _ -> T.Word64
+  | FloatLit _ -> T.Float
+  | CharLit _ -> T.Char
+  | TextLit _ -> T.Text
+  | PreLit (s, T.Nat) ->
+    (* TBR: default to nat, or replace defaulting with subtyping? *)
+    lit := IntLit (check_int at s); (* default *)
+    T.Int
+  | PreLit (s, T.Int) ->
+    lit := IntLit (check_int at s); (* default *)
+    T.Int
+  | PreLit (s, T.Float) ->
+    lit := FloatLit (check_float at s); (* default *)
+    T.Float
+  | PreLit _ ->
+    assert false
 
-let rec check_lit at context t rl =
-  match T.normalize context.cons t, !rl with
-  | T.Prim T.Null, NullLit
-  | T.Prim T.Nat, NatLit _
-  | T.Prim T.Int, IntLit _
-  | T.Prim T.Word8, Word8Lit _
-  | T.Prim T.Word16, Word16Lit _
-  | T.Prim T.Word32, Word32Lit _
-  | T.Prim T.Word64, Word64Lit _
-  | T.Prim T.Float, FloatLit _ -> ()
-  | T.Prim T.Nat, PreLit s -> rl := NatLit (check_nat at s)
-  | T.Prim T.Int, PreLit s -> rl := IntLit (check_int at s)
-  | T.Prim T.Word8, PreLit s -> rl := Word8Lit (check_word8 at s)
-  | T.Prim T.Word16, PreLit s -> rl := Word16Lit (check_word16 at s)
-  | T.Prim T.Word32, PreLit s -> rl := Word32Lit (check_word32 at s)
-  | T.Prim T.Word64, PreLit s -> rl := Word64Lit (check_word64 at s)
-  | T.Prim _, _ ->
-    let u = infer_lit context rl in
-    if not (T.eq context.cons t u) then
-      type_error at "expect literal of type %s, found literal of type %s"
-        (T.string_of_typ t) (T.string_of_typ u)
+let rec check_lit context t lit at =
+  match T.structural context.cons t, !lit with
   | T.Opt _, NullLit -> ()
-  | T.Opt t, _ -> check_lit at context t rl
-  | _ -> type_error at "type %s has no literals" (T.string_of_typ t)
+  | T.Opt t, _ -> check_lit context t lit at
+  | T.Prim T.Nat, PreLit (s, T.Nat) ->
+    lit := NatLit (check_nat at s)
+  | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
+    lit := IntLit (check_int at s)
+  | T.Prim T.Word8, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Word8Lit (check_word8 at s)
+  | T.Prim T.Word16, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Word16Lit (check_word16 at s)
+  | T.Prim T.Word32, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Word32Lit (check_word32 at s)
+  | T.Prim T.Word64, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Word64Lit (check_word64 at s)
+  | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) -> 
+    lit := FloatLit (check_float at s)
+  | T.Prim t', _ when t' = infer_lit context lit at ->
+    ()
+  | t, _ ->
+    type_error at "expected expression of type %s, found literal of type %s"
+      (T.string_of_typ t) (T.string_of_typ (T.Prim (infer_lit context lit at)))
 
 
+(* Checking Expressions *)
 
-(* Checking Operators *)
-
-let rec infer_binop context at e1 op e2 =
-  let t1 = infer_exp context e1 in
-  let t2 = infer_exp context e2 in
-  if T.eq context.cons t1 t2
-  then
-    if Operator.has_binop e1.note op
-    then t1
-    else type_error at "binary operator not available at argument type %s" (T.string_of_typ t1)
-  else type_error at "arguments to binary operator must have equivalent types, found distinct types %s and %s" (T.string_of_typ t1) (T.string_of_typ t2)
- 
-and check_binop context at t e1 op e2 =
-  if Operator.has_binop t op
-  then (check_exp context t e1;
-        check_exp context t e2)
-  else type_error at "binary operator not available at expected type %s" (T.string_of_typ t)
- 
-and infer_relop context at e1 op e2 =
-  let t1 = infer_exp context e1 in
-  let t2 = infer_exp context e2 in
-  if T.eq context.cons t1 t2
-  then if Operator.has_relop e1.note op
-       then T.bool
-       else type_error at "relational operator not available at argument type %s" (T.string_of_typ t1)
-  else type_error at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s" (T.string_of_typ t1) (T.string_of_typ t2)
-
-and check_relop context at t e1 op e2 =
-  if not (T.eq context.cons t T.bool)
-  then type_error at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (T.string_of_typ t);
-  ignore(infer_relop context at e1 op e2)
- 
-and infer_unop context at op e =
-  let t = infer_exp context e in
-  if Operator.has_unop e.note op
-  then t
-  else type_error at "unary operator not available at argument type %s" (T.string_of_typ t)
-  
-and check_unop context at t op e =
-  check_exp context t e;
-  if Operator.has_unop e.note op
-  then ()
-  else type_error at "unary operator not available at expected type %s" (T.string_of_typ t);
-
-
-and infer_exp context e =
+let rec infer_exp context e =
   let t = infer_exp' context e in
-  e.note <- T.normalize context.cons t;
+  e.note <- T.structural context.cons t;
   t
 
 and infer_exp' context e =
@@ -390,14 +355,34 @@ and infer_exp' context e =
     | Some (t, mut) -> x.note <- mut; t
     | None -> type_error x.at "unbound identifier %s" x.it
     )
-  | LitE rl ->
-    infer_lit context rl
-  | UnE (uop, e1) ->
-    infer_unop context e.at uop e1
-  | BinE (e1, bop, e2) ->
-    infer_binop context e.at e1 bop e2
-  | RelE (e1, rop, e2) ->
-    infer_relop context e.at e1 rop e2    
+  | LitE lit ->
+    T.Prim (infer_lit context lit e.at)
+  | UnE (op, e1) ->
+    let t = infer_exp context e1 in
+    if not (Operator.has_unop t op) then
+      type_error e.at "unary operator not available at argument type %s"
+        (T.string_of_typ t);
+    t
+  | BinE (e1, op, e2) ->
+    let t1 = infer_exp context e1 in
+    let t2 = infer_exp context e2 in
+    if not (T.eq context.cons t1 t2) then
+      type_error e.at "arguments to binary operator must have equivalent types, found distinct types %s and %s"
+        (T.string_of_typ t1) (T.string_of_typ t2);
+    if not (Operator.has_binop t1 op) then
+      type_error e.at "binary operator not available at argument type %s"
+        (T.string_of_typ t1);
+    t1
+  | RelE (e1, op, e2) ->
+    let t1 = infer_exp context e1 in
+    let t2 = infer_exp context e2 in
+    if not (T.eq context.cons t1 t2) then
+      type_error e.at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s"
+        (T.string_of_typ t1) (T.string_of_typ t2);
+    if not (Operator.has_relop e1.note op) then
+      type_error e.at "relational operator not available at argument type %s"
+        (T.string_of_typ t1);
+    T.bool
   | TupE es ->
     let ts = List.map (infer_exp context) es in
     T.Tup ts
@@ -608,14 +593,23 @@ and infer_cases context pt cs t_opt  =
 
 and check_exp context t e =
   (match e.it with
-  | LitE rl ->
-    check_lit e.at context t rl
-  | UnE (uop, e1) ->
-    check_unop context e.at t uop e1
-  | BinE (e1, bop, e2) ->
-    check_binop context e.at t e1 bop e2
-  | RelE (e1, rop, e2) ->
-    check_relop context e.at t e1 rop e2
+  | LitE lit ->
+    check_lit context t lit e.at
+  | UnE (op, e1) ->
+    if not (Operator.has_unop t op)
+    then type_error e.at "unary operator not available at expected type %s" (T.string_of_typ t);
+    check_exp context t e1;
+    e1.note <- t
+  | BinE (e1, op, e2) ->
+    if not (Operator.has_binop t op)
+    then type_error e.at "binary operator not available at expected type %s" (T.string_of_typ t);
+    check_exp context t e1;
+    check_exp context t e2;
+    e1.note <- t
+  | RelE (e1, op, e2) ->
+    if not (T.eq context.cons t T.bool)
+    then type_error e.at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (T.string_of_typ t);
+    ignore (infer_exp context e)
   | TupE es ->
     (match T.structural context.cons t with
     | T.Tup ts when List.length ts = List.length es ->
@@ -672,7 +666,7 @@ and check_exp context t e =
     if not (T.eq context.cons t t')
     then type_error e.at "expecting expression of type %s found expression of type %s" (T.string_of_typ t) (T.string_of_typ t')
   );
-  e.note <- T.normalize context.cons t    
+  e.note <- t    
     
 and infer_block context es =
   match es with
@@ -710,8 +704,8 @@ and infer_pat context p =
   match p.it with
   | WildP ->  type_error p.at "can't infer type of pattern"
   | VarP v -> type_error p.at "can't infer type of pattern"
-  | LitP l ->
-    T.Env.empty, infer_lit context l
+  | LitP lit ->
+    T.Env.empty, T.Prim (infer_lit context lit p.at)
   | TupP ps ->
     infer_pats p.at context T.Env.empty [] ps
   | AnnotP (p, t) ->
@@ -731,8 +725,8 @@ and check_pat context p t =
   match p.it with
   | WildP -> T.Env.empty
   | VarP v -> T.Env.singleton v.it (t, T.Const)
-  | LitP rl ->
-    check_lit p.at context t rl;
+  | LitP lit ->
+    check_lit context t lit p.at;
     T.Env.empty
   | TupP ps ->
     (match T.structural context.cons t with

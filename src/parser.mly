@@ -77,7 +77,7 @@ let (@!) x region = {it = x; at = region; note = Type.Const}
 %token NULL
 %token<string> NAT
 %token<string> INT
-%token<float> FLOAT
+%token<string> FLOAT
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
@@ -217,10 +217,10 @@ typ_bind :
 
 lit :
   | NULL { NullLit }
-  | s=NAT { PreLit s }
-  | s=INT { PreLit s }
   | b=BOOL { BoolLit b }
-  | f=FLOAT { FloatLit (Value.Float.of_float f)}
+  | s=NAT { PreLit (s, Type.Nat) }
+  | s=INT { PreLit (s, Type.Int) }
+  | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
 
@@ -452,7 +452,11 @@ func_body :
 
 dec :
   | LET p=pat EQ e=exp
-    { LetD (p,e) @@ at($symbolstartpos,$endpos) }
+    { let p', e' =
+        match p.it with
+        | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+        | _ -> p, e
+      in LetD (p', e') @@ at($symbolstartpos,$endpos) }
   | VAR x=id COLON t=typ eo=init?
     { VarD(x, t, eo.it) @@ at($symbolstartpos,$endpos) } 
   | FUNC fd=func_def

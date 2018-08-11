@@ -43,7 +43,28 @@ Final state control.as:
   Control = func
 
 Checking literals.as:
-literals.as:3.20-3.27: type error, literal out of range for type Word8
+  byte : Word8
+  i : Int
+  i1 : Int
+  i2 : Int
+  n : Nat
+  s : Text
+  short : Word16
+  u : Char
+  word : Word32
+
+Interpreting literals.as (tracing function calls):
+
+Final state literals.as:
+  byte = 255
+  i = 0
+  i1 = -1
+  i2 = 4095
+  n = 0
+  s = "a \t\"\u{00}bb\'bc\\de txx\\x\"\u{23442}\n"
+  short = 65535
+  u = "\u{a34}"
+  word = 4294967295
 
 Checking numericops.as:
   testFloat : (Float, Float) -> ()
