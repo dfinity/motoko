@@ -7,13 +7,8 @@ let main () =
   let filename = Sys.argv.(1) in 
   let is = open_in filename in 
   let lexer = Lexing.from_channel is in
-
-  (* I can't seem to get the lexer to use filename for pos_fname, so we update the filename later instead *)
-  let string_of_region (r : Source.region) =
-  	let r = {Source.left = {r.Source.left with Source.file = filename};
-         Source.right = {r.Source.right with Source.file = filename}} in
-      Source.string_of_region r
-  in
+  lexer.Lexing.lex_curr_p <-
+    {lexer.Lexing.lex_curr_p with Lexing.pos_fname = filename};
   try
     let prog = Parser.prog token lexer in 
     Printf.printf "\nChecking %s:\n" filename;
@@ -37,19 +32,19 @@ let main () =
     ))
   with
   | Lexer.Syntax (r, m) ->
-    let r = string_of_region r in
+    let r = Source.string_of_region r in
     Printf.printf "%s: syntax error, %s\n" r m;
   | Parser.Error ->
-    let r = string_of_region (Lexer.region lexer) in
+    let r = Source.string_of_region (Lexer.region lexer) in
     Printf.printf " %s: syntax error\n" r;
   | Typing.TypeError (r, m)  -> 
-    let r = string_of_region r in
+    let r = Source.string_of_region r in
     Printf.printf "%s: type error, %s\n" r m;
   | Typing.KindError (r, m) ->
-    let r = string_of_region r in
+    let r = Source.string_of_region r in
     Printf.printf "%s: type error, %s\n" r m;
   | e ->
-     let r = string_of_region !Interpret.last_region in
+     let r = Source.string_of_region !Interpret.last_region in
      let context = !Interpret.last_context in
      let ve = context.Interpret.vals in
      Value.Env.iter (fun v w -> 
