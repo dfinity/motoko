@@ -33,9 +33,9 @@ type context =
     vals : val_env;
     typs : typ_env;
     cons : con_env;
-    labels : T.typ T.Env.t;
-    returns : T.typ option;
-    awaitable : bool
+    labs : T.typ T.Env.t;
+    rets : T.typ option;
+    async : bool
   }
 
 let empty_context =
@@ -43,15 +43,16 @@ let empty_context =
     vals = T.Env.empty;
     typs = T.Env.empty;
     cons = Con.Env.empty;
-    labels = T.Env.empty;
-    returns = None;
-    awaitable = false
+    labs = T.Env.empty;
+    rets = None;
+    async = false
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 let adjoin_typs c te = {c with typs = T.Env.adjoin c.typs te}
 let adjoin_cons c ce = {c with cons = Con.Env.adjoin c.cons ce}
 
+let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
 let add_typ c x con k =
   {c with typs = T.Env.add x con c.typs; cons = Con.Env.add con k c.cons}
@@ -338,336 +339,345 @@ let rec check_lit context t lit at =
     ()
   | t, _ ->
     type_error at "expected expression of type %s, found literal of type %s"
-      (T.string_of_typ t) (T.string_of_typ (T.Prim (infer_lit context lit at)))
+      (T.string_of_typ t)
+      (T.string_of_typ (T.Prim (infer_lit context lit at)))
 
 
 (* Checking Expressions *)
 
-let rec infer_exp context e =
-  let t = infer_exp' context e in
-  e.note <- T.structural context.cons t;
+let rec infer_exp context exp : T.typ =
+  let t, _ = infer_exp' context exp in
+  exp.note <- T.structural context.cons t;
   t
 
-and infer_exp' context e =
-  match e.it with
-  | VarE x ->
-    (match T.Env.find_opt x.it context.vals with
-    | Some (t, mut) -> x.note <- mut; t
-    | None -> type_error x.at "unbound identifier %s" x.it
+and infer_exp_mut context exp : T.typ =
+  let t, m = infer_exp' context exp in
+  if m <> T.Mut then
+    type_error exp.at "expected mutable assignment target";
+  exp.note <- T.structural context.cons t;
+  t
+
+and infer_exp' context exp : T.typ * T.mut =
+  match exp.it with
+  | VarE id ->
+    (match T.Env.find_opt id.it context.vals with
+    | Some (t, mut) -> id.note <- mut; t, mut
+    | None -> type_error id.at "unbound variable %s" id.it
     )
   | LitE lit ->
-    T.Prim (infer_lit context lit e.at)
-  | UnE (op, e1) ->
-    let t = infer_exp context e1 in
+    T.Prim (infer_lit context lit exp.at), T.Const
+  | UnE (op, exp1) ->
+    let t = infer_exp context exp1 in
     if not (Operator.has_unop t op) then
-      type_error e.at "unary operator not available at argument type %s"
+      type_error exp.at "operator is not defined for operand type %s"
         (T.string_of_typ t);
-    t
-  | BinE (e1, op, e2) ->
-    let t1 = infer_exp context e1 in
-    let t2 = infer_exp context e2 in
+    t, T.Const
+  | BinE (exp1, op, exp2) ->
+    let t1 = infer_exp context exp1 in
+    let t2 = infer_exp context exp2 in
     if not (T.eq context.cons t1 t2) then
-      type_error e.at "arguments to binary operator must have equivalent types, found distinct types %s and %s"
+      type_error exp.at "operands have consistent types, %s vs %s"
         (T.string_of_typ t1) (T.string_of_typ t2);
     if not (Operator.has_binop t1 op) then
-      type_error e.at "binary operator not available at argument type %s"
+      type_error exp.at "operator not defined for operand type %s"
         (T.string_of_typ t1);
-    t1
-  | RelE (e1, op, e2) ->
-    let t1 = infer_exp context e1 in
-    let t2 = infer_exp context e2 in
+    t1, T.Const
+  | RelE (exp1, op, exp2) ->
+    let t1 = infer_exp context exp1 in
+    let t2 = infer_exp context exp2 in
     if not (T.eq context.cons t1 t2) then
-      type_error e.at "arguments to relational operator must have equivalent types, found arguments of distinct types %s and %s"
+      type_error exp.at "operands have inconsistent types, %s vs %s"
         (T.string_of_typ t1) (T.string_of_typ t2);
-    if not (Operator.has_relop e1.note op) then
-      type_error e.at "relational operator not available at argument type %s"
+    if not (Operator.has_relop exp1.note op) then
+      type_error exp.at "operator is not defined for operand type %s"
         (T.string_of_typ t1);
-    T.bool
-  | TupE es ->
-    let ts = List.map (infer_exp context) es in
-    T.Tup ts
-  | ProjE (e, n) ->
-    (match T.structural context.cons (infer_exp context e) with
+    T.bool, T.Const
+  | TupE exps ->
+    let ts = List.map (infer_exp context) exps in
+    T.Tup ts, T.Const
+  | ProjE (exp1, n) ->
+    (match T.structural context.cons (infer_exp context exp1) with
     | T.Tup ts ->
-      (try List.nth ts n
-      with Failure _ -> type_error e.at "tuple projection %n >= %n is out-of-bounds" n (List.length ts))
-    | t -> type_error e.at "expecting tuple type, found %s" (T.string_of_typ t)
+      (match List.nth_opt ts n with
+      | Some t -> t, T.Const
+      | None ->
+        type_error exp.at "tuple projection %n >= %n is out-of-bounds"
+          n (List.length ts)
+      )
+    | t ->
+      type_error exp.at "expected tuple type, found %s" (T.string_of_typ t)
     )
   | ObjE (actor, _, _) ->
-    (* TBR *)
+    (* TBR: infer object type *)
     assert false
-  | DotE (e, v) ->
-    (match T.structural context.cons (infer_exp context e) with
+  | DotE (exp1, id) ->
+    (match T.structural context.cons (infer_exp context exp1) with
     | T.Obj (a, tfs) as t ->
-      (try
-        let {T.mut; typ; _} = List.find (fun {T.lab; _} -> lab = v.it) tfs in
-  	    v.note <- mut;
-        typ
-      with Not_found -> type_error e.at "object of type %s has no field named %s" (T.string_of_typ t) v.it)
-    | t -> type_error e.at "expecting object type, found %s" (T.string_of_typ t)
-    )
-  | AssignE (e1, e2) ->
-    (*TBC: array and object update *)
-    (match e1.it with
-    | VarE v ->
-      (match T.Env.find_opt v.it context.vals with
-      | Some (t1, T.Mut) ->
-        v.note <- T.Mut;
-        check_exp context t1 e2;
-  	    T.unit
-      | Some (_, T.Const) ->
-        type_error e.at "cannot assign to immutable location"
+      (match List.find_opt (fun {T.lab; _} -> lab = id.it) tfs with
+      | Some {T.mut; typ = t; _} ->
+        id.note <- mut;
+        t, mut
       | None ->
-     	  type_error e1.at "unbound mutable identifier %s" v.it
+        type_error exp1.at "object of type %s has no field named %s"
+          (T.string_of_typ t) id.it
       )
-    | DotE (o, v) ->
-      (match T.structural context.cons (infer_exp context o) with
-      | T.Obj (a, tfs) as t ->
-  	    (try
-          let {T.mut; typ; _} = List.find (fun {T.lab; _} -> lab = v.it) tfs in
-  	      v.note <- mut;
-          match mut with 
-          | T.Mut ->
-            check_exp context typ e2;
-  	        T.unit
-          | T.Const ->
-            type_error e.at "cannot assign to immutable field %s"  v.it
-  	    with Not_found -> type_error e.at "object of type %s has no field named %s" (T.string_of_typ t) v.it)
-      | t -> type_error e.at "expecting object type, found %s" (T.string_of_typ t)
-      )
-    | IdxE (ea, ei) ->
-      (match T.structural context.cons (infer_exp context ea) with
-      | T.Array (T.Mut, t) ->
-        check_exp context T.nat ei;
-        check_exp context t e2;
-  	    T.unit
-      | T.Array (T.Const, _) as t1  -> 
-        type_error e.at "cannot assign to immutable array of type %s" (T.string_of_typ t1) 
-      | t -> type_error e.at "expecting array type, found %s" (T.string_of_typ t)
-      )
-    | _ ->
-      type_error e.at "illegal assignment: expecting variable, mutable object field or mutable array element"
+    | t ->
+      type_error exp1.at "expected object type, found %s" (T.string_of_typ t)
     )
+  | AssignE (exp1, exp2) ->
+    let t2 = infer_exp_mut context exp1 in
+    check_exp context t2 exp2;
+    T.unit, T.Const
   | ArrayE (_, []) ->
-    type_error e.at "cannot infer type of empty array (use a type annotation)"
-  | ArrayE (mut, es) ->
-    let ts = List.map (infer_exp context) es in
+    type_error exp.at
+      "cannot infer type of empty array (use a type annotation)"
+  | ArrayE (mut, exps) ->
+    let ts = List.map (infer_exp context) exps in
     let t1 = List.hd ts in
-    if List.for_all (T.eq context.cons t1) (List.tl ts)
-    then T.Array (mut.it, t1)
-    else type_error e.at "array contains elements of distinct types"
-  | IdxE (e1, e2) ->
-    (match T.structural context.cons (infer_exp context e1) with
-    | T.Array (_, t1) -> 
-      check_exp context T.nat e2;
-      t1
-    | t -> type_error e.at "illegal indexing: expected an array, found %s" (T.string_of_typ t)
+    (* TBR: join *)
+    if not (List.for_all (T.eq context.cons t1) (List.tl ts)) then
+      type_error exp.at "array contains elements of inconsistent types";
+    T.Array (mut.it, t1), T.Const
+  | IdxE (exp1, exp2) ->
+    (match T.structural context.cons (infer_exp context exp1) with
+    | T.Array (m, t) -> 
+      check_exp context T.nat exp2;
+      t, m
+    | t1 ->
+      type_error exp1.at "expected array type, found %s" (T.string_of_typ t1)
     )
-  | CallE (e1, typs, e2) ->
-    (match T.structural context.cons (infer_exp context e1) with
-    | T.Func (tbs, t2, t) -> (* TBC polymorphic instantiation, perhaps by matching? *)
-      let ts = check_typ_bounds context tbs typs e.at in
+  | CallE (exp1, typs, exp2) ->
+    (match T.structural context.cons (infer_exp context exp1) with
+    | T.Func (tbs, t2, t) ->
+      (* TBR: polymorphic instantiation, perhaps by matching? *)
+      let ts = check_typ_bounds context tbs typs exp.at in
       let sigma = T.make_subst ts tbs in
-      check_exp context (T.subst sigma t2) e2;
-      T.subst sigma t
-    | _ -> type_error e.at "illegal application: not a function"
+      check_exp context (T.subst sigma t2) exp2;
+      T.subst sigma t, T.Const
+    | t1 ->
+      type_error exp1.at "expected function type, found %s"
+        (T.string_of_typ t1)
     )
-  | BlockE es ->
-    check_block_local e.at context T.unit es;
-    T.unit
-  | NotE e ->
-    check_exp context T.bool e;
-    T.bool
-  | AndE (e1, e2) ->
-    check_exp context T.bool e1;
-    check_exp context T.bool e2;
-    T.bool
-  | OrE (e1, e2) ->
-    check_exp context T.bool e1;
-    check_exp context T.bool e2;
-    T.bool
-  | IfE (e0, e1, e2) ->
-    check_exp context T.bool e0;
-    let t1 = infer_exp context e1 in
-    let t2 = infer_exp context e2 in
-    if T.eq context.cons t1 t2 
-    then t1
-    else type_error e.at "branches of if have different types"
-  | SwitchE (e, cs) ->
-    let t = infer_exp context e in
-    if not (is_switch_typ context t) then type_error e.at "illegal type for switch";
-    (match infer_cases context t cs None with
-    | Some t -> t
-    | None -> type_error e.at "couldn't infer type of case"
-    )
-  | WhileE (e0, e1) ->
-    check_exp context T.bool e0;
-    check_exp context T.unit e1;
-    T.unit
-  | LoopE (e, None) ->
-    check_exp context T.unit e;
-    T.unit (* TBR: T.bottom? *)
-  | LoopE (e0, Some e1) ->
-    check_exp context T.unit e0;
-    (* TBR currently can't break or continue from guard *)
-    check_exp context T.bool e1;
-    T.unit
-  | ForE (p, e0, e1)->
-    let t = infer_exp context e0 in (*TBR is this for arrays only? If so, what about mutability*)
-    if not (is_iter_typ context t) then type_error e.at "cannot iterate over this type";
-    let ve = check_pat context p (elem_typ context t) in
-    let context' = {context with vals = T.Env.adjoin context.vals ve} in
-    check_exp context' T.unit e1;
-    T.unit
-  | LabelE (l, e) ->
-    let context' = {context with labels = T.Env.add l.it T.unit context.labels} in
-    infer_exp context' e
-  | BreakE (l, e) ->
-    (match T.Env.find_opt l.it context.labels  with
+  | BlockE exps ->
+    check_block_local context T.unit exps exp.at;
+    (* TBR: return last type *)
+    T.unit, T.Const
+  | NotE exp1 ->
+    check_exp context T.bool exp1;
+    T.bool, T.Const
+  | AndE (exp1, exp2) ->
+    check_exp context T.bool exp1;
+    check_exp context T.bool exp2;
+    T.bool, T.Const
+  | OrE (exp1, exp2) ->
+    check_exp context T.bool exp1;
+    check_exp context T.bool exp2;
+    T.bool, T.Const
+  | IfE (exp1, exp2, exp3) ->
+    check_exp context T.bool exp1;
+    let t2 = infer_exp context exp2 in
+    let t3 = infer_exp context exp3 in
+    (* TBR: join *)
+    if not (T.eq context.cons t2 t3) then
+      type_error exp.at "if branches have inconsistent types, true is %s, false is %s"
+        (T.string_of_typ t2) (T.string_of_typ t3);
+    t2, T.Const
+  | SwitchE (exp1, cases) ->
+    let t1 = infer_exp context exp1 in
+    if not (is_switch_typ context t1) then
+      type_error exp1.at "expected switchable type, found %s"
+        (T.string_of_typ t1);
+    let t = infer_cases context t1 cases in
+    t, T.Const
+  | WhileE (exp1, exp2) ->
+    check_exp context T.bool exp1;
+    check_exp context T.unit exp2;
+    T.unit, T.Const
+  | LoopE (exp1, expo) ->
+    check_exp context T.unit exp1;
+    Lib.Option.app (check_exp context T.bool) expo;
+    (* TBR: T.Bottom? *)
+    T.unit, T.Const
+  | ForE (pat, exp1, exp2)->
+    (* TBR: generalise beyond arrays *)
+    let t1 = infer_exp context exp1 in
+    if not (is_iter_typ context t1) then
+      type_error exp1.at "expected iterable type, found %s"
+        (T.string_of_typ t1);
+    let ve = check_pat context (elem_typ context t1) pat in
+    check_exp (adjoin_vals context ve) T.unit exp2;
+    T.unit, T.Const
+  | LabelE (id, exp1) ->
+    let t = infer_exp (add_lab context id.it T.unit) exp1 in
+    t, T.Const
+  | BreakE (id, exp1) ->
+    (match T.Env.find_opt id.it context.labs with
     | Some t ->
-      check_exp context t e;
-      T.unit (* TBR: T.bottom? *)
+      check_exp context t exp1;
+      (* TBR: T.Bottom? *)
+      T.unit, T.Const
     | None ->
-      match String.split_on_char ' ' l.it with
-      | ["continue"; l'] -> type_error e.at "continue to unknown label %s" l'
-      | _ -> type_error e.at "break to unknown label %s" l.it
+      let name =
+        match String.split_on_char ' ' id.it with
+        | ["continue"; name] -> name
+        | _ -> id.it
+      in type_error id.at "unbound label %s" name
     )
-  | RetE e0 ->
-    (match context.returns with
+  | RetE exp1 ->
+    (match context.rets with
     | Some t ->
-      check_exp context t e0;
-      T.unit (*TBR: bottom? *)
-    | None -> type_error e.at "illegal return"
+      check_exp context t exp1;
+      (*TBR: T.Bottom? *)
+      T.unit, T.Const
+    | None ->
+      type_error exp.at "misplaced return in global context"
     )
-  | AsyncE e0 ->
+  | AsyncE exp1 ->
     let context' =
-      { context with
-  		  labels = T.Env.empty;
-  		  returns = Some T.unit; (* TBR *)
-  		  awaitable = true
-      } in
-    let t = infer_exp context' e0 in
-    T.Async t
-  | AwaitE e0 ->
-    if context.awaitable
-    then
-      match T.structural context.cons (infer_exp context e0) with
-      | T.Async t -> t
-      | t -> type_error e0.at "expecting expression of async type, found expression of type %s" (T.string_of_typ t)
-    else type_error e.at "illegal await in synchronous context"
-  | AssertE e ->
-    check_exp context T.bool e;
-    T.unit
-  | IsE (e, t) ->
-    let _ = infer_exp context e in
-    let _ = check_typ context t in (*TBR what if T has free type variables? How will we check this, sans type passing *) 
-    T.bool
-  | AnnotE (e, t) ->
-    let t = check_typ context t in 
-    check_exp context t e;
-    t
-  | DecE {it = FuncD (v, _, _, _, _); _} ->
+      {context with labs = T.Env.empty; rets = Some T.unit; async = true} in
+    let t = infer_exp context' exp1 in
+    T.Async t, T.Const
+  | AwaitE exp1 ->
+    if not context.async then
+      type_error exp.at "misplaced await in synchronous context";
+    (match T.structural context.cons (infer_exp context exp1) with
+    | T.Async t -> t, T.Const
+    | t1 ->
+      type_error exp1.at "expected async type, found %s" (T.string_of_typ t1)
+    )
+  | AssertE exp1 ->
+    check_exp context T.bool exp1;
+    T.unit, T.Const
+  | IsE (exp1, typ) ->
+    (* TBR: what if T has free type variables? How will we check this, sans type passing? *) 
+    let t1 = infer_exp context exp1 in
+    let t = check_typ context typ in
+    (* TBR: check that t <: t1 *)
+    T.bool, T.Const
+  | AnnotE (exp1, typ) ->
+    let t = check_typ context typ in 
+    check_exp context t exp1;
+    t, T.Const
+  | DecE {it = FuncD (id, _, _, _, _); _} ->
     (* TODO: don't special-case functions *)
-    ignore (check_block context [e]);
-    (match T.Env.find_opt v.it context.vals with
-    | Some (t, mut) -> t
+    ignore (check_block context [exp]);
+    (match T.Env.find_opt id.it context.vals with
+    | Some (t, mut) -> t, mut
     | None -> assert false
     )
   | DecE _ ->
-    let _ = check_block context [e] in
-    T.unit
+    let _ = check_block context [exp] in
+    T.unit, T.Const
     
 
-(* todo: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+and check_exp context t exp =
+  check_exp' context t exp;
+  exp.note <- t
 
-and infer_cases context pt cs t_opt  =
-  match cs with
-  | [] -> t_opt
-  | {it = {pat; exp}; _}::cs ->
-    let ve = check_pat context pat pt in
-    let t =
-    	match t_opt with
-      | None -> infer_exp (adjoin_vals context ve) exp 
-      | Some t -> check_exp (adjoin_vals context ve) t exp; t
-    in infer_cases context pt cs (Some t)
-
-and check_exp context t e =
-  (match e.it with
+and check_exp' context t exp =
+  match exp.it with
   | LitE lit ->
-    check_lit context t lit e.at
-  | UnE (op, e1) ->
-    if not (Operator.has_unop t op)
-    then type_error e.at "unary operator not available at expected type %s" (T.string_of_typ t);
-    check_exp context t e1;
-    e1.note <- t
-  | BinE (e1, op, e2) ->
-    if not (Operator.has_binop t op)
-    then type_error e.at "binary operator not available at expected type %s" (T.string_of_typ t);
-    check_exp context t e1;
-    check_exp context t e2;
-    e1.note <- t
-  | RelE (e1, op, e2) ->
-    if not (T.eq context.cons t T.bool)
-    then type_error e.at "expecting value of non-boolean type %s, relational operator returns a value of Bool type" (T.string_of_typ t);
-    ignore (infer_exp context e)
-  | TupE es ->
+    check_lit context t lit exp.at
+  | UnE (op, exp1) ->
+    if not (Operator.has_unop t op) then
+      type_error exp.at "operator cannot produce expected type %s"
+        (T.string_of_typ t);
+    check_exp context t exp1
+  | BinE (exp1, op, exp2) ->
+    if not (Operator.has_binop t op) then
+      type_error exp.at "operator cannot produce expected type %s"
+        (T.string_of_typ t);
+    check_exp context t exp1;
+    check_exp context t exp2
+  | RelE (exp1, op, exp2) ->
+    if not (T.eq context.cons t T.bool) then
+      type_error exp.at "operator cannot produce expected type %s"
+        (T.string_of_typ t);
+    ignore (infer_exp context exp)
+  | TupE exps ->
     (match T.structural context.cons t with
-    | T.Tup ts when List.length ts = List.length es ->
-      List.iter2 (check_exp context) ts es
-    | _ -> type_error e.at "tuple expression cannot produce expected type %s" (T.string_of_typ t)
+    | T.Tup ts when List.length ts = List.length exps ->
+      List.iter2 (check_exp context) ts exps
+    | _ ->
+      type_error exp.at "tuple expression cannot produce expected type %s"
+        (T.string_of_typ t)
     )
-  | ArrayE (mut, es) ->
+  | ArrayE (mut, exps) ->
     (match T.structural context.cons t with
-    | T.Array (mut', t) when mut' = mut.it ->
-      List.iter (check_exp context t) es
-    | _ -> type_error e.at "array expression cannot produce expected type %s" (T.string_of_typ t)
+    | T.Array (m, t) when m = mut.it ->
+      List.iter (check_exp context t) exps
+    | _ ->
+      type_error exp.at "array expression cannot produce expected type %s"
+       (T.string_of_typ t)
     )
-(* | IdxE(e1, e2) ->
-   TBR, unfortunately, we can't easily do IdxE in checking mode because we don't know whether to expect
-   a mutable or immutable array type (we could do better on assignment of course),
-   so we rely on inference instead
-*)
-  | AsyncE e0 ->
+  (* TBR: propagate mutablility via subtyping?
+  | IdxE (exp1, exp2) ->
+    check_exp context (T.Array (T.Const, t)) exp1;
+    check_exp context T.nat exp2
+  *)
+  | AsyncE exp1 ->
     (match T.structural context.cons t with
     | T.Async t ->
-      let context =
-        { context with
-          labels = T.Env.empty;
-		      returns = Some t; (* TBR *)
-		      awaitable = true
-        } in
-      check_exp context t e0
-    | _ -> type_error e.at "async expression cannot produce expected type %s" (T.string_of_typ t)
+      let context' =
+        {context with labs = T.Env.empty; rets = Some t; async = true}
+      in check_exp context' t exp1
+    | _ ->
+      type_error exp.at "async expression cannot produce expected type %s"
+        (T.string_of_typ t)
     )
-  | LoopE (e, None) ->
-    check_exp context T.unit e (*TBR: any? *)
-  | BlockE es ->
-    check_block_local e.at context t es
-  | IfE (e0, e1, e2) ->
-    check_exp context T.bool e0;
-    check_exp context t e1;
-    check_exp context t e2
-  | SwitchE (e1, cs) ->
-    let t1 = infer_exp context e1 in
-    if not (is_switch_typ context t1) then type_error e1.at "illegal type for switch";
-    (match infer_cases context t1 cs (Some t) with
-    | Some t' -> assert (T.eq context.cons t t')
-    | None -> assert false
-    )
-  | BreakE _ ->
-    ignore (infer_exp context e)
-  | RetE _ ->
-    ignore (infer_exp context e)
-  | LabelE (l, e) ->
-    let context' = {context with labels = T.Env.add l.it t context.labels} in
-    check_exp context' t e
+  | BlockE exps ->
+    check_block_local context t exps exp.at
+  | IfE (exp1, exp2, exp3) ->
+    check_exp context T.bool exp1;
+    check_exp context t exp2;
+    check_exp context t exp3
+  | SwitchE (exp1, cases) ->
+    let t1 = infer_exp context exp1 in
+    if not (is_switch_typ context t1) then
+      type_error exp1.at "expected switchable type, found %s"
+        (T.string_of_typ t1);
+    check_cases context t1 t cases
+  | LabelE (id, exp) ->
+    check_exp (add_lab context id.it t) t exp
+  | LoopE _ | BreakE _ | RetE _ ->
+    (* TBR: remove once we have T.Bottom and subtyping *)
+    ignore (infer_exp context exp)
   | _ ->
-    let t' = infer_exp context e in
-    if not (T.eq context.cons t t')
-    then type_error e.at "expecting expression of type %s found expression of type %s" (T.string_of_typ t) (T.string_of_typ t')
-  );
-  e.note <- t    
-    
+    let t' = infer_exp context exp in
+    if not (T.eq context.cons t t') then
+      type_error exp.at "expected type %s, found %s"
+        (T.string_of_typ t) (T.string_of_typ t')
+
+
+(* Checking Cases *)
+
+(* TBR: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+
+and infer_cases context t1 = function
+  | [] ->
+    (* TBR: T.Bottom? *)
+    T.unit
+  | {it = {pat; exp}; _}::cases ->
+    let ve = check_pat context t1 pat in
+    let t = infer_exp (adjoin_vals context ve) exp in
+    let t' = infer_cases context t cases in
+    (* TBR: join *)
+    if not (T.eq context.cons t t') then
+      type_error exp.at
+        "switch branches have inconsistent types, this is %s, next is %s"
+        (T.string_of_typ t) (T.string_of_typ t');
+    t
+
+and check_cases context t1 t2 = function
+  | [] -> ()
+  | {it = {pat; exp}; _}::cases' ->
+    let ve = check_pat context t1 pat in
+    check_exp (adjoin_vals context ve) t2 exp;
+    check_cases context t1 t2 cases'
+
+
+(* Checking Blocks *)
+
 and infer_block context es =
   match es with
   | [] -> T.unit
@@ -679,18 +689,18 @@ and infer_block context es =
     check_exp context T.unit e; (* TBR: is this too strict? do we want to allow implicit discard? *)
     infer_block context es'
 
-and check_block_local r context t es =
+and check_block_local context t es at =
   match es with
   | [] ->
     if not (T.eq context.cons t T.unit)
-    then type_error r "block  must end with expression of type" (T.string_of_typ t) 
+    then type_error at "block  must end with expression of type" (T.string_of_typ t) 
   | ({it = DecE _; _} as e)::es' ->
     let ve, te, ke = check_block context [e] in (* TBR: we currently check local decs sequentially, not recursively *)
-    check_block_local r (adjoin_cons (adjoin_typs (adjoin_vals context ve) te) ke) t es'
+    check_block_local (adjoin_cons (adjoin_typs (adjoin_vals context ve) te) ke) t es' at
   | [e] -> check_exp context t e
   | e::es' ->
     check_exp context T.unit e; (* TBR: is this too strict? do we want to allow implicit discard? *)
-    check_block_local r context t es'
+    check_block_local context t es' at
 
 
 and infer_pats at context ve ts ps =
@@ -710,18 +720,18 @@ and infer_pat context p =
     infer_pats p.at context T.Env.empty [] ps
   | AnnotP (p, t) ->
     let t = check_typ context t in
-    check_pat context p t, t
+    check_pat context t p, t
 
-and check_pats at context ve ps ts =
+and check_pats context ve ts ps at =
   match ps, ts with
   | [], [] -> ve
   | p::ps, t::ts ->
-    let ve' = check_pat context p t in
-    check_pats at context (disjoint_union at "duplicate binding for %s in pattern" ve ve') ps ts  (*TBR reject shadowing *)
+    let ve' = check_pat context t p in
+    check_pats context (disjoint_union at "duplicate binding for %s in pattern" ve ve') ts ps at  (*TBR reject shadowing *)
   | [], ts -> type_error at "tuple pattern has %i fewer components than expected type" (List.length ts)
   | ts, [] -> type_error at "tuple pattern has %i more components than expected type" (List.length ts)
-         
-and check_pat context p t =
+
+and check_pat context t p =
   match p.it with
   | WildP -> T.Env.empty
   | VarP v -> T.Env.singleton v.it (t, T.Const)
@@ -730,13 +740,13 @@ and check_pat context p t =
     T.Env.empty
   | TupP ps ->
     (match T.structural context.cons t with
-    | T.Tup ts -> check_pats p.at context T.Env.empty ps ts 
+    | T.Tup ts -> check_pats context T.Env.empty ts ps p.at
     | _ -> type_error p.at "expected pattern of non-tuple type, found pattern of tuple type"
     )
   | AnnotP (p', t') ->
     let t' = check_typ context t' in
     if T.eq context.cons t t'
-    then check_pat context p' t'
+    then check_pat context t' p'
     else type_error p.at "expected pattern of one type, found pattern of unequal type"
 
       
@@ -745,7 +755,7 @@ and check_dec pass context d =
   | LetD (p, e) ->
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else      
     let t = infer_exp context e in
-    let ve = check_pat context p t in 
+    let ve = check_pat context t p in 
     ve, T.Env.empty, Con.Env.empty
   | VarD (v, t, None) ->
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
@@ -782,9 +792,9 @@ and check_dec pass context d =
     let func_t = T.Func (tbs, t1, t2) in  (* TBR: we allow polymorphic recursion *)
     let context_te_ve_v =
       { (add_val (adjoin_vals context_te ve) v.it (func_t, T.Const)) with
-	      labels = T.Env.empty;
-        returns = Some t2;
-        awaitable = false
+	      labs = T.Env.empty;
+        rets = Some t2;
+        async = false
       } in
     check_exp context_te_ve_v t2 e;
     T.Env.singleton v.it (func_t, T.Const), T.Env.empty, Con.Env.empty

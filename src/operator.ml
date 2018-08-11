@@ -145,6 +145,7 @@ let find_relop t op =
   | _ -> raise Not_found
 
 
-let has_unop t uop = try find_unop t uop; true with Not_found -> false
-let has_binop t bop = try find_binop t bop; true with Not_found -> false
-let has_relop t rop = try find_relop t rop; true with Not_found -> false
+let has f t op = try ignore (f t op); true with Not_found -> false
+let has_unop t op = has find_unop t op
+let has_binop t op = has find_binop t op
+let has_relop t op = has find_relop t op

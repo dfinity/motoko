@@ -9,9 +9,9 @@ type context =
     vals : val_env;
     typs : typ_env;
     cons : con_env;
-    labels : typ Env.t;
-    returns : typ option;
-    awaitable : bool
+    labs : typ Env.t;
+    rets : typ option;
+    async : bool
   }
 
 val empty_context : context
