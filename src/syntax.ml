@@ -118,7 +118,7 @@ and exp' =
   | ObjE of actor * var option * exp_field list (* object *)
   | DotE of exp * var_ref                      (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of mut * exp list                   (* array *)
+  | ArrayE of exp list                         (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of exp list                         (* block *)

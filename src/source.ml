@@ -1,9 +1,9 @@
 type pos = {file : string; line : int; column : int}
 type region = {left : pos; right : pos}
-type ('a,'i) annotated_phrase = {at : region; it : 'a; mutable note: 'i}
-type 'a phrase = ('a,unit) annotated_phrase
+type ('a, 'b) annotated_phrase = {at : region; it : 'a; mutable note: 'b}
+type 'a phrase = ('a, unit) annotated_phrase
 
-let (@@) x region = {it = x; at = region; note = ()}
+let (@@) it at = {it; at; note = ()}
 
 (* Positions and regions *)
 

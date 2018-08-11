@@ -20,6 +20,7 @@ clean:
 
 test: all
 	$(MAKE) -C test ASC=../$(MAIN).${BUILD} all
+	$(MAKE) -C samples ASC=../$(MAIN).${BUILD} all
 
 sanity:
 	ocamlfind query wasm

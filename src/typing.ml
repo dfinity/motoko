@@ -428,16 +428,17 @@ and infer_exp' context exp : T.typ * T.mut =
     let t2 = infer_exp_mut context exp1 in
     check_exp context t2 exp2;
     T.unit, T.Const
-  | ArrayE (_, []) ->
+  | ArrayE [] ->
+    (* TBR: T.Bottom? *)
     type_error exp.at
       "cannot infer type of empty array (use a type annotation)"
-  | ArrayE (mut, exps) ->
+  | ArrayE exps ->
     let ts = List.map (infer_exp context) exps in
     let t1 = List.hd ts in
     (* TBR: join *)
     if not (List.for_all (T.eq context.cons t1) (List.tl ts)) then
       type_error exp.at "array contains elements of inconsistent types";
-    T.Array (mut.it, t1), T.Const
+    T.Array (T.Const, t1), T.Const
   | IdxE (exp1, exp2) ->
     (match T.structural context.cons (infer_exp context exp1) with
     | T.Array (m, t) -> 
@@ -602,9 +603,9 @@ and check_exp' context t exp =
       type_error exp.at "tuple expression cannot produce expected type %s"
         (T.string_of_typ t)
     )
-  | ArrayE (mut, exps) ->
+  | ArrayE exps ->
     (match T.structural context.cons t with
-    | T.Array (m, t) when m = mut.it ->
+    | T.Array (m, t) ->
       List.iter (check_exp context t) exps
     | _ ->
       type_error exp.at "array expression cannot produce expected type %s"

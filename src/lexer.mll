@@ -187,6 +187,7 @@ rule token = parse
   | "in" { IN }
   | "is" { IS }
   | "like" { LIKE }
+  | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }
   | "or" { OR }
