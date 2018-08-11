@@ -31,7 +31,7 @@ let main () =
 		  Value.unit
     ))
   with
-  | Lexer.Syntax (r, m) ->
+  | Lexer.Error (r, m) ->
     let r = Source.string_of_region r in
     Printf.printf "%s: syntax error, %s\n" r m;
   | Parser.Error ->

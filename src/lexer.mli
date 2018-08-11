@@ -1,4 +1,4 @@
-exception Syntax of Source.region * string
+exception Error of Source.region * string
 
 val convert_pos : Lexing.position -> Source.pos
 

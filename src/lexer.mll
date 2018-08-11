@@ -2,7 +2,7 @@
 open Parser
 module Utf8 = Wasm.Utf8
 
-exception Syntax of Source.region * string
+exception Error of Source.region * string
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -15,7 +15,7 @@ let region lexbuf =
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
   {Source.left = left; Source.right = right}
 
-let error lexbuf msg = raise (Syntax (region lexbuf, msg))
+let error lexbuf msg = raise (Error (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
