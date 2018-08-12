@@ -30,12 +30,12 @@ exception Trap of Source.region * string
 
 type context =
   {
-    vals : V.recbinding V.Env.t;
+    vals : V.rec_bind V.Env.t;
     typs : T.con V.Env.t;
     cons : T.kind Con.Env.t;
-    labels : V.cont V.Env.t;
-    returns : V.cont option;
-    awaitable : bool
+    labs : V.cont V.Env.t;
+    rets : V.cont option;
+    async : bool
   }
 
 let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
@@ -45,9 +45,9 @@ let empty_context =
     vals = V.Env.empty;
     typs = V.Env.empty;
     cons = Con.Env.empty;
-    labels = V.Env.empty;
-    returns = None;
-    awaitable = false
+    labs = V.Env.empty;
+    rets = None;
+    async = false
   }
 
 let last_context = ref empty_context
@@ -57,9 +57,9 @@ let callee_context context ve k_return =
     {vals = V.Env.adjoin context.vals ve;
      typs = V.Env.empty; (*TBR*)
      cons = Con.Env.empty;    (*TBR*)
-     labels = V.Env.empty; 
-     returns =  Some k_return;
-     awaitable = false}
+     labs = V.Env.empty; 
+     rets =  Some k_return;
+     async = false}
 
 
 let projV (V.Tup vs) n = List.nth vs n
@@ -215,13 +215,13 @@ match e.it with
   failwith "NYI:ForE"
 (* labels *)
 | LabelE(l,e) ->
-  let context' = {context with labels = V.Env.add l.it k context.labels} in
+  let context' = {context with labs = V.Env.add l.it k context.labs} in
   interpret_exp context' e k
 | BreakE(l,e) ->
-  let k_break = V.Env.find l.it context.labels in
+  let k_break = V.Env.find l.it context.labs in
   interpret_exp context e k_break
 | RetE e0 ->
-  let (Some k_return) = context.returns in 
+  let (Some k_return) = context.rets in 
   interpret_exp context e0 k_return
 | AsyncE e0 ->
   let async = {V.result=None;waiters=[]} in
@@ -230,9 +230,9 @@ match e.it with
                           V.unit
   in
   let context = {context with
-                 labels = V.Env.empty;
-                 returns = Some k_return; 
-                 awaitable = true}
+                 labs = V.Env.empty;
+                 rets = Some k_return; 
+                 async = true}
   in
   queue (fun()->interpret_exp context e0 k_return);
   k (V.Async async)
@@ -284,13 +284,13 @@ and declare_dec context d =
     | LetD (p,e) ->
        declare_pat context p
     | VarD (v,t,e) ->
-       V.Env.singleton v.it (V.Rec {V.definition = None})
+       V.Env.singleton v.it (V.Rec {V.def = None})
     | TypD(v,ts,t) ->
        V.Env.empty
     | FuncD(v,ts,p,t,e) ->
-       V.Env.singleton v.it (V.Rec {V.definition = None})
+       V.Env.singleton v.it (V.Rec {V.def = None})
     | ClassD(a,v,ts,p,efs) ->
-       V.Env.singleton v.it (V.Rec {V.definition = None})
+       V.Env.singleton v.it (V.Rec {V.def = None})
 
 and declare_block context ve es =
     match es with
@@ -319,8 +319,8 @@ and define_block context es k =
 
 and define_var context var v =
     match V.as_rec_bind (V.Env.find var.it context.vals) with
-    | {definition = Some _} -> failwith "duplicated definition"
-    | recursive -> recursive.definition <- Some v
+    | {def = Some _} -> failwith "duplicated definition"
+    | recursive -> recursive.def <- Some v
     
 and define_dec context d k =     
     match d.it with
@@ -356,7 +356,7 @@ and define_dec context d k =
                                      match efs with
                                      | [] -> (private_ve,public_ve)
                                      | {it={var;mut;priv;exp=_}}::efs ->
-                                        let recR = V.Rec {V.definition = None} in
+                                        let recR = V.Rec {V.def = None} in
                                         declare_members (V.Env.add var.it recR private_ve)
                                                         (V.Env.add var.it recR public_ve) efs
                             in
@@ -412,7 +412,7 @@ and declare_pats context ve ps =
 and declare_pat context p =
    match p.it with
    | WildP ->  V.Env.empty
-   | VarP v -> V.Env.singleton v.it (V.Rec {definition = None})
+   | VarP v -> V.Env.singleton v.it (V.Rec {def = None})
    | LitP l -> V.Env.empty
    | TupP ps -> declare_pats context V.Env.empty ps
    | AnnotP(p,t) ->
@@ -458,7 +458,7 @@ and match_lit p v rl =
 and interpret_pat p v =
    match p.it with 
    | WildP -> Some V.Env.empty
-   | VarP var -> Some (V.Env.singleton var.it (V.Rec {V.definition = Some (V.Val v)}))
+   | VarP var -> Some (V.Env.singleton var.it (V.Rec {V.def = Some (V.Val v)}))
    | LitP rl ->
      if match_lit p v rl 
      then Some V.Env.empty

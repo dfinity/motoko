@@ -81,7 +81,7 @@ type value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of recbinding Env.t
+  | Obj of rec_bind Env.t
   | Array of value array
   | Opt of value option (* TBR *)
   | Func of (value -> cont -> value)
@@ -91,17 +91,17 @@ and async = {mutable result: value option; mutable waiters : cont list}
 
 and cont = value -> value
 
-and binding = 
+and bind = 
   | Val of value
   | Var of value ref
-and recursive = {mutable definition : binding option}
-and recbinding =
+and rec_bind =
   | Rec of recursive
-(*TBR: we could statically distinguish lambda-pat bound variables from other bindings to avoid
+(*TBR: we could statically distinguish lambda-pat bound variables from other binds to avoid
        the unnessary indirection and definedness check for references to lambda-bound variables, in which
     case we could add:
   | Val of value 
 *)
+and recursive = {mutable def : bind option}
 
 let unit = Tup []
 
@@ -125,12 +125,19 @@ let as_opt = function Opt vo -> vo | _ -> invalid "as_opt"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 
-let as_var_bind = function Var r -> r | _ -> invalid "as_var_bind"
 let as_val_bind = function Val v -> v | _ -> invalid "as_val_bind"
+let as_var_bind = function Var r -> r | _ -> invalid "as_var_bind"
 let as_rec_bind = function Rec r -> r (*| _ -> invalid "as_rec_bind"*)
+
+let read_bind = function
+  | Val v -> v
+  | Var r -> !r
+
 let unroll_rec_bind = function
-  | Rec {definition = Some v} -> v
+  | Rec {def = Some v} -> v
   | _ -> failwith "BlackHole" (* TBR *)
+
+let read_rec_bind b = read_bind (unroll_rec_bind b)
 
 
 (* Pretty Printing *)
@@ -247,7 +254,7 @@ let rec debug_string_of_val_nullary = function
     sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
   | Obj ve ->
     sprintf "{%s}" (String.concat "; " (List.map (fun (v, w) ->
-  	  sprintf "%s = %s" v (debug_string_of_recbind w)) (Env.bindings ve)))
+  	  sprintf "%s = %s" v (debug_string_of_rec_bind w)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]"
       (String.concat ", " (List.map debug_string_of_val (Array.to_list a)))
@@ -277,10 +284,10 @@ and debug_string_of_bind = function
   | Val v ->
     debug_string_of_val v
 
-and debug_string_of_recbind = function
-  | Rec {definition = Some bind} -> 
+and debug_string_of_rec_bind = function
+  | Rec {def = Some bind} -> 
     (*sprintf "Rec (%s)"*) (debug_string_of_bind bind) 
-  | Rec {definition = None} -> 
+  | Rec {def = None} -> 
     "Rec (?)" 
 
 
