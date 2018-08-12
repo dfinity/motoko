@@ -33,6 +33,10 @@ Productions marked * probably deferred to later versions.
 
 ## Expressions
 ```
+<sort> ::=
+  new
+  actor
+
 <expr> ::=
   <id>                                           variable
   <int>                                          integer literal
@@ -43,12 +47,12 @@ Productions marked * probably deferred to later versions.
   <expr> <binop> <expr>                          binary numeric operator
   ( <expr>,* )                                   tuple
   <expr> . <nat>                                 tuple projection
-  actor? <id>? { <expr-field>;* }                object
+  <sort> <id>? { <expr-field>;* }                object
   <expr> . <id>                                  object projection
   <expr> := <expr>                               assignment
   <expr> <binop>= <expr>                         binary update
   <unop>= <expr>                                 unary update
-  [ var? <expr>,* ]                              array
+  [ <expr>,* ]                                   array
   <expr> [ <expr> ]                              array indexing
   <expr> <type-args>? <expr>                     function call
   { <expr>;* }                                   block
