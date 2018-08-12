@@ -250,44 +250,13 @@ let check_lit_val t of_string at s =
     type_error at "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
-let check_nat = check_lit_val T.Nat Value.Nat.of_string_u
-let check_int = check_lit_val T.Int Value.Int.of_string_s
+let check_nat = check_lit_val T.Nat Value.Nat.of_string
+let check_int = check_lit_val T.Int Value.Int.of_string
 let check_word8 = check_lit_val T.Word8 Value.Word8.of_string_u
 let check_word16 = check_lit_val T.Word16 Value.Word16.of_string_u
 let check_word32 = check_lit_val T.Word32 Value.Word32.of_string_u
 let check_word64 = check_lit_val T.Word64 Value.Word64.of_string_u
 let check_float = check_lit_val T.Float Value.Float.of_string
-
-(* begin sanity test *)
-
-let pow2 n = 1 lsl n
-(*let lpow2 n = Int64.shift_left (Int64.of_int 1) n*)
-let raises f r x = try f r x; false; with _ -> true
-
-let _ =
-  let module I64 = Wasm.I64 in
-  (* text check_nat *)
-  assert (check_nat no_region (string_of_int (pow2 Value.nat_width - 1)) = I64.of_int_u (pow2 Value.nat_width - 1));
-  assert (check_nat no_region (string_of_int 0) = I64.of_int_u 0);
-(*
-  assert (raises check_nat no_region (string_of_int (-1)));
-  assert (raises check_nat no_region (string_of_int (pow2 64 + 1)));
-*)
-
-  (* test check_word16 *)
-  assert (check_word16 no_region (string_of_int (pow2 16 - 1)) = Value.Word16.of_int_u (pow2 16 - 1));
-  assert (check_word16 no_region (string_of_int 0) = Value.Word16.of_int_u 0);
-  assert (raises check_word16 no_region (string_of_int (pow2 16)));
-  assert (raises check_word16 no_region (string_of_int (pow2 16 + 1)));
-
-  (* test check_int *)
-  assert (check_int no_region (string_of_int (pow2 (Value.int_width - 1) - 1)) = I64.of_int_s (pow2 (Value.int_width - 1) - 1));
-  assert (check_int no_region (string_of_int (- pow2 (Value.int_width - 1))) = I64.of_int_s (- pow2 (Value.int_width - 1)))
-(*
-  assert (raises check_int no_region (Int64.to_string (lpow2 (Value.int_width - 1))));
-  assert (raises check_int no_region (Int64.to_string (Int64.neg (Int64.add (lpow2 (Value.int_width - 1)) 1L))));
-*)
-(* end sanity test *)
 
 
 let infer_lit context lit at : T.prim =

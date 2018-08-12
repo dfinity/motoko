@@ -47,21 +47,57 @@ struct
   let to_string i = Rep.to_string (proj i)
 end
 
+module type WordType =
+sig
+  include Wasm.Int.S
+  val neg : t -> t
+  val not : t -> t
+end
+
+module MakeWord(WasmInt : Wasm.Int.S) =
+struct
+  include WasmInt
+  let neg w = sub zero w
+  let not w = xor w (of_int_s (-1))
+end
+
 module Int32Rep = struct include Int32 let bitwidth = 32 end
 module Int16Rep = SubRep(Int32Rep)(struct let bitwidth = 16 end)
 module Int8Rep = SubRep(Int32Rep)(struct let bitwidth = 8 end)
 
-module Word8 = Wasm.Int.Make(Int8Rep)
-module Word16 = Wasm.Int.Make(Int16Rep)
-module Word32 = Wasm.I32
-module Word64 = Wasm.I64
-
-module Nat = Wasm.Int.Make(struct include Int64 let bitwidth = 64 end)
-module Int = Wasm.Int.Make(struct include Int64 let bitwidth = 64 end)
+module Word8 = MakeWord(Wasm.Int.Make(Int8Rep))
+module Word16 = MakeWord(Wasm.Int.Make(Int16Rep))
+module Word32 = MakeWord(Wasm.I32)
+module Word64 = MakeWord(Wasm.I64)
 module Float = Wasm.F64
 
-let nat_width = 64
-let int_width = 64
+module type NumType =
+sig
+  include module type of Z
+  val sub : t -> t -> t
+  val eq : t -> t -> bool
+  val ne : t -> t -> bool
+  val le : t -> t -> bool
+  val ge : t -> t -> bool
+end
+
+module Int : NumType =
+struct
+  include Z
+  let of_string s = Z.of_string (String.concat "" (String.split_on_char '_' s))
+  let eq = equal
+  let ne x y = not (eq x y)
+  let le = leq
+  let ge = geq
+end
+
+module Nat : NumType =
+struct
+  include Int
+  let sub x y =
+    let z = Int.sub x y in
+    if ge z zero then z else raise (Invalid_argument "Nat.sub")
+end
 
 
 (* Types *)
@@ -174,8 +210,8 @@ let rec string_of_val_nullary conenv t v =
   | T.Any -> "any"
   | T.Prim T.Null -> as_null v; "null"
   | T.Prim T.Bool -> if as_bool v then "true" else "false"
-  | T.Prim T.Nat -> Nat.to_string_u (as_nat v)
-  | T.Prim T.Int ->  Int.to_string_s (as_int v)
+  | T.Prim T.Nat -> Nat.to_string (as_nat v)
+  | T.Prim T.Int ->  Int.to_string (as_int v)
   | T.Prim T.Word8 -> Word8.to_string_u (as_word8 v)
   | T.Prim T.Word16 -> Word16.to_string_u (as_word16 v)
   | T.Prim T.Word32 -> Word32.to_string_u (as_word32 v)
@@ -207,7 +243,7 @@ let rec string_of_val_nullary conenv t v =
           | T.Const -> as_val_bind b
         in sprintf "%s%s = %s" (T.string_of_mut mut) lab (string_of_val conenv typ v)
       ) fs))
-  | Func _ ->
+  | T.Func _ ->
     ignore (as_func v); (* catch errors *)
     "func"
   | _ ->
@@ -241,8 +277,8 @@ and string_of_val conenv t v =
 let rec debug_string_of_val_nullary = function
   | Null  -> "null"
   | Bool b -> if b then "true" else "false"
-  | Nat n -> Nat.to_string_u n
-  | Int i -> Int.to_string_s i
+  | Nat n -> Nat.to_string n
+  | Int i -> Int.to_string i
   | Word8 w -> Word8.to_string_u w
   | Word16 w -> Word16.to_string_u w
   | Word32 w -> Word32.to_string_u w

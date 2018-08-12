@@ -28,6 +28,8 @@ let debug = ref true
 
 exception Trap of Source.region * string
 
+let trap at msg = raise (Trap (at, msg))
+
 type context =
   {
     vals : V.rec_bind V.Env.t;
@@ -67,8 +69,8 @@ let dotV (V.Obj ve) v = V.Env.find v ve
 let derefV (V.Var r) = !r
 let assignV (V.Var r) v  = r := v; V.unit
 let unrollV = V.unroll_rec_bind
-let updateV (V.Array a) (V.Nat i) v  = a.(Int64.to_int i) <- v; V.unit (* TBR *)
-let indexV (V.Array a) (V.Nat i) = a.(Int64.to_int i) (*TBR*)
+let updateV (V.Array a) (V.Nat i) v  = a.(V.Nat.to_int i) <- v; V.unit (* TBR *)
+let indexV (V.Array a) (V.Nat i) = a.(V.Nat.to_int i) (*TBR*)
 let applyV (V.Func f) v k = f v k
 
 let notV (V.Bool b) = V.Bool (not b)
@@ -125,7 +127,7 @@ match e.it with
    interpret_exp context e1 (fun v1 -> k (Operator.find_unop t1 uop v1))
 | BinE (e1,bop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.find_binop t1 bop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.find_binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
 | RelE (e1,rop,e2) ->
    let t1 = e1.note in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.find_relop t1 rop v1 v2)))

@@ -6,17 +6,31 @@ module Int16Rep : Wasm.Int.RepType with type t = int32
 module Int8Rep : Wasm.Int.RepType with type t = int32
 *)
 
-module Word8 : Wasm.Int.S with type bits = int32
-module Word16 : Wasm.Int.S with type bits = int32
-module Word32 : Wasm.Int.S with type bits = int32 and type t = Wasm.I32.t
-module Word64 : Wasm.Int.S with type bits = int64 and type t = Wasm.I64.t
+module type WordType =
+sig
+  include Wasm.Int.S
+  val neg : t -> t
+  val not : t -> t
+end
+
+module type NumType =
+sig
+  include module type of Z
+  val sub : t -> t -> t
+  val eq : t -> t -> bool
+  val ne : t -> t -> bool
+  val le : t -> t -> bool
+  val ge : t -> t -> bool
+end
+
+module Word8 : WordType with type bits = int32
+module Word16 : WordType with type bits = int32
+module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
+module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
 module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : Wasm.Int.S with type bits = int64 and type t = int64
-module Int : Wasm.Int.S with type bits = int64 and type t = int64
-
-val nat_width : int
-val int_width : int
+module Nat : NumType
+module Int : NumType
 
 
 (* Environment *)

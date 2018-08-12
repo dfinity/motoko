@@ -60,10 +60,9 @@ let run filename =
         | Parser.Error -> Lexer.region lexer, "syntax error", false
         | Typing.TypeError (at, msg) -> at, "type error, " ^ msg, false
         | Typing.KindError (at, msg) -> at, "type error, " ^ msg, false
-        | Operator.Overflow ->
-          !Interpret.last_region, "arithmetic overflow", false
+        | Interpret.Trap (at, msg) -> at, "execution error, " ^ msg, false
         | _ ->
-          !Interpret.last_region, "fatal error " ^ Printexc.to_string exn, true
+          !Interpret.last_region, "fatal error, " ^ Printexc.to_string exn, true
       in
       if dump then print_debug_ve (!Interpret.last_context).Interpret.vals;
       printf "%s: %s\n" (Source.string_of_region r) msg;

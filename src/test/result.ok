@@ -435,4 +435,4 @@ Final state testwhile.as:
 Checking overflow.as:
 
 Interpreting overflow.as (tracing function calls):
-overflow.as:16.15-16.28: arithmetic overflow
+overflow.as:17.1-17.16: execution error, arithmetic overflow
