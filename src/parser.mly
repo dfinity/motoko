@@ -409,8 +409,12 @@ dec :
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
       in LetD (p', e') @@ at($symbolstartpos,$endpos) }
-  | VAR x=id COLON t=typ EQ e=exp
-    { VarD(x, t, e) @@ at($symbolstartpos,$endpos) } 
+  | VAR x=id t=return_typ? EQ e=exp
+    { let e' =
+        match t with
+        | None -> e
+        | Some t -> AnnotE (e, t) @? span t.at e.at
+      in VarD(x, e') @@ at($symbolstartpos,$endpos) } 
   | FUNC xo=id? fd=func_dec
     { let x = Lib.Option.get xo ("" @@ at($symbolstartpos,$endpos)) in
       (fd x).it @@ at($symbolstartpos,$endpos) }

@@ -294,7 +294,7 @@ and declare_dec context d =
     match d.it with
     | LetD (p,e) ->
        declare_pat context p
-    | VarD (v,t,e) ->
+    | VarD (v,e) ->
        V.Env.singleton v.it (V.Rec {V.def = None})
     | TypD(v,ts,t) ->
        V.Env.empty
@@ -339,7 +339,7 @@ and define_dec context d k =
       interpret_exp context e (fun v ->
       define_pat context p v;
       k())
-    | VarD (var,t,e) ->
+    | VarD (var,e) ->
       interpret_exp context e (fun v ->
       define_var context var (V.Var (ref v));
       k())

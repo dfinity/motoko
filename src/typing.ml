@@ -750,10 +750,9 @@ and check_dec pass context d =
     let t = infer_exp context e in
     let ve = check_pat context t p in 
     ve, T.Env.empty, Con.Env.empty
-  | VarD (v, t, e) ->
+  | VarD (v, e) ->
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
-    let t = check_typ context t in
-    check_exp context t e;
+    let t = infer_exp context e in
     T.Env.singleton v.it (t, T.Mut), T.Env.empty, Con.Env.empty
   | TypD (v, tps, t) ->
     let tbs, te_tbs, ke_tbs = check_typ_binds context tps in

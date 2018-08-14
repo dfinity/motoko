@@ -110,7 +110,7 @@ Productions marked * probably deferred to later versions.
 ```
 <dec> ::=                                              declaration
   let <pat> = <expr>                                     immutable
-  var <id> : <type> (= <expr>)?                          mutable
+  var <id> (: <type>)? = <expr>                          mutable
   func <id> <type-params>? <pat>+ (: <type>)? = <expr>   function
   type <id> <type-params>? = <type>                      type
 //  actor? class <id> <type-params>? <pat> = <expr>        class

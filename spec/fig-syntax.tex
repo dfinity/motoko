@@ -256,7 +256,7 @@ $$
 \text{(declarations)} & \x{dec} &::=&
   \KK{let}~\x{pat}~\K=~\x{exp}
     & \text{immutable} \\&&|&
-  \KK{var}~\x{id}~\K:~\x{typ}~(\K=~\x{exp})^?
+  \KK{var}~\x{id}~(\K:~\x{typ})^?~\K=~\x{exp}
     & \text{mutable} \\&&|&
   \KK{async}^?\, \KK{func}~\x{id}^? \x{typ-params}~\x{exp-params}~(\K:~\x{typ})^?~\K=^?~\x{exp}
     & \text{function} \\&&|&
@@ -274,6 +274,8 @@ $$
 \text{(declaration)} \hfill \\
 \KK{let} \x{pat} \K: \x{typ} \K= \x{exp} &:=&
   \KK{let} \x{pat} \K= \x{exp} \K: \x{typ} \\
+\KK{var} \x{id} \K: \x{typ} \K= \x{exp} &:=&
+  \KK{var} \x{id} \K= \x{exp} \K: \x{typ} \\
 \KK{func} \x{id}^? \x{typ-params} \x{exp-params} \K= \x{exp} &:=&
   \KK{func} \x{id}^? \x{typ-params} \x{exp-params} \K: \, \K{()} \, \K= \x{exp} \\
 \KK{async} \, \KK{func} \x{id}^? \x{typ-params} \x{exp-params} (\K: \x{typ})^? \K= \x{exp} &:=&
