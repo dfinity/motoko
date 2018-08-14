@@ -5,11 +5,26 @@ open Source
 
 (* Position handling *)
 
+
+
+(* minimal work-around for probable menhir code gen bug (revealed by test\menhirbug.as) *)
+let position_to_pos (position:Lexing.position) =
+  if Obj.is_block (Obj.repr position)
+  then
+  { Source.file = position.Lexing.pos_fname; 
+    Source.line = position.Lexing.pos_lnum; 
+    Source.column = position.Lexing.pos_cnum - position.Lexing.pos_bol;
+  }
+  else no_pos
+
+(* Once the menhir bug is fixed, replace by:
 let position_to_pos position =
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
   }
+*)
+
 
 let positions_to_region position1 position2 =
   { left = position_to_pos position1;

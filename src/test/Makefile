@@ -24,6 +24,7 @@ all:
 	$(ASC) counter.as >> result 2>&1
 	$(ASC) testwhile.as >> result 2>&1
 	$(ASC) overflow.as >> result 2>&1 || true
+	$(ASC) menhirbug.as >> result 2>&1 || true
 
 	diff result result.ok
 
