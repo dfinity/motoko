@@ -7,7 +7,7 @@ Checking quicksort.as:
   cmpi : (Int, Int) -> Int
   qs : QS<Int>
 
-Interpreting quicksort.as (tracing function calls):
+Interpreting quicksort.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   trace([8, 3, 9, 5, 2])
@@ -97,7 +97,7 @@ Interpreting quicksort.as (tracing function calls):
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
-Final state quicksort.as:
+Finished quicksort.as:
   QS = func
   a = [var 2, 3, 5, 8, 9]
   cmpi = func

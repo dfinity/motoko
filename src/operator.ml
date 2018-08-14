@@ -18,7 +18,7 @@ let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Float -> fun v -> Float (ffloat (as_float v))
   | t -> word_unop fword8 fword16 fword32 fword64 t
 
-let find_unop t op =
+let unop t op =
   match t with
   | T.Prim p ->
     (match op with
@@ -26,7 +26,7 @@ let find_unop t op =
     | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
     | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
     )
-  | _ -> raise Not_found
+  | _ -> raise (Invalid_argument "unop")
 
 
 (* Binary operators *)
@@ -48,7 +48,7 @@ let num_binop fnat fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Float -> fun v1 v2 -> Float (ffloat (as_float v1) (as_float v2))
   | t -> word_binop fword8 fword16 fword32 fword64 t
 
-let find_binop t op =
+let binop t op =
   match t with
   | T.Prim p ->
     (match op with
@@ -66,7 +66,7 @@ let find_binop t op =
     | RotROp -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
     | CatOp -> text_binop (^) p
     )
-  | _ -> raise Not_found
+  | _ -> raise (Invalid_argument "binop")
 
 
 (* Relational operators *)
@@ -94,7 +94,7 @@ let eq_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext fnull f
   | T.Bool -> fun v1 v2 -> Bool (fbool (as_bool v1) (as_bool v2))
   | t -> ord_relop fnat fint fword8 fword16 fword32 fword64 ffloat fchar ftext t
 
-let find_relop t op =
+let relop t op =
   match t with
   | T.Prim p -> 
     (match op with
@@ -105,10 +105,10 @@ let find_relop t op =
     | LeOp -> ord_relop Nat.le Int.le Word8.le_u Word16.le_u Word32.le_u Word64.le_u Float.le (<=) (<=) p
     | GeOp -> ord_relop Nat.ge Int.ge Word8.ge_u Word16.ge_u Word32.ge_u Word64.ge_u Float.ge (>=) (>=) p
     )
-  | _ -> raise Not_found
+  | _ -> raise (Invalid_argument "relop")
 
 
-let has f t op = try ignore (f t op); true with Not_found -> false
-let has_unop t op = has find_unop t op
-let has_binop t op = has find_binop t op
-let has_relop t op = has find_relop t op
+let has f t op = try ignore (f t op); true with Invalid_argument _ -> false
+let has_unop t op = has unop t op
+let has_binop t op = has binop t op
+let has_relop t op = has relop t op

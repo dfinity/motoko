@@ -1,11 +1,5 @@
 (* Numeric Representations *)
 
-(*
-module Int32Rep : Wasm.Int.RepType with type t = int32
-module Int16Rep : Wasm.Int.RepType with type t = int32
-module Int8Rep : Wasm.Int.RepType with type t = int32
-*)
-
 module type WordType =
 sig
   include Wasm.Int.S
@@ -101,85 +95,6 @@ val as_rec_bind : rec_bind -> recursive
 val read_bind : bind -> value
 val read_rec_bind : rec_bind -> value
 val unroll_rec_bind : rec_bind -> bind
-
-(*
-val nullV = NullV
-val null_of_V (NullV) = ()
-let boolV b = BoolV b
-let bool_of_V (BoolV b) = b
-let natV n = NatV n
-let nat_of_V (NatV n) = n
-let intV n = IntV n
-let int_of_V (IntV n) = n
-let word8V w = Word8V w
-let word8_of_V (Word8V w) = w
-let word16V w = Word16V w
-let word16_of_V (Word16V w) = w
-let word32V w = Word32V w
-let word32_of_V (Word32V w) = w
-let word64V w = Word64V w
-let word64_of_V (Word64V w) = w
-
-let floatV f = FloatV f
-let float_of_V (FloatV f) = f
-let charV c = CharV c
-let char_of_V (CharV c) = c
-let textV s = TextV s
-let text_of_V (TextV s) = s
-let arrV a = ArrV a
-let arr_of_V (ArrV a) = a
-let tupV vs = TupV vs
-let tup_of_V (TupV vs) = vs
-let objV ve = ObjV ve
-let obj_of_V (ObjV ve) = ve
-let optV ve = OptV ve
-let opt_of_V (OptV v) = v
-let funcV f = FuncV f
-let func_of_V (FuncV f) = f
-let unitV = TupV([])
-let asyncV async = AsyncV async
-
-
-let varB r = VarB r
-let rec derefV v =
-    match v with
-    | VarB r -> !r
-
-let valB v = ValB v
-let rec val_of_B v =
-    match v with
-    | ValB v -> v
-
-let recR d = RecR {definition=d} 
-let rec_of_R (RecR r) = r
-let checkV v =
-     match v with
-     | RecR r ->
-        (match r.definition with
-         | Some v -> v
-       | None -> failwith "BlackHole" (*TBR*))
-
-let projV (TupV vs) n = List.nth vs (Int32.to_int n)
-let dotV (ObjV ve) v = Env.find v ve
-let assignV (VarB r) v  = r := v;unitV
-let updateV (ArrV a) (IntV i) v  = a.(Int32Rep.to_int i) <- v;unitV (* TBR *)
-let indexV (ArrV a) (IntV i) = a.(Int32Rep.to_int i) (*TBR*)
-let applyV (FuncV f) v k = f v k
-
-let notV (BoolV b) = BoolV (not b)
-let async_of_V(AsyncV async) = async
-let set_result async v =
-    match async with
-    | {result=None;waiters=waiters} ->
-        async.result <- Some v;
-        async.waiters <- [];
-        List.fold_left (fun runnables waiter -> (fun () -> waiter v)::runnables) [] waiters; 
-    | {result=Some _} -> failwith "set_result"
-let get_result async k =
-    match async with
-    | {result=Some v} -> k v
-        | {result=None;waiters} -> (async.waiters <- k::waiters; unitV)
-*)
 
 
 (* Pretty Printing *)

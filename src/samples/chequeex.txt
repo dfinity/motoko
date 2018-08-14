@@ -15,7 +15,7 @@ Checking chequeex.as:
   test : () -> async (Account, Account)
   transfer : (Account, Account, Int) -> async ()
 
-Interpreting chequeex.as (tracing function calls):
+Interpreting chequeex.as:
   test()
   test() => async ?#0
   getReserve()
@@ -51,7 +51,7 @@ Interpreting chequeex.as (tracing function calls):
   showBalance("b2", 15)
   showBalance("b2", 15) => ()
 
-Final state chequeex.as:
+Finished chequeex.as:
   Account = func
   Bank = func
   Cheque = func

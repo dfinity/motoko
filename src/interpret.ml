@@ -30,13 +30,19 @@ exception Trap of Source.region * string
 
 let trap at msg = raise (Trap (at, msg))
 
+type val_env = V.rec_bind V.Env.t
+type typ_env = T.con V.Env.t
+type con_env = T.con_env
+type lab_env = V.cont V.Env.t
+type ret_env = V.cont option
+
 type context =
   {
-    vals : V.rec_bind V.Env.t;
-    typs : T.con V.Env.t;
-    cons : T.kind Con.Env.t;
-    labs : V.cont V.Env.t;
-    rets : V.cont option;
+    vals : val_env;
+    typs : typ_env;
+    cons : con_env;
+    labs : lab_env;
+    rets : ret_env;
     async : bool
   }
 
@@ -54,6 +60,9 @@ let empty_context =
 
 let last_context = ref empty_context
 let last_region = ref Source.no_region
+
+let get_last_context () = !last_context
+let get_last_region () = !last_region
 
 let callee_context context ve k_return =
     {vals = V.Env.adjoin context.vals ve;
@@ -124,13 +133,13 @@ match e.it with
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> k (Operator.find_unop t1 uop v1))
+   interpret_exp context e1 (fun v1 -> k (Operator.unop t1 uop v1))
 | BinE (e1,bop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.find_binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
 | RelE (e1,rop,e2) ->
    let t1 = e1.note in
-   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.find_relop t1 rop v1 v2)))
+   interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (V.Tup vs))
 | ProjE(e1,n) ->
@@ -487,4 +496,4 @@ and interpret_pats ve ps vs =
 
 let interpret_prog p k =
     let k' = fun v -> (run();k(v)) in
-    interpret_block empty_context p.it k'
+    ignore (interpret_block empty_context p.it k')

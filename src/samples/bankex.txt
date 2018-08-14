@@ -12,7 +12,7 @@ Checking bankex.as:
   test : () -> async (Account, Account)
   transfer : (Account, Account, Int) -> async ()
 
-Interpreting bankex.as (tracing function calls):
+Interpreting bankex.as:
   test()
   test() => async ?#0
   getReserve()
@@ -42,7 +42,7 @@ Interpreting bankex.as (tracing function calls):
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
 
-Final state bankex.as:
+Finished bankex.as:
   Account = func
   Bank = func
   Issuer = func

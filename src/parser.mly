@@ -72,7 +72,7 @@ let (@!) it at = {it; at; note = Type.Const}
 %nonassoc SHLOP SHROP ROTLOP ROTROP
     
 %type<Syntax.exp> exp exp_nullary
-%start<Syntax.prog> prog
+%start<Syntax.prog> parse_prog
 
 %%
 
@@ -443,7 +443,7 @@ class_body :
 
 (* Programs *)
 
-prog :
+parse_prog :
   | es=seplist(exp, SEMICOLON) EOF { es @@ at($symbolstartpos,$endpos) }
 
 %%

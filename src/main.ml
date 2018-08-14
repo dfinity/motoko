@@ -34,6 +34,9 @@ let print_debug_ve =
     printf "  %s = %s\n" x (Value.debug_string_of_rec_bind b)
   )
 
+let trace heading filename =
+  printf "\n%s %s:\n" heading filename
+
 let run filename =
   let ic = open_in filename in 
   let lexer = Lexing.from_channel ic in
@@ -41,31 +44,31 @@ let run filename =
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = filename};
   let success =
     try
-      let prog = Parser.prog Lexer.token lexer in 
-      printf "\nChecking %s:\n" filename;
+      let prog = Parser.parse_prog Lexer.token lexer in 
+      trace "Checking" filename;
       let ve, te, ce = Typing.check_prog prog in
       print_ce ce;
       print_ve ve;
-      printf "\nInterpreting %s (tracing function calls):\n" filename;
-      ignore (Interpret.interpret_prog prog (fun dyn_ve ->
-  			Printf.printf "\nFinal state %s:\n" filename;
+      trace "Interpreting" filename;
+      Interpret.interpret_prog prog (fun dyn_ve ->
+  			trace "Finished" filename;
         print_dyn_ve ce ve dyn_ve;
   		  Value.unit
-      ));
+      );
       true
     with exn ->
-      let r, msg, dump =
+      let r, sort, msg, dump =
         match exn with
-        | Lexer.Error (at, msg) -> at, "syntax error, " ^ msg, false
-        | Parser.Error -> Lexer.region lexer, "syntax error", false
-        | Typing.TypeError (at, msg) -> at, "type error, " ^ msg, false
-        | Typing.KindError (at, msg) -> at, "type error, " ^ msg, false
-        | Interpret.Trap (at, msg) -> at, "execution error, " ^ msg, false
+        | Lexer.Error (at, msg) -> at, "syntax", msg, false
+        | Parser.Error -> Lexer.region lexer, "syntax", "unexpected token", false
+        | Typing.TypeError (at, msg) -> at, "type", msg, false
+        | Typing.KindError (at, msg) -> at, "type", msg, false
+        | Interpret.Trap (at, msg) -> at, "execution", msg, false
         | _ ->
-          !Interpret.last_region, "fatal error, " ^ Printexc.to_string exn, true
+          Interpret.get_last_region(), "fatal", Printexc.to_string exn, true
       in
-      if dump then print_debug_ve (!Interpret.last_context).Interpret.vals;
-      printf "%s: %s\n" (Source.string_of_region r) msg;
+      if dump then print_debug_ve (Interpret.get_last_context ()).Interpret.vals;
+      printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
       if dump then printf "%s" (Printexc.get_backtrace ());
       false
   in
