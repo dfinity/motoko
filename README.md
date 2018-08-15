@@ -126,7 +126,7 @@ A simple language for writing Dfinity actors.
 
 * Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
-  - `actor {f() {}}; private var x = 4; g() : async Int {return y}}`
+  - `actor {f() {}; private var x = 4; g() : async Int {return y}}`
   - `[3, 4]`
   - `o.x`
   - `a[i]`
