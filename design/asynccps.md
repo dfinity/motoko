@@ -51,9 +51,9 @@ C[ t1 e2 ] =
    \\k. T[ t1 ] @ (\\f.C[ e2 ] @ \\v. k @ (f @ v))
 C[ e1 e2 ] =
    \\k. C[ t1 ] @ (\\f.C[ e2 ] @ \\v. k @ (f @ v))
-C[ let x = t1 in e1 ] =
+C[ let x = t1 in e2 ] =
    \\k.let x = T[t1] in C[e2] @ k
-C[ let x = t1 in e1 ] =
+C[ let x = e1 in e2 ] =
    \\k.C[ t1 ] @ (\\x. C[e2] @ k)
 C[ await t ] =
    \\k.await(T[t1],k)
@@ -76,7 +76,7 @@ C[ break l e ] = \\k. C[e] @ l     // discard k, continue from l
 C[ return e ] = \\_. C[e] @ kret   // discard k, return
 ```
 
-The translation of trivial term, `T[ _ ]`, is the identity on all but ```async``` terms, at which point we switch to the CPS[-] translation.
+The translation of trivial terms, `T[ _ ]`, is the identity on all but ```async``` terms, at which point we switch to the CPS[-] translation.
 Note `T[await _]` is (deliberately) undefined.
 
 ```
@@ -84,7 +84,7 @@ T[ async e ] = spawn (\t.CPS(e) @ (\v.complete(t,v))
 T[ x ]= x
 T[ c ] = c
 T[ \x.t ] = \x.T[t]
-T[ t1 t1 ] = T(t1) T(t2)
+T[ t1 t1 ] = T[t1] T[t2]
 T[ let x = t1 in t2 ] = let x = T[t1]  in T[t2] 
 T[ if t1 then t2 else t3] =
    if T[t1] then T[t2] else T[t3]
@@ -116,7 +116,69 @@ complete(t,v) = match t with
                  Schedule(\u.waiter(v))
              | {result=Some _ } -> assert(false) 
 
-
-
 yield() = schedule.Next()
+```
+
+The above translations are flawed:
+
+Consider:
+
+```
+async { 
+  label l 
+  let x = break l 1 in
+	break l (await {2})
+}
+```
+
+The first call to break occurs in a trivial sub-expression and is compiled to `break l T[1]`
+However, the second call to `break l (await{2})` is a non-trivial expression (due to the await()) and compiled as the application to a continuation `C[await{2}] @ l`.
+
+Our remedy is to track the target representation of a source label as either target label (Label) or target continuation (Cont) and
+translate accordingly.
+
+Thus extend the translations `C[]`, `CPS[]` and `T[]` with an implicit environment argument,`env`, classifying labels and
+consulted and modified in select rules. The other cases are unchanged (apart from propagating the env `argument`).
+
+```
+C env [ label l e ] =
+  let env' = env[l->Cont] in
+  \\l. C env' ;[e] @ l	   // we use label l to name the continuation
+C env [ break l e ] =
+  assert(env[l] = Cont)
+  \\k. C[e] @ l     // discard k, continue from l
+  
+C env [ return e ] =
+  assert(env[kret] = Cont)
+  \\_. C[e] @ kret   // discard k, return
+
+T env [ async e ] =
+   let env' = [kret->Cont] in
+   spawn (\t.CPS env' [e] @ (\v.complete(t,v))
+
+T env [\x.t] =
+   let env' = [kret->Label]
+   \x.T env' [t]
+T env [ break l t ] =
+   match env[t] with
+   | Cont ->  return l@(T[T])
+   | Label -> break l T[t]
+T env [ label l t ] =
+   let env' = env[l->Label]
+   label l T env' [t]
+T env [ return T[t] ] =
+   match env[kret] with
+   | Cont ->  return kret@(T[t])
+   | Label -> return T[t]
+```
+
+
+Returning to the problematic example, we should now have that label `l` is compiled and used as a continuation in both cases:
+
+```
+async { 
+  label l 
+  let x = break l 1 in
+  break l (await {2})
+}
 ```
