@@ -300,7 +300,7 @@ and declare_dec context d =
        V.Env.empty
     | FuncD(v,ts,p,t,e) ->
        V.Env.singleton v.it (V.Rec {V.def = None})
-    | ClassD(a,v,ts,p,efs) ->
+    | ClassD(v,ts,a,p,efs) ->
        V.Env.singleton v.it (V.Rec {V.def = None})
 
 and declare_block context ve es =
@@ -357,7 +357,7 @@ and define_dec context d k =
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern"))));
       k()
-    | ClassD(a,c,ts,p,efs) ->
+    | ClassD(c,ts,a,p,efs) ->
       (define_var context c
         (V.Val (V.Func (fun v k ->
               match interpret_pat p v with

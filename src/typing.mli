@@ -13,13 +13,13 @@ type context =
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool
+    async : bool;
+    pre : bool
   }
 
 val empty_context : context
 val adjoin_vals : context -> val_env -> context
-val adjoin_typs : context -> typ_env -> context
-val adjoin_cons : context -> con_env -> context
+val adjoin_typs : context -> typ_env -> con_env -> context
 
 
 exception KindError of Source.region * string

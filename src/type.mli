@@ -29,10 +29,7 @@ and typ =
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
   | Any                                       (* top *)
-(*
-  | Union of type * typ                       (* union *)
-  | Atom of string                            (* atom *)
-*)
+  | Pre                                       (* pre-type *)
 
 and bind = {con : con; bound : typ}
 and field = {lab : string; typ : typ; mut : mut}

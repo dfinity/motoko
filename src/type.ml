@@ -29,10 +29,7 @@ and typ =
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
   | Any                                       (* top *)
-(*
-  | Union of type * typ                       (* union *)
-  | Atom of string                            (* atom *)
-*)
+  | Pre                                       (* pre-type *)
 
 and bind = {con : con; bound : typ}
 and field = {lab : string; typ : typ; mut : mut}
@@ -74,7 +71,8 @@ let string_of_prim = function
   | Text -> "Text"
 
 let rec string_of_typ_nullary = function
-  | Any -> "Any"
+  | Pre -> "???"
+  | Any -> "any"
   | Prim p -> string_of_prim p
   | Var (c, []) -> Con.to_string c
   | Var (c, ts) ->
@@ -145,6 +143,7 @@ let rec subst sigma t =
   | Like t -> Like (subst sigma t)
   | Obj (a, fs) -> Obj (a, List.map (subst_field sigma) fs)
   | Any -> Any
+  | Pre -> assert false
 
 and subst_field sigma {lab; mut; typ} =
   {lab; mut; typ = subst sigma typ}

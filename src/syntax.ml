@@ -115,7 +115,7 @@ and exp' =
   | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
-  | ObjE of actor * var option * exp_field list (* object *)
+  | ObjE of actor * var * exp_field list       (* object *)
   | DotE of exp * var_ref                      (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
@@ -161,7 +161,7 @@ and dec' =
   | VarD of var * exp                                  (* mutable *)
   | FuncD of var * typ_bind list * pat * typ * exp     (* function *)
   | TypD of var * typ_bind list * typ                  (* type *)
-  | ClassD of actor * var * typ_bind list * pat * exp_field list (* class *)
+  | ClassD of var * typ_bind list * actor * pat * exp_field list (* class *)
 
 
 (* Program *)

@@ -89,7 +89,7 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc}
 
-%inline var_ref :
+%inline id_use :
   | id=ID { id @! at $sloc }
 
 %inline var :
@@ -245,14 +245,14 @@ exp_obj :
 exp_nullary :
   | e=exp_block
     { e }
-  | x=var_ref
+  | x=id_use
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es = seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | s=sort xo=id? efs=exp_obj
-    { ObjE(s, xo, efs) @? at $sloc }
+    { ObjE(s, Lib.Option.get xo ("" @@ s.at), efs) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
@@ -263,7 +263,7 @@ exp_post :
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post DOT x=var_ref
+  | e=exp_post DOT x=id_use
     { DotE(e, x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
@@ -422,7 +422,7 @@ dec :
     { TypD(x, tps, t) @@ at $sloc }
   | s=sort_opt CLASS xo=id? tps=typ_params_opt p=params efs=class_body
     { let x = Lib.Option.get xo ("" @@ at $sloc) in
-      ClassD(s, x, tps, p, efs) @@ at $sloc }
+      ClassD(x, tps, s, p, efs) @@ at $sloc }
 
 func_dec :
   | tps=typ_params_opt ps=params rt=return_typ? fb=func_body
