@@ -436,3 +436,10 @@ Checking overflow.as:
 
 Interpreting overflow.as:
 overflow.as:17.1-17.16: execution error, arithmetic overflow
+
+Checking menhirbug.as:
+  type A = {x : {}}
+
+Interpreting menhirbug.as (tracing function calls):
+
+Final state menhirbug.as:

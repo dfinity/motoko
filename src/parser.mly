@@ -5,11 +5,24 @@ open Source
 
 (* Position handling *)
 
+(* Minimal work-around for probable menhir code gen bug (revealed by test/menhirbug.as) *)
+let position_to_pos (position : Lexing.position) =
+  if Obj.is_block (Obj.repr position)
+  then
+    { Source.file = position.Lexing.pos_fname; 
+      Source.line = position.Lexing.pos_lnum; 
+      Source.column = position.Lexing.pos_cnum - position.Lexing.pos_bol;
+    }
+  else (assert false; no_pos)
+
+(* Once the menhir bug is fixed, replace by:
 let position_to_pos position =
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
   }
+*)
+
 
 let positions_to_region position1 position2 =
   { left = position_to_pos position1;
@@ -20,8 +33,6 @@ let at (startpos, endpos) = positions_to_region startpos endpos
 
 let (@?) it at = {it; at; note = Type.Any}
 let (@!) it at = {it; at; note = Type.Const}
-
-(* TBR: once opam is on menhir 201807, replace ($symbolstartpos,$endpos) with $sloc *)
 
 %}
 
@@ -87,24 +98,24 @@ seplist(X, SEP) :
 (* Basics *)
 
 %inline id :
-  | id=ID { id @@ at($symbolstartpos,$endpos)}
+  | id=ID { id @@ at $sloc}
 
 %inline var_ref :
-  | id=ID { id @! at($symbolstartpos,$endpos) }
+  | id=ID { id @! at $sloc }
 
 %inline var :
-  | VAR { Type.Mut @@ at($symbolstartpos,$endpos) }
+  | VAR { Type.Mut @@ at $sloc }
 
 %inline var_opt :
-  | (* empty *) { Type.Const @@ at($symbolstartpos,$endpos) }
-  | VAR { Type.Mut @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Type.Const @@  no_region }
+  | VAR { Type.Mut @@ at $sloc }
 
 %inline sort :
-  | NEW { Type.Object @@ at($symbolstartpos,$endpos) }
-  | ACTOR { Type.Actor @@ at($symbolstartpos,$endpos) }
+  | NEW { Type.Object @@ at $sloc }
+  | ACTOR { Type.Actor @@ at $sloc }
 
 %inline sort_opt :
-  | (* empty *) { Type.Object @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Type.Object @@ no_region }
   | s=sort { s }
 
 
@@ -116,37 +127,37 @@ typ_obj :
 
 typ_nullary :
   | p=PRIM
-    { PrimT(p) @@ at($symbolstartpos,$endpos) }
+    { PrimT(p) @@ at $sloc }
   | LPAR ts=seplist(typ_item, COMMA) RPAR
-    { match ts with [t] -> t | _ -> TupT(ts) @@ at($symbolstartpos,$endpos) }
+    { match ts with [t] -> t | _ -> TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
-    {	VarT(x, Lib.Option.get tso []) @@ at($symbolstartpos,$endpos) }
+    {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
   | s=sort_opt tfs=typ_obj
-    { ObjT(s, tfs) @@ at($symbolstartpos,$endpos) }
+    { ObjT(s, tfs) @@ at $sloc }
 
 typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Type.Const @@ no_region, t) @@ at($symbolstartpos,$endpos) }
+    { ArrayT(Type.Const @@ no_region, t) @@ at $sloc }
   | t=typ_post QUEST
-    { OptT(t) @@ at($symbolstartpos,$endpos) }
+    { OptT(t) @@ at $sloc }
 
 typ_pre :
   | t=typ_post
     { t }
   | ASYNC t=typ_pre
-    { AsyncT(t) @@ at($symbolstartpos,$endpos) }
+    { AsyncT(t) @@ at $sloc }
   | LIKE t=typ_pre
-    { LikeT(t) @@ at($symbolstartpos,$endpos) }
+    { LikeT(t) @@ at $sloc }
   | mut=var t=typ_nullary LBRACKET RBRACKET
-    { ArrayT(mut, t) @@ at($symbolstartpos,$endpos) }
+    { ArrayT(mut, t) @@ at $sloc }
 
 typ :
   | t=typ_pre
     { t }
   | tps=typ_params_opt t1=typ_pre ARROW t2=typ 
-    { FuncT(tps, t1, t2) @@ at($symbolstartpos,$endpos) }
+    { FuncT(tps, t1, t2) @@ at $sloc }
 
 typ_item :
   | id COLON t=typ { t }
@@ -161,16 +172,16 @@ typ_args :
 
 typ_field :
   | mut=var_opt x=id COLON t=typ
-    { {var = x; typ = t; mut} @@ at($symbolstartpos,$endpos) }
+    { {var = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
     { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
-      {var = x; typ = t; mut = Type.Const @@ no_region} @@ at($symbolstartpos,$endpos) }
+      {var = x; typ = t; mut = Type.Const @@ no_region} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
-    { {var = x; bound = t} @@ at($symbolstartpos,$endpos) }
+    { {var = x; bound = t} @@ at $sloc }
   | x=id
-    { {var = x; bound = AnyT @@ at($symbolstartpos,$endpos)} @@ at($symbolstartpos,$endpos) }
+    { {var = x; bound = AnyT @@ at $sloc} @@ at $sloc }
 
 
 
@@ -236,7 +247,7 @@ lit :
 
 exp_block :
   | LCURLY es=seplist(exp, SEMICOLON) RCURLY
-    { BlockE(es) @? at($symbolstartpos,$endpos) }
+    { BlockE(es) @? at $sloc }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, SEMICOLON) RCURLY
@@ -246,72 +257,72 @@ exp_nullary :
   | e=exp_block
     { e }
   | x=var_ref
-    { VarE(x) @? at($symbolstartpos,$endpos) }
+    { VarE(x) @? at $sloc }
   | l=lit
-    { LitE(ref l) @? at($symbolstartpos,$endpos) }
+    { LitE(ref l) @? at $sloc }
   | LPAR es = seplist(exp, COMMA) RPAR
-    { match es with [e] -> e | _ -> TupE(es) @? at($symbolstartpos,$endpos) }
+    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | s=sort xo=id? efs=exp_obj
-    { ObjE(s, xo, efs) @? at($symbolstartpos,$endpos) }
+    { ObjE(s, xo, efs) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
     { e }
   | LBRACKET es=seplist(exp, COMMA) RBRACKET
-    { ArrayE(es) @? at($symbolstartpos,$endpos) }
+    { ArrayE(es) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
-    { IdxE(e1, e2) @? at($symbolstartpos,$endpos) }
+    { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
-    { ProjE (e, int_of_string s) @? at($symbolstartpos,$endpos) }
+    { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=var_ref
-    { DotE(e, x) @? at($symbolstartpos,$endpos) }
+    { DotE(e, x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
-    { CallE(e1, Lib.Option.get tso [], e2) @? at($symbolstartpos,$endpos) }
+    { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
 
 exp_un :
   | e=exp_post
     { e } 
   | op=unop e=exp_un
-    { UnE(op ,e) @? at($symbolstartpos,$endpos) }
+    { UnE(op ,e) @? at $sloc }
   | op=unassign e=exp_un
     (* TBR: this is incorrect, since it duplicates e *)
-    { AssignE(e, UnE(op, e) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
+    { AssignE(e, UnE(op, e) @? at $sloc) @? at $sloc }
   | NOT e=exp_un
-    { NotE e @? at($symbolstartpos,$endpos) }
+    { NotE e @? at $sloc }
 
 exp_bin :
   | e=exp_un
     { e } 
   | e1=exp_bin op=binop e2=exp_bin
-    { BinE(e1, op, e2) @? at($symbolstartpos,$endpos) }
+    { BinE(e1, op, e2) @? at $sloc }
   | e1=exp_bin op=relop e2=exp_bin
-    { RelE(e1, op, e2) @? at($symbolstartpos,$endpos) }
+    { RelE(e1, op, e2) @? at $sloc }
   | e1=exp_bin ASSIGN e2=exp_bin
-    { AssignE(e1, e2) @? at($symbolstartpos,$endpos)}
+    { AssignE(e1, e2) @? at $sloc}
   | e1=exp_bin op=binassign e2=exp_bin
     (* TBR: this is incorrect, since it duplicates e1 *)
-    { AssignE(e1, BinE(e1, op, e2) @? at($symbolstartpos,$endpos)) @? at($symbolstartpos,$endpos) }
+    { AssignE(e1, BinE(e1, op, e2) @? at $sloc) @? at $sloc }
   | e1=exp_bin AND e2=exp_bin
-    { AndE(e1, e2) @? at($symbolstartpos,$endpos) }
+    { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
-    { OrE(e1, e2) @? at($symbolstartpos,$endpos) }
+    { OrE(e1, e2) @? at $sloc }
   | e=exp_bin IS t=typ
-    { IsE(e, t) @? at($symbolstartpos,$endpos) }
+    { IsE(e, t) @? at $sloc }
   | e=exp_bin COLON t=typ
-    { AnnotE(e, t) @? at($symbolstartpos,$endpos) }
+    { AnnotE(e, t) @? at $sloc }
 
 exp_pre :
   | e=exp_bin
     { e } 
   | RETURN eo=exp_pre?
-    { let e = Lib.Option.get eo (TupE([]) @? at($symbolstartpos,$endpos)) in
-      RetE(e) @? at($symbolstartpos,$endpos) }
+    { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
+      RetE(e) @? at $sloc }
   | ASYNC e=exp_pre
-    { AsyncE(e) @? at($symbolstartpos,$endpos) }
+    { AsyncE(e) @? at $sloc }
   | AWAIT e=exp_pre
-    { AwaitE(e) @? at($symbolstartpos,$endpos) }
+    { AwaitE(e) @? at $sloc }
   | ASSERT e=exp_pre
-    { AssertE(e) @? at($symbolstartpos,$endpos) }
+    { AssertE(e) @? at $sloc }
 
 exp :
   | e=exp_pre
@@ -324,77 +335,77 @@ exp :
         | LoopE (e1, eo) -> LoopE (LabelE (x', e1) @? e1.at, eo) @? e.at
         | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', e2) @? e2.at) @? e.at
         | _ -> e
-      in LabelE(x, e') @? at($symbolstartpos,$endpos) }
+      in LabelE(x, e') @? at $sloc }
   | BREAK x=id eo=exp_nullary?
-    { let e = Lib.Option.get eo (TupE([]) @? at($symbolstartpos,$endpos)) in
-      BreakE(x, e) @? at($symbolstartpos,$endpos) }
+    { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
+      BreakE(x, e) @? at $sloc }
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
-      BreakE(x', TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
+      BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary e1=exp %prec IF_NO_ELSE
-    { IfE(b, e1, TupE([]) @? no_region) @? at($symbolstartpos,$endpos) }
+    { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary e1=exp ELSE e2=exp
-    { IfE(b, e1, e2) @? at($symbolstartpos,$endpos) }
+    { IfE(b, e1, e2) @? at $sloc }
   | SWITCH e=exp_nullary LCURLY cs=case* RCURLY
-    { SwitchE(e, cs) @? at($symbolstartpos,$endpos) }
+    { SwitchE(e, cs) @? at $sloc }
   | WHILE e1=exp_nullary e2=exp
-    { WhileE(e1, e2) @? at($symbolstartpos,$endpos) }
+    { WhileE(e1, e2) @? at $sloc }
   | LOOP e=exp %prec LOOP_NO_WHILE
-    { LoopE(e, None) @? at($symbolstartpos,$endpos) }
+    { LoopE(e, None) @? at $sloc }
   | LOOP e1=exp WHILE e2=exp
-    { LoopE(e1, Some e2) @? at($symbolstartpos,$endpos) }
+    { LoopE(e1, Some e2) @? at $sloc }
   | FOR p=pat IN e1=exp_nullary e2=exp
-    { ForE(p, e1, e2) @? at($symbolstartpos,$endpos) }
+    { ForE(p, e1, e2) @? at $sloc }
   | d=dec
-    { DecE(d) @? at($symbolstartpos,$endpos) }
+    { DecE(d) @? at $sloc }
       
     
 case : 
   | CASE p=pat_nullary e=exp
-    { {pat = p; exp = e} @@ at($symbolstartpos,$endpos) }
+    { {pat = p; exp = e} @@ at $sloc }
 
 %inline private_opt :
-  | (* empty *) { Public @@ at($symbolstartpos,$endpos) }
-  | PRIVATE { Private @@ at($symbolstartpos,$endpos) }
+  | (* empty *) { Public @@ no_region }
+  | PRIVATE { Private @@ at $sloc }
 
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {var = x; mut = m; priv = p; exp = e} @@ at($symbolstartpos,$endpos) }
+    { {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {var = x; mut = m; priv = p; exp = e} @@ at($symbolstartpos,$endpos) }
+      {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt x=id fd=func_dec
     { let d = fd x in
       let e = DecE(d) @? d.at in
-      {var = x; mut = Type.Const @@ no_region; priv; exp = e} @@ at($symbolstartpos,$endpos) }
+      {var = x; mut = Type.Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 (* TBR: allow patterns *)
 param :
   | x=id COLON t=typ
-    { AnnotP(VarP(x) @@ x.at, t) @@ at($symbolstartpos,$endpos) }
+    { AnnotP(VarP(x) @@ x.at, t) @@ at $sloc }
 
 params :
   | LPAR ps=seplist(param, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at($symbolstartpos,$endpos) }
+    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
 
 
 (* Patterns *)
 
 pat_nullary :
   | l=lit
-    { LitP(ref l) @@ at($symbolstartpos,$endpos) }
+    { LitP(ref l) @@ at $sloc }
   | UNDERSCORE
-    { WildP @@ at($symbolstartpos,$endpos) }
+    { WildP @@ at $sloc }
   | x=id
-    { VarP(x) @@ at($symbolstartpos,$endpos) }
+    { VarP(x) @@ at $sloc }
   | LPAR ps=seplist(pat, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at($symbolstartpos,$endpos) }
+    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
 
 pat :
   | p=pat_nullary
     { p }
   | p=pat COLON t=typ
-    { AnnotP(p, t) @@ at($symbolstartpos,$endpos) }
+    { AnnotP(p, t) @@ at $sloc }
 
 return_typ :
   | COLON t=typ { t }
@@ -416,13 +427,13 @@ dec :
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @@ at($symbolstartpos,$endpos) } 
   | FUNC xo=id? fd=func_dec
-    { let x = Lib.Option.get xo ("" @@ at($symbolstartpos,$endpos)) in
-      (fd x).it @@ at($symbolstartpos,$endpos) }
+    { let x = Lib.Option.get xo ("" @@ at $sloc) in
+      (fd x).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
-    { TypD(x, tps, t) @@ at($symbolstartpos,$endpos) }
+    { TypD(x, tps, t) @@ at $sloc }
   | s=sort_opt CLASS xo=id? tps=typ_params_opt p=params efs=class_body
-    { let x = Lib.Option.get xo ("" @@ at($symbolstartpos,$endpos)) in
-      ClassD(s, x, tps, p, efs) @@ at($symbolstartpos,$endpos) }
+    { let x = Lib.Option.get xo ("" @@ at $sloc) in
+      ClassD(s, x, tps, p, efs) @@ at $sloc }
 
 func_dec :
   | tps=typ_params_opt ps=params rt=return_typ? fb=func_body
@@ -434,7 +445,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun x -> FuncD(x, tps, ps, t, e) @@ at($symbolstartpos,$endpos) }
+      in fun x -> FuncD(x, tps, ps, t, e) @@ at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
