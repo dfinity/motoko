@@ -107,14 +107,14 @@ spawn(f) = let t = task{result=None;waiters=[]} in
 
 await(t,k) = match t with
              | {result=Some v} -> k v
-	           | {result=None} -> t.waiters <- k::t.waiters; yield()
+	     | {result=None} -> t.waiters <- k::t.waiters; yield()
 
 complete(t,v) = match t with
              | {result=None;waiters} ->
                t.result = Some v;
                foreach waiter in waiters do
                  Schedule(\u.waiter(v))
-	           | {result=Some _ } -> assert(false) 
+             | {result=Some _ } -> assert(false) 
 
 
 
