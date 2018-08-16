@@ -103,7 +103,7 @@ We use the following primitives for scheduling actions (that complete tasks).
 ```               
 spawn(f) = let t = task{result=None;waiters=[]} in
            schedule (\u.f(t));
-	         t
+           t
 
 await(t,k) = match t with
              | {result=Some v} -> k v
