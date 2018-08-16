@@ -3,14 +3,16 @@ open Type
 type val_env = (typ * mut) Env.t
 type typ_env = con Env.t
 type con_env = Type.con_env
+type lab_env = typ Env.t
+type ret_env = typ option
 
 type context =
   {
     vals : val_env;
     typs : typ_env;
     cons : con_env;
-    labs : typ Env.t;
-    rets : typ option;
+    labs : lab_env;
+    rets : ret_env;
     async : bool
   }
 

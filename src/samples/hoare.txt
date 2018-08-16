@@ -5,7 +5,7 @@ Checking hoare.as:
   quicksort : (var Int[], Nat, Nat) -> ()
   swap : (var Int[], Nat, Nat) -> ()
 
-Interpreting hoare.as (tracing function calls):
+Interpreting hoare.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   swap([8, 3, 9, 5, 2], 0, 4)
@@ -39,7 +39,7 @@ Interpreting hoare.as (tracing function calls):
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
-Final state hoare.as:
+Finished hoare.as:
   a = [var 2, 3, 5, 8, 9]
   partition = func
   quicksort = func

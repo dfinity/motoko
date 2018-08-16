@@ -8,9 +8,9 @@ Checking bank.as:
   Issuer : () -> Issuer
   transfer : (Account, Account, Int) -> async ()
 
-Interpreting bank.as (tracing function calls):
+Interpreting bank.as:
 
-Final state bank.as:
+Finished bank.as:
   Account = func
   Bank = func
   Issuer = func
@@ -25,9 +25,9 @@ Checking bank_ordered.as:
   Issuer : () -> Issuer
   transfer : (Account, Account, Int) -> async ()
 
-Interpreting bank_ordered.as (tracing function calls):
+Interpreting bank_ordered.as:
 
-Final state bank_ordered.as:
+Finished bank_ordered.as:
   Account = func
   Bank = func
   Issuer = func
@@ -37,9 +37,9 @@ Checking control.as:
   type Control <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
   Control : () -> Control
 
-Interpreting control.as (tracing function calls):
+Interpreting control.as:
 
-Final state control.as:
+Finished control.as:
   Control = func
 
 Checking literals.as:
@@ -53,9 +53,9 @@ Checking literals.as:
   u : Char
   word : Word32
 
-Interpreting literals.as (tracing function calls):
+Interpreting literals.as:
 
-Final state literals.as:
+Finished literals.as:
   byte = 255
   i = 0
   i1 = -1
@@ -75,9 +75,9 @@ Checking numericops.as:
   testWord64 : (Word64, Word64) -> ()
   testWord8 : (Word8, Word8) -> ()
 
-Interpreting numericops.as (tracing function calls):
+Interpreting numericops.as:
 
-Final state numericops.as:
+Finished numericops.as:
   testFloat = func
   testInt = func
   testNat = func
@@ -92,9 +92,9 @@ Checking bitops.as:
   testWord64 : (Word64, Word64) -> ()
   testWord8 : (Word8, Word8) -> ()
 
-Interpreting bitops.as (tracing function calls):
+Interpreting bitops.as:
 
-Final state bitops.as:
+Finished bitops.as:
   testWord16 = func
   testWord32 = func
   testWord64 = func
@@ -112,9 +112,9 @@ Checking relationalops.as:
   testWord64 : (Word64, Word64) -> ()
   testWord8 : (Word8, Word8) -> ()
 
-Interpreting relationalops.as (tracing function calls):
+Interpreting relationalops.as:
 
-Final state relationalops.as:
+Finished relationalops.as:
   testBool = func
   testChar = func
   testFloat = func
@@ -129,9 +129,9 @@ Final state relationalops.as:
 Checking concat.as:
   testText : (Text, Text) -> ()
 
-Interpreting concat.as (tracing function calls):
+Interpreting concat.as:
 
-Final state concat.as:
+Finished concat.as:
   testText = func
 
 Checking duplicatefield.as:
@@ -149,15 +149,15 @@ Checking typedef.as:
   type IntT = Int
   type Seq = <A/4> (A/4, Seq<A/4>?)
 
-Interpreting typedef.as (tracing function calls):
+Interpreting typedef.as:
 
-Final state typedef.as:
+Finished typedef.as:
 
 Checking type_equiv.as:
 
-Interpreting type_equiv.as (tracing function calls):
+Interpreting type_equiv.as:
 
-Final state type_equiv.as:
+Finished type_equiv.as:
 
 Checking quicksort.as:
   type QS <: <T/4> {quicksort : (var T/4[], Nat, Nat) -> ()}
@@ -166,7 +166,7 @@ Checking quicksort.as:
   cmpi : (Int, Int) -> Int
   qs : QS<Int>
 
-Interpreting quicksort.as (tracing function calls):
+Interpreting quicksort.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   trace([8, 3, 9, 5, 2])
@@ -256,7 +256,7 @@ Interpreting quicksort.as (tracing function calls):
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
-Final state quicksort.as:
+Finished quicksort.as:
   QS = func
   a = [var 2, 3, 5, 8, 9]
   cmpi = func
@@ -269,7 +269,7 @@ Checking hoare.as:
   swap : (var Int[], Nat, Nat) -> ()
   x : ()
 
-Interpreting hoare.as (tracing function calls):
+Interpreting hoare.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   swap([8, 3, 9, 5, 2], 0, 4)
@@ -303,7 +303,7 @@ Interpreting hoare.as (tracing function calls):
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
-Final state hoare.as:
+Finished hoare.as:
   a = [var 2, 3, 5, 8, 9]
   partition = func
   quicksort = func
@@ -323,7 +323,7 @@ Checking bankex.as:
   test : () -> async (Account, Account)
   transfer : (Account, Account, Int) -> async ()
 
-Interpreting bankex.as (tracing function calls):
+Interpreting bankex.as:
   test()
   test() => async ?#0
   getReserve()
@@ -353,7 +353,7 @@ Interpreting bankex.as (tracing function calls):
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
 
-Final state bankex.as:
+Finished bankex.as:
   Account = func
   Bank = func
   Issuer = func
@@ -370,7 +370,7 @@ Checking counter.as:
   show : Int -> ()
   test : () -> ()
 
-Interpreting counter.as (tracing function calls):
+Interpreting counter.as:
   test()
   test() => ()
   dec()
@@ -414,7 +414,7 @@ Interpreting counter.as (tracing function calls):
   show(1) => ()
   dec() => ()
 
-Final state counter.as:
+Finished counter.as:
   Counter = func
   c = Counter
   show = func
@@ -424,22 +424,22 @@ Checking testwhile.as:
   passed : Bool
   test : () -> Int
 
-Interpreting testwhile.as (tracing function calls):
+Interpreting testwhile.as:
   test()
   test() => 0
 
-Final state testwhile.as:
+Finished testwhile.as:
   passed = true
   test = func
 
 Checking overflow.as:
 
-Interpreting overflow.as (tracing function calls):
+Interpreting overflow.as:
 overflow.as:17.1-17.16: execution error, arithmetic overflow
 
 Checking menhirbug.as:
   type A = {x : {}}
 
-Interpreting menhirbug.as (tracing function calls):
+Interpreting menhirbug.as:
 
-Final state menhirbug.as:
+Finished menhirbug.as:

@@ -27,14 +27,16 @@ type pass =
 type val_env = (T.typ * T.mut) T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.con_env
+type lab_env = T.typ T.Env.t
+type ret_env = T.typ option
 
 type context =
   {
     vals : val_env;
     typs : typ_env;
     cons : con_env;
-    labs : T.typ T.Env.t;
-    rets : T.typ option;
+    labs : lab_env;
+    rets : ret_env;
     async : bool
   }
 
@@ -519,8 +521,8 @@ and infer_exp' context exp : T.typ * T.mut =
     T.unit, T.Const
   | IsE (exp1, typ) ->
     (* TBR: what if T has free type variables? How will we check this, sans type passing? *) 
-    let t1 = infer_exp context exp1 in
-    let t = check_typ context typ in
+    let _t1 = infer_exp context exp1 in
+    let _t = check_typ context typ in
     (* TBR: check that t <: t1 *)
     T.bool, T.Const
   | AnnotE (exp1, typ) ->
@@ -748,10 +750,9 @@ and check_dec pass context d =
     let t = infer_exp context e in
     let ve = check_pat context t p in 
     ve, T.Env.empty, Con.Env.empty
-  | VarD (v, t, e) ->
+  | VarD (v, e) ->
     if pass < TypDefPass then T.Env.empty, T.Env.empty, Con.Env.empty else
-    let t = check_typ context t in
-    check_exp context t e;
+    let t = infer_exp context e in
     T.Env.singleton v.it (t, T.Mut), T.Env.empty, Con.Env.empty
   | TypD (v, tps, t) ->
     let tbs, te_tbs, ke_tbs = check_typ_binds context tps in

@@ -8,7 +8,7 @@ Checking counterex.as:
   testDec : () -> ()
   testRead : () -> async ()
 
-Interpreting counterex.as (tracing function calls):
+Interpreting counterex.as:
   testDec()
   testDec() => ()
   testRead()
@@ -174,7 +174,7 @@ Interpreting counterex.as (tracing function calls):
   showAsync("after", async -10#0)
   showAsync("after", async -10#0) => ()
 
-Final state counterex.as:
+Finished counterex.as:
   Counter = func
   c = Counter
   show = func

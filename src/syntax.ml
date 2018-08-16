@@ -158,7 +158,7 @@ and case' = {pat : pat; exp : exp}
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                                  (* immutable *)
-  | VarD of var * typ * exp                            (* mutable *)
+  | VarD of var * exp                                  (* mutable *)
   | FuncD of var * typ_bind list * pat * typ * exp     (* function *)
   | TypD of var * typ_bind list * typ                  (* type *)
   | ClassD of actor * var * typ_bind list * pat * exp_field list (* class *)
