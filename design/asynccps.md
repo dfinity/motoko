@@ -40,7 +40,7 @@ Term 't' are await free terms (in the sense that await can only occur within a n
 Trivial terms can be compiled in direct style by translation T[t].
 Non-trivial terms must be cps-converted by translations C[e] and CPS[e] and their translations expect a continutation.
 
-```
+```JS
 CPS[ e ] = \\k.let kret = k in C[e] k
 
 where
@@ -48,9 +48,9 @@ where
 C[ t ] =
    \\k. k @ T[ t ]
 C[ t1 e2 ] =
-   \\k. T[ t1 ] @ (\\f.C[ e2 ] @ \\v. k @ (f @ v))
+   \\k. let f = T[ t1 ] in C[ e2 ] @ \\v. k @ (f @ v))
 C[ e1 e2 ] =
-   \\k. C[ t1 ] @ (\\f.C[ e2 ] @ \\v. k @ (f @ v))
+   \\k. C[ e1 ] @ (\\f.C[ e2 ] @ \\v. k @ (f @ v))
 C[ let x = t1 in e2 ] =
    \\k.let x = T[t1] in C[e2] @ k
 C[ let x = e1 in e2 ] =
@@ -64,22 +64,25 @@ C[ if e1 then e2 else e3 ]  =
 C[ if t1 then e2 else e3 ]  =
    \\k.if T[t1] then C[e1] k else C[e2] k)
 C[ if e1 then t2 else t3 ]  =
-   \\k.C[e1](\\b.k @ (if b then T[e1] else T[e2]))
+   \\k.C[e1](\\b.k @ (if b then T[t1] else T[t2]))
 C[ while t1 do e2 ] =
-   \\k.let rec l = \u.k (while T[t1] do C[e2] l) in
-       l()
-C[ while e1 do t2] =
-   let rec l = \\k. C[e1](\\v.if v then T[t2]; l@() else k@()) in
-   l k
+  \\k. let rec l = \u. if  T[t1] then C[e2]@l else k@u in
+       l@()
+C[ while e1 do t2 ] =
+  \\k. let rec l = \\u. C[e1](\\v.if v then T[t2] ; l@u else k@u)in
+       l@()
+C[ while e1 do e2 ] =
+  \\k. let rec l = \\u. C[e1](\\v.if v then C[e2] l else k@()) in
+       l@()
 C[ label l e ] = \\l. C[e] @ l	   // we use label l to name the continuation
 C[ break l e ] = \\k. C[e] @ l     // discard k, continue from l
 C[ return e ] = \\_. C[e] @ kret   // discard k, return
 ```
 
-The translation of trivial terms, `T[ _ ]`, is the identity on all but ```async``` terms, at which point we switch to the CPS[-] translation.
+The translation of trivial terms, `T[ _ ]`, is  homomorpic on all terms but `async _`, at which point we switch to the CPS[-] translation.
 Note `T[await _]` is (deliberately) undefined.
 
-```
+```JS
 T[ async e ] = spawn (\t.CPS(e) @ (\v.complete(t,v))
 T[ x ]= x
 T[ c ] = c
@@ -100,20 +103,20 @@ T[ return T[t] ] =
 
 We use the following primitives for scheduling actions (that complete tasks).
 
-```               
+```JS               
 spawn(f) = let t = task{result=None;waiters=[]} in
            schedule (\u.f(t));
            t
 
 await(t,k) = match t with
              | {result=Some v} -> k v
-	     | {result=None} -> t.waiters <- k::t.waiters; yield()
+	           | {result=None} -> t.waiters <- k::t.waiters; yield()
 
 complete(t,v) = match t with
              | {result=None;waiters} ->
                t.result = Some v;
                foreach waiter in waiters do
-                 Schedule(\u.waiter(v))
+                schedule(\u.waiter(v))
              | {result=Some _ } -> assert(false) 
 
 yield() = schedule.Next()
@@ -138,7 +141,7 @@ Our remedy is to track the target representation of a source label as either tar
 translate accordingly.
 
 Thus extend the translations `C[]`, `CPS[]` and `T[]` with an implicit environment argument,`env`, classifying labels and
-consulted and modified in select rules. The other cases are unchanged (apart from propagating the env `argument`).
+consulted and modified in select rules. The other cases are unchanged (apart from propagating the `env` argument).
 
 ```
 C env [ label l e ] =
@@ -146,11 +149,11 @@ C env [ label l e ] =
   \\l. C env' ;[e] @ l	   // we use label l to name the continuation
 C env [ break l e ] =
   assert(env[l] = Cont)
-  \\k. C[e] @ l     // discard k, continue from l
+  \\k. C env [e] @ l     // discard k, continue from l
   
 C env [ return e ] =
   assert(env[kret] = Cont)
-  \\_. C[e] @ kret   // discard k, return
+  \\_. C env [e] @ kret   // discard k, return
 
 T env [ async e ] =
    let env' = [kret->Cont] in
@@ -161,15 +164,15 @@ T env [\x.t] =
    \x.T env' [t]
 T env [ break l t ] =
    match env[t] with
-   | Cont ->  return l@(T[T])
-   | Label -> break l T[t]
+   | Cont ->  return l@(T env [T])
+   | Label -> break l (T env [t])
 T env [ label l t ] =
    let env' = env[l->Label]
-   label l T env' [t]
-T env [ return T[t] ] =
+   label l (T env' [t])
+T env [ return t ] =
    match env[kret] with
-   | Cont ->  return kret@(T[t])
-   | Label -> return T[t]
+   | Cont ->  return kret@(T env [t])
+   | Label -> return (T env [t])
 ```
 
 
