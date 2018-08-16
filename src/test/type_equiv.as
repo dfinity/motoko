@@ -123,10 +123,8 @@ type B = {x : B};
 func f(x : A) : A = x : B;
 };
 
-/* TBR: WTF, why does this seg-fault???
 {
 type A = {x : {x : A}};
 type B = {x : B};
 func f(x : A) : A = x : B;
 };
-*/

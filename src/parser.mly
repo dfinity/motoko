@@ -5,24 +5,13 @@ open Source
 
 (* Position handling *)
 
-(* Minimal work-around for probable menhir code gen bug (revealed by test/menhirbug.as) *)
-let position_to_pos (position : Lexing.position) =
-  if Obj.is_block (Obj.repr position)
-  then
-    { Source.file = position.Lexing.pos_fname; 
-      Source.line = position.Lexing.pos_lnum; 
-      Source.column = position.Lexing.pos_cnum - position.Lexing.pos_bol;
-    }
-  else (assert false; no_pos)
-
-(* Once the menhir bug is fixed, replace by:
 let position_to_pos position =
+  (* TBR: Remove assertion once the menhir bug is fixed. *)
+  assert (Obj.is_block (Obj.repr position));
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
   }
-*)
-
 
 let positions_to_region position1 position2 =
   { left = position_to_pos position1;
@@ -419,13 +408,13 @@ dec :
         match p.it with
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
-      in LetD (p', e') @@ at($symbolstartpos,$endpos) }
+      in LetD (p', e') @@ at $sloc }
   | VAR x=id t=return_typ? EQ e=exp
     { let e' =
         match t with
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
-      in VarD(x, e') @@ at($symbolstartpos,$endpos) } 
+      in VarD(x, e') @@ at $sloc }
   | FUNC xo=id? fd=func_dec
     { let x = Lib.Option.get xo ("" @@ at $sloc) in
       (fd x).it @@ at $sloc }
@@ -459,6 +448,6 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | es=seplist(exp, SEMICOLON) EOF { es @@ at($symbolstartpos,$endpos) }
+  | es=seplist(exp, SEMICOLON) EOF { es @@ at $sloc }
 
 %%
