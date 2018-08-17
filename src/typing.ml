@@ -2,7 +2,7 @@ open Syntax
 open Source
 
 module T = Type
-module A = Await (* currently unused, dependency for build only *)
+module A = Await
 
 (* Error Handling *)
 
@@ -317,14 +317,16 @@ let rec check_lit context t lit at =
 
 let rec infer_exp context exp : T.typ =
   let t, _ = infer_exp' context exp in
-  exp.note <- (T.Triv,T.structural context.cons t);
+  let e = A.infer_effect_exp exp in
+  exp.note <- (e,T.structural context.cons t);
   t
 
 and infer_exp_mut context exp : T.typ =
   let t, m = infer_exp' context exp in
+  let e = A.infer_effect_exp exp in
   if m <> T.Mut then
     type_error exp.at "expected mutable assignment target";
-  exp.note <- (T.Triv,T.structural context.cons t);
+  exp.note <- (e,T.structural context.cons t);
   t
 
 and infer_exp' context exp : T.typ * T.mut =
@@ -543,7 +545,8 @@ and infer_exp' context exp : T.typ * T.mut =
 
 and check_exp context t exp =
   check_exp' context t exp;
-  exp.note <- (T.Triv,t)
+  let e = A.infer_effect_exp exp in
+  exp.note <- (e,t)
 
 and check_exp' context t exp =
   match exp.it with
