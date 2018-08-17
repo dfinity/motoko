@@ -80,8 +80,8 @@ let (@!) it at = {it; at; note = Type.Const}
 
 seplist(X, SEP) :
   | (* empty *) { [] }
-  | x=X SEP xs=seplist(X, SEP) { x::xs } 
   | x=X { [x] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 
 (* Basics *)
