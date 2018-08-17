@@ -130,7 +130,7 @@ rule token = parse
   | space">>" { SHROP } (*TBR*)
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
-  | "++" { CATOP }
+  | "#" { CATOP }
 
   | "==" { EQOP }
   | "!=" { NEQOP }
@@ -150,7 +150,7 @@ rule token = parse
   | ">>=" { SHRASSIGN }
   | "<<>="  { ROTLASSIGN }
   | "<>>="  { ROTRASSIGN }
-  | "++=" { CATASSIGN }
+  | "#=" { CATASSIGN }
 
   | space">"space { GTOP } (*TBR*)
   | space"<"space { LTOP } (*TBR*)
