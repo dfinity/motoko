@@ -368,15 +368,6 @@ exp_field :
       let e = DecE(d) @? d.at in
       {var = x; mut = Type.Const @@ no_region; priv; exp = e} @@ at $sloc }
 
-(* TBR: allow patterns *)
-param :
-  | x=id COLON t=typ
-    { AnnotP(VarP(x) @@ x.at, t) @@ at $sloc }
-
-params :
-  | LPAR ps=seplist(param, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
-
 
 (* Patterns *)
 
@@ -420,12 +411,12 @@ dec :
       (fd x).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at $sloc }
-  | s=sort_opt CLASS xo=id? tps=typ_params_opt p=params efs=class_body
+  | s=sort_opt CLASS xo=id? tps=typ_params_opt p=pat_nullary efs=class_body
     { let x = Lib.Option.get xo ("" @@ at $sloc) in
       ClassD(s, x, tps, p, efs) @@ at $sloc }
 
 func_dec :
-  | tps=typ_params_opt ps=params rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @@ no_region) in
       (* This is a hack to support async method declarations. *)
       let e = match fb with
@@ -434,7 +425,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun x -> FuncD(x, tps, ps, t, e) @@ at $sloc }
+      in fun x -> FuncD(x, tps, p, t, e) @@ at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
