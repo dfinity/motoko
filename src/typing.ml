@@ -480,8 +480,9 @@ and infer_exp' context exp : T.typ * T.mut =
     let ve = check_pat context (elem_typ context t1) pat in
     check_exp (adjoin_vals context ve) T.unit exp2;
     T.unit, T.Const
-  | LabelE (id, exp1) ->
-    let t = infer_exp (add_lab context id.it T.unit) exp1 in
+  | LabelE (id, typ, exp1) ->
+    let t = check_typ context typ in 
+    check_exp (add_lab context id.it t) t exp1;
     t, T.Const
   | BreakE (id, exp1) ->
     (match T.Env.find_opt id.it context.labs with
@@ -573,7 +574,8 @@ and check_exp' context t exp =
     | T.Tup ts when List.length ts = List.length exps ->
       List.iter2 (check_exp context) ts exps
     | _ ->
-      type_error exp.at "tuple expression cannot produce expected type %s"
+      type_error exp.at "%s expression cannot produce expected type %s"
+        (if exps = [] then "empty" else "tuple")
         (T.string_of_typ t)
     )
   | ArrayE exps ->
@@ -611,8 +613,6 @@ and check_exp' context t exp =
       type_error exp1.at "expected switchable type, found %s"
         (T.string_of_typ t1);
     check_cases context t1 t cases
-  | LabelE (id, exp) ->
-    check_exp (add_lab context id.it t) t exp
   | LoopE _ | BreakE _ | RetE _ ->
     (* TBR: remove once we have T.Bottom and subtyping *)
     ignore (infer_exp context exp)

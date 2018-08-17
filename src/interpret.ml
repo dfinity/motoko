@@ -225,7 +225,7 @@ match e.it with
 | ForE(p,e0,e1)->
   failwith "NYI:ForE"
 (* labels *)
-| LabelE(l,e) ->
+| LabelE(l,_,e) ->
   let context' = {context with labs = V.Env.add l.it k context.labs} in
   interpret_exp context' e k
 | BreakE(l,e) ->

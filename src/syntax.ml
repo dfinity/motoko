@@ -130,7 +130,7 @@ and exp' =
   | WhileE of exp * exp                        (* while-do loop *)
   | LoopE of exp * exp option                  (* do-while loop *)
   | ForE of pat * exp * exp                    (* iteration *)
-  | LabelE of var * exp                        (* label *)
+  | LabelE of var * typ * exp                  (* label *)
   | BreakE of var * exp                        (* break *)
   | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
