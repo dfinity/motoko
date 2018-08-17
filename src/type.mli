@@ -1,8 +1,7 @@
 (* Representation *)
 
 type con = Con.t
-type mut = Const | Mut
-type actor = Object | Actor
+type sort = Object | Actor
 
 type prim =
   | Null
@@ -21,18 +20,19 @@ type t = typ
 and typ =
   | Var of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of actor * field list                 (* object *)
-  | Array of mut * typ                        (* array *)
+  | Obj of sort * field list                  (* object *)
+  | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of bind list * typ * typ             (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
+  | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
 and bind = {con : con; bound : typ}
-and field = {lab : string; typ : typ; mut : mut}
+and field = {name : string; typ : typ}
 
 type kind =
   | Def of bind list * typ
@@ -54,7 +54,7 @@ val int : typ
 val eq : con_env -> typ -> typ -> bool
 val normalize : con_env -> typ -> typ
 val structural : con_env -> typ -> typ
-
+val immutable : typ -> typ
 
 (* First-order substitution *)
 
@@ -72,7 +72,6 @@ module Env : Env.S with type key = string
 
 (* Pretty printing *)
 
-val string_of_mut : mut -> string
 val string_of_prim : prim -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string

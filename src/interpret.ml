@@ -126,31 +126,31 @@ and interpret_exp context e k  =
 and interpret_exp' context e k =
 match e.it with
 | VarE x ->
-    (match x.note with
-     | T.Mut -> k (derefV (unrollV (V.Env.find x.it context.vals)))
-     | T.Const -> k (V.as_val_bind (unrollV (V.Env.find x.it context.vals))))
+    (match e.note with
+     | T.Pre -> assert false
+     | T.Mut _ -> k (derefV (unrollV (V.Env.find x.it context.vals)))
+     | _ -> k (V.as_val_bind (unrollV (V.Env.find x.it context.vals))))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
-   let t1 = e1.note in
+   let t1 = T.immutable e1.note in
    interpret_exp context e1 (fun v1 -> k (Operator.unop t1 uop v1))
 | BinE (e1,bop,e2) ->
-   let t1 = e1.note in
+   let t1 = T.immutable e1.note in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
 | RelE (e1,rop,e2) ->
-   let t1 = e1.note in
+   let t1 = T.immutable e1.note in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (V.Tup vs))
 | ProjE(e1,n) ->
     interpret_exp context e1 (fun v1 -> k (projV v1 n))
 | DotE(e1,v) ->
-    let mut = v.note in
     let it = v.it in
     interpret_exp context e1 (fun v1 ->
-    k (match mut with
-       | T.Mut -> (derefV (unrollV (dotV v1 it)))
-       | T.Const -> (V.as_val_bind (unrollV (dotV v1 it))))
+    k (match e.note with
+       | T.Mut _ -> (derefV (unrollV (dotV v1 it)))
+       | _ -> (V.as_val_bind (unrollV (dotV v1 it))))
     )
 | AssignE(e1,e2) ->
     begin
@@ -361,24 +361,24 @@ and define_dec context d k =
                            let rec declare_members private_ve public_ve efs =
                                      match efs with
                                      | [] -> (private_ve,public_ve)
-                                     | {it={var;mut;priv;exp=_}}::efs ->
+                                     | {it={id;mut;priv;exp=_};_}::efs ->
                                         let recR = V.Rec {V.def = None} in
-                                        declare_members (V.Env.add var.it recR private_ve)
-                                                        (V.Env.add var.it recR public_ve) efs
+                                        declare_members (V.Env.add id.it recR private_ve)
+                                                        (V.Env.add id.it recR public_ve) efs
                             in
                             let (private_ve,public_ve) = declare_members V.Env.empty V.Env.empty efs
                             in
                             let rec define_members efs =
                                      match efs with
-				     | {it={var;mut;priv;exp;}}::efs ->
+				     | {it={id;mut;priv;exp;}}::efs ->
 				        let private_context = adjoin_vals context private_ve in
                                         interpret_exp private_context exp (fun v ->
 					let v = expand a.it priv.it mut.it exp.note v in 
                                         let defn = match mut.it with
-                                                   | T.Const -> V.Val v
-                                                   | T.Mut -> V.Var (ref v)
+                                                   | Const -> V.Val v
+                                                   | Var -> V.Var (ref v)
                                         in
-                                          define_var private_context var defn;
+                                          define_var private_context id defn;
                                           define_members efs)
 				     | [] -> k (V.Obj public_ve) 
 
@@ -388,11 +388,11 @@ and define_dec context d k =
        
 and expand actor priv mut t v =
     match (actor,priv,mut,t) with
-    | T.Actor, Public, T.Const, T.Func (_, _, T.Tup []) ->
+    | T.Actor, Public, Const, T.Func (_, _, T.Tup []) ->
       let f = V.as_func v in
       V.Func (fun w k -> queue(fun () -> f w (fun a->a));
                         k V.unit)
-    | T.Actor, Public, T.Const, T.Func (_, _, T.Async _) ->
+    | T.Actor, Public, Const, T.Func (_, _, T.Async _) ->
       let f = V.as_func v in
       V.Func (fun w k ->
       	     let async = {V.result=None;waiters=[]} in

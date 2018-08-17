@@ -1,20 +1,20 @@
-(* Variables *)
+(* Identifiers *)
 
-type var = string Source.phrase
-type var_use = (string, Type.mut) Source.annotated_phrase
+type id = string Source.phrase
 
 
 (* Types *)
 
-type mut = Type.mut Source.phrase
+type sort = Type.sort Source.phrase
 
-type actor = Type.actor Source.phrase
+type mut = mut' Source.phrase
+and mut' = Const | Var
 
 type typ = typ' Source.phrase
 and typ' =
-  | VarT of var * typ list                     (* constructor *)
+  | VarT of id * typ list                     (* constructor *)
   | PrimT of Type.prim                         (* primitive *)
-  | ObjT of actor * typ_field list             (* object *)
+  | ObjT of sort * typ_field list             (* object *)
   | ArrayT of mut * typ                        (* array *)
   | OptT of typ                                (* option *)
   | TupT of typ list                           (* tuple *)
@@ -28,10 +28,10 @@ and typ' =
 *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = {var : var; typ : typ; mut : mut}
+and typ_field' = {id : id; typ : typ; mut : mut}
 
 and typ_bind = typ_bind' Source.phrase
-and typ_bind' = {var : var; bound : typ}
+and typ_bind' = {var : id; bound : typ}
 
 
 (* Literals *)
@@ -56,7 +56,7 @@ type lit =
 type pat = pat' Source.phrase
 and pat' =
   | WildP                                      (* wildcard *)
-  | VarP of var                                (* variable *)
+  | VarP of id                                 (* variable *)
   | TupP of pat list                           (* tuple *)
   | AnnotP of pat * typ                        (* type annotation *)
   | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
@@ -66,7 +66,7 @@ and pat' =
   | OrP of pat * pat                           (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
-and pat_field' = {var : var; pat : pat}
+and pat_field' = {id : id; pat : pat}
 *)
 
 
@@ -108,15 +108,15 @@ and priv' = Public | Private
 
 type exp = (exp', Type.typ) Source.annotated_phrase
 and exp' =
-  | VarE of var_use                            (* variable *)
+  | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
   | UnE of unop * exp                          (* unary operator *)
   | BinE of exp * binop * exp                  (* binary operator *)
   | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
-  | ObjE of actor * var * exp_field list       (* object *)
-  | DotE of exp * var_use                      (* object projection *)
+  | ObjE of sort * id * exp_field list         (* object *)
+  | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
   | IdxE of exp * exp                          (* array indexing *)
@@ -130,8 +130,8 @@ and exp' =
   | WhileE of exp * exp                        (* while-do loop *)
   | LoopE of exp * exp option                  (* do-while loop *)
   | ForE of pat * exp * exp                    (* iteration *)
-  | LabelE of var * exp                        (* label *)
-  | BreakE of var * exp                        (* break *)
+  | LabelE of id * exp                         (* label *)
+  | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
@@ -147,7 +147,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {var : var; exp : exp; mut : mut; priv : priv}
+and exp_field' = {id : id; exp : exp; mut : mut; priv : priv}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -159,10 +159,10 @@ and dec = dec' Source.phrase
 and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)
-  | VarD of var * exp                                  (* mutable *)
-  | FuncD of var * typ_bind list * pat * typ * exp     (* function *)
-  | TypD of var * typ_bind list * typ                  (* type *)
-  | ClassD of var * typ_bind list * actor * pat * exp_field list (* class *)
+  | VarD of id * exp                                   (* mutable *)
+  | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
+  | TypD of id * typ_bind list * typ                   (* type *)
+  | ClassD of id * typ_bind list * sort * pat * exp_field list (* class *)
 
 
 (* Program *)

@@ -18,15 +18,14 @@ let print_ce =
   )
 
 let print_ve =
-  Type.Env.iter (fun x (t, m) ->
-    printf "  %s%s : %s\n" (Type.string_of_mut m) x (Type.string_of_typ t)
+  Type.Env.iter (fun x t ->
+    printf "  %s : %s\n" x (Type.string_of_typ t)
   )
 
 let print_dyn_ve ce ve dyn_ve =
-  Type.Env.iter (fun x (t, m) ->
+  Type.Env.iter (fun x t ->
     let v = Value.read_rec_bind (Value.Env.find x dyn_ve) in
-    Printf.printf "  %s%s = %s\n"
-      (Type.string_of_mut m) x (Value.string_of_val ce t v)
+    Printf.printf "  %s = %s\n" x (Value.string_of_val ce t v)
   ) ve
 
 let print_debug_ve =
@@ -69,7 +68,7 @@ let run filename =
       in
       if dump then print_debug_ve (Interpret.get_last_context ()).Interpret.vals;
       printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
-      if dump then printf "%s" (Printexc.get_backtrace ());
+      if dump then Printexc.print_backtrace stderr;
       false
   in
   close_in ic;
@@ -85,6 +84,7 @@ let argspec = Arg.align
 ]
 
 let () =
+  Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !args = [] then printf "%s\n" usage else
   List.iter (fun arg -> if not (run arg) then exit 1) !args

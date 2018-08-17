@@ -99,6 +99,6 @@ Interpreting quicksort.as:
 
 Finished quicksort.as:
   QS = func
-  a = [var 2, 3, 5, 8, 9]
+  a = [2, 3, 5, 8, 9]
   cmpi = func
   qs = QS<Int>

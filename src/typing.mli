@@ -1,6 +1,6 @@
 open Type
 
-type val_env = (typ * mut) Env.t
+type val_env = typ Env.t
 type typ_env = con Env.t
 type con_env = Type.con_env
 type lab_env = typ Env.t

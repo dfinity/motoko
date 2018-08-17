@@ -20,8 +20,35 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = Type.Any}
-let (@!) it at = {it; at; note = Type.Const}
+let (@?) it at = {it; at; note = Type.Pre}
+
+
+let dup_var x = VarE (x.it @@ x.at) @? x.at
+let name_exp e =
+  match e.it with
+  | VarE x -> [], e, dup_var x
+  | _ ->
+    let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
+    [LetD (VarP x @@ x.at, e) @@ e.at], dup_var x, dup_var x
+
+let assign_op lhs rhs_f at =
+  let ds, lhs', rhs' =
+    match lhs.it with
+    | VarE x -> [], lhs, dup_var x
+    | DotE (e1, x) ->
+      let ds, ex11, ex12 = name_exp e1 in
+      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
+    | IdxE (e1, e2) ->
+      let ds1, ex11, ex12 = name_exp e1 in
+      let ds2, ex21, ex22 = name_exp e2 in
+      ds1 @ ds2, IdxE (ex11, ex21) @? lhs.at, IdxE (ex12, ex22) @? lhs.at
+    | _ ->
+      name_exp lhs
+  in
+  let e = AssignE (lhs', rhs_f rhs') @? at in
+  match ds with
+  | [] -> e
+  | ds -> BlockE (ds @ [ExpD e @@ e.at]) @? at
 
 %}
 
@@ -96,15 +123,12 @@ seplist(X, SEP) :
     { fun sort sloc ->
       ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
 
-%inline id_use :
-  | id=ID { id @! at $sloc }
-
 %inline var :
-  | VAR { Type.Mut @@ at $sloc }
+  | VAR { Var @@ at $sloc }
 
 %inline var_opt :
-  | (* empty *) { Type.Const @@ no_region }
-  | VAR { Type.Mut @@ at $sloc }
+  | (* empty *) { Const @@ no_region }
+  | VAR { Var @@ at $sloc }
 
 %inline sort :
   | NEW { Type.Object @@ at $sloc }
@@ -135,7 +159,7 @@ typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Type.Const @@ no_region, t) @@ at $sloc }
+    { ArrayT(Const @@ no_region, t) @@ at $sloc }
   | t=typ_post QUEST
     { OptT(t) @@ at $sloc }
 
@@ -168,10 +192,10 @@ typ_args :
 
 typ_field :
   | mut=var_opt x=id COLON t=typ
-    { {var = x; typ = t; mut} @@ at $sloc }
+    { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
     { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
-      {var = x; typ = t; mut = Type.Const @@ no_region} @@ at $sloc }
+      {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
@@ -252,7 +276,7 @@ exp_obj :
 exp_nullary :
   | e=exp_block
     { e }
-  | x=id_use
+  | x=id
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
@@ -271,7 +295,7 @@ exp_post :
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post DOT x=id_use
+  | e=exp_post DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
@@ -280,10 +304,9 @@ exp_un :
   | e=exp_post
     { e } 
   | op=unop e=exp_un
-    { UnE(op ,e) @? at $sloc }
+    { UnE(op, e) @? at $sloc }
   | op=unassign e=exp_un
-    (* TBR: this is incorrect, since it duplicates e *)
-    { AssignE(e, UnE(op, e) @? at $sloc) @? at $sloc }
+    { assign_op e (fun e' -> UnE(op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
 
@@ -297,8 +320,7 @@ exp_bin :
   | e1=exp_bin ASSIGN e2=exp_bin
     { AssignE(e1, e2) @? at $sloc}
   | e1=exp_bin op=binassign e2=exp_bin
-    (* TBR: this is incorrect, since it duplicates e1 *)
-    { AssignE(e1, BinE(e1, op, e2) @? at $sloc) @? at $sloc }
+    { assign_op e1 (fun e1' -> BinE(e1', op, e2) @? at $sloc) (at $sloc) }
   | e1=exp_bin AND e2=exp_bin
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
@@ -371,14 +393,14 @@ case :
 
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
+    { {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
+      {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt x=id fd=func_dec
     { let d = fd x in
       let e = DecE(d) @? d.at in
-      {var = x; mut = Type.Const @@ no_region; priv; exp = e} @@ at $sloc }
+      {id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 (* TBR: allow patterns *)
 param :

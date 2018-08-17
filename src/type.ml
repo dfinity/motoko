@@ -1,8 +1,7 @@
 (* Representation *)
 
 type con = Con.t
-type mut = Const | Mut
-type actor = Object | Actor
+type sort = Object | Actor
 
 type prim =
   | Null
@@ -21,18 +20,19 @@ type t = typ
 and typ =
   | Var of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of actor * field list                 (* object *)
-  | Array of mut * typ                        (* array *)
+  | Obj of sort * field list                  (* object *)
+  | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of bind list * typ * typ             (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
+  | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
 and bind = {con : con; bound : typ}
-and field = {lab : string; typ : typ; mut : mut}
+and field = {name : string; typ : typ}
 
 type kind =
   | Def of bind list * typ
@@ -52,10 +52,6 @@ let int = Prim Int
 (* Pretty printing *)
 
 open Printf
-
-let string_of_mut = function
-  | Const -> ""
-  | Mut -> "var "
 
 let string_of_prim = function
   | Null -> "Null"
@@ -87,8 +83,10 @@ let rec string_of_typ_nullary = function
 
 and string_of_typ t =
   match t with
-  | Array (m, t) ->
-    sprintf "%s%s[]" (string_of_mut m) (string_of_typ_nullary t)  
+  | Array (Mut t) ->
+    sprintf "var %s[]" (string_of_typ_nullary t)  
+  | Array t ->
+    sprintf "%s[]" (string_of_typ_nullary t)  
   | Func (tbs, t1, t2) ->
     sprintf "%s%s -> %s"
       (string_of_binds tbs) (string_of_typ_nullary t1) (string_of_typ t2)
@@ -100,10 +98,12 @@ and string_of_typ t =
     sprintf "like %s" (string_of_typ_nullary t)
   | Obj (Actor, fs) ->
     sprintf "actor %s" (string_of_typ_nullary (Obj (Object, fs)))
+  | Mut t ->
+    sprintf "var %s" (string_of_typ t)
   | t -> string_of_typ_nullary t
 
-and string_of_field {lab; mut; typ} =
-  sprintf "%s : %s%s" lab (string_of_mut mut) (string_of_typ typ)
+and string_of_field {name; typ} =
+  sprintf "%s : %s" name (string_of_typ typ)
 
 and string_of_bind {con; bound} =
   Con.to_string con ^
@@ -133,7 +133,7 @@ let rec subst sigma t =
     | Some t -> assert (List.length ts = 0); t
     | None -> Var (c, List.map (subst sigma) ts)
     )
-  | Array (m, t) -> Array (m, subst sigma t)
+  | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (tbs, t1, t2) ->
     let sigma', tbs' = rename_binds sigma tbs in
@@ -142,11 +142,12 @@ let rec subst sigma t =
   | Async t -> Async (subst sigma t)
   | Like t -> Like (subst sigma t)
   | Obj (a, fs) -> Obj (a, List.map (subst_field sigma) fs)
+  | Mut t -> Mut (subst sigma t)
   | Any -> Any
   | Pre -> Pre
 
-and subst_field sigma {lab; mut; typ} =
-  {lab; mut; typ = subst sigma typ}
+and subst_field sigma {name; typ} =
+  {name; typ = subst sigma typ}
 
 and rename_binds sigma = function
   | [] -> sigma, []
@@ -181,6 +182,10 @@ let rec structural env = function
     | None -> assert false
     )
   | Like t -> structural env t (*TBR*)
+  | t -> t
+
+let immutable = function
+  | Mut t -> t
   | t -> t
 
 
@@ -231,8 +236,8 @@ and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
     a1 = a2 &&
     (* assuming tf1 and tf2 are sorted by var *)
     eq_list eq_field env eqs tfs1 tfs2
-  | Array (m1, t1), Array (m2, t2) ->
-    m1 = m2 && eq_typ env eqs t1 t2
+  | Array t1, Array t2 ->
+    eq_typ env eqs t1 t2
   | Opt (t1), Opt (t2) ->
     eq_typ env eqs t1 t2
   | Tup (ts1), Tup (ts2) ->
@@ -246,12 +251,13 @@ and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
     eq_typ env eqs t1 t2
   | Like t1, Like t2 ->
     eq_typ env eqs t1 t2
+  | Mut t1, Mut t2 ->
+    eq_typ env eqs t1 t2
   | Any, Any -> true
   | _, _ -> false
 
 and eq_field env eqs tf1 tf2 =
-  tf1.lab = tf2.lab &&
-  tf1.mut = tf2.mut &&
+  tf1.name = tf2.name &&
   eq_typ env eqs tf1.typ tf2.typ
 
 and eq_binds env eqs tbs1 tbs2 =

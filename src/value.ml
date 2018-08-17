@@ -178,10 +178,6 @@ let read_rec_bind b = read_bind (unroll_rec_bind b)
 
 (* Pretty Printing *)
 
-let string_of_mut = function
-  | Type.Const -> ""
-  | Type.Mut -> "var "
-
 let add_unicode buf = function
   | 0x09 -> Buffer.add_string buf "\\t"
   | 0x0a -> Buffer.add_string buf "\\n"
@@ -228,24 +224,22 @@ let rec string_of_val_nullary conenv t v =
     let vs = as_tup v in
     sprintf "(%s)"
       (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
-  | T.Array (m, t) ->
+  | T.Array t ->
     let a = as_array v in
-    sprintf "[%s%s]"
-      (string_of_mut m)
+    sprintf "[%s]"
       (String.concat ", " (List.map (string_of_val conenv t) (Array.to_list a)))
   | T.Obj (T.Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {T.lab; mut; typ} ->
-        let b = unroll_rec_bind (Env.find lab ve) in
-        let v = match mut with
-          | T.Mut -> !(as_var_bind b)
-          | T.Const -> as_val_bind b
-        in sprintf "%s%s = %s" (T.string_of_mut mut) lab (string_of_val conenv typ v)
+      (String.concat "; " (List.map (fun {T.name; typ} ->
+        let b = unroll_rec_bind (Env.find name ve) in
+        sprintf "%s = %s" name (string_of_val conenv typ v)
       ) fs))
   | T.Func _ ->
     ignore (as_func v); (* catch errors *)
     "func"
+  | T.Mut t ->
+    string_of_val_nullary conenv t v
   | _ ->
     sprintf "(%s)" (string_of_val conenv t v)
 
@@ -269,6 +263,8 @@ and string_of_val conenv t v =
     sprintf "like %s" (T.string_of_typ t) (* TBR *)
   | T.Obj (T.Actor, fs) ->
     sprintf "actor %s" (string_of_val_nullary conenv (T.Obj (T.Object, fs)) v)
+  | T.Mut t ->
+    string_of_val conenv t v
   | _ -> string_of_val_nullary conenv t v
 
 

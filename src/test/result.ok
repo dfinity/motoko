@@ -258,7 +258,7 @@ Interpreting quicksort.as:
 
 Finished quicksort.as:
   QS = func
-  a = [var 2, 3, 5, 8, 9]
+  a = [2, 3, 5, 8, 9]
   cmpi = func
   qs = QS<Int>
 
@@ -304,7 +304,7 @@ Interpreting hoare.as:
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
 
 Finished hoare.as:
-  a = [var 2, 3, 5, 8, 9]
+  a = [2, 3, 5, 8, 9]
   partition = func
   quicksort = func
   swap = func
