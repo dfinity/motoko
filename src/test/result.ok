@@ -135,19 +135,19 @@ Finished concat.as:
   testText = func
 
 Checking duplicatefield.as:
-duplicatefield.as:4.3-4.4: type error, duplicate field m
+duplicatefield.as:4.3-4.4: type error, duplicate field name m in object
 
 Checking nonlinearpat.as:
-nonlinearpat.as:1.5-1.14: type error, duplicate binding for x in pattern
+nonlinearpat.as:1.11-1.12: type error, duplicate binding for x in block
 
 Checking typedef.as:
   type A/1 = (B, A/1)
-  type Arrow = <T/8, U/6> T/8 -> U/6
+  type Arrow = <T/2, U/2> T/2 -> U/2
   type B = (A/1, B)
-  type Compose = <T/9, U/7, V/3> (T/9 -> U/7) -> (U/7 -> V/3) -> T/9 -> V/3
-  type Id = <T/10> T/10 -> T/10
+  type Compose = <T/3, U/3, V/1> (T/3 -> U/3) -> (U/3 -> V/1) -> T/3 -> V/1
+  type Id = <T/4> T/4 -> T/4
   type IntT = Int
-  type Seq = <A/4> (A/4, Seq<A/4>?)
+  type Seq = <A/2> (A/2, Seq<A/2>?)
 
 Interpreting typedef.as:
 
@@ -160,8 +160,8 @@ Interpreting type_equiv.as:
 Finished type_equiv.as:
 
 Checking quicksort.as:
-  type QS <: <T/4> {quicksort : (var T/4[], Nat, Nat) -> ()}
-  QS : <T/4> ((T/4, T/4) -> Int) -> QS<T/4>
+  type QS <: <T/1> {quicksort : (var T/1[], Nat, Nat) -> ()}
+  QS : <T/5> ((T/5, T/5) -> Int) -> QS<T/5>
   a : var Int[]
   cmpi : (Int, Int) -> Int
   qs : QS<Int>
@@ -435,7 +435,7 @@ Finished testwhile.as:
 Checking overflow.as:
 
 Interpreting overflow.as:
-overflow.as:17.1-17.16: execution error, arithmetic overflow
+overflow.as:17.9-17.24: execution error, arithmetic overflow
 
 Checking menhirbug.as:
   type A = {x : {}}

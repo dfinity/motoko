@@ -87,7 +87,14 @@ seplist(X, SEP) :
 (* Basics *)
 
 %inline id :
-  | id=ID { id @@ at $sloc}
+  | id=ID { id @@ at $sloc }
+
+%inline id_opt :
+  | id=ID
+    { fun _ _ -> id @@ at $sloc }
+  | (* empty *)
+    { fun sort sloc ->
+      ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
 
 %inline id_use :
   | id=ID { id @! at $sloc }
@@ -96,7 +103,7 @@ seplist(X, SEP) :
   | VAR { Type.Mut @@ at $sloc }
 
 %inline var_opt :
-  | (* empty *) { Type.Const @@  no_region }
+  | (* empty *) { Type.Const @@ no_region }
   | VAR { Type.Mut @@ at $sloc }
 
 %inline sort :
@@ -235,8 +242,8 @@ lit :
 
 
 exp_block :
-  | LCURLY es=seplist(exp, SEMICOLON) RCURLY
-    { BlockE(es) @? at $sloc }
+  | LCURLY ds=seplist(dec, SEMICOLON) RCURLY
+    { BlockE(ds) @? at $sloc }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, SEMICOLON) RCURLY
@@ -251,8 +258,9 @@ exp_nullary :
     { LitE(ref l) @? at $sloc }
   | LPAR es = seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
-  | s=sort xo=id? efs=exp_obj
-    { ObjE(s, Lib.Option.get xo ("" @@ s.at), efs) @? at $sloc }
+  | s=sort xf=id_opt efs=exp_obj
+    { let anon = if s.it = Type.Actor then "actor" else "object" in
+      ObjE(s, xf anon $sloc, efs) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
@@ -313,7 +321,7 @@ exp_pre :
   | ASSERT e=exp_pre
     { AssertE(e) @? at $sloc }
 
-exp :
+exp_nondec :
   | e=exp_pre
     { e } 
   | LABEL x=id e=exp
@@ -345,7 +353,11 @@ exp :
     { LoopE(e1, Some e2) @? at $sloc }
   | FOR p=pat IN e1=exp_nullary e2=exp
     { ForE(p, e1, e2) @? at $sloc }
-  | d=dec
+
+exp :
+  | e=exp_nondec
+    { e }
+  | d=dec_nonexp
     { DecE(d) @? at $sloc }
       
     
@@ -402,7 +414,7 @@ return_typ :
 
 (* Declarations *)
 
-dec :
+dec_nonexp :
   | LET p=pat EQ e=exp
     { let p', e' =
         match p.it with
@@ -415,14 +427,18 @@ dec :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @@ at $sloc }
-  | FUNC xo=id? fd=func_dec
-    { let x = Lib.Option.get xo ("" @@ at $sloc) in
-      (fd x).it @@ at $sloc }
+  | FUNC xf=id_opt fd=func_dec
+    { (fd (xf "func" $sloc)).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at $sloc }
-  | s=sort_opt CLASS xo=id? tps=typ_params_opt p=params efs=class_body
-    { let x = Lib.Option.get xo ("" @@ at $sloc) in
-      ClassD(x, tps, s, p, efs) @@ at $sloc }
+  | s=sort_opt CLASS xf=id_opt tps=typ_params_opt p=params efs=class_body
+    { ClassD(xf "class" $sloc, tps, s, p, efs) @@ at $sloc }
+
+dec :
+  | d=dec_nonexp
+    { d }
+  | e=exp_nondec
+    { ExpD e @@ at $sloc }
 
 func_dec :
   | tps=typ_params_opt ps=params rt=return_typ? fb=func_body
@@ -448,6 +464,6 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | es=seplist(exp, SEMICOLON) EOF { es @@ at $sloc }
+  | ds=seplist(dec, SEMICOLON) EOF { ds @@ at $sloc }
 
 %%

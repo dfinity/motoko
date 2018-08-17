@@ -143,7 +143,7 @@ let rec subst sigma t =
   | Like t -> Like (subst sigma t)
   | Obj (a, fs) -> Obj (a, List.map (subst_field sigma) fs)
   | Any -> Any
-  | Pre -> assert false
+  | Pre -> Pre
 
 and subst_field sigma {lab; mut; typ} =
   {lab; mut; typ = subst sigma typ}

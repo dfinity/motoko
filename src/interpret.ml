@@ -180,8 +180,8 @@ match e.it with
     interpret_exp context e1 (fun v1 ->
     interpret_exp context e2 (fun v2 ->
     applyV v1 v2 k))
-| BlockE es ->
-    interpret_block_local context es k
+| BlockE ds ->
+    interpret_block_local context ds k
 | NotE(e1) ->
     interpret_exp context e1 (fun v -> k (notV v))
 | AndE(e1,e2) ->
@@ -263,12 +263,12 @@ match e.it with
   failwith "NYI:IsE"
 | AnnotE(e,t) ->
   interpret_exp context e k
-| DecE {it=FuncD(v,_,_,_,_)} ->
-  interpret_block context [e] (fun ve ->
+| DecE ({it=FuncD(v,_,_,_,_)} as d) ->
+  interpret_block context [d] (fun ve ->
   let w = V.Env.find v.it ve in
   k (V.as_val_bind (unrollV w)))
-| DecE _ ->
-  interpret_block context [e] (fun ve ->  k V.unit)
+| DecE d ->
+  interpret_block context [d] (fun ve ->  k V.unit)
     
 and interpret_cases context cs v k  =
   match cs with
@@ -278,20 +278,19 @@ and interpret_cases context cs v k  =
     | Some ve -> interpret_exp (adjoin_vals context ve) e k
     | None -> interpret_cases context cs v k
     
-and interpret_block_local context es k =
-  match es with
+and interpret_block_local context ds k =
+  match ds with
   | [] -> k V.unit
-  | ({it = DecE d; _} as e)::es ->
-    interpret_block context [e] (fun ve ->
+  | [{it = ExpD e; _}] -> interpret_exp context e k
+  | d::ds' ->
+    interpret_block context [d] (fun ve ->
     (* TBR: we currently evaluate decs sequentially, not recursively *)
-    interpret_block_local  (adjoin_vals context ve) es k) 
-  | [e] -> interpret_exp context e k
-  | e::es ->
-     interpret_exp context e (fun v ->
-     interpret_block_local context es k)
+    interpret_block_local (adjoin_vals context ve) ds' k) 
 
 and declare_dec context d =     
     match d.it with
+    | ExpD e ->
+       V.Env.empty
     | LetD (p,e) ->
        declare_pat context p
     | VarD (v,e) ->
@@ -303,30 +302,23 @@ and declare_dec context d =
     | ClassD(v,ts,a,p,efs) ->
        V.Env.singleton v.it (V.Rec {V.def = None})
 
-and declare_block context ve es =
-    match es with
+and declare_block context ve ds =
+    match ds with
     | [] -> ve
-    | e::es' ->
-      let ve' =
-        match e.it with
-        | DecE d -> V.Env.adjoin ve (declare_dec context d)
-        | _ -> ve
-      in declare_block context ve' es'
+    | d::ds' ->
+      let ve' = V.Env.adjoin ve (declare_dec context d) in
+      declare_block context ve' ds'
 
-and interpret_block context es k =
-    let ve = declare_block context V.Env.empty es in
-    define_block (adjoin_vals context ve) es
+and interpret_block context ds k =
+    let ve = declare_block context V.Env.empty ds in
+    define_block (adjoin_vals context ve) ds
     (fun () -> k ve)
 
-and define_block context es k =
-    match es with
+and define_block context ds k =
+    match ds with
     | [] -> k()
-    | e::es' ->
-      let d =
-        match e.it with
-        | DecE d -> d
-        | _ -> LetD (WildP @@ e.at, e) @@ e.at
-      in define_dec context d (fun () -> define_block context es' k)
+    | d::ds' ->
+      define_dec context d (fun () -> define_block context ds' k)
 
 and define_var context var v =
     match V.as_rec_bind (V.Env.find var.it context.vals) with
@@ -335,6 +327,9 @@ and define_var context var v =
     
 and define_dec context d k =     
     match d.it with
+    | ExpD e ->
+      interpret_exp context e (fun v ->
+      k())
     | LetD (p,e) ->
       interpret_exp context e (fun v ->
       define_pat context p v;

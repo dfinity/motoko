@@ -6,13 +6,13 @@ Checking counterex.as:
   show : (Text, Int) -> ()
   showAsync : (Text, async Int) -> ()
   testDec : () -> ()
-  testRead : () -> async ()
+  testRead : () -> ()
 
 Interpreting counterex.as:
   testDec()
   testDec() => ()
   testRead()
-  testRead() => async ?#0
+  testRead() => ()
   dec()
   show("dec", 10)
   show("dec", 10) => ()

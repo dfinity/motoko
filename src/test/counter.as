@@ -1,5 +1,5 @@
 actor class Counter(i : Int) {
-  private var c = i;    
+  private var c = i;
 
   dec() {
    show(c);

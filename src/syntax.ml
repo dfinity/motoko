@@ -1,7 +1,7 @@
 (* Variables *)
 
 type var = string Source.phrase
-type var_ref = (string, Type.mut) Source.annotated_phrase
+type var_use = (string, Type.mut) Source.annotated_phrase
 
 
 (* Types *)
@@ -108,7 +108,7 @@ and priv' = Public | Private
 
 type exp = (exp', Type.typ) Source.annotated_phrase
 and exp' =
-  | VarE of var_ref                            (* variable *)
+  | VarE of var_use                            (* variable *)
   | LitE of lit ref                            (* literal *)
   | UnE of unop * exp                          (* unary operator *)
   | BinE of exp * binop * exp                  (* binary operator *)
@@ -116,12 +116,12 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | ObjE of actor * var * exp_field list       (* object *)
-  | DotE of exp * var_ref                      (* object projection *)
+  | DotE of exp * var_use                      (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * typ list * exp              (* function call *)
-  | BlockE of exp list                         (* block *)
+  | BlockE of dec list                         (* block *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -157,6 +157,7 @@ and case' = {pat : pat; exp : exp}
 
 and dec = dec' Source.phrase
 and dec' =
+  | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)
   | VarD of var * exp                                  (* mutable *)
   | FuncD of var * typ_bind list * pat * typ * exp     (* function *)
@@ -167,4 +168,4 @@ and dec' =
 (* Program *)
 
 type prog = prog' Source.phrase
-and prog' = exp list
+and prog' = dec list

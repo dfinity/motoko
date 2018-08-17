@@ -108,13 +108,11 @@ type B = {x : B};
 func f(x : A) : A = x : B;
 };
 
-/* TBR: Forward references don't work yet.
 {
 type A = {x : B};
 type B = {x : A};
 func f(x : A) : A = x : B;
 };
-*/
 
 {
 type A0 = {x : A0};

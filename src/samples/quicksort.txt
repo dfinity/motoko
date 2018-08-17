@@ -1,7 +1,7 @@
 
 Checking quicksort.as:
-  type Array = <T/7> var T/7[]
-  type QS <: <T/8> {quicksort : (Array<T/8>, Nat, Nat) -> ()}
+  type Array = <T/2> var T/2[]
+  type QS <: <T/3> {quicksort : (Array<T/3>, Nat, Nat) -> ()}
   QS : <T/8> ((T/8, T/8) -> Int) -> QS<T/8>
   a : Array<Int>
   cmpi : (Int, Int) -> Int
