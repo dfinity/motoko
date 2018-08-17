@@ -20,7 +20,7 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = Type.Pre}
+let (@?) it at = {it; at; note = {note_typ = Type.Pre; note_eff = Type.Triv}}
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -402,15 +402,6 @@ exp_field :
       let e = DecE(d) @? d.at in
       {id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
-(* TBR: allow patterns *)
-param :
-  | x=id COLON t=typ
-    { AnnotP(VarP(x) @@ x.at, t) @@ at $sloc }
-
-params :
-  | LPAR ps=seplist(param, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
-
 
 (* Patterns *)
 
@@ -453,7 +444,7 @@ dec_nonexp :
     { (fd (xf "func" $sloc)).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at $sloc }
-  | s=sort_opt CLASS xf=id_opt tps=typ_params_opt p=params efs=class_body
+  | s=sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
     { ClassD(xf "class" $sloc, tps, s, p, efs) @@ at $sloc }
 
 dec :
@@ -463,7 +454,7 @@ dec :
     { ExpD e @@ at $sloc }
 
 func_dec :
-  | tps=typ_params_opt ps=params rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @@ no_region) in
       (* This is a hack to support async method declarations. *)
       let e = match fb with
@@ -472,7 +463,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun x -> FuncD(x, tps, ps, t, e) @@ at $sloc }
+      in fun x -> FuncD(x, tps, p, t, e) @@ at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }

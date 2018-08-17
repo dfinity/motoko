@@ -2,7 +2,7 @@ open Syntax
 open Source
 
 module T = Type
-
+module A = Await
 
 (* Error Handling *)
 
@@ -311,15 +311,15 @@ let rec check_lit context t lit at =
 (* Expressions *)
 
 let rec infer_exp context exp : T.typ =
-  assert (exp.note = T.Pre);
-  let t = infer_exp' context exp in
-  if not context.pre then exp.note <- T.structural context.cons t;
-  T.immutable t
+  T.immutable (infer_exp_mut context exp)
 
 and infer_exp_mut context exp : T.typ =
-  assert (exp.note = T.Pre);
+  assert (exp.note.note_typ = T.Pre);
   let t = infer_exp' context exp in
-  if not context.pre then exp.note <- T.structural context.cons t;
+  if not context.pre then begin
+    let e = A.infer_effect_exp exp in
+    exp.note <- {note_typ = T.structural context.cons t; note_eff = e}
+  end;
   t
 
 and infer_exp' context exp : T.typ =
@@ -564,9 +564,12 @@ and infer_exp' context exp : T.typ =
 
 and check_exp context t exp =
   assert (not context.pre);
-  assert (exp.note = T.Pre);
+  assert (exp.note.note_typ = T.Pre);
   check_exp' context t exp;
-  if exp.note = T.Pre then exp.note <- t
+  if exp.note.note_typ = T.Pre then begin
+    let e = A.infer_effect_exp exp in
+    exp.note <- {note_typ = t; note_eff = e}
+  end
 
 and check_exp' context t exp =
   match exp.it with

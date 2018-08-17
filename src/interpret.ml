@@ -126,20 +126,20 @@ and interpret_exp context e k  =
 and interpret_exp' context e k =
 match e.it with
 | VarE x ->
-    (match e.note with
+    (match e.note.note_typ with
      | T.Pre -> assert false
      | T.Mut _ -> k (derefV (unrollV (V.Env.find x.it context.vals)))
      | _ -> k (V.as_val_bind (unrollV (V.Env.find x.it context.vals))))
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
-   let t1 = T.immutable e1.note in
+   let t1 = T.immutable e1.note.note_typ in
    interpret_exp context e1 (fun v1 -> k (Operator.unop t1 uop v1))
 | BinE (e1,bop,e2) ->
-   let t1 = T.immutable e1.note in
+   let t1 = T.immutable e1.note.note_typ in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
 | RelE (e1,rop,e2) ->
-   let t1 = T.immutable e1.note in
+   let t1 = T.immutable e1.note.note_typ in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (V.Tup vs))
@@ -148,7 +148,7 @@ match e.it with
 | DotE(e1,v) ->
     let it = v.it in
     interpret_exp context e1 (fun v1 ->
-    k (match e.note with
+    k (match e.note.note_typ with
        | T.Mut _ -> (derefV (unrollV (dotV v1 it)))
        | _ -> (V.as_val_bind (unrollV (dotV v1 it))))
     )
@@ -373,7 +373,7 @@ and define_dec context d k =
 				     | {it={id;mut;priv;exp;}}::efs ->
 				        let private_context = adjoin_vals context private_ve in
                                         interpret_exp private_context exp (fun v ->
-					let v = expand a.it priv.it mut.it exp.note v in 
+					let v = expand a.it priv.it mut.it exp.note.note_typ v in 
                                         let defn = match mut.it with
                                                    | Const -> V.Val v
                                                    | Var -> V.Var (ref v)

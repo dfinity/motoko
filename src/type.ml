@@ -2,6 +2,7 @@
 
 type con = Con.t
 type sort = Object | Actor
+type eff = Triv | Await
 
 type prim =
   | Null
