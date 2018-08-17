@@ -20,7 +20,7 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = Type.Any}
+let (@?) it at = {it; at; note = (Type.Triv,Type.Any)}
 let (@!) it at = {it; at; note = Type.Const}
 
 %}

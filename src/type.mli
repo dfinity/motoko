@@ -34,6 +34,7 @@ and typ =
   | Atom of string                            (* atom *)
 *)
 
+and eff = Triv | Await
 and bind = {con : con; bound : typ}
 and field = {lab : string; typ : typ; mut : mut}
 
