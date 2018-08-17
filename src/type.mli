@@ -2,6 +2,7 @@
 
 type con = Con.t
 type sort = Object | Actor
+type eff = Triv | Await
 
 type prim =
   | Null
@@ -31,7 +32,6 @@ and typ =
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
-and eff = Triv | Await
 and bind = {con : con; bound : typ}
 and field = {name : string; typ : typ}
 

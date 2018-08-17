@@ -14,7 +14,7 @@ let max_eff e1 e2 =
   | T.Await,_ -> T.Await
 
 let effect_exp (exp:Syntax.exp) : T.eff =
-   fst(exp.note)
+   exp.note.note_eff
 
 (* infer the effect of an expression, assuming all sub-expressions are correcltly effect-annotated *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
@@ -48,9 +48,11 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let t2 = effect_exp exp2 in
     max_eff t1 t2
   | TupE exps 
-  | ArrayE exps 
-  | BlockE exps ->
+  | ArrayE exps ->
     let es = List.map effect_exp exps in
+    List.fold_left max_eff Type.Triv es 
+  | BlockE decs ->
+    let es = List.map effect_dec decs in
     List.fold_left max_eff Type.Triv es 
   | ObjE (_, _, efs) ->
     effect_field_exps efs 
@@ -88,7 +90,8 @@ and effect_field_exps efs =
 
 and effect_dec d =
   match d.it with
-  | LetD(_,e) 
+  | ExpD e
+  | LetD (_,e) 
   | VarD (_, e) ->
     effect_exp e
   | TypD (v, tps, t) ->

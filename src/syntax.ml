@@ -106,7 +106,8 @@ type relop =
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-type exp = (exp', (Type.eff * Type.typ)) Source.annotated_phrase
+type exp_note = {note_typ : Type.typ; note_eff : Type.eff}
+type exp = (exp', exp_note) Source.annotated_phrase
 and exp' =
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
