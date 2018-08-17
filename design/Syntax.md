@@ -64,7 +64,7 @@ Productions marked * probably deferred to later versions.
   while <expr> <expr>                            while loop
   loop <expr> (while <expr>)?                    loop
   for <id>? in <expr> <expr>                     iteration
-  label <id> <expr>                              label
+  label <id> (: <typ>)? <expr>                   label
   break <id> <expr>?                             break
   continue <id>                                  continue
   return <expr>?                                 return
