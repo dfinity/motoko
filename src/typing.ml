@@ -2,7 +2,7 @@ open Syntax
 open Source
 
 module T = Type
-
+module A = Await (* currently unused, dependency for build only *)
 
 (* Error Handling *)
 
@@ -317,14 +317,14 @@ let rec check_lit context t lit at =
 
 let rec infer_exp context exp : T.typ =
   let t, _ = infer_exp' context exp in
-  exp.note <- T.structural context.cons t;
+  exp.note <- (T.Triv,T.structural context.cons t);
   t
 
 and infer_exp_mut context exp : T.typ =
   let t, m = infer_exp' context exp in
   if m <> T.Mut then
     type_error exp.at "expected mutable assignment target";
-  exp.note <- T.structural context.cons t;
+  exp.note <- (T.Triv,T.structural context.cons t);
   t
 
 and infer_exp' context exp : T.typ * T.mut =
@@ -358,7 +358,7 @@ and infer_exp' context exp : T.typ * T.mut =
     if not (T.eq context.cons t1 t2) then
       type_error exp.at "operands have inconsistent types, %s vs %s"
         (T.string_of_typ t1) (T.string_of_typ t2);
-    if not (Operator.has_relop exp1.note op) then
+    if not (Operator.has_relop t1 op) then
       type_error exp.at "operator is not defined for operand type %s"
         (T.string_of_typ t1);
     T.bool, T.Const
@@ -543,7 +543,7 @@ and infer_exp' context exp : T.typ * T.mut =
 
 and check_exp context t exp =
   check_exp' context t exp;
-  exp.note <- t
+  exp.note <- (T.Triv,t)
 
 and check_exp' context t exp =
   match exp.it with

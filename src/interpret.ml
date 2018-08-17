@@ -132,13 +132,13 @@ match e.it with
 | LitE rl ->
     k (interpret_lit context rl)
 | UnE(uop,e1) ->
-   let t1 = e1.note in
+   let _,t1 = e1.note in
    interpret_exp context e1 (fun v1 -> k (Operator.unop t1 uop v1))
 | BinE (e1,bop,e2) ->
-   let t1 = e1.note in
+   let _,t1 = e1.note in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (try Operator.binop t1 bop v1 v2 with _ -> trap e.at "arithmetic overflow")))
 | RelE (e1,rop,e2) ->
-   let t1 = e1.note in
+   let _,t1 = e1.note in
    interpret_exp context e1 (fun v1 -> interpret_exp context e2 (fun v2 -> k (Operator.relop t1 rop v1 v2)))
 | TupE es ->
     interpret_exps context [] es (fun vs -> k (V.Tup vs))
@@ -378,7 +378,7 @@ and define_dec context d k =
 				     | {it={var;mut;priv;exp;}}::efs ->
 				        let private_context = adjoin_vals context private_ve in
                                         interpret_exp private_context exp (fun v ->
-					let v = expand a.it priv.it mut.it exp.note v in 
+					let v = expand a.it priv.it mut.it (snd exp.note) v in 
                                         let defn = match mut.it with
                                                    | T.Const -> V.Val v
                                                    | T.Mut -> V.Var (ref v)

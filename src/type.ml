@@ -33,7 +33,7 @@ and typ =
   | Union of type * typ                       (* union *)
   | Atom of string                            (* atom *)
 *)
-
+and eff = Triv | Await
 and bind = {con : con; bound : typ}
 and field = {lab : string; typ : typ; mut : mut}
 
