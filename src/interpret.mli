@@ -1,7 +1,7 @@
 module V = Value
 module T = Type
 
-type val_env = V.rec_bind V.Env.t
+type val_env = V.def V.Env.t
 type typ_env = T.con V.Env.t
 type con_env = T.con_env
 type lab_env = V.cont V.Env.t
@@ -25,7 +25,7 @@ val adjoin : context -> scope -> context
 
 exception Trap of Source.region * string
 
-val interpret_prog : context -> Syntax.prog -> (scope -> V.value) -> unit
+val interpret_prog : context -> Syntax.prog -> (val_env -> V.value) -> unit
   (* raise Trap *)
 
 val get_last_region : unit -> Source.region

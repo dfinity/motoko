@@ -117,27 +117,16 @@ type value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of rec_bind Env.t
+  | Obj of def Env.t
   | Array of value array
   | Opt of value option (* TBR *)
   | Func of (value -> cont -> value)
   | Async of async
+  | Mut of value ref
 
-and async = {mutable result: value option; mutable waiters : cont list}
-
+and async = {mutable result : value option; mutable waiters : cont list}
 and cont = value -> value
-
-and bind = 
-  | Val of value
-  | Var of value ref
-and rec_bind =
-  | Rec of recursive
-(*TBR: we could statically distinguish lambda-pat bound variables from other binds to avoid
-       the unnessary indirection and definedness check for references to lambda-bound variables, in which
-    case we could add:
-  | Val of value 
-*)
-and recursive = {mutable def : bind option}
+and def = value option ref
 
 let unit = Tup []
 
@@ -160,20 +149,7 @@ let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_opt = function Opt vo -> vo | _ -> invalid "as_opt"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
-
-let as_val_bind = function Val v -> v | _ -> invalid "as_val_bind"
-let as_var_bind = function Var r -> r | _ -> invalid "as_var_bind"
-let as_rec_bind = function Rec r -> r (*| _ -> invalid "as_rec_bind"*)
-
-let read_bind = function
-  | Val v -> v
-  | Var r -> !r
-
-let unroll_rec_bind = function
-  | Rec {def = Some v} -> v
-  | _ -> failwith "BlackHole" (* TBR *)
-
-let read_rec_bind b = read_bind (unroll_rec_bind b)
+let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
 
 (* Pretty Printing *)
@@ -226,20 +202,20 @@ let rec string_of_val_nullary conenv t v =
       (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
   | T.Array t ->
     let a = as_array v in
-    sprintf "[%s]"
-      (String.concat ", " (List.map (string_of_val conenv t) (Array.to_list a)))
+    sprintf "[%s]" (String.concat ", "
+      (List.map (string_of_val conenv t) (Array.to_list a)))
   | T.Obj (T.Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
       (String.concat "; " (List.map (fun {T.name; typ} ->
-        let b = unroll_rec_bind (Env.find name ve) in
-        sprintf "%s = %s" name (string_of_val conenv typ v)
+        let d = Env.find name ve in
+        sprintf "%s = %s" name (string_of_def conenv typ d)
       ) fs))
   | T.Func _ ->
     ignore (as_func v); (* catch errors *)
     "func"
   | T.Mut t ->
-    string_of_val_nullary conenv t v
+    string_of_val_nullary conenv t !(as_mut v)
   | _ ->
     sprintf "(%s)" (string_of_val conenv t v)
 
@@ -264,8 +240,13 @@ and string_of_val conenv t v =
   | T.Obj (T.Actor, fs) ->
     sprintf "actor %s" (string_of_val_nullary conenv (T.Obj (T.Object, fs)) v)
   | T.Mut t ->
-    string_of_val conenv t v
+    string_of_val conenv t !(as_mut v)
   | _ -> string_of_val_nullary conenv t v
+
+and string_of_def conenv t def =
+  match !def with
+  | Some v -> string_of_val conenv t v
+  | None -> "_"
 
 
 (* Debug pretty printing *)
@@ -285,11 +266,11 @@ let rec debug_string_of_val_nullary = function
   | Tup vs ->
     sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
   | Obj ve ->
-    sprintf "{%s}" (String.concat "; " (List.map (fun (v, w) ->
-  	  sprintf "%s = %s" v (debug_string_of_rec_bind w)) (Env.bindings ve)))
+    sprintf "{%s}" (String.concat "; " (List.map (fun (x, d) ->
+  	  sprintf "%s = %s" x (debug_string_of_def d)) (Env.bindings ve)))
   | Array a ->
-    sprintf "[%s]"
-      (String.concat ", " (List.map debug_string_of_val (Array.to_list a)))
+    sprintf "[%s]" (String.concat ", "
+      (List.map debug_string_of_val (Array.to_list a)))
   | Opt o ->
     (match o with
     | None -> "null"
@@ -308,19 +289,13 @@ and debug_string_of_val = function
       | Some v -> debug_string_of_val_nullary v
       )
       (List.length waiters)
+  | Mut r -> sprintf "%s" (debug_string_of_val !r)
   | v -> debug_string_of_val_nullary v
 
-and debug_string_of_bind = function
-  | Var r -> 
-    (*sprintf "Var (%s)"*) (debug_string_of_val !r) (*TBR show address ?*) 
-  | Val v ->
-    debug_string_of_val v
-
-and debug_string_of_rec_bind = function
-  | Rec {def = Some bind} -> 
-    (*sprintf "Rec (%s)"*) (debug_string_of_bind bind) 
-  | Rec {def = None} -> 
-    "Rec (?)" 
+and debug_string_of_def def =
+  match !def with
+  | Some v -> debug_string_of_val v
+  | None -> "_"
 
 
 let debug_string_of_tuple_val = function

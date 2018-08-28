@@ -571,7 +571,7 @@ and check_exp context t exp =
   check_exp' context t exp;
   if exp.note.note_typ = T.Pre then begin
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = t; note_eff = e}
+    exp.note <- {note_typ = T.structural context.cons t; note_eff = e}
   end
 
 and check_exp' context t exp =

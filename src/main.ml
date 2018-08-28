@@ -28,16 +28,20 @@ let print_ve =
 
 let print_dyn_ve ce ve dyn_ve =
   Type.Env.iter (fun x t ->
-    let v = Value.read_rec_bind (Value.Env.find x dyn_ve) in
-    let t' = Type.immutable t in
-    printf "%s %s : %s = %s\n"
-      (if t == t' then "let" else "var") x
-      (Type.string_of_typ t') (Value.string_of_val ce t v)
+    match !(Value.Env.find x dyn_ve) with
+    | Some (Value.Mut r) ->
+      let t' = Type.immutable t in
+      printf "var %s : %s = %s\n"
+        x (Type.string_of_typ t') (Value.string_of_val ce t' !r)
+    | Some v ->
+      printf "let %s : %s = %s\n"
+        x (Type.string_of_typ t) (Value.string_of_val ce t v)
+    | None -> assert false
   ) ve
 
 let print_debug_ve =
-  Value.Env.iter (fun x b ->
-    printf "%s = %s\n" x (Value.debug_string_of_rec_bind b)
+  Value.Env.iter (fun x d ->
+    printf "%s = %s\n" x (Value.debug_string_of_def d)
   )
 
 let print_scope (ve, te, ce) dyn_ve =
@@ -66,8 +70,10 @@ let run (stat_context, dyn_context) lexer parse name =
     Interpret.interpret_prog dyn_context prog (fun dyn_ve ->
       dyn_scope := dyn_ve;
       trace "Finished" name;
-      if !Flags.trace then print_dyn_ve ce ve dyn_ve
-      else if !Flags.interactive then print_scope stat_scope !dyn_scope;
+      if !Flags.trace then
+        print_dyn_ve ce ve dyn_ve
+      else if !Flags.interactive then
+        print_scope stat_scope !dyn_scope;
       Value.unit
     );
     Some (
@@ -122,16 +128,16 @@ let lexer_stdin buf len =
   in loop 0
 
 let run_stdin contexts =
+  let open Lexing in
   let lexer = Lexing.from_function lexer_stdin in
   let rec loop contexts =
     let result = run contexts lexer Parser.parse_prog_interactive "stdin" in
     if result = None then begin
       Lexing.flush_input lexer;
       (* Reset beginning-of-line, too, to sync consecutive positions. *)
-      lexer.Lexing.lex_curr_p <- {lexer.Lexing.lex_curr_p with pos_bol = 0}
+      lexer.lex_curr_p <- {lexer.lex_curr_p with pos_bol = 0}
     end;
-    if Lexing.(lexer.lex_curr_pos >= lexer.lex_buffer_len - 1) then
-      continuing := false;
+    if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
     loop (update_contexts contexts result)
   in
   try loop contexts with End_of_file ->
