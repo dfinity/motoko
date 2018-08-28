@@ -83,7 +83,7 @@ let run (stat_context, dyn_context) lexer parse name =
       | Interpret.Trap (at, msg) -> at, "execution", msg, false
       | End_of_file -> raise exn
       | _ ->
-        Interpret.get_last_region(), "fatal", Printexc.to_string exn, true
+        Interpret.get_last_region (), "fatal", Printexc.to_string exn, true
     in
     if dump then print_debug_ve (Interpret.get_last_context ()).Interpret.vals;
     printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
@@ -110,7 +110,7 @@ let run_file contexts filename =
 
 let continuing = ref false
 
-let lexbuf_stdin buf len =
+let lexer_stdin buf len =
   let prompt = if !continuing then "  " else "> " in
   printf "%s" prompt; flush_all ();
   continuing := true;
@@ -119,18 +119,17 @@ let lexbuf_stdin buf len =
     let ch = input_char stdin in
     Bytes.set buf i ch;
     if ch = '\n' then i + 1 else loop (i + 1)
-  in
-  let n = loop 0 in
-  if n = 1 then continuing := false;
-  n
+  in loop 0
 
 let run_stdin contexts =
-  let lexer = Lexing.from_function lexbuf_stdin in
-  lexer.Lexing.lex_curr_p <-
-    {lexer.Lexing.lex_curr_p with Lexing.pos_fname = "stdin"};
+  let lexer = Lexing.from_function lexer_stdin in
   let rec loop contexts =
     let result = run contexts lexer Parser.parse_prog_interactive "stdin" in
-    if result = None then Lexing.flush_input lexer;
+    if result = None then begin
+      Lexing.flush_input lexer;
+      (* Reset beginning-of-line, too, to sync consecutive positions. *)
+      lexer.Lexing.lex_curr_p <- {lexer.Lexing.lex_curr_p with pos_bol = 0}
+    end;
     if Lexing.(lexer.lex_curr_pos >= lexer.lex_buffer_len - 1) then
       continuing := false;
     loop (update_contexts contexts result)
