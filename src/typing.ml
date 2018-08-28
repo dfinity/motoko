@@ -6,14 +6,10 @@ module A = Await
 
 (* Error Handling *)
 
-exception KindError of Source.region * string
-exception TypeError of Source.region * string
+exception Error of Source.region * string
 
-let kind_error region fmt =
-  Printf.ksprintf (fun s -> raise (KindError (region, s))) fmt
-
-let type_error region fmt =
-  Printf.ksprintf (fun s -> raise (TypeError (region, s))) fmt
+let error region fmt =
+  Printf.ksprintf (fun s -> raise (Error (region, s))) fmt
 
 
 (* Contexts *)
@@ -23,6 +19,8 @@ type typ_env = T.con T.Env.t
 type con_env = T.con_env
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+
+type scope = val_env * typ_env * con_env
 
 type context =
   {
@@ -51,15 +49,22 @@ let add_val c x t = {c with vals = T.Env.add x t c.vals}
 let add_typ c x con k =
   {c with typs = T.Env.add x con c.typs; cons = Con.Env.add con k c.cons}
 
+let adjoin c (ve, te, ce) =
+  { c with
+    vals = T.Env.adjoin c.vals ve;
+    typs = T.Env.adjoin c.typs te;
+    cons = Con.Env.adjoin c.cons ce
+  }
+
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 let adjoin_typs c te ce =
   {c with typs = T.Env.adjoin c.typs te; cons = Con.Env.adjoin c.cons ce}
 
 let disjoint_union at fmt env1 env2 =
-  try T.Env.disjoint_union env1 env2 with T.Env.Overlap k -> type_error at fmt k
+  try T.Env.disjoint_union env1 env2 with T.Env.Overlap k -> error at fmt k
 (* TBD
 let disjoint_add at fmt k x env =
-  try T.Env.disjoint_add k x env with T.Env.Overlap k -> type_error at fmt k
+  try T.Env.disjoint_add k x env with T.Env.Overlap k -> error at fmt k
 
 let disjoint_union_vals at c ve =   {c with vals = disjoint_union at "duplicate value %s"  c.vals ve}
 let disjoint_union_tys at c te = {c with typs = disjoint_union at "duplicate type %s" c.typs te}
@@ -160,7 +165,7 @@ let check_ids ids = ignore
   (List.fold_left
     (fun dom id ->
       if List.mem id.it dom
-      then kind_error id.at "duplicate field name %s in object type" id.it
+      then error id.at "duplicate field name %s in object type" id.it
       else id.it::dom
     ) [] ids
   )
@@ -178,7 +183,7 @@ let rec check_typ context typ : T.typ =
       let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find con context.cons in
       let ts = check_typ_bounds context tbs typs typ.at in
 	    T.Var (con, ts)
-    | None -> kind_error id.at "unbound type identifier %s" id.it
+    | None -> error id.at "unbound type identifier %s" id.it
     )
   | PrimT prim ->
     T.Prim prim
@@ -208,7 +213,7 @@ and check_typ_field context s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ context typ) in
   if s = T.Actor && not (is_async_typ context t) then
-    type_error typ.at "actor field %s has non-async type %s"
+    error typ.at "actor field %s has non-async type %s"
       id.it (T.string_of_typ t);
   {T.name = id.it; typ = t}
 
@@ -236,15 +241,15 @@ and check_typ_bounds context (tbs : T.bind list) typs at : T.typ list =
     let ts' = check_typ_bounds context (T.subst_binds sigma tbs') typs' at in
     t::ts'
   | [], [] -> []
-  | [], _ -> type_error at "too many type arguments"
-  | _, [] -> type_error at "too few type arguments"
+  | [], _ -> error at "too many type arguments"
+  | _, [] -> error at "too few type arguments"
 
 
 (* Literals *)
 
 let check_lit_val t of_string at s =
   try of_string s with _ ->
-    type_error at "literal out of range for type %s"
+    error at "literal out of range for type %s"
       (T.string_of_typ (T.Prim t))
 
 let check_nat = check_lit_val T.Nat Value.Nat.of_string
@@ -303,7 +308,7 @@ let rec check_lit context t lit at =
   | T.Prim t', _ when t' = infer_lit context lit at ->
     ()
   | t, _ ->
-    type_error at "expected expression of type %s, found literal of type %s"
+    error at "expected expression of type %s, found literal of type %s"
       (T.string_of_typ t)
       (T.string_of_typ (T.Prim (infer_lit context lit at)))
 
@@ -328,9 +333,9 @@ and infer_exp' context exp : T.typ =
     (match T.Env.find_opt id.it context.vals with
     | Some t ->
       if t = T.Pre then
-        type_error id.at "cannot infer type of forward variable %s" id.it;
+        error id.at "cannot infer type of forward variable %s" id.it;
       t
-    | None -> type_error id.at "unbound variable %s" id.it
+    | None -> error id.at "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit context lit exp.at)
@@ -339,7 +344,7 @@ and infer_exp' context exp : T.typ =
     let t = T.structural context.cons t1 in
     if not context.pre then begin
       if not (Operator.has_unop t op) then
-        type_error exp.at "operator is not defined for operand type %s"
+        error exp.at "operator is not defined for operand type %s"
           (T.string_of_typ t)
     end;
     t
@@ -350,10 +355,10 @@ and infer_exp' context exp : T.typ =
     let t = T.structural context.cons t1 in
     if not context.pre then begin
       if not (T.eq context.cons t1 t2) then
-        type_error exp.at "operands have consistent types, %s vs %s"
+        error exp.at "operands have consistent types, %s vs %s"
           (T.string_of_typ t1) (T.string_of_typ t2);
       if not (Operator.has_binop t op) then
-        type_error exp.at "operator not defined for operand type %s"
+        error exp.at "operator not defined for operand type %s"
           (T.string_of_typ t)
     end;
     t
@@ -364,10 +369,10 @@ and infer_exp' context exp : T.typ =
     let t = T.structural context.cons t1 in
     if not context.pre then begin
       if not (T.eq context.cons t1 t2) then
-        type_error exp.at "operands have inconsistent types, %s vs %s"
+        error exp.at "operands have inconsistent types, %s vs %s"
           (T.string_of_typ t1) (T.string_of_typ t2);
       if not (Operator.has_relop t op) then
-        type_error exp.at "operator is not defined for operand type %s"
+        error exp.at "operator is not defined for operand type %s"
           (T.string_of_typ t)
     end;
     T.bool
@@ -381,11 +386,11 @@ and infer_exp' context exp : T.typ =
       (match List.nth_opt ts n with
       | Some t -> t
       | None ->
-        type_error exp.at "tuple projection %n >= %n is out-of-bounds"
+        error exp.at "tuple projection %n >= %n is out-of-bounds"
           n (List.length ts)
       )
     | t ->
-      type_error exp.at "expected tuple type, found %s" (T.string_of_typ t)
+      error exp.at "expected tuple type, found %s" (T.string_of_typ t)
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj context sort.it id fields)
@@ -396,11 +401,11 @@ and infer_exp' context exp : T.typ =
       (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
-        type_error exp1.at "object of type %s has no field named %s"
+        error exp1.at "object of type %s has no field named %s"
           (T.string_of_typ t) id.it
       )
     | t ->
-      type_error exp1.at "expected object type, found %s" (T.string_of_typ t)
+      error exp1.at "expected object type, found %s" (T.string_of_typ t)
     )
   | AssignE (exp1, exp2) ->
     if not context.pre then begin
@@ -408,19 +413,18 @@ and infer_exp' context exp : T.typ =
       | T.Mut t2 ->
         check_exp context t2 exp2
       | _ ->
-        type_error exp.at "expected mutable assignment target";
+        error exp.at "expected mutable assignment target";
     end;
     T.unit
   | ArrayE [] ->
     (* TBR: T.Bottom? *)
-    type_error exp.at
-      "cannot infer type of empty array (use a type annotation)"
+    error exp.at "cannot infer type of empty array (use a type annotation)"
   | ArrayE exps ->
     let ts = List.map (infer_exp context) exps in
     let t1 = List.hd ts in
     (* TBR: join *)
     if not (List.for_all (T.eq context.cons t1) (List.tl ts)) then
-      type_error exp.at "array contains elements of inconsistent types";
+      error exp.at "array contains elements of inconsistent types";
     T.Array t1
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp context exp1 in
@@ -429,7 +433,7 @@ and infer_exp' context exp : T.typ =
       if not context.pre then check_exp context T.nat exp2;
       t
     | t1 ->
-      type_error exp1.at "expected array type, found %s" (T.string_of_typ t1)
+      error exp1.at "expected array type, found %s" (T.string_of_typ t1)
     )
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp context exp1 in
@@ -441,8 +445,7 @@ and infer_exp' context exp : T.typ =
       if not context.pre then check_exp context (T.subst sigma t2) exp2;
       T.subst sigma t
     | t1 ->
-      type_error exp1.at "expected function type, found %s"
-        (T.string_of_typ t1)
+      error exp1.at "expected function type, found %s" (T.string_of_typ t1)
     )
   | BlockE decs ->
     let t = infer_block context decs in
@@ -468,14 +471,13 @@ and infer_exp' context exp : T.typ =
     let t3 = infer_exp context exp3 in
     (* TBR: join *)
     if not (T.eq context.cons t2 t3) then
-      type_error exp.at "if branches have inconsistent types, true is %s, false is %s"
+      error exp.at "if branches have inconsistent types, true is %s, false is %s"
         (T.string_of_typ t2) (T.string_of_typ t3);
     t2
   | SwitchE (exp1, cases) ->
     let t1 = if context.pre then T.Pre else infer_exp context exp1 in
     if not context.pre && not (is_switch_typ context t1) then
-      type_error exp1.at "expected switchable type, found %s"
-        (T.string_of_typ t1);
+      error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
     let t = infer_cases context t1 cases in
     t
   | WhileE (exp1, exp2) ->
@@ -496,8 +498,7 @@ and infer_exp' context exp : T.typ =
       (* TBR: generalise beyond arrays *)
       let t1 = infer_exp context exp1 in
       if not (is_iter_typ context t1) then
-        type_error exp1.at "expected iterable type, found %s"
-          (T.string_of_typ t1);
+        error exp1.at "expected iterable type, found %s" (T.string_of_typ t1);
       let ve = check_pat context (elem_typ context t1) pat in
       check_exp (adjoin_vals context ve) T.unit exp2
     end;
@@ -515,7 +516,7 @@ and infer_exp' context exp : T.typ =
         match String.split_on_char ' ' id.it with
         | ["continue"; name] -> name
         | _ -> id.it
-      in type_error id.at "unbound label %s" name
+      in error id.at "unbound label %s" name
     );
     (* TBR: T.Bottom? *)
     T.unit
@@ -526,7 +527,7 @@ and infer_exp' context exp : T.typ =
         check_exp context t exp1;
         (*TBR: T.Bottom? *)
       | None ->
-        type_error exp.at "misplaced return in global context"
+        error exp.at "misplaced return in global context"
     end;
     T.unit
   | AsyncE exp1 ->
@@ -536,12 +537,12 @@ and infer_exp' context exp : T.typ =
     T.Async t
   | AwaitE exp1 ->
     if not context.async then
-      type_error exp.at "misplaced await in synchronous context";
+      error exp.at "misplaced await in synchronous context";
     let t1 = infer_exp context exp1 in
     (match T.structural context.cons t1 with
     | T.Async t -> t
     | t1' ->
-      type_error exp1.at "expected async type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected async type, found %s" (T.string_of_typ t1')
     )
   | AssertE exp1 ->
     if not context.pre then check_exp context T.bool exp1;
@@ -579,18 +580,18 @@ and check_exp' context t exp =
     check_lit context t lit exp.at
   | UnE (op, exp1) ->
     if not (Operator.has_unop t op) then
-      type_error exp.at "operator cannot produce expected type %s"
+      error exp.at "operator cannot produce expected type %s"
         (T.string_of_typ t);
     check_exp context t exp1
   | BinE (exp1, op, exp2) ->
     if not (Operator.has_binop t op) then
-      type_error exp.at "operator cannot produce expected type %s"
+      error exp.at "operator cannot produce expected type %s"
         (T.string_of_typ t);
     check_exp context t exp1;
     check_exp context t exp2
   | RelE (exp1, op, exp2) ->
     if not (T.eq context.cons t T.bool) then
-      type_error exp.at "operator cannot produce expected type %s"
+      error exp.at "operator cannot produce expected type %s"
         (T.string_of_typ t);
     ignore (infer_exp context exp)
   | TupE exps ->
@@ -598,7 +599,7 @@ and check_exp' context t exp =
     | T.Tup ts when List.length ts = List.length exps ->
       List.iter2 (check_exp context) ts exps
     | _ ->
-      type_error exp.at "%s expression cannot produce expected type %s"
+      error exp.at "%s expression cannot produce expected type %s"
         (if exps = [] then "empty" else "tuple")
         (T.string_of_typ t)
     )
@@ -607,7 +608,7 @@ and check_exp' context t exp =
     | T.Array t1 ->
       List.iter (check_exp context (T.immutable t1)) exps
     | _ ->
-      type_error exp.at "array expression cannot produce expected type %s"
+      error exp.at "array expression cannot produce expected type %s"
        (T.string_of_typ t)
     )
   (* TBR: propagate mutablility via subtyping?
@@ -622,7 +623,7 @@ and check_exp' context t exp =
         {context with labs = T.Env.empty; rets = Some t; async = true}
       in check_exp context' t exp1
     | _ ->
-      type_error exp.at "async expression cannot produce expected type %s"
+      error exp.at "async expression cannot produce expected type %s"
         (T.string_of_typ t)
     )
   | BlockE decs ->
@@ -634,8 +635,7 @@ and check_exp' context t exp =
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp context exp1 in
     if not (is_switch_typ context t1) then
-      type_error exp1.at "expected switchable type, found %s"
-        (T.string_of_typ t1);
+      error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
     check_cases context t1 t cases
   | LoopE _ | BreakE _ | RetE _ ->
     (* TBR: remove once we have T.Bottom and subtyping *)
@@ -644,7 +644,7 @@ and check_exp' context t exp =
     let t' = infer_exp context exp in
     (* TBR: use subtyping *)
     if not (T.eq context.cons t t') then
-      type_error exp.at "expected type %s, found %s"
+      error exp.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t')
 
 
@@ -678,7 +678,7 @@ and gather_exp_fields id fields : val_env =
 and gather_exp_field ve field : val_env =
   let {id; _} : exp_field' = field.it in
   if T.Env.mem id.it ve then
-    type_error id.at "duplicate field name %s in object" id.it;
+    error id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it T.Pre ve
 
 and infer_exp_fields context s id t fields : T.field list * T.field list * val_env =
@@ -693,7 +693,7 @@ and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.fiel
   let t = infer_mut mut t1 in
   if not context.pre then begin
     if s = T.Actor && priv.it = Public && not (is_async_typ context t) then
-      type_error field.at "public actor field %s has non-async type %s"
+      error field.at "public actor field %s has non-async type %s"
         id.it (T.string_of_typ t)
   end;
   let ve' = T.Env.add id.it t ve in
@@ -718,7 +718,7 @@ and infer_cases context t1 cases : T.typ =
     let t' = infer_cases context t cases' in
     (* TBR: join *)
     if not (T.eq context.cons t t') then
-      type_error exp.at
+      error exp.at
         "switch branches have inconsistent types, this is %s, next is %s"
         (T.string_of_typ t) (T.string_of_typ t');
     t
@@ -740,7 +740,7 @@ and gather_pat ve pat : val_env =
     ve
   | VarP id ->
     if T.Env.mem id.it ve then
-      type_error pat.at "duplicate binding for %s in block" id.it;
+      error pat.at "duplicate binding for %s in block" id.it;
     T.Env.add id.it T.Pre ve
   | TupP pats ->
     List.fold_left gather_pat ve pats
@@ -751,9 +751,9 @@ and gather_pat ve pat : val_env =
 and infer_pat context pat : T.typ * val_env =
   match pat.it with
   | WildP ->
-    type_error pat.at "cannot infer type of wildcard"
+    error pat.at "cannot infer type of wildcard"
   | VarP _ ->
-    type_error pat.at "cannot infer type of variable"
+    error pat.at "cannot infer type of variable"
   | LitP lit ->
     T.Prim (infer_lit context lit pat.at), T.Env.empty
   | TupP pats ->
@@ -786,13 +786,13 @@ and check_pat context t pat : val_env =
     | T.Tup ts ->
       check_pats context ts pats T.Env.empty pat.at
     | _ ->
-      type_error pat.at "tuple pattern cannot produce expected type %s"
+      error pat.at "tuple pattern cannot produce expected type %s"
         (T.string_of_typ t)
     )
   | _ ->
     let t', ve = infer_pat context pat in
     if not (T.eq context.cons t t') then
-      type_error pat.at "expected type %s, found %s"
+      error pat.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
     ve
 
@@ -804,20 +804,20 @@ and check_pats context ts pats ve at : val_env =
     let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
     check_pats context ts pats' ve' at
   | [], ts ->
-    type_error at "tuple pattern has %i fewer components than expected type"
+    error at "tuple pattern has %i fewer components than expected type"
       (List.length ts)
   | ts, [] ->
-    type_error at "tuple pattern has %i more components than expected type"
+    error at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
 
 (* Blocks and Declarations *)
 
 and infer_block context decs : T.typ =
-  let ve, te, ce, ce_inner = infer_block_decs context decs in
+  let scope, ce_inner = infer_block_decs context decs in
 (*Printf.printf "[block] infer expressions\n";
 let t =*)
-  infer_block_exps (adjoin_vals (adjoin_typs context te ce) ve) ce_inner decs
+  infer_block_exps (adjoin context scope) ce_inner decs
 (*in Printf.printf "[block] done\n"; t*)
 
 and infer_block_exps context ce_inner decs : T.typ =
@@ -862,18 +862,18 @@ and infer_dec context ce_inner dec : T.typ =
     T.unit
 
 
-and check_block context t decs at : val_env * typ_env * con_env =
-  let ve, te, ce, ce_inner = infer_block_decs context decs in
+and check_block context t decs at : scope =
+  let scope, ce_inner = infer_block_decs context decs in
 (*Printf.printf "[block] check expressions\n";*)
-  check_block_exps (adjoin_vals (adjoin_typs context te ce) ve) ce_inner t decs at;
+  check_block_exps (adjoin context scope) ce_inner t decs at;
 (*Printf.printf "[block] done\n";*)
-  ve, te, ce
+  scope
 
 and check_block_exps context ce_inner t decs at =
   match decs with
   | [] ->
     if not (T.eq context.cons t T.unit) then
-      type_error at "empty block cannot produce type %s" (T.string_of_typ t)
+      error at "empty block cannot produce type %s" (T.string_of_typ t)
   | [dec] ->
     check_dec context ce_inner t dec
   | dec::decs' ->
@@ -887,7 +887,7 @@ and check_dec context ce_inner t dec =
     let t' = infer_dec context ce_inner dec in
     (* TBR: special-case unit? *)
     if not (T.eq context.cons t T.unit || T.eq context.cons t t') then
-      type_error dec.at "expected type %s, found %s"
+      error dec.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
 
 
@@ -900,14 +900,14 @@ and print_ve =
     Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
   )
 
-and infer_block_decs context decs : val_env * typ_env * con_env * con_env =
+and infer_block_decs context decs : scope * con_env =
 (*Printf.printf "[block] gather types\n";*)
   let pre_ve, te, pre_ce = gather_block_typdecs decs in
 (*Printf.printf "[block] pre-infer types\n";*)
-  let context' = adjoin_vals (adjoin_typs {context with pre = true} te pre_ce) pre_ve in
+  let context' = adjoin {context with pre = true} (pre_ve, te, pre_ce) in
   let ce, _ = infer_block_typdecs context' te decs in
 (*Printf.printf "[block] infer types\n";*)
-  let context'' = adjoin_vals (adjoin_typs context te ce) pre_ve in
+  let context'' = adjoin context (pre_ve, te, ce) in
   let ce', ce_inner = infer_block_typdecs context'' te decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
@@ -917,20 +917,20 @@ and infer_block_decs context decs : val_env * typ_env * con_env * con_env =
 (*Printf.printf "[block] infer values\n";*)
   let ve = infer_block_valdecs (adjoin_vals context'' pre_ve') decs in
 (*print_ve ve;*)
-  ve, te, ce, ce_inner
+  (ve, te, ce), ce_inner
 
 
 (* Pass 1: collect type identifiers and their arity *)
-and gather_block_typdecs decs : val_env * typ_env * con_env =
+and gather_block_typdecs decs : scope =
   List.fold_left gather_dec_typdecs
     (T.Env.empty, T.Env.empty, Con.Env.empty) decs
 
-and gather_dec_typdecs (ve, te, ce) dec : val_env * typ_env * con_env =
+and gather_dec_typdecs (ve, te, ce) dec : scope =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> ve, te, ce
   | TypD (id, binds, _) | ClassD (id, binds, _, _, _) ->
     if T.Env.mem id.it te then
-      type_error dec.at "duplicate definition for type %s in block" id.it;
+      error dec.at "duplicate definition for type %s in block" id.it;
     let cs =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
     let pre_tbs = List.map (fun con -> {T.con; bound = T.Pre}) cs in
@@ -981,7 +981,7 @@ and gather_dec_valdecs ve dec : val_env =
     gather_pat ve pat
   | VarD (id, _) | FuncD (id, _, _, _, _) | ClassD (id, _, _, _, _) ->
     if T.Env.mem id.it ve then
-      type_error dec.at "duplicate definition for %s in block" id.it;
+      error dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
 
 
@@ -1019,5 +1019,5 @@ and infer_dec_valdecs context ve dec : val_env =
 
 (* Programs *)
 
-let check_prog prog =
-  check_block empty_context T.unit prog.it prog.at
+let check_prog context prog : scope =
+  check_block context T.unit prog.it prog.at

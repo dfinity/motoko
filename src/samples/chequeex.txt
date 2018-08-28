@@ -1,21 +1,3 @@
-
-Checking chequeex.as:
-  type Account <: actor {credit : Int -> (); deposit : Cheque -> (); getBalance : () -> async Int; invoice : (Int, Account) -> async Cheque; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
-  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
-  type Cheque <: actor {deposit : () -> ()}
-  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
-  Account : Int -> Account
-  Bank : Int -> Bank
-  Cheque : (Int, Account) -> Cheque
-  Issuer : () -> Issuer
-  bank : Bank
-  main : async (Account, Account)
-  show : (Text, Account) -> ()
-  showBalance : (Text, Int) -> ()
-  test : () -> async (Account, Account)
-  transfer : (Account, Account, Int) -> async ()
-
-Interpreting chequeex.as:
   test()
   test() => async ?#0
   getReserve()
@@ -50,15 +32,3 @@ Interpreting chequeex.as:
   getBalance() => async ?#0
   showBalance("b2", 15)
   showBalance("b2", 15) => ()
-
-Finished chequeex.as:
-  Account = func
-  Bank = func
-  Cheque = func
-  Issuer = func
-  bank = Bank
-  main = async (Account, Account)#0
-  show = func
-  showBalance = func
-  test = func
-  transfer = func

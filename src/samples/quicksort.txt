@@ -1,13 +1,3 @@
-
-Checking quicksort.as:
-  type Array = <T/2> var T/2[]
-  type QS <: <T/3> {quicksort : (Array<T/3>, Nat, Nat) -> ()}
-  QS : <T/8> ((T/8, T/8) -> Int) -> QS<T/8>
-  a : Array<Int>
-  cmpi : (Int, Int) -> Int
-  qs : QS<Int>
-
-Interpreting quicksort.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   trace([8, 3, 9, 5, 2])
@@ -96,9 +86,3 @@ Interpreting quicksort.as:
   quicksort([2, 3, 5, 8, 9], 4, 4)
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
-
-Finished quicksort.as:
-  QS = func
-  a = [2, 3, 5, 8, 9]
-  cmpi = func
-  qs = QS<Int>

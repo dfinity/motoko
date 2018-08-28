@@ -1,18 +1,3 @@
-
-Checking bankex.as:
-  type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
-  type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
-  type Issuer <: actor {hasIssued : (like Account) -> async Bool}
-  Account : Int -> Account
-  Bank : Int -> Bank
-  Issuer : () -> Issuer
-  bank : Bank
-  main : async (Account, Account)
-  show : (Text, Account) -> ()
-  test : () -> async (Account, Account)
-  transfer : (Account, Account, Int) -> async ()
-
-Interpreting bankex.as:
   test()
   test() => async ?#0
   getReserve()
@@ -41,13 +26,3 @@ Interpreting bankex.as:
   show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-
-Finished bankex.as:
-  Account = func
-  Bank = func
-  Issuer = func
-  bank = Bank
-  main = async (Account, Account)#0
-  show = func
-  test = func
-  transfer = func

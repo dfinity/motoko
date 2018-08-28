@@ -6,6 +6,8 @@ type con_env = Type.con_env
 type lab_env = typ Env.t
 type ret_env = typ option
 
+type scope = val_env * typ_env * con_env
+
 type context =
   {
     vals : val_env;
@@ -18,11 +20,11 @@ type context =
   }
 
 val empty_context : context
+val adjoin : context -> scope -> context
 val adjoin_vals : context -> val_env -> context
 val adjoin_typs : context -> typ_env -> con_env -> context
 
 
-exception KindError of Source.region * string
-exception TypeError of Source.region * string
+exception Error of Source.region * string
 
-val check_prog : Syntax.prog -> val_env * typ_env * con_env
+val check_prog : context -> Syntax.prog -> scope (* raise Error *)

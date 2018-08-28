@@ -112,13 +112,19 @@ and string_of_bind {con; bound} =
 
 and string_of_binds = function
   | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map string_of_bind tbs) ^ "> "
+  | tbs -> "<" ^ String.concat ", " (List.map string_of_bind tbs) ^ ">"
 
 let string_of_kind = function
   | Def (tbs, t) ->
     sprintf "= %s%s" (string_of_binds tbs) (string_of_typ t)
   | Abs (tbs, t) -> 
-    sprintf "<: %s%s" (string_of_binds tbs) (string_of_typ t) 
+    sprintf "<: %s%s" (string_of_binds tbs) (string_of_typ t)
+
+let strings_of_kind = function
+  | Def (tbs, t) ->
+    "=", string_of_binds tbs, string_of_typ t
+  | Abs (tbs, t) -> 
+    "<:", string_of_binds tbs, string_of_typ t
 
 
 (* First-order substitution *)

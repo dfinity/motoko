@@ -24,8 +24,6 @@ module Scheduler =
 
 open Scheduler
        
-let debug = ref true
-
 exception Trap of Source.region * string
 
 let trap at msg = raise (Trap (at, msg))
@@ -35,6 +33,8 @@ type typ_env = T.con V.Env.t
 type con_env = T.con_env
 type lab_env = V.cont V.Env.t
 type ret_env = V.cont option
+
+type scope = val_env
 
 type context =
   {
@@ -47,6 +47,7 @@ type context =
   }
 
 let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
+let adjoin = adjoin_vals
 
 let empty_context =
   {
@@ -60,9 +61,11 @@ let empty_context =
 
 let last_context = ref empty_context
 let last_region = ref Source.no_region
+let call_depth = ref 0
 
 let get_last_context () = !last_context
 let get_last_region () = !last_region
+let get_indent () = String.make (2 * !call_depth) ' '
 
 let callee_context context ve k_return =
     {vals = V.Env.adjoin context.vals ve;
@@ -344,10 +347,11 @@ and define_dec context d k =
       (* TBC: trim callee_context *)
       (define_var context var
         (V.Val (V.Func (fun v k ->
-	      if !debug then printf "  %s%s\n" var.it (V.debug_string_of_tuple_val v);
+	      if !Flags.debug then printf "%s%s%s\n" (get_indent ()) var.it (V.debug_string_of_tuple_val v);
+        incr call_depth;
               match interpret_pat p v with
               | Some ve ->
-	        let k = if !debug then fun w -> (printf "  %s%s => %s\n" var.it (V.debug_string_of_tuple_val v) (V.debug_string_of_val w);k w) else k in
+	        let k = if !Flags.debug then fun w -> (decr call_depth; printf "%s%s%s => %s\n" (get_indent ()) var.it (V.debug_string_of_tuple_val v) (V.debug_string_of_val w);k w) else k in
                 let callee_context = callee_context context ve k in
 	      	interpret_exp callee_context e k 
               | None -> failwith "unexpected refuted pattern"))));
@@ -489,6 +493,7 @@ and interpret_pats ve ps vs =
    | vs,[] -> failwith "Wrong:match_pats"
 
 
-let interpret_prog p k =
+let interpret_prog context p k =
+    call_depth := 0;
     let k' = fun v -> (run();k(v)) in
-    ignore (interpret_block empty_context p.it k')
+    ignore (interpret_block context p.it k')

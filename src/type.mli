@@ -76,3 +76,4 @@ module Env : Env.S with type key = string
 val string_of_prim : prim -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string
+val strings_of_kind : kind -> string * string * string

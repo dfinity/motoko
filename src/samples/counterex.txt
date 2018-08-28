@@ -1,14 +1,3 @@
-
-Checking counterex.as:
-  type Counter <: actor {dec : () -> (); read : () -> async Int}
-  Counter : Int -> Counter
-  c : Counter
-  show : (Text, Int) -> ()
-  showAsync : (Text, async Int) -> ()
-  testDec : () -> ()
-  testRead : () -> ()
-
-Interpreting counterex.as:
   testDec()
   testDec() => ()
   testRead()
@@ -173,11 +162,3 @@ Interpreting counterex.as:
   show("await", -10) => ()
   showAsync("after", async -10#0)
   showAsync("after", async -10#0) => ()
-
-Finished counterex.as:
-  Counter = func
-  c = Counter
-  show = func
-  showAsync = func
-  testDec = func
-  testRead = func

@@ -1,11 +1,3 @@
-
-Checking hoare.as:
-  a : var Int[]
-  partition : (var Int[], Nat, Nat) -> Nat
-  quicksort : (var Int[], Nat, Nat) -> ()
-  swap : (var Int[], Nat, Nat) -> ()
-
-Interpreting hoare.as:
   quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
   swap([8, 3, 9, 5, 2], 0, 4)
@@ -38,9 +30,3 @@ Interpreting hoare.as:
   quicksort([2, 3, 5, 8, 9], 4, 4)
   quicksort([2, 3, 5, 8, 9], 4, 4) => ()
   quicksort([2, 3, 5, 8, 9], 0, 4) => ()
-
-Finished hoare.as:
-  a = [2, 3, 5, 8, 9]
-  partition = func
-  quicksort = func
-  swap = func

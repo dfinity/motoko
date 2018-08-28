@@ -60,7 +60,7 @@ let assign_op lhs rhs_f at =
 %token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE NEW
-%token SEMICOLON COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP
@@ -100,6 +100,7 @@ let assign_op lhs rhs_f at =
     
 %type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> parse_prog
+%start<Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -112,6 +113,10 @@ seplist(X, SEP) :
 
 
 (* Basics *)
+
+%inline semicolon :
+  | SEMICOLON
+  | SEMICOLON_EOL { () }
 
 %inline id :
   | id=ID { id @@ at $sloc }
@@ -142,7 +147,7 @@ seplist(X, SEP) :
 (* Types *)
 
 typ_obj :
-  | LCURLY tfs=seplist(typ_field, SEMICOLON) RCURLY
+  | LCURLY tfs=seplist(typ_field, semicolon) RCURLY
     { tfs }
 
 typ_nullary :
@@ -266,11 +271,11 @@ lit :
 
 
 exp_block :
-  | LCURLY ds=seplist(dec, SEMICOLON) RCURLY
+  | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
 exp_obj :
-  | LCURLY efs=seplist(exp_field, SEMICOLON) RCURLY
+  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { efs }
 
 exp_nullary :
@@ -346,7 +351,7 @@ exp_pre :
 exp_nondec :
   | e=exp_pre
     { e } 
-  | LABEL x=id rt=return_typ? e=exp
+  | LABEL x=id rt=return_typ_nullary? e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
       let t = Lib.Option.get rt (TupT [] @@ at $sloc) in
       let e' =
@@ -425,6 +430,9 @@ pat :
 return_typ :
   | COLON t=typ { t }
 
+return_typ_nullary :
+  | COLON t=typ_nullary { t }
+
 
 (* Declarations *)
 
@@ -478,6 +486,9 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(dec, SEMICOLON) EOF { ds @@ at $sloc }
+  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+
+parse_prog_interactive :
+  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
 
 %%
