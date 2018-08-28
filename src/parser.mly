@@ -29,7 +29,7 @@ let name_exp e =
   | VarE x -> [], e, dup_var x
   | _ ->
     let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
-    [LetD (VarP x @@ x.at, e) @@ e.at], dup_var x, dup_var x
+    [LetD (VarP x @? x.at, e) @@ e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
@@ -72,7 +72,6 @@ let assign_op lhs rhs_f at =
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
 %token<string> NAT
-%token<string> INT
 %token<string> FLOAT
 %token<Value.unicode> CHAR
 %token<bool> BOOL
@@ -216,7 +215,6 @@ lit :
   | NULL { NullLit }
   | b=BOOL { BoolLit b }
   | s=NAT { PreLit (s, Type.Nat) }
-  | s=INT { PreLit (s, Type.Int) }
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
@@ -412,20 +410,30 @@ exp_field :
 (* Patterns *)
 
 pat_nullary :
-  | l=lit
-    { LitP(ref l) @@ at $sloc }
   | UNDERSCORE
-    { WildP @@ at $sloc }
+    { WildP @? at $sloc }
   | x=id
-    { VarP(x) @@ at $sloc }
+    { VarP(x) @? at $sloc }
+  | l=lit
+    { LitP(ref l) @? at $sloc }
   | LPAR ps=seplist(pat, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
+    { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
 
-pat :
+pat_un :
   | p=pat_nullary
     { p }
+  | op=unop l=lit
+    { SignP(op, ref l) @? at $sloc }
+
+pat_bin :
+  | p=pat_un
+    { p }
+
+pat :
+  | p=pat_bin
+    { p }
   | p=pat COLON t=typ
-    { AnnotP(p, t) @@ at $sloc }
+    { AnnotP(p, t) @? at $sloc }
 
 return_typ :
   | COLON t=typ { t }

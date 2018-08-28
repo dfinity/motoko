@@ -51,25 +51,6 @@ type lit =
   | PreLit of string * Type.prim
 
 
-(* Patterns *)
-
-type pat = pat' Source.phrase
-and pat' =
-  | WildP                                      (* wildcard *)
-  | VarP of id                                 (* variable *)
-  | TupP of pat list                           (* tuple *)
-  | AnnotP of pat * typ                        (* type annotation *)
-  | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
-(*
-  | ObjP of pat_field list                     (* object *)
-  | AsP of pat * pat                           (* conjunctive *)
-  | OrP of pat * pat                           (* disjunctive *)
-
-and pat_field = pat_field' Source.phrase
-and pat_field' = {id : id; pat : pat}
-*)
-
-
 (* Operators *)
 
 type unop =
@@ -101,13 +82,34 @@ type relop =
   | GeOp                                        (* x>=y *)
 
 
+(* Patterns *)
+
+type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
+
+type pat = (pat', typ_note) Source.annotated_phrase
+and pat' =
+  | WildP                                      (* wildcard *)
+  | VarP of id                                 (* variable *)
+  | TupP of pat list                           (* tuple *)
+  | AnnotP of pat * typ                        (* type annotation *)
+  | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
+  | SignP of unop * lit ref                    (* signed literal *)
+(*
+  | ObjP of pat_field list                     (* object *)
+  | AsP of pat * pat                           (* conjunctive *)
+  | OrP of pat * pat                           (* disjunctive *)
+
+and pat_field = pat_field' Source.phrase
+and pat_field' = {id : id; pat : pat}
+*)
+
+
 (* Expressions *)
 
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-type exp_note = {note_typ : Type.typ; note_eff : Type.eff}
-type exp = (exp', exp_note) Source.annotated_phrase
+type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)

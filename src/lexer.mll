@@ -89,14 +89,13 @@ let character =
   | "\\u{" hexnum '}'
 
 let nat = num | "0x" hexnum
-let int = sign? nat
 let frac = num
 let hexfrac = hexnum
 let float =
-    sign? num '.' frac?
-  | sign? num ('.' frac?)? ('e' | 'E') sign? num
-  | sign? "0x" hexnum '.' hexfrac?
-  | sign? "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
+    num '.' frac?
+  | num ('.' frac?)? ('e' | 'E') sign? num
+  | "0x" hexnum '.' hexfrac?
+  | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' character '\''
 let text = '"' character* '"'
 let id = letter ((letter | digit | '_')*)
@@ -159,7 +158,6 @@ rule token = parse
   | "_" { UNDERSCORE }
 
   | nat as s { NAT s }
-  | int as s { INT s }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }

@@ -11,7 +11,7 @@ let word_unop fword8 fword16 fword32 fword64 = function
   | T.Word16 -> fun v -> Word16 (fword16 (as_word16 v))
   | T.Word32 -> fun v -> Word32 (fword32 (as_word32 v))
   | T.Word64 -> fun v -> Word64 (fword64 (as_word64 v))
-  | _ -> assert false
+  | _ -> raise (Invalid_argument "unop")
 
 let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Int -> fun v -> Int (fint (as_int v))
@@ -33,14 +33,14 @@ let unop t op =
 
 let text_binop ftext = function
   | T.Text -> fun v1 v2 -> Text (ftext (as_text v1) (as_text v2))
-  | _ -> assert false
+  | _ -> raise (Invalid_argument "binop")
 
 let word_binop fword8 fword16 fword32 fword64 = function
   | T.Word8 -> fun v1 v2 -> Word8 (fword8 (as_word8 v1) (as_word8 v2))
   | T.Word16 -> fun v1 v2 -> Word16 (fword16 (as_word16 v1) (as_word16 v2))
   | T.Word32 -> fun v1 v2 -> Word32 (fword32 (as_word32 v1) (as_word32 v2))
   | T.Word64 -> fun v1 v2 -> Word64 (fword64 (as_word64 v1) (as_word64 v2))
-  | _ -> assert false
+  | _ -> raise (Invalid_argument "binop")
 
 let num_binop fnat fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Nat -> fun v1 v2 -> Nat (fnat (as_nat v1) (as_nat v2))
@@ -76,7 +76,7 @@ let word_relop fword8 fword16 fword32 fword64 = function
   | T.Word16 -> fun v1 v2 -> Bool (fword16 (as_word16 v1) (as_word16 v2))
   | T.Word32 -> fun v1 v2 -> Bool (fword32 (as_word32 v1) (as_word32 v2))
   | T.Word64 -> fun v1 v2 -> Bool (fword64 (as_word64 v1) (as_word64 v2))
-  | _ -> assert false
+  | _ -> raise (Invalid_argument "relop")
 
 let num_relop fnat fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Nat -> fun v1 v2 -> Bool (fnat (as_nat v1) (as_nat v2))

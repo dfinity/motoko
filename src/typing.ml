@@ -736,7 +736,7 @@ and check_cases context t1 t2 cases =
 
 and gather_pat ve pat : val_env =
   match pat.it with
-  | WildP | LitP _ ->
+  | WildP | LitP _ | SignP _ ->
     ve
   | VarP id ->
     if T.Env.mem id.it ve then
@@ -749,6 +749,12 @@ and gather_pat ve pat : val_env =
 
 
 and infer_pat context pat : T.typ * val_env =
+  let t, ve = infer_pat' context pat in
+  if not context.pre then
+    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+  t, ve
+
+and infer_pat' context pat : T.typ * val_env =
   match pat.it with
   | WildP ->
     error pat.at "cannot infer type of wildcard"
@@ -756,6 +762,12 @@ and infer_pat context pat : T.typ * val_env =
     error pat.at "cannot infer type of variable"
   | LitP lit ->
     T.Prim (infer_lit context lit pat.at), T.Env.empty
+  | SignP (op, lit) ->
+    let t = T.Prim (infer_lit context lit pat.at) in
+    if not (Operator.has_unop t op) then
+      error pat.at "operator is not defined for operand type %s"
+        (T.string_of_typ t);
+    t, T.Env.empty
   | TupP pats ->
     let ts, ve = infer_pats pat.at context pats [] T.Env.empty in
     T.Tup ts, ve
@@ -773,12 +785,24 @@ and infer_pats at context pats ts ve : T.typ list * val_env =
 
 
 and check_pat context t pat : val_env =
+  let ve = check_pat' context t pat in
+  if not context.pre then
+    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+  ve
+
+and check_pat' context t pat : val_env =
   match pat.it with
   | WildP ->
     T.Env.empty
   | VarP id ->
     T.Env.singleton id.it t
   | LitP lit ->
+    check_lit context t lit pat.at;
+    T.Env.empty
+  | SignP (op, lit) ->
+    if not (Operator.has_unop t op) then
+      error pat.at "operator cannot produce expected type %s"
+        (T.string_of_typ t);
     check_lit context t lit pat.at;
     T.Env.empty
   | TupP pats ->

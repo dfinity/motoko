@@ -473,6 +473,11 @@ and interpret_pat p v =
      if match_lit p v rl 
      then Some V.Env.empty
      else None
+   | SignP (op, rl) ->
+     let t1 = T.immutable p.note.note_typ in
+     if match_lit p (Operator.unop t1 op v) rl 
+     then Some V.Env.empty
+     else None
    | TupP ps ->
       let vs = V.as_tup v in
       interpret_pats V.Env.empty ps vs 
