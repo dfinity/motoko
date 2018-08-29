@@ -120,13 +120,13 @@ type value =
   | Obj of def Env.t
   | Array of value array
   | Opt of value option (* TBR *)
-  | Func of (value -> cont -> value)
+  | Func of (value -> value cont -> unit)
   | Async of async
   | Mut of value ref
 
-and async = {mutable result : value option; mutable waiters : cont list}
-and cont = value -> value
+and async = {mutable result : value option; mutable waiters : value cont list}
 and def = value option ref
+and 'a cont = 'a -> unit
 
 let unit = Tup []
 

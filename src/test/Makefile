@@ -24,6 +24,7 @@ all:
 	$(ASC) $(ASC_FLAGS) bankex.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) counter.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) testwhile.as >> result 2>&1
+	$(ASC) $(ASC_FLAGS) objects.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) overflow.as >> result 2>&1 || true
 	$(ASC) $(ASC_FLAGS) menhirbug.as >> result 2>&1 || true
 

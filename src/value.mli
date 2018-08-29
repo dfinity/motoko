@@ -52,13 +52,13 @@ type value =
   | Obj of def Env.t
   | Array of value array
   | Opt of value option (* TBR *)
-  | Func of (value -> cont -> value)
+  | Func of (value -> value cont -> unit)
   | Async of async
   | Mut of value ref
 
-and async = {mutable result : value option; mutable waiters : cont list}
-and cont = value -> value
 and def = value option ref
+and async = {mutable result : value option; mutable waiters : value cont list}
+and 'a cont = 'a -> unit
 
 
 (* Projections *)
@@ -80,7 +80,7 @@ val as_array : value -> value array
 val as_tup : value -> value list
 val as_obj : value -> def Env.t
 val as_opt : value -> value option
-val as_func : value -> (value -> cont -> value)
+val as_func : value -> (value -> value cont -> unit)
 val as_async : value -> async
 val as_mut : value -> value ref
 

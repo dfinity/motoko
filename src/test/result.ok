@@ -145,6 +145,8 @@ let a : var Int[]
 let cmpi : (Int, Int) -> Int
 let qs : QS<Int>
 -- Interpreting quicksort.as:
+QS(func)
+QS(func) => {partition = func; quicksort = func; swap = func; trace = func}
 quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
     trace([8, 3, 9, 5, 2])
@@ -298,14 +300,24 @@ let show : (Text, Account) -> ()
 let test : () -> async (Account, Account)
 let transfer : (Account, Account, Int) -> async ()
 -- Interpreting bankex.as:
+Bank(100)
+  Issuer()
+  Issuer() => {hasIssued = func}
+  Account(100)
+  Account(100) => {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+Bank(100) => {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 test()
 test() => async ?#0
 getReserve()
 getReserve() => async ?#0
 split(10)
 split(10) => async ?#0
+Account(10)
+Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 split(10)
 split(10) => async ?#0
+Account(10)
+Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
 show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -316,6 +328,8 @@ transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; j
 transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5) => async ?#0
 split(5)
 split(5) => async ?#0
+Account(5)
+Account(5) => {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   credit(5)
   credit(5) => ()
@@ -343,6 +357,8 @@ let c : Counter
 let show : Int -> ()
 let test : () -> ()
 -- Interpreting counter.as:
+Counter(10)
+Counter(10) => {c = 10; dec = func; read = func}
 test()
 test() => ()
 dec()

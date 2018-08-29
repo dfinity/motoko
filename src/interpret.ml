@@ -9,18 +9,14 @@ module T = Type
 (* Context *)
 
 type val_env = V.def V.Env.t
-type typ_env = T.con V.Env.t
-type con_env = T.con_env
-type lab_env = V.cont V.Env.t
-type ret_env = V.cont option
+type lab_env = V.value V.cont V.Env.t
+type ret_env = V.value V.cont option
 
 type scope = val_env
 
 type context =
   {
     vals : val_env;
-    typs : typ_env;
-    cons : con_env;
     labs : lab_env;
     rets : ret_env;
     async : bool
@@ -31,19 +27,8 @@ let adjoin = adjoin_vals
 
 let empty_context =
   { vals = V.Env.empty;
-    typs = V.Env.empty;
-    cons = Con.Env.empty;
     labs = V.Env.empty;
     rets = None;
-    async = false
-  }
-
-let callee_context context ve k =
-  { vals = V.Env.adjoin context.vals ve;
-    typs = V.Env.empty; (*TBR*)
-    cons = Con.Env.empty; (*TBR*)
-    labs = V.Env.empty;
-    rets =  Some k;
     async = false
   }
 
@@ -52,9 +37,9 @@ let callee_context context ve k =
 
 exception Trap of Source.region * string
 
-let trap at msg = raise (Trap (at, msg))
+let trap at fmt =  Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
-let unimplemented at msg = trap at ("NOT YET IMPLEMENTED: " ^ msg)
+let unimplemented at msg = trap at "NOT YET IMPLEMENTED: %s" msg
 
 
 (* Debugging Aids *)
@@ -72,37 +57,33 @@ let get_indent () = String.make (2 * !call_depth) ' '
 
 module Scheduler =
 struct
-  let q : (unit -> V.value) Queue.t = Queue.create ()
+  let q : (unit -> unit) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
   let yield () = Queue.take q ()
 
   let rec run () =
-    if not (Queue.is_empty q)
-    then (ignore (yield ()); run ())
-    else V.unit
+    if not (Queue.is_empty q) then (yield (); run ())
 end
-
-open Scheduler
 
 
 (* Async auxiliary functions *)
 
-let get_result async k : V.value =
+let get_async async (k : V.value V.cont) =
   match async.V.result with
   | Some v -> k v
-  | None -> async.V.waiters <- k::async.V.waiters; V.unit
+  | None -> async.V.waiters <- k::async.V.waiters
 
-let set_result async v =
+let set_async async v =
   assert (async.V.result = None);
-  List.iter (fun waiter -> queue (fun () -> waiter v)) async.waiters;
-  async.result <- Some v;
-  async.waiters <- []
+  List.iter (fun k -> Scheduler.queue (fun () -> k v)) async.V.waiters;
+  async.V.result <- Some v;
+  async.V.waiters <- []
 
 
 (* Literals *)
 
-let interpret_lit context lit =
+let interpret_lit context lit : V.value =
   match !lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -120,10 +101,10 @@ let interpret_lit context lit =
 
 (* Expressions *)
 
-let rec interpret_exp context exp k : V.value =
+let rec interpret_exp context exp (k : V.value V.cont) =
   interpret_exp_mut context exp (function V.Mut r -> k !r | v -> k v)
 
-and interpret_exp_mut context exp k =
+and interpret_exp_mut context exp (k : V.value V.cont) =
   last_region := exp.at;
   last_context := context;
   match exp.it with
@@ -148,9 +129,11 @@ and interpret_exp_mut context exp k =
       interpret_exp context exp2 (fun v2 ->
         k (Operator.relop t op v1 v2)))
   | TupE exps ->
-    interpret_exps context [] exps (fun vs -> k (V.Tup vs))
+    interpret_exps context exps [] (fun vs -> k (V.Tup vs))
   | ProjE (exp1, n) ->
     interpret_exp context exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
+  | ObjE (sort, id, fields) ->
+    interpret_obj context sort id fields k
   | DotE (exp1, id) ->
     interpret_exp context exp1 (fun v1 ->
       match !(V.Env.find id.it (V.as_obj v1)) with
@@ -162,7 +145,7 @@ and interpret_exp_mut context exp k =
         V.as_mut v1 := v2; k V.unit))
   | ArrayE exps ->
     let t = exp.note.note_typ in
-    interpret_exps context [] exps (fun vs ->
+    interpret_exps context exps [] (fun vs ->
       let vs' =
         match t with
         | T.Array (T.Mut _) -> List.map (fun v -> V.Mut (ref v)) vs
@@ -177,7 +160,7 @@ and interpret_exp_mut context exp k =
       interpret_exp context exp2 (fun v2 ->
         (V.as_func v1) v2 k))
   | BlockE decs ->
-    interpret_block_local context decs k
+    interpret_block context decs (fun (v, _ve) -> k v)
   | NotE exp1 ->
     interpret_exp context exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
   | AndE (exp1, exp2) ->
@@ -197,7 +180,7 @@ and interpret_exp_mut context exp k =
       else interpret_exp context exp3 k)
   | SwitchE (exp1, cases) ->
     interpret_exp context exp1 (fun v1 ->
-      interpret_cases context cases v1 k)
+      interpret_cases context cases exp.at v1 k)
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> interpret_exp context exp k in
     interpret_exp context exp1 (fun v1 ->
@@ -223,7 +206,7 @@ and interpret_exp_mut context exp k =
     interpret_exp context exp1 (Lib.Option.value context.rets)
   | AsyncE exp1 ->
     let async = {V.result = None; waiters = []} in
-    let k_return = fun v1 -> set_result async v1; V.unit in
+    let k_return = fun v1 -> set_async async v1 in
     let context' =
       { context with
         labs = V.Env.empty;
@@ -231,14 +214,11 @@ and interpret_exp_mut context exp k =
         async = true
       }
     in
-    queue (fun () -> interpret_exp context' exp1 k_return);
+    Scheduler.queue (fun () -> interpret_exp context' exp1 k_return);
     k (V.Async async)
   | AwaitE exp1 ->
     interpret_exp context exp1 (fun v1 ->
-      let async = V.as_async v1 in
-      match async.result with
-      | Some v -> k v
-      | None -> async.waiters <- k::async.waiters; yield ()) 
+      get_async (V.as_async v1) k; Scheduler.yield ()) 
   | AssertE exp1 ->
     interpret_exp context exp1 (fun  v ->
       if V.as_bool v
@@ -248,245 +228,248 @@ and interpret_exp_mut context exp k =
     unimplemented exp.at "is"
   | AnnotE (exp1, _typ) ->
     interpret_exp context exp1 k
-  | DecE ({it = FuncD (id, _, _, _, _); _} as dec) ->
-    interpret_block context [dec] (fun ve ->
-      k (Lib.Option.value !(V.Env.find id.it ve)))
   | DecE dec ->
-    interpret_block context [dec] (fun ve ->  k V.unit)
+    interpret_block context [dec] (fun (v, _ve) ->  k v)
 
-and interpret_exps context vs exps k =
+and interpret_exps context exps vs (k : V.value list V.cont) =
   match exps with
   | [] -> k (List.rev vs)
   | exp::exps' ->
-    interpret_exp context exp (fun v -> interpret_exps context (v::vs) exps' k)
+    interpret_exp context exp (fun v -> interpret_exps context exps' (v::vs) k)
 
 
+(* Cases *)
 
-and interpret_cases context cs v k  =
-  match cs with
-  | [] -> failwith "match_cases"
-  | {it={pat=p;exp=e};at}::cs ->
-    match interpret_pat p v with
-    | Some ve -> interpret_exp (adjoin_vals context ve) e k
-    | None -> interpret_cases context cs v k
+and interpret_cases context cases at v (k : V.value V.cont) =
+  match cases with
+  | [] ->
+    trap at "switch value %s does not match any case" (V.debug_string_of_val v)
+  | {it = {pat; exp}; at; _}::cases' ->
+    match match_pat pat v with
+    | Some ve -> interpret_exp (adjoin_vals context ve) exp k
+    | None -> interpret_cases context cases' at v k
+
+
+(* Patterns *)
+
+and declare_pat pat : val_env =
+  match pat.it with
+  | WildP | LitP _ | SignP _ ->  V.Env.empty
+  | VarP id -> V.Env.singleton id.it (ref None)
+  | TupP pats -> declare_pats pats V.Env.empty
+  | AnnotP (pat, _typ) -> declare_pat pat
+
+and declare_pats pats ve : val_env =
+  match pats with
+  | [] -> ve
+  | pat::pats' ->
+    let ve' = declare_pat pat in
+    declare_pats pats' (V.Env.adjoin ve ve')
+
+
+and define_id context id v =
+  let d = V.Env.find id.it context.vals in
+  assert (!d = None);
+  d := Some v
     
-and interpret_block_local context ds k =
-  match ds with
+and define_pat context pat v =
+  match pat.it with
+  | WildP | LitP _ | SignP _ -> ()
+  | VarP id -> define_id context id v
+  | TupP pats -> define_pats context pats (V.as_tup v)
+  | AnnotP (pat1, _typ) -> define_pat context pat1 v
+
+and define_pats context pats vs =
+  List.iter2 (define_pat context) pats vs
+
+
+and match_lit lit v : bool =
+  match !lit, v with
+  | NullLit, V.Null -> true
+  | BoolLit b, V.Bool b' -> b = b'
+  | NatLit n, V.Nat n' -> n = n'
+  | IntLit i, V.Int i' -> i = i'
+  | Word8Lit w, V.Word8 w' -> w = w'
+  | Word16Lit w, V.Word16 w' -> w = w'
+  | Word32Lit w, V.Word32 w' -> w = w'
+  | Word64Lit w, V.Word64 w' -> w = w'
+  | FloatLit z, V.Float z' -> z = z'
+  | CharLit c, V.Char c' -> c = c'
+  | TextLit u, V.Text u' -> u = u'
+  | PreLit _, _ -> assert false
+  | _ -> false
+
+and match_pat pat v : val_env option =
+  match pat.it with 
+  | WildP -> Some V.Env.empty
+  | VarP var -> Some (V.Env.singleton var.it (ref (Some v)))
+  | LitP lit ->
+    if match_lit lit v 
+    then Some V.Env.empty
+    else None
+  | SignP (op, lit) ->
+    let t = T.immutable pat.note.note_typ in
+    match_pat {pat with it = LitP lit} (Operator.unop t op v)
+  | TupP pats ->
+    match_pats pats (V.as_tup v) V.Env.empty
+  | AnnotP (pat1, _typ) ->
+    match_pat pat1 v
+
+and match_pats pats vs ve : val_env option =
+  match pats, vs with
+  | [], [] -> Some ve
+  | pat::pats', v::vs' ->
+    (match match_pat pat v with 
+    | Some ve' -> match_pats pats' vs' (V.Env.adjoin ve ve')
+    | None -> None
+    )
+  | _ -> assert false
+
+
+(* Objects *)
+
+and interpret_obj context sort id fields (k : V.value V.cont) =
+  let ve0 = V.Env.singleton id.it (ref None) in
+  let private_ve, public_ve = declare_exp_fields fields ve0 V.Env.empty in
+  let context' = adjoin_vals context private_ve in
+  interpret_fields context' sort.it fields public_ve (fun v ->
+    define_id context' id v; k v)
+
+
+and declare_exp_fields fields private_ve public_ve : val_env * val_env =
+  match fields with
+  | [] -> private_ve, public_ve
+  | {it = {id; mut; priv; _}; _}::fields' ->
+    let d = ref None in
+    declare_exp_fields fields'
+      (V.Env.add id.it d private_ve) (V.Env.add id.it d public_ve)
+
+
+and interpret_fields context s fields ve (k : V.value V.cont) =
+  match fields with
+  | [] -> k (V.Obj ve)
+  | {it = {id; mut; priv; exp}; _}::fields' ->
+    interpret_exp context exp (fun v ->
+      let v' =
+        if s = T.Actor && priv.it = Public
+        then actor_field exp.note.note_typ v
+        else v
+      in
+      let v'' =
+        match mut.it with
+        | Const -> v'
+        | Var -> V.Mut (ref v')
+      in
+      define_id context id v'';
+      interpret_fields context s fields' ve k)
+
+
+and actor_field t v : V.value =
+  match t with
+  | T.Func (_, _, T.Tup []) ->
+    let f = V.as_func v in
+    V.Func (fun v k -> Scheduler.queue (fun () -> f v (fun _ -> ())); k V.unit)
+  | T.Func (_, _, T.Async _) ->
+    let f = V.as_func v in
+    V.Func (fun v k ->
+      let async = {V.result = None; waiters = []} in
+      Scheduler.queue (fun () ->
+        f v (fun a -> get_async (V.as_async a) (fun r -> set_async async r)));
+      k (V.Async async))
+  | _ -> assert false
+
+
+(* Blocks and Declarations *)
+
+and interpret_block context decs (k : (V.value * val_env) V.cont) =
+  let ve = declare_decs decs V.Env.empty in
+  interpret_decs (adjoin_vals context ve) decs (fun v -> k (v, ve))
+
+
+and declare_dec dec : val_env =     
+  match dec.it with
+  | ExpD _
+  | TypD _ -> V.Env.empty
+  | LetD (pat, _) -> declare_pat pat
+  | VarD (id, _)
+  | FuncD (id, _, _, _, _)
+  | ClassD (id, _, _, _, _) -> V.Env.singleton id.it (ref None)
+
+and declare_decs decs ve : val_env =
+  match decs with
+  | [] -> ve
+  | dec::decs' ->
+    let ve' = declare_dec dec in
+    declare_decs decs' (V.Env.adjoin ve ve')
+
+
+and interpret_dec context dec (k : V.value V.cont) =     
+  match dec.it with
+  | ExpD exp ->
+    interpret_exp context exp k
+  | LetD (pat, exp) ->
+    interpret_exp context exp (fun v ->
+      define_pat context pat v; k V.unit)
+  | VarD (id, exp) ->
+    interpret_exp context exp (fun v ->
+      define_id context id (V.Mut (ref v)); k V.unit)
+  | TypD _ ->
+    k V.unit
+  | FuncD (id, _typbinds, pat, _typ, exp) ->
+    let f = interpret_func context id pat
+      (fun context' -> interpret_exp context' exp) in
+    let v = V.Func f in
+    define_id context id v;
+    k v
+  | ClassD (id, _typbinds, sort, pat, fields) ->
+    let f = interpret_func context id pat
+      (fun context' k' ->
+        let private_ve, public_ve =
+          declare_exp_fields fields V.Env.empty V.Env.empty in
+        interpret_fields (adjoin_vals context' private_ve) sort.it fields public_ve k'
+      )
+    in
+    let v = V.Func f in
+    define_id context id v;
+    k v
+
+and interpret_decs context decs (k : V.value V.cont) =
+  match decs with
   | [] -> k V.unit
-  | [{it = ExpD e; _}] -> interpret_exp context e k
-  | d::ds' ->
-    interpret_block context [d] (fun ve ->
-    (* TBR: we currently evaluate decs sequentially, not recursively *)
-    interpret_block_local (adjoin_vals context ve) ds' k) 
-
-and declare_dec context d =     
-    match d.it with
-    | ExpD e ->
-       V.Env.empty
-    | LetD (p,e) ->
-       declare_pat context p
-    | VarD (v,e) ->
-       V.Env.singleton v.it (ref None)
-    | TypD(v,ts,t) ->
-       V.Env.empty
-    | FuncD(v,ts,p,t,e) ->
-       V.Env.singleton v.it (ref None)
-    | ClassD(v,ts,a,p,efs) ->
-       V.Env.singleton v.it (ref None)
-
-and declare_block context ve ds =
-    match ds with
-    | [] -> ve
-    | d::ds' ->
-      let ve' = V.Env.adjoin ve (declare_dec context d) in
-      declare_block context ve' ds'
-
-and interpret_block context ds k =
-    let ve = declare_block context V.Env.empty ds in
-    define_block (adjoin_vals context ve) ds
-    (fun () -> k ve)
-
-and define_block context ds k =
-    match ds with
-    | [] -> k()
-    | d::ds' ->
-      define_dec context d (fun () -> define_block context ds' k)
-
-and define_var context var v =
-    let d = V.Env.find var.it context.vals in
-    assert (!d = None);
-    d := Some v
-    
-and define_dec context d k =     
-    match d.it with
-    | ExpD e ->
-      interpret_exp context e (fun v ->
-      k())
-    | LetD (p,e) ->
-      interpret_exp context e (fun v ->
-      define_pat context p v;
-      k())
-    | VarD (var,e) ->
-      interpret_exp context e (fun v ->
-      define_var context var (V.Mut (ref v));
-      k())
-    | TypD(v,ts,t) ->
-      k()
-    | FuncD(var,ts,p,t,e) ->
-      (* TBC: trim callee_context *)
-      (define_var context var
-        (V.Func (fun v k ->
-	      if !Flags.debug then printf "%s%s%s\n" (get_indent ()) var.it (V.debug_string_of_tuple_val v);
-        incr call_depth;
-              match interpret_pat p v with
-              | Some ve ->
-	        let k = if !Flags.debug then fun w -> (decr call_depth; printf "%s%s%s => %s\n" (get_indent ()) var.it (V.debug_string_of_tuple_val v) (V.debug_string_of_val w);k w) else k in
-                let callee_context = callee_context context ve k in
-	      	interpret_exp callee_context e k 
-              | None -> failwith "unexpected refuted pattern")));
-      k()
-    | ClassD(c,ts,a,p,efs) ->
-      (define_var context c
-        (V.Func (fun v k ->
-              match interpret_pat p v with
-              | None -> failwith "unexpected refuted pattern";
-              | Some ve -> let context = adjoin_vals context ve in
-                           let rec declare_members private_ve public_ve efs =
-                                     match efs with
-                                     | [] -> (private_ve,public_ve)
-                                     | {it={id;mut;priv;exp=_};_}::efs ->
-                                        let d = ref None in
-                                        declare_members (V.Env.add id.it d private_ve)
-                                                        (V.Env.add id.it d public_ve) efs
-                            in
-                            let (private_ve,public_ve) = declare_members V.Env.empty V.Env.empty efs
-                            in
-                            let rec define_members efs =
-                                     match efs with
-				     | {it={id;mut;priv;exp;}}::efs ->
-				        let private_context = adjoin_vals context private_ve in
-                                        interpret_exp private_context exp (fun v ->
-					let v = expand a.it priv.it mut.it exp.note.note_typ v in 
-                                        let defn = match mut.it with
-                                                   | Const -> v
-                                                   | Var -> V.Mut (ref v)
-                                        in
-                                          define_var private_context id defn;
-                                          define_members efs)
-				     | [] -> k (V.Obj public_ve) 
-
-                            in 
-                                 define_members efs)));
-       k()
-       
-and expand actor priv mut t v =
-    match (actor,priv,mut,t) with
-    | T.Actor, Public, Const, T.Func (_, _, T.Tup []) ->
-      let f = V.as_func v in
-      V.Func (fun w k -> queue(fun () -> f w (fun a->a));
-                        k V.unit)
-    | T.Actor, Public, Const, T.Func (_, _, T.Async _) ->
-      let f = V.as_func v in
-      V.Func (fun w k ->
-      	     let async = {V.result=None;waiters=[]} in
-	     queue(fun () ->
-	           f w (fun a ->
-		          get_result (V.as_async a) (fun r ->
-			     set_result async r;
-			     V.unit)
-                        ));
-             k(V.Async async))
-    | _ -> v
-
-			  
-
-and declare_pats context ve ps =
-   match ps with
-   | [] -> ve
-   | p::ps ->
-     let ve' = declare_pat context p in
-     declare_pats context (V.Env.adjoin ve ve') ps
-
-and declare_pat context p =
-   match p.it with
-   | WildP ->  V.Env.empty
-   | VarP v -> V.Env.singleton v.it (ref None)
-   | LitP l -> V.Env.empty
-   | TupP ps -> declare_pats context V.Env.empty ps
-   | AnnotP(p,t) ->
-     declare_pat context p 
-
-and define_pat context p v =
-   match p.it with
-   | WildP -> ()
-   | VarP var -> define_var context var v
-   | LitP rl -> ()
-   | TupP ps ->
-     let vs = V.as_tup v in
-     define_pats context ps vs
-   | AnnotP(p',_) -> 
-     define_pat context p' v
-
-and define_pats context ps vs =
-   match ps,vs with
-   | [],[] -> ()
-   | p::ps,v::vs ->
-     begin
-       define_pat context p v;
-       define_pats context ps vs
-     end  
-   | [],ts -> failwith "Wrong:define_pats"
-   | ts,[] -> failwith "Wrong:define_pats"
-
-and match_lit p v rl =
-  match !rl with
-    | NullLit -> true
-    | BoolLit b -> V.as_bool v = b
-    | NatLit n -> V.as_nat v = n 
-    | IntLit i -> V.as_int v = i
-    | Word8Lit w -> V.as_word8 v = w
-    | Word16Lit w -> V.as_word16 v = w
-    | Word32Lit w -> V.as_word32 v = w
-    | Word64Lit w -> V.as_word64 v = w
-    | FloatLit f -> V.as_float v = f
-    | CharLit c -> V.as_char v = c
-    | TextLit s -> V.as_text v = s
-    | PreLit _ -> assert false
-
-and interpret_pat p v =
-   match p.it with 
-   | WildP -> Some V.Env.empty
-   | VarP var -> Some (V.Env.singleton var.it (ref (Some v)))
-   | LitP rl ->
-     if match_lit p v rl 
-     then Some V.Env.empty
-     else None
-   | SignP (op, rl) ->
-     let t1 = T.immutable p.note.note_typ in
-     if match_lit p (Operator.unop t1 op v) rl 
-     then Some V.Env.empty
-     else None
-   | TupP ps ->
-      let vs = V.as_tup v in
-      interpret_pats V.Env.empty ps vs 
-   | AnnotP(p',_) -> 
-     interpret_pat p' v
-
-and interpret_pats ve ps vs =
-   match ps,vs with
-   | [],[] -> Some ve
-   | p::ps,v::vs ->
-     begin
-       match interpret_pat p v with 
-       | None -> None
-       | Some ve' ->
-         interpret_pats (V.Env.adjoin ve ve') ps vs
-     end  
-   | [],vs -> failwith "Wrong:match_pats"
-   | vs,[] -> failwith "Wrong:match_pats"
+  | [dec] -> interpret_dec context dec k
+  | dec::decs' ->
+    interpret_dec context dec (fun _v -> interpret_decs context decs' k)
 
 
-let interpret_prog context p k =
-    call_depth := 0;
-    let k' = fun v -> (run();k(v)) in
-    ignore (interpret_block context p.it k')
+and interpret_func context id pat f v k =
+  if !Flags.debug then
+    printf "%s%s%s\n" (get_indent ()) id.it (V.debug_string_of_tuple_val v);
+  match match_pat pat v with
+  | None ->
+    trap pat.at "argument value %s does not patch parameter list"
+      (V.debug_string_of_val v)
+  | Some ve ->
+    incr call_depth;
+    let k' = fun v' ->
+      decr call_depth;
+      if !Flags.debug then
+        printf "%s%s%s => %s\n" (get_indent ()) id.it
+          (V.debug_string_of_tuple_val v) (V.debug_string_of_val v');
+      k v'
+    in
+    let context' =
+      { vals = V.Env.adjoin context.vals ve;
+        labs = V.Env.empty;
+        rets = Some k';
+        async = false
+      }
+    in f context' k'
+
+
+(* Programs *)
+
+let interpret_prog context p : scope =
+  call_depth := 0;
+  let r = ref V.Env.empty in
+  interpret_block context p.it (fun (_v, ve) -> r := ve; Scheduler.run ());
+  !r

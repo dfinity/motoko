@@ -8,8 +8,7 @@ module A = Await
 
 exception Error of Source.region * string
 
-let error region fmt =
-  Printf.ksprintf (fun s -> raise (Error (region, s))) fmt
+let error at fmt = Printf.ksprintf (fun s -> raise (Error (at, s))) fmt
 
 
 (* Contexts *)
@@ -648,6 +647,140 @@ and check_exp' context t exp =
         (T.string_of_typ t) (T.string_of_typ t')
 
 
+(* Cases *)
+
+(* TBR: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
+
+and infer_cases context t1 cases : T.typ =
+  match cases with
+  | [] ->
+    (* TBR: T.Bottom? *)
+    T.unit
+  | {it = {pat; exp}; _}::cases' ->
+    let ve = check_pat context t1 pat in
+    let t = infer_exp (adjoin_vals context ve) exp in
+    let t' = infer_cases context t cases' in
+    (* TBR: join *)
+    if not (T.eq context.cons t t') then
+      error exp.at
+        "switch branches have inconsistent types, this is %s, next is %s"
+        (T.string_of_typ t) (T.string_of_typ t');
+    t
+
+and check_cases context t1 t2 cases =
+  match cases with
+  | [] -> ()
+  | {it = {pat; exp}; _}::cases' ->
+    let ve = check_pat context t1 pat in
+    check_exp (adjoin_vals context ve) t2 exp;
+    check_cases context t1 t2 cases'
+
+
+(* Patterns *)
+
+and gather_pat ve pat : val_env =
+  match pat.it with
+  | WildP | LitP _ | SignP _ ->
+    ve
+  | VarP id ->
+    if T.Env.mem id.it ve then
+      error pat.at "duplicate binding for %s in block" id.it;
+    T.Env.add id.it T.Pre ve
+  | TupP pats ->
+    List.fold_left gather_pat ve pats
+  | AnnotP (pat1, _) ->
+    gather_pat ve pat1
+
+
+and infer_pat context pat : T.typ * val_env =
+  assert (pat.note.note_typ = T.Pre);
+  let t, ve = infer_pat' context pat in
+  if not context.pre then
+    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+  t, ve
+
+and infer_pat' context pat : T.typ * val_env =
+  match pat.it with
+  | WildP ->
+    error pat.at "cannot infer type of wildcard"
+  | VarP _ ->
+    error pat.at "cannot infer type of variable"
+  | LitP lit ->
+    T.Prim (infer_lit context lit pat.at), T.Env.empty
+  | SignP (op, lit) ->
+    let t = T.Prim (infer_lit context lit pat.at) in
+    if not (Operator.has_unop t op) then
+      error pat.at "operator is not defined for operand type %s"
+        (T.string_of_typ t);
+    t, T.Env.empty
+  | TupP pats ->
+    let ts, ve = infer_pats pat.at context pats [] T.Env.empty in
+    T.Tup ts, ve
+  | AnnotP (pat1, typ) ->
+    let t = check_typ context typ in
+    t, check_pat context t pat1
+
+and infer_pats at context pats ts ve : T.typ list * val_env =
+  match pats with
+  | [] -> List.rev ts, ve
+  | pat::pats' ->
+    let t, ve1 = infer_pat context pat in
+    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
+    infer_pats at context pats' (t::ts) ve'
+
+
+and check_pat context t pat : val_env =
+  assert (pat.note.note_typ = T.Pre);
+  let ve = check_pat' context t pat in
+  if not context.pre then
+    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+  ve
+
+and check_pat' context t pat : val_env =
+  match pat.it with
+  | WildP ->
+    T.Env.empty
+  | VarP id ->
+    T.Env.singleton id.it t
+  | LitP lit ->
+    check_lit context t lit pat.at;
+    T.Env.empty
+  | SignP (op, lit) ->
+    if not (Operator.has_unop t op) then
+      error pat.at "operator cannot produce expected type %s"
+        (T.string_of_typ t);
+    check_lit context t lit pat.at;
+    T.Env.empty
+  | TupP pats ->
+    (match T.structural context.cons t with
+    | T.Tup ts ->
+      check_pats context ts pats T.Env.empty pat.at
+    | _ ->
+      error pat.at "tuple pattern cannot produce expected type %s"
+        (T.string_of_typ t)
+    )
+  | _ ->
+    let t', ve = infer_pat context pat in
+    if not (T.eq context.cons t t') then
+      error pat.at "expected type %s, found %s"
+        (T.string_of_typ t) (T.string_of_typ t');
+    ve
+
+and check_pats context ts pats ve at : val_env =
+  match pats, ts with
+  | [], [] -> ve
+  | pat::pats', t::ts ->
+    let ve1 = check_pat context t pat in
+    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
+    check_pats context ts pats' ve' at
+  | [], ts ->
+    error at "tuple pattern has %i fewer components than expected type"
+      (List.length ts)
+  | ts, [] ->
+    error at "tuple pattern has %i more components than expected type"
+      (List.length ts)
+
+
 (* Objects *)
 
 and infer_obj context s id fields : T.typ * T.typ =
@@ -703,138 +836,6 @@ and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.fiel
   in tfs', tfs_inner', ve'
 
 
-(* Cases *)
-
-(* TBR: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
-
-and infer_cases context t1 cases : T.typ =
-  match cases with
-  | [] ->
-    (* TBR: T.Bottom? *)
-    T.unit
-  | {it = {pat; exp}; _}::cases' ->
-    let ve = check_pat context t1 pat in
-    let t = infer_exp (adjoin_vals context ve) exp in
-    let t' = infer_cases context t cases' in
-    (* TBR: join *)
-    if not (T.eq context.cons t t') then
-      error exp.at
-        "switch branches have inconsistent types, this is %s, next is %s"
-        (T.string_of_typ t) (T.string_of_typ t');
-    t
-
-and check_cases context t1 t2 cases =
-  match cases with
-  | [] -> ()
-  | {it = {pat; exp}; _}::cases' ->
-    let ve = check_pat context t1 pat in
-    check_exp (adjoin_vals context ve) t2 exp;
-    check_cases context t1 t2 cases'
-
-
-(* Patterns *)
-
-and gather_pat ve pat : val_env =
-  match pat.it with
-  | WildP | LitP _ | SignP _ ->
-    ve
-  | VarP id ->
-    if T.Env.mem id.it ve then
-      error pat.at "duplicate binding for %s in block" id.it;
-    T.Env.add id.it T.Pre ve
-  | TupP pats ->
-    List.fold_left gather_pat ve pats
-  | AnnotP (pat1, _) ->
-    gather_pat ve pat1
-
-
-and infer_pat context pat : T.typ * val_env =
-  let t, ve = infer_pat' context pat in
-  if not context.pre then
-    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
-  t, ve
-
-and infer_pat' context pat : T.typ * val_env =
-  match pat.it with
-  | WildP ->
-    error pat.at "cannot infer type of wildcard"
-  | VarP _ ->
-    error pat.at "cannot infer type of variable"
-  | LitP lit ->
-    T.Prim (infer_lit context lit pat.at), T.Env.empty
-  | SignP (op, lit) ->
-    let t = T.Prim (infer_lit context lit pat.at) in
-    if not (Operator.has_unop t op) then
-      error pat.at "operator is not defined for operand type %s"
-        (T.string_of_typ t);
-    t, T.Env.empty
-  | TupP pats ->
-    let ts, ve = infer_pats pat.at context pats [] T.Env.empty in
-    T.Tup ts, ve
-  | AnnotP (pat1, typ) ->
-    let t = check_typ context typ in
-    t, check_pat context t pat1
-
-and infer_pats at context pats ts ve : T.typ list * val_env =
-  match pats with
-  | [] -> List.rev ts, ve
-  | pat::pats' ->
-    let t, ve1 = infer_pat context pat in
-    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
-    infer_pats at context pats' (t::ts) ve'
-
-
-and check_pat context t pat : val_env =
-  let ve = check_pat' context t pat in
-  if not context.pre then
-    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
-  ve
-
-and check_pat' context t pat : val_env =
-  match pat.it with
-  | WildP ->
-    T.Env.empty
-  | VarP id ->
-    T.Env.singleton id.it t
-  | LitP lit ->
-    check_lit context t lit pat.at;
-    T.Env.empty
-  | SignP (op, lit) ->
-    if not (Operator.has_unop t op) then
-      error pat.at "operator cannot produce expected type %s"
-        (T.string_of_typ t);
-    check_lit context t lit pat.at;
-    T.Env.empty
-  | TupP pats ->
-    (match T.structural context.cons t with
-    | T.Tup ts ->
-      check_pats context ts pats T.Env.empty pat.at
-    | _ ->
-      error pat.at "tuple pattern cannot produce expected type %s"
-        (T.string_of_typ t)
-    )
-  | _ ->
-    let t', ve = infer_pat context pat in
-    if not (T.eq context.cons t t') then
-      error pat.at "expected type %s, found %s"
-        (T.string_of_typ t) (T.string_of_typ t');
-    ve
-
-and check_pats context ts pats ve at : val_env =
-  match pats, ts with
-  | [], [] -> ve
-  | pat::pats', t::ts ->
-    let ve1 = check_pat context t pat in
-    let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
-    check_pats context ts pats' ve' at
-  | [], ts ->
-    error at "tuple pattern has %i fewer components than expected type"
-      (List.length ts)
-  | ts, [] ->
-    error at "tuple pattern has %i more components than expected type"
-      (List.length ts)
-
-
 (* Blocks and Declarations *)
 
 and infer_block context decs : T.typ =
@@ -864,7 +865,7 @@ and infer_dec context ce_inner dec : T.typ =
     if not context.pre then begin
       let tbs, te, ce = check_typ_binds context typbinds in
       let context' = adjoin_typs context te ce in
-      let _, ve = infer_pat context' pat in
+      let _, ve = infer_pat {context' with pre = true} pat in
       let t2 = check_typ context' typ in
       let context'' =
         {context' with labs = T.Env.empty; rets = Some t2; async = false} in
@@ -878,7 +879,7 @@ and infer_dec context ce_inner dec : T.typ =
       let context' = adjoin_typs context te ce in
       let c = T.Env.find id.it context.typs in
       let context' = (*context'*) add_typ context' id.it c (Con.Env.find c ce_inner) in
-      let _, ve = infer_pat context' pat in
+      let _, ve = infer_pat {context' with pre = true} pat in
       ignore (infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields)
     end;
     t
@@ -1027,7 +1028,7 @@ and infer_dec_valdecs context ve dec : val_env =
   | FuncD (id, typbinds, pat, typ, _) ->
     let tbs, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
-    let t1, _ = infer_pat context' pat in
+    let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = check_typ context' typ in
     T.Env.add id.it (T.Func (tbs, t1, t2)) ve
   | TypD _ ->
@@ -1036,7 +1037,7 @@ and infer_dec_valdecs context ve dec : val_env =
     let tbs, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
     let c = T.Env.find id.it context.typs in
-    let t1, _ = infer_pat context' pat in
+    let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = T.Var (c, List.map (fun tb -> T.Var (tb.T.con, [])) tbs) in
     T.Env.add id.it (T.Func (tbs, t1, t2)) ve
 

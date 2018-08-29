@@ -66,19 +66,15 @@ let run (stat_context, dyn_context) lexer parse name =
       print_ve ve
     end;
     trace "Interpreting" name;
-    let dyn_scope = ref Value.Env.empty in
-    Interpret.interpret_prog dyn_context prog (fun dyn_ve ->
-      dyn_scope := dyn_ve;
-      trace "Finished" name;
-      if !Flags.trace then
-        print_dyn_ve ce ve dyn_ve
-      else if !Flags.interactive then
-        print_scope stat_scope !dyn_scope;
-      Value.unit
-    );
+    let dyn_scope = Interpret.interpret_prog dyn_context prog in
+    trace "Finished" name;
+    if !Flags.interactive then
+      print_scope stat_scope dyn_scope
+    else if !Flags.trace then
+      print_dyn_ve ce ve dyn_scope;
     Some (
       Typing.adjoin stat_context stat_scope,
-      Interpret.adjoin dyn_context !dyn_scope
+      Interpret.adjoin dyn_context dyn_scope
     )
   with exn ->
     let r, sort, msg, dump =
