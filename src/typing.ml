@@ -915,7 +915,7 @@ and check_dec context ce_inner t dec =
       error dec.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
 
-
+(*
 and print_ce =
   Con.Env.iter (fun c k ->
     Printf.printf "  type %s %s\n" (Con.to_string c) (Type.string_of_kind k)
@@ -924,6 +924,7 @@ and print_ve =
   Type.Env.iter (fun x t ->
     Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
   )
+*)
 
 and infer_block_decs context decs : scope * con_env =
 (*Printf.printf "[block] gather types\n";*)

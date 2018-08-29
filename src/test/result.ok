@@ -307,15 +307,15 @@ Bank(100)
   Account(100) => {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 Bank(100) => {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 test()
-test() => async ?#0
+test() => async _ #0
 getReserve()
-getReserve() => async ?#0
+getReserve() => async _ #0
 split(10)
-split(10) => async ?#0
+split(10) => async _ #0
 Account(10)
 Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 split(10)
-split(10) => async ?#0
+split(10) => async _ #0
 Account(10)
 Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -325,9 +325,9 @@ show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func;
 show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
 transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
-transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5) => async ?#0
+transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5) => async _ #0
 split(5)
-split(5) => async ?#0
+split(5) => async _ #0
 Account(5)
 Account(5) => {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -345,7 +345,7 @@ let Account : Int -> Account = func
 let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
 let b : Bank = Bank
-let main : async (Account, Account) = async (Account, Account)#0
+let main : async (Account, Account) = async (Account, Account)
 let show : (Text, Account) -> () = func
 let test : () -> async (Account, Account) = func
 let transfer : (Account, Account, Int) -> async () = func
@@ -456,89 +456,89 @@ tic(10)
   tac(9) => ()
 tic(10) => ()
 tic(10)
-tic(10) => async ?#0
+tic(10) => async _ #0
 tac(9)
-tac(9) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(9) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(10)
-tic(10) => async ?#0
+tic(10) => async _ #0
 tic(8)
-tic(8) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(8) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(7)
-tac(7) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(7) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(9)
-tac(9) => async ?#0
+tac(9) => async _ #0
 tic(6)
-tic(6) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(6) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(5)
-tac(5) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(5) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(8)
-tic(8) => async ?#0
+tic(8) => async _ #0
 tic(4)
-tic(4) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(4) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(3)
-tac(3) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(3) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(7)
-tac(7) => async ?#0
+tac(7) => async _ #0
 tic(2)
-tic(2) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(2) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(1)
-tac(1) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(1) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(6)
-tic(6) => async ?#0
+tic(6) => async _ #0
 tic(0)
-tic(0) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(0) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(5)
-tac(5) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(5) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(4)
-tic(4) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(4) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(3)
-tac(3) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(3) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(2)
-tic(2) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tic(2) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tac(1)
-tac(1) => async ?#0
-ignore(async ?#0)
-ignore(async ?#0) => ()
+tac(1) => async _ #0
+ignore(async _ #0)
+ignore(async _ #0) => ()
 tic(0)
-tic(0) => async ?#0
+tic(0) => async _ #0
 -- Finished objects.as:
 let ignore : (async ()) -> () = func
 let o : {self : () -> O} = {self = func}

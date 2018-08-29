@@ -49,15 +49,15 @@ type value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of def Env.t
+  | Obj of value Env.t
   | Array of value array
   | Opt of value option (* TBR *)
   | Func of (value -> value cont -> unit)
   | Async of async
   | Mut of value ref
 
-and def = value option ref
-and async = {mutable result : value option; mutable waiters : value cont list}
+and async = {result : def; mutable waiters : value cont list}
+and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
 
@@ -78,7 +78,7 @@ val as_char : value -> unicode
 val as_text : value -> string
 val as_array : value -> value array
 val as_tup : value -> value list
-val as_obj : value -> def Env.t
+val as_obj : value -> value Env.t
 val as_opt : value -> value option
 val as_func : value -> (value -> value cont -> unit)
 val as_async : value -> async
@@ -88,6 +88,7 @@ val as_mut : value -> value ref
 (* Pretty Printing *)
 
 val string_of_val : Type.kind Con.Env.t -> Type.typ -> value -> string
+val string_of_def : Type.kind Con.Env.t -> Type.typ -> def -> string
 
 val debug_string_of_val : value -> string
 val debug_string_of_def : def -> string

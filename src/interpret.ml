@@ -69,15 +69,17 @@ end
 
 (* Async auxiliary functions *)
 
+let make_async () : V.async =
+  {V.result = Lib.Promise.make (); waiters = []}
+
 let get_async async (k : V.value V.cont) =
-  match async.V.result with
+  match Lib.Promise.value_opt async.V.result with
   | Some v -> k v
   | None -> async.V.waiters <- k::async.V.waiters
 
 let set_async async v =
-  assert (async.V.result = None);
   List.iter (fun k -> Scheduler.queue (fun () -> k v)) async.V.waiters;
-  async.V.result <- Some v;
+  Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
 
@@ -109,9 +111,9 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   last_context := context;
   match exp.it with
   | VarE id ->
-    (match !(V.Env.find id.it context.vals) with
+    (match Lib.Promise.value_opt (V.Env.find id.it context.vals) with
     | Some v -> k v
-    | None -> trap exp.at "accessing identifier before becoming defined")
+    | None -> trap exp.at "accessing identifier before its definition")
   | LitE lit ->
     k (interpret_lit context lit)
   | UnE (op, exp1) ->
@@ -135,10 +137,7 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | ObjE (sort, id, fields) ->
     interpret_obj context sort id fields k
   | DotE (exp1, id) ->
-    interpret_exp context exp1 (fun v1 ->
-      match !(V.Env.find id.it (V.as_obj v1)) with
-      | Some v -> k v
-      | None -> trap exp.at "accessing field before becoming defined")
+    interpret_exp context exp1 (fun v1 -> k (V.Env.find id.it (V.as_obj v1)))
   | AssignE (exp1, exp2) ->
     interpret_exp_mut context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
@@ -205,16 +204,16 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | RetE exp1 ->
     interpret_exp context exp1 (Lib.Option.value context.rets)
   | AsyncE exp1 ->
-    let async = {V.result = None; waiters = []} in
-    let k_return = fun v1 -> set_async async v1 in
+    let async = make_async () in
+    let k' = fun v1 -> set_async async v1 in
     let context' =
       { context with
         labs = V.Env.empty;
-        rets = Some k_return; 
+        rets = Some k';
         async = true
       }
     in
-    Scheduler.queue (fun () -> interpret_exp context' exp1 k_return);
+    Scheduler.queue (fun () -> interpret_exp context' exp1 k');
     k (V.Async async)
   | AwaitE exp1 ->
     interpret_exp context exp1 (fun v1 ->
@@ -253,7 +252,7 @@ and interpret_cases context cases at v (k : V.value V.cont) =
 (* Patterns *)
 
 and declare_id id =
-  V.Env.singleton id.it (ref None)
+  V.Env.singleton id.it (Lib.Promise.make ())
     
 and declare_pat pat : val_env =
   match pat.it with
@@ -271,9 +270,7 @@ and declare_pats pats ve : val_env =
 
 
 and define_id context id v =
-  let d = V.Env.find id.it context.vals in
-  assert (!d = None);
-  d := Some v
+  Lib.Promise.fulfill (V.Env.find id.it context.vals) v
     
 and define_pat context pat v =
   match pat.it with
@@ -305,7 +302,7 @@ and match_lit lit v : bool =
 and match_pat pat v : val_env option =
   match pat.it with 
   | WildP -> Some V.Env.empty
-  | VarP var -> Some (V.Env.singleton var.it (ref (Some v)))
+  | VarP id -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
   | LitP lit ->
     if match_lit lit v 
     then Some V.Env.empty
@@ -350,7 +347,7 @@ and declare_exp_fields fields private_ve public_ve : val_env * val_env =
 
 and interpret_fields context s fields ve (k : V.value V.cont) =
   match fields with
-  | [] -> k (V.Obj ve)
+  | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
   | {it = {id; mut; priv; exp}; _}::fields' ->
     interpret_exp context exp (fun v ->
       let v' =
@@ -375,7 +372,7 @@ and actor_field t v : V.value =
   | T.Func (_, _, T.Async _) ->
     let f = V.as_func v in
     V.Func (fun v k ->
-      let async = {V.result = None; waiters = []} in
+      let async = make_async () in
       Scheduler.queue (fun () ->
         f v (fun a -> get_async (V.as_async a) (fun r -> set_async async r)));
       k (V.Async async))

@@ -63,6 +63,17 @@ sig
   val app : ('a -> unit) -> 'a option -> unit
 end
 
+module Promise :
+sig
+  type 'a t
+  val make : unit -> 'a t
+  val make_fulfilled : 'a -> 'a t
+  val fulfill : 'a t -> 'a -> unit
+  val is_fulfilled : 'a t -> bool
+  val value : 'a t -> 'a
+  val value_opt : 'a t -> 'a option
+end
+
 module Int :
 sig
   val log2 : int -> int

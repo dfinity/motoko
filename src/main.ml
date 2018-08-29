@@ -28,15 +28,14 @@ let print_ve =
 
 let print_dyn_ve ce ve dyn_ve =
   Type.Env.iter (fun x t ->
-    match !(Value.Env.find x dyn_ve) with
-    | Some (Value.Mut r) ->
+    match Lib.Promise.value (Value.Env.find x dyn_ve) with
+    | Value.Mut r ->
       let t' = Type.immutable t in
       printf "var %s : %s = %s\n"
         x (Type.string_of_typ t') (Value.string_of_val ce t' !r)
-    | Some v ->
+    | v ->
       printf "let %s : %s = %s\n"
         x (Type.string_of_typ t) (Value.string_of_val ce t v)
-    | None -> assert false
   ) ve
 
 let print_debug_ve =
