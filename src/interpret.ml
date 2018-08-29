@@ -252,10 +252,13 @@ and interpret_cases context cases at v (k : V.value V.cont) =
 
 (* Patterns *)
 
+and declare_id id =
+  V.Env.singleton id.it (ref None)
+    
 and declare_pat pat : val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  V.Env.empty
-  | VarP id -> V.Env.singleton id.it (ref None)
+  | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | AnnotP (pat, _typ) -> declare_pat pat
 
@@ -329,7 +332,7 @@ and match_pats pats vs ve : val_env option =
 (* Objects *)
 
 and interpret_obj context sort id fields (k : V.value V.cont) =
-  let ve0 = V.Env.singleton id.it (ref None) in
+  let ve0 = declare_id id in
   let private_ve, public_ve = declare_exp_fields fields ve0 V.Env.empty in
   let context' = adjoin_vals context private_ve in
   interpret_fields context' sort.it fields public_ve (fun v ->
@@ -340,9 +343,9 @@ and declare_exp_fields fields private_ve public_ve : val_env * val_env =
   match fields with
   | [] -> private_ve, public_ve
   | {it = {id; mut; priv; _}; _}::fields' ->
-    let d = ref None in
+    let ve = declare_id id in
     declare_exp_fields fields'
-      (V.Env.add id.it d private_ve) (V.Env.add id.it d public_ve)
+      (V.Env.adjoin private_ve ve) (V.Env.adjoin public_ve ve)
 
 
 and interpret_fields context s fields ve (k : V.value V.cont) =
@@ -393,7 +396,7 @@ and declare_dec dec : val_env =
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
   | FuncD (id, _, _, _, _)
-  | ClassD (id, _, _, _, _) -> V.Env.singleton id.it (ref None)
+  | ClassD (id, _, _, _, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with

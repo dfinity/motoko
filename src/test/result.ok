@@ -417,6 +417,139 @@ test() => 0
 let passed : Bool = true
 let test : () -> Int = func
 
+-- Checking objects.as:
+type O = {self : () -> O}
+let ignore : (async ()) -> ()
+let o : {self : () -> O}
+let oo : O
+let p : {get_y : () -> Int; x : Int}
+let tictac : {tac : Int -> (); tic : Int -> ()}
+let tictac_actor : actor {tac : Int -> async (); tic : Int -> async ()}
+let tictac_async : {tac : Int -> async (); tic : Int -> async ()}
+let x : Int
+let y : Int
+-- Interpreting objects.as:
+get_y()
+get_y() => 2
+self()
+self() => {self = func}
+tic(10)
+  tac(9)
+    tic(8)
+      tac(7)
+        tic(6)
+          tac(5)
+            tic(4)
+              tac(3)
+                tic(2)
+                  tac(1)
+                    tic(0)
+                    tic(0) => ()
+                  tac(1) => ()
+                tic(2) => ()
+              tac(3) => ()
+            tic(4) => ()
+          tac(5) => ()
+        tic(6) => ()
+      tac(7) => ()
+    tic(8) => ()
+  tac(9) => ()
+tic(10) => ()
+tic(10)
+tic(10) => async ?#0
+tac(9)
+tac(9) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(10)
+tic(10) => async ?#0
+tic(8)
+tic(8) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(7)
+tac(7) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(9)
+tac(9) => async ?#0
+tic(6)
+tic(6) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(5)
+tac(5) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(8)
+tic(8) => async ?#0
+tic(4)
+tic(4) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(3)
+tac(3) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(7)
+tac(7) => async ?#0
+tic(2)
+tic(2) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(1)
+tac(1) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(6)
+tic(6) => async ?#0
+tic(0)
+tic(0) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(5)
+tac(5) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(4)
+tic(4) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(3)
+tac(3) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(2)
+tic(2) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tac(1)
+tac(1) => async ?#0
+ignore(async ?#0)
+ignore(async ?#0) => ()
+tic(0)
+tic(0) => async ?#0
+-- Finished objects.as:
+let ignore : (async ()) -> () = func
+let o : {self : () -> O} = {self = func}
+let oo : O = {self = func}
+let p : {get_y : () -> Int; x : Int} = {get_y = func; x = 3}
+let tictac : {tac : Int -> (); tic : Int -> ()} = {tac = func; tic = func}
+let tictac_actor : actor {tac : Int -> async (); tic : Int -> async ()} = actor {tac = func; tic = func}
+let tictac_async : {tac : Int -> async (); tic : Int -> async ()} = {tac = func; tic = func}
+let x : Int = 3
+let y : Int = 2
+
 -- Checking overflow.as:
 -- Interpreting overflow.as:
 overflow.as:17.9-17.24: execution error, arithmetic overflow
