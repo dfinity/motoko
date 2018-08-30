@@ -31,6 +31,15 @@ Productions marked * probably deferred to later versions.
   < <id>,* >                                    unconstrained (short-hand)
 ```
 
+## Literals
+```
+<lit> ::=                                     literals
+  <nat>                                         natural
+  <float>                                       float
+  <char>                                        character
+  <text>                                        unicode text
+```
+
 ## Expressions
 ```
 <sort> ::=
@@ -39,10 +48,7 @@ Productions marked * probably deferred to later versions.
 
 <exp> ::=
   <id>                                           variable
-  <nat>                                          integer literal
-  <float>                                        float literal
-  <char>                                         character literal
-  <text>                                         unicode text literal
+  <lit>                                          literal
   <unop> <exp>                                   unary numeric operator
   <exp> <binop> <exp>                            binary numeric operator
   ( <exp>,* )                                    tuple
@@ -71,7 +77,7 @@ Productions marked * probably deferred to later versions.
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
-  <exp> is <typ>                                 instance-of
+  <exp> is <exp>                                 instance-of
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
@@ -89,11 +95,9 @@ Productions marked * probably deferred to later versions.
 <pat> ::=                                      patterns
   _                                              wildcard
   <id>                                           variable
+  <unop>? <lit>                                  literal
   ( <pat>,* )                                    tuple or brackets
   <pat> : <typ>                                  type annotation
-* <int>                                          integer
-* <char>                                         character
-* <text>                                         text
 * { <pat-field>;* }                              object pattern
 * <pat> = <pat>                                  conjunctive pattern
 * <pat> | <pat>                                  disjunctive pattern
@@ -108,7 +112,7 @@ Productions marked * probably deferred to later versions.
   <exp>                                                  expression
   let <pat> = <exp>                                      immutable
   var <id> (: <typ>)? = <exp>                            mutable
-  func <id> <typ-params>? <pat>+ (: <typ>)? = <exp>      function
+  func <id>? <typ-params>? <pat> (: <typ>)? = <exp>      function
   type <id> <typ-params>? = <typ>                        type
   actor? class <id> <typ-params>? <pat> = <exp>          class
 ```
@@ -118,5 +122,3 @@ Productions marked * probably deferred to later versions.
 <prog> ::= <dec>;*                                              declaration
 
 ```
-
-
