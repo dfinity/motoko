@@ -18,8 +18,8 @@ class QS<T>(cmp : (T, T) -> Int) {
   private partition(a : var T[], lo : Nat, hi : Nat) : Nat {
     trace<var T[]>(a);
     let pivot = a[lo];
-    var i : Nat = lo;
-    var j : Nat = hi;
+    var i = lo;
+    var j = hi;
 
     loop {
       while (cmp(a[i], pivot) < 0) {

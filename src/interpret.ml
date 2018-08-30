@@ -242,7 +242,6 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
         printf "%s<- async %s\n" (get_indent ()) (string_of_region exp.at);
       incr call_depth;
       interpret_exp context' exp1 (fun v ->
-        assert (!call_depth > 0);
         if !Flags.debug then
           printf "%s<= %s\n" (get_indent ()) (V.debug_string_of_val v);
         decr call_depth;
@@ -253,7 +252,7 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | AwaitE exp1 ->
     interpret_exp context exp1 (fun v1 ->
       if !Flags.debug then
-        printf "%s-> await %s\n" (get_indent ()) (string_of_region exp.at);
+        printf "%s=> await %s\n" (get_indent ()) (string_of_region exp.at);
       decr call_depth;
       get_async (V.as_async v1) (fun v ->
         Scheduler.queue (fun () ->

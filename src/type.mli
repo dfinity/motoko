@@ -50,12 +50,22 @@ val nat : typ
 val int : typ
 
 
-(* Equivalence and Normalization *)
+(* Normalization and Classification *)
 
-val eq : con_env -> typ -> typ -> bool
 val normalize : con_env -> typ -> typ
+val nonopt : con_env -> typ -> typ
 val structural : con_env -> typ -> typ
 val immutable : typ -> typ
+
+
+(* Equivalence and Subtyping *)
+
+val eq : con_env -> typ -> typ -> bool
+val sub : con_env -> typ -> typ -> bool
+
+val join : con_env -> typ -> typ -> typ
+val meet : con_env -> typ -> typ -> typ
+
 
 (* First-order substitution *)
 

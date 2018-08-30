@@ -119,7 +119,6 @@ type value =
   | Tup of value list
   | Obj of value Env.t
   | Array of value array
-  | Opt of value option (* TBR *)
   | Func of (value -> value cont -> unit)
   | Async of async
   | Mut of value ref
@@ -146,7 +145,6 @@ let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
-let as_opt = function Opt vo -> vo | _ -> invalid "as_opt"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
@@ -177,7 +175,7 @@ let string_of_text s =
   Buffer.add_char buf '\"';
   Buffer.contents buf
 
-let rec string_of_val_nullary conenv t v =
+let rec string_of_val_nullary d conenv t v =
   match T.normalize conenv t with
   | T.Any -> "any"
   | T.Prim T.Null -> as_null v; "null"
@@ -199,58 +197,61 @@ let rec string_of_val_nullary conenv t v =
   | T.Tup ts ->
     let vs = as_tup v in
     sprintf "(%s)"
-      (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
+      (String.concat ", " (List.map2 (string_of_val' d conenv) ts vs))
   | T.Array t ->
     let a = as_array v in
     sprintf "[%s]" (String.concat ", "
-      (List.map (string_of_val conenv t) (Array.to_list a)))
+      (List.map (string_of_val' d conenv t) (Array.to_list a)))
   | T.Obj (T.Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {T.name; typ} ->
-        sprintf "%s = %s" name (string_of_val conenv typ (Env.find name ve))
+      (if d = 0 then "..." else
+       String.concat "; " (List.map (fun {T.name; typ} ->
+        sprintf "%s = %s" name (string_of_val' (d - 1) conenv typ (Env.find name ve))
       ) fs))
   | T.Func _ ->
     "func"
   | T.Mut t ->
-    string_of_val_nullary conenv t !(as_mut v)
+    string_of_val_nullary d conenv t !(as_mut v)
   | _ ->
-    sprintf "(%s)" (string_of_val conenv t v)
+    sprintf "(%s)" (string_of_val' d conenv t v)
 
-and string_of_val conenv t v =
+and string_of_val' d conenv t v =
   match Type.normalize conenv t with
   | T.Opt t ->
-    let v = as_opt v in
     (match v with
-    | None -> "null"
-    | Some v -> string_of_val conenv t v
+    | Null -> "null"
+    | _ -> string_of_val' d conenv t v
     )
   | T.Async t ->
     let {result; waiters} = as_async v in
-    sprintf "async %s" (string_of_def_nullary conenv t result)
+    sprintf "async %s" (string_of_def_nullary d conenv t result)
   | T.Like t -> 
     sprintf "like %s" (T.string_of_typ t) (* TBR *)
   | T.Obj (T.Actor, fs) ->
-    sprintf "actor %s" (string_of_val_nullary conenv (T.Obj (T.Object, fs)) v)
+    sprintf "actor %s" (string_of_val_nullary d conenv (T.Obj (T.Object, fs)) v)
   | T.Mut t ->
-    string_of_val conenv t !(as_mut v)
-  | _ -> string_of_val_nullary conenv t v
+    string_of_val' d conenv t !(as_mut v)
+  | _ -> string_of_val_nullary d conenv t v
 
-and string_of_def_nullary conenv t def =
+and string_of_def_nullary d conenv t def =
   match Lib.Promise.value_opt def with
-  | Some v -> string_of_val_nullary conenv t v
+  | Some v -> string_of_val_nullary d conenv t v
   | None -> "_"
 
-and string_of_def conenv t def =
+and string_of_def' d conenv t def =
   match Lib.Promise.value_opt def with
-  | Some v -> string_of_val conenv t v
+  | Some v -> string_of_val' d conenv t v
   | None -> "_"
+
+let string_of_val conenv t v = string_of_val' !Flags.print_depth conenv t v
+let string_of_def conenv t d = string_of_def' !Flags.print_depth conenv t d
 
 
 (* Debug pretty printing *)
 
-let rec debug_string_of_val_nullary = function
-  | Null  -> "null"
+let rec debug_string_of_val_nullary d = function
+  | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Nat n -> Nat.to_string n
   | Int i -> Int.to_string i
@@ -262,39 +263,36 @@ let rec debug_string_of_val_nullary = function
   | Char c -> string_of_char c
   | Text t -> string_of_text t
   | Tup vs ->
-    sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
+    sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val' d) vs))
   | Obj ve ->
+    if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (debug_string_of_val v)) (Env.bindings ve)))
+      sprintf "%s = %s" x (debug_string_of_val' (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
-      (List.map debug_string_of_val (Array.to_list a)))
-  | Opt o ->
-    (match o with
-    | None -> "null"
-    | Some v -> debug_string_of_val_nullary v
-    )
+      (List.map (debug_string_of_val' d) (Array.to_list a)))
   | Func f -> "func"
-  | v -> "(" ^ debug_string_of_val v ^ ")"
+  | v -> "(" ^ debug_string_of_val' d v ^ ")"
 
-and debug_string_of_val = function
-  | Opt None -> "null"
-  | Opt (Some v) -> debug_string_of_val v
+and debug_string_of_val' d = function
   | Async {result; waiters} ->
-    sprintf "async %s #%i" (debug_string_of_def_nullary result)
+    sprintf "async %s #%i" (debug_string_of_def_nullary d result)
       (List.length waiters)
-  | Mut r -> sprintf "%s" (debug_string_of_val !r)
-  | v -> debug_string_of_val_nullary v
+  | Mut r -> sprintf "%s" (debug_string_of_val' d !r)
+  | v -> debug_string_of_val_nullary d v
 
-and debug_string_of_def_nullary def =
+and debug_string_of_def_nullary d def =
   match Lib.Promise.value_opt def with
-  | Some v -> debug_string_of_val_nullary v
+  | Some v -> debug_string_of_val_nullary d v
   | None -> "_"
 
-and debug_string_of_def def =
+and debug_string_of_def' d def =
   match Lib.Promise.value_opt def with
-  | Some v -> debug_string_of_val v
+  | Some v -> debug_string_of_val' d v
   | None -> "_"
+
+let debug_string_of_val v = debug_string_of_val' !Flags.print_depth v
+let debug_string_of_def d = debug_string_of_def' !Flags.print_depth d
 
 
 let debug_string_of_tuple_val = function

@@ -150,7 +150,7 @@ and is_async_typ context t =
     let te, ce = is_shared_typ_binds context tbs in
     let context' = adjoin_typs context te ce in
     is_shared_typ context' t1 &&
-    (match T.structural context'.cons t2 with
+    (match T.normalize context'.cons t2 with
     | T.Tup [] | T.Async _ -> true
     | _ -> false
     )
@@ -287,7 +287,7 @@ let infer_lit context lit at : T.prim =
     assert false
 
 let rec check_lit context t lit at =
-  match T.structural context.cons t, !lit with
+  match T.normalize context.cons t, !lit with
   | T.Opt _, NullLit -> ()
   | T.Opt t, _ -> check_lit context t lit at
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
@@ -322,7 +322,7 @@ and infer_exp_mut context exp : T.typ =
   let t = infer_exp' context exp in
   if not context.pre then begin
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.structural context.cons t; note_eff = e}
+    exp.note <- {note_typ = T.normalize context.cons t; note_eff = e}
   end;
   t
 
@@ -570,7 +570,7 @@ and check_exp context t exp =
   check_exp' context t exp;
   if exp.note.note_typ = T.Pre then begin
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.structural context.cons t; note_eff = e}
+    exp.note <- {note_typ = T.normalize context.cons t; note_eff = e}
   end
 
 and check_exp' context t exp =
@@ -589,12 +589,12 @@ and check_exp' context t exp =
     check_exp context t exp1;
     check_exp context t exp2
   | RelE (exp1, op, exp2) ->
-    if not (T.eq context.cons t T.bool) then
+    if not (T.sub context.cons t T.bool) then
       error exp.at "operator cannot produce expected type %s"
         (T.string_of_typ t);
     ignore (infer_exp context exp)
   | TupE exps ->
-    (match T.structural context.cons t with
+    (match T.nonopt context.cons t with
     | T.Tup ts when List.length ts = List.length exps ->
       List.iter2 (check_exp context) ts exps
     | _ ->
@@ -602,21 +602,25 @@ and check_exp' context t exp =
         (if exps = [] then "empty" else "tuple")
         (T.string_of_typ t)
     )
+  | ObjE (sort, id, fields) ->
+    (match T.nonopt context.cons t with
+    | T.Obj (s, tfs) when s = sort.it ->
+      ignore (check_obj context s tfs id fields exp.at)
+    | _ ->
+      error exp.at "%s expression cannot produce expected type %s"
+        (if sort.it = T.Actor then "actor" else "object")
+        (T.string_of_typ t)
+    )
   | ArrayE exps ->
-    (match T.structural context.cons t with
+    (match T.nonopt context.cons t with
     | T.Array t1 ->
       List.iter (check_exp context (T.immutable t1)) exps
     | _ ->
       error exp.at "array expression cannot produce expected type %s"
-       (T.string_of_typ t)
+        (T.string_of_typ t)
     )
-  (* TBR: propagate mutablility via subtyping?
-  | IdxE (exp1, exp2) ->
-    check_exp context (T.Array (T.Const, t)) exp1;
-    check_exp context T.nat exp2
-  *)
   | AsyncE exp1 ->
-    (match T.structural context.cons t with
+    (match T.nonopt context.cons t with
     | T.Async t ->
       let context' =
         {context with labs = T.Env.empty; rets = Some t; async = true}
@@ -641,8 +645,7 @@ and check_exp' context t exp =
     ignore (infer_exp context exp)
   | _ ->
     let t' = infer_exp context exp in
-    (* TBR: use subtyping *)
-    if not (T.eq context.cons t t') then
+    if not (T.sub context.cons t' t) then
       error exp.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t')
 
@@ -696,7 +699,7 @@ and infer_pat context pat : T.typ * val_env =
   assert (pat.note.note_typ = T.Pre);
   let t, ve = infer_pat' context pat in
   if not context.pre then
-    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+    pat.note <- {note_typ = T.normalize context.cons t; note_eff = T.Triv};
   t, ve
 
 and infer_pat' context pat : T.typ * val_env =
@@ -733,7 +736,7 @@ and check_pat context t pat : val_env =
   assert (pat.note.note_typ = T.Pre);
   let ve = check_pat' context t pat in
   if not context.pre then
-    pat.note <- {note_typ = T.structural context.cons t; note_eff = T.Triv};
+    pat.note <- {note_typ = T.normalize context.cons t; note_eff = T.Triv};
   ve
 
 and check_pat' context t pat : val_env =
@@ -747,7 +750,7 @@ and check_pat' context t pat : val_env =
     T.Env.empty
   | SignP (op, lit) ->
     if not (Operator.has_unop t op) then
-      error pat.at "operator cannot produce expected type %s"
+      error pat.at "operator cannot consume expected type %s"
         (T.string_of_typ t);
     check_lit context t lit pat.at;
     T.Env.empty
@@ -756,12 +759,12 @@ and check_pat' context t pat : val_env =
     | T.Tup ts ->
       check_pats context ts pats T.Env.empty pat.at
     | _ ->
-      error pat.at "tuple pattern cannot produce expected type %s"
+      error pat.at "tuple pattern cannot consume expected type %s"
         (T.string_of_typ t)
     )
   | _ ->
     let t', ve = infer_pat context pat in
-    if not (T.eq context.cons t t') then
+    if not (T.sub context.cons t' t) then
       error pat.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
     ve
@@ -804,6 +807,35 @@ print_ve (adjoin_vals (add_val context id.it ((*t*) t_inner, T.Const)) ve).vals;
 (*Printf.printf "[object] done\n";*)
   T.Obj (s, tfs), t_inner
 
+
+and check_obj context s tfs id fields at : T.typ =
+  (* TBR: rethink private *)
+(*Printf.printf "[object] gather fields, context:\n";
+print_ce context.cons;
+print_ve context.vals;*)
+  let pre_ve = gather_exp_fields id.it fields in
+  let pre_ve' = List.fold_left (fun ve {T.name; typ = t} ->
+      if not (T.Env.mem name ve) then
+        error at "%s expression cannot produce expected type %s, field %s is missing"
+          (if s = T.Actor then "actor" else "object")
+          (T.string_of_typ t) name;
+      T.Env.add name t ve
+    ) pre_ve tfs
+  in
+(*Printf.printf "[object] pre-infer fields\n";*)
+  let pre_context = adjoin_vals {context with pre = true} pre_ve' in
+  let _, tfs_inner, ve = infer_exp_fields pre_context s id.it T.Pre fields in
+  let t_inner = T.Obj (s, tfs_inner) in
+(*print_ve ve;
+Printf.printf "[object] infer fields, context:\n";
+print_ce context.cons;
+print_ve (adjoin_vals (add_val context id.it ((*t*) t_inner, T.Const)) ve).vals;*)
+  let context' = adjoin_vals (add_val context id.it (*t*) t_inner) ve in
+  ignore (infer_exp_fields context' s id.it (*t*) t_inner fields);
+(*Printf.printf "[object] done\n";*)
+  t_inner
+
+
 and gather_exp_fields id fields : val_env =
   let ve0 = T.Env.singleton id T.Pre in
   List.fold_left gather_exp_field ve0 fields
@@ -814,6 +846,7 @@ and gather_exp_field ve field : val_env =
     error id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it T.Pre ve
 
+
 and infer_exp_fields context s id t fields : T.field list * T.field list * val_env =
   let context' = add_val context id t in
   let tfs, tfs_inner, ve =
@@ -822,8 +855,14 @@ and infer_exp_fields context s id t fields : T.field list * T.field list * val_e
 
 and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.field list * val_env =
   let {id; exp; mut; priv} = field.it in
-  let t1 = infer_exp (adjoin_vals context ve) exp in
-  let t = infer_mut mut t1 in
+  let t =
+    match T.Env.find id.it context.vals with
+    | T.Pre -> infer_mut mut (infer_exp (adjoin_vals context ve) exp)
+    | t ->
+      if not context.pre then
+        check_exp (adjoin_vals context ve) (T.immutable t) exp;
+      t
+  in
   if not context.pre then begin
     if s = T.Actor && priv.it = Public && not (is_async_typ context t) then
       error field.at "public actor field %s has non-async type %s"
@@ -834,6 +873,31 @@ and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.fiel
   let tfs' =
     if priv.it = Private then tfs else {T.name = id.it; typ = t} :: tfs
   in tfs', tfs_inner', ve'
+
+
+(*
+and check_exp_fields context s tfs id t fields : T.field list * val_env =
+  let context' = add_val context id t in
+  let tfs_inner, ve =
+    List.fold_left (check_exp_field context' s tfs) ([], T.Env.empty) fields in
+  List.sort compare tfs_inner, ve
+
+and check_exp_field context s tfs (tfs_inner, ve) field : T.field list * val_env =
+  let {id; exp; mut; priv} = field.it in
+  if priv = Private then begin
+    let _, tfs_inner', ve' =
+      infer_exp_field context s ([], tfs_inner, ve) field
+    in tfs_inner', ve'
+  end else begin
+    check_exp (adjoin_vals context ve) (T.Env.find context.vals id.it) exp;
+    if s = T.Actor && priv.it = Public && not (is_async_typ context t) then
+      error field.at "public actor field %s has non-async type %s"
+        id.it (T.string_of_typ t)
+  end;
+  let ve' = T.Env.add id.it t ve in
+  let tfs_inner' = {T.name = id.it; typ = t} :: tfs_inner in
+  tfs_inner', ve'
+*)
 
 
 (* Blocks and Declarations *)
@@ -897,7 +961,7 @@ and check_block context t decs at : scope =
 and check_block_exps context ce_inner t decs at =
   match decs with
   | [] ->
-    if not (T.eq context.cons t T.unit) then
+    if not (T.sub context.cons T.unit t) then
       error at "empty block cannot produce type %s" (T.string_of_typ t)
   | [dec] ->
     check_dec context ce_inner t dec
@@ -911,7 +975,7 @@ and check_dec context ce_inner t dec =
   | _ ->
     let t' = infer_dec context ce_inner dec in
     (* TBR: special-case unit? *)
-    if not (T.eq context.cons t T.unit || T.eq context.cons t t') then
+    if not (T.eq context.cons t T.unit || T.sub context.cons t' t) then
       error dec.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
 

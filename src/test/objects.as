@@ -6,6 +6,10 @@ type O = {self : () -> O};
 let o = new this {self() : O = this};
 let oo = o.self();
 
+type Q = {var this : Q?};
+let q : Q = new {var this = null};
+q.this := q;
+
 let tictac = new this {
   tic(n : Int) = if (n > 0) this.tac(n - 1);
   tac(n : Int) = if (n > 0) this.tic(n - 1);

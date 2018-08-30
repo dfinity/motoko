@@ -146,95 +146,95 @@ let cmpi : (Int, Int) -> Int
 let qs : QS<Int>
 -- Interpreting quicksort.as:
 QS(func)
-QS(func) => {partition = func; quicksort = func; swap = func; trace = func}
+  <= {partition = func; quicksort = func; swap = func; trace = func}
 quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
     trace([8, 3, 9, 5, 2])
-    trace([8, 3, 9, 5, 2]) => ()
+      <= ()
     cmpi(8, 8)
-    cmpi(8, 8) => 0
+      <= 0
     cmpi(2, 8)
-    cmpi(2, 8) => -6
+      <= -6
     swap([8, 3, 9, 5, 2], 0, 4)
-    swap([2, 3, 9, 5, 8], 0, 4) => ()
+      <= ()
     cmpi(2, 8)
-    cmpi(2, 8) => -6
+      <= -6
     cmpi(3, 8)
-    cmpi(3, 8) => -5
+      <= -5
     cmpi(9, 8)
-    cmpi(9, 8) => 1
+      <= 1
     cmpi(8, 8)
-    cmpi(8, 8) => 0
+      <= 0
     swap([2, 3, 9, 5, 8], 2, 4)
-    swap([2, 3, 8, 5, 9], 2, 4) => ()
+      <= ()
     cmpi(8, 8)
-    cmpi(8, 8) => 0
+      <= 0
     cmpi(9, 8)
-    cmpi(9, 8) => 1
+      <= 1
     cmpi(5, 8)
-    cmpi(5, 8) => -3
+      <= -3
     swap([2, 3, 8, 5, 9], 2, 3)
-    swap([2, 3, 5, 8, 9], 2, 3) => ()
+      <= ()
     cmpi(5, 8)
-    cmpi(5, 8) => -3
+      <= -3
     cmpi(8, 8)
-    cmpi(8, 8) => 0
+      <= 0
     cmpi(8, 8)
-    cmpi(8, 8) => 0
-  partition([2, 3, 5, 8, 9], 0, 4) => 3
+      <= 0
+    <= 3
   quicksort([2, 3, 5, 8, 9], 0, 3)
     partition([2, 3, 5, 8, 9], 0, 3)
       trace([2, 3, 5, 8, 9])
-      trace([2, 3, 5, 8, 9]) => ()
+        <= ()
       cmpi(2, 2)
-      cmpi(2, 2) => 0
+        <= 0
       cmpi(8, 2)
-      cmpi(8, 2) => 6
+        <= 6
       cmpi(5, 2)
-      cmpi(5, 2) => 3
+        <= 3
       cmpi(3, 2)
-      cmpi(3, 2) => 1
+        <= 1
       cmpi(2, 2)
-      cmpi(2, 2) => 0
-    partition([2, 3, 5, 8, 9], 0, 3) => 0
+        <= 0
+      <= 0
     quicksort([2, 3, 5, 8, 9], 0, 0)
-    quicksort([2, 3, 5, 8, 9], 0, 0) => ()
+      <= ()
     quicksort([2, 3, 5, 8, 9], 1, 3)
       partition([2, 3, 5, 8, 9], 1, 3)
         trace([2, 3, 5, 8, 9])
-        trace([2, 3, 5, 8, 9]) => ()
+          <= ()
         cmpi(3, 3)
-        cmpi(3, 3) => 0
+          <= 0
         cmpi(8, 3)
-        cmpi(8, 3) => 5
+          <= 5
         cmpi(5, 3)
-        cmpi(5, 3) => 2
+          <= 2
         cmpi(3, 3)
-        cmpi(3, 3) => 0
-      partition([2, 3, 5, 8, 9], 1, 3) => 1
+          <= 0
+        <= 1
       quicksort([2, 3, 5, 8, 9], 1, 1)
-      quicksort([2, 3, 5, 8, 9], 1, 1) => ()
+        <= ()
       quicksort([2, 3, 5, 8, 9], 2, 3)
         partition([2, 3, 5, 8, 9], 2, 3)
           trace([2, 3, 5, 8, 9])
-          trace([2, 3, 5, 8, 9]) => ()
+            <= ()
           cmpi(5, 5)
-          cmpi(5, 5) => 0
+            <= 0
           cmpi(8, 5)
-          cmpi(8, 5) => 3
+            <= 3
           cmpi(5, 5)
-          cmpi(5, 5) => 0
-        partition([2, 3, 5, 8, 9], 2, 3) => 2
+            <= 0
+          <= 2
         quicksort([2, 3, 5, 8, 9], 2, 2)
-        quicksort([2, 3, 5, 8, 9], 2, 2) => ()
+          <= ()
         quicksort([2, 3, 5, 8, 9], 3, 3)
-        quicksort([2, 3, 5, 8, 9], 3, 3) => ()
-      quicksort([2, 3, 5, 8, 9], 2, 3) => ()
-    quicksort([2, 3, 5, 8, 9], 1, 3) => ()
-  quicksort([2, 3, 5, 8, 9], 0, 3) => ()
+          <= ()
+        <= ()
+      <= ()
+    <= ()
   quicksort([2, 3, 5, 8, 9], 4, 4)
-  quicksort([2, 3, 5, 8, 9], 4, 4) => ()
-quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+    <= ()
+  <= ()
 -- Finished quicksort.as:
 let QS : <T/5>((T/5, T/5) -> Int) -> QS<T/5> = func
 let a : var Int[] = [2, 3, 5, 8, 9]
@@ -251,35 +251,35 @@ let x : ()
 quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
     swap([8, 3, 9, 5, 2], 0, 4)
-    swap([2, 3, 9, 5, 8], 0, 4) => ()
+      <= ()
     swap([2, 3, 9, 5, 8], 2, 4)
-    swap([2, 3, 8, 5, 9], 2, 4) => ()
+      <= ()
     swap([2, 3, 8, 5, 9], 2, 3)
-    swap([2, 3, 5, 8, 9], 2, 3) => ()
-  partition([2, 3, 5, 8, 9], 0, 4) => 3
+      <= ()
+    <= 3
   quicksort([2, 3, 5, 8, 9], 0, 3)
     partition([2, 3, 5, 8, 9], 0, 3)
-    partition([2, 3, 5, 8, 9], 0, 3) => 0
+      <= 0
     quicksort([2, 3, 5, 8, 9], 0, 0)
-    quicksort([2, 3, 5, 8, 9], 0, 0) => ()
+      <= ()
     quicksort([2, 3, 5, 8, 9], 1, 3)
       partition([2, 3, 5, 8, 9], 1, 3)
-      partition([2, 3, 5, 8, 9], 1, 3) => 1
+        <= 1
       quicksort([2, 3, 5, 8, 9], 1, 1)
-      quicksort([2, 3, 5, 8, 9], 1, 1) => ()
+        <= ()
       quicksort([2, 3, 5, 8, 9], 2, 3)
         partition([2, 3, 5, 8, 9], 2, 3)
-        partition([2, 3, 5, 8, 9], 2, 3) => 2
+          <= 2
         quicksort([2, 3, 5, 8, 9], 2, 2)
-        quicksort([2, 3, 5, 8, 9], 2, 2) => ()
+          <= ()
         quicksort([2, 3, 5, 8, 9], 3, 3)
-        quicksort([2, 3, 5, 8, 9], 3, 3) => ()
-      quicksort([2, 3, 5, 8, 9], 2, 3) => ()
-    quicksort([2, 3, 5, 8, 9], 1, 3) => ()
-  quicksort([2, 3, 5, 8, 9], 0, 3) => ()
+          <= ()
+        <= ()
+      <= ()
+    <= ()
   quicksort([2, 3, 5, 8, 9], 4, 4)
-  quicksort([2, 3, 5, 8, 9], 4, 4) => ()
-quicksort([2, 3, 5, 8, 9], 0, 4) => ()
+    <= ()
+  <= ()
 -- Finished hoare.as:
 let a : var Int[] = [2, 3, 5, 8, 9]
 let partition : (var Int[], Nat, Nat) -> Nat = func
@@ -302,44 +302,78 @@ let transfer : (Account, Account, Int) -> async ()
 -- Interpreting bankex.as:
 Bank(100)
   Issuer()
-  Issuer() => {hasIssued = func}
+    <= {hasIssued = func}
   Account(100)
-  Account(100) => {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-Bank(100) => {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
+    <= {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+  <= {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 test()
-test() => async _ #0
-getReserve()
-getReserve() => async _ #0
-split(10)
-split(10) => async _ #0
-Account(10)
-Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-split(10)
-split(10) => async _ #0
-Account(10)
-Account(10) => {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
-transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5) => async _ #0
-split(5)
-split(5) => async _ #0
-Account(5)
-Account(5) => {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-  credit(5)
-  credit(5) => ()
-join({balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
-show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func}) => ()
+  -> async bankex.as:55.40-67.2
+  <= async _ #0
+<- async bankex.as:55.40-67.2
+  -> message getReserve()
+  => await bankex.as:56.17-56.37
+<- message getReserve()
+  getReserve()
+    -> async bankex.as:5.32-6.21
+    <= async _ #0
+<- async bankex.as:5.32-6.21
+<- await bankex.as:56.17-56.37({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message split(10)
+  => await bankex.as:57.12-57.35
+<- message split(10)
+  split(10)
+    -> async bankex.as:22.39-25.4
+    <= async _ #0
+<- async bankex.as:22.39-25.4
+  Account(10)
+    <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bankex.as:57.12-57.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message split(10)
+  => await bankex.as:58.12-58.35
+<- message split(10)
+  split(10)
+    -> async bankex.as:22.39-25.4
+    <= async _ #0
+<- async bankex.as:22.39-25.4
+  Account(10)
+    <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bankex.as:58.12-58.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
+    -> async bankex.as:45.91-48.2
+    <= async _ #0
+  => await bankex.as:62.3-62.28
+<- async bankex.as:45.91-48.2
+  -> message split(5)
+  => await bankex.as:46.13-46.39
+<- message split(5)
+  split(5)
+    -> async bankex.as:22.39-25.4
+    <= async _ #0
+<- async bankex.as:22.39-25.4
+  Account(5)
+    <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bankex.as:46.13-46.39({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  <= ()
+<- message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    credit(5)
+      <= ()
+    <= ()
+<- await bankex.as:62.3-62.28()
+  show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  <= ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 -- Finished bankex.as:
 let Account : Int -> Account = func
 let Bank : Int -> Bank = func
@@ -358,49 +392,69 @@ let show : Int -> ()
 let test : () -> ()
 -- Interpreting counter.as:
 Counter(10)
-Counter(10) => {c = 10; dec = func; read = func}
+  <= {c = 10; dec = func; read = func}
 test()
-test() => ()
-dec()
-  show(10)
-  show(10) => ()
-dec() => ()
-dec()
-  show(9)
-  show(9) => ()
-dec() => ()
-dec()
-  show(8)
-  show(8) => ()
-dec() => ()
-dec()
-  show(7)
-  show(7) => ()
-dec() => ()
-dec()
-  show(6)
-  show(6) => ()
-dec() => ()
-dec()
-  show(5)
-  show(5) => ()
-dec() => ()
-dec()
-  show(4)
-  show(4) => ()
-dec() => ()
-dec()
-  show(3)
-  show(3) => ()
-dec() => ()
-dec()
-  show(2)
-  show(2) => ()
-dec() => ()
-dec()
-  show(1)
-  show(1) => ()
-dec() => ()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  -> message dec()
+  <= ()
+<- message dec()
+  dec()
+    show(10)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(9)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(8)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(7)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(6)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(5)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(4)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(3)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(2)
+      <= ()
+    <= ()
+<- message dec()
+  dec()
+    show(1)
+      <= ()
+    <= ()
 -- Finished counter.as:
 let Counter : Int -> Counter = func
 let c : Counter = Counter
@@ -412,27 +466,30 @@ let passed : Bool
 let test : () -> Int
 -- Interpreting testwhile.as:
 test()
-test() => 0
+  <= 0
 -- Finished testwhile.as:
 let passed : Bool = true
 let test : () -> Int = func
 
 -- Checking objects.as:
 type O = {self : () -> O}
+type Q = {this : var Q?}
 let ignore : (async ()) -> ()
 let o : {self : () -> O}
 let oo : O
 let p : {get_y : () -> Int; x : Int}
+let q : Q
 let tictac : {tac : Int -> (); tic : Int -> ()}
-let tictac_actor : actor {tac : Int -> async (); tic : Int -> async ()}
-let tictac_async : {tac : Int -> async (); tic : Int -> async ()}
+let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()}
+let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()}
+let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()}
 let x : Int
 let y : Int
 -- Interpreting objects.as:
 get_y()
-get_y() => 2
+  <= 2
 self()
-self() => {self = func}
+  <= {self = func}
 tic(10)
   tac(9)
     tic(8)
@@ -444,115 +501,254 @@ tic(10)
                 tic(2)
                   tac(1)
                     tic(0)
-                    tic(0) => ()
-                  tac(1) => ()
-                tic(2) => ()
-              tac(3) => ()
-            tic(4) => ()
-          tac(5) => ()
-        tic(6) => ()
-      tac(7) => ()
-    tic(8) => ()
-  tac(9) => ()
-tic(10) => ()
-tic(10)
-tic(10) => async _ #0
-tac(9)
-tac(9) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(10)
-tic(10) => async _ #0
-tic(8)
-tic(8) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(7)
-tac(7) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(9)
-tac(9) => async _ #0
-tic(6)
-tic(6) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(5)
-tac(5) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(8)
-tic(8) => async _ #0
-tic(4)
-tic(4) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(3)
-tac(3) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(7)
-tac(7) => async _ #0
-tic(2)
-tic(2) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(1)
-tac(1) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(6)
-tic(6) => async _ #0
-tic(0)
-tic(0) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(5)
-tac(5) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(4)
-tic(4) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(3)
-tac(3) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(2)
-tic(2) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tac(1)
-tac(1) => async _ #0
-ignore(async _ #0)
-ignore(async _ #0) => ()
-tic(0)
-tic(0) => async _ #0
+                      <= ()
+                    <= ()
+                  <= ()
+                <= ()
+              <= ()
+            <= ()
+          <= ()
+        <= ()
+      <= ()
+    <= ()
+  <= ()
+-> message tic_msg(10)
+tic_async(10)
+  -> async objects.as:28.33-28.77
+  <= async _ #0
+-> message tic_msg_async(10)
+-> async objects.as:39.9-39.18
+objects.as:40.9-40.12: execution error, arithmetic overflow
+<- message tic_msg(10)
+  tic_msg(10)
+    -> message tac_msg(9)
+    <= ()
+<- async objects.as:28.33-28.77
+  tac_async(9)
+    -> async objects.as:29.33-29.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(10)
+  tic_msg_async(10)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- async objects.as:39.9-39.18
+objects.as:39.15-39.18: execution error, arithmetic overflow
+<- message tac_msg(9)
+  tac_msg(9)
+    -> message tic_msg(8)
+    <= ()
+<- async objects.as:29.33-29.77
+  tic_async(8)
+    -> async objects.as:28.33-28.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- async objects.as:34.37-34.85
+  -> message tac_msg_async(9)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg(8)
+  tic_msg(8)
+    -> message tac_msg(7)
+    <= ()
+<- async objects.as:28.33-28.77
+  tac_async(7)
+    -> async objects.as:29.33-29.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tac_msg_async(9)
+  tac_msg_async(9)
+    -> async objects.as:35.37-35.85
+    <= async _ #0
+<- message tac_msg(7)
+  tac_msg(7)
+    -> message tic_msg(6)
+    <= ()
+<- async objects.as:29.33-29.77
+  tic_async(6)
+    -> async objects.as:28.33-28.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- async objects.as:35.37-35.85
+  -> message tic_msg_async(8)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg(6)
+  tic_msg(6)
+    -> message tac_msg(5)
+    <= ()
+<- async objects.as:28.33-28.77
+  tac_async(5)
+    -> async objects.as:29.33-29.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(8)
+  tic_msg_async(8)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- message tac_msg(5)
+  tac_msg(5)
+    -> message tic_msg(4)
+    <= ()
+<- async objects.as:29.33-29.77
+  tic_async(4)
+    -> async objects.as:28.33-28.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- async objects.as:34.37-34.85
+  -> message tac_msg_async(7)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg(4)
+  tic_msg(4)
+    -> message tac_msg(3)
+    <= ()
+<- async objects.as:28.33-28.77
+  tac_async(3)
+    -> async objects.as:29.33-29.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tac_msg_async(7)
+  tac_msg_async(7)
+    -> async objects.as:35.37-35.85
+    <= async _ #0
+<- message tac_msg(3)
+  tac_msg(3)
+    -> message tic_msg(2)
+    <= ()
+<- async objects.as:29.33-29.77
+  tic_async(2)
+    -> async objects.as:28.33-28.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- async objects.as:35.37-35.85
+  -> message tic_msg_async(6)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg(2)
+  tic_msg(2)
+    -> message tac_msg(1)
+    <= ()
+<- async objects.as:28.33-28.77
+  tac_async(1)
+    -> async objects.as:29.33-29.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(6)
+  tic_msg_async(6)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- message tac_msg(1)
+  tac_msg(1)
+    -> message tic_msg(0)
+    <= ()
+<- async objects.as:29.33-29.77
+  tic_async(0)
+    -> async objects.as:28.33-28.77
+    <= async _ #0
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- async objects.as:34.37-34.85
+  -> message tac_msg_async(5)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg(0)
+  tic_msg(0)
+    <= ()
+<- async objects.as:28.33-28.77
+  <= ()
+<- message tac_msg_async(5)
+  tac_msg_async(5)
+    -> async objects.as:35.37-35.85
+    <= async _ #0
+<- async objects.as:35.37-35.85
+  -> message tic_msg_async(4)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(4)
+  tic_msg_async(4)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- async objects.as:34.37-34.85
+  -> message tac_msg_async(3)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tac_msg_async(3)
+  tac_msg_async(3)
+    -> async objects.as:35.37-35.85
+    <= async _ #0
+<- async objects.as:35.37-35.85
+  -> message tic_msg_async(2)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(2)
+  tic_msg_async(2)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- async objects.as:34.37-34.85
+  -> message tac_msg_async(1)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tac_msg_async(1)
+  tac_msg_async(1)
+    -> async objects.as:35.37-35.85
+    <= async _ #0
+<- async objects.as:35.37-35.85
+  -> message tic_msg_async(0)
+  ignore(async _ #0)
+    <= ()
+  <= ()
+<- message tic_msg_async(0)
+  tic_msg_async(0)
+    -> async objects.as:34.37-34.85
+    <= async _ #0
+<- async objects.as:34.37-34.85
+  <= ()
 -- Finished objects.as:
 let ignore : (async ()) -> () = func
 let o : {self : () -> O} = {self = func}
 let oo : O = {self = func}
 let p : {get_y : () -> Int; x : Int} = {get_y = func; x = 3}
+let q : Q = {this = {this = {...}}}
 let tictac : {tac : Int -> (); tic : Int -> ()} = {tac = func; tic = func}
-let tictac_actor : actor {tac : Int -> async (); tic : Int -> async ()} = actor {tac = func; tic = func}
-let tictac_async : {tac : Int -> async (); tic : Int -> async ()} = {tac = func; tic = func}
+let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()} = actor {tac_msg = func; tic_msg = func}
+let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()} = actor {tac_msg_async = func; tic_msg_async = func}
+let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()} = {tac_async = func; tic_async = func}
 let x : Int = 3
 let y : Int = 2
 
 -- Checking overflow.as:
 -- Interpreting overflow.as:
 overflow.as:17.9-17.24: execution error, arithmetic overflow
+-- Finished overflow.as:
 
 -- Checking menhirbug.as:
 type A = {x : {}}

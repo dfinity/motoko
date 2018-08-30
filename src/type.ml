@@ -170,7 +170,7 @@ let make_subst =
   List.fold_left2 (fun sigma t tb -> Con.Env.add tb.con t sigma) Con.Env.empty
 
 
-(* Normalization *)
+(* Normalization and Classification *)
 
 let rec normalize env = function
   | Var (con, ts) as t ->
@@ -179,6 +179,11 @@ let rec normalize env = function
     | Some _ -> t
     | None -> assert false
     )
+  | t -> t
+
+let nonopt env t =
+  match normalize env t with
+  | Opt t -> normalize env t
   | t -> t
 
 let rec structural env = function
@@ -274,6 +279,48 @@ and eq_binds env eqs tbs1 tbs2 =
     let env' = Con.Env.add tb1.con (Def ([], Var (tb2.con, []))) env in
     eq_binds env' eqs tbs1' tbs2'
   | _, _ -> None
+
+
+(* Subtyping *)
+
+let rec sub env t1 t2 =
+  (* TBR: this is just a quick hack *)
+  match normalize env t1, normalize env t2 with
+  | _, Any -> true
+  | Prim Nat, Prim Int -> true
+  | Opt t1', Opt t2' -> sub env t1' t2'
+  | t1', Opt t2' -> sub env t1' t2'
+  | t1', t2' -> eq env t1' t2'
+
+
+(* Join and Meet *)
+
+let rec join env t1 t2 =
+  (* TBR: this is just a quick hack *)
+  match normalize env t1, normalize env t2 with
+  | _, Any
+  | Any, _ -> Any
+  | Prim Nat, Prim Int
+  | Prim Int, Prim Nat -> Prim Int
+  | Opt t1', Opt t2' -> Opt (join env t1' t2')
+  | t1', Opt t2'
+  | Opt t1', t2' -> Opt (join env t1' t2')
+  | t1', t2' when eq env t1' t2' -> t1
+  | _ -> Any
+
+
+let rec meet env t1 t2 =
+  (* TBR: this is just a quick hack *)
+  match normalize env t1, normalize env t2 with
+  | _, Any -> t1
+  | Any, _ -> t2
+  | Prim Nat, Prim Int
+  | Prim Int, Prim Nat -> Prim Nat
+  | Opt t1', Opt t2' -> Opt (meet env t1' t2')
+  | t1', Opt t2'
+  | Opt t1', t2' -> meet env t1' t2'
+  | t1', t2' when eq env t1' t2' -> t1
+  | _ -> failwith "meet"  (* TBR *)
 
 
 (* Environments *)

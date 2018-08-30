@@ -26,9 +26,10 @@ let print_ve =
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
 
-let print_dyn_ve ce ve dyn_ve =
-  Type.Env.iter (fun x t ->
-    match Lib.Promise.value (Value.Env.find x dyn_ve) with
+let print_dyn_ve {Typing.cons = ce; vals = ve; _} dyn_ve =
+  Value.Env.iter (fun x d ->
+    let t = Type.Env.find x ve in
+    match Lib.Promise.value d with
     | Value.Mut r ->
       let t' = Type.immutable t in
       printf "var %s : %s = %s\n"
@@ -36,16 +37,16 @@ let print_dyn_ve ce ve dyn_ve =
     | v ->
       printf "let %s : %s = %s\n"
         x (Type.string_of_typ t) (Value.string_of_val ce t v)
-  ) ve
+  ) dyn_ve
 
 let print_debug_ve =
   Value.Env.iter (fun x d ->
     printf "%s = %s\n" x (Value.debug_string_of_def d)
   )
 
-let print_scope (ve, te, ce) dyn_ve =
+let print_scope context (ve, te, ce) dyn_ve =
   print_ce ce;
-  print_dyn_ve ce ve dyn_ve
+  print_dyn_ve context dyn_ve
 
 let trace heading filename =
   if !Flags.trace then printf "-- %s %s:\n" heading filename
@@ -60,28 +61,26 @@ let run (stat_context, dyn_context) lexer parse name =
     let prog = parse Lexer.token lexer in 
     trace "Checking" name;
     let (ve, te, ce) as stat_scope = Typing.check_prog stat_context prog in
+    let stat_context' = Typing.adjoin stat_context stat_scope in
     if !Flags.trace then begin
       print_ce ce;
       print_ve ve
     end;
     trace "Interpreting" name;
     let dyn_scope = Interpret.interpret_prog dyn_context prog in
+    let dyn_context' = Interpret.adjoin dyn_context dyn_scope in
     trace "Finished" name;
     if !Flags.interactive then
-      print_scope stat_scope dyn_scope
+      print_scope stat_context' stat_scope dyn_scope
     else if !Flags.trace then
-      print_dyn_ve ce ve dyn_scope;
-    Some (
-      Typing.adjoin stat_context stat_scope,
-      Interpret.adjoin dyn_context dyn_scope
-    )
+      print_dyn_ve stat_context' dyn_scope;
+    Some (stat_context', dyn_context')
   with exn ->
     let r, sort, msg, dump =
       match exn with
       | Lexer.Error (at, msg) -> at, "syntax", msg, false
       | Parser.Error -> Lexer.region lexer, "syntax", "unexpected token", false
       | Typing.Error (at, msg) -> at, "type", msg, false
-      | Interpret.Trap (at, msg) -> at, "execution", msg, false
       | End_of_file -> raise exn
       | _ ->
         Interpret.get_last_region (), "fatal", Printexc.to_string exn, true
@@ -155,6 +154,7 @@ let argspec = Arg.align
     " run interactively (default if no files given)";
   "-t", Arg.Set Flags.trace, " trace phases";
   "-d", Arg.Set Flags.debug, " debug, trace calls";
+  "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-v", Arg.Unit (fun () -> printf "%s\n" banner), " show version"
 ]
 
