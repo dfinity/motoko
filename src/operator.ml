@@ -13,7 +13,8 @@ let word_unop fword8 fword16 fword32 fword64 = function
   | T.Word64 -> fun v -> Word64 (fword64 (as_word64 v))
   | _ -> raise (Invalid_argument "unop")
 
-let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
+let num_unop fnat fint fword8 fword16 fword32 fword64 ffloat = function
+  | T.Nat -> fun v -> Int (fint (as_int v))
   | T.Int -> fun v -> Int (fint (as_int v))
   | T.Float -> fun v -> Float (ffloat (as_float v))
   | t -> word_unop fword8 fword16 fword32 fword64 t
@@ -22,8 +23,8 @@ let unop t op =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in num_unop id id id id id id p
-    | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
+    | PosOp -> let id v = v in num_unop id id id id id id id p
+    | NegOp -> num_unop Int.neg Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
     | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
     )
   | _ -> raise (Invalid_argument "unop")

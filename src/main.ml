@@ -29,14 +29,13 @@ let print_ve =
 let print_dyn_ve {Typing.cons = ce; vals = ve; _} dyn_ve =
   Value.Env.iter (fun x d ->
     let t = Type.Env.find x ve in
-    match Lib.Promise.value d with
-    | Value.Mut r ->
-      let t' = Type.immutable t in
-      printf "var %s : %s = %s\n"
-        x (Type.string_of_typ t') (Value.string_of_val ce t' !r)
-    | v ->
-      printf "let %s : %s = %s\n"
-        x (Type.string_of_typ t) (Value.string_of_val ce t v)
+    let t' = Type.immutable t in
+    printf "%s %s : %s = %s\n"
+      (if t == t' then "let" else "var") x (Type.string_of_typ t')
+      (match Lib.Promise.value_opt d with
+      | None -> "_"
+      | Some v -> Value.string_of_val ce t' v
+      )
   ) dyn_ve
 
 let print_debug_ve =

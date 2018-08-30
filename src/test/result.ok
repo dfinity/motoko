@@ -477,13 +477,13 @@ type Q = {this : var Q?}
 let ignore : (async ()) -> ()
 let o : {self : () -> O}
 let oo : O
-let p : {get_y : () -> Int; x : Int}
+let p : {get_y : () -> Int; x : Nat}
 let q : Q
 let tictac : {tac : Int -> (); tic : Int -> ()}
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()}
 let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()}
-let x : Int
+let x : Nat
 let y : Int
 -- Interpreting objects.as:
 get_y()
@@ -736,13 +736,13 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
 let ignore : (async ()) -> () = func
 let o : {self : () -> O} = {self = func}
 let oo : O = {self = func}
-let p : {get_y : () -> Int; x : Int} = {get_y = func; x = 3}
+let p : {get_y : () -> Int; x : Nat} = {get_y = func; x = 3}
 let q : Q = {this = {this = {...}}}
 let tictac : {tac : Int -> (); tic : Int -> ()} = {tac = func; tic = func}
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()} = actor {tac_msg = func; tic_msg = func}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()} = actor {tac_msg_async = func; tic_msg_async = func}
 let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()} = {tac_async = func; tic_async = func}
-let x : Int = 3
+let x : Nat = 3
 let y : Int = 2
 
 -- Checking overflow.as:

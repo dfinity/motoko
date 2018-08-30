@@ -23,8 +23,8 @@ module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
 module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
 module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : NumType
-module Int : NumType
+module Nat : NumType with type t = Z.t
+module Int : NumType with type t = Z.t
 
 
 (* Environment *)

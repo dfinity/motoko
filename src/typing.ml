@@ -274,9 +274,8 @@ let infer_lit context lit at : T.prim =
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
   | PreLit (s, T.Nat) ->
-    (* TBR: default to nat, or replace defaulting with subtyping? *)
-    lit := IntLit (check_int at s); (* default *)
-    T.Int
+    lit := NatLit (check_nat at s); (* default *)
+    T.Nat
   | PreLit (s, T.Int) ->
     lit := IntLit (check_int at s); (* default *)
     T.Int
@@ -350,12 +349,8 @@ and infer_exp' context exp : T.typ =
   | BinE (exp1, op, exp2) ->
     let t1 = infer_exp context exp1 in
     let t2 = infer_exp context exp2 in
-    (* TBR: join *)
-    let t = T.structural context.cons t1 in
+    let t = T.join context.cons t1 t2 in
     if not context.pre then begin
-      if not (T.eq context.cons t1 t2) then
-        error exp.at "operands have consistent types, %s vs %s"
-          (T.string_of_typ t1) (T.string_of_typ t2);
       if not (Operator.has_binop t op) then
         error exp.at "operator not defined for operand type %s"
           (T.string_of_typ t)
@@ -364,12 +359,8 @@ and infer_exp' context exp : T.typ =
   | RelE (exp1, op, exp2) ->
     let t1 = infer_exp context exp1 in
     let t2 = infer_exp context exp2 in
-    (* TBR: join *)
-    let t = T.structural context.cons t1 in
+    let t = T.join context.cons t1 t2 in
     if not context.pre then begin
-      if not (T.eq context.cons t1 t2) then
-        error exp.at "operands have inconsistent types, %s vs %s"
-          (T.string_of_typ t1) (T.string_of_typ t2);
       if not (Operator.has_relop t op) then
         error exp.at "operator is not defined for operand type %s"
           (T.string_of_typ t)

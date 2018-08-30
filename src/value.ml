@@ -81,7 +81,7 @@ sig
   val ge : t -> t -> bool
 end
 
-module Int : NumType =
+module Int : NumType with type t = Z.t =
 struct
   include Z
   let of_string s = Z.of_string (String.concat "" (String.split_on_char '_' s))
@@ -91,7 +91,7 @@ struct
   let ge = geq
 end
 
-module Nat : NumType =
+module Nat : NumType with type t = Z.t =
 struct
   include Int
   let sub x y =
@@ -134,7 +134,7 @@ let invalid s = raise (Invalid_argument s)
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
 let as_nat = function Nat n -> n | _ -> invalid "as_nat"
-let as_int = function Int n -> n | _ -> invalid "as_int"
+let as_int = function Int n -> n | Nat n -> n | _ -> invalid "as_int"
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
