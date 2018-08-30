@@ -42,17 +42,16 @@ stdenv.mkDerivation rec {
     cp asc $out/bin
     # Do I have to add the dependecy on gmp this way?
     wrapProgram $out/bin/asc \
-	--prefix LD_LIBRARY_PATH : "${nixpkgs.gmp}/lib"
+	--prefix LD_LIBRARY_PATH : "${nixpkgs.ocamlPackages.zarith}/lib/ocaml/${nixpkgs.ocaml.version}/site-lib/zarith/"
   '';
 
-  # This does not work yet
-  #
-  # doInstallCheck = true;
-  #
-  # # Do I really manually set the path here?
-  # installCheckPhase = ''
-  #   $out/bin/asc -v
-  #   make -C test ASC=$out/bin/asc all
-  #   make -C samples ASC=$out/bin/asc all
-  # '';
+  # The binary does not work until we use wrapProgram, which runs in
+  # the install phase. Therefore, we use the installCheck phase to 
+  # run the test suite
+  doInstallCheck = true;
+  installCheckPhase = ''
+    $out/bin/asc -v
+    make -C test ASC=$out/bin/asc all
+    make -C samples ASC=$out/bin/asc all
+  '';
 }
