@@ -12,15 +12,25 @@ let tictac = new this {
 };
 let () = tictac.tic(10);
 
-func ignore(_ : async ()) = ();
-let tictac_async = new this {
-  tic(n : Int) : async () { if (n > 0) ignore(this.tac(n - 1)) };
-  tac(n : Int) : async () { if (n > 0) ignore(this.tic(n - 1)) };
+let tictac_actor = actor self {
+  tic_msg(n : Int) { if (n > 0) self.tac_msg(n - 1) };
+  tac_msg(n : Int) { if (n > 0) self.tic_msg(n - 1) };
 };
-let _ = tictac_async.tic(10);
+let _ = tictac_actor.tic_msg(10);
 
-let tictac_actor = actor this {
-  tic(n : Int) : async () { if (n > 0) ignore(this.tac(n - 1)) };
-  tac(n : Int) : async () { if (n > 0) ignore(this.tic(n - 1)) };
+func ignore(_ : async ()) = ();
+
+let tictac_async = new this {
+  tic_async(n : Int) : async () { if (n > 0) ignore(this.tac_async(n - 1)) };
+  tac_async(n : Int) : async () { if (n > 0) ignore(this.tic_async(n - 1)) };
 };
-let _ = tictac_actor.tic(10);
+let _ = tictac_async.tic_async(10);
+
+let tictac_actor_async = actor self {
+  tic_msg_async(n : Int) : async () { if (n > 0) ignore(self.tac_msg_async(n - 1)) };
+  tac_msg_async(n : Int) : async () { if (n > 0) ignore(self.tic_msg_async(n - 1)) };
+};
+let _ = tictac_actor_async.tic_msg_async(10);
+
+let _ = async 1/0;
+let _ = 1/0;

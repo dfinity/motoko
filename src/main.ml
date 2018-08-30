@@ -86,9 +86,14 @@ let run (stat_context, dyn_context) lexer parse name =
       | _ ->
         Interpret.get_last_region (), "fatal", Printexc.to_string exn, true
     in
-    if dump then print_debug_ve (Interpret.get_last_context ()).Interpret.vals;
+    if dump then printf "\n";
     printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
-    if dump then Printexc.print_backtrace stderr;
+    if dump then begin
+      printf "\n";
+      Printexc.print_backtrace stderr; flush_all ();
+      printf "\nLast context:\n";
+      print_debug_ve (Interpret.get_last_context ()).Interpret.vals
+    end;
     if !Flags.trace then printf "\n";
     if not !Flags.interactive then exit 1;
     None

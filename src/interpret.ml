@@ -42,7 +42,7 @@ let trap at fmt =  Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 let unimplemented at msg = trap at "NOT YET IMPLEMENTED: %s" msg
 
 
-(* Debugging Aids *)
+(* Debugging aids *)
 
 let last_context = ref empty_context
 let last_region = ref Source.no_region
@@ -60,7 +60,10 @@ struct
   let q : (unit -> unit) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
-  let yield () = Queue.take q ()
+  let yield () =
+    call_depth := 0;
+    try Queue.take q () with Trap (at, msg) ->
+      Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
@@ -113,7 +116,8 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | VarE id ->
     (match Lib.Promise.value_opt (V.Env.find id.it context.vals) with
     | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition")
+    | None -> trap exp.at "accessing identifier before its definition"
+    )
   | LitE lit ->
     k (interpret_lit context lit)
   | UnE (op, exp1) ->
@@ -124,12 +128,16 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
         k (try Operator.binop t op v1 v2 with _ ->
-          trap exp.at "arithmetic overflow")))
+          trap exp.at "arithmetic overflow")
+      )
+    )
   | RelE (exp1, op, exp2) ->
     let t = T.immutable exp1.note.note_typ in
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
-        k (Operator.relop t op v1 v2)))
+        k (Operator.relop t op v1 v2)
+      )
+    )
   | TupE exps ->
     interpret_exps context exps [] (fun vs -> k (V.Tup vs))
   | ProjE (exp1, n) ->
@@ -141,7 +149,9 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | AssignE (exp1, exp2) ->
     interpret_exp_mut context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
-        V.as_mut v1 := v2; k V.unit))
+        V.as_mut v1 := v2; k V.unit
+      )
+    )
   | ArrayE exps ->
     let t = exp.note.note_typ in
     interpret_exps context exps [] (fun vs ->
@@ -149,43 +159,53 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
         match t with
         | T.Array (T.Mut _) -> List.map (fun v -> V.Mut (ref v)) vs
         | _ -> vs
-      in k (V.Array (Array.of_list vs')))
+      in k (V.Array (Array.of_list vs'))
+    )
   | IdxE (exp1, exp2) ->
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
-        k (V.as_array v1).(V.Nat.to_int (V.as_nat v2)))) (* TBR *)
+        k (V.as_array v1).(V.Nat.to_int (V.as_nat v2)) (* TBR *)
+      )
+    )
   | CallE (exp1, typs, exp2) ->
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
-        (V.as_func v1) v2 k))
+        (V.as_func v1) v2 k
+      )
+    )
   | BlockE decs ->
-    interpret_block context decs (fun (v, _ve) -> k v)
+    interpret_block context decs None k
   | NotE exp1 ->
     interpret_exp context exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
   | AndE (exp1, exp2) ->
     interpret_exp context exp1 (fun v1 ->
       if V.as_bool v1
       then interpret_exp context exp2 k
-      else k v1)
+      else k v1
+    )
   | OrE (exp1, exp2) ->
     interpret_exp context exp1 (fun v1 ->
       if V.as_bool v1
       then k v1
-      else interpret_exp context exp2 k)
+      else interpret_exp context exp2 k
+    )
   | IfE (exp1, exp2, exp3) ->
     interpret_exp context exp1 (fun v1 ->
       if V.as_bool v1
       then interpret_exp context exp2 k
-      else interpret_exp context exp3 k)
+      else interpret_exp context exp3 k
+    )
   | SwitchE (exp1, cases) ->
     interpret_exp context exp1 (fun v1 ->
-      interpret_cases context cases exp.at v1 k)
+      interpret_cases context cases exp.at v1 k
+    )
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> interpret_exp context exp k in
     interpret_exp context exp1 (fun v1 ->
       if V.as_bool v1
       then interpret_exp context exp2 k_continue
-      else k V.unit)
+      else k V.unit
+    )
   | LoopE (exp1, None) ->
     interpret_exp context exp1 (fun v -> interpret_exp context exp k)
   | LoopE (exp1, Some exp2) ->
@@ -193,7 +213,9 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
       interpret_exp context exp2 (fun v2 ->
         if V.as_bool v2
         then interpret_exp context exp k
-        else k V.unit))
+        else k V.unit
+      )
+    )
   | ForE (pat, exp1, exp2)->
     unimplemented exp.at "for loops"
   | LabelE (id, _typ, exp1) ->
@@ -213,22 +235,49 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
         async = true
       }
     in
-    Scheduler.queue (fun () -> interpret_exp context' exp1 k');
+    if !Flags.debug then
+      printf "%s-> async %s\n" (get_indent ()) (string_of_region exp.at);
+    Scheduler.queue (fun () ->
+      if !Flags.debug then
+        printf "%s<- async %s\n" (get_indent ()) (string_of_region exp.at);
+      incr call_depth;
+      interpret_exp context' exp1 (fun v ->
+        assert (!call_depth > 0);
+        if !Flags.debug then
+          printf "%s<= %s\n" (get_indent ()) (V.debug_string_of_val v);
+        decr call_depth;
+        k' v
+      )
+    );
     k (V.Async async)
   | AwaitE exp1 ->
     interpret_exp context exp1 (fun v1 ->
-      get_async (V.as_async v1) k; Scheduler.yield ()) 
+      if !Flags.debug then
+        printf "%s-> await %s\n" (get_indent ()) (string_of_region exp.at);
+      decr call_depth;
+      get_async (V.as_async v1) (fun v ->
+        Scheduler.queue (fun () ->
+          if !Flags.debug then
+            printf "%s<- await %s%s\n" (get_indent ()) (string_of_region exp.at)
+              (V.debug_string_of_tuple_val v);
+          incr call_depth;
+          k v
+        )
+      );
+      Scheduler.yield ()
+    ) 
   | AssertE exp1 ->
     interpret_exp context exp1 (fun  v ->
       if V.as_bool v
       then k V.unit
-      else trap exp.at "Assertion failure")
+      else trap exp.at "Assertion failure"
+    )
   | IsE (exp1, typ) ->
     unimplemented exp.at "is"
   | AnnotE (exp1, _typ) ->
     interpret_exp context exp1 k
   | DecE dec ->
-    interpret_block context [dec] (fun (v, _ve) ->  k v)
+    interpret_block context [dec] None k
 
 and interpret_exps context exps vs (k : V.value list V.cont) =
   match exps with
@@ -333,7 +382,9 @@ and interpret_obj context sort id fields (k : V.value V.cont) =
   let private_ve, public_ve = declare_exp_fields fields ve0 V.Env.empty in
   let context' = adjoin_vals context private_ve in
   interpret_fields context' sort.it fields public_ve (fun v ->
-    define_id context' id v; k v)
+    define_id (adjoin_vals context ve0) id v;
+    k v
+  )
 
 
 and declare_exp_fields fields private_ve public_ve : val_env * val_env =
@@ -352,7 +403,7 @@ and interpret_fields context s fields ve (k : V.value V.cont) =
     interpret_exp context exp (fun v ->
       let v' =
         if s = T.Actor && priv.it = Public
-        then actor_field exp.note.note_typ v
+        then actor_field id exp.note.note_typ v
         else v
       in
       let v'' =
@@ -361,29 +412,46 @@ and interpret_fields context s fields ve (k : V.value V.cont) =
         | Var -> V.Mut (ref v')
       in
       define_id context id v'';
-      interpret_fields context s fields' ve k)
+      interpret_fields context s fields' ve k
+    )
 
 
-and actor_field t v : V.value =
+and actor_field id t v : V.value =
   match t with
   | T.Func (_, _, T.Tup []) ->
     let f = V.as_func v in
-    V.Func (fun v k -> Scheduler.queue (fun () -> f v (fun _ -> ())); k V.unit)
+    V.Func (fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
   | T.Func (_, _, T.Async _) ->
     let f = V.as_func v in
     V.Func (fun v k ->
       let async = make_async () in
-      Scheduler.queue (fun () ->
-        f v (fun a -> get_async (V.as_async a) (fun r -> set_async async r)));
-      k (V.Async async))
+      actor_msg id f v (fun v_async ->
+        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
+      );
+      k (V.Async async)
+    )
   | _ -> assert false
+
+
+and actor_msg id f v (k : V.value V.cont) =
+  if !Flags.debug then
+    printf "%s-> message %s%s\n" (get_indent ()) id.it
+      (V.debug_string_of_tuple_val v);
+  Scheduler.queue (fun () ->
+    if !Flags.debug then
+      printf "%s<- message %s%s\n" (get_indent ()) id.it
+        (V.debug_string_of_tuple_val v);
+    incr call_depth;
+    f v k
+  )
 
 
 (* Blocks and Declarations *)
 
-and interpret_block context decs (k : (V.value * val_env) V.cont) =
+and interpret_block context decs ro (k : V.value V.cont) =
   let ve = declare_decs decs V.Env.empty in
-  interpret_decs (adjoin_vals context ve) decs (fun v -> k (v, ve))
+  Lib.Option.app (fun r -> r := ve) ro;
+  interpret_decs (adjoin_vals context ve) decs k
 
 
 and declare_dec dec : val_env =     
@@ -409,10 +477,14 @@ and interpret_dec context dec (k : V.value V.cont) =
     interpret_exp context exp k
   | LetD (pat, exp) ->
     interpret_exp context exp (fun v ->
-      define_pat context pat v; k V.unit)
+      define_pat context pat v;
+      k V.unit
+    )
   | VarD (id, exp) ->
     interpret_exp context exp (fun v ->
-      define_id context id (V.Mut (ref v)); k V.unit)
+      define_id context id (V.Mut (ref v));
+      k V.unit
+    )
   | TypD _ ->
     k V.unit
   | FuncD (id, _typbinds, pat, _typ, exp) ->
@@ -441,7 +513,7 @@ and interpret_decs context decs (k : V.value V.cont) =
     interpret_dec context dec (fun _v -> interpret_decs context decs' k)
 
 
-and interpret_func context id pat f v k =
+and interpret_func context id pat f v (k : V.value V.cont) =
   if !Flags.debug then
     printf "%s%s%s\n" (get_indent ()) id.it (V.debug_string_of_tuple_val v);
   match match_pat pat v with
@@ -451,10 +523,9 @@ and interpret_func context id pat f v k =
   | Some ve ->
     incr call_depth;
     let k' = fun v' ->
-      decr call_depth;
       if !Flags.debug then
-        printf "%s%s%s => %s\n" (get_indent ()) id.it
-          (V.debug_string_of_tuple_val v) (V.debug_string_of_val v');
+        printf "%s<= %s\n" (get_indent ()) (V.debug_string_of_val v');
+      decr call_depth;
       k v'
     in
     let context' =
@@ -471,5 +542,6 @@ and interpret_func context id pat f v k =
 let interpret_prog context p : scope =
   call_depth := 0;
   let r = ref V.Env.empty in
-  interpret_block context p.it (fun (_v, ve) -> r := ve; Scheduler.run ());
+  Scheduler.queue (fun () -> interpret_block context p.it (Some r) ignore);
+  Scheduler.run ();
   !r
