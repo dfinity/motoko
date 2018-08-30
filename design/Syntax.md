@@ -5,30 +5,30 @@ Productions marked * probably deferred to later versions.
 
 ## Types
 ```
-<type> ::=                                     type expressions
-  <id> <type-args>?                              constructor
-  actor? { <type-field>;* }                      object
-  var? <type> [ ]                                array
-  <type> ?                                       option
-  <type-params>? <type> -> <type>                function
-  async <type>                                   future
-  like <type>                                    structural expansion
-  ( ((<id> :)? <type>),* )                       tuple
-  any                                            top
-* <type> | <type>                                union
-* # <id>                                         atom
+<typ> ::=                                     type expressions
+  <id> <typ-args>?                              constructor
+  actor? { <typ-field>;* }                      object
+  var? <typ> [ ]                                array
+  <typ> ?                                       option
+  <typ-params>? <typ> -> <typ>                  function
+  async <typ>                                   future
+  like <typ>                                    structural expansion
+  ( ((<id> :)? <typ>),* )                       tuple
+  any                                           top
+* <typ> | <typ>                                 union
+* # <id>                                        atom
 
-<type-field> ::=                               object type fields
-  <id> : <type>                                  immutable
-  var <id> : <type>                              mutable
-  <id> <type-params>? <params> : <type>         function (short-hand)
+<typ-field> ::=                               object type fields
+  <id> : <typ>                                  immutable
+  var <id> : <typ>                              mutable
+  <id> <typ-params>? <params> : <typ>           function (short-hand)
 
-<type-args> ::=                                type arguments
-  < <type>,* >
+<typ-args> ::=                                type arguments
+  < <typ>,* >
 
-<type-params> ::=                              type parameters
-  < <id>,* >                                     unconstrained
-* < (<id> <: <type>),* >                         constrained
+<typ-params> ::=                              type parameters
+  < (<id> <: <typ>),* >                         constrained
+  < <id>,* >                                    unconstrained (short-hand)
 ```
 
 ## Expressions
@@ -37,55 +37,51 @@ Productions marked * probably deferred to later versions.
   new
   actor
 
-<expr> ::=
+<exp> ::=
   <id>                                           variable
-  <int>                                          integer literal
+  <nat>                                          integer literal
   <float>                                        float literal
   <char>                                         character literal
   <text>                                         unicode text literal
-  <unop> <expr>                                  unary numeric operator
-  <expr> <binop> <expr>                          binary numeric operator
-  ( <expr>,* )                                   tuple
-  <expr> . <nat>                                 tuple projection
-  <sort> <id>? { <expr-field>;* }                object
-  <expr> . <id>                                  object projection
-  <expr> := <expr>                               assignment
-  <expr> <binop>= <expr>                         binary update
-  <unop>= <expr>                                 unary update
-  [ <expr>,* ]                                   array
-  <expr> [ <expr> ]                              array indexing
-  <expr> <type-args>? <expr>                     function call
-  { <expr>;* }                                   block
-  not <expr>                                     negation
-  <expr> and <expr>                              conjunction
-  <expr> or <expr>                               disjunction
-  if <expr> <expr> (else <expr>)?                conditional
-  switch <expr> (case <pat> <expr>)+             switch
-  while <expr> <expr>                            while loop
-  loop <expr> (while <expr>)?                    loop
-  for <id>? in <expr> <expr>                     iteration
-  label <id> (: <typ>)? <expr>                   label
-  break <id> <expr>?                             break
+  <unop> <exp>                                   unary numeric operator
+  <exp> <binop> <exp>                            binary numeric operator
+  ( <exp>,* )                                    tuple
+  <exp> . <nat>                                  tuple projection
+  <sort> <id>? { <exp-field>;* }                 object
+  <exp> . <id>                                   object projection
+  <exp> := <exp>                                 assignment
+  <unop>= <exp>                                  unary update
+  <exp> <binop>= <exp>                           binary update
+  [ <exp>,* ]                                    array
+  <exp> [ <exp> ]                                array indexing
+  <exp> <typ-args>? <exp>                        function call
+  { <dec>;* }                                    block
+  not <exp>                                      negation
+  <exp> and <exp>                                conjunction
+  <exp> or <exp>                                 disjunction
+  if <exp> <exp> (else <exp>)?                   conditional
+  switch <exp> { (case <pat> <exp>)+ }           switch
+  while <exp> <exp>                              while loop
+  loop <exp> (while <exp>)?                      loop
+  for <id>? in <exp> <exp>                       iteration
+  label <id> (: <typ>)? <exp>                    label
+  break <id> <exp>?                              break
   continue <id>                                  continue
-  return <expr>?                                 return
-  async <expr>                                   async expression
-  await <expr>                                   await future (only in async)
-  assert <expr>                                  assertion
-  <expr> is <type>                               instance-of
-  <expr> : <type>                                type annotation
+  return <exp>?                                  return
+  async <exp>                                    async expression
+  await <exp>                                    await future (only in async)
+  assert <exp>                                   assertion
+  <exp> is <typ>                                 instance-of
+  <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
-* throw <expr>                                   raise exception
-* try <expr> (catch <params> <expr>)+ (<finally> <expr>)?    try
-* # <id>                                                     atom
+* throw <exp>                                    raise exception
+* try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
+* # <id>                                             atom
 
-<expr-field> ::=                               object expression fields
-  private? <id> (: <type>)? = <expr>                         immutable
-  private? var <id> (: <type>)? = <expr>                     mutable
-//  private? <id> <type-params>? <pat>+ (: <type>)? = <expr>   function (short-hand)
-  private? <id> <type-params>? <params> (: <type>)? = <expr>   function (short-hand)
-
-<params> ::=                                   parameters
-  ( <id> : <type>,*  )                        
+<exp-field> ::=                                object expression fields
+  private? <id> (: <typ>)? = <exp>                        immutable
+  private? var <id> (: <typ>)? = <exp>                    mutable
+  private? <id> <typ-params>? <pat> (: <typ>)? = <exp>    function (short-hand)
 ```
 
 ## Patterns
@@ -94,7 +90,7 @@ Productions marked * probably deferred to later versions.
   _                                              wildcard
   <id>                                           variable
   ( <pat>,* )                                    tuple or brackets
-  <pat> : <type>                                 type annotation
+  <pat> : <typ>                                  type annotation
 * <int>                                          integer
 * <char>                                         character
 * <text>                                         text
@@ -109,12 +105,12 @@ Productions marked * probably deferred to later versions.
 ## Declarations
 ```
 <dec> ::=                                              declaration
-  let <pat> = <expr>                                     immutable
-  var <id> (: <type>)? = <expr>                          mutable
-  func <id> <type-params>? <pat>+ (: <type>)? = <expr>   function
-  type <id> <type-params>? = <type>                      type
-//  actor? class <id> <type-params>? <pat> = <expr>        class
-  actor? class <id> <type-params>? <params> { expr_field;* }        class
+  <exp>                                                  expression
+  let <pat> = <exp>                                      immutable
+  var <id> (: <typ>)? = <exp>                            mutable
+  func <id> <typ-params>? <pat>+ (: <typ>)? = <exp>      function
+  type <id> <typ-params>? = <typ>                        type
+  actor? class <id> <typ-params>? <pat> = <exp>          class
 ```
 
 ## Programs
