@@ -39,9 +39,16 @@ let rec compile_exp exp = match exp.it with
      compile_relop op
   | _ -> [ nr Unreachable ]
 
-and compile_dec dec = match dec.it with
-  | ExpD e -> compile_exp e
-  | _      -> []
+and compile_decs lve decs = match decs with
+  | []          -> ([], lve)
+  | (dec::decs) ->
+      let (code1, lve1) = compile_dec lve dec    in
+      let (code2, lve2) = compile_decs lve1 decs in
+      (code1 @ code2, lve2)
+
+and compile_dec lve dec = match dec.it with
+  | ExpD e -> (compile_exp e, lve)
+  | _      -> ([], lve)
 
 
 let compile (prog  : Syntax.prog) : unit =
@@ -52,7 +59,7 @@ let compile (prog  : Syntax.prog) : unit =
     funcs = [
       nr { ftype = nr 0l;
            locals = [];
-           body = List.concat (List.map compile_dec prog.it);
+           body = fst (compile_decs Value.Env.empty prog.it);
          }
     ];
     start = (Some (nr 0l));
