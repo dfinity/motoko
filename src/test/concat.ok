@@ -1,6 +1,0 @@
--- Checking concat.as:
-let testText : (Text, Text) -> ()
--- Interpreting concat.as:
--- Finished concat.as:
-let testText : (Text, Text) -> () = func
-

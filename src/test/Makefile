@@ -13,7 +13,7 @@ all: stats
 	$(ASC) $(ASC_FLAGS) $< > $@ 2>&1 || true
 
 %.diff : %.out %.ok
-	diff -u $*.out $*.ok | tee $@ || true
+	@diff -u $*.out $*.ok | tee $@ || true
 
 %.refresh : %.out
 	cat $*.out > $*.ok
