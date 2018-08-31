@@ -12,8 +12,13 @@ all: stats
 %.out: %.as $(ASC)
 	$(ASC) $(ASC_FLAGS) $< >$@ 2>&1 || true
 
-%.diff: %.out %.ok
-	@diff -u $*.out $*.ok | tee $@ || true
+%.ok:
+	@echo "$@ missing"
+	@echo "Please run make accept or make $*.refresh"
+	@exit 1
+
+%.diff : %.out %.ok
+	@diff -u $*.ok $*.out | tee $@ || true
 
 %.refresh: %.out
 	cat $*.out > $*.ok
