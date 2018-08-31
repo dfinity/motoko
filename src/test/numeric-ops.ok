@@ -1,0 +1,18 @@
+-- Checking numeric-ops.as:
+let testFloat : (Float, Float) -> ()
+let testInt : (Int, Int) -> ()
+let testNat : (Nat, Nat) -> ()
+let testWord16 : (Word16, Word16) -> ()
+let testWord32 : (Word32, Word32) -> ()
+let testWord64 : (Word64, Word64) -> ()
+let testWord8 : (Word8, Word8) -> ()
+-- Interpreting numeric-ops.as:
+-- Finished numeric-ops.as:
+let testFloat : (Float, Float) -> () = func
+let testInt : (Int, Int) -> () = func
+let testNat : (Nat, Nat) -> () = func
+let testWord16 : (Word16, Word16) -> () = func
+let testWord32 : (Word32, Word32) -> () = func
+let testWord64 : (Word64, Word64) -> () = func
+let testWord8 : (Word8, Word8) -> () = func
+

@@ -1,0 +1,3 @@
+-- Checking type-inference.as:
+type-inference.as:43.1-48.2: type error, inferred block type T/3 contains the local class type C/3
+

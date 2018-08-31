@@ -1,0 +1,15 @@
+-- Checking bank-ordered.as:
+type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+let Account : Int -> Account
+let Bank : Int -> Bank
+let Issuer : () -> Issuer
+let transfer : (Account, Account, Int) -> async ()
+-- Interpreting bank-ordered.as:
+-- Finished bank-ordered.as:
+let Account : Int -> Account = func
+let Bank : Int -> Bank = func
+let Issuer : () -> Issuer = func
+let transfer : (Account, Account, Int) -> async () = func
+

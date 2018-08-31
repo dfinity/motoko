@@ -1,0 +1,11 @@
+-- Checking type-definition.as:
+type A/1 = (B, A/1)
+type Arrow<T, U> = T.1 -> U.1
+type B = (A/1, B)
+type Compose<T, U, V> = (T.2 -> U.2) -> (U.3 -> V.3) -> T.3 -> V.3
+type Id = <T>T -> T
+type IntT = Int
+type Seq<A> = (A, Seq<A>?)
+-- Interpreting type-definition.as:
+-- Finished type-definition.as:
+
