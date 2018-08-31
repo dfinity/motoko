@@ -57,10 +57,10 @@ open Printf
 
 let string_of_prim = function
   | Null -> "Null"
-  | Int -> "Int"
   | Bool -> "Bool"
-  | Float -> "Float"
   | Nat -> "Nat"
+  | Int -> "Int"
+  | Float -> "Float"
   | Word8 -> "Word8"
   | Word16 -> "Word16"
   | Word32 -> "Word32"
@@ -68,92 +68,111 @@ let string_of_prim = function
   | Char -> "Char"
   | Text -> "Text"
 
-let rec string_of_typ_nullary = function
+let string_of_var (x, i) =
+  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
+
+let string_of_con vs c =
+  let s = Con.to_string c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
+
+let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "any"
   | Prim p -> string_of_prim p
-  | Var (s, 0) -> sprintf "%s" s
-  | Var (s, i) -> sprintf "%s.%d" s i
-  | Con (c, []) -> Con.to_string c
+  | Var (s, i) -> string_of_var (List.nth vs i)
+  | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>"
-      (Con.to_string c) (String.concat ", " (List.map string_of_typ ts))
+    sprintf "%s<%s>" (string_of_con vs c)
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
-    sprintf "(%s)" (String.concat ", " (List.map string_of_typ ts))
+    sprintf "(%s)" (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Obj (Object, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map string_of_field fs))
-  | t ->
-    sprintf "(%s)" (string_of_typ t)
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | t -> sprintf "(%s)" (string_of_typ' vs t)
 
-and string_of_typ t =
+and string_of_typ' vs t =
   match t with
   | Array (Mut t) ->
-    sprintf "var %s[]" (string_of_typ_nullary t)  
+    sprintf "var %s[]" (string_of_typ_nullary vs t)  
   | Array t ->
-    sprintf "%s[]" (string_of_typ_nullary t)  
+    sprintf "%s[]" (string_of_typ_nullary vs t)
   | Func (tbs, t1, t2) ->
-    sprintf "%s%s -> %s"
-      (string_of_binds tbs) (string_of_typ_nullary t1) (string_of_typ t2)
+    let vs' = names_of_binds vs tbs in
+    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
+      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
   | Opt t ->
-    sprintf "%s?"  (string_of_typ_nullary t)
+    sprintf "%s?"  (string_of_typ_nullary vs t)
   | Async t -> 
-    sprintf "async %s" (string_of_typ_nullary t)
+    sprintf "async %s" (string_of_typ_nullary vs t)
   | Like t -> 
-    sprintf "like %s" (string_of_typ_nullary t)
+    sprintf "like %s" (string_of_typ_nullary vs t)
   | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_typ_nullary (Obj (Object, fs)))
+    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
   | Mut t ->
-    sprintf "var %s" (string_of_typ t)
-  | t -> string_of_typ_nullary t
+    sprintf "var %s" (string_of_typ' vs t)
+  | t -> string_of_typ_nullary vs t
 
-and string_of_field {name; typ} =
-  sprintf "%s : %s" name (string_of_typ typ)
+and string_of_field vs {name; typ} =
+  sprintf "%s : %s" name (string_of_typ' vs typ)
 
-and string_of_bind {var; bound} =
-  var ^ (if bound = Any then "" else " <: " ^ string_of_typ bound)
+and names_of_binds vs bs =
+  List.map (fun b -> name_of_var vs (b.var, 0)) bs
 
-and string_of_binds = function
+and name_of_var vs v =
+  match vs with
+  | [] -> v
+  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
+
+and string_of_bind vs v {bound; _} =
+  string_of_var v ^
+  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
+
+and string_of_binds vs vs' = function
   | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map string_of_bind tbs) ^ ">"
+  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
-let string_of_kind = function
-  | Def (tbs, t) ->
-    sprintf "= %s%s" (string_of_binds tbs) (string_of_typ t)
-  | Abs (tbs, t) -> 
-    sprintf "<: %s%s" (string_of_binds tbs) (string_of_typ t)
+let string_of_typ = string_of_typ' []
 
-let strings_of_kind = function
-  | Def (tbs, t) ->
-    "=", string_of_binds tbs, string_of_typ t
-  | Abs (tbs, t) -> 
-    "<:", string_of_binds tbs, string_of_typ t
+
+let strings_of_kind k =
+  let op, tbs, t =
+    match k with
+    | Def (tbs, t) -> "=", tbs, t
+    | Abs (tbs, t) -> "<:", tbs, t
+  in
+  let vs = names_of_binds [] tbs in
+  op, string_of_binds vs vs tbs, string_of_typ' vs t
+
+let string_of_kind k =
+  let op, sbs, st = strings_of_kind k in
+  sprintf "%s %s%s" op sbs st
 
 
 (* Shifting *)
 
-let rec shift i t =
+let rec shift i n t =
   match t with
   | Prim _ -> t
-  | Var (s, j) -> Var (s, if j < i then j else j + 1)
-  | Con (c, ts) -> Con (c, List.map (shift i) ts)
-  | Array t -> Array (shift i t)
-  | Tup ts -> Tup (List.map (shift i) ts)
+  | Var (s, j) -> Var (s, if j < i then j else j + n)
+  | Con (c, ts) -> Con (c, List.map (shift i n) ts)
+  | Array t -> Array (shift i n t)
+  | Tup ts -> Tup (List.map (shift i n) ts)
   | Func (tbs, t1, t2) ->
-    let i' = i + 1 in
-    Func (List.map (shift_bind i') tbs, shift i' t1, shift i' t2)
-  | Opt t -> Opt (shift i t)
-  | Async t -> Async (shift i t)
-  | Like t -> Like (shift i t)
-  | Obj (s, fs) -> Obj (s, List.map (shift_field i) fs)
-  | Mut t -> Mut (shift i t)
+    let i' = i + List.length tbs in
+    Func (List.map (shift_bind i' n) tbs, shift i' n t1, shift i' n t2)
+  | Opt t -> Opt (shift i n t)
+  | Async t -> Async (shift i n t)
+  | Like t -> Like (shift i n t)
+  | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
+  | Mut t -> Mut (shift i n t)
   | Any -> Any
   | Pre -> Pre
 
-and shift_bind i {var; bound} =
-  {var; bound = shift i bound}
+and shift_bind i n {var; bound} =
+  {var; bound = shift i n bound}
 
-and shift_field i {name; typ} =
-  {name; typ = shift i typ}
+and shift_field i n {name; typ} =
+  {name; typ = shift i n typ}
 
 
 (* First-order substitution *)
@@ -171,7 +190,7 @@ let rec subst sigma t =
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (tbs, t1, t2) ->
-    let sigma' = Con.Env.map (shift 0) sigma in
+    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
     Func (List.map (subst_bind sigma') tbs, subst sigma' t1, subst sigma' t2)
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
@@ -191,7 +210,7 @@ and subst_field sigma {name; typ} =
 (* Handling binders *)
 
 let close cs t =
-  let ts = List.map (fun c -> Var (Con.name c, 0)) cs in
+  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
   let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
   subst sigma t
 
@@ -208,7 +227,7 @@ let rec open' i ts t =
   | Array t -> Array (open' i ts t)
   | Tup ts' -> Tup (List.map (open' i ts) ts')
   | Func (tbs, t1, t2) ->
-    let i' = i + 1 in
+    let i' = i + List.length tbs in
     Func (List.map (open_bind i' ts) tbs, open' i' ts t1, open' i' ts t2)
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
