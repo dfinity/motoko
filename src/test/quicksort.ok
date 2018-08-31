@@ -103,6 +103,18 @@ let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = QS<Int>
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
+(module
+  (type $0 (func))
+  (func $0
+    (type 0)
+    (local i32 i32)
+    (unreachable)
+    (set_local 0)
+    (unreachable)
+    (set_local 1)
+    (unreachable)
+  )
+  (start 0)
+)
 Interpreting the .wat:
-quicksort.wat:1.44-1.57: runtime trap: unreachable executed
+quicksort.wat:6.5-6.18: runtime trap: unreachable executed

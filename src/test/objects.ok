@@ -274,6 +274,34 @@ let x : Nat = 3
 let y : Int = 2
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
+(module
+  (type $0 (func))
+  (func $0
+    (type 0)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (unreachable)
+    (set_local 0)
+    (unreachable)
+    (set_local 1)
+    (unreachable)
+    (set_local 2)
+    (unreachable)
+    (set_local 3)
+    (unreachable)
+    (set_local 4)
+    (unreachable)
+    (set_local 5)
+    (unreachable)
+    (unreachable)
+    (set_local 6)
+    (unreachable)
+    (set_local 7)
+    (unreachable)
+    (set_local 8)
+    (unreachable)
+    (set_local 9)
+  )
+  (start 0)
+)
 Interpreting the .wat:
-objects.wat:1.44-1.57: runtime trap: unreachable executed
+objects.wat:6.5-6.18: runtime trap: unreachable executed

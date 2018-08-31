@@ -77,5 +77,6 @@ let show : Int -> () = func
 let test : () -> () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+(module (type $0 (func)) (func $0 (type 0) (local i32) (unreachable) (set_local 0)) (start 0))
 Interpreting the .wat:
+counter.wat:1.56-1.69: runtime trap: unreachable executed

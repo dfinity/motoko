@@ -10,5 +10,10 @@ let passed : Bool = true
 let test : () -> Int = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+(module
+  (type $0 (func))
+  (func $0 (type 0) (local i32) (unreachable) (i32.const 0) (i32.eq) (set_local 0))
+  (start 0)
+)
 Interpreting the .wat:
+while.wat:3.33-3.46: runtime trap: unreachable executed

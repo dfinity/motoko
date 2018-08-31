@@ -4,6 +4,7 @@ open Wasm.Types
 open Source
 open Syntax
 
+module LVE = Env.Make(String)
 
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
@@ -24,30 +25,37 @@ let compile_relop op = match op with
   | EqOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
   | _ -> [ nr Unreachable ]
 
-let rec compile_exp exp = match exp.it with
+let rec compile_exp locals lve exp = match exp.it with
+  | VarE var -> [ nr (GetLocal (nr (LVE.find var.it lve))) ]
   | LitE l_ref ->
      compile_lit !l_ref
   | AssertE e1 ->
-     compile_exp e1 @ [ nr (If ([], [], [nr Unreachable])) ]
+     compile_exp locals lve e1 @ [ nr (If ([], [], [nr Unreachable])) ]
   | BinE (e1, op, e2) ->
-     compile_exp e1 @
-     compile_exp e2 @
+     compile_exp locals lve e1 @
+     compile_exp locals lve e2 @
      compile_binop op
   | RelE (e1, op, e2) ->
-     compile_exp e1 @
-     compile_exp e2 @
+     compile_exp locals lve e1 @
+     compile_exp locals lve e2 @
      compile_relop op
   | _ -> [ nr Unreachable ]
 
-and compile_decs lve decs = match decs with
+and compile_decs locals lve decs = match decs with
   | []          -> ([], lve)
   | (dec::decs) ->
-      let (code1, lve1) = compile_dec lve dec    in
-      let (code2, lve2) = compile_decs lve1 decs in
+      let (code1, lve1) = compile_dec locals lve dec    in
+      let (code2, lve2) = compile_decs locals lve1 decs in
       (code1 @ code2, lve2)
 
-and compile_dec lve dec = match dec.it with
-  | ExpD e -> (compile_exp e, lve)
+and compile_dec locals lve dec = match dec.it with
+  | ExpD e -> (compile_exp locals lve e, lve)
+  | LetD ({it = VarP {it = name; _}; _}, e) ->
+      let code1 = compile_exp locals lve e in
+      let i = Wasm.I32.of_int_u (List.length !locals) in
+      locals := !locals @ [ I32Type ];
+      let lve1 = LVE.add name i lve in
+      (code1 @ [ nr (SetLocal (nr i) ) ], lve1)
   | _      -> ([], lve)
 
 
@@ -57,9 +65,11 @@ let compile (prog  : Syntax.prog) : unit =
       nr (FuncType ([], []))
     ];
     funcs = [
+      let locals = ref [] in
+      let body = fst (compile_decs locals LVE.empty prog.it) in
       nr { ftype = nr 0l;
-           locals = [];
-           body = fst (compile_decs Value.Env.empty prog.it);
+           locals = !locals;
+           body = body
          }
     ];
     start = (Some (nr 0l));

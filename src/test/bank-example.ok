@@ -97,5 +97,10 @@ let test : () -> async (Account, Account) = func
 let transfer : (Account, Account, Int) -> async () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+(module
+  (type $0 (func))
+  (func $0 (type 0) (local i32 i32) (unreachable) (set_local 0) (unreachable) (set_local 1))
+  (start 0)
+)
 Interpreting the .wat:
+bank-example.wat:3.37-3.50: runtime trap: unreachable executed
