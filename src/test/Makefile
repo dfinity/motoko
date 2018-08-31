@@ -9,13 +9,13 @@ TESTS:=$(basename $(wildcard *.as))
 
 all: stats
 
-%.out : %.as $(ASC)
-	$(ASC) $(ASC_FLAGS) $< > $@ 2>&1 || true
+%.out: %.as $(ASC)
+	$(ASC) $(ASC_FLAGS) $< >$@ 2>&1 || true
 
-%.diff : %.out %.ok
+%.diff: %.out %.ok
 	@diff -u $*.out $*.ok | tee $@ || true
 
-%.refresh : %.out
+%.refresh: %.out
 	cat $*.out > $*.ok
 
 stats: $(addsuffix .diff,$(TESTS))

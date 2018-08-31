@@ -1,0 +1,9 @@
+-- Checking account.as:
+type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+let Account : Int -> Account
+let transfer : (Account, Account, Int) -> async ()
+-- Interpreting account.as:
+-- Finished account.as:
+let Account : Int -> Account = func
+let transfer : (Account, Account, Int) -> async () = func
+
