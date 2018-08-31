@@ -19,12 +19,12 @@ all:
 	$(ASC) $(ASC_FLAGS) nonlinear-pat.as >> result 2>&1 || true
 	$(ASC) $(ASC_FLAGS) type-definition.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) type-equivalence.as >> result 2>&1
-	$(ASC) $(ASC_FLAGS) type-inference.as >> result 2>&1
+	$(ASC) $(ASC_FLAGS) type-inference.as >> result 2>&1 || true
 	$(ASC) $(ASC_FLAGS) quicksort.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) hoare.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) bank-example.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) counter.as >> result 2>&1
-	$(ASC) $(ASC_FLAGS) testwhile.as >> result 2>&1
+	$(ASC) $(ASC_FLAGS) while.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) objects.as >> result 2>&1
 	$(ASC) $(ASC_FLAGS) overflow.as >> result 2>&1 || true
 	$(ASC) $(ASC_FLAGS) menhir-bug.as >> result 2>&1 || true

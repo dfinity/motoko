@@ -447,7 +447,7 @@ and infer_exp' context exp : T.typ =
       error exp1.at "expected function type, found %s" (T.string_of_typ t1)
     )
   | BlockE decs ->
-    let t = infer_block context decs in
+    let t = infer_block context decs exp.at in
     t
   | NotE exp1 ->
     if not context.pre then check_exp context T.bool exp1;
@@ -560,7 +560,7 @@ and infer_exp' context exp : T.typ =
     if not context.pre then check_exp context t exp1;
     t
   | DecE dec ->
-    let t = infer_block context [dec] in
+    let t = infer_block context [dec] exp.at in
     t
     
 
@@ -902,11 +902,14 @@ and check_exp_field context s tfs (tfs_inner, ve) field : T.field list * val_env
 
 (* Blocks and Declarations *)
 
-and infer_block context decs : T.typ =
-  let scope, ce_inner = infer_block_decs context decs in
+and infer_block context decs at : T.typ =
+  let _, _, ce as scope, ce_inner = infer_block_decs context decs in
 (*Printf.printf "[block] infer expressions\n";
 let t =*)
-  infer_block_exps (adjoin context scope) ce_inner decs
+  let t = infer_block_exps (adjoin context scope) ce_inner decs in
+  try T.avoid context.cons ce t with T.Unavoidable c ->
+    error at "inferred block type %s contains the local class type %s"
+      (T.string_of_typ t) (Con.to_string c)
 (*in Printf.printf "[block] done\n"; t*)
 
 and infer_block_exps context ce_inner decs : T.typ =
@@ -1002,6 +1005,7 @@ and check_dec context ce_inner t dec =
       error dec.at "expected type %s, found %s"
         (T.string_of_typ t) (T.string_of_typ t');
 
+
 (*
 and print_ce =
   Con.Env.iter (fun c k ->
@@ -1012,6 +1016,7 @@ and print_ve =
     Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
   )
 *)
+
 
 and infer_block_decs context decs : scope * con_env =
 (*Printf.printf "[block] gather types\n";*)

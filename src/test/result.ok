@@ -13,7 +13,7 @@ let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
 let transfer : (Account, Account, Int) -> async () = func
 
--- Checking bank_ordered.as:
+-- Checking bank-ordered.as:
 type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
 type Issuer <: actor {hasIssued : (like Account) -> async Bool}
@@ -21,8 +21,8 @@ let Account : Int -> Account
 let Bank : Int -> Bank
 let Issuer : () -> Issuer
 let transfer : (Account, Account, Int) -> async ()
--- Interpreting bank_ordered.as:
--- Finished bank_ordered.as:
+-- Interpreting bank-ordered.as:
+-- Finished bank-ordered.as:
 let Account : Int -> Account = func
 let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
@@ -57,7 +57,7 @@ let short : Word16 = 65535
 let u : Char = "\u{a34}"
 let word : Word32 = 4294967295
 
--- Checking numericops.as:
+-- Checking numeric-ops.as:
 let testFloat : (Float, Float) -> ()
 let testInt : (Int, Int) -> ()
 let testNat : (Nat, Nat) -> ()
@@ -65,8 +65,8 @@ let testWord16 : (Word16, Word16) -> ()
 let testWord32 : (Word32, Word32) -> ()
 let testWord64 : (Word64, Word64) -> ()
 let testWord8 : (Word8, Word8) -> ()
--- Interpreting numericops.as:
--- Finished numericops.as:
+-- Interpreting numeric-ops.as:
+-- Finished numeric-ops.as:
 let testFloat : (Float, Float) -> () = func
 let testInt : (Int, Int) -> () = func
 let testNat : (Nat, Nat) -> () = func
@@ -75,19 +75,19 @@ let testWord32 : (Word32, Word32) -> () = func
 let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
--- Checking bitops.as:
+-- Checking bit-ops.as:
 let testWord16 : (Word16, Word16) -> ()
 let testWord32 : (Word32, Word32) -> ()
 let testWord64 : (Word64, Word64) -> ()
 let testWord8 : (Word8, Word8) -> ()
--- Interpreting bitops.as:
--- Finished bitops.as:
+-- Interpreting bit-ops.as:
+-- Finished bit-ops.as:
 let testWord16 : (Word16, Word16) -> () = func
 let testWord32 : (Word32, Word32) -> () = func
 let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
--- Checking relationalops.as:
+-- Checking relational-ops.as:
 let testBool : (Bool, Bool) -> ()
 let testChar : (Char, Char) -> ()
 let testFloat : (Float, Float) -> ()
@@ -98,8 +98,8 @@ let testWord16 : (Word16, Word16) -> ()
 let testWord32 : (Word32, Word32) -> ()
 let testWord64 : (Word64, Word64) -> ()
 let testWord8 : (Word8, Word8) -> ()
--- Interpreting relationalops.as:
--- Finished relationalops.as:
+-- Interpreting relational-ops.as:
+-- Finished relational-ops.as:
 let testBool : (Bool, Bool) -> () = func
 let testChar : (Char, Char) -> () = func
 let testFloat : (Float, Float) -> () = func
@@ -117,13 +117,13 @@ let testText : (Text, Text) -> ()
 -- Finished concat.as:
 let testText : (Text, Text) -> () = func
 
--- Checking duplicatefield.as:
-duplicatefield.as:4.3-4.4: type error, duplicate field name m in object
+-- Checking duplicate-field.as:
+duplicate-field.as:4.3-4.4: type error, duplicate field name m in object
 
--- Checking nonlinearpat.as:
-nonlinearpat.as:1.11-1.12: type error, duplicate binding for x in block
+-- Checking nonlinear-pat.as:
+nonlinear-pat.as:1.11-1.12: type error, duplicate binding for x in block
 
--- Checking typedef.as:
+-- Checking type-definition.as:
 type A/1 = (B, A/1)
 type Arrow<T, U> = T.1 -> U.1
 type B = (A/1, B)
@@ -131,12 +131,15 @@ type Compose<T, U, V> = (T.2 -> U.2) -> (U.3 -> V.3) -> T.3 -> V.3
 type Id = <T>T -> T
 type IntT = Int
 type Seq<A> = (A, Seq<A>?)
--- Interpreting typedef.as:
--- Finished typedef.as:
+-- Interpreting type-definition.as:
+-- Finished type-definition.as:
 
--- Checking type_equiv.as:
--- Interpreting type_equiv.as:
--- Finished type_equiv.as:
+-- Checking type-equivalence.as:
+-- Interpreting type-equivalence.as:
+-- Finished type-equivalence.as:
+
+-- Checking type-inference.as:
+type-inference.as:43.1-48.2: type error, inferred block type T/3 contains the local class type C/3
 
 -- Checking quicksort.as:
 type QS<T> <: {quicksort : (var T.1[], Nat, Nat) -> ()}
@@ -287,7 +290,7 @@ let quicksort : (var Int[], Nat, Nat) -> () = func
 let swap : (var Int[], Nat, Nat) -> () = func
 let x : () = ()
 
--- Checking bankex.as:
+-- Checking bank-example.as:
 type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
 type Issuer <: actor {hasIssued : (like Account) -> async Bool}
@@ -299,7 +302,7 @@ let main : async (Account, Account)
 let show : (Text, Account) -> ()
 let test : () -> async (Account, Account)
 let transfer : (Account, Account, Int) -> async ()
--- Interpreting bankex.as:
+-- Interpreting bank-example.as:
 Bank(100)
   Issuer()
     <= {hasIssued = func}
@@ -307,37 +310,37 @@ Bank(100)
     <= {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
   <= {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 test()
-  -> async bankex.as:55.40-67.2
+  -> async bank-example.as:55.40-67.2
   <= async _ #0
-<- async bankex.as:55.40-67.2
+<- async bank-example.as:55.40-67.2
   -> message getReserve()
-  => await bankex.as:56.17-56.37
+  => await bank-example.as:56.17-56.37
 <- message getReserve()
   getReserve()
-    -> async bankex.as:5.32-6.21
+    -> async bank-example.as:5.32-6.21
     <= async _ #0
-<- async bankex.as:5.32-6.21
-<- await bankex.as:56.17-56.37({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+<- async bank-example.as:5.32-6.21
+<- await bank-example.as:56.17-56.37({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message split(10)
-  => await bankex.as:57.12-57.35
+  => await bank-example.as:57.12-57.35
 <- message split(10)
   split(10)
-    -> async bankex.as:22.39-25.4
+    -> async bank-example.as:22.39-25.4
     <= async _ #0
-<- async bankex.as:22.39-25.4
+<- async bank-example.as:22.39-25.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-<- await bankex.as:57.12-57.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+<- await bank-example.as:57.12-57.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message split(10)
-  => await bankex.as:58.12-58.35
+  => await bank-example.as:58.12-58.35
 <- message split(10)
   split(10)
-    -> async bankex.as:22.39-25.4
+    -> async bank-example.as:22.39-25.4
     <= async _ #0
-<- async bankex.as:22.39-25.4
+<- async bank-example.as:22.39-25.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-<- await bankex.as:58.12-58.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+<- await bank-example.as:58.12-58.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
   show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -345,20 +348,20 @@ test()
   show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
   transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
-    -> async bankex.as:45.91-48.2
+    -> async bank-example.as:45.91-48.2
     <= async _ #0
-  => await bankex.as:62.3-62.28
-<- async bankex.as:45.91-48.2
+  => await bank-example.as:62.3-62.28
+<- async bank-example.as:45.91-48.2
   -> message split(5)
-  => await bankex.as:46.13-46.39
+  => await bank-example.as:46.13-46.39
 <- message split(5)
   split(5)
-    -> async bankex.as:22.39-25.4
+    -> async bank-example.as:22.39-25.4
     <= async _ #0
-<- async bankex.as:22.39-25.4
+<- async bank-example.as:22.39-25.4
   Account(5)
     <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
-<- await bankex.as:46.13-46.39({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+<- await bank-example.as:46.13-46.39({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   <= ()
 <- message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -366,7 +369,7 @@ test()
     credit(5)
       <= ()
     <= ()
-<- await bankex.as:62.3-62.28()
+<- await bank-example.as:62.3-62.28()
   show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
   show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
@@ -374,7 +377,7 @@ test()
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
   <= ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
--- Finished bankex.as:
+-- Finished bank-example.as:
 let Account : Int -> Account = func
 let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
@@ -461,13 +464,13 @@ let c : Counter = Counter
 let show : Int -> () = func
 let test : () -> () = func
 
--- Checking testwhile.as:
+-- Checking while.as:
 let passed : Bool
 let test : () -> Int
--- Interpreting testwhile.as:
+-- Interpreting while.as:
 test()
   <= 0
--- Finished testwhile.as:
+-- Finished while.as:
 let passed : Bool = true
 let test : () -> Int = func
 
@@ -750,8 +753,8 @@ let y : Int = 2
 overflow.as:17.9-17.24: execution error, arithmetic overflow
 -- Finished overflow.as:
 
--- Checking menhirbug.as:
+-- Checking menhir-bug.as:
 type A = {x : {}}
--- Interpreting menhirbug.as:
--- Finished menhirbug.as:
+-- Interpreting menhir-bug.as:
+-- Finished menhir-bug.as:
 

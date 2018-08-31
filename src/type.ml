@@ -235,12 +235,14 @@ let open_binds env tbs =
 
 (* Normalization and Classification *)
 
+let reduce tbs t ts =
+  assert (List.length ts = List.length tbs);
+  open_ ts t
+
 let rec normalize env = function
   | Con (con, ts) as t ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t)) ->
-      assert (List.length ts = List.length tbs);
-      normalize env (open_ ts t)
+    | Some (Def (tbs, t)) -> normalize env (reduce tbs t ts)
     | Some _ -> t
     | None -> assert false
     )
@@ -254,9 +256,7 @@ let nonopt env t =
 let rec structural env = function
   | Con (con, ts) ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t) | Abs (tbs, t)) ->
-      assert (List.length ts = List.length tbs);
-      structural env (open_ ts t)
+    | Some (Def (tbs, t) | Abs (tbs, t)) -> structural env (reduce tbs t ts)
     | None -> assert false
     )
   | Like t -> structural env t (*TBR*)
@@ -265,6 +265,41 @@ let rec structural env = function
 let immutable = function
   | Mut t -> t
   | t -> t
+
+
+(* Avoiding local constructors *)
+
+exception Unavoidable of con
+
+let rec avoid env env' = function
+  | (Prim _ | Var _ | Any | Pre) as t -> t
+  | Con (c, ts) ->
+    (match Con.Env.find_opt c env' with
+    | Some (Abs _) -> raise (Unavoidable c)
+    | Some (Def (tbs, t)) -> avoid env env' (reduce tbs t ts)
+    | None ->
+      try
+        Con (c, List.map (avoid env env') ts)
+      with Unavoidable _ ->
+        match Con.Env.find c env with
+        | Abs _ -> raise (Unavoidable c)
+        | Def (tbs, t) -> avoid env env' (reduce tbs t ts)
+    )
+  | Array t -> Array (avoid env env' t)
+  | Tup ts -> Tup (List.map (avoid env env') ts)
+  | Func (tbs, t1, t2) ->
+    Func (List.map (avoid_bind env env') tbs, avoid env env' t1, avoid env env' t2)
+  | Opt t -> Opt (avoid env env' t)
+  | Async t -> Async (avoid env env' t)
+  | Like t -> Like (avoid env env' t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
+  | Mut t -> Mut (avoid env env' t)
+
+and avoid_bind env env' {var; bound} =
+  {var; bound = avoid env env' bound}
+
+and avoid_field env env' {name; typ} =
+  {name; typ = avoid env env' typ}
 
 
 (* Equivalence *)
