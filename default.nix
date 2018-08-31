@@ -34,15 +34,12 @@ stdenv.mkDerivation rec {
   ];
 
   buildPhase = ''
-    make asc
+    make BUILD=native asc
   '';
 
   installPhase = ''
     mkdir -p $out/bin
     cp asc $out/bin
-    # Do I have to add the dependecy on gmp this way?
-    wrapProgram $out/bin/asc \
-	--prefix LD_LIBRARY_PATH : "${nixpkgs.ocamlPackages.zarith}/lib/ocaml/${nixpkgs.ocaml.version}/site-lib/zarith/"
   '';
 
   # The binary does not work until we use wrapProgram, which runs in
