@@ -1,0 +1,25 @@
+Interpreter:
+-- Checking let.as:
+let x : Nat
+-- Interpreting let.as:
+-- Finished let.as:
+let x : Nat = 42
+
+Compiler:
+(module
+  (type $0 (func))
+  (func $0
+    (type 0)
+    (local i32)
+    (i32.const 43)
+    (i32.const 1)
+    (i32.sub)
+    (set_local 0)
+    (get_local 0)
+    (i32.const 42)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+  )
+  (start 0)
+)
+Interpreting the .wat:
