@@ -24,6 +24,11 @@ all: stats
 	  fi; \
 	) > $@ 2>&1 || true
 
+%.ok:
+	@echo "$@ missing"
+	@echo "Please run make accept or make $*.refresh"
+	@exit 1
+
 %.diff : %.out %.ok
 	@diff -u $*.ok $*.out | tee $@ || true
 
