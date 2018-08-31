@@ -19,10 +19,15 @@ all: stats
 	cat $*.out > $*.ok
 
 stats: $(addsuffix .diff,$(TESTS))
-	@failed=$$(find $^ -not -empty -printf "%f\n"|sed -e s,\.diff,,); \
+	@failed=""; \
+	for test in $(TESTS); do \
+	  if [ -s $$test.diff ]; then \
+	    failed="$$failed $$test"; \
+	  fi; \
+	done; \
 	if [ -z "$$failed" ]; \
 	then echo "All passed!"; \
-	else echo "Failed tests: $$failed"; exit 1; \
+	else echo "Failed tests:$$failed"; exit 1; \
 	fi
 
 # refresh all
