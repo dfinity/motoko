@@ -1,0 +1,5 @@
+-- Checking menhirbug.as:
+type A = {x : {}}
+-- Interpreting menhirbug.as:
+-- Finished menhirbug.as:
+

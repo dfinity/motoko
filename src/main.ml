@@ -145,7 +145,7 @@ let run_stdin contexts =
 (* Argument handling *)
 
 let args = ref []
-let add_arg source = args := !args @ [source]
+let add_arg source = args := !args @ [source]; Flags.interactive := false
 
 let argspec = Arg.align
 [
@@ -154,7 +154,7 @@ let argspec = Arg.align
   "-t", Arg.Set Flags.trace, " trace phases";
   "-d", Arg.Set Flags.debug, " debug, trace calls";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-v", Arg.Unit (fun () -> printf "%s\n" banner), " show version"
+  "-v", Arg.Unit (fun () -> printf "%s\n" banner; Flags.interactive := false), " show version"
 ]
 
 let initial_contexts = (Typing.empty_context, Interpret.empty_context)
@@ -163,7 +163,6 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   let contexts = List.fold_left run_file initial_contexts !args in
-  if !args = [] then Flags.interactive := true;
   if !Flags.interactive then begin
     printf "%s\n" banner;
     run_stdin contexts
