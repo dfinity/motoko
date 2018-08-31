@@ -363,8 +363,8 @@ and infer_exp' context exp : T.typ =
     let t = T.join context.cons t1 t2 in
     if not context.pre then begin
       if not (Operator.has_binop t op) then
-        error exp.at "operator not defined for operand type %s"
-          (T.string_of_typ t)
+        error exp.at "operator not defined for operand types %s and %s"
+          (T.string_of_typ t1) (T.string_of_typ t2)
     end;
     t
   | RelE (exp1, op, exp2) ->
@@ -373,8 +373,8 @@ and infer_exp' context exp : T.typ =
     let t = T.join context.cons t1 t2 in
     if not context.pre then begin
       if not (Operator.has_relop t op) then
-        error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t)
+        error exp.at "operator not defined for operand types %s and %s"
+          (T.string_of_typ t1) (T.string_of_typ t2)
     end;
     T.bool
   | TupE exps ->
@@ -972,6 +972,29 @@ and check_block_exps context ce_inner t decs at =
 and check_dec context ce_inner t dec =
   match dec.it with
   | ExpD exp -> check_exp context t exp
+(* TBR: push in external type annotation;
+   unfortunately, this is enough, because of the earlier recursive phases
+  | FuncD (id, [], pat, typ, exp) ->
+    (* TBR: special-case unit? *)
+    if T.eq context.cons t T.unit then
+      ignore (infer_dec context ce_inner dec)
+    else
+    (match T.nonopt context.cons t with
+    | T.Func ([], t1, t2)->
+      let ve = check_pat context t1 pat in
+      let t2' = check_typ context typ in
+      (* TBR: infer return type *)
+      if not (T.eq context.cons t2 t2') then
+        error dec.at "expected return type %s but found %s"
+          (T.string_of_typ t2) (T.string_of_typ t2');
+      let context' =
+        {context with labs = T.Env.empty; rets = Some t2; async = false} in
+      check_exp (adjoin_vals context' ve) t2 exp
+    | _ ->
+      error exp.at "function expression cannot produce expected type %s"
+        (T.string_of_typ t)
+    )
+*)
   | _ ->
     let t' = infer_dec context ce_inner dec in
     (* TBR: special-case unit? *)

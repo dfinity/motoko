@@ -188,6 +188,8 @@ and subst_field sigma {name; typ} =
   {name; typ = subst sigma typ}
 
 
+(* Handling binders *)
+
 let close cs t =
   let ts = List.map (fun c -> Var (Con.name c, 0)) cs in
   let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
