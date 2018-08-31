@@ -22,45 +22,55 @@ type ret_env = T.typ option
 type scope = val_env * typ_env * con_env
 
 type context =
-  {
-    vals : val_env;
+  { vals : val_env;
     typs : typ_env;
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    pre : bool
+    pre : bool;
   }
 
 let empty_context =
-  {
-    vals = T.Env.empty;
+  { vals = T.Env.empty;
     typs = T.Env.empty;
     cons = Con.Env.empty;
     labs = T.Env.empty;
     rets = None;
     async = false;
-    pre = false
+    pre = false;
   }
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
 let add_typ c x con k =
-  {c with typs = T.Env.add x con c.typs; cons = Con.Env.add con k c.cons}
+  { c with
+    typs = T.Env.add x con c.typs;
+    cons = Con.Env.add con k c.cons;
+  }
+
+let add_typs c xs cs ks =
+  { c with
+    typs = List.fold_right2 T.Env.add xs cs c.typs;
+    cons = List.fold_right2 Con.Env.add cs ks c.cons;
+  }
 
 let adjoin c (ve, te, ce) =
   { c with
     vals = T.Env.adjoin c.vals ve;
     typs = T.Env.adjoin c.typs te;
-    cons = Con.Env.adjoin c.cons ce
+    cons = Con.Env.adjoin c.cons ce;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 let adjoin_typs c te ce =
-  {c with typs = T.Env.adjoin c.typs te; cons = Con.Env.adjoin c.cons ce}
+  { c with
+    typs = T.Env.adjoin c.typs te;
+    cons = Con.Env.adjoin c.cons ce;
+  }
 
 let disjoint_union at fmt env1 env2 =
-  try T.Env.disjoint_union env1 env2 with T.Env.Overlap k -> error at fmt k
+  try T.Env.disjoint_union env1 env2 with T.Env.Clash k -> error at fmt k
 (* TBD
 let disjoint_add at fmt k x env =
   try T.Env.disjoint_add k x env with T.Env.Overlap k -> error at fmt k
@@ -99,62 +109,55 @@ let is_eq_typ context t =
 
 (* types one can switch on - all primitives except floats *)
 (* TBR: switch on option type? *)
-let is_switch_typ context t =
-  match T.structural context.cons t with
+let is_switch_typ ce t =
+  match T.structural ce t with
   | T.Prim p -> p <> T.Float
   | _ -> false
 
 (* types one can iterate over using `for`  *)
-let is_iter_typ context t =
-  match T.structural context.cons t with
+let is_iter_typ ce t =
+  match T.structural ce t with
   | T.Array _ -> true
   | _ -> false
 
 (* element type of iterable_type  *)
-let elem_typ context t =
-  match T.structural context.cons t with
+let elem_typ ce t =
+  match T.structural ce t with
   | T.Array t -> T.immutable t
   | _ -> assert false
 
 (* TBR: the whole notion of sharable typ needs to be reviewed in the presence of subtyping *)
-let rec is_shared_typ (context : context) (t : T.typ) : bool =
-  match T.structural context.cons t with
-  | T.Var (c, ts) -> false
+let rec is_shared_typ ce t =
+  match T.structural ce t with
+  | T.Var _
+  | T.Con _ -> false
   | T.Prim p -> true
-  | T.Array t -> is_shared_typ context t
-  | T.Opt t -> is_shared_typ context t
-  | T.Tup ts -> List.for_all (is_shared_typ context) ts 
+  | T.Array t -> is_shared_typ ce t
+  | T.Opt t -> is_shared_typ ce t
+  | T.Tup ts -> List.for_all (is_shared_typ ce) ts 
     (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
-  | T.Func _ as func_t -> is_async_typ context func_t
-  | T.Async _ as async_t -> is_async_typ context async_t
-  | T.Like t -> is_shared_typ context t
+  | T.Func _ as func_t -> is_async_typ ce func_t
+  | T.Async _ as async_t -> is_async_typ ce async_t
+  | T.Like t -> is_shared_typ ce t
   | T.Obj (T.Object, fs) ->
     (* TBR: this isn't stable with subtyping *)
-    List.for_all (fun {T.name; typ} -> is_shared_typ context typ) fs
+    List.for_all (fun {T.name; typ} -> is_shared_typ ce typ) fs
   | T.Obj (T.Actor, fs) -> true
   | T.Mut _ -> false
   | T.Any -> false (* TBR *)
   | T.Pre -> assert false
 
-and is_shared_typ_binds context ts =
-  List.fold_left
-    (fun (te, ce) {T.con; bound} ->
-      T.Env.add (Con.name con) con te,
-      Con.Env.add con (T.Abs ([], bound)) ce
-    ) (context.typs, context.cons) ts
-
 (* type of an actor field *)
-and is_async_typ context t =
-  match T.structural context.cons t with
+and is_async_typ ce t =
+  match T.structural ce t with
   | T.Func (tbs, t1, t2) ->
-    let te, ce = is_shared_typ_binds context tbs in
-    let context' = adjoin_typs context te ce in
-    is_shared_typ context' t1 &&
-    (match T.normalize context'.cons t2 with
+    let ts, ce' = T.open_binds ce tbs in
+    is_shared_typ ce' (T.open_ ts t1) &&
+    (match T.normalize ce' (T.open_ ts t2) with
     | T.Tup [] | T.Async _ -> true
     | _ -> false
     )
-  | T.Async t -> is_shared_typ context t
+  | T.Async t -> is_shared_typ ce t
   | _ -> false
 
 
@@ -178,10 +181,10 @@ let rec check_typ context typ : T.typ =
   match typ.it with
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it context.typs with
-    | Some con ->
-      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find con context.cons in
+    | Some c ->
+      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find c context.cons in
       let ts = check_typ_bounds context tbs typs typ.at in
-	    T.Var (con, ts)
+	    T.Con (c, ts)
     | None -> error id.at "unbound type identifier %s" id.it
     )
   | PrimT prim ->
@@ -192,9 +195,12 @@ let rec check_typ context typ : T.typ =
   | TupT typs ->
     T.Tup (List.map (check_typ context) typs)
   | FuncT (binds, typ1, typ2) ->
-    let tbs, te, ce = check_typ_binds context binds in
+    let cs, ts, te, ce = check_typ_binds context binds in
     let context' = adjoin_typs context te ce in
-    T.Func (tbs, check_typ context' typ1, check_typ context' typ2)
+    let t1 = check_typ context' typ1 in
+    let t2 = check_typ context' typ2 in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
+    T.Func (T.close_binds cs tbs, T.close cs t1, T.close cs t2)
   | OptT typ ->
     T.Opt (check_typ context typ)
   | AsyncT typ ->
@@ -211,33 +217,38 @@ let rec check_typ context typ : T.typ =
 and check_typ_field context s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ context typ) in
-  if s = T.Actor && not (is_async_typ context t) then
+  if s = T.Actor && not (is_async_typ context.cons t) then
     error typ.at "actor field %s has non-async type %s"
       id.it (T.string_of_typ t);
   {T.name = id.it; typ = t}
 
-and check_typ_binds context typ_binds : T.bind list * typ_env * con_env =
-  match typ_binds with
-  | [] -> [], T.Env.empty, Con.Env.empty
-  | typ_bind::typ_binds' ->
-    let {var; bound} = typ_bind.it in
-    let con = Con.fresh var.it in
-    let tb = {T.con; bound = check_typ context bound} in
-    let k = T.Abs ([], tb.T.bound) in
-    let context' = add_typ context var.it con k in
-    let tbs', te', ce' = check_typ_binds context' typ_binds' in
-    tb::tbs', T.Env.add var.it con te', Con.Env.add con k ce'
+and check_typ_binds context typ_binds : T.con list * T.typ list * typ_env * con_env =
+  let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
+  let cs = List.map (fun x -> Con.fresh x) xs in
+  let te = List.fold_left2 (fun te typ_bind c ->
+      let id = typ_bind.it.var in
+      if T.Env.mem id.it te then
+        error id.at "duplicate type name %s in type parameter list" id.it;
+      T.Env.add id.it c te
+    ) T.Env.empty typ_binds cs in
+  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
+  let pre_context' = {(add_typs context xs cs pre_ks) with pre = true} in
+  let ts = List.map (fun typ_bind -> check_typ pre_context' typ_bind.it.bound) typ_binds in
+  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
+  let context' = add_typs context xs cs ks in
+  let _ = List.map (fun typ_bind -> check_typ context' typ_bind.it.bound) typ_binds in
+  cs, ts, te, Con.Env.from_list2 cs ks
 
 and check_typ_bounds context (tbs : T.bind list) typs at : T.typ list =
   match tbs, typs with
   | tb::tbs', typ::typs' ->
     let t = check_typ context typ in
     if not context.pre then begin
-      (* TBR: check against bound *)
-      (* TBR: F-bounded checking with mutually recursive bounds? *)
+      if not (T.sub context.cons t tb.T.bound) then
+        error typ.at "type argument %s does not match parameter bound %s"
+          (T.string_of_typ t) (T.string_of_typ tb.T.bound)
     end;
-    let sigma = T.make_subst [t] [tb] in
-    let ts' = check_typ_bounds context (T.subst_binds sigma tbs') typs' at in
+    let ts' = check_typ_bounds context tbs' typs' at in
     t::ts'
   | [], [] -> []
   | [], _ -> error at "too many type arguments"
@@ -429,11 +440,9 @@ and infer_exp' context exp : T.typ =
     let t1 = infer_exp context exp1 in
     (match T.structural context.cons t1 with
     | T.Func (tbs, t2, t) ->
-      (* TBR: polymorphic instantiation, perhaps by matching? *)
       let ts = check_typ_bounds context tbs typs exp.at in
-      let sigma = T.make_subst ts tbs in
-      if not context.pre then check_exp context (T.subst sigma t2) exp2;
-      T.subst sigma t
+      if not context.pre then check_exp context (T.open_ ts t2) exp2;
+      T.open_ ts t
     | t1 ->
       error exp1.at "expected function type, found %s" (T.string_of_typ t1)
     )
@@ -466,7 +475,7 @@ and infer_exp' context exp : T.typ =
     t2
   | SwitchE (exp1, cases) ->
     let t1 = if context.pre then T.Pre else infer_exp context exp1 in
-    if not context.pre && not (is_switch_typ context t1) then
+    if not context.pre && not (is_switch_typ context.cons t1) then
       error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
     let t = infer_cases context t1 cases in
     t
@@ -487,9 +496,9 @@ and infer_exp' context exp : T.typ =
     if not context.pre then begin
       (* TBR: generalise beyond arrays *)
       let t1 = infer_exp context exp1 in
-      if not (is_iter_typ context t1) then
+      if not (is_iter_typ context.cons t1) then
         error exp1.at "expected iterable type, found %s" (T.string_of_typ t1);
-      let ve = check_pat context (elem_typ context t1) pat in
+      let ve = check_pat context (elem_typ context.cons t1) pat in
       check_exp (adjoin_vals context ve) T.unit exp2
     end;
     T.unit
@@ -628,7 +637,7 @@ and check_exp' context t exp =
     check_exp context t exp3
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp context exp1 in
-    if not (is_switch_typ context t1) then
+    if not (is_switch_typ context.cons t1) then
       error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
     check_cases context t1 t cases
   | LoopE _ | BreakE _ | RetE _ ->
@@ -855,7 +864,7 @@ and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.fiel
       t
   in
   if not context.pre then begin
-    if s = T.Actor && priv.it = Public && not (is_async_typ context t) then
+    if s = T.Actor && priv.it = Public && not (is_async_typ context.cons t) then
       error field.at "public actor field %s has non-async type %s"
         id.it (T.string_of_typ t)
   end;
@@ -916,9 +925,9 @@ and infer_dec context ce_inner dec : T.typ =
     if not context.pre then ignore (infer_exp context exp);
     T.unit
   | FuncD (id, typbinds, pat, typ, exp) ->
-    let t= T.Env.find id.it context.vals in
+    let t = T.Env.find id.it context.vals in
     if not context.pre then begin
-      let tbs, te, ce = check_typ_binds context typbinds in
+      let _cs, _ts, te, ce = check_typ_binds context typbinds in
       let context' = adjoin_typs context te ce in
       let _, ve = infer_pat {context' with pre = true} pat in
       let t2 = check_typ context' typ in
@@ -930,7 +939,7 @@ and infer_dec context ce_inner dec : T.typ =
   | ClassD (id, typbinds, sort, pat, fields) ->
     let t = T.Env.find id.it context.vals in
     if not context.pre then begin
-      let tbs, te, ce = check_typ_binds context typbinds in
+      let _cs, _ts, te, ce = check_typ_binds context typbinds in
       let context' = adjoin_typs context te ce in
       let c = T.Env.find id.it context.typs in
       let context' = (*context'*) add_typ context' id.it c (Con.Env.find c ce_inner) in
@@ -1014,13 +1023,13 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
       error dec.at "duplicate definition for type %s in block" id.it;
     let cs =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
-    let pre_tbs = List.map (fun con -> {T.con; bound = T.Pre}) cs in
+    let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
     let c = Con.fresh id.it in
     let pre_k = T.Abs (pre_tbs, T.Any) in
     let ve' =
       match dec.it with
       | ClassD _ ->
-        let t2 = T.Var (c, List.map (fun c' -> T.Var (c', [])) cs) in
+        let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
         T.Env.add id.it (T.Func (pre_tbs, T.Pre, t2)) ve
       | _ -> ve
     in ve', T.Env.add id.it c te, Con.Env.add c pre_k ce
@@ -1036,18 +1045,20 @@ and infer_dec_typdecs context te (ce, ce_inner) dec : con_env * con_env =
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> ce, ce_inner
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it te in
-    let tbs, te', ce' = check_typ_binds {context with pre = true} binds in
+    let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
     let context' = adjoin_typs context te' ce' in
     let t = check_typ context' typ in
-    Con.Env.add c (T.Def (tbs, t)) ce, ce_inner
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    Con.Env.add c (T.Def (tbs, T.close cs t)) ce, ce_inner
   | ClassD (id, binds, sort, pat, fields) ->
     let c = T.Env.find id.it te in
-    let tbs, te', ce' = check_typ_binds {context with pre = true} binds in
+    let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
     let context' = {(adjoin_typs context te' ce') with pre = true} in
     let _, ve = infer_pat context' pat in
     let t, t_inner = infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields in
-    Con.Env.add c (T.Abs (tbs, t)) ce,
-    Con.Env.add c (T.Abs (tbs, t_inner)) ce_inner
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    Con.Env.add c (T.Abs (tbs, T.close cs t)) ce,
+    Con.Env.add c (T.Abs (tbs, T.close cs t_inner)) ce_inner
 
 
 (* Pass 4: collect value identifiers *)
@@ -1082,20 +1093,22 @@ and infer_dec_valdecs context ve dec : val_env =
     let t = infer_exp (adjoin_vals {context with pre = true} ve) exp in
     T.Env.add id.it (T.Mut t) ve
   | FuncD (id, typbinds, pat, typ, _) ->
-    let tbs, te, ce = check_typ_binds context typbinds in
+    let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
     let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = check_typ context' typ in
-    T.Env.add id.it (T.Func (tbs, t1, t2)) ve
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    T.Env.add id.it (T.Func (tbs, T.close cs t1, T.close cs t2)) ve
   | TypD _ ->
     ve
   | ClassD (id, typbinds, sort, pat, fields) ->
-    let tbs, te, ce = check_typ_binds context typbinds in
+    let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
     let c = T.Env.find id.it context.typs in
     let t1, _ = infer_pat {context' with pre = true} pat in
-    let t2 = T.Var (c, List.map (fun tb -> T.Var (tb.T.con, [])) tbs) in
-    T.Env.add id.it (T.Func (tbs, t1, t2)) ve
+    let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    T.Env.add id.it (T.Func (tbs, T.close cs t1, T.close cs t2)) ve
 
 
 (* Programs *)

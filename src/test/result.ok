@@ -125,12 +125,12 @@ nonlinearpat.as:1.11-1.12: type error, duplicate binding for x in block
 
 -- Checking typedef.as:
 type A/1 = (B, A/1)
-type Arrow<T/2, U/2> = T/2 -> U/2
+type Arrow<T, U> = T.1 -> U.1
 type B = (A/1, B)
-type Compose<T/3, U/3, V/1> = (T/3 -> U/3) -> (U/3 -> V/1) -> T/3 -> V/1
-type Id = <T/4>T/4 -> T/4
+type Compose<T, U, V> = (T.2 -> U.2) -> (U.3 -> V.3) -> T.3 -> V.3
+type Id = <T>T -> T
 type IntT = Int
-type Seq<A/2> = (A/2, Seq<A/2>?)
+type Seq<A> = (A, Seq<A>?)
 -- Interpreting typedef.as:
 -- Finished typedef.as:
 
@@ -139,8 +139,8 @@ type Seq<A/2> = (A/2, Seq<A/2>?)
 -- Finished type_equiv.as:
 
 -- Checking quicksort.as:
-type QS<T/1> <: {quicksort : (var T/1[], Nat, Nat) -> ()}
-let QS : <T/5>((T/5, T/5) -> Int) -> QS<T/5>
+type QS<T> <: {quicksort : (var T.1[], Nat, Nat) -> ()}
+let QS : <T>((T.1, T.1) -> Int) -> QS<T>
 let a : var Int[]
 let cmpi : (Int, Int) -> Int
 let qs : QS<Int>
@@ -236,7 +236,7 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished quicksort.as:
-let QS : <T/5>((T/5, T/5) -> Int) -> QS<T/5> = func
+let QS : <T>((T.1, T.1) -> Int) -> QS<T> = func
 let a : var Int[] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = QS<Int>

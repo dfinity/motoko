@@ -9,14 +9,13 @@ type ret_env = typ option
 type scope = val_env * typ_env * con_env
 
 type context =
-  {
-    vals : val_env;
+  { vals : val_env;
     typs : typ_env;
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    pre : bool
+    pre : bool;
   }
 
 val empty_context : context
