@@ -19,7 +19,8 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of con * typ list                     (* constructor *)
+  | Var of string * int                       (* variable *)
+  | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of sort * field list                  (* object *)
   | Array of typ                              (* array *)
@@ -32,7 +33,7 @@ and typ =
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
-and bind = {con : con; bound : typ}
+and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
 type kind =
@@ -57,6 +58,9 @@ val nonopt : con_env -> typ -> typ
 val structural : con_env -> typ -> typ
 val immutable : typ -> typ
 
+exception Unavoidable of con
+val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
+
 
 (* Equivalence and Subtyping *)
 
@@ -69,11 +73,11 @@ val meet : con_env -> typ -> typ -> typ
 
 (* First-order substitution *)
 
-type subst = typ Con.Env.t
+val close : con list -> typ -> typ
+val close_binds : con list -> bind list -> bind list
 
-val subst : subst -> typ -> typ
-val subst_binds : subst -> bind list -> bind list
-val make_subst : typ list -> bind list -> subst
+val open_ : typ list -> typ -> typ
+val open_binds : con_env -> bind list -> typ list * con_env
 
 
 (* Environments *)

@@ -1,4 +1,4 @@
-# Makefile for actorscript  cases
+# Makefile for actorscript test cases
 
 # This works with bash
 

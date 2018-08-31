@@ -19,7 +19,8 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of con * typ list                     (* constructor *)
+  | Var of string * int                       (* variable *)
+  | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of sort * field list                  (* object *)
   | Array of typ                              (* array *)
@@ -32,7 +33,7 @@ and typ =
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
-and bind = {con : con; bound : typ}
+and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
 type kind =
@@ -71,8 +72,10 @@ let rec string_of_typ_nullary = function
   | Pre -> "???"
   | Any -> "any"
   | Prim p -> string_of_prim p
-  | Var (c, []) -> Con.to_string c
-  | Var (c, ts) ->
+  | Var (s, 0) -> sprintf "%s" s
+  | Var (s, i) -> sprintf "%s.%d" s i
+  | Con (c, []) -> Con.to_string c
+  | Con (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c) (String.concat ", " (List.map string_of_typ ts))
   | Tup ts ->
@@ -106,9 +109,8 @@ and string_of_typ t =
 and string_of_field {name; typ} =
   sprintf "%s : %s" name (string_of_typ typ)
 
-and string_of_bind {con; bound} =
-  Con.to_string con ^
-  (if bound = Any then "" else " <: " ^ string_of_typ bound)
+and string_of_bind {var; bound} =
+  var ^ (if bound = Any then "" else " <: " ^ string_of_typ bound)
 
 and string_of_binds = function
   | [] -> ""
@@ -127,55 +129,120 @@ let strings_of_kind = function
     "<:", string_of_binds tbs, string_of_typ t
 
 
-(* First-order substitution *)
+(* Shifting *)
 
-type subst = typ Con.Env.t
+let rec shift i t =
+  match t with
+  | Prim _ -> t
+  | Var (s, j) -> Var (s, if j < i then j else j + 1)
+  | Con (c, ts) -> Con (c, List.map (shift i) ts)
+  | Array t -> Array (shift i t)
+  | Tup ts -> Tup (List.map (shift i) ts)
+  | Func (tbs, t1, t2) ->
+    let i' = i + 1 in
+    Func (List.map (shift_bind i') tbs, shift i' t1, shift i' t2)
+  | Opt t -> Opt (shift i t)
+  | Async t -> Async (shift i t)
+  | Like t -> Like (shift i t)
+  | Obj (s, fs) -> Obj (s, List.map (shift_field i) fs)
+  | Mut t -> Mut (shift i t)
+  | Any -> Any
+  | Pre -> Pre
+
+and shift_bind i {var; bound} =
+  {var; bound = shift i bound}
+
+and shift_field i {name; typ} =
+  {name; typ = shift i typ}
+
+
+(* First-order substitution *)
 
 let rec subst sigma t =
   if sigma = Con.Env.empty then t else
   match t with
-  | Prim p -> Prim p
-  | Var (c, ts) ->
+  | Prim _
+  | Var _ -> t
+  | Con (c, ts) ->
     (match Con.Env.find_opt c sigma with
     | Some t -> assert (List.length ts = 0); t
-    | None -> Var (c, List.map (subst sigma) ts)
+    | None -> Con (c, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (tbs, t1, t2) ->
-    let sigma', tbs' = rename_binds sigma tbs in
-    Func (tbs', subst sigma' t1, subst sigma' t2)
+    let sigma' = Con.Env.map (shift 0) sigma in
+    Func (List.map (subst_bind sigma') tbs, subst sigma' t1, subst sigma' t2)
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Like t -> Like (subst sigma t)
-  | Obj (a, fs) -> Obj (a, List.map (subst_field sigma) fs)
+  | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Any -> Any
   | Pre -> Pre
 
+and subst_bind sigma {var; bound} =
+  {var; bound = subst sigma bound}
+
 and subst_field sigma {name; typ} =
   {name; typ = subst sigma typ}
 
-and rename_binds sigma = function
-  | [] -> sigma, []
-  | {con; bound}::binds ->
-    let con' = Con.fresh (Con.name con) in
-    let sigma' = Con.Env.add con (Var (con', [])) sigma in
-    let sigma'', binds' = rename_binds sigma' binds in
-    sigma'', {con = con'; bound = subst sigma'' bound}::binds'
 
-let subst_binds sigma binds = snd (rename_binds sigma binds)
+(* Handling binders *)
 
-let make_subst =
-  List.fold_left2 (fun sigma t tb -> Con.Env.add tb.con t sigma) Con.Env.empty
+let close cs t =
+  let ts = List.map (fun c -> Var (Con.name c, 0)) cs in
+  let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
+  subst sigma t
+
+let close_binds cs tbs =
+  List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
+
+
+let rec open' i ts t =
+  if ts = [] then t else
+  match t with
+  | Prim _ -> t
+  | Var (_, j) -> if j < i then t else List.nth ts (j - i)
+  | Con (c, ts') -> Con (c, List.map (open' i ts) ts')
+  | Array t -> Array (open' i ts t)
+  | Tup ts' -> Tup (List.map (open' i ts) ts')
+  | Func (tbs, t1, t2) ->
+    let i' = i + 1 in
+    Func (List.map (open_bind i' ts) tbs, open' i' ts t1, open' i' ts t2)
+  | Opt t -> Opt (open' i ts t)
+  | Async t -> Async (open' i ts t)
+  | Like t -> Like (open' i ts t)
+  | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
+  | Mut t -> Mut (open' i ts t)
+  | Any -> Any
+  | Pre -> Pre
+
+and open_bind i ts {var; bound} =
+  {var; bound = open' i ts bound}
+
+and open_field i ts {name; typ} =
+  {name; typ = open' i ts typ}
+
+let open_ = open' 0
+
+let open_binds env tbs =
+  let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
+  let ts = List.map (fun c -> Con (c, [])) cs in
+  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
+  ts, List.fold_right2 Con.Env.add cs ks env
 
 
 (* Normalization and Classification *)
 
+let reduce tbs t ts =
+  assert (List.length ts = List.length tbs);
+  open_ ts t
+
 let rec normalize env = function
-  | Var (con, ts) as t ->
+  | Con (con, ts) as t ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t)) -> normalize env (subst (make_subst ts tbs) t)
+    | Some (Def (tbs, t)) -> normalize env (reduce tbs t ts)
     | Some _ -> t
     | None -> assert false
     )
@@ -187,10 +254,9 @@ let nonopt env t =
   | t -> t
 
 let rec structural env = function
-  | Var (con, ts) ->
+  | Con (con, ts) ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t) | Abs (tbs, t)) ->
-      structural env (subst (make_subst ts tbs) t)
+    | Some (Def (tbs, t) | Abs (tbs, t)) -> structural env (reduce tbs t ts)
     | None -> assert false
     )
   | Like t -> structural env t (*TBR*)
@@ -199,6 +265,41 @@ let rec structural env = function
 let immutable = function
   | Mut t -> t
   | t -> t
+
+
+(* Avoiding local constructors *)
+
+exception Unavoidable of con
+
+let rec avoid env env' = function
+  | (Prim _ | Var _ | Any | Pre) as t -> t
+  | Con (c, ts) ->
+    (match Con.Env.find_opt c env' with
+    | Some (Abs _) -> raise (Unavoidable c)
+    | Some (Def (tbs, t)) -> avoid env env' (reduce tbs t ts)
+    | None ->
+      try
+        Con (c, List.map (avoid env env') ts)
+      with Unavoidable _ ->
+        match Con.Env.find c env with
+        | Abs _ -> raise (Unavoidable c)
+        | Def (tbs, t) -> avoid env env' (reduce tbs t ts)
+    )
+  | Array t -> Array (avoid env env' t)
+  | Tup ts -> Tup (List.map (avoid env env') ts)
+  | Func (tbs, t1, t2) ->
+    Func (List.map (avoid_bind env env') tbs, avoid env env' t1, avoid env env' t2)
+  | Opt t -> Opt (avoid env env' t)
+  | Async t -> Async (avoid env env' t)
+  | Like t -> Like (avoid env env' t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
+  | Mut t -> Mut (avoid env env' t)
+
+and avoid_bind env env' {var; bound} =
+  {var; bound = avoid env env' bound}
+
+and avoid_field env env' {name; typ} =
+  {name; typ = avoid env env' typ}
 
 
 (* Equivalence *)
@@ -221,25 +322,27 @@ and eq_typ env (eqs : (typ * typ list) list) t1 t2 =
 
 and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
   match t1, t2 with
-  | Var (con1, ts1), Var (con2, ts2) ->
+  | Var (_, i1), Var (_, i2) ->
+    i1 = i2
+  | Con (con1, ts1), Con (con2, ts2) ->
     con1 = con2 && eq_list eq_typ env eqs ts1 ts2 ||
     (match Con.Env.find_opt con1 env, Con.Env.find_opt con2 env with
     | Some (Def (tbs, t)), _ -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (subst (make_subst ts1 tbs) t) t2
+      eq_typ env eqs (open_ ts1 t) t2
     | _, Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (subst (make_subst ts2 tbs) t)
+      eq_typ env eqs t1 (open_ ts2 t)
     | _ -> false
     )
-  | Var (con1, ts1), t2 ->
+  | Con (con1, ts1), t2 ->
     (match Con.Env.find_opt con1 env with
     | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (subst (make_subst ts1 tbs) t) t2
+      eq_typ env eqs (open_ ts1 t) t2
     | _ -> false
     )
-  | t1, Var (con2, ts2) ->
+  | t1, Con (con2, ts2) ->
     (match Con.Env.find_opt con2 env with
     | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (subst (make_subst ts2 tbs) t)
+      eq_typ env eqs t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 ->
@@ -256,7 +359,9 @@ and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
     eq_list eq_typ env eqs ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
     (match eq_binds env eqs tbs1 tbs2 with
-    | Some env' -> eq_typ env' eqs t11 t21 && eq_typ env' eqs t12 t22
+    | Some (ts, env') ->
+      eq_typ env' eqs (open_ ts t11) (open_ ts t21) &&
+      eq_typ env' eqs (open_ ts t12) (open_ ts t22)
     | None -> false
     )
   | Async t1, Async t2 ->
@@ -273,12 +378,12 @@ and eq_field env eqs tf1 tf2 =
   eq_typ env eqs tf1.typ tf2.typ
 
 and eq_binds env eqs tbs1 tbs2 =
-  match tbs1, tbs2 with
-  | [], [] -> Some env
-  | tb1::tbs1', tb2::tbs2' when eq_typ env eqs tb1.bound tb2.bound ->
-    let env' = Con.Env.add tb1.con (Def ([], Var (tb2.con, []))) env in
-    eq_binds env' eqs tbs1' tbs2'
-  | _, _ -> None
+  if eq_list eq_bind env eqs tbs1 tbs2
+  then Some (open_binds env tbs1)
+  else None
+
+and eq_bind env eqs tb1 tb2 =
+  eq_typ env eqs tb1.bound tb2.bound
 
 
 (* Subtyping *)

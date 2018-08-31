@@ -1,0 +1,9 @@
+Interpreter:
+-- Checking menhir-bug.as:
+type A = {x : {}}
+-- Interpreting menhir-bug.as:
+-- Finished menhir-bug.as:
+
+Compiler:
+(module (type $0 (func)) (func $0 (type 0)) (start 0))
+Interpreting the .wat:
