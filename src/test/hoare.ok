@@ -1,0 +1,46 @@
+-- Checking hoare.as:
+let a : var Int[]
+let partition : (var Int[], Nat, Nat) -> Nat
+let quicksort : (var Int[], Nat, Nat) -> ()
+let swap : (var Int[], Nat, Nat) -> ()
+let x : ()
+-- Interpreting hoare.as:
+quicksort([8, 3, 9, 5, 2], 0, 4)
+  partition([8, 3, 9, 5, 2], 0, 4)
+    swap([8, 3, 9, 5, 2], 0, 4)
+      <= ()
+    swap([2, 3, 9, 5, 8], 2, 4)
+      <= ()
+    swap([2, 3, 8, 5, 9], 2, 3)
+      <= ()
+    <= 3
+  quicksort([2, 3, 5, 8, 9], 0, 3)
+    partition([2, 3, 5, 8, 9], 0, 3)
+      <= 0
+    quicksort([2, 3, 5, 8, 9], 0, 0)
+      <= ()
+    quicksort([2, 3, 5, 8, 9], 1, 3)
+      partition([2, 3, 5, 8, 9], 1, 3)
+        <= 1
+      quicksort([2, 3, 5, 8, 9], 1, 1)
+        <= ()
+      quicksort([2, 3, 5, 8, 9], 2, 3)
+        partition([2, 3, 5, 8, 9], 2, 3)
+          <= 2
+        quicksort([2, 3, 5, 8, 9], 2, 2)
+          <= ()
+        quicksort([2, 3, 5, 8, 9], 3, 3)
+          <= ()
+        <= ()
+      <= ()
+    <= ()
+  quicksort([2, 3, 5, 8, 9], 4, 4)
+    <= ()
+  <= ()
+-- Finished hoare.as:
+let a : var Int[] = [2, 3, 5, 8, 9]
+let partition : (var Int[], Nat, Nat) -> Nat = func
+let quicksort : (var Int[], Nat, Nat) -> () = func
+let swap : (var Int[], Nat, Nat) -> () = func
+let x : () = ()
+
