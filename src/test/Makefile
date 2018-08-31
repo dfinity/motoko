@@ -32,7 +32,7 @@ all: stats
 %.diff : %.out %.ok
 	@diff -u $*.ok $*.out | tee $@ || true
 
-%.refresh : %.out
+%.refresh: %.out
 	cat $*.out > $*.ok
 
 stats: $(addsuffix .diff,$(TESTS))
