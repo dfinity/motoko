@@ -1,6 +1,10 @@
+Interpreter
 -- Checking assert42.as:
 let x : Nat
 -- Interpreting assert42.as:
 -- Finished assert42.as:
 let x : Nat = 42
 
+Compiler
+Running the wat
+assert42.wat:1.21-1.32: runtime trap: unreachable executed

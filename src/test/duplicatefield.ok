@@ -1,3 +1,7 @@
+Interpreter
 -- Checking duplicatefield.as:
 duplicatefield.as:4.3-4.4: type error, duplicate field name m in object
 
+Compiler
+Running the wat
+duplicatefield.wat:1.1-1.27: syntax error: unknown operator

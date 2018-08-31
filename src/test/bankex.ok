@@ -1,3 +1,4 @@
+Interpreter
 -- Checking bankex.as:
 type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
@@ -95,3 +96,6 @@ let show : (Text, Account) -> () = func
 let test : () -> async (Account, Account) = func
 let transfer : (Account, Account, Int) -> async () = func
 
+Compiler
+Running the wat
+bankex.wat:1.21-1.32: runtime trap: unreachable executed

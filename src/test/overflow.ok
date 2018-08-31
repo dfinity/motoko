@@ -1,5 +1,9 @@
+Interpreter
 -- Checking overflow.as:
 -- Interpreting overflow.as:
 overflow.as:17.9-17.24: execution error, arithmetic overflow
 -- Finished overflow.as:
 
+Compiler
+Running the wat
+overflow.wat:1.21-1.32: runtime trap: unreachable executed

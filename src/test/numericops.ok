@@ -1,3 +1,4 @@
+Interpreter
 -- Checking numericops.as:
 let testFloat : (Float, Float) -> ()
 let testInt : (Int, Int) -> ()
@@ -16,3 +17,6 @@ let testWord32 : (Word32, Word32) -> () = func
 let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
+Compiler
+Running the wat
+numericops.wat:1.21-1.32: runtime trap: unreachable executed

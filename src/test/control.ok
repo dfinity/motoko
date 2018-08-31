@@ -1,3 +1,4 @@
+Interpreter
 -- Checking control.as:
 type Control <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
 let Control : () -> Control
@@ -5,3 +6,6 @@ let Control : () -> Control
 -- Finished control.as:
 let Control : () -> Control = func
 
+Compiler
+Running the wat
+control.wat:1.21-1.32: runtime trap: unreachable executed

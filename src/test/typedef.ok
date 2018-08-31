@@ -1,3 +1,4 @@
+Interpreter
 -- Checking typedef.as:
 type A/1 = (B, A/1)
 type Arrow<T/2, U/2> = T/2 -> U/2
@@ -9,3 +10,6 @@ type Seq<A/2> = (A/2, Seq<A/2>?)
 -- Interpreting typedef.as:
 -- Finished typedef.as:
 
+Compiler
+Running the wat
+typedef.wat:1.21-1.32: runtime trap: unreachable executed

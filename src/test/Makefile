@@ -3,6 +3,7 @@
 # This works with bash
 
 ASC=../asc
+WASM=wasm
 ASC_FLAGS=-t -d
 
 TESTS:=$(basename $(wildcard *.as))
@@ -10,10 +11,16 @@ TESTS:=$(basename $(wildcard *.as))
 all: stats
 
 %.out : %.as $(ASC)
-	$(ASC) $(ASC_FLAGS) $< > $@ 2>&1 || true
+	( echo "Interpreter"; \
+	  $(ASC) $(ASC_FLAGS) $< ; \
+	  echo "Compiler"; \
+	  $(ASC) -c $< > $*.wat 2>&1 ; \
+	  echo "Running the wat"; \
+	  $(WASM) $*.wat ; \
+	) > $@ 2>&1 || true
 
 %.diff : %.out %.ok
-	diff -u $*.out $*.ok | tee $@ || true
+	diff -u $*.ok $*.out | tee $@ || true
 
 %.refresh : %.out
 	cat $*.out > $*.ok

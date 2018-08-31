@@ -1,6 +1,10 @@
+Interpreter
 -- Checking concat.as:
 let testText : (Text, Text) -> ()
 -- Interpreting concat.as:
 -- Finished concat.as:
 let testText : (Text, Text) -> () = func
 
+Compiler
+Running the wat
+concat.wat:1.21-1.32: runtime trap: unreachable executed

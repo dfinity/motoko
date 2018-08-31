@@ -100,15 +100,44 @@ let run (stat_context, dyn_context) lexer parse name =
 let update_contexts contexts = function
   | Some contexts' -> contexts'
   | None -> contexts
-  
+
 let run_file contexts filename =
-  let ic = open_in filename in 
+  let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let result = run contexts lexer Parser.parse_prog filename in
   close_in ic;
   if !Flags.trace then printf "\n";
   update_contexts contexts result
 
+(* There is some duplication with `run` below. *)
+let compile filename =
+  let ic = open_in filename in
+  let lexer = Lexing.from_channel ic in
+  let parse = Parser.parse_prog in
+  let name = filename in
+  let stat_context = Typing.empty_context in
+  lexer.Lexing.lex_curr_p <-
+    {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
+  try
+    let prog = parse Lexer.token lexer in 
+    trace "Checking" name;
+    let (ve, te, ce) as stat_scope = Typing.check_prog stat_context prog in
+    if !Flags.trace then begin
+      print_ce ce;
+      print_ve ve
+    end;
+    trace "Compiling" name;
+    Compile.compile prog
+  with exn ->
+    let r, sort, msg, dump =
+      match exn with
+      | Lexer.Error (at, msg) -> at, "syntax", msg, false
+      | Parser.Error -> Lexer.region lexer, "syntax", "unexpected token", false
+      | Typing.Error (at, msg) -> at, "type", msg, false
+      | _ -> raise exn
+    in
+    printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
+    exit 1
 
 (* Interactively *)
 
@@ -151,6 +180,7 @@ let argspec = Arg.align
 [
   "-", Arg.Set Flags.interactive,
     " run interactively (default if no files given)";
+  "-c", Arg.Set Flags.compile, "compile to .wat";
   "-t", Arg.Set Flags.trace, " trace phases";
   "-d", Arg.Set Flags.debug, " debug, trace calls";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
@@ -162,8 +192,12 @@ let initial_contexts = (Typing.empty_context, Interpret.empty_context)
 let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
-  let contexts = List.fold_left run_file initial_contexts !args in
-  if !Flags.interactive then begin
-    printf "%s\n" banner;
-    run_stdin contexts
+  if !Flags.compile then begin
+    List.iter compile !args
+  end else begin
+    let contexts = List.fold_left run_file initial_contexts !args in
+    if !Flags.interactive then begin
+      printf "%s\n" banner;
+      run_stdin contexts
+    end
   end

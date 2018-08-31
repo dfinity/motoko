@@ -1,3 +1,4 @@
+Interpreter
 -- Checking bitops.as:
 let testWord16 : (Word16, Word16) -> ()
 let testWord32 : (Word32, Word32) -> ()
@@ -10,3 +11,6 @@ let testWord32 : (Word32, Word32) -> () = func
 let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
+Compiler
+Running the wat
+bitops.wat:1.21-1.32: runtime trap: unreachable executed

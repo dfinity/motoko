@@ -1,3 +1,4 @@
+Interpreter
 -- Checking literals.as:
 let byte : Word8
 let i : Int
@@ -20,3 +21,6 @@ let short : Word16 = 65535
 let u : Char = "\u{a34}"
 let word : Word32 = 4294967295
 
+Compiler
+Running the wat
+literals.wat:1.21-1.32: runtime trap: unreachable executed

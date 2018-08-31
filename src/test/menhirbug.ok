@@ -1,5 +1,9 @@
+Interpreter
 -- Checking menhirbug.as:
 type A = {x : {}}
 -- Interpreting menhirbug.as:
 -- Finished menhirbug.as:
 
+Compiler
+Running the wat
+menhirbug.wat:1.21-1.32: runtime trap: unreachable executed
