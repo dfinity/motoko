@@ -46,6 +46,6 @@ let swap : (var Int[], Nat, Nat) -> () = func
 let x : () = ()
 
 Compiler:
-(module (func $main unreachable) (start $main))
+(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
 Interpreting the .wat:
-hoare.wat:1.21-1.32: runtime trap: unreachable executed
+hoare.wat:1.44-1.57: runtime trap: unreachable executed

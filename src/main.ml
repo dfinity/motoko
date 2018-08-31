@@ -109,7 +109,7 @@ let run_file contexts filename =
   if !Flags.trace then printf "\n";
   update_contexts contexts result
 
-(* There is some duplication with `run` below. *)
+(* There is some duplication with `run` below. But here we want errors to stderr! *)
 let compile filename =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
@@ -136,7 +136,7 @@ let compile filename =
       | Typing.Error (at, msg) -> at, "type", msg, false
       | _ -> raise exn
     in
-    printf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
+    eprintf "%s: %s error, %s\n" (Source.string_of_region r) sort msg;
     exit 1
 
 (* Interactively *)

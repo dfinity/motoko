@@ -274,6 +274,6 @@ let x : Nat = 3
 let y : Int = 2
 
 Compiler:
-(module (func $main unreachable) (start $main))
+(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
 Interpreting the .wat:
-objects.wat:1.21-1.32: runtime trap: unreachable executed
+objects.wat:1.44-1.57: runtime trap: unreachable executed

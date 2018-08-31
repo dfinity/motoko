@@ -11,6 +11,6 @@ type Seq<A/2> = (A/2, Seq<A/2>?)
 -- Finished typedef.as:
 
 Compiler:
-(module (func $main unreachable) (start $main))
+(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
 Interpreting the .wat:
-typedef.wat:1.21-1.32: runtime trap: unreachable executed
+typedef.wat:1.44-1.57: runtime trap: unreachable executed

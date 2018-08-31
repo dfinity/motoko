@@ -6,6 +6,6 @@ let x : Nat
 let x : Nat = 42
 
 Compiler:
-(module (func $main unreachable) (start $main))
+(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
 Interpreting the .wat:
-assert42.wat:1.21-1.32: runtime trap: unreachable executed
+assert42.wat:1.44-1.57: runtime trap: unreachable executed
