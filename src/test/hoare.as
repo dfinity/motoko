@@ -28,4 +28,10 @@ func quicksort(a : var Int[], lo : Nat, hi : Nat) {
 
 let a : var Int[] = [8, 3, 9, 5, 2];
 
-let x = quicksort(a, 0, 4); 
+quicksort(a, 0, 4); 
+
+assert(a[0] == 2);
+assert(a[1] == 3);
+assert(a[2] == 5);
+assert(a[3] == 8);
+assert(a[4] == 9);
