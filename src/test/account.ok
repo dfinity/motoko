@@ -9,6 +9,5 @@ let Account : Int -> Account = func
 let transfer : (Account, Account, Int) -> async () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
+(module (type $0 (func)) (func $0 (type 0)) (start 0))
 Interpreting the .wat:
-account.wat:1.44-1.57: runtime trap: unreachable executed

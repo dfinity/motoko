@@ -1,2 +1,1 @@
-let x = 41 + 1;
-assert (x == 42)
+assert (43 - 1 == 42);

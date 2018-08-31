@@ -4,6 +4,9 @@ Interpreter:
 -- Finished assertTrue.as:
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
+(module
+  (type $0 (func))
+  (func $0 (type 0) (i32.const 1) (if (then) (else (unreachable))))
+  (start 0)
+)
 Interpreting the .wat:
-assertTrue.wat:1.44-1.57: runtime trap: unreachable executed

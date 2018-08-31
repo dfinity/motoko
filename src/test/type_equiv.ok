@@ -4,6 +4,28 @@ Interpreter:
 -- Finished type_equiv.as:
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (unreachable)) (start 0))
+(module
+  (type $0 (func))
+  (func $0
+    (type 0)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+    (unreachable)
+  )
+  (start 0)
+)
 Interpreting the .wat:
-type_equiv.wat:1.44-1.57: runtime trap: unreachable executed
+type_equiv.wat:5.5-5.18: runtime trap: unreachable executed
