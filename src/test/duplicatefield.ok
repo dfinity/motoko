@@ -1,7 +1,0 @@
-Interpreter:
--- Checking duplicatefield.as:
-duplicatefield.as:4.3-4.4: type error, duplicate field name m in object
-
-Compiler:
-duplicatefield.as:4.3-4.4: type error, duplicate field name m in object
-Empty .wat file!
