@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking objects.as:
 type O = {self : () -> O}
 type Q = {this : var Q?}
@@ -273,6 +273,7 @@ let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()} = 
 let x : Nat = 3
 let y : Int = 2
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 objects.wat:1.21-1.32: runtime trap: unreachable executed

@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking account.as:
 type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
 let Account : Int -> Account
@@ -8,6 +8,7 @@ let transfer : (Account, Account, Int) -> async ()
 let Account : Int -> Account = func
 let transfer : (Account, Account, Int) -> async () = func
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 account.wat:1.21-1.32: runtime trap: unreachable executed

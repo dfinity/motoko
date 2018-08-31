@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking counter.as:
 type Counter <: actor {dec : () -> (); read : () -> async Int}
 let Counter : Int -> Counter
@@ -76,6 +76,7 @@ let c : Counter = Counter
 let show : Int -> () = func
 let test : () -> () = func
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 counter.wat:1.21-1.32: runtime trap: unreachable executed

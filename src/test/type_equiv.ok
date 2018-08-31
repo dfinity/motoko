@@ -1,8 +1,9 @@
-Interpreter
+Interpreter:
 -- Checking type_equiv.as:
 -- Interpreting type_equiv.as:
 -- Finished type_equiv.as:
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 type_equiv.wat:1.21-1.32: runtime trap: unreachable executed

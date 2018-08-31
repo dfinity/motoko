@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking hoare.as:
 let a : var Int[]
 let partition : (var Int[], Nat, Nat) -> Nat
@@ -45,6 +45,7 @@ let quicksort : (var Int[], Nat, Nat) -> () = func
 let swap : (var Int[], Nat, Nat) -> () = func
 let x : () = ()
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 hoare.wat:1.21-1.32: runtime trap: unreachable executed

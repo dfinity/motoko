@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking testwhile.as:
 let passed : Bool
 let test : () -> Int
@@ -9,6 +9,7 @@ test()
 let passed : Bool = true
 let test : () -> Int = func
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 testwhile.wat:1.21-1.32: runtime trap: unreachable executed

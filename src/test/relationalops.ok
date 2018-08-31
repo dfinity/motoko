@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking relationalops.as:
 let testBool : (Bool, Bool) -> ()
 let testChar : (Char, Char) -> ()
@@ -23,6 +23,7 @@ let testWord32 : (Word32, Word32) -> () = func
 let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 relationalops.wat:1.21-1.32: runtime trap: unreachable executed

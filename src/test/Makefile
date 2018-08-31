@@ -11,16 +11,21 @@ TESTS:=$(basename $(wildcard *.as))
 all: stats
 
 %.out : %.as $(ASC)
-	( echo "Interpreter"; \
+	@echo "TEST: $*"
+	@( echo "Interpreter:"; \
 	  $(ASC) $(ASC_FLAGS) $< ; \
-	  echo "Compiler"; \
-	  $(ASC) -c $< > $*.wat 2>&1 ; \
-	  echo "Running the wat"; \
-	  $(WASM) $*.wat ; \
+	  echo "Compiler:"; \
+	  $(ASC) -c $< > $*.wat; \
+	  cat $*.wat; \
+	  if [ -s $*.wat ];\
+	    then echo "Interpreting the .wat:"; \
+	    $(WASM) $*.wat ; \
+	    else echo "Empty .wat file!"; \
+	  fi; \
 	) > $@ 2>&1 || true
 
 %.diff : %.out %.ok
-	diff -u $*.ok $*.out | tee $@ || true
+	@diff -u $*.ok $*.out | tee $@ || true
 
 %.refresh : %.out
 	cat $*.out > $*.ok

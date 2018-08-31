@@ -1,4 +1,4 @@
-Interpreter
+Interpreter:
 -- Checking quicksort.as:
 type QS<T/1> <: {quicksort : (var T/1[], Nat, Nat) -> ()}
 let QS : <T/5>((T/5, T/5) -> Int) -> QS<T/5>
@@ -102,6 +102,7 @@ let a : var Int[] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = QS<Int>
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 quicksort.wat:1.21-1.32: runtime trap: unreachable executed

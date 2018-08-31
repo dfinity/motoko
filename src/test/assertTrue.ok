@@ -1,8 +1,9 @@
-Interpreter
+Interpreter:
 -- Checking assertTrue.as:
 -- Interpreting assertTrue.as:
 -- Finished assertTrue.as:
 
-Compiler
-Running the wat
+Compiler:
+(module (func $main unreachable) (start $main))
+Interpreting the .wat:
 assertTrue.wat:1.21-1.32: runtime trap: unreachable executed
