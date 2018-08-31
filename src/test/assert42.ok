@@ -1,0 +1,6 @@
+-- Checking assert42.as:
+let x : Nat
+-- Interpreting assert42.as:
+-- Finished assert42.as:
+let x : Nat = 42
+
