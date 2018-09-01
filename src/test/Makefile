@@ -26,14 +26,14 @@ all: stats
 
 %.ok:
 	@echo "$@ missing"
-	@echo "Please run make accept or make $*.refresh"
+	@echo "Please run 'make accept' or 'make $*.refresh'"
 	@exit 1
 
-%.diff : %.out %.ok
+%.diff: %.ok %.out
 	@diff -u $*.ok $*.out | tee $@ || true
 
 %.refresh: %.out
-	cat $*.out > $*.ok
+	cat $*.out >$*.ok
 
 stats: $(addsuffix .diff,$(TESTS))
 	@failed=""; \

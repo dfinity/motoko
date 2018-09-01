@@ -1,7 +1,7 @@
 Interpreter:
 -- Checking quicksort.as:
-type QS<T> <: {quicksort : (var T.1[], Nat, Nat) -> ()}
-let QS : <T>((T.1, T.1) -> Int) -> QS<T>
+type QS<T> <: {quicksort : (var T[], Nat, Nat) -> ()}
+let QS : <T>((T, T) -> Int) -> QS<T>
 let a : var Int[]
 let cmpi : (Int, Int) -> Int
 let qs : QS<Int>
@@ -97,7 +97,7 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished quicksort.as:
-let QS : <T>((T.1, T.1) -> Int) -> QS<T> = func
+let QS : <T>((T, T) -> Int) -> QS<T> = func
 let a : var Int[] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = QS<Int>

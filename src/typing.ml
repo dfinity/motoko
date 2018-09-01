@@ -43,6 +43,7 @@ let empty_context =
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
+let add_con c con k = {c with cons = Con.Env.add con k c.cons}
 let add_typ c x con k =
   { c with
     typs = T.Env.add x con c.typs;
@@ -1065,19 +1066,22 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs context te decs : con_env * con_env =
-  List.fold_left (infer_dec_typdecs context te)
-    (Con.Env.empty, Con.Env.empty) decs
+  let _context', ce, ce_inner =
+    List.fold_left (infer_dec_typdecs te)
+      (context, Con.Env.empty, Con.Env.empty) decs
+  in ce, ce_inner
 
-and infer_dec_typdecs context te (ce, ce_inner) dec : con_env * con_env =
+and infer_dec_typdecs te (context, ce, ce_inner) dec : context * con_env * con_env =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ -> ce, ce_inner
+  | ExpD _ | LetD _ | VarD _ | FuncD _ -> context, ce, ce_inner
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it te in
     let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
     let context' = adjoin_typs context te' ce' in
     let t = check_typ context' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    Con.Env.add c (T.Def (tbs, T.close cs t)) ce, ce_inner
+    let k = T.Def (tbs, T.close cs t) in
+    add_con context c k, Con.Env.add c k ce, ce_inner
   | ClassD (id, binds, sort, pat, fields) ->
     let c = T.Env.find id.it te in
     let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
@@ -1085,7 +1089,9 @@ and infer_dec_typdecs context te (ce, ce_inner) dec : con_env * con_env =
     let _, ve = infer_pat context' pat in
     let t, t_inner = infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    Con.Env.add c (T.Abs (tbs, T.close cs t)) ce,
+    let k = T.Abs (tbs, T.close cs t) in
+    add_con context c k,
+    Con.Env.add c k ce,
     Con.Env.add c (T.Abs (tbs, T.close cs t_inner)) ce_inner
 
 
