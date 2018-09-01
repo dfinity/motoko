@@ -3,20 +3,15 @@
 # This works with bash
 
 ASC=../main.native
-# with the compiler
+
+SAMPLES:=$(basename $(wildcard *.as))
+
 all:
 	rm -f *.txt
-	$(ASC) counterex.as >> counterex.txt 2>&1
-	$(ASC) hoare.as >> hoare.txt 2>&1
-	$(ASC) quicksort.as >> quicksort.txt 2>&1
-	$(ASC) bankex.as >> bankex.txt 2>&1
-	$(ASC) chequeex.as >> chequeex.txt 2>&1
-
-
-# refresh
-current:
-	rm -f *.txt
-	make all 
+	@for sample in $(SAMPLES); do \
+	  echo "$(ASC) $$sample.as >$$sample.txt 2>&1"; \
+	  $(ASC) $$sample.as >$$sample.txt 2>&1; \
+	done
 
 clean:
 	rm -f *.txt
