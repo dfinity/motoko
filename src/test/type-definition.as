@@ -13,3 +13,7 @@ class D(x : T<C>) {r = x.f};
 
 type U<X> = {f : <Y> X -> Y};
 class E<Y>(x : U<Y>) {r = x.f};
+
+// This is an expected forward reference error
+//class F(x : FF) {r = x.a};
+//type FF = {a : Int};

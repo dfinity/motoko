@@ -15,7 +15,7 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) -use-ocamlfind -use-menhir -menhir "$(MEN
 all: $(NAME) test
 
 $(NAME): $(MAIN).$(BUILD)
-		mv $< $@
+	mv $< $@
 
 $(MAIN).$(BUILD): sanity
 	$(OCAMLBUILD) $@
@@ -30,3 +30,6 @@ clean:
 test: $(NAME)
 	$(MAKE) -C test ASC=../$(NAME) all
 	$(MAKE) -C samples ASC=../$(NAME) all
+
+accept: $(NAME)
+	$(MAKE) -C test ASC=../$(NAME) accept

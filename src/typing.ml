@@ -43,7 +43,7 @@ let empty_context =
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
-let add_con c con k = {c with cons = Con.Env.add con k c.cons}
+(*let add_con c con k = {c with cons = Con.Env.add con k c.cons}*)
 let add_typ c x con k =
   { c with
     typs = T.Env.add x con c.typs;
@@ -64,6 +64,7 @@ let adjoin c (ve, te, ce) =
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
+let adjoin_cons c ce = {c with cons = Con.Env.adjoin c.cons ce}
 let adjoin_typs c te ce =
   { c with
     typs = T.Env.adjoin c.typs te;
@@ -72,62 +73,21 @@ let adjoin_typs c te ce =
 
 let disjoint_union at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2 with T.Env.Clash k -> error at fmt k
-(* TBD
-let disjoint_add at fmt k x env =
-  try T.Env.disjoint_add k x env with T.Env.Overlap k -> error at fmt k
-
-let disjoint_union_vals at c ve =   {c with vals = disjoint_union at "duplicate value %s"  c.vals ve}
-let disjoint_union_tys at c te = {c with typs = disjoint_union at "duplicate type %s" c.typs te}
-let disjoint_add_val at c v t = disjoint_union_vals at c (T.Env.singleton v t)
-let disjoint_add_typ at c con = disjoint_union_typs at c (T.Env.singleton v con)
-*)
 
 
 (* Type Analysis *)
 
-(*
-let is_num_typ context t =
-  match T.structural context.cons t with
-  | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float) -> true
-  | _ -> false
-
-let is_bit_typ context t =
-  match T.structural context.cons t with
-  | T.Prim (T.Word8 | T.Word16 | T.Word32 | T.Word64) -> true
-  | _ -> false
-
-let is_ord_typ context t =
-  match T.structural context.cons t with
-  | T.Prim (T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
-  | _ -> false
-
-let is_eq_typ context t =
-  match T.structural context.cons t with
-  | T.Prim (T.Bool | T.Nat | T.Int | T.Word8 | T.Word16 | T.Word32 | T.Word64 | T.Float | T.Text | T.Char) -> true
-    (* TBR do we really want = and != on floats ?*)
-  | _ -> false
-*)
-
-(* types one can switch on - all primitives except floats *)
-(* TBR: switch on option type? *)
-let is_switch_typ ce t =
-  match T.structural ce t with
-  | T.Prim p -> p <> T.Float
-  | _ -> false
-
-(* types one can iterate over using `for`  *)
-let is_iter_typ ce t =
-  match T.structural ce t with
+(* Types one can iterate over using `for` *)
+let is_iter_typ ce = function
   | T.Array _ -> true
   | _ -> false
 
-(* element type of iterable_type  *)
-let elem_typ ce t =
-  match T.structural ce t with
+(* Element type of iterable_type  *)
+let elem_typ ce = function
   | T.Array t -> T.immutable t
   | _ -> assert false
 
-(* TBR: the whole notion of sharable typ needs to be reviewed in the presence of subtyping *)
+(* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
 let rec is_shared_typ ce t =
   match T.structural ce t with
   | T.Var _
@@ -137,8 +97,8 @@ let rec is_shared_typ ce t =
   | T.Opt t -> is_shared_typ ce t
   | T.Tup ts -> List.for_all (is_shared_typ ce) ts 
     (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
-  | T.Func _ as func_t -> is_async_typ ce func_t
-  | T.Async _ as async_t -> is_async_typ ce async_t
+  | T.Func _ as t' -> is_async_typ ce t'
+  | T.Async _ as t' -> is_async_typ ce t'
   | T.Like t -> is_shared_typ ce t
   | T.Obj (T.Object, fs) ->
     (* TBR: this isn't stable with subtyping *)
@@ -148,7 +108,7 @@ let rec is_shared_typ ce t =
   | T.Any -> false (* TBR *)
   | T.Pre -> assert false
 
-(* type of an actor field *)
+(* Type of an actor field *)
 and is_async_typ ce t =
   match T.structural ce t with
   | T.Func (tbs, t1, t2) ->
@@ -233,7 +193,7 @@ and check_typ_binds context typ_binds : T.con list * T.typ list * typ_env * con_
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
   let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
-  let pre_context' = {(add_typs context xs cs pre_ks) with pre = true} in
+  let pre_context' = add_typs {context with pre = true} xs cs pre_ks in
   let ts = List.map (fun typ_bind -> check_typ pre_context' typ_bind.it.bound) typ_binds in
   let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
   let context' = add_typs context xs cs ks in
@@ -298,7 +258,7 @@ let infer_lit context lit at : T.prim =
     assert false
 
 let rec check_lit context t lit at =
-  match T.normalize context.cons t, !lit with
+  match t, !lit with
   | T.Opt _, NullLit -> ()
   | T.Opt t, _ -> check_lit context t lit at
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
@@ -328,9 +288,18 @@ let rec check_lit context t lit at =
 let rec infer_exp context exp : T.typ =
   T.immutable (infer_exp_mut context exp)
 
+and infer_exp_structural context exp : T.typ =
+  let t = infer_exp context exp in
+  let t' = T.structural context.cons t in
+  if t' = T.Pre then
+    error exp.at "cannot infer type of expression while trying to infer surrounding class type, because its type is a forward reference to type %s"
+      (T.string_of_typ t);
+  t'
+
 and infer_exp_mut context exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
   let t = infer_exp' context exp in
+  assert (t <> T.Pre);
   if not context.pre then begin
     let e = A.infer_effect_exp exp in
     exp.note <- {note_typ = T.normalize context.cons t; note_eff = e}
@@ -341,26 +310,24 @@ and infer_exp' context exp : T.typ =
   match exp.it with
   | VarE id ->
     (match T.Env.find_opt id.it context.vals with
-    | Some t ->
-      if t = T.Pre then
-        error id.at "cannot infer type of forward variable %s" id.it;
-      t
+    | Some T.Pre ->
+      error id.at "cannot infer type of forward variable %s" id.it;
+    | Some t -> t
     | None -> error id.at "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit context lit exp.at)
   | UnE (op, exp1) ->
-    let t1 = infer_exp context exp1 in
-    let t = T.structural context.cons t1 in
+    let t1 = infer_exp_structural context exp1 in
     if not context.pre then begin
-      if not (Operator.has_unop t op) then
+      if not (Operator.has_unop t1 op) then
         error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t)
+          (T.string_of_typ t1)
     end;
-    t
+    t1
   | BinE (exp1, op, exp2) ->
-    let t1 = infer_exp context exp1 in
-    let t2 = infer_exp context exp2 in
+    let t1 = infer_exp_structural context exp1 in
+    let t2 = infer_exp_structural context exp2 in
     let t = T.join context.cons t1 t2 in
     if not context.pre then begin
       if not (Operator.has_binop t op) then
@@ -369,8 +336,8 @@ and infer_exp' context exp : T.typ =
     end;
     t
   | RelE (exp1, op, exp2) ->
-    let t1 = infer_exp context exp1 in
-    let t2 = infer_exp context exp2 in
+    let t1 = infer_exp_structural context exp1 in
+    let t2 = infer_exp_structural context exp2 in
     let t = T.join context.cons t1 t2 in
     if not context.pre then begin
       if not (Operator.has_relop t op) then
@@ -382,8 +349,8 @@ and infer_exp' context exp : T.typ =
     let ts = List.map (infer_exp context) exps in
     T.Tup ts
   | ProjE (exp1, n) ->
-    let t1 = infer_exp context exp1 in
-    (match T.structural context.cons t1 with
+    let t1 = infer_exp_structural context exp1 in
+    (match t1 with
     | T.Tup ts ->
       (match List.nth_opt ts n with
       | Some t -> t
@@ -391,14 +358,14 @@ and infer_exp' context exp : T.typ =
         error exp.at "tuple projection %n >= %n is out-of-bounds"
           n (List.length ts)
       )
-    | t ->
-      error exp.at "expected tuple type, found %s" (T.string_of_typ t)
+    | t1' ->
+      error exp.at "expected tuple type, found %s" (T.string_of_typ t1')
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj context sort.it id fields)
   | DotE (exp1, id) ->
-    let t1 = infer_exp context exp1 in
-    (match T.structural context.cons t1 with
+    let t1 = infer_exp_structural context exp1 in
+    (match t1 with
     | T.Obj (a, tfs) as t ->
       (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
@@ -406,8 +373,8 @@ and infer_exp' context exp : T.typ =
         error exp1.at "object of type %s has no field named %s"
           (T.string_of_typ t) id.it
       )
-    | t ->
-      error exp1.at "expected object type, found %s" (T.string_of_typ t)
+    | t1' ->
+      error exp1.at "expected object type, found %s" (T.string_of_typ t1')
     )
   | AssignE (exp1, exp2) ->
     if not context.pre then begin
@@ -429,23 +396,23 @@ and infer_exp' context exp : T.typ =
       error exp.at "array contains elements of inconsistent types";
     T.Array t1
   | IdxE (exp1, exp2) ->
-    let t1 = infer_exp context exp1 in
-    (match T.structural context.cons t1 with
+    let t1 = infer_exp_structural context exp1 in
+    (match t1 with
     | T.Array t -> 
       if not context.pre then check_exp context T.nat exp2;
       t
-    | t1 ->
-      error exp1.at "expected array type, found %s" (T.string_of_typ t1)
+    | t1' ->
+      error exp1.at "expected array type, found %s" (T.string_of_typ t1')
     )
   | CallE (exp1, typs, exp2) ->
-    let t1 = infer_exp context exp1 in
-    (match T.structural context.cons t1 with
+    let t1 = infer_exp_structural context exp1 in
+    (match t1 with
     | T.Func (tbs, t2, t) ->
       let ts = check_typ_bounds context tbs typs exp.at in
       if not context.pre then check_exp context (T.open_ ts t2) exp2;
       T.open_ ts t
-    | t1 ->
-      error exp1.at "expected function type, found %s" (T.string_of_typ t1)
+    | t1' ->
+      error exp1.at "expected function type, found %s" (T.string_of_typ t1')
     )
   | BlockE decs ->
     let t = infer_block context decs exp.at in
@@ -475,9 +442,7 @@ and infer_exp' context exp : T.typ =
         (T.string_of_typ t2) (T.string_of_typ t3);
     t2
   | SwitchE (exp1, cases) ->
-    let t1 = if context.pre then T.Pre else infer_exp context exp1 in
-    if not context.pre && not (is_switch_typ context.cons t1) then
-      error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
+    let t1 = if context.pre then T.Pre else infer_exp_structural context exp1 in
     let t = infer_cases context t1 cases in
     t
   | WhileE (exp1, exp2) ->
@@ -496,7 +461,7 @@ and infer_exp' context exp : T.typ =
   | ForE (pat, exp1, exp2) ->
     if not context.pre then begin
       (* TBR: generalise beyond arrays *)
-      let t1 = infer_exp context exp1 in
+      let t1 = infer_exp_structural context exp1 in
       if not (is_iter_typ context.cons t1) then
         error exp1.at "expected iterable type, found %s" (T.string_of_typ t1);
       let ve = check_pat context (elem_typ context.cons t1) pat in
@@ -538,8 +503,8 @@ and infer_exp' context exp : T.typ =
   | AwaitE exp1 ->
     if not context.async then
       error exp.at "misplaced await in synchronous context";
-    let t1 = infer_exp context exp1 in
-    (match T.structural context.cons t1 with
+    let t1 = infer_exp_structural context exp1 in
+    (match t1 with
     | T.Async t -> t
     | t1' ->
       error exp1.at "expected async type, found %s" (T.string_of_typ t1')
@@ -568,11 +533,11 @@ and infer_exp' context exp : T.typ =
 and check_exp context t exp =
   assert (not context.pre);
   assert (exp.note.note_typ = T.Pre);
-  check_exp' context t exp;
-  if exp.note.note_typ = T.Pre then begin
-    let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.normalize context.cons t; note_eff = e}
-  end
+  assert (t <> T.Pre);
+  let t' = T.normalize context.cons t in
+  check_exp' context t' exp;
+  let e = A.infer_effect_exp exp in
+  exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' context t exp =
   match exp.it with
@@ -637,12 +602,10 @@ and check_exp' context t exp =
     check_exp context t exp2;
     check_exp context t exp3
   | SwitchE (exp1, cases) ->
-    let t1 = infer_exp context exp1 in
-    if not (is_switch_typ context.cons t1) then
-      error exp1.at "expected switchable type, found %s" (T.string_of_typ t1);
+    let t1 = infer_exp_structural context exp1 in
     check_cases context t1 t cases
   | LoopE _ | BreakE _ | RetE _ ->
-    (* TBR: remove once we have T.Bottom and subtyping *)
+    (* TBR: remove once we have T.Bottom and subtyping? *)
     ignore (infer_exp context exp)
   | _ ->
     let t' = infer_exp context exp in
@@ -756,7 +719,7 @@ and check_pat' context t pat : val_env =
     check_lit context t lit pat.at;
     T.Env.empty
   | TupP pats ->
-    (match T.structural context.cons t with
+    (match t with
     | T.Tup ts ->
       check_pats context ts pats T.Env.empty pat.at
     | _ ->
@@ -860,6 +823,7 @@ and infer_exp_field context s (tfs, tfs_inner, ve) field : T.field list * T.fiel
     match T.Env.find id.it context.vals with
     | T.Pre -> infer_mut mut (infer_exp (adjoin_vals context ve) exp)
     | t ->
+      (* When checking object in analysis mode *)
       if not context.pre then
         check_exp (adjoin_vals context ve) (T.immutable t) exp;
       t
@@ -1024,10 +988,10 @@ and infer_block_decs context decs : scope * con_env =
   let pre_ve, te, pre_ce = gather_block_typdecs decs in
 (*Printf.printf "[block] pre-infer types\n";*)
   let context' = adjoin {context with pre = true} (pre_ve, te, pre_ce) in
-  let ce, _ = infer_block_typdecs context' te decs in
+  let ce, _ = infer_block_typdecs context' decs in
 (*Printf.printf "[block] infer types\n";*)
   let context'' = adjoin context (pre_ve, te, ce) in
-  let ce', ce_inner = infer_block_typdecs context'' te decs in
+  let ce', ce_inner = infer_block_typdecs context'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
 (*print_ce ce;*)
@@ -1054,7 +1018,7 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
     let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
     let c = Con.fresh id.it in
-    let pre_k = T.Abs (pre_tbs, T.Any) in
+    let pre_k = T.Abs (pre_tbs, T.Pre) in
     let ve' =
       match dec.it with
       | ClassD _ ->
@@ -1065,34 +1029,35 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
 
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs context te decs : con_env * con_env =
+and infer_block_typdecs context decs : con_env * con_env =
   let _context', ce, ce_inner =
-    List.fold_left (infer_dec_typdecs te)
-      (context, Con.Env.empty, Con.Env.empty) decs
+    List.fold_left (fun (context, ce, ce_inner) dec ->
+      let ce', ce_inner' = infer_dec_typdecs context dec in
+      adjoin_cons context ce', Con.Env.adjoin ce ce',
+        Con.Env.adjoin ce_inner ce_inner'
+    ) (context, Con.Env.empty, Con.Env.empty) decs
   in ce, ce_inner
 
-and infer_dec_typdecs te (context, ce, ce_inner) dec : context * con_env * con_env =
+and infer_dec_typdecs context dec : con_env * con_env =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ -> context, ce, ce_inner
+  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
+    Con.Env.empty, Con.Env.empty
   | TypD (id, binds, typ) ->
-    let c = T.Env.find id.it te in
-    let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
-    let context' = adjoin_typs context te' ce' in
+    let c = T.Env.find id.it context.typs in
+    let cs, ts, te, ce = check_typ_binds {context with pre = true} binds in
+    let context' = adjoin_typs context te ce in
     let t = check_typ context' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let k = T.Def (tbs, T.close cs t) in
-    add_con context c k, Con.Env.add c k ce, ce_inner
+    Con.Env.singleton c (T.Def (tbs, T.close cs t)), Con.Env.empty
   | ClassD (id, binds, sort, pat, fields) ->
-    let c = T.Env.find id.it te in
-    let cs, ts, te', ce' = check_typ_binds {context with pre = true} binds in
-    let context' = {(adjoin_typs context te' ce') with pre = true} in
+    let c = T.Env.find id.it context.typs in
+    let cs, ts, te, ce = check_typ_binds {context with pre = true} binds in
+    let context' = adjoin_typs {context with pre = true} te ce in
     let _, ve = infer_pat context' pat in
     let t, t_inner = infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let k = T.Abs (tbs, T.close cs t) in
-    add_con context c k,
-    Con.Env.add c k ce,
-    Con.Env.add c (T.Abs (tbs, T.close cs t_inner)) ce_inner
+    Con.Env.singleton c (T.Abs (tbs, T.close cs t)),
+    Con.Env.singleton c (T.Abs (tbs, T.close cs t_inner))
 
 
 (* Pass 4: collect value identifiers *)
@@ -1113,28 +1078,33 @@ and gather_dec_valdecs ve dec : val_env =
 
 (* Pass 5: infer value types *)
 and infer_block_valdecs context decs : val_env =
-  List.fold_left (infer_dec_valdecs context) T.Env.empty decs
+  let _context', ve =
+    List.fold_left (fun (context, ve) dec ->
+      let ve' = infer_dec_valdecs context dec in
+      adjoin_vals context ve', T.Env.adjoin ve ve'
+    ) (context, T.Env.empty) decs
+  in ve
 
-and infer_dec_valdecs context ve dec : val_env =
+and infer_dec_valdecs context dec : val_env =
   match dec.it with
   | ExpD _ ->
-    ve
+    T.Env.empty
   | LetD (pat, exp) ->
-    let t = infer_exp (adjoin_vals {context with pre = true} ve) exp in
+    let t = infer_exp {context with pre = true} exp in
     let ve' = check_pat context t pat in 
-    T.Env.adjoin ve ve'
+    ve'
   | VarD (id, exp) ->
-    let t = infer_exp (adjoin_vals {context with pre = true} ve) exp in
-    T.Env.add id.it (T.Mut t) ve
+    let t = infer_exp {context with pre = true} exp in
+    T.Env.singleton id.it (T.Mut t)
   | FuncD (id, typbinds, pat, typ, _) ->
     let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
     let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = check_typ context' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.add id.it (T.Func (tbs, T.close cs t1, T.close cs t2)) ve
+    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
-    ve
+    T.Env.empty
   | ClassD (id, typbinds, sort, pat, fields) ->
     let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
@@ -1142,7 +1112,7 @@ and infer_dec_valdecs context ve dec : val_env =
     let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.add id.it (T.Func (tbs, T.close cs t1, T.close cs t2)) ve
+    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
 
 
 (* Programs *)
