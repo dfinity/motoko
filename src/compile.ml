@@ -8,6 +8,11 @@ module LVE = Env.Make(String)
 
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
+let reg (ref : 'a list ref) (x : 'a) =
+    let i = Wasm.I32.of_int_u (List.length !ref) in
+    ref := !ref @ [ x ];
+    i
+
 let compile_lit lit = match lit with
   | BoolLit true ->  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
   | BoolLit false -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
@@ -52,27 +57,34 @@ and compile_dec locals lve dec = match dec.it with
   | ExpD e -> (compile_exp locals lve e, lve)
   | LetD ({it = VarP {it = name; _}; _}, e) ->
       let code1 = compile_exp locals lve e in
-      let i = Wasm.I32.of_int_u (List.length !locals) in
-      locals := !locals @ [ I32Type ];
+      let i = reg locals I32Type; in
       let lve1 = LVE.add name i lve in
       (code1 @ [ nr (SetLocal (nr i) ) ], lve1)
   | _      -> ([], lve)
 
+let compile_func_body (funcs : func list ref) (func_types : type_ list ref) (decs : dec list) :  func =
+  let locals = ref [] in
+  let body = fst (compile_decs locals LVE.empty decs) in
+  let ti = reg func_types (nr (FuncType ([], []))) in
+  nr { ftype = nr ti;
+       locals = !locals;
+       body = body
+     }
+
 
 let compile (prog  : Syntax.prog) : unit =
-  let m : module_ = nr { empty_module with
-    types = [
-      nr (FuncType ([], []))
-    ];
-    funcs = [
-      let locals = ref [] in
-      let body = fst (compile_decs locals LVE.empty prog.it) in
-      nr { ftype = nr 0l;
-           locals = !locals;
-           body = body
-         }
-    ];
-    start = (Some (nr 0l));
-  } in
+  let m : module_ =
+    let funcs = ref [] in
+    let func_types = ref [] in
+    let start_fun = compile_func_body funcs func_types prog.it in
+    let i = Wasm.I32.of_int_u (List.length !funcs) in
+    funcs := !funcs @ [ start_fun ];
+
+    nr { empty_module with
+      types = !func_types;
+      funcs = !funcs;
+      start = (Some (nr i));
+    };
+  in
   Wasm.Print.module_ stdout 100 m
 

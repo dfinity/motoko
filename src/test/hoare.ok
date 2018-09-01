@@ -4,7 +4,6 @@ let a : var Int[]
 let partition : (var Int[], Nat, Nat) -> Nat
 let quicksort : (var Int[], Nat, Nat) -> ()
 let swap : (var Int[], Nat, Nat) -> ()
-let x : ()
 -- Interpreting hoare.as:
 quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
@@ -43,13 +42,38 @@ let a : var Int[] = [2, 3, 5, 8, 9]
 let partition : (var Int[], Nat, Nat) -> Nat = func
 let quicksort : (var Int[], Nat, Nat) -> () = func
 let swap : (var Int[], Nat, Nat) -> () = func
-let x : () = ()
 
 Compiler:
 (module
   (type $0 (func))
-  (func $0 (type 0) (local i32 i32) (unreachable) (set_local 0) (unreachable) (set_local 1))
+  (func $0
+    (type 0)
+    (local i32)
+    (unreachable)
+    (set_local 0)
+    (unreachable)
+    (unreachable)
+    (i32.const 2)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+    (unreachable)
+    (i32.const 3)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+    (unreachable)
+    (i32.const 5)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+    (unreachable)
+    (i32.const 8)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+    (unreachable)
+    (i32.const 9)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+  )
   (start 0)
 )
 Interpreting the .wat:
-hoare.wat:3.37-3.50: runtime trap: unreachable executed
+hoare.wat:6.5-6.18: runtime trap: unreachable executed
