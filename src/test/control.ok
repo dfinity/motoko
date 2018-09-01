@@ -7,5 +7,225 @@ let Control : () -> Control
 let Control : () -> Control = func
 
 Compiler:
+compile_dec: (ClassD
+  Control
+  Actor
+  (TupP)
+  (condition
+    (DecE (FuncD condition (TupP) (PrimT Bool) (LitE (BoolLit false))))
+    Const
+    Private
+  )
+  (testBlock
+    (DecE
+      (FuncD
+        testBlock
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD (LabelE l1 (TupT) (BlockE (ExpD (BreakE l1 (TupE))))))
+          (ExpD (LabelE l2 (TupT) (BreakE l2 (TupE))))
+          (ExpD
+            (LabelE
+              l2
+              (TupT)
+              (DecE
+                (LetD
+                  (VarP m)
+                  (AnnotE
+                    (BinE (LitE (IntLit 1)) AddOp  (BreakE l2 (TupE)))
+                    (PrimT Int)
+                  )
+                )
+              )
+            )
+          )
+          (LetD
+            (VarP n)
+            (LabelE
+              l3
+              (PrimT Int)
+              (BlockE (ExpD (BreakE l3 (LitE (IntLit 2)))))
+            )
+          )
+          (LetD
+            (TupP (VarP x) (VarP y) (VarP z))
+            (LabelE
+              l3
+              (TupT (PrimT Int) (PrimT Bool) (PrimT Text))
+              (BreakE
+                l3
+                (TupE (LitE (IntLit 2)) (LitE (BoolLit true)) (LitE (TextLit )))
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (testWhile
+    (DecE
+      (FuncD
+        testWhile
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD
+            (LabelE
+              l
+              (TupT)
+              (WhileE
+                (CallE (VarE condition) (TupE))
+                (LabelE
+                  continue l
+                  (TupT)
+                  (BlockE
+                    (ExpD
+                      (IfE
+                        (LitE (BoolLit true))
+                        (BreakE l (TupE))
+                        (BreakE continue l (TupE))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (testLoop
+    (DecE
+      (FuncD
+        testLoop
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD
+            (LabelE
+              l
+              (TupT)
+              (LoopE
+                (LabelE
+                  continue l
+                  (TupT)
+                  (BlockE
+                    (ExpD
+                      (IfE
+                        (LitE (BoolLit true))
+                        (BreakE l (TupE))
+                        (BreakE continue l (TupE))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (testLoopWhile
+    (DecE
+      (FuncD
+        testLoopWhile
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD
+            (LabelE
+              l
+              (TupT)
+              (LoopE
+                (LabelE
+                  continue l
+                  (TupT)
+                  (BlockE
+                    (ExpD
+                      (IfE
+                        (LitE (BoolLit true))
+                        (BreakE l (TupE))
+                        (BreakE continue l (TupE))
+                      )
+                    )
+                  )
+                )
+                (CallE (VarE condition) (TupE))
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (testNestedWhile
+    (DecE
+      (FuncD
+        testNestedWhile
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD
+            (LabelE
+              l
+              (TupT)
+              (WhileE
+                (CallE (VarE condition) (TupE))
+                (LabelE
+                  continue l
+                  (TupT)
+                  (BlockE
+                    (ExpD
+                      (IfE
+                        (LitE (BoolLit true))
+                        (BreakE l (TupE))
+                        (BreakE continue l (TupE))
+                      )
+                    )
+                    (ExpD
+                      (LabelE
+                        m
+                        (TupT)
+                        (WhileE
+                          (CallE (VarE condition) (TupE))
+                          (LabelE
+                            continue m
+                            (TupT)
+                            (BlockE
+                              (ExpD
+                                (IfE
+                                  (LitE (BoolLit true))
+                                  (BreakE continue l (TupE))
+                                  (BreakE m (TupE))
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
 (module (type $0 (func)) (func $0 (type 0)) (start 0))
 Interpreting the .wat:

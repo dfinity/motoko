@@ -103,18 +103,168 @@ let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = QS<Int>
 
 Compiler:
-(module
-  (type $0 (func))
-  (func $0
-    (type 0)
-    (local i32 i32)
-    (unreachable)
-    (set_local 0)
-    (unreachable)
-    (set_local 1)
-    (unreachable)
+compile_dec: (ClassD
+  QS
+  (T AnyT)
+  Object
+  (AnnotP (VarP cmp) (FuncT (TupT (VarT T) (VarT T)) (PrimT Int)))
+  (quicksort
+    (DecE
+      (FuncD
+        quicksort
+        (TupP
+          (AnnotP (VarP a) (ArrayT Var (VarT T)))
+          (AnnotP (VarP lo) (PrimT Nat))
+          (AnnotP (VarP hi) (PrimT Nat))
+        )
+        (TupT)
+        (BlockE
+          (ExpD
+            (IfE
+              (RelE (VarE lo) LtOp (VarE hi))
+              (BlockE
+                (LetD
+                  (VarP p)
+                  (CallE (VarE partition) (TupE (VarE a) (VarE lo) (VarE hi)))
+                )
+                (ExpD
+                  (CallE (VarE quicksort) (TupE (VarE a) (VarE lo) (VarE p)))
+                )
+                (ExpD
+                  (CallE
+                    (VarE quicksort)
+                    (TupE
+                      (VarE a)
+                      (BinE (VarE p) AddOp  (LitE (NatLit 1)))
+                      (VarE hi)
+                    )
+                  )
+                )
+              )
+              (TupE)
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
   )
-  (start 0)
+  (swap
+    (DecE
+      (FuncD
+        swap
+        (TupP
+          (AnnotP (VarP a) (ArrayT Var (VarT T)))
+          (AnnotP (VarP i) (PrimT Nat))
+          (AnnotP (VarP j) (PrimT Nat))
+        )
+        (TupT)
+        (BlockE
+          (LetD (VarP temp) (IdxE (VarE a) (VarE i)))
+          (ExpD (AssignE (IdxE (VarE a) (VarE i)) (IdxE (VarE a) (VarE j))))
+          (ExpD (AssignE (IdxE (VarE a) (VarE j)) (VarE temp)))
+        )
+      )
+    )
+    Const
+    Private
+  )
+  (trace
+    (DecE (FuncD trace (T AnyT) (AnnotP (VarP v) (VarT T)) (TupT) (BlockE)))
+    Const
+    Private
+  )
+  (partition
+    (DecE
+      (FuncD
+        partition
+        (TupP
+          (AnnotP (VarP a) (ArrayT Var (VarT T)))
+          (AnnotP (VarP lo) (PrimT Nat))
+          (AnnotP (VarP hi) (PrimT Nat))
+        )
+        (PrimT Nat)
+        (BlockE
+          (ExpD (CallE (VarE trace) (ArrayT Var (VarT T)) (VarE a)))
+          (LetD (VarP pivot) (IdxE (VarE a) (VarE lo)))
+          (VarD i (VarE lo))
+          (VarD j (VarE hi))
+          (ExpD
+            (LoopE
+              (BlockE
+                (ExpD
+                  (WhileE
+                    (RelE
+                      (CallE
+                        (VarE cmp)
+                        (TupE (IdxE (VarE a) (VarE i)) (VarE pivot))
+                      )
+                      LtOp
+                      (LitE (NatLit 0))
+                    )
+                    (BlockE
+                      (ExpD
+                        (AssignE
+                          (VarE i)
+                          (BinE (VarE i) AddOp  (LitE (NatLit 1)))
+                        )
+                      )
+                    )
+                  )
+                )
+                (ExpD
+                  (WhileE
+                    (RelE
+                      (CallE
+                        (VarE cmp)
+                        (TupE (IdxE (VarE a) (VarE j)) (VarE pivot))
+                      )
+                      GtOp
+                      (LitE (NatLit 0))
+                    )
+                    (BlockE
+                      (ExpD
+                        (AssignE
+                          (VarE j)
+                          (BinE (VarE j) SubOp  (LitE (NatLit 1)))
+                        )
+                      )
+                    )
+                  )
+                )
+                (ExpD
+                  (IfE (RelE (VarE i) GeOp (VarE j)) (RetE (VarE j)) (TupE))
+                )
+                (ExpD (CallE (VarE swap) (TupE (VarE a) (VarE i) (VarE j))))
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Private
+  )
+)
+compile_exp: (CallE (VarE QS) (PrimT Int) (VarE cmpi))
+compile_exp: (ArrayE
+  (LitE (IntLit 8))
+  (LitE (IntLit 3))
+  (LitE (IntLit 9))
+  (LitE (IntLit 5))
+  (LitE (IntLit 2))
+)
+compile_exp: (CallE
+  (DotE (VarE qs) quicksort)
+  (TupE (VarE a) (LitE (NatLit 0)) (LitE (NatLit 4)))
+)
+(module
+  (type $0 (func (param i32 i32) (result i32)))
+  (type $1 (func))
+  (func $0 (type 0) (get_local 0) (get_local 1) (i32.sub))
+  (func $1 (type 1) (unreachable) (set_local 0) (unreachable) (set_local 1) (unreachable))
+  (start 1)
 )
 Interpreting the .wat:
-quicksort.wat:6.5-6.18: runtime trap: unreachable executed
+quicksort.wat:5.46-5.47: invalid module: unknown local 0

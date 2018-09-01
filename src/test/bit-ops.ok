@@ -12,5 +12,330 @@ let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+compile_exp: (UnE NotOp (VarE a))
+compile_exp: (UnE NotOp (VarE a))
+compile_binop: OrOp
+compile_binop: OrOp
+compile_binop: AndOp 
+compile_binop: AndOp 
+compile_binop: XorOp
+compile_binop: XorOp
+compile_binop: ShiftLOp
+compile_binop: ShiftLOp
+compile_binop: ShiftROp
+compile_binop: ShiftROp
+compile_binop: RotLOp
+compile_binop: RotLOp
+compile_binop: RotROp
+compile_binop: RotROp
+compile_exp: (UnE NotOp (VarE a))
+compile_exp: (UnE NotOp (VarE a))
+compile_binop: OrOp
+compile_binop: OrOp
+compile_binop: AndOp 
+compile_binop: AndOp 
+compile_binop: XorOp
+compile_binop: XorOp
+compile_binop: ShiftLOp
+compile_binop: ShiftLOp
+compile_binop: ShiftROp
+compile_binop: ShiftROp
+compile_binop: RotLOp
+compile_binop: RotLOp
+compile_binop: RotROp
+compile_binop: RotROp
+compile_exp: (UnE NotOp (VarE a))
+compile_exp: (UnE NotOp (VarE a))
+compile_binop: OrOp
+compile_binop: OrOp
+compile_binop: AndOp 
+compile_binop: AndOp 
+compile_binop: XorOp
+compile_binop: XorOp
+compile_binop: ShiftLOp
+compile_binop: ShiftLOp
+compile_binop: ShiftROp
+compile_binop: ShiftROp
+compile_binop: RotLOp
+compile_binop: RotLOp
+compile_binop: RotROp
+compile_binop: RotROp
+compile_exp: (UnE NotOp (VarE a))
+compile_exp: (UnE NotOp (VarE a))
+compile_binop: OrOp
+compile_binop: OrOp
+compile_binop: AndOp 
+compile_binop: AndOp 
+compile_binop: XorOp
+compile_binop: XorOp
+compile_binop: ShiftLOp
+compile_binop: ShiftLOp
+compile_binop: ShiftROp
+compile_binop: ShiftROp
+compile_binop: RotLOp
+compile_binop: RotLOp
+compile_binop: RotROp
+compile_binop: RotROp
+(module
+  (type $0 (func (param i32 i32)))
+  (type $1 (func (param i32 i32)))
+  (type $2 (func (param i32 i32)))
+  (type $3 (func (param i32 i32)))
+  (type $4 (func))
+  (func $0
+    (type 0)
+    (unreachable)
+    (set_local 2)
+    (unreachable)
+    (set_local 3)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 4)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 5)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 6)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 7)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 8)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 9)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 10)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 11)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 12)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 13)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 14)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 15)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 16)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 17)
+  )
+  (func $1
+    (type 1)
+    (unreachable)
+    (set_local 2)
+    (unreachable)
+    (set_local 3)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 4)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 5)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 6)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 7)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 8)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 9)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 10)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 11)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 12)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 13)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 14)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 15)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 16)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 17)
+  )
+  (func $2
+    (type 2)
+    (unreachable)
+    (set_local 2)
+    (unreachable)
+    (set_local 3)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 4)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 5)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 6)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 7)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 8)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 9)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 10)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 11)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 12)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 13)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 14)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 15)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 16)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 17)
+  )
+  (func $3
+    (type 3)
+    (unreachable)
+    (set_local 2)
+    (unreachable)
+    (set_local 3)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 4)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 5)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 6)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 7)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 8)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 9)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 10)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 11)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 12)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 13)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 14)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 15)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 16)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 17)
+  )
+  (func $4 (type 4))
+  (start 4)
+)
 Interpreting the .wat:
+bit-ops.wat:10.16-10.17: invalid module: unknown local 2

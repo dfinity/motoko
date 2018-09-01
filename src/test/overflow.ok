@@ -5,5 +5,97 @@ overflow.as:17.9-17.24: execution error, arithmetic overflow
 -- Finished overflow.as:
 
 Compiler:
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (LitE (NatLit 9223372036854775808))
+      AddOp 
+      (LitE (NatLit 9223372036854775807))
+    )
+    (PrimT Nat)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (LitE (NatLit 9223372036854775808))
+      SubOp 
+      (LitE (NatLit 9223372036854775808))
+    )
+    (PrimT Nat)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE (LitE (NatLit 4294967296)) MulOp  (LitE (NatLit 4294967295)))
+    (PrimT Nat)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (LitE (IntLit 4611686018427387904))
+      AddOp 
+      (LitE (IntLit 4611686018427387903))
+    )
+    (PrimT Int)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (LitE (IntLit 2305843009213693952))
+      SubOp 
+      (LitE (IntLit 4611686018427387904))
+    )
+    (PrimT Int)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (UnE NegOp (LitE (IntLit 2305843009213693952)))
+      SubOp 
+      (LitE (IntLit 6917529027641081856))
+    )
+    (PrimT Int)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE (LitE (IntLit 1152921504606846976)) MulOp  (LitE (IntLit 7)))
+    (PrimT Int)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE
+    (BinE
+      (UnE NegOp (LitE (IntLit 1152921504606846976)))
+      MulOp 
+      (LitE (IntLit 8))
+    )
+    (PrimT Int)
+  )
+)
+compile_dec: (LetD
+  WildP
+  (AnnotE (BinE (LitE (IntLit 268435456)) DivOp  (LitE (IntLit 0))) (PrimT Int))
+)
+compile_dec: (LetD
+  WildP
+  (BinE
+    (LitE (NatLit 1314235251543424342678909))
+    MulOp 
+    (LitE (NatLit 72462525423451963967165868))
+  )
+)
 (module (type $0 (func)) (func $0 (type 0)) (start 0))
 Interpreting the .wat:

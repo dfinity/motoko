@@ -77,6 +77,56 @@ let show : Int -> () = func
 let test : () -> () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0) (local i32) (unreachable) (set_local 0)) (start 0))
+compile_dec: (ClassD
+  Counter
+  Actor
+  (AnnotP (VarP i) (PrimT Int))
+  (c (VarE i) Var Private)
+  (dec
+    (DecE
+      (FuncD
+        dec
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD (CallE (VarE show) (VarE c)))
+          (ExpD (AssignE (VarE c) (BinE (VarE c) SubOp  (LitE (IntLit 1)))))
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (read
+    (DecE
+      (FuncD read (TupP) (AsyncT (PrimT Int)) (AsyncE (BlockE (ExpD (VarE c)))))
+    )
+    Const
+    Public
+  )
+)
+Could not find Counter
+compile_exp: (CallE (DotE (VarE c) dec) (TupE))
+compile_exp: (AssignE (VarE i) (BinE (VarE i) SubOp  (LitE (IntLit 1))))
+compile_dec: (LetD WildP (CallE (VarE test) (TupE)))
+(module
+  (type $0 (func (param i32)))
+  (type $1 (func))
+  (type $2 (func))
+  (func $0 (type 0))
+  (func $1
+    (type 1)
+    (i32.const 10)
+    (set_local 0)
+    (loop
+      (get_local 0)
+      (i32.const 0)
+      (i32.gt_u)
+      (if (then (unreachable) (unreachable) (br 0)) (else))
+    )
+  )
+  (func $2 (type 2) (i32.const 10) (unreachable) (set_local 0))
+  (start 2)
+)
 Interpreting the .wat:
-counter.wat:1.56-1.69: runtime trap: unreachable executed
+counter.wat:9.16-9.17: invalid module: unknown local 0

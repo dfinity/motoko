@@ -274,11 +274,252 @@ let x : Nat = 3
 let y : Int = 2
 
 Compiler:
+compile_exp: (ObjE
+  Object
+  anon-object-1.9
+  (x (LitE (NatLit 3)) Const Public)
+  (y (LitE (NatLit 2)) Const Private)
+  (get_y (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y))) Const Public)
+)
+compile_exp: (DotE (VarE p) x)
+compile_exp: (CallE (DotE (VarE p) get_y) (TupE))
+compile_dec: (TypD O (ObjT Object (self (FuncT (TupT) (VarT O)) Const)))
+compile_exp: (ObjE
+  Object
+  this
+  (self (DecE (FuncD self (TupP) (VarT O) (VarE this))) Const Public)
+)
+compile_exp: (CallE (DotE (VarE o) self) (TupE))
+compile_dec: (TypD Q (ObjT Object (this (OptT (VarT Q)) Var)))
+compile_exp: (ObjE Object anon-object-10.13 (this (LitE NullLit) Var Public))
+compile_exp: (AssignE (DotE (VarE q) this) (VarE q))
+compile_exp: (ObjE
+  Object
+  this
+  (tic
+    (DecE
+      (FuncD
+        tic
+        (AnnotP (VarP n) (PrimT Int))
+        (TupT)
+        (IfE
+          (RelE (VarE n) GtOp (LitE (NatLit 0)))
+          (CallE
+            (DotE (VarE this) tac)
+            (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+          )
+          (TupE)
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (tac
+    (DecE
+      (FuncD
+        tac
+        (AnnotP (VarP n) (PrimT Int))
+        (TupT)
+        (IfE
+          (RelE (VarE n) GtOp (LitE (NatLit 0)))
+          (CallE
+            (DotE (VarE this) tic)
+            (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+          )
+          (TupE)
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (LetD (TupP) (CallE (DotE (VarE tictac) tic) (LitE (IntLit 10))))
+compile_exp: (ObjE
+  Actor
+  self
+  (tic_msg
+    (DecE
+      (FuncD
+        tic_msg
+        (AnnotP (VarP n) (PrimT Int))
+        (TupT)
+        (BlockE
+          (ExpD
+            (IfE
+              (RelE (VarE n) GtOp (LitE (NatLit 0)))
+              (CallE
+                (DotE (VarE self) tac_msg)
+                (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+              )
+              (TupE)
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (tac_msg
+    (DecE
+      (FuncD
+        tac_msg
+        (AnnotP (VarP n) (PrimT Int))
+        (TupT)
+        (BlockE
+          (ExpD
+            (IfE
+              (RelE (VarE n) GtOp (LitE (NatLit 0)))
+              (CallE
+                (DotE (VarE self) tic_msg)
+                (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+              )
+              (TupE)
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (LetD WildP (CallE (DotE (VarE tictac_actor) tic_msg) (LitE (IntLit 10))))
+compile_exp: (ObjE
+  Object
+  this
+  (tic_async
+    (DecE
+      (FuncD
+        tic_async
+        (AnnotP (VarP n) (PrimT Int))
+        (AsyncT (TupT))
+        (AsyncE
+          (BlockE
+            (ExpD
+              (IfE
+                (RelE (VarE n) GtOp (LitE (NatLit 0)))
+                (CallE
+                  (VarE ignore)
+                  (CallE
+                    (DotE (VarE this) tac_async)
+                    (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+                  )
+                )
+                (TupE)
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (tac_async
+    (DecE
+      (FuncD
+        tac_async
+        (AnnotP (VarP n) (PrimT Int))
+        (AsyncT (TupT))
+        (AsyncE
+          (BlockE
+            (ExpD
+              (IfE
+                (RelE (VarE n) GtOp (LitE (NatLit 0)))
+                (CallE
+                  (VarE ignore)
+                  (CallE
+                    (DotE (VarE this) tic_async)
+                    (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+                  )
+                )
+                (TupE)
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (LetD WildP (CallE (DotE (VarE tictac_async) tic_async) (LitE (IntLit 10))))
+compile_exp: (ObjE
+  Actor
+  self
+  (tic_msg_async
+    (DecE
+      (FuncD
+        tic_msg_async
+        (AnnotP (VarP n) (PrimT Int))
+        (AsyncT (TupT))
+        (AsyncE
+          (BlockE
+            (ExpD
+              (IfE
+                (RelE (VarE n) GtOp (LitE (NatLit 0)))
+                (CallE
+                  (VarE ignore)
+                  (CallE
+                    (DotE (VarE self) tac_msg_async)
+                    (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+                  )
+                )
+                (TupE)
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (tac_msg_async
+    (DecE
+      (FuncD
+        tac_msg_async
+        (AnnotP (VarP n) (PrimT Int))
+        (AsyncT (TupT))
+        (AsyncE
+          (BlockE
+            (ExpD
+              (IfE
+                (RelE (VarE n) GtOp (LitE (NatLit 0)))
+                (CallE
+                  (VarE ignore)
+                  (CallE
+                    (DotE (VarE self) tic_msg_async)
+                    (BinE (VarE n) SubOp  (LitE (IntLit 1)))
+                  )
+                )
+                (TupE)
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (LetD
+  WildP
+  (CallE (DotE (VarE tictac_actor_async) tic_msg_async) (LitE (IntLit 10)))
+)
+compile_dec: (LetD WildP (AsyncE (BinE (LitE (NatLit 1)) DivOp  (LitE (NatLit 0)))))
+compile_dec: (LetD WildP (BinE (LitE (NatLit 1)) DivOp  (LitE (NatLit 0))))
 (module
-  (type $0 (func))
-  (func $0
-    (type 0)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+  (type $0 (func (param i32)))
+  (type $1 (func))
+  (func $0 (type 0))
+  (func $1
+    (type 1)
     (unreachable)
     (set_local 0)
     (unreachable)
@@ -301,7 +542,7 @@ Compiler:
     (unreachable)
     (set_local 9)
   )
-  (start 0)
+  (start 1)
 )
 Interpreting the .wat:
-objects.wat:6.5-6.18: runtime trap: unreachable executed
+objects.wat:8.16-8.17: invalid module: unknown local 0

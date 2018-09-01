@@ -10,7 +10,6 @@ Compiler:
   (type $0 (func))
   (func $0
     (type 0)
-    (local i32)
     (i32.const 43)
     (i32.const 1)
     (i32.sub)
@@ -23,3 +22,4 @@ Compiler:
   (start 0)
 )
 Interpreting the .wat:
+let.wat:8.16-8.17: invalid module: unknown local 0

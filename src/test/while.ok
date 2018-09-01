@@ -10,10 +10,35 @@ let passed : Bool = true
 let test : () -> Int = func
 
 Compiler:
+compile_exp: (LabelE
+  count
+  (TupT)
+  (WhileE
+    (RelE (VarE i) GtOp (UnE NegOp (LitE (NatLit 10))))
+    (LabelE
+      continue count
+      (TupT)
+      (BlockE
+        (ExpD (AssignE (VarE i) (BinE (VarE i) SubOp  (LitE (IntLit 1)))))
+        (ExpD
+          (IfE
+            (RelE (VarE i) EqOp (LitE (NatLit 0)))
+            (BreakE count (TupE))
+            (TupE)
+          )
+        )
+        (ExpD (BreakE continue count (TupE)))
+        (ExpD (RetE (UnE NegOp (LitE (IntLit 1)))))
+      )
+    )
+  )
+)
 (module
-  (type $0 (func))
-  (func $0 (type 0) (local i32) (unreachable) (i32.const 0) (i32.eq) (set_local 0))
-  (start 0)
+  (type $0 (func (result i32)))
+  (type $1 (func))
+  (func $0 (type 0) (i32.const 10) (set_local 0) (unreachable) (get_local 0) (return))
+  (func $1 (type 1) (call 0) (i32.const 0) (i32.eq) (set_local 0))
+  (start 1)
 )
 Interpreting the .wat:
-while.wat:3.33-3.46: runtime trap: unreachable executed
+while.wat:4.47-4.48: invalid module: unknown local 0

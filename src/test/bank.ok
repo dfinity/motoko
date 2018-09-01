@@ -15,5 +15,149 @@ let Issuer : () -> Issuer = func
 let transfer : (Account, Account, Int) -> async () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+compile_dec: (ClassD
+  Bank
+  Actor
+  (AnnotP (VarP supply) (PrimT Int))
+  (issuer (CallE (VarE Issuer) (TupE)) Const Private)
+  (reserve (CallE (VarE Account) (VarE supply)) Const Private)
+  (getIssuer
+    (DecE
+      (FuncD
+        getIssuer
+        (TupP)
+        (AsyncT (VarT Issuer))
+        (AsyncE (BlockE (ExpD (RetE (VarE issuer)))))
+      )
+    )
+    Const
+    Public
+  )
+  (getReserve
+    (DecE
+      (FuncD
+        getReserve
+        (TupP)
+        (AsyncT (VarT Account))
+        (AsyncE (BlockE (ExpD (RetE (VarE reserve)))))
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (ClassD
+  Issuer
+  Actor
+  (TupP)
+  (hasIssued
+    (DecE
+      (FuncD
+        hasIssued
+        (AnnotP (VarP account) (LikeT (VarT Account)))
+        (AsyncT (PrimT Bool))
+        (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarT Account))))))
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_dec: (ClassD
+  Account
+  Actor
+  (AnnotP (VarP initialBalance) (PrimT Int))
+  (balance (AnnotE (VarE initialBalance) (PrimT Int)) Var Private)
+  (getBalance
+    (DecE
+      (FuncD
+        getBalance
+        (TupP)
+        (AsyncT (PrimT Int))
+        (AsyncE (BlockE (ExpD (RetE (VarE balance)))))
+      )
+    )
+    Const
+    Public
+  )
+  (split
+    (DecE
+      (FuncD
+        split
+        (AnnotP (VarP amount) (PrimT Int))
+        (AsyncT (VarT Account))
+        (AsyncE
+          (BlockE
+            (ExpD
+              (AssignE
+                (VarE balance)
+                (BinE (VarE balance) SubOp  (VarE amount))
+              )
+            )
+            (ExpD (RetE (CallE (VarE Account) (VarE amount))))
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (join
+    (DecE
+      (FuncD
+        join
+        (AnnotP (VarP account) (VarT Account))
+        (TupT)
+        (BlockE
+          (LetD (VarP amount) (VarE balance))
+          (ExpD (AssignE (VarE balance) (LitE (IntLit 0))))
+          (ExpD (CallE (DotE (VarE account) credit) (VarE amount)))
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (credit
+    (DecE
+      (FuncD
+        credit
+        (AnnotP (VarP amount) (PrimT Int))
+        (TupT)
+        (BlockE
+          (ExpD
+            (AssignE (VarE balance) (BinE (VarE balance) AddOp  (VarE amount)))
+          )
+        )
+      )
+    )
+    Const
+    Private
+  )
+  (isCompatible
+    (DecE
+      (FuncD
+        isCompatible
+        (AnnotP (VarP account) (LikeT (VarT Account)))
+        (AsyncT (PrimT Bool))
+        (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarT Account))))))
+      )
+    )
+    Const
+    Public
+  )
+)
+compile_exp: (AsyncE
+  (BlockE
+    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
+    (ExpD (CallE (DotE (VarE trx) join) (VarE receiver)))
+  )
+)
+(module
+  (type $0 (func (param i32 i32 i32) (result i32)))
+  (type $1 (func))
+  (func $0 (type 0) (unreachable))
+  (func $1 (type 1))
+  (start 1)
+)
 Interpreting the .wat:

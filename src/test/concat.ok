@@ -6,5 +6,28 @@ let testText : (Text, Text) -> ()
 let testText : (Text, Text) -> () = func
 
 Compiler:
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+compile_binop: CatOp 
+compile_binop: CatOp 
+compile_exp: (AssignE (VarE cat3) (BinE (VarE cat3) CatOp  (VarE b)))
+(module
+  (type $0 (func (param i32 i32)))
+  (type $1 (func))
+  (func $0
+    (type 0)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 2)
+    (get_local 0)
+    (get_local 1)
+    (unreachable)
+    (set_local 3)
+    (get_local 0)
+    (set_local 4)
+    (unreachable)
+  )
+  (func $1 (type 1))
+  (start 1)
+)
 Interpreting the .wat:
+concat.wat:9.16-9.17: invalid module: unknown local 2

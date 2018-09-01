@@ -1,0 +1,47 @@
+Interpreter:
+-- Checking fib.as:
+let fib : Nat -> Nat
+-- Interpreting fib.as:
+fib(5)
+  fib(4)
+    fib(3)
+      fib(2)
+        fib(1)
+          fib(0)
+            <= 1
+          <= 1
+        <= 2
+      <= 6
+    <= 24
+  <= 120
+-- Finished fib.as:
+let fib : Nat -> Nat = func
+
+Compiler:
+(module
+  (type $0 (func (param i32) (result i32)))
+  (type $1 (func))
+  (func $0
+    (type 0)
+    (get_local 0)
+    (i32.const 0)
+    (i32.eq)
+    (if (then (i32.const 1) (return)) (else))
+    (get_local 0)
+    (get_local 0)
+    (i32.const 1)
+    (i32.sub)
+    (call 0)
+    (i32.mul)
+  )
+  (func $1
+    (type 1)
+    (i32.const 5)
+    (call 0)
+    (i32.const 120)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+  )
+  (start 1)
+)
+Interpreting the .wat:
