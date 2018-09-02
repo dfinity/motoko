@@ -1,0 +1,67 @@
+Interpreter:
+-- Checking fib.as:
+let a : var Nat[]
+var i : Nat
+-- Interpreting fib.as:
+-- Finished fib.as:
+let a : var Nat[] = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
+
+fib.as:9.17-9.19: fatal error, Invalid_argument("as_nat")
+
+Raised at file "value.ml", line 132, characters 22-42
+Called from file "value.ml", line 183, characters 34-44
+Called from file "main.ml", line 37, characters 18-45
+Called from file "map.ml", line 270, characters 20-25
+Called from file "main.ml", line 75, characters 6-42
+
+Last context:
+a = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
+i = 10
+
+Compiler:
+compile_exp: (ArrayE
+  (LitE (NatLit 0))
+  (LitE (NatLit 1))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+  (LitE (NatLit 0))
+)
+compile_exp: (AssignE (VarE i) (BinE (VarE i) AddOp  (LitE (NatLit 1))))
+compile_exp: (AssignE
+  (IdxE (VarE a) (VarE i))
+  (BinE
+    (IdxE (VarE a) (BinE (VarE i) SubOp  (LitE (NatLit 1))))
+    AddOp 
+    (IdxE (VarE a) (BinE (VarE i) SubOp  (LitE (NatLit 2))))
+  )
+)
+compile_exp: (IdxE (VarE a) (VarE i))
+(module
+  (type $0 (func))
+  (func $0
+    (type 0)
+    (unreachable)
+    (set_local 0)
+    (i32.const 1)
+    (set_local 1)
+    (loop
+      (get_local 1)
+      (i32.const 10)
+      (i32.lt_u)
+      (if (then (unreachable) (unreachable) (br 0)) (else))
+    )
+    (unreachable)
+    (i32.const 55)
+    (i32.eq)
+    (if (then) (else (unreachable)))
+  )
+  (start 0)
+)
+Interpreting the .wat:
+fib.wat:6.16-6.17: invalid module: unknown local 0
