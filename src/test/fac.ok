@@ -1,21 +1,21 @@
 Interpreter:
--- Checking fib.as:
-let fib : Nat -> Nat
--- Interpreting fib.as:
-fib(5)
-  fib(4)
-    fib(3)
-      fib(2)
-        fib(1)
-          fib(0)
+-- Checking fac.as:
+let fac : Nat -> Nat
+-- Interpreting fac.as:
+fac(5)
+  fac(4)
+    fac(3)
+      fac(2)
+        fac(1)
+          fac(0)
             <= 1
           <= 1
         <= 2
       <= 6
     <= 24
   <= 120
--- Finished fib.as:
-let fib : Nat -> Nat = func
+-- Finished fac.as:
+let fac : Nat -> Nat = func
 
 Compiler:
 (module
