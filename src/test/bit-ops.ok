@@ -82,8 +82,10 @@ compile_binop: RotROp
   (type $2 (func (param i32 i32)))
   (type $3 (func (param i32 i32)))
   (type $4 (func))
+  (memory $0 100)
   (func $0
     (type 0)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     (unreachable)
     (set_local 2)
     (unreachable)
@@ -147,6 +149,7 @@ compile_binop: RotROp
   )
   (func $1
     (type 1)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     (unreachable)
     (set_local 2)
     (unreachable)
@@ -210,6 +213,7 @@ compile_binop: RotROp
   )
   (func $2
     (type 2)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     (unreachable)
     (set_local 2)
     (unreachable)
@@ -273,6 +277,7 @@ compile_binop: RotROp
   )
   (func $3
     (type 3)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     (unreachable)
     (set_local 2)
     (unreachable)
@@ -338,4 +343,3 @@ compile_binop: RotROp
   (start 4)
 )
 Interpreting the .wat:
-bit-ops.wat:10.16-10.17: invalid module: unknown local 2

@@ -107,26 +107,27 @@ compile_dec: (ClassD
 )
 Could not find Counter
 compile_exp: (CallE (DotE (VarE c) dec) (TupE))
-compile_exp: (AssignE (VarE i) (BinE (VarE i) SubOp  (LitE (IntLit 1))))
 compile_dec: (LetD WildP (CallE (VarE test) (TupE)))
 (module
   (type $0 (func (param i32)))
   (type $1 (func))
   (type $2 (func))
+  (memory $0 100)
   (func $0 (type 0))
   (func $1
     (type 1)
+    (local i32)
     (i32.const 10)
     (set_local 0)
     (loop
       (get_local 0)
       (i32.const 0)
       (i32.gt_u)
-      (if (then (unreachable) (unreachable) (br 0)) (else))
+      (if (then (unreachable) (get_local 0) (i32.const 1) (i32.sub) (set_local 0) (br 0)) (else))
     )
   )
-  (func $2 (type 2) (i32.const 10) (unreachable) (set_local 0))
+  (func $2 (type 2) (local i32) (i32.const 10) (unreachable) (set_local 0))
   (start 2)
 )
 Interpreting the .wat:
-counter.wat:9.16-9.17: invalid module: unknown local 0
+counter.wat:19.48-19.61: runtime trap: unreachable executed

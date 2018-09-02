@@ -97,5 +97,5 @@ compile_dec: (LetD
     (LitE (NatLit 72462525423451963967165868))
   )
 )
-(module (type $0 (func)) (func $0 (type 0)) (start 0))
+(module (type $0 (func)) (memory $0 100) (func $0 (type 0)) (start 0))
 Interpreting the .wat:

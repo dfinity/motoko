@@ -292,7 +292,7 @@ compile_exp: (ObjE
 compile_exp: (CallE (DotE (VarE o) self) (TupE))
 compile_dec: (TypD Q (ObjT Object (this (OptT (VarT Q)) Var)))
 compile_exp: (ObjE Object anon-object-10.13 (this (LitE NullLit) Var Public))
-compile_exp: (AssignE (DotE (VarE q) this) (VarE q))
+compile_lexp: (DotE (VarE q) this)
 compile_exp: (ObjE
   Object
   this
@@ -517,9 +517,11 @@ compile_dec: (LetD WildP (BinE (LitE (NatLit 1)) DivOp  (LitE (NatLit 0))))
 (module
   (type $0 (func (param i32)))
   (type $1 (func))
+  (memory $0 100)
   (func $0 (type 0))
   (func $1
     (type 1)
+    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     (unreachable)
     (set_local 0)
     (unreachable)
@@ -545,4 +547,4 @@ compile_dec: (LetD WildP (BinE (LitE (NatLit 1)) DivOp  (LitE (NatLit 0))))
   (start 1)
 )
 Interpreting the .wat:
-objects.wat:8.16-8.17: invalid module: unknown local 0
+objects.wat:9.5-9.18: runtime trap: unreachable executed

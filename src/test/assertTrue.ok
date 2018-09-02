@@ -6,6 +6,7 @@ Interpreter:
 Compiler:
 (module
   (type $0 (func))
+  (memory $0 100)
   (func $0 (type 0) (i32.const 1) (if (then) (else (unreachable))))
   (start 0)
 )

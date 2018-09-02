@@ -26,7 +26,7 @@ let update_reg (ref : 'a list ref) i (y : 'a) =
   ref := update !ref (int_of_string (Wasm.I32.to_string_u i))
 
 let rec drop i (xs : 'a list) = match i, xs with
-  | 0, _       -> []
+  | 0, xs      -> xs
   | _, []      -> []
   | i, (_::xs) -> drop (i-1) xs
 
@@ -52,10 +52,31 @@ let compile_relop op = match op with
   | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ]
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
-let rec compile_exp funcs func_types locals lve exp = match exp.it with
+let rec compile_lexp funcs func_types locals lve exp code = match exp.it with
+  | VarE var -> (match LVE.find_opt var.it lve with
+      | Some i -> code @ [ nr (SetLocal (nr i)) ]
+      | None   -> Printf.eprintf "Could not find %s\n" var.it; [nr Unreachable])
+  | IdxE (e1,e2) ->
+     compile_exp funcs func_types locals lve e1 @ (* offset to array *)
+     compile_exp funcs func_types locals lve e2 @ (* idx *)
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+     code @
+     [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
+  | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
+
+and compile_exp funcs func_types locals lve exp = match exp.it with
   | VarE var -> (match LVE.find_opt var.it lve with
       | Some i -> [ nr (GetLocal (nr i)) ]
       | None   -> Printf.eprintf "Could not find %s\n" var.it; [nr Unreachable])
+  | AssignE (e1,e2) ->
+     let code1 = compile_exp funcs func_types locals lve e2 in
+     compile_lexp funcs func_types locals lve e1 code1
+  | IdxE (e1,e2) ->
+     compile_exp funcs func_types locals lve e1 @ (* offset to array *)
+     compile_exp funcs func_types locals lve e2 @ (* idx *)
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+       nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
+     ]
   | LitE l_ref ->
      compile_lit !l_ref
   | AssertE e1 ->
@@ -89,6 +110,15 @@ let rec compile_exp funcs func_types locals lve exp = match exp.it with
   | AnnotE (e, t) -> compile_exp funcs func_types locals lve e
   | RetE e -> compile_exp funcs func_types locals lve e @ [ nr Return ]
   | TupE [] -> [] (* Fishy *)
+  | ArrayE es ->
+     (* For now, only one array at position 0 *)
+     let init_elem i e : Wasm.Ast.instr list =
+	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u i)))) ] @
+	compile_exp funcs func_types locals lve e @
+        [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
+     in
+     List.concat (List.mapi init_elem es) @
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u 0)))) ]
   | CallE ({it = VarE var; _}, [], e) ->
      let args = de_tupleE e in
      List.concat (List.map (compile_exp funcs func_types locals lve) args)
@@ -179,6 +209,7 @@ let compile (prog  : Syntax.prog) : unit =
       types = !func_types;
       funcs = !funcs;
       start = (Some (nr i));
+      memories = [nr {mtype = MemoryType {min = 100l; max = None}} ];
     };
   in
   Wasm.Print.module_ stdout 100 m
