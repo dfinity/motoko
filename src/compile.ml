@@ -106,7 +106,7 @@ and compile_exp funcs func_types locals lve exp = match exp.it with
   | WhileE (e1, e2) ->
      let code1 = compile_exp funcs func_types locals lve e1 in
      let code2 = compile_exp funcs func_types locals lve e2 in
-     [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr (Br (nr 0l)) ], [])) ])) ]
+     [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr (Br (nr 1l)) ], [])) ])) ]
   | AnnotE (e, t) -> compile_exp funcs func_types locals lve e
   | RetE e -> compile_exp funcs func_types locals lve e @ [ nr Return ]
   | TupE [] -> [] (* Fishy *)
