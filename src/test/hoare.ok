@@ -127,6 +127,7 @@ Compiler:
       (call 0)
       (br 0)
     )
+    (unreachable)
   )
   (func $2
     (type 2)
@@ -228,4 +229,3 @@ Compiler:
   (start 3)
 )
 Interpreting the .wat:
-hoare.wat:37.3-84.4: invalid module: type mismatch: operator requires [i32] but stack has []

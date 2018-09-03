@@ -106,7 +106,8 @@ and compile_exp funcs func_types locals lve exp = match exp.it with
      fst (compile_decs funcs func_types locals lve decs)
   | LoopE (e, None) ->
      let code = compile_exp funcs func_types locals lve e in
-     [ nr (Loop ([], code @ [ nr (Br (nr 0l)) ])) ]
+     [ nr (Loop ([], code @ [ nr (Br (nr 0l)) ])) ] @
+     [ nr Unreachable ]
   | WhileE (e1, e2) ->
      let code1 = compile_exp funcs func_types locals lve e1 in
      let code2 = compile_exp funcs func_types locals lve e2 in
