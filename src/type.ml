@@ -249,7 +249,7 @@ let open_ ts t =
   open' 0 ts t
 
 let open_binds env tbs =
-  if env = Con.env.empty then tbs else
+  if tbs = [] then [], env else
   let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
@@ -322,10 +322,10 @@ let rec avoid' env env' = function
   | Mut t -> Mut (avoid' env env' t)
 
 and avoid_bind env env' {var; bound} =
-  {var; bound = avoid env env' bound}
+  {var; bound = avoid' env env' bound}
 
 and avoid_field env env' {name; typ} =
-  {name; typ = avoid env env' typ}
+  {name; typ = avoid' env env' typ}
 
 let avoid env env' t =
   if env' = Con.Env.empty then t else
