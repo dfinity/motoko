@@ -59,6 +59,8 @@ let rec compile_lexp funcs func_types locals lve exp code = match exp.it with
   | IdxE (e1,e2) ->
      compile_exp funcs func_types locals lve e1 @ (* offset to array *)
      compile_exp funcs func_types locals lve e2 @ (* idx *)
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
      code @
      [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
@@ -74,6 +76,8 @@ and compile_exp funcs func_types locals lve exp = match exp.it with
   | IdxE (e1,e2) ->
      compile_exp funcs func_types locals lve e1 @ (* offset to array *)
      compile_exp funcs func_types locals lve e2 @ (* idx *)
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
        nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
      ]
@@ -113,7 +117,7 @@ and compile_exp funcs func_types locals lve exp = match exp.it with
   | ArrayE es ->
      (* For now, only one array at position 0 *)
      let init_elem i e : Wasm.Ast.instr list =
-	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u i)))) ] @
+	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i))))) ] @
 	compile_exp funcs func_types locals lve e @
         [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
      in
