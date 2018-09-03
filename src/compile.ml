@@ -10,19 +10,6 @@ let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = T
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
-let reg (ref : 'a list ref) (x : 'a) =
-    let i = Wasm.I32.of_int_u (List.length !ref) in
-    ref := !ref @ [ x ];
-    i
-
-(* HACK, obviously *)
-let update_reg (ref : 'a list ref) i (y : 'a) =
-  let rec update xs i = match xs, i with
-            | ([], _)      -> []
-            | (_ :: xs, 0) -> (y :: xs)
-            | (x :: xs, i) -> x :: update xs (i - 1) in
-  ref := update !ref (int_of_string (Wasm.I32.to_string_u i))
-
 
 (* The compiler environment.
 
@@ -34,6 +21,22 @@ have a semantics difference in which order they are added.
 *)
 
 module E = struct
+
+  (* Utilities, internal to E *)
+  let reg (ref : 'a list ref) (x : 'a) =
+      let i = Wasm.I32.of_int_u (List.length !ref) in
+      ref := !ref @ [ x ];
+      i
+
+  (* HACK, obviously *)
+  let update_reg (ref : 'a list ref) i (y : 'a) =
+    let rec update xs i = match xs, i with
+              | ([], _)      -> []
+              | (_ :: xs, 0) -> (y :: xs)
+              | (x :: xs, i) -> x :: update xs (i - 1) in
+    ref := update !ref (int_of_string (Wasm.I32.to_string_u i))
+
+  (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
     funcs : func list ref;
@@ -58,9 +61,9 @@ module E = struct
   }
 
   (* A new function *)
-  let mk_local env params locals =
+  let mk_fun_env env params =
     { env with
-      locals = ref locals;
+      locals = ref [];
       (* We reuse the lve from outside. This is ok for now for functions, but
          for other variables we need to support closures. *)
       n_param = Wasm.I32.of_int_u (List.length params);
@@ -73,23 +76,35 @@ module E = struct
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
+  let add_anon_local (env : t) ty = reg env.locals ty
+
   let add_local (env : t) var =
       let i = reg env.locals I32Type; in
       let i' = Wasm.I32.add env.n_param i in
       ({ env with lve = NameEnv.add var i' env.lve }, i')
+
+  let get_locals (env : t) = !(env.locals)
 
   let lookup_fun env var =
     match NameEnv.find_opt var.it env.fe with
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
+  let add_anon_fun (env : t) f = reg env.funcs f
+
   let add_fun (env : t) name f =
       let i = reg env.funcs f; in
       ({ env with fe = NameEnv.add name i env.fe }, i)
 
   let update_fun (env : t) i f = update_reg env.funcs i f
+
+  let get_funcs (env : t) = !(env.funcs)
+
+  let add_type (env : t) ty = reg env.func_types ty
+
+  let get_types (env : t) = !(env.func_types)
+
 end
-open E
 
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
@@ -248,7 +263,7 @@ and compile_dec env dec = match dec.it with
       (code1 @ [ nr (SetLocal (nr i) ) ], env1)
   | VarD ({it = name; _}, e) ->
       let code1 = compile_exp env e in
-      let (env1, i) = add_local env name in
+      let (env1, i) = E.add_local env name in
       (code1 @ [ nr (SetLocal (nr i) ) ], env1)
   | FuncD ({it = name; _}, [], p, rt, e) ->
       let ps = de_tupleP p in
@@ -260,21 +275,19 @@ and compile_dec env dec = match dec.it with
       let (env1, i) = E.add_fun env name dummy_fun in
       let f = compile_func_body env1 params ty e in
       E.update_fun env i f;
-      (* TODO: currently, lve points to function ids for functions, and locals
-         for others. This breaks once we no longer only call known non-closures. *)
       ([], env1)
 
   | _ -> todo "compile_dec" (Arrange.dec dec) ([], env)
 
 and compile_func_body env params func_type (e : exp) : func =
   (* Fresh set of locals *)
+  let env1 = E.mk_fun_env env params in
   (* Every function has a temporary local as local 0 *)
-  let locals = [ I32Type ] in
-  let env1 = E.mk_local env params locals in
+  let _ = E.add_anon_local env1 I32Type in
   let body = compile_exp env1 e in
-  let ti = reg env.func_types func_type in
+  let ti = E.add_type env func_type in
   nr { ftype = nr ti;
-       locals = !(env1.locals);
+       locals = E.get_locals env1;
        body = body
      }
 
@@ -283,11 +296,11 @@ let compile (prog  : Syntax.prog) : unit =
     let start_fun_ty = nr (FuncType ([], [])) in
     let env = E.mk_global () in
     let start_fun = compile_func_body env [] start_fun_ty (nr__ (BlockE prog.it)) in
-    let i = reg env.funcs start_fun in
+    let i = E.add_anon_fun env start_fun in
 
     nr { empty_module with
-      types = !(env.func_types);
-      funcs = !(env.funcs);
+      types = E.get_types env;
+      funcs = E.get_funcs env;
       start = Some (nr i);
       globals = [ heap_ptr_global ];
       memories = [nr {mtype = MemoryType {min = 100l; max = None}} ];
