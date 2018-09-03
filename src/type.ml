@@ -210,6 +210,7 @@ and subst_field sigma {name; typ} =
 (* Handling binders *)
 
 let close cs t =
+  if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
   let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
   subst sigma t
@@ -248,6 +249,7 @@ let open_ ts t =
   open' 0 ts t
 
 let open_binds env tbs =
+  if env = Con.env.empty then tbs else
   let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
@@ -292,35 +294,42 @@ let immutable = function
 
 exception Unavoidable of con
 
-let rec avoid env env' = function
+let rec avoid' env env' = function
   | (Prim _ | Var _ | Any | Pre) as t -> t
   | Con (c, ts) ->
     (match Con.Env.find_opt c env' with
     | Some (Abs _) -> raise (Unavoidable c)
-    | Some (Def (tbs, t)) -> avoid env env' (reduce tbs t ts)
+    | Some (Def (tbs, t)) -> avoid' env env' (reduce tbs t ts)
     | None ->
       try
-        Con (c, List.map (avoid env env') ts)
+        Con (c, List.map (avoid' env env') ts)
       with Unavoidable _ ->
         match Con.Env.find c env with
         | Abs _ -> raise (Unavoidable c)
-        | Def (tbs, t) -> avoid env env' (reduce tbs t ts)
+        | Def (tbs, t) -> avoid' env env' (reduce tbs t ts)
     )
-  | Array t -> Array (avoid env env' t)
-  | Tup ts -> Tup (List.map (avoid env env') ts)
+  | Array t -> Array (avoid' env env' t)
+  | Tup ts -> Tup (List.map (avoid' env env') ts)
   | Func (tbs, t1, t2) ->
-    Func (List.map (avoid_bind env env') tbs, avoid env env' t1, avoid env env' t2)
-  | Opt t -> Opt (avoid env env' t)
-  | Async t -> Async (avoid env env' t)
-  | Like t -> Like (avoid env env' t)
+    Func (
+      List.map (avoid_bind env env') tbs,
+      avoid' env env' t1, avoid' env env' t2
+    )
+  | Opt t -> Opt (avoid' env env' t)
+  | Async t -> Async (avoid' env env' t)
+  | Like t -> Like (avoid' env env' t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
-  | Mut t -> Mut (avoid env env' t)
+  | Mut t -> Mut (avoid' env env' t)
 
 and avoid_bind env env' {var; bound} =
   {var; bound = avoid env env' bound}
 
 and avoid_field env env' {name; typ} =
   {name; typ = avoid env env' typ}
+
+let avoid env env' t =
+  if env' = Con.Env.empty then t else
+  avoid' env env' t
 
 
 (* Equivalence *)
