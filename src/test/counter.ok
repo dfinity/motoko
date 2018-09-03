@@ -90,7 +90,7 @@ compile_dec: (ClassD
         (TupT)
         (BlockE
           (ExpD (CallE (VarE show) (VarE c)))
-          (ExpD (AssignE (VarE c) (BinE (VarE c) SubOp  (LitE (IntLit 1)))))
+          (ExpD (AssignE (VarE c) (BinE (VarE c) SubOp (LitE (IntLit 1)))))
         )
       )
     )

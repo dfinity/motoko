@@ -16,8 +16,8 @@ compile_exp: (UnE NotOp (VarE a))
 compile_exp: (UnE NotOp (VarE a))
 compile_binop: OrOp
 compile_binop: OrOp
-compile_binop: AndOp 
-compile_binop: AndOp 
+compile_binop: AndOp
+compile_binop: AndOp
 compile_binop: XorOp
 compile_binop: XorOp
 compile_binop: ShiftLOp
@@ -32,8 +32,8 @@ compile_exp: (UnE NotOp (VarE a))
 compile_exp: (UnE NotOp (VarE a))
 compile_binop: OrOp
 compile_binop: OrOp
-compile_binop: AndOp 
-compile_binop: AndOp 
+compile_binop: AndOp
+compile_binop: AndOp
 compile_binop: XorOp
 compile_binop: XorOp
 compile_binop: ShiftLOp
@@ -48,8 +48,8 @@ compile_exp: (UnE NotOp (VarE a))
 compile_exp: (UnE NotOp (VarE a))
 compile_binop: OrOp
 compile_binop: OrOp
-compile_binop: AndOp 
-compile_binop: AndOp 
+compile_binop: AndOp
+compile_binop: AndOp
 compile_binop: XorOp
 compile_binop: XorOp
 compile_binop: ShiftLOp
@@ -64,8 +64,8 @@ compile_exp: (UnE NotOp (VarE a))
 compile_exp: (UnE NotOp (VarE a))
 compile_binop: OrOp
 compile_binop: OrOp
-compile_binop: AndOp 
-compile_binop: AndOp 
+compile_binop: AndOp
+compile_binop: AndOp
 compile_binop: XorOp
 compile_binop: XorOp
 compile_binop: ShiftLOp

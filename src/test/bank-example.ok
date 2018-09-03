@@ -171,10 +171,7 @@ compile_dec: (ClassD
         (AsyncE
           (BlockE
             (ExpD
-              (AssignE
-                (VarE balance)
-                (BinE (VarE balance) SubOp  (VarE amount))
-              )
+              (AssignE (VarE balance) (BinE (VarE balance) SubOp (VarE amount)))
             )
             (ExpD (RetE (CallE (VarE Account) (VarE amount))))
           )
@@ -208,7 +205,7 @@ compile_dec: (ClassD
         (TupT)
         (BlockE
           (ExpD
-            (AssignE (VarE balance) (BinE (VarE balance) AddOp  (VarE amount)))
+            (AssignE (VarE balance) (BinE (VarE balance) AddOp (VarE amount)))
           )
         )
       )

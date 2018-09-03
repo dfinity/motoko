@@ -33,7 +33,7 @@ compile_dec: (ClassD
                 (LetD
                   (VarP m)
                   (AnnotE
-                    (BinE (LitE (IntLit 1)) AddOp  (BreakE l2 (TupE)))
+                    (BinE (LitE (IntLit 1)) AddOp (BreakE l2 (TupE)))
                     (PrimT Int)
                   )
                 )

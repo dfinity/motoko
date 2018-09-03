@@ -19,7 +19,7 @@ compile_exp: (LabelE
       continue count
       (TupT)
       (BlockE
-        (ExpD (AssignE (VarE i) (BinE (VarE i) SubOp  (LitE (IntLit 1)))))
+        (ExpD (AssignE (VarE i) (BinE (VarE i) SubOp (LitE (IntLit 1)))))
         (ExpD
           (IfE
             (RelE (VarE i) EqOp (LitE (NatLit 0)))

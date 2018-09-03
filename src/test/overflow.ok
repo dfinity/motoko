@@ -10,7 +10,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (LitE (NatLit 9223372036854775808))
-      AddOp 
+      AddOp
       (LitE (NatLit 9223372036854775807))
     )
     (PrimT Nat)
@@ -21,7 +21,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (LitE (NatLit 9223372036854775808))
-      SubOp 
+      SubOp
       (LitE (NatLit 9223372036854775808))
     )
     (PrimT Nat)
@@ -30,7 +30,7 @@ compile_dec: (LetD
 compile_dec: (LetD
   WildP
   (AnnotE
-    (BinE (LitE (NatLit 4294967296)) MulOp  (LitE (NatLit 4294967295)))
+    (BinE (LitE (NatLit 4294967296)) MulOp (LitE (NatLit 4294967295)))
     (PrimT Nat)
   )
 )
@@ -39,7 +39,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (LitE (IntLit 4611686018427387904))
-      AddOp 
+      AddOp
       (LitE (IntLit 4611686018427387903))
     )
     (PrimT Int)
@@ -50,7 +50,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (LitE (IntLit 2305843009213693952))
-      SubOp 
+      SubOp
       (LitE (IntLit 4611686018427387904))
     )
     (PrimT Int)
@@ -61,7 +61,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (UnE NegOp (LitE (IntLit 2305843009213693952)))
-      SubOp 
+      SubOp
       (LitE (IntLit 6917529027641081856))
     )
     (PrimT Int)
@@ -70,7 +70,7 @@ compile_dec: (LetD
 compile_dec: (LetD
   WildP
   (AnnotE
-    (BinE (LitE (IntLit 1152921504606846976)) MulOp  (LitE (IntLit 7)))
+    (BinE (LitE (IntLit 1152921504606846976)) MulOp (LitE (IntLit 7)))
     (PrimT Int)
   )
 )
@@ -79,7 +79,7 @@ compile_dec: (LetD
   (AnnotE
     (BinE
       (UnE NegOp (LitE (IntLit 1152921504606846976)))
-      MulOp 
+      MulOp
       (LitE (IntLit 8))
     )
     (PrimT Int)
@@ -87,13 +87,13 @@ compile_dec: (LetD
 )
 compile_dec: (LetD
   WildP
-  (AnnotE (BinE (LitE (IntLit 268435456)) DivOp  (LitE (IntLit 0))) (PrimT Int))
+  (AnnotE (BinE (LitE (IntLit 268435456)) DivOp (LitE (IntLit 0))) (PrimT Int))
 )
 compile_dec: (LetD
   WildP
   (BinE
     (LitE (NatLit 1314235251543424342678909))
-    MulOp 
+    MulOp
     (LitE (NatLit 72462525423451963967165868))
   )
 )

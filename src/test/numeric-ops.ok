@@ -22,36 +22,36 @@ compile_exp: (UnE PosOp (VarE a))
 compile_exp: (UnE PosOp (VarE a))
 compile_exp: (UnE NegOp (VarE a))
 compile_exp: (UnE NegOp (VarE a))
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
 compile_exp: (UnE PosOp (VarE a))
 compile_exp: (UnE PosOp (VarE a))
 compile_exp: (UnE NegOp (VarE a))
 compile_exp: (UnE NegOp (VarE a))
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
-compile_binop: DivOp 
-compile_binop: DivOp 
-compile_binop: ModOp 
-compile_binop: ModOp 
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
+compile_binop: DivOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: ModOp
 (module
   (type $0 (func (param i32 i32)))
   (type $1 (func (param i32 i32)))

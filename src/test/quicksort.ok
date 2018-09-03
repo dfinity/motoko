@@ -135,7 +135,7 @@ compile_dec: (ClassD
                     (VarE quicksort)
                     (TupE
                       (VarE a)
-                      (BinE (VarE p) AddOp  (LitE (NatLit 1)))
+                      (BinE (VarE p) AddOp (LitE (NatLit 1)))
                       (VarE hi)
                     )
                   )
@@ -207,7 +207,7 @@ compile_dec: (ClassD
                       (ExpD
                         (AssignE
                           (VarE i)
-                          (BinE (VarE i) AddOp  (LitE (NatLit 1)))
+                          (BinE (VarE i) AddOp (LitE (NatLit 1)))
                         )
                       )
                     )
@@ -227,7 +227,7 @@ compile_dec: (ClassD
                       (ExpD
                         (AssignE
                           (VarE j)
-                          (BinE (VarE j) SubOp  (LitE (NatLit 1)))
+                          (BinE (VarE j) SubOp (LitE (NatLit 1)))
                         )
                       )
                     )
