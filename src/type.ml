@@ -215,11 +215,11 @@ let close cs t =
   subst sigma t
 
 let close_binds cs tbs =
+  if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
 
 let rec open' i ts t =
-  if ts = [] then t else
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
@@ -243,7 +243,9 @@ and open_bind i ts {var; bound} =
 and open_field i ts {name; typ} =
   {name; typ = open' i ts typ}
 
-let open_ = open' 0
+let open_ ts t =
+  if ts = [] then t else
+  open' 0 ts t
 
 let open_binds env tbs =
   let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
