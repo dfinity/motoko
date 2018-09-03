@@ -34,27 +34,62 @@ have a semantics difference in which order they are added.
 *)
 
 module E = struct
-  module LVE = Env.Make(String)
+  module NameEnv = Env.Make(String)
   type t = {
     funcs : func list ref;
     func_types : func_type Wasm.Source.phrase list ref;
     n_param : int32; (* to calculate GetLocal indices *)
     locals : value_type list ref;
-    lve : int32 LVE.t;
+    (* Local variables *)
+    lve : int32 NameEnv.t;
+    (* Functions (HACK: They are not really seperate,
+       but for now we only support calls to known functions) *)
+    fe : int32 NameEnv.t;
   }
 
+  (* The global environment *)
+  let mk_global (_ : unit) : t = {
+    funcs = ref [];
+    func_types = ref [];
+    locals = ref []; (* Actually unused outside start_fun *)
+    lve = NameEnv.empty;
+    fe = NameEnv.empty;
+    n_param = 0l;
+  }
+
+  (* A new function *)
+  let mk_local env params locals =
+    { env with
+      locals = ref locals;
+      (* We reuse the lve from outside. This is ok for now for functions, but
+         for other variables we need to support closures. *)
+      n_param = Wasm.I32.of_int_u (List.length params);
+      lve = List.fold_left (fun lve (x,y) -> NameEnv.add x y lve) env.lve
+                 (List.mapi (fun i x -> (x.it, Wasm.I32.of_int_u i)) params);
+      }
+
   let lookup_var env var =
-    match LVE.find_opt var.it env.lve with
+    match NameEnv.find_opt var.it env.lve with
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
-  let add_local (env : t) name =
+  let add_local (env : t) var =
       let i = reg env.locals I32Type; in
       let i' = Wasm.I32.add env.n_param i in
-      ({ env with lve = LVE.add name i' env.lve }, i')
+      ({ env with lve = NameEnv.add var i' env.lve }, i')
+
+  let lookup_fun env var =
+    match NameEnv.find_opt var.it env.fe with
+      | Some i -> Some (nr i)
+      | None   -> Printf.eprintf "Could not find %s\n" var.it; None
+
+  let add_fun (env : t) name f =
+      let i = reg env.funcs f; in
+      ({ env with fe = NameEnv.add name i env.fe }, i)
+
+  let update_fun (env : t) i f = update_reg env.funcs i f
 end
 open E
-(* remove *) module LVE = Env.Make(String)
 
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
@@ -177,9 +212,9 @@ and compile_exp (env : E.t) exp = match exp.it with
   | CallE ({it = VarE var; _}, [], e) ->
      let args = de_tupleE e in
      List.concat (List.map (compile_exp env) args)
-     @ (match LVE.find_opt var.it env.lve with
-        | Some i -> [ nr (Call (nr i)) ]
-        | None   -> Printf.eprintf "Could not find %s\n" var.it; [nr Unreachable])
+     @ (match E.lookup_fun env var with
+        | Some i -> [ nr (Call i) ]
+        | None   -> [nr Unreachable])
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
 (* TODO: Mutual recursion! *)
@@ -222,10 +257,9 @@ and compile_dec env dec = match dec.it with
       let ty = nr (FuncType (List.map (fun _ -> I32Type) ps, rt')) in
       let params = param_names ps in
       let dummy_fun = nr {ftype = nr 0l; locals = []; body = []} in
-      let i = reg env.funcs dummy_fun in
-      let env1 = { env with lve = LVE.add name i env.lve } in
+      let (env1, i) = E.add_fun env name dummy_fun in
       let f = compile_func_body env1 params ty e in
-      update_reg env.funcs i f;
+      E.update_fun env i f;
       (* TODO: currently, lve points to function ids for functions, and locals
          for others. This breaks once we no longer only call known non-closures. *)
       ([], env1)
@@ -235,32 +269,19 @@ and compile_dec env dec = match dec.it with
 and compile_func_body env params func_type (e : exp) : func =
   (* Fresh set of locals *)
   (* Every function has a temporary local as local 0 *)
-  let locals = ref [ I32Type ] in
-  let env1 = { env with
-    locals;
-    (* We reuse the lve from outside. This is ok for now for functions, but
-       for other variables we need to support closures. *)
-    n_param = Wasm.I32.of_int_u (List.length params);
-    lve = List.fold_left (fun lve (x,y) -> LVE.add x y lve) env.lve
-               (List.mapi (fun i x -> (x.it, Wasm.I32.of_int_u i)) params);
-    } in
+  let locals = [ I32Type ] in
+  let env1 = E.mk_local env params locals in
   let body = compile_exp env1 e in
   let ti = reg env.func_types func_type in
   nr { ftype = nr ti;
-       locals = !locals;
+       locals = !(env1.locals);
        body = body
      }
 
 let compile (prog  : Syntax.prog) : unit =
   let m : module_ =
     let start_fun_ty = nr (FuncType ([], [])) in
-    let env = {
-      funcs = ref [];
-      E.func_types = ref [];
-      locals = ref []; (* Actually unused outside start_fun *)
-      lve = LVE.empty;
-      n_param = 0l;
-    } in
+    let env = E.mk_global () in
     let start_fun = compile_func_body env [] start_fun_ty (nr__ (BlockE prog.it)) in
     let i = reg env.funcs start_fun in
 
