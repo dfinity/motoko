@@ -267,19 +267,20 @@ compile_exp: (AsyncE
   (type $2 (func (result i32)))
   (type $3 (func))
   (memory $0 100)
-  (func $0 (type 0) (unreachable))
-  (func $1 (type 1))
-  (func $2 (type 2) (unreachable))
+  (global $0 (mut i32) (i32.const 0))
+  (func $0 (type 0) (local i32) (unreachable))
+  (func $1 (type 1) (local i32))
+  (func $2 (type 2) (local i32) (unreachable))
   (func $3
     (type 3)
-    (local i32 i32)
+    (local i32 i32 i32)
     (i32.const 100)
     (unreachable)
-    (set_local 0)
-    (call 2)
     (set_local 1)
+    (call 2)
+    (set_local 2)
   )
   (start 3)
 )
 Interpreting the .wat:
-bank-example.wat:14.5-14.18: runtime trap: unreachable executed
+bank-example.wat:15.5-15.18: runtime trap: unreachable executed

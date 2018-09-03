@@ -22,8 +22,10 @@ Compiler:
   (type $0 (func (param i32) (result i32)))
   (type $1 (func))
   (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
   (func $0
     (type 0)
+    (local i32)
     (get_local 0)
     (i32.const 0)
     (i32.eq)
@@ -37,6 +39,7 @@ Compiler:
   )
   (func $1
     (type 1)
+    (local i32)
     (i32.const 5)
     (call 0)
     (i32.const 120)

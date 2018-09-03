@@ -227,5 +227,11 @@ compile_dec: (ClassD
     Public
   )
 )
-(module (type $0 (func)) (memory $0 100) (func $0 (type 0)) (start 0))
+(module
+  (type $0 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0 (type 0) (local i32))
+  (start 0)
+)
 Interpreting the .wat:

@@ -30,6 +30,25 @@ let rec drop i (xs : 'a list) = match i, xs with
   | _, []      -> []
   | i, (_::xs) -> drop (i-1) xs
 
+let heap_ptr_global = nr
+      { gtype = GlobalType (I32Type, Mutable);
+        value = nr [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ] }
+
+let heap_ptr : var = nr 0l
+
+let tmp_local : var = nr 0l
+
+let dup : instr list = (* duplicate top element *)
+  [ nr (TeeLocal tmp_local);
+    nr (GetLocal tmp_local) ]
+
+let alloc : instr list = (* expect the size on the stack, returns the pointer *)
+  [ nr (GetGlobal heap_ptr);
+    nr (SetLocal tmp_local);
+    nr (GetGlobal heap_ptr);
+    nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+    nr (SetGlobal heap_ptr);
+    nr (GetLocal tmp_local)]
 
 let compile_lit lit = match lit with
   | BoolLit true ->  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
@@ -116,14 +135,19 @@ and compile_exp funcs func_types locals lve exp = match exp.it with
   | RetE e -> compile_exp funcs func_types locals lve e @ [ nr Return ]
   | TupE [] -> [] (* Fishy *)
   | ArrayE es ->
-     (* For now, only one array at position 0 *)
+     (* Calculate size *)
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4 * List.length es))))) ] @
+     (* Allocate position *)
+     alloc @
+     (* Put position on the stack, to be returned. *)
      let init_elem i e : Wasm.Ast.instr list =
-	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i))))) ] @
+        dup @ (* Dupliate position *)
+	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
 	compile_exp funcs func_types locals lve e @
         [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
      in
-     List.concat (List.mapi init_elem es) @
-     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u 0)))) ]
+     List.concat (List.mapi init_elem es)
   | CallE ({it = VarE var; _}, [], e) ->
      let args = de_tupleE e in
      List.concat (List.map (compile_exp funcs func_types locals lve) args)
@@ -190,7 +214,8 @@ and compile_func_body
       (e : exp) :  func =
   (* HACK: We add the params to the locals (so that the index lines up)
      but we remove them before passing them on to wasm *)
-  let locals = ref (List.map (fun _ -> I32Type) params) in
+  (* Also, every function has a temporary local in slot 0 *)
+  let locals = ref (List.map (fun _ -> I32Type) params @ [ I32Type ]) in
   (* We reuse the lve from outside. This is ok for now for functions, but
      for other variables we need to support closures. *)
   let lve1 = List.fold_left (fun lve (x,y) -> LVE.add x y lve) lve
@@ -213,7 +238,8 @@ let compile (prog  : Syntax.prog) : unit =
     nr { empty_module with
       types = !func_types;
       funcs = !funcs;
-      start = (Some (nr i));
+      start = Some (nr i);
+      globals = [ heap_ptr_global ];
       memories = [nr {mtype = MemoryType {min = 100l; max = None}} ];
     };
   in
