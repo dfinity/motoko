@@ -5,104 +5,16 @@ overflow.as:17.9-17.24: execution error, arithmetic overflow
 -- Finished overflow.as:
 
 Compiler:
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (LitE (NatLit 9223372036854775808))
-      AddOp
-      (LitE (NatLit 9223372036854775807))
-    )
-    (PrimT Nat)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (LitE (NatLit 9223372036854775808))
-      SubOp
-      (LitE (NatLit 9223372036854775808))
-    )
-    (PrimT Nat)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE (LitE (NatLit 4294967296)) MulOp (LitE (NatLit 4294967295)))
-    (PrimT Nat)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (LitE (IntLit 4611686018427387904))
-      AddOp
-      (LitE (IntLit 4611686018427387903))
-    )
-    (PrimT Int)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (LitE (IntLit 2305843009213693952))
-      SubOp
-      (LitE (IntLit 4611686018427387904))
-    )
-    (PrimT Int)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (UnE NegOp (LitE (IntLit 2305843009213693952)))
-      SubOp
-      (LitE (IntLit 6917529027641081856))
-    )
-    (PrimT Int)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE (LitE (IntLit 1152921504606846976)) MulOp (LitE (IntLit 7)))
-    (PrimT Int)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE
-    (BinE
-      (UnE NegOp (LitE (IntLit 1152921504606846976)))
-      MulOp
-      (LitE (IntLit 8))
-    )
-    (PrimT Int)
-  )
-)
-compile_dec: (LetD
-  WildP
-  (AnnotE (BinE (LitE (IntLit 268435456)) DivOp (LitE (IntLit 0))) (PrimT Int))
-)
-compile_dec: (LetD
-  WildP
-  (BinE
-    (LitE (NatLit 1314235251543424342678909))
-    MulOp
-    (LitE (NatLit 72462525423451963967165868))
-  )
-)
-(module
-  (type $0 (func))
-  (memory $0 100)
-  (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 0) (local i32) (drop))
-  (start 0)
-)
-Interpreting the .wat:
-overflow.wat:5.33-5.39: invalid module: type mismatch: operator requires [_] but stack has []
+Fatal error: exception Z.Overflow
+Raised by primitive operation at file "compile.ml", line 158, characters 63-77
+Called from file "compile.ml", line 224, characters 5-23
+Called from file "compile.ml", line 336, characters 18-35
+Called from file "compile.ml", line 289, characters 26-52
+Called from file "compile.ml", line 240, characters 9-32
+Called from file "compile.ml", line 365, characters 13-31
+Called from file "compile.ml", line 378, characters 20-86
+Called from file "main.ml", line 130, characters 4-24
+Re-raised at file "main.ml", line 137, characters 19-22
+Called from file "list.ml", line 85, characters 12-15
+Called from file "main.ml", line 195, characters 25-66
+Empty .wat file!

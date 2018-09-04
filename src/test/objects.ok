@@ -329,7 +329,7 @@ compile_exp: (ObjE
     Public
   )
 )
-compile_dec: (LetD (TupP) (CallE (DotE (VarE tictac) tic) (LitE (IntLit 10))))
+compile_exp: (CallE (DotE (VarE tictac) tic) (LitE (IntLit 10)))
 compile_exp: (ObjE
   Actor
   self
@@ -380,7 +380,8 @@ compile_exp: (ObjE
     Public
   )
 )
-compile_dec: (LetD WildP (CallE (DotE (VarE tictac_actor) tic_msg) (LitE (IntLit 10))))
+compile_exp: (CallE (DotE (VarE tictac_actor) tic_msg) (LitE (IntLit 10)))
+compile_pat: WildP
 compile_exp: (ObjE
   Object
   this
@@ -441,7 +442,8 @@ compile_exp: (ObjE
     Public
   )
 )
-compile_dec: (LetD WildP (CallE (DotE (VarE tictac_async) tic_async) (LitE (IntLit 10))))
+compile_exp: (CallE (DotE (VarE tictac_async) tic_async) (LitE (IntLit 10)))
+compile_pat: WildP
 compile_exp: (ObjE
   Actor
   self
@@ -502,12 +504,12 @@ compile_exp: (ObjE
     Public
   )
 )
-compile_dec: (LetD
-  WildP
-  (CallE (DotE (VarE tictac_actor_async) tic_msg_async) (LitE (IntLit 10)))
-)
-compile_dec: (LetD WildP (AsyncE (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0)))))
-compile_dec: (LetD WildP (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
+compile_exp: (CallE (DotE (VarE tictac_actor_async) tic_msg_async) (LitE (IntLit 10)))
+compile_pat: WildP
+compile_exp: (AsyncE (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
+compile_pat: WildP
+compile_binop: DivOp
+compile_pat: WildP
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func))
@@ -535,14 +537,25 @@ compile_dec: (LetD WildP (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
     (unreachable)
     (set_local 7)
     (unreachable)
+    (drop)
+    (unreachable)
     (set_local 8)
+    (unreachable)
     (unreachable)
     (set_local 9)
     (unreachable)
+    (unreachable)
     (set_local 10)
+    (unreachable)
+    (unreachable)
+    (i32.const 1)
+    (i32.const 0)
+    (unreachable)
+    (tee_local 0)
+    (get_local 0)
     (drop)
   )
   (start 1)
 )
 Interpreting the .wat:
-objects.wat:10.5-10.18: runtime trap: unreachable executed
+objects.wat:7.3-45.4: invalid module: type mismatch: operator requires [] but stack has [i32]

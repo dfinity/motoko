@@ -257,7 +257,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
   | TupE [] -> compile_unit
-  | ArrayE es ->
+  | (ArrayE es | TupE es) ->
      (* Calculate size *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4 * List.length es))))) ] @
      (* Allocate position *)
@@ -305,16 +305,38 @@ and param_names ps =
     | _             -> nr_ "non-var-pattern" in
   List.map param_name ps
 
+and compile_pat env pat = match pat.it with
+  (* So far, only irrefutable patterns *)
+  (* The undestructed value is on top of the stack. *)
+  (* The returned code consumes it, and fills all the variables. *)
+  | VarP name ->
+      let (env1,i) = E.add_local env name; in
+      ([ nr (SetLocal (nr i) ) ], env1)
+  | TupP ps ->
+      let get_i i =
+	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+          nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})] in
+      let rec go i ps env = match ps with
+        | [] -> ([ nr Drop ], env)
+        | (p::ps) ->
+          let (code1, env1) = compile_pat env p in
+          let (code2, env2) = go (i+1) ps env1 in
+          (dup @ get_i i @ code1 @ code2, env2) in
+      go 0 ps env
+
+  | _ -> todo "compile_pat" (Arrange.pat pat) ([], env)
+
 and compile_dec last env dec = match dec.it with
   | ExpD e ->
     let code = compile_exp env e in
     let drop = if last then [] else [nr Drop] in
     (code @ drop, env)
-  | LetD ({it = VarP name; _}, e) ->
+  | LetD (p, e) ->
       let code1 = compile_exp env e in
-      let (env1,i) = E.add_local env name; in
-      let cmd x = if last then TeeLocal x else SetLocal x in
-      (code1 @ [ nr (cmd (nr i) ) ], env1)
+      let stack_fix = if last then dup else [] in
+      let (code2,env1) = compile_pat env p in
+      (code1 @ stack_fix @ code2, env1)
   | VarD (name, e) ->
       let code1 = compile_exp env e in
       let (env1, i) = E.add_local env name in

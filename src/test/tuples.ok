@@ -1,0 +1,67 @@
+Interpreter:
+-- Checking tuples.as:
+let tup1 : (Nat, Nat)
+let x : Nat
+let y : Nat
+-- Interpreting tuples.as:
+-- Finished tuples.as:
+let tup1 : (Nat, Nat) = (1, 2)
+let x : Nat = 1
+let y : Nat = 2
+
+Compiler:
+(module
+  (type $0 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32 i32 i32 i32)
+    (i32.const 8)
+    (get_global 0)
+    (set_local 0)
+    (get_global 0)
+    (i32.add)
+    (set_global 0)
+    (get_local 0)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 0)
+    (i32.add)
+    (i32.const 1)
+    (i32.store align=1)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 4)
+    (i32.add)
+    (i32.const 2)
+    (i32.store align=1)
+    (set_local 1)
+    (get_local 1)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 0)
+    (i32.add)
+    (i32.load align=1)
+    (set_local 2)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 4)
+    (i32.add)
+    (i32.load align=1)
+    (set_local 3)
+    (drop)
+    (get_local 2)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (get_local 3)
+    (i32.const 2)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+  )
+  (start 0)
+)
+Interpreting the .wat:
