@@ -35,6 +35,12 @@ all: stats
 %.refresh: %.out
 	cat $*.out >$*.ok
 
+%.wat: %.as
+	$(ASC) -c $< > $@
+
+%.wasm: %.wat
+	wasm -d $< -o $@
+
 stats: $(addsuffix .diff,$(TESTS))
 	@failed=""; \
 	for test in $(TESTS); do \

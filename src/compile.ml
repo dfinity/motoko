@@ -43,6 +43,10 @@ module E = struct
     func_types : func_type Wasm.Source.phrase list ref;
     n_param : int32; (* to calculate GetLocal indices *)
     locals : value_type list ref;
+    (* Current depths *)
+    depth : int32;
+    (* Label to depth *)
+    ld : int32 NameEnv.t;
     (* Local variables *)
     lve : int32 NameEnv.t;
     (* Functions (HACK: They are not really seperate,
@@ -54,21 +58,24 @@ module E = struct
   let mk_global (_ : unit) : t = {
     funcs = ref [];
     func_types = ref [];
-    locals = ref []; (* Actually unused outside start_fun *)
-    lve = NameEnv.empty;
     fe = NameEnv.empty;
+    (* Actually unused outside mk_fun_env: *)
+    locals = ref []; 
+    lve = NameEnv.empty;
     n_param = 0l;
+    depth = 0l;
+    ld = NameEnv.empty;
   }
 
   (* A new function *)
   let mk_fun_env env params =
     { env with
       locals = ref [];
-      (* We reuse the lve from outside. This is ok for now for functions, but
-         for other variables we need to support closures. *)
       n_param = Wasm.I32.of_int_u (List.length params);
-      lve = List.fold_left (fun lve (x,y) -> NameEnv.add x y lve) env.lve
+      lve = List.fold_left (fun lve (x,y) -> NameEnv.add x y lve) NameEnv.empty
                  (List.mapi (fun i x -> (x.it, Wasm.I32.of_int_u i)) params);
+      depth = 0l;
+      ld = NameEnv.empty;
       }
 
   let lookup_var env var =
@@ -78,10 +85,10 @@ module E = struct
 
   let add_anon_local (env : t) ty = reg env.locals ty
 
-  let add_local (env : t) var =
+  let add_local (env : t) name =
       let i = reg env.locals I32Type; in
       let i' = Wasm.I32.add env.n_param i in
-      ({ env with lve = NameEnv.add var i' env.lve }, i')
+      ({ env with lve = NameEnv.add name.it i' env.lve }, i')
 
   let get_locals (env : t) = !(env.locals)
 
@@ -103,6 +110,18 @@ module E = struct
   let add_type (env : t) ty = reg env.func_types ty
 
   let get_types (env : t) = !(env.func_types)
+
+  let inc_depth (env : t) =
+      let d' = Wasm.I32.add env.depth 1l in
+      {env with depth = d'}
+
+  let add_label (env : t) name =
+      { env with ld = NameEnv.add name.it (env.depth) env.ld }
+
+  let get_label_depth (env : t) name =
+    match NameEnv.find_opt name.it env.ld with
+      | Some i -> Wasm.I32.sub env.depth i
+      | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
 
 end
 
@@ -126,13 +145,28 @@ let alloc : instr list = (* expect the size on the stack, returns the pointer *)
     nr (SetGlobal heap_ptr);
     nr (GetLocal tmp_local)]
 
+let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
+let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+
 let compile_lit lit = match lit with
-  | BoolLit true ->  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
-  | BoolLit false -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
+  | BoolLit true ->  compile_true
+  | BoolLit false -> compile_false
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
   | NatLit n      -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
+
+let compile_unop op = match op with
+  | NegOp ->
+      [ nr (SetLocal tmp_local);
+        nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)));
+        nr (GetLocal tmp_local);
+        nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ]
+  | NotOp ->
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)));
+        nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq));
+        nr (If ([I32Type], compile_false, compile_true)) ]
+  | _ -> todo "compile_unop" (Arrange.unop op) [ nr Unreachable ]
 
 let compile_binop op = match op with
   | AddOp -> [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
@@ -142,9 +176,9 @@ let compile_binop op = match op with
 
 let compile_relop op = match op with
   | EqOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
-  | GeOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeU)) ]
-  | GtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtU)) ]
-  | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ]
+  | GeOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeS)) ]
+  | GtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS)) ]
+  | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ]
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
 let rec compile_lexp (env : E.t) exp code = match exp.it with
@@ -180,6 +214,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit !l_ref
   | AssertE e1 ->
      compile_exp env e1 @ [ nr (If ([], [], [nr Unreachable])) ]
+  | UnE (op, e1) ->
+     compile_exp env e1 @
+     compile_unop op
   | BinE (e1, op, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
@@ -194,18 +231,25 @@ and compile_exp (env : E.t) exp = match exp.it with
      [ nr (Binary (Wasm.Values.I32 IntOp.Or)) ]
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-     let code3 = compile_exp env e3 in
+     let code2 = compile_exp (E.inc_depth env) e2 in
+     let code3 = compile_exp (E.inc_depth env) e3 in
      code1 @ [ nr (If ([], code2, code3)) ]
   | BlockE decs ->
      fst (compile_decs env decs)
+  | LabelE (name, _ty, e) ->
+      let env1 = E.add_label (E.inc_depth env) name in
+      let code = compile_exp env1 e in
+      [ nr (Block ([],code)) ]
+  | BreakE (name, _ty) ->
+      let i = E.get_label_depth env name in
+      [ nr (Br (nr i)) ]
   | LoopE (e, None) ->
-     let code = compile_exp env e in
+     let code = compile_exp (E.inc_depth env) e in
      [ nr (Loop ([], code @ [ nr (Br (nr 0l)) ])) ] @
      [ nr Unreachable ]
   | WhileE (e1, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
+     let code1 = compile_exp (E.inc_depth env) e1 in
+     let code2 = compile_exp (E.inc_depth (E.inc_depth env)) e2 in
      [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr (Br (nr 1l)) ], [])) ])) ]
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
@@ -257,11 +301,11 @@ and param_names ps =
 
 and compile_dec env dec = match dec.it with
   | ExpD e -> (compile_exp env e, env)
-  | LetD ({it = VarP {it = name; _}; _}, e) ->
+  | LetD ({it = VarP name; _}, e) ->
       let code1 = compile_exp env e in
       let (env1,i) = E.add_local env name; in
       (code1 @ [ nr (SetLocal (nr i) ) ], env1)
-  | VarD ({it = name; _}, e) ->
+  | VarD (name, e) ->
       let code1 = compile_exp env e in
       let (env1, i) = E.add_local env name in
       (code1 @ [ nr (SetLocal (nr i) ) ], env1)

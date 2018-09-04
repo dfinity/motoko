@@ -10,3 +10,4 @@ func test() : Int {
 };
 
 let passed = test() == 0;
+assert passed;

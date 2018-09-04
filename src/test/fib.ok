@@ -105,7 +105,7 @@ Compiler:
     (loop
       (get_local 2)
       (i32.const 10)
-      (i32.lt_u)
+      (i32.lt_s)
       (if
         (then
           (get_local 2)

@@ -18,18 +18,14 @@ let testWord64 : (Word64, Word64) -> () = func
 let testWord8 : (Word8, Word8) -> () = func
 
 Compiler:
-compile_exp: (UnE PosOp (VarE a))
-compile_exp: (UnE PosOp (VarE a))
-compile_exp: (UnE NegOp (VarE a))
-compile_exp: (UnE NegOp (VarE a))
+compile_unop: PosOp
+compile_unop: PosOp
 compile_binop: DivOp
 compile_binop: DivOp
 compile_binop: ModOp
 compile_binop: ModOp
-compile_exp: (UnE PosOp (VarE a))
-compile_exp: (UnE PosOp (VarE a))
-compile_exp: (UnE NegOp (VarE a))
-compile_exp: (UnE NegOp (VarE a))
+compile_unop: PosOp
+compile_unop: PosOp
 compile_binop: DivOp
 compile_binop: DivOp
 compile_binop: DivOp
@@ -66,13 +62,23 @@ compile_binop: ModOp
   (func $0
     (type 0)
     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (get_local 0)
     (unreachable)
     (set_local 3)
+    (get_local 0)
     (unreachable)
     (set_local 4)
-    (unreachable)
+    (get_local 0)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
     (set_local 5)
-    (unreachable)
+    (get_local 0)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
     (set_local 6)
     (get_local 0)
     (get_local 1)
@@ -118,13 +124,23 @@ compile_binop: ModOp
   (func $1
     (type 1)
     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (get_local 0)
     (unreachable)
     (set_local 3)
+    (get_local 0)
     (unreachable)
     (set_local 4)
-    (unreachable)
+    (get_local 0)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
     (set_local 5)
-    (unreachable)
+    (get_local 0)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
     (set_local 6)
     (get_local 0)
     (get_local 1)

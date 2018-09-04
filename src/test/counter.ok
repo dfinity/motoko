@@ -123,7 +123,7 @@ compile_dec: (LetD WildP (CallE (VarE test) (TupE)))
     (loop
       (get_local 1)
       (i32.const 0)
-      (i32.gt_u)
+      (i32.gt_s)
       (if (then (unreachable) (get_local 1) (i32.const 1) (i32.sub) (set_local 1) (br 1)) (else))
     )
   )
