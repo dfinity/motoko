@@ -677,7 +677,9 @@ and infer_pat' context pat : T.typ * val_env =
   | LitP lit ->
     T.Prim (infer_lit context lit pat.at), T.Env.empty
   | SignP (op, lit) ->
-    let t = T.Prim (infer_lit context lit pat.at) in
+    let t1 = T.Prim (infer_lit context lit pat.at) in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not (Operator.has_unop t op) then
       error pat.at "operator is not defined for operand type %s"
         (T.string_of_typ t);
