@@ -8,7 +8,13 @@ Compiler:
   (type $0 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 0) (local i32) (i32.const 1) (if (then) (else (unreachable))))
+  (func $0
+    (type 0)
+    (local i32)
+    (i32.const 1)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+  )
   (start 0)
 )
 Interpreting the .wat:

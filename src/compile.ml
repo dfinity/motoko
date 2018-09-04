@@ -125,9 +125,14 @@ module E = struct
 
 end
 
+let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
+let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
-        value = nr [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ] }
+        value = nr compile_zero }
 
 let heap_ptr : var = nr 0l
 
@@ -145,9 +150,6 @@ let alloc : instr list = (* expect the size on the stack, returns the pointer *)
     nr (SetGlobal heap_ptr);
     nr (GetLocal tmp_local)]
 
-let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
-let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
-
 let compile_lit lit = match lit with
   | BoolLit true ->  compile_true
   | BoolLit false -> compile_false
@@ -158,14 +160,10 @@ let compile_lit lit = match lit with
 
 let compile_unop op = match op with
   | NegOp ->
-      [ nr (SetLocal tmp_local);
-        nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)));
-        nr (GetLocal tmp_local);
+      [ nr (SetLocal tmp_local) ] @
+      compile_zero @
+      [ nr (GetLocal tmp_local);
         nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ]
-  | NotOp ->
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)));
-        nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq));
-        nr (If ([I32Type], compile_false, compile_true)) ]
   | _ -> todo "compile_unop" (Arrange.unop op) [ nr Unreachable ]
 
 let compile_binop op = match op with
@@ -201,7 +199,8 @@ and compile_exp (env : E.t) exp = match exp.it with
       | None   -> [ nr Unreachable ])
   | AssignE (e1,e2) ->
      let code1 = compile_exp env e2 in
-     compile_lexp env e1 code1
+     compile_lexp env e1 code1 @
+     compile_unit
   | IdxE (e1,e2) ->
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
@@ -213,7 +212,10 @@ and compile_exp (env : E.t) exp = match exp.it with
   | LitE l_ref ->
      compile_lit !l_ref
   | AssertE e1 ->
-     compile_exp env e1 @ [ nr (If ([], [], [nr Unreachable])) ]
+     compile_exp env e1 @ [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
+  | NotE e ->
+     compile_exp env e @
+     [ nr (If ([I32Type], compile_false, compile_true)) ]
   | UnE (op, e1) ->
      compile_exp env e1 @
      compile_unop op
@@ -233,16 +235,16 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp (E.inc_depth env) e2 in
      let code3 = compile_exp (E.inc_depth env) e3 in
-     code1 @ [ nr (If ([], code2, code3)) ]
+     code1 @ [ nr (If ([I32Type], code2, code3)) ]
   | BlockE decs ->
      fst (compile_decs env decs)
   | LabelE (name, _ty, e) ->
       let env1 = E.add_label (E.inc_depth env) name in
       let code = compile_exp env1 e in
-      [ nr (Block ([],code)) ]
+      [ nr (Block ([I32Type],code)) ]
   | BreakE (name, _ty) ->
       let i = E.get_label_depth env name in
-      [ nr (Br (nr i)) ]
+      compile_unit @ [ nr (Br (nr i)) ]
   | LoopE (e, None) ->
      let code = compile_exp (E.inc_depth env) e in
      [ nr (Loop ([], code @ [ nr (Br (nr 0l)) ])) ] @
@@ -250,10 +252,11 @@ and compile_exp (env : E.t) exp = match exp.it with
   | WhileE (e1, e2) ->
      let code1 = compile_exp (E.inc_depth env) e1 in
      let code2 = compile_exp (E.inc_depth (E.inc_depth env)) e2 in
-     [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr (Br (nr 1l)) ], [])) ])) ]
+     [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr Drop;  nr (Br (nr 1l)) ], [])) ])) ] @
+     compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
-  | TupE [] -> [] (* Fishy *)
+  | TupE [] -> compile_unit
   | ArrayE es ->
      (* Calculate size *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4 * List.length es))))) ] @
@@ -278,9 +281,12 @@ and compile_exp (env : E.t) exp = match exp.it with
 
 (* TODO: Mutual recursion! *)
 and compile_decs env decs = match decs with
-  | []          -> ([], env)
+  | []          -> (compile_unit, env) (* empty declaration list? *)
+  | [dec]       ->
+      let (code1, env1) = compile_dec  true env dec    in
+      (code1, env1)
   | (dec::decs) ->
-      let (code1, env1) = compile_dec  env dec    in
+      let (code1, env1) = compile_dec  false env dec    in
       let (code2, env2) = compile_decs env1 decs in
       (code1 @ code2, env2)
 
@@ -299,47 +305,55 @@ and param_names ps =
     | _             -> nr_ "non-var-pattern" in
   List.map param_name ps
 
-and compile_dec env dec = match dec.it with
-  | ExpD e -> (compile_exp env e, env)
+and compile_dec last env dec = match dec.it with
+  | ExpD e ->
+    let code = compile_exp env e in
+    let drop = if last then [] else [nr Drop] in
+    (code @ drop, env)
   | LetD ({it = VarP name; _}, e) ->
       let code1 = compile_exp env e in
       let (env1,i) = E.add_local env name; in
-      (code1 @ [ nr (SetLocal (nr i) ) ], env1)
+      let cmd x = if last then TeeLocal x else SetLocal x in
+      (code1 @ [ nr (cmd (nr i) ) ], env1)
   | VarD (name, e) ->
       let code1 = compile_exp env e in
       let (env1, i) = E.add_local env name in
-      (code1 @ [ nr (SetLocal (nr i) ) ], env1)
+      let cmd x = if last then TeeLocal x else SetLocal x in
+      (code1 @ [ nr (cmd (nr i) ) ], env1)
   | FuncD ({it = name; _}, [], p, rt, e) ->
       let ps = de_tupleP p in
-      let rt' = match rt.it with | TupT tys -> List.map (fun _ -> I32Type) tys
-                                 | _        -> [I32Type] in
+      let rt' = match rt.it with | TupT [ty]-> [I32Type]
+                                 | _        -> [I32Type] in (* TODO: Multi-value return *)
       let ty = nr (FuncType (List.map (fun _ -> I32Type) ps, rt')) in
       let params = param_names ps in
       let dummy_fun = nr {ftype = nr 0l; locals = []; body = []} in
       let (env1, i) = E.add_fun env name dummy_fun in
-      let f = compile_func_body env1 params ty e in
+      let f = compile_func_body env1 params ty false e in
       E.update_fun env i f;
-      ([], env1)
+      let stack_fix = if last then compile_unit else [] in
+      (stack_fix, env1)
 
   | _ -> todo "compile_dec" (Arrange.dec dec) ([], env)
 
-and compile_func_body env params func_type (e : exp) : func =
+and compile_func_body env params func_type void (e : exp) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env params in
   (* Every function has a temporary local as local 0 *)
   let _ = E.add_anon_local env1 I32Type in
   let body = compile_exp env1 e in
+  (* A slight hack until we track types more pervasively *)
+  let drop = if void then [ nr Drop ] else [] in
   let ti = E.add_type env func_type in
   nr { ftype = nr ti;
        locals = E.get_locals env1;
-       body = body
+       body = body @ drop
      }
 
 let compile (prog  : Syntax.prog) : unit =
   let m : module_ =
     let start_fun_ty = nr (FuncType ([], [])) in
     let env = E.mk_global () in
-    let start_fun = compile_func_body env [] start_fun_ty (nr__ (BlockE prog.it)) in
+    let start_fun = compile_func_body env [] start_fun_ty true (nr__ (BlockE prog.it)) in
     let i = E.add_anon_fun env start_fun in
 
     nr { empty_module with

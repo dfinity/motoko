@@ -10,7 +10,8 @@ compile_dec: (TypD A (ObjT Object (x (ObjT Object) Const)))
   (type $0 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 0) (local i32))
+  (func $0 (type 0) (local i32) (drop))
   (start 0)
 )
 Interpreting the .wat:
+menhir-bug.wat:5.33-5.39: invalid module: type mismatch: operator requires [_] but stack has []

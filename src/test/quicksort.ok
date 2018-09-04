@@ -302,6 +302,7 @@ compile_exp: (CallE
     (i32.store align=1)
     (set_local 2)
     (unreachable)
+    (drop)
   )
   (start 1)
 )
