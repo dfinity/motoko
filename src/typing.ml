@@ -319,12 +319,14 @@ and infer_exp' context exp : T.typ =
     T.Prim (infer_lit context lit exp.at)
   | UnE (op, exp1) ->
     let t1 = infer_exp_structural context exp1 in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not context.pre then begin
-      if not (Operator.has_unop t1 op) then
+      if not (Operator.has_unop t op) then
         error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t1)
+          (T.string_of_typ t)
     end;
-    t1
+    t
   | BinE (exp1, op, exp2) ->
     let t1 = infer_exp_structural context exp1 in
     let t2 = infer_exp_structural context exp2 in
