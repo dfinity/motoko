@@ -16,7 +16,7 @@ let max_eff e1 e2 =
 let effect_exp (exp:Syntax.exp) : T.eff =
    fst(exp.note)
 
-(* infer the effect of an expression, assuming all sub-expressions are correcltly effect-annotated *)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
   | VarE _ 
@@ -98,3 +98,26 @@ and effect_dec d =
     T.Triv
   | ClassD (a, v, tps, p, efs) ->
     effect_field_exps efs 
+
+
+(* the translation *)
+let is_triv exp =
+    (fst exp.it.note) = T.Triv
+
+
+
+let  (+>) x  e = DecE(FuncD("" @@ no_region ,[], (VarP (x@@no_region)) @@ no_region, AnyT@@no_region, e) @@ no_region
+			   )
+
+let ( * ) x e = CallE(VarE (x @! no_region) @@ no_region,[],e) @@ no_region
+let ( ** ) e e = CallE(e,[],e) @@ no_region
+
+(*
+
+let c_exp context exp =
+    match exp.it with
+    | t when is_triv exp ->
+      let k = ""
+      k +> k * (t_exp context t)
+    |    
+*)
