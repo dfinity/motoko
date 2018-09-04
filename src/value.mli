@@ -23,8 +23,8 @@ module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
 module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
 module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : NumType
-module Int : NumType
+module Nat : NumType with type t = Z.t
+module Int : NumType with type t = Z.t
 
 
 (* Environment *)
@@ -49,21 +49,15 @@ type value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of rec_bind Env.t
+  | Obj of value Env.t
   | Array of value array
-  | Opt of value option (* TBR *)
-  | Func of (value -> cont -> value)
+  | Func of (value -> value cont -> unit)
   | Async of async
+  | Mut of value ref
 
-and async = {mutable result: value option; mutable waiters : cont list}
-
-and cont = value -> value
-
-and bind = 
-  | Val of value
-  | Var of value ref
-and rec_bind = Rec of recursive
-and recursive = {mutable def : bind option}
+and async = {result : def; mutable waiters : value cont list}
+and def = value Lib.Promise.t
+and 'a cont = 'a -> unit
 
 
 (* Projections *)
@@ -83,25 +77,17 @@ val as_char : value -> unicode
 val as_text : value -> string
 val as_array : value -> value array
 val as_tup : value -> value list
-val as_obj : value -> rec_bind Env.t
-val as_opt : value -> value option
-val as_func : value -> (value -> cont -> value)
+val as_obj : value -> value Env.t
+val as_func : value -> (value -> value cont -> unit)
 val as_async : value -> async
-
-val as_val_bind : bind -> value
-val as_var_bind : bind -> value ref
-val as_rec_bind : rec_bind -> recursive
-
-val read_bind : bind -> value
-val read_rec_bind : rec_bind -> value
-val unroll_rec_bind : rec_bind -> bind
+val as_mut : value -> value ref
 
 
 (* Pretty Printing *)
 
 val string_of_val : Type.kind Con.Env.t -> Type.typ -> value -> string
+val string_of_def : Type.kind Con.Env.t -> Type.typ -> def -> string
 
 val debug_string_of_val : value -> string
-val debug_string_of_bind : bind -> string
-val debug_string_of_rec_bind : rec_bind -> string
+val debug_string_of_def : def -> string
 val debug_string_of_tuple_val : value -> string

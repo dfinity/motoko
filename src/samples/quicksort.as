@@ -24,8 +24,8 @@ class QS<T>(cmp : (T, T) -> Int) {
   private partition(a : Array<T>, lo : Nat, hi : Nat) : Nat {
     trace<Array<T>>(a);
     let pivot = a[lo];
-    var i : Nat = lo;
-    var j : Nat = hi;
+    var i = lo;
+    var j = hi;
     loop {
       while (cmp(a[i], pivot) < 0) {
         i += 1;

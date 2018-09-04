@@ -50,27 +50,29 @@ func transfer(sender : Account, receiver : Account, amount : Int) : async /* hac
 
 let b = Bank(100);
 
-func show(t:Text,a:Account){};
+func show(t:Text, a:Account) {};
 
-func test() : async (Account,Account){
-     let reserve = await b.getReserve();
-     let a1 = await (reserve.split(10));
-     let a2 = await (reserve.split(10));
-     show("reserve",reserve);
-     show("a1",a1);
-     show("a2",a2);
-     await transfer(a1,a2,5);
-     show("reserve",reserve);
-     show("a1",a1);
-     show("a2",a2);
-     (a1,a2);
+func test() : async (Account, Account) {
+  let reserve = await b.getReserve();
+  let a1 = await reserve.split(10);
+  let a2 = await reserve.split(10);
+  show("reserve", reserve);
+  show("a1", a1);
+  show("a2", a2);
+  await transfer(a1, a2, 5);
+  show("reserve", reserve);
+  show("a1", a1);
+  show("a2", a2);
+  (a1, a2);
 };
     
 let main = test();
 /*
-let main = async ({let reserve = await b.getReserve();
-                   let a1 = await (reserve.split(10));
-		   let a2 = await (reserve.split(10));
-   		    await transfer(a1,a2,5);
-		   (a1,a2);} : (Account,Account)) ;
+let main : async (Account,Account) = async {
+  let reserve = await b.getReserve();
+  let a1 = await reserve.split(10);
+	let a2 = await reserve.split(10);
+  await transfer(a1,a2,5);
+	(a1, a2);
+};
 */		  

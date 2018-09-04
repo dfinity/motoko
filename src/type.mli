@@ -1,8 +1,8 @@
 (* Representation *)
 
 type con = Con.t
-type mut = Const | Mut
-type actor = Object | Actor
+type sort = Object | Actor
+type eff = Triv | Await
 
 type prim =
   | Null
@@ -19,24 +19,22 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of con * typ list                     (* constructor *)
+  | Var of string * int                       (* variable *)
+  | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of actor * field list                 (* object *)
-  | Array of mut * typ                        (* array *)
+  | Obj of sort * field list                  (* object *)
+  | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of bind list * typ * typ             (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
+  | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
-(*
-  | Union of type * typ                       (* union *)
-  | Atom of string                            (* atom *)
-*)
+  | Pre                                       (* pre-type *)
 
-and eff = Triv | Await
-and bind = {con : con; bound : typ}
-and field = {lab : string; typ : typ; mut : mut}
+and bind = {var : string; bound : typ}
+and field = {name : string; typ : typ}
 
 type kind =
   | Def of bind list * typ
@@ -53,20 +51,33 @@ val nat : typ
 val int : typ
 
 
-(* Equivalence and Normalization *)
+(* Normalization and Classification *)
+
+val normalize : con_env -> typ -> typ
+val nonopt : con_env -> typ -> typ
+val structural : con_env -> typ -> typ
+val immutable : typ -> typ
+
+exception Unavoidable of con
+val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
+
+
+(* Equivalence and Subtyping *)
 
 val eq : con_env -> typ -> typ -> bool
-val normalize : con_env -> typ -> typ
-val structural : con_env -> typ -> typ
+val sub : con_env -> typ -> typ -> bool
+
+val join : con_env -> typ -> typ -> typ
+val meet : con_env -> typ -> typ -> typ
 
 
 (* First-order substitution *)
 
-type subst = typ Con.Env.t
+val close : con list -> typ -> typ
+val close_binds : con list -> bind list -> bind list
 
-val subst : subst -> typ -> typ
-val subst_binds : subst -> bind list -> bind list
-val make_subst : typ list -> bind list -> subst
+val open_ : typ list -> typ -> typ
+val open_binds : con_env -> bind list -> typ list * con_env
 
 
 (* Environments *)
@@ -76,7 +87,7 @@ module Env : Env.S with type key = string
 
 (* Pretty printing *)
 
-val string_of_mut : mut -> string
 val string_of_prim : prim -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string
+val strings_of_kind : kind -> string * string * string

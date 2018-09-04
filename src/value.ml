@@ -81,7 +81,7 @@ sig
   val ge : t -> t -> bool
 end
 
-module Int : NumType =
+module Int : NumType with type t = Z.t =
 struct
   include Z
   let of_string s = Z.of_string (String.concat "" (String.split_on_char '_' s))
@@ -91,7 +91,7 @@ struct
   let ge = geq
 end
 
-module Nat : NumType =
+module Nat : NumType with type t = Z.t =
 struct
   include Int
   let sub x y =
@@ -117,27 +117,15 @@ type value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of rec_bind Env.t
+  | Obj of value Env.t
   | Array of value array
-  | Opt of value option (* TBR *)
-  | Func of (value -> cont -> value)
+  | Func of (value -> value cont -> unit)
   | Async of async
+  | Mut of value ref
 
-and async = {mutable result: value option; mutable waiters : cont list}
-
-and cont = value -> value
-
-and bind = 
-  | Val of value
-  | Var of value ref
-and rec_bind =
-  | Rec of recursive
-(*TBR: we could statically distinguish lambda-pat bound variables from other binds to avoid
-       the unnessary indirection and definedness check for references to lambda-bound variables, in which
-    case we could add:
-  | Val of value 
-*)
-and recursive = {mutable def : bind option}
+and async = {result : def; mutable waiters : value cont list}
+and def = value Lib.Promise.t
+and 'a cont = 'a -> unit
 
 let unit = Tup []
 
@@ -146,7 +134,7 @@ let invalid s = raise (Invalid_argument s)
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
 let as_nat = function Nat n -> n | _ -> invalid "as_nat"
-let as_int = function Int n -> n | _ -> invalid "as_int"
+let as_int = function Int n -> n | Nat n -> n | _ -> invalid "as_int"
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
@@ -157,30 +145,12 @@ let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
-let as_opt = function Opt vo -> vo | _ -> invalid "as_opt"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
-
-let as_val_bind = function Val v -> v | _ -> invalid "as_val_bind"
-let as_var_bind = function Var r -> r | _ -> invalid "as_var_bind"
-let as_rec_bind = function Rec r -> r (*| _ -> invalid "as_rec_bind"*)
-
-let read_bind = function
-  | Val v -> v
-  | Var r -> !r
-
-let unroll_rec_bind = function
-  | Rec {def = Some v} -> v
-  | _ -> failwith "BlackHole" (* TBR *)
-
-let read_rec_bind b = read_bind (unroll_rec_bind b)
+let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
 
 (* Pretty Printing *)
-
-let string_of_mut = function
-  | Type.Const -> ""
-  | Type.Mut -> "var "
 
 let add_unicode buf = function
   | 0x09 -> Buffer.add_string buf "\\t"
@@ -205,7 +175,7 @@ let string_of_text s =
   Buffer.add_char buf '\"';
   Buffer.contents buf
 
-let rec string_of_val_nullary conenv t v =
+let rec string_of_val_nullary d conenv t v =
   match T.normalize conenv t with
   | T.Any -> "any"
   | T.Prim T.Null -> as_null v; "null"
@@ -219,63 +189,69 @@ let rec string_of_val_nullary conenv t v =
   | T.Prim T.Float -> Float.to_string (as_float v)
   | T.Prim T.Char -> string_of_char (as_char v)
   | T.Prim T.Text -> string_of_text (as_text v)
-  | T.Var (c, []) -> Con.to_string c
-  | T.Var (c, ts) ->
+  | T.Con (c, []) -> Con.to_string c
+  | T.Con (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)
       (String.concat ", " (List.map T.string_of_typ ts))
   | T.Tup ts ->
     let vs = as_tup v in
     sprintf "(%s)"
-      (String.concat ", " (List.map2 (string_of_val conenv) ts vs))
-  | T.Array (m, t) ->
+      (String.concat ", " (List.map2 (string_of_val' d conenv) ts vs))
+  | T.Array t ->
     let a = as_array v in
-    sprintf "[%s%s]"
-      (string_of_mut m)
-      (String.concat ", " (List.map (string_of_val conenv t) (Array.to_list a)))
+    sprintf "[%s]" (String.concat ", "
+      (List.map (string_of_val' d conenv t) (Array.to_list a)))
   | T.Obj (T.Object, fs) ->
     let ve = as_obj v in
     sprintf "{%s}"
-      (String.concat "; " (List.map (fun {T.lab; mut; typ} ->
-        let b = unroll_rec_bind (Env.find lab ve) in
-        let v = match mut with
-          | T.Mut -> !(as_var_bind b)
-          | T.Const -> as_val_bind b
-        in sprintf "%s%s = %s" (T.string_of_mut mut) lab (string_of_val conenv typ v)
+      (if d = 0 then "..." else
+       String.concat "; " (List.map (fun {T.name; typ} ->
+        sprintf "%s = %s" name (string_of_val' (d - 1) conenv typ (Env.find name ve))
       ) fs))
   | T.Func _ ->
-    ignore (as_func v); (* catch errors *)
     "func"
+  | T.Mut t ->
+    string_of_val_nullary d conenv t !(as_mut v)
   | _ ->
-    sprintf "(%s)" (string_of_val conenv t v)
+    sprintf "(%s)" (string_of_val' d conenv t v)
 
-and string_of_val conenv t v =
+and string_of_val' d conenv t v =
   match Type.normalize conenv t with
   | T.Opt t ->
-    let v = as_opt v in
     (match v with
-    | None -> "null"
-    | Some v -> string_of_val conenv t v
+    | Null -> "null"
+    | _ -> string_of_val' d conenv t v
     )
   | T.Async t ->
     let {result; waiters} = as_async v in
-    sprintf "async %s#%i"
-      (match result with
-      | None -> "?"
-      | Some v -> string_of_val_nullary conenv t v
-      )
-      (List.length waiters)
+    sprintf "async %s" (string_of_def_nullary d conenv t result)
   | T.Like t -> 
     sprintf "like %s" (T.string_of_typ t) (* TBR *)
   | T.Obj (T.Actor, fs) ->
-    sprintf "actor %s" (string_of_val_nullary conenv (T.Obj (T.Object, fs)) v)
-  | _ -> string_of_val_nullary conenv t v
+    sprintf "actor %s" (string_of_val_nullary d conenv (T.Obj (T.Object, fs)) v)
+  | T.Mut t ->
+    string_of_val' d conenv t !(as_mut v)
+  | _ -> string_of_val_nullary d conenv t v
+
+and string_of_def_nullary d conenv t def =
+  match Lib.Promise.value_opt def with
+  | Some v -> string_of_val_nullary d conenv t v
+  | None -> "_"
+
+and string_of_def' d conenv t def =
+  match Lib.Promise.value_opt def with
+  | Some v -> string_of_val' d conenv t v
+  | None -> "_"
+
+let string_of_val conenv t v = string_of_val' !Flags.print_depth conenv t v
+let string_of_def conenv t d = string_of_def' !Flags.print_depth conenv t d
 
 
 (* Debug pretty printing *)
 
-let rec debug_string_of_val_nullary = function
-  | Null  -> "null"
+let rec debug_string_of_val_nullary d = function
+  | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Nat n -> Nat.to_string n
   | Int i -> Int.to_string i
@@ -287,44 +263,36 @@ let rec debug_string_of_val_nullary = function
   | Char c -> string_of_char c
   | Text t -> string_of_text t
   | Tup vs ->
-    sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val) vs))
+    sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val' d) vs))
   | Obj ve ->
-    sprintf "{%s}" (String.concat "; " (List.map (fun (v, w) ->
-  	  sprintf "%s = %s" v (debug_string_of_rec_bind w)) (Env.bindings ve)))
+    if d = 0 then "{...}" else
+    sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
+      sprintf "%s = %s" x (debug_string_of_val' (d - 1) v)) (Env.bindings ve)))
   | Array a ->
-    sprintf "[%s]"
-      (String.concat ", " (List.map debug_string_of_val (Array.to_list a)))
-  | Opt o ->
-    (match o with
-    | None -> "null"
-    | Some v -> debug_string_of_val_nullary v
-    )
+    sprintf "[%s]" (String.concat ", "
+      (List.map (debug_string_of_val' d) (Array.to_list a)))
   | Func f -> "func"
-  | v -> "(" ^ debug_string_of_val v ^ ")"
+  | v -> "(" ^ debug_string_of_val' d v ^ ")"
 
-and debug_string_of_val = function
-  | Opt None -> "null"
-  | Opt (Some v) -> debug_string_of_val v
+and debug_string_of_val' d = function
   | Async {result; waiters} ->
-    sprintf "async %s#%i"
-      (match result with
-      | None -> "?"
-      | Some v -> debug_string_of_val_nullary v
-      )
+    sprintf "async %s #%i" (debug_string_of_def_nullary d result)
       (List.length waiters)
-  | v -> debug_string_of_val_nullary v
+  | Mut r -> sprintf "%s" (debug_string_of_val' d !r)
+  | v -> debug_string_of_val_nullary d v
 
-and debug_string_of_bind = function
-  | Var r -> 
-    (*sprintf "Var (%s)"*) (debug_string_of_val !r) (*TBR show address ?*) 
-  | Val v ->
-    debug_string_of_val v
+and debug_string_of_def_nullary d def =
+  match Lib.Promise.value_opt def with
+  | Some v -> debug_string_of_val_nullary d v
+  | None -> "_"
 
-and debug_string_of_rec_bind = function
-  | Rec {def = Some bind} -> 
-    (*sprintf "Rec (%s)"*) (debug_string_of_bind bind) 
-  | Rec {def = None} -> 
-    "Rec (?)" 
+and debug_string_of_def' d def =
+  match Lib.Promise.value_opt def with
+  | Some v -> debug_string_of_val' d v
+  | None -> "_"
+
+let debug_string_of_val v = debug_string_of_val' !Flags.print_depth v
+let debug_string_of_def d = debug_string_of_def' !Flags.print_depth d
 
 
 let debug_string_of_tuple_val = function

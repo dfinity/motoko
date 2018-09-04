@@ -89,14 +89,13 @@ let character =
   | "\\u{" hexnum '}'
 
 let nat = num | "0x" hexnum
-let int = sign? nat
 let frac = num
 let hexfrac = hexnum
 let float =
-    sign? num '.' frac?
-  | sign? num ('.' frac?)? ('e' | 'E') sign? num
-  | sign? "0x" hexnum '.' hexfrac?
-  | sign? "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
+    num '.' frac?
+  | num ('.' frac?)? ('e' | 'E') sign? num
+  | "0x" hexnum '.' hexfrac?
+  | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' character '\''
 let text = '"' character* '"'
 let id = letter ((letter | digit | '_')*)
@@ -110,6 +109,7 @@ rule token = parse
   | "{" { LCURLY }
   | "}" { RCURLY }
   | ";" { SEMICOLON }
+  | ";\n" { Lexing.new_line lexbuf; SEMICOLON_EOL }
   | "," { COMMA }
   | ":" { COLON }
   | "<:" { SUB }
@@ -158,7 +158,6 @@ rule token = parse
   | "_" { UNDERSCORE }
 
   | nat as s { NAT s }
-  | int as s { INT s }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
@@ -232,22 +231,3 @@ and comment start = parse
   | eof { error_nest start lexbuf "unclosed comment" }
   | utf8 { comment start lexbuf }
   | _ { error lexbuf "malformed UTF-8 encoding" }
-
-(* debugging *)
-
-(* This rule looks for a single line, terminated with '\n' or eof.
-   It returns a pair of an optional string (the line that was found)
-   and a Boolean flag (false if eof was reached). *)
-
-and line = parse
-| ([^'\n']* '\n') as line
-    (* Normal case: one line, no eof. *)
-    { Some line, true }
-| eof
-    (* Normal case: no data, eof. *)
-    { None, false }
-| ([^'\n']+ as line) eof
-    (* Special case: some data but missing '\n', then eof.
-       Consider this as the last line, and add the missing '\n'. *)
-    { Some (line ^ "\n"), false }
-

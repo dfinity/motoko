@@ -188,3 +188,15 @@ struct
     | Some x -> f x
     | None -> ()
 end
+
+module Promise =
+struct
+  type 'a t = 'a option ref
+
+  let make () = ref None
+  let make_fulfilled x = ref (Some x)
+  let fulfill p x = if !p = None then p := Some x else failwith "fulfill"
+  let is_fulfilled p = !p <> None
+  let value_opt p = !p
+  let value p = Option.value !p
+end

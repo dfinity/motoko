@@ -1,5 +1,5 @@
 NAME = asc
-BUILD = native
+BUILD = byte
 MAIN = main
 
 OPAM_PACKAGES = wasm zarith
@@ -7,15 +7,15 @@ OPAM_PACKAGES = wasm zarith
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain
 
-OCAML_FLAGS = -cflags '-w +a-4-27-42-44-45' # -warn-error +a'
-OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" -I src -I lib $(OPAM_PACKAGES:%=-pkg %)
+OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45 -warn-error +a'
+OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" -I src -I lib $(OPAM_PACKAGES:%=-pkg %) -tags debug
 
 .PHONY: all clean test
 
 all: $(NAME) test
 
 $(NAME): $(MAIN).$(BUILD)
-		mv $< $@
+	mv $< $@
 
 $(MAIN).$(BUILD): sanity
 	$(OCAMLBUILD) $@
@@ -30,3 +30,6 @@ clean:
 test: $(NAME)
 	$(MAKE) -C test ASC=../$(NAME) all
 	$(MAKE) -C samples ASC=../$(NAME) all
+
+accept: $(NAME)
+	$(MAKE) -C test ASC=../$(NAME) accept

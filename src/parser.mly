@@ -20,8 +20,35 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = (Type.Triv,Type.Any)}
-let (@!) it at = {it; at; note = Type.Const}
+let (@?) it at = {it; at; note = {note_typ = Type.Pre; note_eff = Type.Triv}}
+
+
+let dup_var x = VarE (x.it @@ x.at) @? x.at
+let name_exp e =
+  match e.it with
+  | VarE x -> [], e, dup_var x
+  | _ ->
+    let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
+    [LetD (VarP x @? x.at, e) @@ e.at], dup_var x, dup_var x
+
+let assign_op lhs rhs_f at =
+  let ds, lhs', rhs' =
+    match lhs.it with
+    | VarE x -> [], lhs, dup_var x
+    | DotE (e1, x) ->
+      let ds, ex11, ex12 = name_exp e1 in
+      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
+    | IdxE (e1, e2) ->
+      let ds1, ex11, ex12 = name_exp e1 in
+      let ds2, ex21, ex22 = name_exp e2 in
+      ds1 @ ds2, IdxE (ex11, ex21) @? lhs.at, IdxE (ex12, ex22) @? lhs.at
+    | _ ->
+      name_exp lhs
+  in
+  let e = AssignE (lhs', rhs_f rhs') @? at in
+  match ds with
+  | [] -> e
+  | ds -> BlockE (ds @ [ExpD e @@ e.at]) @? at
 
 %}
 
@@ -33,7 +60,7 @@ let (@!) it at = {it; at; note = Type.Const}
 %token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE ACTOR CLASS PRIVATE NEW
-%token SEMICOLON COMMA COLON SUB DOT QUEST
+%token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP
@@ -45,7 +72,6 @@ let (@!) it at = {it; at; note = Type.Const}
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
 %token<string> NAT
-%token<string> INT
 %token<string> FLOAT
 %token<Value.unicode> CHAR
 %token<bool> BOOL
@@ -73,6 +99,7 @@ let (@!) it at = {it; at; note = Type.Const}
     
 %type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> parse_prog
+%start<Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -86,18 +113,26 @@ seplist(X, SEP) :
 
 (* Basics *)
 
-%inline id :
-  | id=ID { id @@ at $sloc}
+%inline semicolon :
+  | SEMICOLON
+  | SEMICOLON_EOL { () }
 
-%inline var_ref :
-  | id=ID { id @! at $sloc }
+%inline id :
+  | id=ID { id @@ at $sloc }
+
+%inline id_opt :
+  | id=ID
+    { fun _ _ -> id @@ at $sloc }
+  | (* empty *)
+    { fun sort sloc ->
+      ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
 
 %inline var :
-  | VAR { Type.Mut @@ at $sloc }
+  | VAR { Var @@ at $sloc }
 
 %inline var_opt :
-  | (* empty *) { Type.Const @@  no_region }
-  | VAR { Type.Mut @@ at $sloc }
+  | (* empty *) { Const @@ no_region }
+  | VAR { Var @@ at $sloc }
 
 %inline sort :
   | NEW { Type.Object @@ at $sloc }
@@ -111,7 +146,7 @@ seplist(X, SEP) :
 (* Types *)
 
 typ_obj :
-  | LCURLY tfs=seplist(typ_field, SEMICOLON) RCURLY
+  | LCURLY tfs=seplist(typ_field, semicolon) RCURLY
     { tfs }
 
 typ_nullary :
@@ -128,7 +163,7 @@ typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Type.Const @@ no_region, t) @@ at $sloc }
+    { ArrayT(Const @@ no_region, t) @@ at $sloc }
   | t=typ_post QUEST
     { OptT(t) @@ at $sloc }
 
@@ -161,10 +196,10 @@ typ_args :
 
 typ_field :
   | mut=var_opt x=id COLON t=typ
-    { {var = x; typ = t; mut} @@ at $sloc }
+    { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
     { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
-      {var = x; typ = t; mut = Type.Const @@ no_region} @@ at $sloc }
+      {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
@@ -180,7 +215,6 @@ lit :
   | NULL { NullLit }
   | b=BOOL { BoolLit b }
   | s=NAT { PreLit (s, Type.Nat) }
-  | s=INT { PreLit (s, Type.Int) }
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
@@ -235,24 +269,25 @@ lit :
 
 
 exp_block :
-  | LCURLY es=seplist(exp, SEMICOLON) RCURLY
-    { BlockE(es) @? at $sloc }
+  | LCURLY ds=seplist(dec, semicolon) RCURLY
+    { BlockE(ds) @? at $sloc }
 
 exp_obj :
-  | LCURLY efs=seplist(exp_field, SEMICOLON) RCURLY
+  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { efs }
 
 exp_nullary :
   | e=exp_block
     { e }
-  | x=var_ref
+  | x=id
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es = seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
-  | s=sort xo=id? efs=exp_obj
-    { ObjE(s, xo, efs) @? at $sloc }
+  | s=sort xf=id_opt efs=exp_obj
+    { let anon = if s.it = Type.Actor then "actor" else "object" in
+      ObjE(s, xf anon $sloc, efs) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
@@ -263,7 +298,7 @@ exp_post :
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post DOT x=var_ref
+  | e=exp_post DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
@@ -272,10 +307,9 @@ exp_un :
   | e=exp_post
     { e } 
   | op=unop e=exp_un
-    { UnE(op ,e) @? at $sloc }
+    { UnE(op, e) @? at $sloc }
   | op=unassign e=exp_un
-    (* TBR: this is incorrect, since it duplicates e *)
-    { AssignE(e, UnE(op, e) @? at $sloc) @? at $sloc }
+    { assign_op e (fun e' -> UnE(op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
 
@@ -289,8 +323,7 @@ exp_bin :
   | e1=exp_bin ASSIGN e2=exp_bin
     { AssignE(e1, e2) @? at $sloc}
   | e1=exp_bin op=binassign e2=exp_bin
-    (* TBR: this is incorrect, since it duplicates e1 *)
-    { AssignE(e1, BinE(e1, op, e2) @? at $sloc) @? at $sloc }
+    { assign_op e1 (fun e1' -> BinE(e1', op, e2) @? at $sloc) (at $sloc) }
   | e1=exp_bin AND e2=exp_bin
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
@@ -313,18 +346,19 @@ exp_pre :
   | ASSERT e=exp_pre
     { AssertE(e) @? at $sloc }
 
-exp :
+exp_nondec :
   | e=exp_pre
     { e } 
-  | LABEL x=id e=exp
+  | LABEL x=id rt=return_typ_nullary? e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
+      let t = Lib.Option.get rt (TupT [] @@ at $sloc) in
       let e' =
         match e.it with
-        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', e2) @? e2.at) @? e.at
-        | LoopE (e1, eo) -> LoopE (LabelE (x', e1) @? e1.at, eo) @? e.at
-        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', e2) @? e2.at) @? e.at
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', t, e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', t, e2) @? e2.at) @? e.at
         | _ -> e
-      in LabelE(x, e') @? at $sloc }
+      in LabelE(x, t, e') @? at $sloc }
   | BREAK x=id eo=exp_nullary?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
@@ -345,7 +379,11 @@ exp :
     { LoopE(e1, Some e2) @? at $sloc }
   | FOR p=pat IN e1=exp_nullary e2=exp
     { ForE(p, e1, e2) @? at $sloc }
-  | d=dec
+
+exp :
+  | e=exp_nondec
+    { e }
+  | d=dec_nonexp
     { DecE(d) @? at $sloc }
       
     
@@ -359,41 +397,54 @@ case :
 
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
+    { {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {var = x; mut = m; priv = p; exp = e} @@ at $sloc }
+      {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt x=id fd=func_dec
     { let d = fd x in
       let e = DecE(d) @? d.at in
-      {var = x; mut = Type.Const @@ no_region; priv; exp = e} @@ at $sloc }
+      {id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 
 (* Patterns *)
 
 pat_nullary :
-  | l=lit
-    { LitP(ref l) @@ at $sloc }
   | UNDERSCORE
-    { WildP @@ at $sloc }
+    { WildP @? at $sloc }
   | x=id
-    { VarP(x) @@ at $sloc }
+    { VarP(x) @? at $sloc }
+  | l=lit
+    { LitP(ref l) @? at $sloc }
   | LPAR ps=seplist(pat, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @@ at $sloc }
+    { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
 
-pat :
+pat_un :
   | p=pat_nullary
     { p }
+  | op=unop l=lit
+    { SignP(op, ref l) @? at $sloc }
+
+pat_bin :
+  | p=pat_un
+    { p }
+
+pat :
+  | p=pat_bin
+    { p }
   | p=pat COLON t=typ
-    { AnnotP(p, t) @@ at $sloc }
+    { AnnotP(p, t) @? at $sloc }
 
 return_typ :
   | COLON t=typ { t }
 
+return_typ_nullary :
+  | COLON t=typ_nullary { t }
+
 
 (* Declarations *)
 
-dec :
+dec_nonexp :
   | LET p=pat EQ e=exp
     { let p', e' =
         match p.it with
@@ -406,14 +457,18 @@ dec :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @@ at $sloc }
-  | FUNC xo=id? fd=func_dec
-    { let x = Lib.Option.get xo ("" @@ at $sloc) in
-      (fd x).it @@ at $sloc }
+  | FUNC xf=id_opt fd=func_dec
+    { (fd (xf "func" $sloc)).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at $sloc }
-  | s=sort_opt CLASS xo=id? tps=typ_params_opt p=pat_nullary efs=class_body
-    { let x = Lib.Option.get xo ("" @@ at $sloc) in
-      ClassD(s, x, tps, p, efs) @@ at $sloc }
+  | s=sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
+    { ClassD(xf "class" $sloc, tps, s, p, efs) @@ at $sloc }
+
+dec :
+  | d=dec_nonexp
+    { d }
+  | e=exp_nondec
+    { ExpD e @@ at $sloc }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
@@ -439,6 +494,9 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | es=seplist(exp, SEMICOLON) EOF { es @@ at $sloc }
+  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+
+parse_prog_interactive :
+  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
 
 %%

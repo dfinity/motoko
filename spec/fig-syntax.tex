@@ -93,11 +93,11 @@ $$
 \text{(unary operators)} & \x{unop} &:=&
   \K{+} ~|~ \K\textendash ~|~ \K{\^{}} \\
 [1ex]
-\text{(count operators)} & \x{cntop} &:=&
-  \K{++} ~|~ \K{\textendash\,\textendash} \\
-[1ex]
+%\text{(count operators)} & \x{cntop} &:=&
+%  \K{++} ~|~ \K{\textendash\,\textendash} \\
+%[1ex]
 \text{(binary operators)} & \x{binop} &:=&
-  \K{+} ~|~ \K\textendash ~|~ \K{*} ~|~ \K{/} ~|~ \K{\%} \\&&|&
+  \K{+} ~|~ \K\textendash ~|~ \K{*} ~|~ \K{/} ~|~ \K{\%} ~|~ \K\# \\&&|&
   \K{\&} ~|~ \;\K\textbar\; ~|~ \K{\^{}} ~|~ \Klt\Klt ~|~ \Kgt\Kgt ~|~ \Kgt\Kgt\Kgt ~|~ \Klt\Klt\Kgt ~|~ \Klt\Kgt\Kgt \\
 [1ex]
 \text{(relational operators)} & \x{relop} &:=&
@@ -128,8 +128,8 @@ $$
     & \text{object projection} \\&&|&
   \x{exp}~\K{:=}~\K{exp}
     & \text{assignment} \\&&|&
-  \x{cntop}~\x{exp}
-    & \text{count update} \\&&|&
+  %\x{cntop}~\x{exp}
+  %  & \text{count update} \\&&|&
   \x{unop}{\!\K=}~\x{exp}
     & \text{unary update} \\&&|&
   \x{exp}~\x{binop}{\!\K=}~\x{exp}
@@ -156,7 +156,7 @@ $$
     & \text{unconditional loop} \\&&|&
   \KK{for}~\x{pat}~\KK{in}~\x{exp}~\x{exp}
     & \text{iteration} \\&&|&
-  \KK{label}~\x{id}~\x{exp}
+  \KK{label}~\x{id}~(\K:~\x{typ})^?~\x{exp}
     & \text{label} \\&&|&
   \KK{break}~\x{id}~\x{exp}^?
     & \text{break} \\&&|&
@@ -174,12 +174,10 @@ $$
     & \text{instance check} \\&&|&
   \x{exp}~\K:~\x{typ}
     & \text{type annotatione} \\&&|&
-  \x{exp}~\K;~\x{exp}
-    & \text{sequence} \\&&|&
-  \K\{~\x{exp}^?~\K\}
-    & \text{block} \\&&|&
   \x{dec}
-    & \text{declaration} \\
+    & \text{declaration} \\&&|&
+  \K\{~\x{dec}^?~\K\}
+    & \text{block} \\
 [1ex]
 \text{(expression fields)} & \x{exp-fields} &::=&
   \KK{private}^? \KK{var}^? \x{id}~(\K:~\x{typ})^?~\K=~\x{exp}
@@ -205,12 +203,14 @@ $$
   \KK{if} \x{exp}_1 \x{exp}_2 \K{()} \\&
 \KK{loop} \x{exp} &:=&
   \KK{loop} \x{exp}_1 \KK{while} \; \K{true} \\&
-\KK{label} \x{id} \KK{while} \x{exp}_1 \x{exp}_2 &:=&
-  \KK{label} \x{id} \KK{while} \x{exp}_1 (\KK{label} \x{id}_{\K{continue}} \x{exp}_2) \\&
-\KK{label} \x{id} \KK{loop} \x{exp}_1 \KK{while} \x{exp}_2 &:=&
-  \KK{label} \x{id} \KK{loop} \, (\KK{label} \x{id}_{\K{continue}} \x{exp}_1) \, \KK{while} \x{exp}_2 \\&
-\KK{label} \x{id} \KK{for} \x{id} \KK{in} \x{exp}_1 \x{exp}_2 &:=&
-  \KK{label} \x{id} \KK{for} \x{id} \KK{in} \x{exp}_1 (\KK{label} \x{id}_{\K{continue}} \x{exp}_2) \\&
+\KK{label} \x{id} \x{exp} &:=&
+  \KK{label} \x{id} \K:\; \K{()} \x{exp} \\&
+\KK{label} \x{id} \K: \x{typ} \KK{while} \x{exp}_1 \x{exp}_2 &:=&
+  \KK{label} \x{id} \K: \x{typ} \KK{while} \x{exp}_1 (\KK{label} \x{id}_{\K{continue}} \K: \, \K{()} \x{exp}_2) \\&
+\KK{label} \x{id} \K: \x{typ} \KK{loop} \x{exp}_1 \KK{while} \x{exp}_2 &:=&
+  \KK{label} \x{id} \K: \x{typ} \KK{loop} \, (\KK{label} \x{id}_{\K{continue}} \K: \, \K{()} \x{exp}_1) \, \KK{while} \x{exp}_2 \\&
+\KK{label} \x{id} \K: \x{typ} \KK{for} \x{id} \KK{in} \x{exp}_1 \x{exp}_2 &:=&
+  \KK{label} \x{id} \K: \x{typ} \KK{for} \x{id} \KK{in} \x{exp}_1 (\KK{label} \x{id}_{\K{continue}} \K: \, \K{()} \x{exp}_2) \\&
 \KK{break} \x{id} &:=&
   \KK{break} \x{id} \K{()} \\&
 \KK{continue} \x{id} &:=&
@@ -253,7 +253,7 @@ $$
 
 $$
 \begin{array}{@{}lrcl@{\qquad}l}
-\text{(declarations)} & \x{dec} &::=&
+\text{(declaration)} & \x{dec} &::=&
   \KK{let}~\x{pat}~\K=~\x{exp}
     & \text{immutable} \\&&|&
   \KK{var}~\x{id}~(\K:~\x{typ})^?~\K=~\x{exp}
@@ -263,7 +263,9 @@ $$
   \KK{actor}^?\, \KK{class}~\x{id}^? \x{typ-params}~\x{exp-params}~\K=^?~\K\{~\x{exp-fields}~\K\}
     & \text{class} \\&&|&
   \KK{type}~\x{id}~\x{typ-params}~\K=~\x{typ}
-    & \text{type} \\
+    & \text{type} \\&&|&
+  \x{dec}~\K;~\x{dec}
+      & \text{sequence} \\
 \end{array}
 $$
 

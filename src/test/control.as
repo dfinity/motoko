@@ -8,8 +8,8 @@ actor class Control() {
     };
     label l2 break l2();
     label l2 (let m = 1 + (break l2) : Int);
-    let n = (label l3 (break l3(2))) : Int;
-    let (x, y, z) = (label l3 (break l3(2, true, ""))) : (Int, Bool, Text);
+    let n = label l3 : Int { break l3(2) };
+    let (x, y, z) = label l3 : (Int, Bool, Text) (break l3(2, true, ""));
   };
 
   testWhile() {
