@@ -64,11 +64,12 @@ type binop =
   | MulOp                                       (* x*y *)
   | DivOp                                       (* x/y *)
   | ModOp                                       (* x%y *)
+  | PowOp                                       (* x^y *)
   | AndOp                                       (* bitwise operators... *)
   | OrOp
   | XorOp
-  | ShiftLOp
-  | ShiftROp
+  | ShLOp
+  | ShROp
   | RotLOp
   | RotROp
   | CatOp                                       (* concatenation *)

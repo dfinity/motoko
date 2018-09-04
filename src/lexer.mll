@@ -123,6 +123,7 @@ rule token = parse
   | "*" { MULOP }
   | "/" { DIVOP }
   | "%" { MODOP }
+  | "**" { POWOP }
   | "&" { ANDOP }
   | "|" { OROP }
   | "^" { XOROP }
@@ -143,6 +144,7 @@ rule token = parse
   | "*=" { MULASSIGN }
   | "/=" { DIVASSIGN }
   | "%=" { MODASSIGN }
+  | "**=" { POWASSIGN }
   | "&=" { ANDASSIGN }
   | "|=" { ORASSIGN }
   | "^=" { XORASSIGN }
