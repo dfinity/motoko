@@ -15,8 +15,7 @@ type ret_env = V.value V.cont option
 type scope = val_env
 
 type context =
-  {
-    vals : val_env;
+  { vals : val_env;
     labs : lab_env;
     rets : ret_env;
     async : bool
@@ -29,7 +28,7 @@ let empty_context =
   { vals = V.Env.empty;
     labs = V.Env.empty;
     rets = None;
-    async = false
+    async = false;
   }
 
 
@@ -121,10 +120,10 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit context lit)
   | UnE (op, exp1) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.immutable exp.note.note_typ in
     interpret_exp context exp1 (fun v1 -> k (Operator.unop t op v1))
   | BinE (exp1, op, exp2) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.immutable exp.note.note_typ in
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
         k (try Operator.binop t op v1 v2 with _ ->
@@ -132,7 +131,8 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
       )
     )
   | RelE (exp1, op, exp2) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.join Con.Env.empty (* both types are primitive *)
+      (T.immutable exp1.note.note_typ) (T.immutable exp2.note.note_typ) in
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
         k (Operator.relop t op v1 v2)
