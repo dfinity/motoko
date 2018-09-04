@@ -26,15 +26,15 @@ let print_ve =
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
 
-let print_dyn_ve {Typing.cons = ce; vals = ve; _} dyn_ve =
+let print_dyn_ve context dyn_ve =
   Value.Env.iter (fun x d ->
-    let t = Type.Env.find x ve in
+    let t = Type.Env.find x context.Typing.vals in
     let t' = Type.immutable t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
       (match Lib.Promise.value_opt d with
       | None -> "_"
-      | Some v -> Value.string_of_val ce t' v
+      | Some v -> Value.string_of_val context.Typing.cons t' v
       )
   ) dyn_ve
 
@@ -47,32 +47,38 @@ let print_scope context (ve, te, ce) dyn_ve =
   print_ce ce;
   print_dyn_ve context dyn_ve
 
+let print_val context v t =
+  printf "%s : %s\n"
+    (Value.string_of_val context.Typing.cons t v) (Type.string_of_typ t)
+
 let trace heading filename =
   if !Flags.trace then printf "-- %s %s:\n" heading filename
 
 
 (* Execute program *)
 
-let run (stat_context, dyn_context) lexer parse name =
+let run (stat_context, dyn_context) lexer parse infer name =
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   try
     let prog = parse Lexer.token lexer in 
     trace "Checking" name;
-    let (ve, te, ce) as stat_scope = Typing.check_prog stat_context prog in
+    let t, ((ve, te, ce) as stat_scope) = infer stat_context prog in
     let stat_context' = Typing.adjoin stat_context stat_scope in
     if !Flags.trace then begin
       print_ce ce;
       print_ve ve
     end;
     trace "Interpreting" name;
-    let dyn_scope = Interpret.interpret_prog dyn_context prog in
+    let v, dyn_scope = Interpret.interpret_prog dyn_context prog in
     let dyn_context' = Interpret.adjoin dyn_context dyn_scope in
     trace "Finished" name;
     if !Flags.interactive then
       print_scope stat_context' stat_scope dyn_scope
     else if !Flags.trace then
       print_dyn_ve stat_context' dyn_scope;
+    if !Flags.interactive && v <> Value.unit then
+      print_val stat_context' v t;
     Some (stat_context', dyn_context')
   with exn ->
     let r, sort, msg, dump =
@@ -104,7 +110,8 @@ let update_contexts contexts = function
 let run_file contexts filename =
   let ic = open_in filename in 
   let lexer = Lexing.from_channel ic in
-  let result = run contexts lexer Parser.parse_prog filename in
+  let infer context prog = Type.unit, Typing.check_prog context prog in
+  let result = run contexts lexer Parser.parse_prog infer filename in
   close_in ic;
   if !Flags.trace then printf "\n";
   update_contexts contexts result
@@ -129,7 +136,7 @@ let run_stdin contexts =
   let open Lexing in
   let lexer = Lexing.from_function lexer_stdin in
   let rec loop contexts =
-    let result = run contexts lexer Parser.parse_prog_interactive "stdin" in
+    let result = run contexts lexer Parser.parse_prog_interactive Typing.infer_prog "stdin" in
     if result = None then begin
       Lexing.flush_input lexer;
       (* Reset beginning-of-line, too, to sync consecutive positions. *)

@@ -538,9 +538,10 @@ and interpret_func context id pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog context p : scope =
+let interpret_prog context p : V.value * scope =
   call_depth := 0;
-  let r = ref V.Env.empty in
-  Scheduler.queue (fun () -> interpret_block context p.it (Some r) ignore);
+  let v = ref V.Null in
+  let ve = ref V.Env.empty in
+  Scheduler.queue (fun () -> interpret_block context p.it (Some ve) ((:=) v));
   Scheduler.run ();
-  !r
+  !v, !ve

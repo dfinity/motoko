@@ -417,7 +417,7 @@ and infer_exp' context exp : T.typ =
       error exp1.at "expected function type, found %s" (T.string_of_typ t1')
     )
   | BlockE decs ->
-    let t = infer_block context decs exp.at in
+    let t, _ = infer_block context decs exp.at in
     t
   | NotE exp1 ->
     if not context.pre then check_exp context T.bool exp1;
@@ -528,7 +528,7 @@ and infer_exp' context exp : T.typ =
     if not context.pre then check_exp context t exp1;
     t
   | DecE dec ->
-    let t = infer_block context [dec] exp.at in
+    let t, _ = infer_block context [dec] exp.at in
     t
     
 
@@ -871,15 +871,12 @@ and check_exp_field context s tfs (tfs_inner, ve) field : T.field list * val_env
 
 (* Blocks and Declarations *)
 
-and infer_block context decs at : T.typ =
+and infer_block context decs at : T.typ * scope =
   let _, _, ce as scope, ce_inner = infer_block_decs context decs in
-(*Printf.printf "[block] infer expressions\n";
-let t =*)
   let t = infer_block_exps (adjoin context scope) ce_inner decs in
-  try T.avoid context.cons ce t with T.Unavoidable c ->
+  try T.avoid context.cons ce t, scope with T.Unavoidable c ->
     error at "inferred block type %s contains the local class type %s"
       (T.string_of_typ t) (Con.to_string c)
-(*in Printf.printf "[block] done\n"; t*)
 
 and infer_block_exps context ce_inner decs : T.typ =
   match decs with
@@ -1123,3 +1120,6 @@ and infer_dec_valdecs context dec : val_env =
 
 let check_prog context prog : scope =
   check_block context T.unit prog.it prog.at
+
+let infer_prog context prog : T.typ * scope =
+  infer_block context prog.it prog.at
