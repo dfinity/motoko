@@ -1,0 +1,96 @@
+-- Checking bank.as:
+type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
+type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+let Account : Int -> Account
+let Bank : Int -> Bank
+let Issuer : () -> Issuer
+let bank : Bank
+let main : async (Account, Account)
+let show : (Text, Account) -> ()
+let test : () -> async (Account, Account)
+let transfer : (Account, Account, Int) -> async ()
+-- Interpreting bank.as:
+Bank(100)
+  Issuer()
+    <= {hasIssued = func}
+  Account(100)
+    <= {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+  <= {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
+test()
+  -> async bank.as:56.40-68.2
+  <= async _ #0
+<- async bank.as:56.40-68.2
+  -> message getReserve()
+  => await bank.as:57.17-57.40
+<- message getReserve()
+  getReserve()
+    -> async bank.as:7.32-7.51
+    <= async _ #0
+<- async bank.as:7.32-7.51
+<- await bank.as:57.17-57.40({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message split(10)
+  => await bank.as:58.12-58.35
+<- message split(10)
+  split(10)
+    -> async bank.as:23.39-26.4
+    <= async _ #0
+<- async bank.as:23.39-26.4
+  Account(10)
+    <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bank.as:58.12-58.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message split(10)
+  => await bank.as:59.12-59.35
+<- message split(10)
+  split(10)
+    -> async bank.as:23.39-26.4
+    <= async _ #0
+<- async bank.as:23.39-26.4
+  Account(10)
+    <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bank.as:59.12-59.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a1", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a2", {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
+    -> async bank.as:46.79-49.2
+    <= async _ #0
+  => await bank.as:63.3-63.28
+<- async bank.as:46.79-49.2
+  -> message split(5)
+  => await bank.as:47.13-47.39
+<- message split(5)
+  split(5)
+    -> async bank.as:23.39-26.4
+    <= async _ #0
+<- async bank.as:23.39-26.4
+  Account(5)
+    <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+<- await bank.as:47.13-47.39({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  -> message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  <= ()
+<- message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+  join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    credit(5)
+      <= ()
+    <= ()
+<- await bank.as:63.3-63.28()
+  show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a1", {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+  show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
+    <= ()
+-- Finished bank.as:
+let Account : Int -> Account = func
+let Bank : Int -> Bank = func
+let Issuer : () -> Issuer = func
+let bank : Bank = Bank
+let main : async (Account, Account) = async (Account, Account)
+let show : (Text, Account) -> () = func
+let test : () -> async (Account, Account) = func
+let transfer : (Account, Account, Int) -> async () = func
+
