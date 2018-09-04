@@ -1,0 +1,132 @@
+Interpreter:
+-- Checking mutrec.as:
+let even : Nat -> Bool
+let odd : Nat -> Bool
+-- Interpreting mutrec.as:
+even(0)
+  <= true
+even(2)
+  odd(1)
+    even(0)
+      <= true
+    <= true
+  <= true
+even(4)
+  odd(3)
+    even(2)
+      odd(1)
+        even(0)
+          <= true
+        <= true
+      <= true
+    <= true
+  <= true
+even(6)
+  odd(5)
+    even(4)
+      odd(3)
+        even(2)
+          odd(1)
+            even(0)
+              <= true
+            <= true
+          <= true
+        <= true
+      <= true
+    <= true
+  <= true
+odd(5)
+  even(4)
+    odd(3)
+      even(2)
+        odd(1)
+          even(0)
+            <= true
+          <= true
+        <= true
+      <= true
+    <= true
+  <= true
+odd(6)
+  even(5)
+    odd(4)
+      even(3)
+        odd(2)
+          even(1)
+            odd(0)
+              <= false
+            <= false
+          <= false
+        <= false
+      <= false
+    <= false
+  <= false
+-- Finished mutrec.as:
+let even : Nat -> Bool = func
+let odd : Nat -> Bool = func
+
+Compiler:
+Could not find odd
+(module
+  (type $0 (func (param i32) (result i32)))
+  (type $1 (func (param i32) (result i32)))
+  (type $2 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32)
+    (get_local 0)
+    (i32.const 0)
+    (i32.eq)
+    (if
+      (result i32)
+      (then (i32.const 1) (return))
+      (else (get_local 0) (i32.const 1) (i32.sub) (unreachable) (return))
+    )
+  )
+  (func $1
+    (type 1)
+    (local i32)
+    (get_local 0)
+    (i32.const 0)
+    (i32.eq)
+    (if
+      (result i32)
+      (then (i32.const 0) (return))
+      (else (get_local 0) (i32.const 1) (i32.sub) (call 0) (return))
+    )
+  )
+  (func $2
+    (type 2)
+    (local i32)
+    (i32.const 0)
+    (call 0)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 2)
+    (call 0)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 4)
+    (call 0)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 6)
+    (call 0)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 5)
+    (call 1)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 6)
+    (call 1)
+    (if (result i32) (then (i32.const 0)) (else (i32.const 1)))
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+  )
+  (start 2)
+)
+Interpreting the .wat:
+mutrec.wat:16.51-16.64: runtime trap: unreachable executed
