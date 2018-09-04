@@ -107,7 +107,6 @@ compile_dec: (ClassD
 )
 Could not find Counter
 compile_exp: (CallE (DotE (VarE c) dec) (TupE))
-compile_pat: WildP
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func (result i32)))
@@ -151,8 +150,9 @@ compile_pat: WildP
     (tee_local 0)
     (get_local 0)
     (drop)
+    (drop)
   )
   (start 2)
 )
 Interpreting the .wat:
-counter.wat:34.3-44.4: invalid module: type mismatch: operator requires [] but stack has [i32]
+counter.wat:38.5-38.18: runtime trap: unreachable executed

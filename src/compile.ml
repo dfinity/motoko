@@ -309,6 +309,7 @@ and compile_pat env pat = match pat.it with
   (* So far, only irrefutable patterns *)
   (* The undestructed value is on top of the stack. *)
   (* The returned code consumes it, and fills all the variables. *)
+  | WildP -> ([ nr Drop ], env)
   | VarP name ->
       let (env1,i) = E.add_local env name; in
       ([ nr (SetLocal (nr i) ) ], env1)
@@ -325,7 +326,7 @@ and compile_pat env pat = match pat.it with
           (dup @ get_i i @ code1 @ code2, env2) in
       go 0 ps env
 
-  | _ -> todo "compile_pat" (Arrange.pat pat) ([], env)
+  | _ -> todo "compile_pat" (Arrange.pat pat) ([ nr Drop ], env)
 
 and compile_dec last env dec = match dec.it with
   | ExpD e ->
