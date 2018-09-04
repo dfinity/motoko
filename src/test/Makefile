@@ -39,7 +39,7 @@ all: stats
 	$(ASC) -c $< > $@
 
 %.wasm: %.wat
-	wasm -d $< -o $@
+	$(WASM) -d $< -o $@
 
 stats: $(addsuffix .diff,$(TESTS))
 	@failed=""; \
