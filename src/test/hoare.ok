@@ -52,7 +52,7 @@ Compiler:
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
-    (type 0)
+    (type 2)
     (local i32 i32)
     (get_local 0)
     (get_local 1)
@@ -145,7 +145,7 @@ Compiler:
     (unreachable)
   )
   (func $2
-    (type 2)
+    (type 0)
     (local i32 i32)
     (get_local 1)
     (get_local 2)

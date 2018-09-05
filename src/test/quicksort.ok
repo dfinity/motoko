@@ -247,11 +247,11 @@ compile_dec: (ClassD
     Private
   )
 )
-compile_exp: (CallE (VarE QS) (PrimT Int) (VarE cmpi))
 compile_exp: (CallE
   (DotE (VarE qs) quicksort)
   (TupE (VarE a) (LitE (NatLit 0)) (LitE (NatLit 4)))
 )
+compile_exp: (CallE (VarE QS) (PrimT Int) (VarE cmpi))
 (module
   (type $0 (func (param i32 i32) (result i32)))
   (type $1 (func))

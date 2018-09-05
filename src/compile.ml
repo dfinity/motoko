@@ -237,7 +237,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code3 = compile_exp (E.inc_depth env) e3 in
      code1 @ [ nr (If ([I32Type], code2, code3)) ]
   | BlockE decs ->
-     fst (compile_decs env decs)
+     compile_decs env decs
   | LabelE (name, _ty, e) ->
       let env1 = E.add_label (E.inc_depth env) name in
       let code = compile_exp env1 e in
@@ -279,16 +279,6 @@ and compile_exp (env : E.t) exp = match exp.it with
         | None   -> [nr Unreachable])
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
-(* TODO: Mutual recursion! *)
-and compile_decs env decs = match decs with
-  | []          -> (compile_unit, env) (* empty declaration list? *)
-  | [dec]       ->
-      let (code1, env1) = compile_dec  true env dec    in
-      (code1, env1)
-  | (dec::decs) ->
-      let (code1, env1) = compile_dec  false env dec    in
-      let (code2, env2) = compile_decs env1 decs in
-      (code1 @ code2, env2)
 
 and de_tupleP p = match p.it with
   | TupP ps -> ps
@@ -305,58 +295,96 @@ and param_names ps =
     | _             -> nr_ "non-var-pattern" in
   List.map param_name ps
 
-and compile_pat env pat = match pat.it with
+
+(*
+The compilation of declarations (and patterns!) needs to handle mutual recursion.
+This requires conceptually two steps:
+ 1. First we need to collect all names bound in a block,
+    1a  find locations for then (which extends the environment)
+        The environment is extended monotonously: The type-checker ensures that
+        a Block does not bind the same name twice.
+        We would not need to pass in the environment, just out ... but because
+        it is bundled in the E.t type, threading it through is also easy.
+    1b  we need to initialize them with a “uninitialized” flag.
+        So one might want to pass out a list of instructions.
+        But here we can be lazy, and rely on the fact that Wasm locals are
+        initialized with zeros.
+ 2. Then we go through the declarations again and generate the actual code.
+
+We could do this in two separate functions, but I chose to do it in one
+ * it means all code related to one constructor is in one place and
+ * when generating the actual code, we still “know” the memory location,
+   and don’t have to look it up in the environment.
+*)
+
+
+and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
   (* So far, only irrefutable patterns *)
   (* The undestructed value is on top of the stack. *)
   (* The returned code consumes it, and fills all the variables. *)
-  | WildP -> ([ nr Drop ], env)
+  | WildP -> (env, [ nr Drop ])
   | VarP name ->
       let (env1,i) = E.add_local env name; in
-      ([ nr (SetLocal (nr i) ) ], env1)
+      (env1, [ nr (SetLocal (nr i) ) ])
   | TupP ps ->
       let get_i i =
 	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
           nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
           nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})] in
       let rec go i ps env = match ps with
-        | [] -> ([ nr Drop ], env)
+        | [] -> (env, [ nr Drop ])
         | (p::ps) ->
-          let (code1, env1) = compile_pat env p in
-          let (code2, env2) = go (i+1) ps env1 in
-          (dup @ get_i i @ code1 @ code2, env2) in
+          let (env1, code1) = compile_pat env p in
+          let (env2, code2) = go (i+1) ps env1 in
+          (env2, dup @ get_i i @ code1 @ code2) in
       go 0 ps env
 
-  | _ -> todo "compile_pat" (Arrange.pat pat) ([ nr Drop ], env)
+  | _ -> todo "compile_pat" (Arrange.pat pat) (env, [ nr Drop ])
 
-and compile_dec last env dec = match dec.it with
+and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match dec.it with
   | ExpD e ->
-    let code = compile_exp env e in
-    let drop = if last then [] else [nr Drop] in
-    (code @ drop, env)
+    (pre_env, fun env ->
+      let code = compile_exp env e in
+      let drop = if last then [] else [nr Drop] in
+      code @ drop
+    )
   | LetD (p, e) ->
+    let (pre_env1, code2) = compile_pat pre_env p in
+    ( pre_env1, fun env ->
       let code1 = compile_exp env e in
       let stack_fix = if last then dup else [] in
-      let (code2,env1) = compile_pat env p in
-      (code1 @ stack_fix @ code2, env1)
+      code1 @ stack_fix @ code2)
   | VarD (name, e) ->
-      let code1 = compile_exp env e in
-      let (env1, i) = E.add_local env name in
-      let cmd x = if last then TeeLocal x else SetLocal x in
-      (code1 @ [ nr (cmd (nr i) ) ], env1)
+      let (pre_env1, i) = E.add_local pre_env name in
+      ( pre_env1, fun env ->
+        let code1 = compile_exp env e in
+        let cmd x = if last then TeeLocal x else SetLocal x in
+        code1 @ [ nr (cmd (nr i) ) ])
   | FuncD ({it = name; _}, [], p, rt, e) ->
-      let ps = de_tupleP p in
-      let rt' = match rt.it with | TupT [ty]-> [I32Type]
-                                 | _        -> [I32Type] in (* TODO: Multi-value return *)
-      let ty = nr (FuncType (List.map (fun _ -> I32Type) ps, rt')) in
-      let params = param_names ps in
       let dummy_fun = nr {ftype = nr 0l; locals = []; body = []} in
-      let (env1, i) = E.add_fun env name dummy_fun in
-      let f = compile_func_body env1 params ty false e in
-      E.update_fun env i f;
-      let stack_fix = if last then compile_unit else [] in
-      (stack_fix, env1)
+      let (pre_env1, i) = E.add_fun pre_env name dummy_fun in
+      ( pre_env1, fun env ->
+        let ps = de_tupleP p in
+        let rt' = match rt.it with | TupT [ty]-> [I32Type]
+                                   | _        -> [I32Type] in (* TODO: Multi-value return *)
+        let ty = nr (FuncType (List.map (fun _ -> I32Type) ps, rt')) in
+        let params = param_names ps in
+        let f = compile_func_body env params ty false e in
+        E.update_fun env i f;
+        let stack_fix = if last then compile_unit else [] in
+        stack_fix)
+  | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, fun _ -> [])
 
-  | _ -> todo "compile_dec" (Arrange.dec dec) ([], env)
+and compile_decs env decs : Wasm.Ast.instr list =
+  let rec go pre_env decs = match decs with
+    | []          -> (pre_env, fun _ -> compile_unit) (* empty declaration list? *)
+    | [dec]       -> compile_dec true pre_env dec
+    | (dec::decs) ->
+        let (pre_env1, mk_code1) = compile_dec false pre_env dec    in
+        let (pre_env2, mk_code2) = go          pre_env1 decs in
+        (pre_env2, fun env -> mk_code1 env @ mk_code2 env) in
+  let (env1, mk_code) = go env decs in
+  mk_code env1
 
 and compile_func_body env params func_type void (e : exp) : func =
   (* Fresh set of locals *)

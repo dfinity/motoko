@@ -66,7 +66,6 @@ let even : Nat -> Bool = func
 let odd : Nat -> Bool = func
 
 Compiler:
-Could not find odd
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func (param i32) (result i32)))
@@ -74,7 +73,7 @@ Could not find odd
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
-    (type 0)
+    (type 1)
     (local i32)
     (get_local 0)
     (i32.const 0)
@@ -82,11 +81,11 @@ Could not find odd
     (if
       (result i32)
       (then (i32.const 1) (return))
-      (else (get_local 0) (i32.const 1) (i32.sub) (unreachable) (return))
+      (else (get_local 0) (i32.const 1) (i32.sub) (call 1) (return))
     )
   )
   (func $1
-    (type 1)
+    (type 0)
     (local i32)
     (get_local 0)
     (i32.const 0)
@@ -129,4 +128,3 @@ Could not find odd
   (start 2)
 )
 Interpreting the .wat:
-mutrec.wat:16.51-16.64: runtime trap: unreachable executed

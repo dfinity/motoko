@@ -228,13 +228,6 @@ compile_dec: (ClassD
 )
 compile_exp: (AsyncE
   (BlockE
-    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
-    (ExpD (CallE (DotE (VarE trx) join) (VarE receiver)))
-  )
-)
-Could not find Bank
-compile_exp: (AsyncE
-  (BlockE
     (LetD (VarP reserve) (AwaitE (CallE (DotE (VarE b) getReserve) (TupE))))
     (LetD
       (VarP a1)
@@ -258,16 +251,23 @@ compile_exp: (AsyncE
     (ExpD (TupE (VarE a1) (VarE a2)))
   )
 )
+Could not find Bank
+compile_exp: (AsyncE
+  (BlockE
+    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
+    (ExpD (CallE (DotE (VarE trx) join) (VarE receiver)))
+  )
+)
 (module
-  (type $0 (func (param i32 i32 i32) (result i32)))
+  (type $0 (func (result i32)))
   (type $1 (func (param i32 i32) (result i32)))
-  (type $2 (func (result i32)))
+  (type $2 (func (param i32 i32 i32) (result i32)))
   (type $3 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 0) (local i32) (unreachable))
+  (func $0 (type 2) (local i32) (unreachable))
   (func $1 (type 1) (local i32) (i32.const 0))
-  (func $2 (type 2) (local i32) (unreachable))
+  (func $2 (type 0) (local i32) (unreachable))
   (func $3
     (type 3)
     (local i32 i32 i32)

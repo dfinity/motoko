@@ -105,17 +105,17 @@ compile_dec: (ClassD
     Public
   )
 )
-Could not find Counter
 compile_exp: (CallE (DotE (VarE c) dec) (TupE))
+Could not find Counter
 (module
-  (type $0 (func (param i32) (result i32)))
-  (type $1 (func (result i32)))
+  (type $0 (func (result i32)))
+  (type $1 (func (param i32) (result i32)))
   (type $2 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 0) (local i32) (i32.const 0))
+  (func $0 (type 1) (local i32) (i32.const 0))
   (func $1
-    (type 1)
+    (type 0)
     (local i32 i32)
     (i32.const 10)
     (set_local 1)

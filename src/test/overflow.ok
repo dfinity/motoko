@@ -8,11 +8,18 @@ Compiler:
 Fatal error: exception Z.Overflow
 Raised by primitive operation at file "compile.ml", line 158, characters 63-77
 Called from file "compile.ml", line 224, characters 5-23
-Called from file "compile.ml", line 337, characters 18-35
-Called from file "compile.ml", line 289, characters 26-52
-Called from file "compile.ml", line 240, characters 9-32
-Called from file "compile.ml", line 366, characters 13-31
-Called from file "compile.ml", line 379, characters 20-86
+Called from file "compile.ml", line 354, characters 18-35
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 385, characters 45-57
+Called from file "compile.ml", line 394, characters 13-31
+Called from file "compile.ml", line 407, characters 20-86
 Called from file "main.ml", line 130, characters 4-24
 Re-raised at file "main.ml", line 137, characters 19-22
 Called from file "list.ml", line 85, characters 12-15
