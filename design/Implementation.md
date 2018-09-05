@@ -1,5 +1,12 @@
 # ActorScript Implementation Strategy
 
+## Subtyping
+
+* All subtyping is non-coercive and thus zero-cost and higher-order.
+
+* Q: Also have first-order implicit coercibility?
+
+
 ## Heap
 
 * Uniform representation with 32 bit word size.
@@ -11,12 +18,35 @@
 * Q: Allocation and GC strategies?
 
 
-## Numbers
+## Primitive types
 
 * Nat and Int compile to heap-allocated big nums; unboxed for small numbers <= 31 bit.
 
 * Word8/16 compile to unboxed scalars; Word32/64 are boxed.
   - May unbox locally.
+
+* Characters are scalars (unicode code points).
+
+* Text is heap-allocated.
+
+
+## Tuples
+
+* Heap-allocated when first-class.
+
+* Flattened when used as function parameter or result.
+
+* Q: How avoid calling convention mismatch when instantiating polymorphic function with tuple type?
+  - Don't make tuples subtypes of Any, thereby disallowing their use in instantiation?
+
+
+## Options
+
+* Represent null as null pointer.
+
+* Q: union or sum?
+  - If union, don't make it subtype of Any?
+  - If sum, use coercibility?
 
 
 ## Objects
@@ -67,13 +97,6 @@
 ## Async
 
 TODO
-
-
-## Subtyping
-
-* All subtyping is non-coercive and thus a no-op.
-
-* Q: Also have first-order coercions?
 
 
 ## Serialisation
