@@ -4,38 +4,7 @@ Interpreter:
 -- Finished type-equivalence.as:
 
 Compiler:
-compile_dec: (TypD A (ObjT Object (x (ObjT Object (x (VarT A) Const)) Const)))
-compile_dec: (TypD B (ObjT Object (x (VarT B) Const)))
-compile_dec: (TypD A0 (ObjT Object (x (VarT A0) Const)))
-compile_dec: (TypD A (ObjT Object (x (VarT A0) Const)))
-compile_dec: (TypD B (ObjT Object (x (VarT B) Const)))
-compile_dec: (TypD A (ObjT Object (x (VarT B) Const)))
-compile_dec: (TypD B (ObjT Object (x (VarT A) Const)))
-compile_dec: (TypD A (ObjT Object (x (VarT A) Const)))
-compile_dec: (TypD B (ObjT Object (x (VarT B) Const)))
-compile_dec: (TypD T (X AnyT) (Y AnyT) (VarT X))
-compile_dec: (TypD A (FuncT (X (PrimT Int)) (Y (VarT X)) (VarT X) (VarT Y)))
-compile_dec: (TypD
-  B
-  (FuncT (X (PrimT Int)) (Y (VarT T (VarT X) (PrimT Int))) (VarT X) (VarT Y))
-)
-compile_dec: (TypD T (X AnyT) (Y AnyT) (VarT X))
-compile_dec: (TypD A (FuncT (X (PrimT Int)) (Y (PrimT Int)) (VarT X) (VarT Y)))
-compile_dec: (TypD
-  B
-  (FuncT
-    (X (PrimT Int))
-    (Y (VarT T (PrimT Int) (PrimT Bool)))
-    (VarT X)
-    (VarT Y)
-  )
-)
-compile_dec: (TypD A (FuncT (X (PrimT Int)) (Y (ObjT Object)) (VarT X) (VarT Y)))
-compile_dec: (TypD B (FuncT (X (PrimT Int)) (Y (ObjT Object)) (VarT X) (VarT Y)))
 compile_dec: (ClassD C (X AnyT) Object (TupP))
-compile_dec: (TypD T (X AnyT) (Y AnyT) (VarT X))
-compile_dec: (TypD A (X AnyT) (VarT C (VarT T (VarT X) (PrimT Int))))
-compile_dec: (TypD B (X AnyT) (VarT C (VarT T (VarT X) (PrimT Bool))))
 compile_dec: (FuncD
   f
   (X AnyT)
@@ -44,8 +13,6 @@ compile_dec: (FuncD
   (AnnotE (VarE x) (VarT B (VarT X)))
 )
 compile_dec: (ClassD C (X AnyT) (Y AnyT) Object (TupP))
-compile_dec: (TypD A (X AnyT) (VarT C (VarT X) (PrimT Int)))
-compile_dec: (TypD B (X AnyT) (VarT C (VarT X) (PrimT Int)))
 compile_dec: (FuncD
   f
   (X AnyT)
@@ -54,27 +21,6 @@ compile_dec: (FuncD
   (AnnotE (VarE x) (VarT B (VarT X)))
 )
 compile_dec: (ClassD C (X AnyT) Object (TupP))
-compile_dec: (TypD A (VarT C (PrimT Int)))
-compile_dec: (TypD B (VarT C (PrimT Int)))
-compile_dec: (TypD T (X AnyT) (Y AnyT) (VarT X))
-compile_dec: (TypD A (VarT T (PrimT Int) (PrimT Bool)))
-compile_dec: (TypD B (VarT T (PrimT Int) (PrimT Nat)))
-compile_dec: (TypD A (FuncT (X AnyT) (Y AnyT) (VarT X) (VarT Y)))
-compile_dec: (TypD B (FuncT (Y AnyT) (X AnyT) (VarT Y) (VarT X)))
-compile_dec: (TypD A (FuncT (X AnyT) (VarT X) (VarT X)))
-compile_dec: (TypD B (FuncT (Y AnyT) (VarT Y) (VarT Y)))
-compile_dec: (TypD
-  A
-  (FuncT (TupT (PrimT Int) (PrimT Bool)) (TupT (PrimT Word8) (PrimT Float)))
-)
-compile_dec: (TypD
-  B
-  (FuncT (TupT (PrimT Int) (PrimT Bool)) (TupT (PrimT Word8) (PrimT Float)))
-)
-compile_dec: (TypD A (ObjT Object (x (PrimT Int) Const) (y (PrimT Bool) Const)))
-compile_dec: (TypD B (ObjT Object (y (PrimT Bool) Const) (x (PrimT Int) Const)))
-compile_dec: (TypD A (ObjT Object (x (PrimT Int) Const)))
-compile_dec: (TypD B (ObjT Object (x (PrimT Int) Const)))
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func (param i32) (result i32)))

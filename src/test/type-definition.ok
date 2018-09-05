@@ -22,31 +22,13 @@ let D : T/2<C> -> D = func
 let E : <Y>U/2<Y> -> E<Y> = func
 
 Compiler:
-compile_dec: (TypD IntT (PrimT Int))
-compile_dec: (TypD Arrow (T AnyT) (U AnyT) (FuncT (VarT T) (VarT U)))
-compile_dec: (TypD
-  Compose
-  (T AnyT)
-  (U AnyT)
-  (V AnyT)
-  (FuncT
-    (FuncT (VarT T) (VarT U))
-    (FuncT (FuncT (VarT U) (VarT V)) (FuncT (VarT T) (VarT V)))
-  )
-)
-compile_dec: (TypD Id (FuncT (T AnyT) (VarT T) (VarT T)))
-compile_dec: (TypD Seq (A AnyT) (TupT (VarT A) (OptT (VarT Seq (VarT A)))))
-compile_dec: (TypD A (TupT (VarT B) (VarT A)))
-compile_dec: (TypD B (TupT (VarT A) (VarT B)))
 compile_dec: (ClassD C Object (TupP))
-compile_dec: (TypD T (X AnyT) (ObjT Object (f (FuncT (C AnyT) (VarT X) (VarT C)) Const)))
 compile_dec: (ClassD
   D
   Object
   (AnnotP (VarP x) (VarT T (VarT C)))
   (r (DotE (VarE x) f) Const Public)
 )
-compile_dec: (TypD U (X AnyT) (ObjT Object (f (FuncT (Y AnyT) (VarT X) (VarT Y)) Const)))
 compile_dec: (ClassD
   E
   (Y AnyT)

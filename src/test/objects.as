@@ -1,10 +1,12 @@
 let p = new {x = 3; private y = 2; get_y() : Int = y};
-let x = p.x;
-let y = p.get_y();
+assert(p.x == 3);
+assert(p.get_y() == 2);
 
-type O = {self : () -> O};
-let o = new this {self() : O = this};
-let oo = o.self();
+type O = {self : () -> O; x : Nat};
+let o = new this {self() : O = this; x = 1};
+assert(o.x == 1);
+assert(o.self().x == 1);
+assert(o.self().self().x == 1);
 
 type Q = {var this : Q?};
 let q : Q = new {var this = null};

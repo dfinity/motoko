@@ -379,6 +379,7 @@ and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
   | _ -> todo "compile_pat" (Arrange.pat pat) (env, [ nr Drop ])
 
 and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match dec.it with
+  | TypD _ -> (pre_env, fun _ -> [])
   | ExpD e ->
     (pre_env, fun env ->
       let code = compile_exp env e in

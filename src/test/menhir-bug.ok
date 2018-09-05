@@ -5,7 +5,6 @@ type A = {x : {}}
 -- Finished menhir-bug.as:
 
 Compiler:
-compile_dec: (TypD A (ObjT Object (x (ObjT Object) Const)))
 (module
   (type $0 (func))
   (memory $0 100)

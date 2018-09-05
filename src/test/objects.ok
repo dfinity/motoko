@@ -1,23 +1,24 @@
 Interpreter:
 -- Checking objects.as:
-type O = {self : () -> O}
+type O = {self : () -> O; x : Nat}
 type Q = {this : var Q?}
 let ignore : (async ()) -> ()
-let o : {self : () -> O}
-let oo : O
+let o : {self : () -> O; x : Nat}
 let p : {get_y : () -> Int; x : Nat}
 let q : Q
 let tictac : {tac : Int -> (); tic : Int -> ()}
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()}
 let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()}
-let x : Nat
-let y : Int
 -- Interpreting objects.as:
 get_y()
   <= 2
 self()
-  <= {self = func}
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
 tic(10)
   tac(9)
     tic(8)
@@ -42,40 +43,40 @@ tic(10)
   <= ()
 -> message tic_msg(10)
 tic_async(10)
-  -> async objects.as:28.33-28.77
+  -> async objects.as:30.33-30.77
   <= async _ #0
 -> message tic_msg_async(10)
--> async objects.as:39.9-39.18
-objects.as:40.9-40.12: execution error, arithmetic overflow
+-> async objects.as:41.9-41.18
+objects.as:42.9-42.12: execution error, arithmetic overflow
 <- message tic_msg(10)
   tic_msg(10)
     -> message tac_msg(9)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   tac_async(9)
-    -> async objects.as:29.33-29.77
+    -> async objects.as:31.33-31.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(10)
   tic_msg_async(10)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
-<- async objects.as:39.9-39.18
-objects.as:39.15-39.18: execution error, arithmetic overflow
+<- async objects.as:41.9-41.18
+objects.as:41.15-41.18: execution error, arithmetic overflow
 <- message tac_msg(9)
   tac_msg(9)
     -> message tic_msg(8)
     <= ()
-<- async objects.as:29.33-29.77
+<- async objects.as:31.33-31.77
   tic_async(8)
-    -> async objects.as:28.33-28.77
+    -> async objects.as:30.33-30.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   -> message tac_msg_async(9)
   ignore(async _ #0)
     <= ()
@@ -84,29 +85,29 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
   tic_msg(8)
     -> message tac_msg(7)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   tac_async(7)
-    -> async objects.as:29.33-29.77
+    -> async objects.as:31.33-31.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(9)
   tac_msg_async(9)
-    -> async objects.as:35.37-35.85
+    -> async objects.as:37.37-37.85
     <= async _ #0
 <- message tac_msg(7)
   tac_msg(7)
     -> message tic_msg(6)
     <= ()
-<- async objects.as:29.33-29.77
+<- async objects.as:31.33-31.77
   tic_async(6)
-    -> async objects.as:28.33-28.77
+    -> async objects.as:30.33-30.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects.as:35.37-35.85
+<- async objects.as:37.37-37.85
   -> message tic_msg_async(8)
   ignore(async _ #0)
     <= ()
@@ -115,29 +116,29 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
   tic_msg(6)
     -> message tac_msg(5)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   tac_async(5)
-    -> async objects.as:29.33-29.77
+    -> async objects.as:31.33-31.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(8)
   tic_msg_async(8)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
 <- message tac_msg(5)
   tac_msg(5)
     -> message tic_msg(4)
     <= ()
-<- async objects.as:29.33-29.77
+<- async objects.as:31.33-31.77
   tic_async(4)
-    -> async objects.as:28.33-28.77
+    -> async objects.as:30.33-30.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   -> message tac_msg_async(7)
   ignore(async _ #0)
     <= ()
@@ -146,29 +147,29 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
   tic_msg(4)
     -> message tac_msg(3)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   tac_async(3)
-    -> async objects.as:29.33-29.77
+    -> async objects.as:31.33-31.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(7)
   tac_msg_async(7)
-    -> async objects.as:35.37-35.85
+    -> async objects.as:37.37-37.85
     <= async _ #0
 <- message tac_msg(3)
   tac_msg(3)
     -> message tic_msg(2)
     <= ()
-<- async objects.as:29.33-29.77
+<- async objects.as:31.33-31.77
   tic_async(2)
-    -> async objects.as:28.33-28.77
+    -> async objects.as:30.33-30.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects.as:35.37-35.85
+<- async objects.as:37.37-37.85
   -> message tic_msg_async(6)
   ignore(async _ #0)
     <= ()
@@ -177,29 +178,29 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
   tic_msg(2)
     -> message tac_msg(1)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   tac_async(1)
-    -> async objects.as:29.33-29.77
+    -> async objects.as:31.33-31.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(6)
   tic_msg_async(6)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
 <- message tac_msg(1)
   tac_msg(1)
     -> message tic_msg(0)
     <= ()
-<- async objects.as:29.33-29.77
+<- async objects.as:31.33-31.77
   tic_async(0)
-    -> async objects.as:28.33-28.77
+    -> async objects.as:30.33-30.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   -> message tac_msg_async(5)
   ignore(async _ #0)
     <= ()
@@ -207,75 +208,70 @@ objects.as:39.15-39.18: execution error, arithmetic overflow
 <- message tic_msg(0)
   tic_msg(0)
     <= ()
-<- async objects.as:28.33-28.77
+<- async objects.as:30.33-30.77
   <= ()
 <- message tac_msg_async(5)
   tac_msg_async(5)
-    -> async objects.as:35.37-35.85
+    -> async objects.as:37.37-37.85
     <= async _ #0
-<- async objects.as:35.37-35.85
+<- async objects.as:37.37-37.85
   -> message tic_msg_async(4)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(4)
   tic_msg_async(4)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   -> message tac_msg_async(3)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(3)
   tac_msg_async(3)
-    -> async objects.as:35.37-35.85
+    -> async objects.as:37.37-37.85
     <= async _ #0
-<- async objects.as:35.37-35.85
+<- async objects.as:37.37-37.85
   -> message tic_msg_async(2)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(2)
   tic_msg_async(2)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   -> message tac_msg_async(1)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(1)
   tac_msg_async(1)
-    -> async objects.as:35.37-35.85
+    -> async objects.as:37.37-37.85
     <= async _ #0
-<- async objects.as:35.37-35.85
+<- async objects.as:37.37-37.85
   -> message tic_msg_async(0)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(0)
   tic_msg_async(0)
-    -> async objects.as:34.37-34.85
+    -> async objects.as:36.37-36.85
     <= async _ #0
-<- async objects.as:34.37-34.85
+<- async objects.as:36.37-36.85
   <= ()
 -- Finished objects.as:
 let ignore : (async ()) -> () = func
-let o : {self : () -> O} = {self = func}
-let oo : O = {self = func}
+let o : {self : () -> O; x : Nat} = {self = func; x = 1}
 let p : {get_y : () -> Int; x : Nat} = {get_y = func; x = 3}
 let q : Q = {this = {this = {...}}}
 let tictac : {tac : Int -> (); tic : Int -> ()} = {tac = func; tic = func}
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()} = actor {tac_msg = func; tic_msg = func}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()} = actor {tac_msg_async = func; tic_msg_async = func}
 let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()} = {tac_async = func; tic_async = func}
-let x : Nat = 3
-let y : Int = 2
 
 Compiler:
-compile_dec: (TypD O (ObjT Object (self (FuncT (TupT) (VarT O)) Const)))
-compile_dec: (TypD Q (ObjT Object (this (OptT (VarT Q)) Var)))
 compile_binop: DivOp
 compile_exp: (AsyncE (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
 compile_exp: (CallE (DotE (VarE tictac_actor_async) tic_msg_async) (LitE (IntLit 10)))
@@ -466,6 +462,7 @@ compile_exp: (DecE
 )
 compile_lexp: (DotE (VarE q) this)
 compile_lit: NullLit
+compile_exp: (CallE (DotE (CallE (DotE (VarE o) self) (TupE)) self) (TupE))
 compile_exp: (CallE (DotE (VarE o) self) (TupE))
 compile_exp: (DecE (FuncD self (TupP) (VarT O) (VarE this)))
 compile_exp: (CallE (DotE (VarE p) get_y) (TupE))
@@ -478,7 +475,7 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
   (func $0 (type 0) (local i32) (i32.const 0))
   (func $1
     (type 1)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (local i32 i32 i32 i32 i32 i32 i32 i32)
     (i32.const 36)
     (set_local 0)
     (get_global 0)
@@ -488,7 +485,7 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (set_global 0)
     (tee_local 0)
     (get_local 0)
-    (i32.const 24)
+    (i32.const 20)
     (i32.add)
     (i32.const 3)
     (i32.store align=1)
@@ -506,13 +503,19 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (i32.store align=1)
     (set_local 1)
     (get_local 1)
-    (i32.const 24)
+    (i32.const 20)
     (i32.add)
     (i32.load align=1)
-    (set_local 2)
+    (i32.const 3)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
     (unreachable)
-    (set_local 3)
-    (i32.const 24)
+    (i32.const 2)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 28)
     (set_local 0)
     (get_global 0)
     (get_global 0)
@@ -521,13 +524,41 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (set_global 0)
     (tee_local 0)
     (get_local 0)
-    (i32.const 20)
+    (i32.const 24)
     (i32.add)
     (unreachable)
     (i32.store align=1)
-    (set_local 4)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 20)
+    (i32.add)
+    (i32.const 1)
+    (i32.store align=1)
+    (set_local 2)
+    (get_local 2)
+    (i32.const 20)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
     (unreachable)
-    (set_local 5)
+    (i32.const 20)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (unreachable)
+    (i32.const 20)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
     (i32.const 20)
     (set_local 0)
     (get_global 0)
@@ -541,7 +572,7 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (i32.add)
     (unreachable)
     (i32.store align=1)
-    (set_local 6)
+    (set_local 3)
     (unreachable)
     (i32.const 0)
     (drop)
@@ -564,11 +595,11 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (i32.add)
     (unreachable)
     (i32.store align=1)
-    (set_local 7)
+    (set_local 4)
     (unreachable)
     (drop)
     (unreachable)
-    (set_local 8)
+    (set_local 5)
     (unreachable)
     (drop)
     (i32.const 8)
@@ -590,11 +621,11 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (i32.add)
     (unreachable)
     (i32.store align=1)
-    (set_local 9)
+    (set_local 6)
     (unreachable)
     (drop)
     (unreachable)
-    (set_local 10)
+    (set_local 7)
     (unreachable)
     (drop)
     (unreachable)
