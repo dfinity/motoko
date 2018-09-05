@@ -220,7 +220,7 @@ let rec string_of_val_nullary d conenv t v =
   | T.Prim T.Float -> Float.to_string (as_float v)
   | T.Prim T.Char -> string_of_char (as_char v)
   | T.Prim T.Text -> string_of_text (as_text v)
-  | T.Con (c, []) -> Con.to_string c
+  | T.Con (c, []) -> Con.to_string c ^ "(...)"
   | T.Con (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)
