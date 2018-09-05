@@ -1,0 +1,74 @@
+Interpreter:
+-- Checking objects2.as:
+type O = {self : () -> O; x : Nat}
+let o : {self : () -> O; x : Nat}
+-- Interpreting objects2.as:
+self()
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
+-- Finished objects2.as:
+let o : {self : () -> O; x : Nat} = {self = func; x = 1}
+
+Compiler:
+compile_exp: (CallE (DotE (CallE (DotE (VarE o) self) (TupE)) self) (TupE))
+compile_exp: (CallE (DotE (VarE o) self) (TupE))
+compile_exp: (DecE (FuncD self (TupP) (VarT O) (VarE this)))
+(module
+  (type $0 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32 i32)
+    (i32.const 8)
+    (set_local 0)
+    (get_global 0)
+    (get_global 0)
+    (get_local 0)
+    (i32.add)
+    (set_global 0)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 4)
+    (i32.add)
+    (unreachable)
+    (i32.store align=1)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 0)
+    (i32.add)
+    (i32.const 1)
+    (i32.store align=1)
+    (set_local 1)
+    (get_local 1)
+    (i32.const 0)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (unreachable)
+    (i32.const 0)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (unreachable)
+    (i32.const 0)
+    (i32.add)
+    (i32.load align=1)
+    (i32.const 1)
+    (i32.eq)
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+  )
+  (start 0)
+)
+Interpreting the .wat:
+objects2.wat:19.5-19.18: runtime trap: unreachable executed

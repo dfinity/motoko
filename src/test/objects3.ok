@@ -1,0 +1,46 @@
+Interpreter:
+-- Checking objects3.as:
+type Q = {this : var Q?; x : Nat}
+let q : Q
+-- Interpreting objects3.as:
+-- Finished objects3.as:
+let q : Q = {this = {this = {...}; x = 4}; x = 4}
+
+Compiler:
+compile_lexp: (DotE (VarE q) this)
+compile_lit: NullLit
+(module
+  (type $0 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32 i32)
+    (i32.const 8)
+    (set_local 0)
+    (get_global 0)
+    (get_global 0)
+    (get_local 0)
+    (i32.add)
+    (set_global 0)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 0)
+    (i32.add)
+    (unreachable)
+    (i32.store align=1)
+    (tee_local 0)
+    (get_local 0)
+    (i32.const 4)
+    (i32.add)
+    (i32.const 4)
+    (i32.store align=1)
+    (set_local 1)
+    (unreachable)
+    (i32.const 0)
+    (drop)
+  )
+  (start 0)
+)
+Interpreting the .wat:
+objects3.wat:19.5-19.18: runtime trap: unreachable executed
