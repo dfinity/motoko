@@ -52,6 +52,9 @@ module E = struct
     (* Functions (HACK: They are not really seperate,
        but for now we only support calls to known functions) *)
     funcs_env : int32 NameEnv.t;
+    (* Field labels to index *)
+    (* (This is for the prototypical simple tuple-implementations for objects *)
+    field_env : int32 NameEnv.t ref;
   }
 
   (* The global environment *)
@@ -60,11 +63,12 @@ module E = struct
     func_types = ref [];
     funcs_env = NameEnv.empty;
     (* Actually unused outside mk_fun_env: *)
-    locals = ref []; 
+    locals = ref [];
     local_vars_env = NameEnv.empty;
     n_param = 0l;
     depth = 0l;
     ld = NameEnv.empty;
+    field_env = ref NameEnv.empty;
   }
 
   (* A new function *)
@@ -112,8 +116,8 @@ module E = struct
   let get_types (env : t) = !(env.func_types)
 
   let inc_depth (env : t) =
-      let d' = Wasm.I32.add env.depth 1l in
-      {env with depth = d'}
+      let label_depths' = Wasm.I32.add env.depth 1l in
+      {env with depth = label_depths'}
 
   let add_label (env : t) name =
       { env with ld = NameEnv.add name.it (env.depth) env.ld }
@@ -122,6 +126,15 @@ module E = struct
     match NameEnv.find_opt name.it env.ld with
       | Some i -> Wasm.I32.sub env.depth i
       | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
+
+  let field_to_index (env : t) name : int32 =
+    let e = !(env.field_env) in
+    match NameEnv.find_opt name.it e with
+      | Some i -> i
+      | None ->
+        let i = Wasm.I32.of_int_u (NameEnv.cardinal e) in
+        env.field_env := NameEnv.add name.it i e;
+        i
 
 end
 
@@ -143,12 +156,12 @@ let dup : instr list = (* duplicate top element *)
     nr (GetLocal tmp_local) ]
 
 let alloc : instr list = (* expect the size on the stack, returns the pointer *)
-  [ nr (GetGlobal heap_ptr);
-    nr (SetLocal tmp_local);
+  [ nr (SetLocal tmp_local);
     nr (GetGlobal heap_ptr);
+    nr (GetGlobal heap_ptr);
+    nr (GetLocal tmp_local);
     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
-    nr (SetGlobal heap_ptr);
-    nr (GetLocal tmp_local)]
+    nr (SetGlobal heap_ptr)]
 
 let compile_lit lit = match lit with
   | BoolLit true ->  compile_true
@@ -260,17 +273,41 @@ and compile_exp (env : E.t) exp = match exp.it with
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4 * List.length es))))) ] @
-     (* Allocate position *)
+     (* Allocate memory, and put position on the stack (return value) *)
      alloc @
-     (* Put position on the stack, to be returned. *)
      let init_elem i e : Wasm.Ast.instr list =
-        dup @ (* Dupliate position *)
+        dup @ (* Duplicate position *)
 	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
           nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
 	compile_exp env e @
         [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
      in
      List.concat (List.mapi init_elem es)
+  | DotE (e, f) ->
+     let i = E.field_to_index env f in
+     compile_exp env e @
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l i))));
+       nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+       nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
+     ]
+  | ObjE ({it = Type.Object;_}, _, fs) ->
+     (* Resolve fields to index *)
+     let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
+     (* Find largest index *)
+     let max a b = if Int32.compare a b >= 0 then a else b in
+     let n = Int32.add 1l (List.fold_left max 0l (List.map fst fis)) in
+     (* Calculate size *)
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l n)))) ] @
+     (* Allocate memory, and put position on the stack (return value) *)
+     alloc @
+     let init_field (i, e) : Wasm.Ast.instr list =
+        dup @ (* Duplicate position *)
+	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l i))));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+	compile_exp env e @
+        [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
+     in
+     List.concat (List.map init_field fis)
   | CallE ({it = VarE var; _}, [], e) ->
      let args = de_tupleE e in
      List.concat (List.map (compile_exp env) args)
