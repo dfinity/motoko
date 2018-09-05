@@ -10,19 +10,28 @@ TESTS:=$(basename $(wildcard *.as))
 
 all: stats
 
+SHELL=/bin/bash
+
 %.out : %.as $(ASC)
 	@echo "TEST: $*"
-	@( echo "Interpreter:"; \
-	  $(ASC) $(ASC_FLAGS) $< ; \
-	  echo "Compiler:"; \
-	  $(ASC) -c $< > $*.wat; \
-	  cat $*.wat; \
-	  if [ -s $*.wat ];\
-	    then echo "Interpreting the .wat:"; \
-	    $(WASM) $*.wat ; \
-	    else echo "Empty .wat file!"; \
-	  fi; \
-	) > $@ 2>&1 || true
+# Show output when this is an explicit target, otherwise be silent
+	@if [ "$(MAKECMDGOALS)" = "$@" ]; \
+	then exec > >(tee $@); \
+	else exec > $@; \
+	fi; \
+	exec 2>&1; \
+	\
+	echo "Interpreter:"; \
+	$(ASC) $(ASC_FLAGS) $< ; \
+	echo "Compiler:"; \
+	$(ASC) -c $< > $*.wat; \
+	cat $*.wat; \
+	if [ -s $*.wat ];\
+	  then echo "Interpreting the .wat:"; \
+	  $(WASM) $*.wat ; \
+	  else echo "Empty .wat file!"; \
+	fi; \
+	true
 
 %.ok:
 	@echo "$@ missing"
@@ -63,3 +72,5 @@ clean:
 .PHONY: stats current accept all # $(addsuffix .refresh, $(TESTS))
 
 FORCE:
+
+.PRECIOUS: %.out
