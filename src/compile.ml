@@ -155,11 +155,18 @@ let dup : instr list = (* duplicate top element *)
   [ nr (TeeLocal tmp_local);
     nr (GetLocal tmp_local) ]
 
-let alloc : instr list = (* expect the size on the stack, returns the pointer *)
+let _alloc : instr list = (* expect the size on the stack, returns the pointer *)
   [ nr (SetLocal tmp_local);
     nr (GetGlobal heap_ptr);
     nr (GetGlobal heap_ptr);
     nr (GetLocal tmp_local);
+    nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+    nr (SetGlobal heap_ptr)]
+
+let allocn (n : int32) : instr list = (* expect the size (in words), returns the pointer *)
+  [ nr (GetGlobal heap_ptr);
+    nr (GetGlobal heap_ptr);
+    nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l n))));
     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
     nr (SetGlobal heap_ptr)]
 
@@ -272,9 +279,8 @@ and compile_exp (env : E.t) exp = match exp.it with
   | TupE [] -> compile_unit
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
-     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4 * List.length es))))) ] @
      (* Allocate memory, and put position on the stack (return value) *)
-     alloc @
+     allocn (Wasm.I32.of_int_u (4 * List.length es)) @
      let init_elem i e : Wasm.Ast.instr list =
         dup @ (* Duplicate position *)
 	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
@@ -296,10 +302,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      (* Find largest index *)
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add 1l (List.fold_left max 0l (List.map fst fis)) in
-     (* Calculate size *)
-     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l n)))) ] @
      (* Allocate memory, and put position on the stack (return value) *)
-     alloc @
+     allocn n @
      let init_field (i, e) : Wasm.Ast.instr list =
         dup @ (* Duplicate position *)
 	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l i))));
