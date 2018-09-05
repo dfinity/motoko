@@ -9,19 +9,19 @@ let p : {get_y : () -> Int; x : Nat} = {get_y = func; x = 3}
 
 Compiler:
 compile_exp: (CallE (DotE (VarE p) get_y) (TupE))
-compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
+Could not find y
 (module
-  (type $0 (func))
+  (type $0 (func (result i32)))
+  (type $1 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0
-    (type 0)
+  (func $0 (type 0) (local i32) (unreachable))
+  (func $1
+    (type 1)
     (local i32 i32)
+    (get_global 0)
+    (get_global 0)
     (i32.const 12)
-    (set_local 0)
-    (get_global 0)
-    (get_global 0)
-    (get_local 0)
     (i32.add)
     (set_global 0)
     (tee_local 0)
@@ -40,7 +40,7 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (get_local 0)
     (i32.const 8)
     (i32.add)
-    (unreachable)
+    (i32.const 0)
     (i32.store align=1)
     (set_local 1)
     (get_local 1)
@@ -57,7 +57,7 @@ compile_exp: (DecE (FuncD get_y (TupP) (PrimT Int) (VarE y)))
     (if (result i32) (then (i32.const 0)) (else (unreachable)))
     (drop)
   )
-  (start 0)
+  (start 1)
 )
 Interpreting the .wat:
-objects1.wat:31.5-31.18: runtime trap: unreachable executed
+objects1.wat:42.5-42.18: runtime trap: unreachable executed

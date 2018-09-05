@@ -29,62 +29,56 @@ let oddeven : {even : Int -> Bool; odd : Int -> Bool} = {even = func; odd = func
 
 Compiler:
 compile_exp: (CallE (DotE (VarE oddeven) even) (LitE (IntLit 10)))
-compile_exp: (DecE
-  (FuncD
-    odd
-    (AnnotP (VarP n) (PrimT Int))
-    (PrimT Bool)
-    (IfE
-      (RelE (VarE n) GtOp (LitE (NatLit 0)))
-      (CallE (DotE (VarE this) odd) (BinE (VarE n) SubOp (LitE (IntLit 1))))
-      (LitE (BoolLit false))
-    )
-  )
-)
-compile_exp: (DecE
-  (FuncD
-    even
-    (AnnotP (VarP n) (PrimT Int))
-    (PrimT Bool)
-    (IfE
-      (RelE (VarE n) GtOp (LitE (NatLit 0)))
-      (CallE (DotE (VarE this) even) (BinE (VarE n) SubOp (LitE (IntLit 1))))
-      (LitE (BoolLit true))
-    )
-  )
-)
+compile_exp: (CallE (DotE (VarE this) odd) (BinE (VarE n) SubOp (LitE (IntLit 1))))
+compile_exp: (CallE (DotE (VarE this) even) (BinE (VarE n) SubOp (LitE (IntLit 1))))
 (module
-  (type $0 (func))
+  (type $0 (func (param i32) (result i32)))
+  (type $1 (func (param i32) (result i32)))
+  (type $2 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
     (type 0)
-    (local i32 i32)
-    (i32.const 8)
-    (set_local 0)
-    (get_global 0)
-    (get_global 0)
+    (local i32)
     (get_local 0)
+    (i32.const 0)
+    (i32.gt_s)
+    (if (result i32) (then (unreachable)) (else (i32.const 0)))
+  )
+  (func $1
+    (type 1)
+    (local i32)
+    (get_local 0)
+    (i32.const 0)
+    (i32.gt_s)
+    (if (result i32) (then (unreachable)) (else (i32.const 1)))
+  )
+  (func $2
+    (type 2)
+    (local i32 i32)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 8)
     (i32.add)
     (set_global 0)
     (tee_local 0)
     (get_local 0)
     (i32.const 0)
     (i32.add)
-    (unreachable)
+    (i32.const 0)
     (i32.store align=1)
     (tee_local 0)
     (get_local 0)
     (i32.const 4)
     (i32.add)
-    (unreachable)
+    (i32.const 0)
     (i32.store align=1)
     (set_local 1)
     (unreachable)
     (if (result i32) (then (i32.const 0)) (else (unreachable)))
     (drop)
   )
-  (start 0)
+  (start 2)
 )
 Interpreting the .wat:
-objects4.wat:19.5-19.18: runtime trap: unreachable executed
+objects4.wat:44.5-44.18: runtime trap: unreachable executed

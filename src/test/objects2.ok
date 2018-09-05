@@ -15,26 +15,26 @@ let o : {self : () -> O; x : Nat} = {self = func; x = 1}
 Compiler:
 compile_exp: (CallE (DotE (CallE (DotE (VarE o) self) (TupE)) self) (TupE))
 compile_exp: (CallE (DotE (VarE o) self) (TupE))
-compile_exp: (DecE (FuncD self (TupP) (VarT O) (VarE this)))
+Could not find this
 (module
-  (type $0 (func))
+  (type $0 (func (result i32)))
+  (type $1 (func))
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0
-    (type 0)
+  (func $0 (type 0) (local i32) (unreachable))
+  (func $1
+    (type 1)
     (local i32 i32)
+    (get_global 0)
+    (get_global 0)
     (i32.const 8)
-    (set_local 0)
-    (get_global 0)
-    (get_global 0)
-    (get_local 0)
     (i32.add)
     (set_global 0)
     (tee_local 0)
     (get_local 0)
     (i32.const 4)
     (i32.add)
-    (unreachable)
+    (i32.const 0)
     (i32.store align=1)
     (tee_local 0)
     (get_local 0)
@@ -68,7 +68,7 @@ compile_exp: (DecE (FuncD self (TupP) (VarT O) (VarE this)))
     (if (result i32) (then (i32.const 0)) (else (unreachable)))
     (drop)
   )
-  (start 0)
+  (start 1)
 )
 Interpreting the .wat:
-objects2.wat:19.5-19.18: runtime trap: unreachable executed
+objects2.wat:36.5-36.18: runtime trap: unreachable executed

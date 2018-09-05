@@ -16,11 +16,9 @@ compile_lit: NullLit
   (func $0
     (type 0)
     (local i32 i32)
+    (get_global 0)
+    (get_global 0)
     (i32.const 8)
-    (set_local 0)
-    (get_global 0)
-    (get_global 0)
-    (get_local 0)
     (i32.add)
     (set_global 0)
     (tee_local 0)
@@ -43,4 +41,4 @@ compile_lit: NullLit
   (start 0)
 )
 Interpreting the .wat:
-objects3.wat:19.5-19.18: runtime trap: unreachable executed
+objects3.wat:17.5-17.18: runtime trap: unreachable executed
