@@ -11,6 +11,7 @@ compile_lexp: (DotE (VarE q) this)
 compile_lit: NullLit
 (module
   (type $0 (func))
+  (table $0 1 1 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -39,6 +40,7 @@ compile_lit: NullLit
     (drop)
   )
   (start 0)
+  (elem 0 (offset (i32.const 0)) 0)
 )
 Interpreting the .wat:
-objects3.wat:17.5-17.18: runtime trap: unreachable executed
+objects3.wat:18.5-18.18: runtime trap: unreachable executed

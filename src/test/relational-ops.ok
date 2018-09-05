@@ -74,6 +74,7 @@ compile_relop: NeqOp
   (type $8 (func (param i32 i32) (result i32)))
   (type $9 (func (param i32 i32) (result i32)))
   (type $10 (func))
+  (table $0 11 11 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -586,5 +587,6 @@ compile_relop: NeqOp
   )
   (func $10 (type 10) (local i32) (i32.const 0) (drop))
   (start 10)
+  (elem 0 (offset (i32.const 0)) 0 1 2 3 4 5 6 7 8 9 10)
 )
 Interpreting the .wat:

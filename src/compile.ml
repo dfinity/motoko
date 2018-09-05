@@ -98,7 +98,7 @@ module E = struct
 
   let lookup_fun env var =
     match NameEnv.find_opt var.it env.funcs_env with
-      | Some i -> Some (nr i)
+      | Some i -> Some i
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
   let add_anon_fun (env : t) f = reg env.funcs f
@@ -316,9 +316,14 @@ and compile_exp (env : E.t) exp = match exp.it with
      List.concat (List.map init_field fis)
   | CallE ({it = VarE var; _}, [], e) ->
      let args = de_tupleE e in
-     List.concat (List.map (compile_exp env) args)
-     @ (match E.lookup_fun env var with
-        | Some i -> [ nr (Call i) ]
+     List.concat (List.map (compile_exp env) args) @
+
+     let ty = nr (FuncType (List.map (fun _ -> I32Type) args, [I32Type])) in
+     let ti = E.add_type env ty in
+
+     (match E.lookup_fun env var with
+        | Some i -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 i)));
+                      nr (CallIndirect (nr ti)) ]
         | None   -> [nr Unreachable])
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
@@ -451,9 +456,18 @@ let compile (prog  : Syntax.prog) : unit =
     let start_fun = compile_func_body env [] start_fun_ty true (nr__ (BlockE prog.it)) in
     let i = E.add_anon_fun env start_fun in
 
+    let funcs = E.get_funcs env in
+    let nf = List.length funcs in
+    let nf' = Wasm.I32.of_int_u nf in
+
     nr { empty_module with
       types = E.get_types env;
-      funcs = E.get_funcs env;
+      funcs = funcs;
+      tables = [ nr { ttype = TableType ({min = nf'; max = Some nf'}, AnyFuncType) } ];
+      elems = [ nr {
+        index = nr 0l;
+        offset = nr compile_zero;
+        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
       start = Some (nr i);
       globals = [ heap_ptr_global ];
       memories = [nr {mtype = MemoryType {min = 100l; max = None}} ];

@@ -82,6 +82,7 @@ compile_unop: NotOp
   (type $2 (func (param i32 i32) (result i32)))
   (type $3 (func (param i32 i32) (result i32)))
   (type $4 (func))
+  (table $0 5 5 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -358,5 +359,6 @@ compile_unop: NotOp
   )
   (func $4 (type 4) (local i32) (i32.const 0) (drop))
   (start 4)
+  (elem 0 (offset (i32.const 0)) 0 1 2 3 4)
 )
 Interpreting the .wat:

@@ -255,6 +255,7 @@ compile_exp: (CallE (VarE QS) (PrimT Int) (VarE cmpi))
 (module
   (type $0 (func (param i32 i32) (result i32)))
   (type $1 (func))
+  (table $0 2 2 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0 (type 0) (local i32) (get_local 0) (get_local 1) (i32.sub))
@@ -303,6 +304,7 @@ compile_exp: (CallE (VarE QS) (PrimT Int) (VarE cmpi))
     (drop)
   )
   (start 1)
+  (elem 0 (offset (i32.const 0)) 0 1)
 )
 Interpreting the .wat:
-quicksort.wat:10.5-10.18: runtime trap: unreachable executed
+quicksort.wat:11.5-11.18: runtime trap: unreachable executed

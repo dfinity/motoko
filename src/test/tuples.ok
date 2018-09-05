@@ -20,6 +20,7 @@ let z : Nat = 3
 Compiler:
 (module
   (type $0 (func))
+  (table $0 1 1 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -167,5 +168,6 @@ Compiler:
     (drop)
   )
   (start 0)
+  (elem 0 (offset (i32.const 0)) 0)
 )
 Interpreting the .wat:

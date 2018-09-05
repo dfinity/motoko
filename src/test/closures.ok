@@ -27,6 +27,7 @@ Could not find add1
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func))
+  (table $0 2 2 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0 (type 0) (local i32) (get_local 0) (i32.const 1) (i32.add))
@@ -64,6 +65,7 @@ Could not find add1
     (drop)
   )
   (start 1)
+  (elem 0 (offset (i32.const 0)) 0 1)
 )
 Interpreting the .wat:
-closures.wat:19.5-19.18: runtime trap: unreachable executed
+closures.wat:20.5-20.18: runtime trap: unreachable executed

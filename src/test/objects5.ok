@@ -386,6 +386,7 @@ compile_exp: (ObjE
   (type $1 (func (param i32) (result i32)))
   (type $2 (func (param i32) (result i32)))
   (type $3 (func))
+  (table $0 4 4 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0 (type 2) (local i32) (i32.const 0))
@@ -433,6 +434,7 @@ compile_exp: (ObjE
     (drop)
   )
   (start 3)
+  (elem 0 (offset (i32.const 0)) 0 1 2 3)
 )
 Interpreting the .wat:
-objects5.wat:14.5-14.18: runtime trap: unreachable executed
+objects5.wat:15.5-15.18: runtime trap: unreachable executed

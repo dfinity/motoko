@@ -57,6 +57,7 @@ compile_unop: PosOp
   (type $5 (func (param i32 i32) (result i32)))
   (type $6 (func (param i32 i32) (result i32)))
   (type $7 (func))
+  (table $0 8 8 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -411,5 +412,6 @@ compile_unop: PosOp
   )
   (func $7 (type 7) (local i32) (i32.const 0) (drop))
   (start 7)
+  (elem 0 (offset (i32.const 0)) 0 1 2 3 4 5 6 7)
 )
 Interpreting the .wat:

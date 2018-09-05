@@ -35,6 +35,7 @@ compile_exp: (CallE (DotE (VarE this) even) (BinE (VarE n) SubOp (LitE (IntLit 1
   (type $0 (func (param i32) (result i32)))
   (type $1 (func (param i32) (result i32)))
   (type $2 (func))
+  (table $0 3 3 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
   (func $0
@@ -79,6 +80,7 @@ compile_exp: (CallE (DotE (VarE this) even) (BinE (VarE n) SubOp (LitE (IntLit 1
     (drop)
   )
   (start 2)
+  (elem 0 (offset (i32.const 0)) 0 1 2)
 )
 Interpreting the .wat:
-objects4.wat:44.5-44.18: runtime trap: unreachable executed
+objects4.wat:45.5-45.18: runtime trap: unreachable executed
