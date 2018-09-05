@@ -258,6 +258,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      code1 @ [ nr (If ([I32Type], code2, code3)) ]
   | BlockE decs ->
      compile_decs env decs
+  | DecE dec ->
+     compile_decs env [dec]
   | LabelE (name, _ty, e) ->
       let env1 = E.add_label (E.inc_depth env) name in
       let code = compile_exp env1 e in
