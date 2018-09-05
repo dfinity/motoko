@@ -1,0 +1,28 @@
+Interpreter:
+-- Checking write-before-init.as:
+var x : Int
+-- Interpreting write-before-init.as:
+write-before-init.as:1.1-1.2: execution error, accessing identifier before its definition
+-- Finished write-before-init.as:
+var x : Int = _
+
+Compiler:
+Could not find x
+(module
+  (type $0 (func))
+  (memory $0 100)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32 i32)
+    (unreachable)
+    (i32.const 0)
+    (drop)
+    (i32.const 0)
+    (tee_local 1)
+    (drop)
+  )
+  (start 0)
+)
+Interpreting the .wat:
+write-before-init.wat:8.5-8.18: runtime trap: unreachable executed
