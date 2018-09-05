@@ -48,20 +48,20 @@ module E = struct
     (* Label to depth *)
     ld : int32 NameEnv.t;
     (* Local variables *)
-    lve : int32 NameEnv.t;
+    local_vars_env : int32 NameEnv.t;
     (* Functions (HACK: They are not really seperate,
        but for now we only support calls to known functions) *)
-    fe : int32 NameEnv.t;
+    funcs_env : int32 NameEnv.t;
   }
 
   (* The global environment *)
   let mk_global (_ : unit) : t = {
     funcs = ref [];
     func_types = ref [];
-    fe = NameEnv.empty;
+    funcs_env = NameEnv.empty;
     (* Actually unused outside mk_fun_env: *)
     locals = ref []; 
-    lve = NameEnv.empty;
+    local_vars_env = NameEnv.empty;
     n_param = 0l;
     depth = 0l;
     ld = NameEnv.empty;
@@ -72,14 +72,14 @@ module E = struct
     { env with
       locals = ref [];
       n_param = Wasm.I32.of_int_u (List.length params);
-      lve = List.fold_left (fun lve (x,y) -> NameEnv.add x y lve) NameEnv.empty
+      local_vars_env = List.fold_left (fun local_vars_env (x,y) -> NameEnv.add x y local_vars_env) NameEnv.empty
                  (List.mapi (fun i x -> (x.it, Wasm.I32.of_int_u i)) params);
       depth = 0l;
       ld = NameEnv.empty;
       }
 
   let lookup_var env var =
-    match NameEnv.find_opt var.it env.lve with
+    match NameEnv.find_opt var.it env.local_vars_env with
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
@@ -88,12 +88,12 @@ module E = struct
   let add_local (env : t) name =
       let i = reg env.locals I32Type; in
       let i' = Wasm.I32.add env.n_param i in
-      ({ env with lve = NameEnv.add name.it i' env.lve }, i')
+      ({ env with local_vars_env = NameEnv.add name.it i' env.local_vars_env }, i')
 
   let get_locals (env : t) = !(env.locals)
 
   let lookup_fun env var =
-    match NameEnv.find_opt var.it env.fe with
+    match NameEnv.find_opt var.it env.funcs_env with
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var.it; None
 
@@ -101,7 +101,7 @@ module E = struct
 
   let add_fun (env : t) name f =
       let i = reg env.funcs f; in
-      ({ env with fe = NameEnv.add name i env.fe }, i)
+      ({ env with funcs_env = NameEnv.add name i env.funcs_env }, i)
 
   let update_fun (env : t) i f = update_reg env.funcs i f
 
