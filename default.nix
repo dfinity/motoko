@@ -22,38 +22,55 @@ let menhir = (import menhir_nix) {
   }; in
 
 
-stdenv.mkDerivation rec {
-  name = "actorscript";
+rec {
+  native = stdenv.mkDerivation {
+    name = "native";
 
-  src = nixpkgs.lib.cleanSource ./src;
+    src = nixpkgs.lib.cleanSource ./src;
 
-  nativeBuildInputs = [ nixpkgs.makeWrapper ];
+    nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-  buildInputs = [
-    nixpkgs.ocaml
-    menhir
-    nixpkgs.ocamlPackages.findlib
-    nixpkgs.ocamlPackages.ocamlbuild
-    ocaml_wasm
-    nixpkgs.ocamlPackages.zarith
-  ];
+    buildInputs = [
+      nixpkgs.ocaml
+      menhir
+      nixpkgs.ocamlPackages.findlib
+      nixpkgs.ocamlPackages.ocamlbuild
+      ocaml_wasm
+      nixpkgs.ocamlPackages.zarith
+    ];
 
-  buildPhase = ''
-    make BUILD=native asc
-  '';
+    buildPhase = ''
+      make BUILD=native asc
+    '';
 
-  installPhase = ''
-    mkdir -p $out/bin
-    cp asc $out/bin
-  '';
+    installPhase = ''
+      mkdir -p $out/bin
+      cp asc $out/bin
+    '';
 
-  # The binary does not work until we use wrapProgram, which runs in
-  # the install phase. Therefore, we use the installCheck phase to 
-  # run the test suite
-  doInstallCheck = true;
-  installCheckPhase = ''
-    $out/bin/asc -v
-    make -C test ASC=$out/bin/asc all
-    make -C samples ASC=$out/bin/asc all
-  '';
+    # The binary does not work until we use wrapProgram, which runs in
+    # the install phase. Therefore, we use the installCheck phase to
+    # run the test suite
+    doInstallCheck = true;
+    installCheckPhase = ''
+      $out/bin/asc -v
+      make -C test ASC=$out/bin/asc all
+      make -C samples ASC=$out/bin/asc all
+    '';
+  };
+
+  js = native.overrideAttrs (oldAttrs: {
+    name = "js";
+
+    buildInputs = oldAttrs.buildInputs ++ [
+      nixpkgs.ocamlPackages.js_of_ocaml
+      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
+    ];
+
+    buildPhase = ''
+      make BUILD=js asc
+    '';
+
+    doInstallCheck = false;
+  });
 }

@@ -3,6 +3,19 @@
 A simple language for writing Dfinity actors.
 
 
+## Development using Nix
+
+```
+$ nix-build -A native
+```
+
+or
+
+```
+nix-build -A js
+```
+
+
 ## Introduction
 
 ### Motivation and Goals
