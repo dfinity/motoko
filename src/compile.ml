@@ -309,7 +309,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
 
-     code1 @ (* TODO: Wrong order! *)
+     code1 @
+     [ nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
      code2 @
      swap env @
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
@@ -388,9 +389,13 @@ and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match de
 	(* All functions are unary for now (arguments passed as heap-allocated tuples) *)
         let f = compile_func_body env E.unary_fun_ty_i false (Some p) e in
         let fi = E.add_fun env f in
-	let code = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] in
         let cmd x = if last then TeeLocal x else SetLocal x in
-        code @ [ nr (cmd (nr li) ) ])
+
+        allocn 1l @ (* Allocate a heap object for the function *)
+        dup env @ (* Duplicate position *)
+        [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))); (* Store function number *)
+          nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None});
+          nr (cmd (nr li) ) ])
   | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, fun _ -> [])
 
 and compile_decs env decs : Wasm.Ast.instr list =
