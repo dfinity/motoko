@@ -10,15 +10,14 @@ let p : {get_y : () -> Int; x : Nat} = {get_y = func; x = 3}
 Compiler:
 Could not find y
 (module
-  (type $0 (func (result i32)))
-  (type $1 (func (result i32)))
-  (type $2 (func))
+  (type $0 (func))
+  (type $1 (func (param i32) (result i32)))
   (table $0 2 2 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 1) (local i32) (unreachable))
+  (func $0 (type 1) (local i32) (get_local 0) (drop) (unreachable))
   (func $1
-    (type 2)
+    (type 0)
     (local i32 i32 i32)
     (get_global 0)
     (get_global 0)
@@ -53,11 +52,12 @@ Could not find y
     (i32.eq)
     (if (result i32) (then (i32.const 0)) (else (unreachable)))
     (drop)
+    (i32.const 0)
     (get_local 1)
     (i32.const 0)
     (i32.add)
     (i32.load align=1)
-    (call_indirect (type 0))
+    (call_indirect (type 1))
     (i32.const 2)
     (i32.eq)
     (if (result i32) (then (i32.const 0)) (else (unreachable)))
@@ -67,4 +67,4 @@ Could not find y
   (elem 0 (offset (i32.const 0)) 0 1)
 )
 Interpreting the .wat:
-objects1.wat:8.33-8.46: runtime trap: unreachable executed
+objects1.wat:7.54-7.67: runtime trap: unreachable executed

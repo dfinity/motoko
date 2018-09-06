@@ -10,6 +10,7 @@ let rec2 : {b : Nat; c : Nat; d : {a : Nat; b : Nat}} = {b = 3; c = 4; d = {a = 
 Compiler:
 (module
   (type $0 (func))
+  (type $1 (func (param i32) (result i32)))
   (table $0 1 1 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))

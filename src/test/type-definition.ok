@@ -38,6 +38,7 @@ compile_dec: (ClassD
 )
 (module
   (type $0 (func))
+  (type $1 (func (param i32) (result i32)))
   (table $0 1 1 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
@@ -46,4 +47,4 @@ compile_dec: (ClassD
   (elem 0 (offset (i32.const 0)) 0)
 )
 Interpreting the .wat:
-type-definition.wat:6.33-6.39: invalid module: type mismatch: operator requires [_] but stack has []
+type-definition.wat:7.33-7.39: invalid module: type mismatch: operator requires [_] but stack has []
