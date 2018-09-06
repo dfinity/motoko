@@ -295,7 +295,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let i = E.field_to_index env f in
      compile_exp env e @
      load_field i
-  | ObjE ({it = Type.Object;_}, name, fs) ->
+  | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
 

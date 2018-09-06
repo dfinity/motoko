@@ -8,19 +8,19 @@ Compiler:
 Fatal error: exception Z.Overflow
 Raised by primitive operation at file "compile.ml", line 178, characters 63-77
 Called from file "compile.ml", line 247, characters 5-23
-Called from file "compile.ml", line 420, characters 18-35
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 482, characters 72-84
-Called from file "compile.ml", line 484, characters 15-27
-Called from file "compile.ml", line 513, characters 13-33
-Called from file "compile.ml", line 522, characters 20-50
+Called from file "compile.ml", line 422, characters 18-35
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 484, characters 72-84
+Called from file "compile.ml", line 486, characters 15-27
+Called from file "compile.ml", line 515, characters 13-33
+Called from file "compile.ml", line 524, characters 20-50
 Called from file "main.ml", line 130, characters 4-24
 Re-raised at file "main.ml", line 137, characters 19-22
 Called from file "list.ml", line 85, characters 12-15

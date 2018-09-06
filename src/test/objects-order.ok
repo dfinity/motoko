@@ -1,10 +1,10 @@
 Interpreter:
--- Checking object-order.as:
+-- Checking objects-order.as:
 var x : Int
--- Interpreting object-order.as:
--- Finished object-order.as:
+-- Interpreting objects-order.as:
+-- Finished objects-order.as:
 
-object-order.as:8.14-8.15: fatal error, Invalid_argument("as_int")
+objects-order.as:8.14-8.15: fatal error, Invalid_argument("as_int")
 
 Raised at file "value.ml", line 132, characters 22-42
 Called from file "value.ml", line 184, characters 35-45
