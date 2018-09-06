@@ -5,6 +5,9 @@ open Source
 open Syntax
 
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr_ x = { it = x; at = no_region; note = () }
+let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
+
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -475,7 +478,9 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         List.concat (List.mapi store_capture captured) @
         if last then [ nr (GetLocal (nr li)) ] else [])
 
-  | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, [], fun _ -> [])
+  | ClassD (name, typ_params, s, p, efs) ->
+    compile_dec last pre_env (nr_ (FuncD (name, typ_params, p, nr_ AnyT,
+      nr__ (ObjE (s, nr_ "WHATTOPUTHERE", efs)))))
 
 and compile_decs env decs : Wasm.Ast.instr list =
   let rec go pre_env decs = match decs with
