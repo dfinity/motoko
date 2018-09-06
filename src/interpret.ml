@@ -517,7 +517,7 @@ and interpret_func context id pat f v (k : V.value V.cont) =
     printf "%s%s%s\n" (get_indent ()) id.it (V.debug_string_of_tuple_val v);
   match match_pat pat v with
   | None ->
-    trap pat.at "argument value %s does not patch parameter list"
+    trap pat.at "argument value %s does not match parameter list"
       (V.debug_string_of_val v)
   | Some ve ->
     incr call_depth;
