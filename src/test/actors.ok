@@ -1,46 +1,46 @@
 Interpreter:
--- Checking objects5.as:
+-- Checking actors.as:
 let ignore : (async ()) -> ()
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()}
 let tictac_async : {tac_async : Int -> async (); tic_async : Int -> async ()}
--- Interpreting objects5.as:
+-- Interpreting actors.as:
 -> message tic_msg(10)
 tic_async(10)
-  -> async objects5.as:10.33-10.77
+  -> async actors.as:10.33-10.77
   <= async _ #0
 -> message tic_msg_async(10)
--> async objects5.as:21.9-21.18
-objects5.as:22.9-22.12: execution error, arithmetic overflow
+-> async actors.as:21.9-21.18
+actors.as:22.9-22.12: execution error, arithmetic overflow
 <- message tic_msg(10)
   tic_msg(10)
     -> message tac_msg(9)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   tac_async(9)
-    -> async objects5.as:11.33-11.77
+    -> async actors.as:11.33-11.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(10)
   tic_msg_async(10)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
-<- async objects5.as:21.9-21.18
-objects5.as:21.15-21.18: execution error, arithmetic overflow
+<- async actors.as:21.9-21.18
+actors.as:21.15-21.18: execution error, arithmetic overflow
 <- message tac_msg(9)
   tac_msg(9)
     -> message tic_msg(8)
     <= ()
-<- async objects5.as:11.33-11.77
+<- async actors.as:11.33-11.77
   tic_async(8)
-    -> async objects5.as:10.33-10.77
+    -> async actors.as:10.33-10.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   -> message tac_msg_async(9)
   ignore(async _ #0)
     <= ()
@@ -49,29 +49,29 @@ objects5.as:21.15-21.18: execution error, arithmetic overflow
   tic_msg(8)
     -> message tac_msg(7)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   tac_async(7)
-    -> async objects5.as:11.33-11.77
+    -> async actors.as:11.33-11.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(9)
   tac_msg_async(9)
-    -> async objects5.as:17.37-17.85
+    -> async actors.as:17.37-17.85
     <= async _ #0
 <- message tac_msg(7)
   tac_msg(7)
     -> message tic_msg(6)
     <= ()
-<- async objects5.as:11.33-11.77
+<- async actors.as:11.33-11.77
   tic_async(6)
-    -> async objects5.as:10.33-10.77
+    -> async actors.as:10.33-10.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects5.as:17.37-17.85
+<- async actors.as:17.37-17.85
   -> message tic_msg_async(8)
   ignore(async _ #0)
     <= ()
@@ -80,29 +80,29 @@ objects5.as:21.15-21.18: execution error, arithmetic overflow
   tic_msg(6)
     -> message tac_msg(5)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   tac_async(5)
-    -> async objects5.as:11.33-11.77
+    -> async actors.as:11.33-11.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(8)
   tic_msg_async(8)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
 <- message tac_msg(5)
   tac_msg(5)
     -> message tic_msg(4)
     <= ()
-<- async objects5.as:11.33-11.77
+<- async actors.as:11.33-11.77
   tic_async(4)
-    -> async objects5.as:10.33-10.77
+    -> async actors.as:10.33-10.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   -> message tac_msg_async(7)
   ignore(async _ #0)
     <= ()
@@ -111,29 +111,29 @@ objects5.as:21.15-21.18: execution error, arithmetic overflow
   tic_msg(4)
     -> message tac_msg(3)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   tac_async(3)
-    -> async objects5.as:11.33-11.77
+    -> async actors.as:11.33-11.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(7)
   tac_msg_async(7)
-    -> async objects5.as:17.37-17.85
+    -> async actors.as:17.37-17.85
     <= async _ #0
 <- message tac_msg(3)
   tac_msg(3)
     -> message tic_msg(2)
     <= ()
-<- async objects5.as:11.33-11.77
+<- async actors.as:11.33-11.77
   tic_async(2)
-    -> async objects5.as:10.33-10.77
+    -> async actors.as:10.33-10.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects5.as:17.37-17.85
+<- async actors.as:17.37-17.85
   -> message tic_msg_async(6)
   ignore(async _ #0)
     <= ()
@@ -142,29 +142,29 @@ objects5.as:21.15-21.18: execution error, arithmetic overflow
   tic_msg(2)
     -> message tac_msg(1)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   tac_async(1)
-    -> async objects5.as:11.33-11.77
+    -> async actors.as:11.33-11.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(6)
   tic_msg_async(6)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
 <- message tac_msg(1)
   tac_msg(1)
     -> message tic_msg(0)
     <= ()
-<- async objects5.as:11.33-11.77
+<- async actors.as:11.33-11.77
   tic_async(0)
-    -> async objects5.as:10.33-10.77
+    -> async actors.as:10.33-10.77
     <= async _ #0
   ignore(async _ #0)
     <= ()
   <= ()
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   -> message tac_msg_async(5)
   ignore(async _ #0)
     <= ()
@@ -172,60 +172,60 @@ objects5.as:21.15-21.18: execution error, arithmetic overflow
 <- message tic_msg(0)
   tic_msg(0)
     <= ()
-<- async objects5.as:10.33-10.77
+<- async actors.as:10.33-10.77
   <= ()
 <- message tac_msg_async(5)
   tac_msg_async(5)
-    -> async objects5.as:17.37-17.85
+    -> async actors.as:17.37-17.85
     <= async _ #0
-<- async objects5.as:17.37-17.85
+<- async actors.as:17.37-17.85
   -> message tic_msg_async(4)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(4)
   tic_msg_async(4)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   -> message tac_msg_async(3)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(3)
   tac_msg_async(3)
-    -> async objects5.as:17.37-17.85
+    -> async actors.as:17.37-17.85
     <= async _ #0
-<- async objects5.as:17.37-17.85
+<- async actors.as:17.37-17.85
   -> message tic_msg_async(2)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(2)
   tic_msg_async(2)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   -> message tac_msg_async(1)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tac_msg_async(1)
   tac_msg_async(1)
-    -> async objects5.as:17.37-17.85
+    -> async actors.as:17.37-17.85
     <= async _ #0
-<- async objects5.as:17.37-17.85
+<- async actors.as:17.37-17.85
   -> message tic_msg_async(0)
   ignore(async _ #0)
     <= ()
   <= ()
 <- message tic_msg_async(0)
   tic_msg_async(0)
-    -> async objects5.as:16.37-16.85
+    -> async actors.as:16.37-16.85
     <= async _ #0
-<- async objects5.as:16.37-16.85
+<- async actors.as:16.37-16.85
   <= ()
--- Finished objects5.as:
+-- Finished actors.as:
 let ignore : (async ()) -> () = func
 let tictac_actor : actor {tac_msg : Int -> (); tic_msg : Int -> ()} = actor {tac_msg = func; tic_msg = func}
 let tictac_actor_async : actor {tac_msg_async : Int -> async (); tic_msg_async : Int -> async ()} = actor {tac_msg_async = func; tic_msg_async = func}
@@ -512,4 +512,4 @@ compile_exp: (ObjE
   (elem 0 (offset (i32.const 0)) 0 1 2 3)
 )
 Interpreting the .wat:
-objects5.wat:43.5-43.18: runtime trap: unreachable executed
+actors.wat:43.5-43.18: runtime trap: unreachable executed
