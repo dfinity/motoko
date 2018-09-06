@@ -1,9 +1,9 @@
 Interpreter:
--- Checking write-before-init.as:
+-- Checking TRAP-write-before-init.as:
 var x : Int
--- Interpreting write-before-init.as:
-write-before-init.as:1.1-1.2: execution error, accessing identifier before its definition
--- Finished write-before-init.as:
+-- Interpreting TRAP-write-before-init.as:
+TRAP-write-before-init.as:1.1-1.2: execution error, accessing identifier before its definition
+-- Finished TRAP-write-before-init.as:
 var x : Int = _
 
 Compiler:
@@ -11,17 +11,27 @@ Compiler:
   (type $0 (func))
   (type $1 (func (param i32 i32) (result i32)))
   (table $0 1 1 anyfunc)
-  (memory $0 100)
+  (memory $0 1024)
   (global $0 (mut i32) (i32.const 0))
   (func $0
     (type 0)
     (local i32 i32)
-    (i32.const 1)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
     (set_local 1)
+    (get_local 1)
+    (i32.const 1)
+    (i32.store)
     (i32.const 0)
     (drop)
+    (get_local 1)
     (i32.const 0)
-    (tee_local 1)
+    (i32.store)
+    (get_local 1)
+    (i32.load)
     (drop)
   )
   (start 0)

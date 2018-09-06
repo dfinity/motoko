@@ -9,7 +9,7 @@ Compiler:
   (type $0 (func))
   (type $1 (func (param i32 i32) (result i32)))
   (table $0 1 1 anyfunc)
-  (memory $0 100)
+  (memory $0 1024)
   (global $0 (mut i32) (i32.const 0))
   (func $0 (type 0) (local i32) (drop))
   (start 0)

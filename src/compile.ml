@@ -156,7 +156,8 @@ let _alloc env : instr list = (* expect the size on the stack, returns the point
     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
     nr (SetGlobal heap_ptr)]
 
-let allocn (n : int32) : instr list = (* expect the size (in words), returns the pointer *)
+let allocn (n : int32) : instr list =
+  (* expect the size (in words), returns the pointer *)
   [ nr (GetGlobal heap_ptr);
     nr (GetGlobal heap_ptr);
     nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l n))));
@@ -198,45 +199,43 @@ let compile_relop op = match op with
   | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ]
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
-let rec compile_lexp (env : E.t) exp code = match exp.it with
-  | VarE var -> (match E.lookup_var env var.it with
-      | Some i -> code @ [ nr (SetLocal i) ]
-      | None   -> [nr Unreachable])
-  | IdxE (e1,e2) ->
-     compile_exp env e1 @ (* offset to array *)
-     compile_exp env e2 @ (* idx *)
-     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
-     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
-     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
-     code @
-     store_field 0l
-  | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
-
-and compile_lvar env var = match E.lookup_var env var with
-  | Some i -> [ nr (SetLocal i) ]
-  | None   -> [ nr Unreachable ]
-
-and compile_var env var = match E.lookup_var env var with
+let rec get_var_loc env var = match E.lookup_var env var with
   | Some i -> [ nr (GetLocal i) ]
   | None   -> [ nr Unreachable ]
 
-and compile_exp (env : E.t) exp = match exp.it with
-  | VarE var -> compile_var env var.it
-  | AssignE (e1,e2) ->
-     let code1 = compile_exp env e2 in
-     compile_lexp env e1 code1 @
-     compile_unit
+and set_var_loc env var = match E.lookup_var env var with
+  | Some i -> [ nr (SetLocal i) ]
+  | None   -> [ nr Unreachable ]
+
+(* Calculate a memory location *)
+and compile_lexp (env : E.t) exp = match exp.it with
+  | VarE var ->
+     get_var_loc env var.it
   | IdxE (e1,e2) ->
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
-     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
+  | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
+
+(* Returns an *value*. This may be a pointer (e.g. for function,
+array, tuple, object), but before storing it in a variable it
+needs to be put inside another box.  *)
+and compile_exp (env : E.t) exp = match exp.it with
+  | VarE _ | IdxE _ ->
+     compile_lexp env exp @
      load_field 0l
+  | AssignE (e1,e2) ->
+     compile_lexp env e1 @
+     compile_exp env e2 @
+     store_field 0l @
+     compile_unit
   | LitE l_ref ->
      compile_lit !l_ref
   | AssertE e1 ->
-     compile_exp env e1 @ [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
+     compile_exp env e1 @
+     [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
   | NotE e ->
      compile_exp env e @
      [ nr (If ([I32Type], compile_false, compile_true)) ]
@@ -282,7 +281,6 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
-  | TupE [] -> compile_unit
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
      (* Allocate memory, and put position on the stack (return value) *)
@@ -304,9 +302,16 @@ and compile_exp (env : E.t) exp = match exp.it with
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add 1l (List.fold_left max 0l (List.map fst fis)) in
      (* Allocate memory *)
-     let (env1, ri) = E.add_local env name.it in
+     let ri = E.add_anon_local env I32Type in
      allocn n @
      [ nr (SetLocal (nr ri)) ] @
+
+     (* An extra indirection for the 'this' pointer *)
+     let (env1, ti) = E.add_local env name.it in
+     allocn 1l @
+     [ nr (TeeLocal (nr ti)) ] @
+     [ nr (GetLocal (nr ri)) ] @
+     store_field 0l @
 
      let init_field (i, e) : Wasm.Ast.instr list =
         [ nr (GetLocal (nr ri)) ] @
@@ -359,25 +364,33 @@ We could do this in two separate functions, but I chose to do it in one
 *)
 
 
-and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
+and compile_pat env pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list  = match pat.it with
   (* So far, only irrefutable patterns *)
   (* The undestructed value is on top of the stack. *)
   (* The returned code consumes it, and fills all the variables. *)
-  | WildP -> (env, [ nr Drop ])
+  | WildP -> (env, [], [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env p
   | VarP name ->
       let (env1,i) = E.add_local env name.it; in
-      (env1, [ nr (SetLocal (nr i) ) ])
+      let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
+      let code =
+        [ nr (SetLocal (E.tmp_local env));
+          nr (GetLocal (nr i));
+          nr (GetLocal (E.tmp_local env)) ] @
+          store_field 0l in
+      (env1, alloc_code, code)
   | TupP ps ->
       let rec go i ps env = match ps with
-        | [] -> (env, [ nr Drop ])
+        | [] -> (env, [], [ nr Drop ])
         | (p::ps) ->
-          let (env1, code1) = compile_pat env p in
-          let (env2, code2) = go (i+1) ps env1 in
-          (env2, dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
+          let (env1, alloc_code1, code1) = compile_pat env p in
+          let (env2, alloc_code2, code2) = go (i+1) ps env1 in
+          ( env2,
+            alloc_code1 @ alloc_code2,
+            dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
       go 0 ps env
 
-  | _ -> todo "compile_pat" (Arrange.pat pat) (env, [ nr Drop ])
+  | _ -> todo "compile_pat" (Arrange.pat pat) (env, [], [ nr Drop ])
 
 and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.instr list) = match dec.it with
   | TypD _ -> (pre_env, [], fun _ -> [])
@@ -388,26 +401,41 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       code @ drop
     )
   | LetD (p, e) ->
-    let (pre_env1, code2) = compile_pat pre_env p in
-    ( pre_env1, [], fun env ->
+    let (pre_env1, alloc_code, code2) = compile_pat pre_env p in
+    ( pre_env1, alloc_code, fun env ->
       let code1 = compile_exp env e in
       let stack_fix = if last then dup env else [] in
       code1 @ stack_fix @ code2)
   | VarD (name, e) ->
       let (pre_env1, i) = E.add_local pre_env name.it in
-      ( pre_env1, [], fun env ->
+
+      let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
+
+      ( pre_env1, alloc_code, fun env ->
         let code1 = compile_exp env e in
-        let cmd x = if last then TeeLocal x else SetLocal x in
-        code1 @ [ nr (cmd (nr i) ) ])
+        [ nr (GetLocal (nr i)) ] @
+        code1 @
+        store_field 0l @
+        if last then [ nr (GetLocal (nr i)) ] @ load_field 0l else [])
+
   | FuncD (name, [], p, rt, e) ->
-      let (pre_env1, li) = E.add_local pre_env name.it in
+      let li = E.add_anon_local pre_env I32Type in
+      let (pre_env1, vi) = E.add_local pre_env name.it in
       (* Get captured variables *)
       let captured = Freevars.captured p e in
 
       let alloc_code =
         (* Allocate a heap object for the function *)
         allocn (Wasm.I32.of_int_u (1 + List.length captured)) @
-        [ nr (SetLocal (nr li)) ] in
+        [ nr (SetLocal (nr li)) ] @
+
+        (* Allocate an extra indirection for the variable *)
+        allocn 1l @
+        [ nr (TeeLocal (nr vi)) ] @
+        [ nr (GetLocal (nr li)) ] @
+        store_field 0l
+      in
+
 
       ( pre_env1, alloc_code, fun env ->
 
@@ -423,7 +451,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         (* Store all captured values *)
         let store_capture i v =
           [ nr (GetLocal (nr li)) ] @
-          compile_var env v @
+          get_var_loc env v @
           store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
         if last then [ nr (GetLocal (nr li)) ] else [])
@@ -450,18 +478,19 @@ and compile_func env captured p (e : exp) : func =
   let load_capture i v =
       [ nr (GetLocal (E.unary_closure_local env2)) ] @
       load_field (Wasm.I32.of_int_u (1+i)) @
-      compile_lvar env2 v in
-  let code1 = List.concat (List.mapi load_capture captured) in
+      set_var_loc env2 v in
+  let closure_code = List.concat (List.mapi load_capture captured) in
   (* Destruct the argument *)
-  let (env3, code2) = compile_pat env2 p in
-  let code3 = compile_exp env3 e in
+  let (env3, alloc_args_code, destruct_args_code) = compile_pat env2 p in
+  let body_code = compile_exp env3 e in
   nr { ftype = nr E.unary_fun_ty_i;
        locals = E.get_locals env3;
        body =
-        code1 @
+        closure_code @
+        alloc_args_code @
         [ nr (GetLocal (E.unary_param_local env3)) ] @
-        code2 @
-        code3
+        destruct_args_code @
+        body_code
      }
 
 and compile_start_func env ds : func =
@@ -493,7 +522,7 @@ let compile (prog  : Syntax.prog) : unit =
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
       start = Some (nr i);
       globals = [ heap_ptr_global ];
-      memories = [nr {mtype = MemoryType {min = 100l; max = None}} ];
+      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     };
   in
   Wasm.Print.module_ stdout 100 m
