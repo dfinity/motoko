@@ -5,24 +5,86 @@ overflow.as:17.9-17.24: execution error, arithmetic overflow
 -- Finished overflow.as:
 
 Compiler:
-Fatal error: exception Z.Overflow
-Raised by primitive operation at file "compile.ml", line 182, characters 63-77
-Called from file "compile.ml", line 257, characters 5-23
-Called from file "compile.ml", line 428, characters 18-35
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 492, characters 72-84
-Called from file "compile.ml", line 494, characters 15-27
-Called from file "compile.ml", line 523, characters 13-33
-Called from file "compile.ml", line 532, characters 20-50
-Called from file "main.ml", line 137, characters 4-24
-Re-raised at file "main.ml", line 144, characters 19-22
-Called from file "list.ml", line 85, characters 12-15
-Called from file "main.ml", line 202, characters 25-66
-Empty .wat file!
+compile_lit: Overflow in literal 72462525423451963967165868
+compile_lit: Overflow in literal 1314235251543424342678909
+compile_binop: DivOp
+compile_lit: Overflow in literal 1152921504606846976
+compile_lit: Overflow in literal 1152921504606846976
+compile_lit: Overflow in literal 6917529027641081856
+compile_lit: Overflow in literal 2305843009213693952
+compile_lit: Overflow in literal 4611686018427387904
+compile_lit: Overflow in literal 2305843009213693952
+compile_lit: Overflow in literal 4611686018427387903
+compile_lit: Overflow in literal 4611686018427387904
+compile_lit: Overflow in literal 4294967295
+compile_lit: Overflow in literal 4294967296
+compile_lit: Overflow in literal 9223372036854775808
+compile_lit: Overflow in literal 9223372036854775808
+compile_lit: Overflow in literal 9223372036854775807
+compile_lit: Overflow in literal 9223372036854775808
+(module
+  (type $0 (func))
+  (type $1 (func (param i32 i32) (result i32)))
+  (table $0 1 1 anyfunc)
+  (memory $0 1024)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 0)
+    (local i32)
+    (unreachable)
+    (unreachable)
+    (i32.add)
+    (drop)
+    (unreachable)
+    (unreachable)
+    (i32.sub)
+    (drop)
+    (unreachable)
+    (unreachable)
+    (i32.mul)
+    (drop)
+    (unreachable)
+    (unreachable)
+    (i32.add)
+    (drop)
+    (unreachable)
+    (unreachable)
+    (i32.sub)
+    (drop)
+    (unreachable)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
+    (unreachable)
+    (i32.sub)
+    (drop)
+    (unreachable)
+    (i32.const 7)
+    (i32.mul)
+    (drop)
+    (unreachable)
+    (set_local 0)
+    (i32.const 0)
+    (get_local 0)
+    (i32.sub)
+    (i32.const 8)
+    (i32.mul)
+    (drop)
+    (i32.const 268435456)
+    (i32.const 0)
+    (unreachable)
+    (drop)
+    (unreachable)
+    (unreachable)
+    (i32.mul)
+    (tee_local 0)
+    (get_local 0)
+    (drop)
+    (drop)
+  )
+  (start 0)
+  (elem 0 (offset (i32.const 0)) 0)
+)
+Interpreting the .wat:
+overflow.wat:10.5-10.18: runtime trap: unreachable executed
