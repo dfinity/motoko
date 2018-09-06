@@ -88,8 +88,8 @@ test()
 let Account : Int -> Account = func
 let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
-let bank : Bank = Bank
-let main : async (Account, Account) = async (Account, Account)
+let bank : Bank = Bank(...)
+let main : async (Account, Account) = async (Account(...), Account(...))
 let show : (Text, Account) -> () = func
 let test : () -> async (Account, Account) = func
 let transfer : (Account, Account, Int) -> async () = func

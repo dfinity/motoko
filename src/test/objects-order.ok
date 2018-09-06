@@ -3,17 +3,7 @@ Interpreter:
 var x : Int
 -- Interpreting objects-order.as:
 -- Finished objects-order.as:
-
-objects-order.as:8.14-8.15: fatal error, Invalid_argument("as_int")
-
-Raised at file "value.ml", line 163, characters 22-42
-Called from file "value.ml", line 215, characters 35-45
-Called from file "main.ml", line 37, characters 18-62
-Called from file "map.ml", line 270, characters 20-25
-Called from file "main.ml", line 79, characters 6-42
-
-Last context:
-x = 4
+var x : Int = 4
 
 Compiler:
 (module

@@ -27,27 +27,15 @@ test_answer3()
   <= ()
 -- Finished closures.as:
 let add1 : Nat -> Nat = func
-
-closures.as:25.42-25.44: fatal error, Invalid_argument("as_nat")
-
-Raised at file "value.ml", line 163, characters 22-42
-Called from file "value.ml", line 214, characters 34-44
-Called from file "main.ml", line 37, characters 18-62
-Called from file "map.ml", line 270, characters 20-25
-Called from file "map.ml", line 270, characters 10-18
-Called from file "main.ml", line 79, characters 6-42
-
-Last context:
-add1 = func
-answer = 42
-answer2 = 42
-answer3 = 51
-answers = [43, 44]
-fs = [func, func, func]
-test_answer = func
-test_answer2 = func
-test_answer3 = func
-test_answers = func
+var answer : Nat = 42
+let answer2 : Nat = 42
+var answer3 : Nat = 51
+var answers : Nat[] = [43, 44]
+let fs : (Nat -> Nat)[] = [func, func, func]
+let test_answer : Nat -> () = func
+let test_answer2 : () -> () = func
+let test_answer3 : () -> () = func
+let test_answers : Nat -> () = func
 
 Compiler:
 (module

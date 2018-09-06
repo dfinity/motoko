@@ -5,18 +5,7 @@ var i : Nat
 -- Interpreting fib.as:
 -- Finished fib.as:
 let a : var Nat[] = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
-
-fib.as:20.18-20.20: fatal error, Invalid_argument("as_nat")
-
-Raised at file "value.ml", line 163, characters 22-42
-Called from file "value.ml", line 214, characters 34-44
-Called from file "main.ml", line 37, characters 18-62
-Called from file "map.ml", line 270, characters 20-25
-Called from file "main.ml", line 79, characters 6-42
-
-Last context:
-a = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
-i = 10
+var i : Nat = 10
 
 Compiler:
 (module

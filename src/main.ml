@@ -34,7 +34,7 @@ let print_dyn_ve context dyn_ve =
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
       (match Lib.Promise.value_opt d with
       | None -> "_"
-      | Some v -> Value.string_of_val context.Typing.cons t' v
+      | Some v -> Value.string_of_val context.Typing.cons t v
       )
   ) dyn_ve
 
