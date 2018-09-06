@@ -18,6 +18,7 @@ fac(5)
 let fac : Nat -> Nat = func
 
 Compiler:
+Could not find fac
 (module
   (type $0 (func (param i32) (result i32)))
   (type $1 (func (param i32) (result i32)))
@@ -38,15 +39,17 @@ Compiler:
     (get_local 0)
     (i32.const 1)
     (i32.sub)
-    (i32.const 0)
+    (unreachable)
     (call_indirect (type 1))
     (i32.mul)
   )
   (func $1
     (type 3)
-    (local i32)
-    (i32.const 5)
+    (local i32 i32)
     (i32.const 0)
+    (set_local 1)
+    (i32.const 5)
+    (get_local 1)
     (call_indirect (type 0))
     (i32.const 120)
     (i32.eq)
@@ -57,3 +60,4 @@ Compiler:
   (elem 0 (offset (i32.const 0)) 0 1)
 )
 Interpreting the .wat:
+fac.wat:21.5-21.18: runtime trap: unreachable executed

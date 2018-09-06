@@ -105,20 +105,20 @@ compile_dec: (ClassD
     Public
   )
 )
-compile_exp: (CallE (DotE (VarE c) dec) (TupE))
+Could not find c
 Could not find Counter
 (module
   (type $0 (func (result i32)))
   (type $1 (func (result i32)))
-  (type $2 (func (param i32) (result i32)))
+  (type $2 (func (result i32)))
   (type $3 (func (param i32) (result i32)))
-  (type $4 (func))
+  (type $4 (func (param i32) (result i32)))
+  (type $5 (func))
   (table $0 3 3 anyfunc)
   (memory $0 100)
   (global $0 (mut i32) (i32.const 0))
-  (func $0 (type 3) (local i32) (i32.const 0))
-  (func $1
-    (type 1)
+  (func $0
+    (type 2)
     (local i32 i32)
     (i32.const 10)
     (set_local 1)
@@ -129,6 +129,10 @@ Could not find Counter
       (if
         (then
           (unreachable)
+          (i32.const 0)
+          (i32.add)
+          (i32.load align=1)
+          (call_indirect (type 1))
           (drop)
           (get_local 1)
           (i32.const 1)
@@ -143,13 +147,19 @@ Could not find Counter
     )
     (i32.const 0)
   )
+  (func $1 (type 4) (local i32) (i32.const 0))
   (func $2
-    (type 4)
-    (local i32 i32)
+    (type 5)
+    (local i32 i32 i32 i32)
+    (i32.const 1)
+    (set_local 1)
     (i32.const 10)
     (unreachable)
-    (set_local 1)
-    (i32.const 1)
+    (call_indirect (type 3))
+    (set_local 2)
+    (i32.const 0)
+    (set_local 3)
+    (get_local 3)
     (call_indirect (type 0))
     (tee_local 0)
     (get_local 0)
@@ -160,4 +170,4 @@ Could not find Counter
   (elem 0 (offset (i32.const 0)) 0 1 2)
 )
 Interpreting the .wat:
-counter.wat:41.5-41.18: runtime trap: unreachable executed
+counter.wat:48.5-48.18: runtime trap: unreachable executed

@@ -28,14 +28,6 @@ module E = struct
       ref := !ref @ [ x ];
       i
 
-  (* HACK, obviously *)
-  let update_reg (ref : 'a list ref) i (y : 'a) =
-    let rec update xs i = match xs, i with
-              | ([], _)      -> []
-              | (_ :: xs, 0) -> (y :: xs)
-              | (x :: xs, i) -> x :: update xs (i - 1) in
-    ref := update !ref (int_of_string (Wasm.I32.to_string_u i))
-
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
@@ -49,9 +41,6 @@ module E = struct
     ld : int32 NameEnv.t;
     (* Local variables *)
     local_vars_env : int32 NameEnv.t;
-    (* Functions (HACK: They are not really seperate,
-       but for now we only support calls to known functions) *)
-    funcs_env : int32 NameEnv.t;
     (* Field labels to index *)
     (* (This is for the prototypical simple tuple-implementations for objects *)
     field_env : int32 NameEnv.t ref;
@@ -61,7 +50,6 @@ module E = struct
   let mk_global (_ : unit) : t = {
     funcs = ref [];
     func_types = ref [];
-    funcs_env = NameEnv.empty;
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
     local_vars_env = NameEnv.empty;
@@ -96,18 +84,7 @@ module E = struct
 
   let get_locals (env : t) = !(env.locals)
 
-  let lookup_fun env var =
-    match NameEnv.find_opt var.it env.funcs_env with
-      | Some i -> Some i
-      | None   -> Printf.eprintf "Could not find %s\n" var.it; None
-
-  let add_anon_fun (env : t) f = reg env.funcs f
-
-  let add_fun (env : t) name f =
-      let i = reg env.funcs f; in
-      ({ env with funcs_env = NameEnv.add name i env.funcs_env }, i)
-
-  let update_fun (env : t) i f = update_reg env.funcs i f
+  let add_fun (env : t) f = reg env.funcs f
 
   let get_funcs (env : t) = !(env.funcs)
 
@@ -314,17 +291,16 @@ and compile_exp (env : E.t) exp = match exp.it with
         [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
      in
      List.concat (List.map init_field fis)
-  | CallE ({it = VarE var; _}, [], e) ->
-     let args = de_tupleE e in
-     List.concat (List.map (compile_exp env) args) @
+  | CallE (e1, [], e2) ->
+     let args = de_tupleE e2 in
 
+     let code1 = compile_exp env e1 in
      let ty = nr (FuncType (List.map (fun _ -> I32Type) args, [I32Type])) in
      let ti = E.add_type env ty in
 
-     (match E.lookup_fun env var with
-        | Some i -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 i)));
-                      nr (CallIndirect (nr ti)) ]
-        | None   -> [nr Unreachable])
+     List.concat (List.map (compile_exp env) args) @
+     code1 @ (* TODO: Wrong order! *)
+     [ nr (CallIndirect (nr ti)) ]
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
 
@@ -409,9 +385,8 @@ and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match de
         let code1 = compile_exp env e in
         let cmd x = if last then TeeLocal x else SetLocal x in
         code1 @ [ nr (cmd (nr i) ) ])
-  | FuncD ({it = name; _}, [], p, rt, e) ->
-      let dummy_fun = nr {ftype = nr 0l; locals = []; body = []} in
-      let (pre_env1, i) = E.add_fun pre_env name dummy_fun in
+  | FuncD (name, [], p, rt, e) ->
+      let (pre_env1, li) = E.add_local pre_env name in
       ( pre_env1, fun env ->
         let ps = de_tupleP p in
         let rt' = match rt.it with | TupT [ty]-> [I32Type]
@@ -419,9 +394,10 @@ and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match de
         let ty = nr (FuncType (List.map (fun _ -> I32Type) ps, rt')) in
         let params = param_names ps in
         let f = compile_func_body env params ty false e in
-        E.update_fun env i f;
-        let stack_fix = if last then compile_unit else [] in
-        stack_fix)
+        let fi = E.add_fun env f in
+	let code = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] in
+        let cmd x = if last then TeeLocal x else SetLocal x in
+        code @ [ nr (cmd (nr li) ) ])
   | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, fun _ -> [])
 
 and compile_decs env decs : Wasm.Ast.instr list =
@@ -454,7 +430,7 @@ let compile (prog  : Syntax.prog) : unit =
     let start_fun_ty = nr (FuncType ([], [])) in
     let env = E.mk_global () in
     let start_fun = compile_func_body env [] start_fun_ty true (nr__ (BlockE prog.it)) in
-    let i = E.add_anon_fun env start_fun in
+    let i = E.add_fun env start_fun in
 
     let funcs = E.get_funcs env in
     let nf = List.length funcs in
