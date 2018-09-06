@@ -1,34 +1,114 @@
 # ActorScript Implementation Strategy
 
-## Basic Principles
+## Subtyping
 
-* All heap allocation via Primea
+* All subtyping is non-coercive and thus zero-cost and higher-order.
 
-* Actor classes and objects compile to modules and module instances
-  - closing over environment via bound imports
-
-* Regular objects compile to label-sorted elembufs
-  - record of closures closing over private fields
-  - numeric fields collected in databuf
-  - mutable fields via indirections
-
-* Subtyping is coercive
-
-* Closures compile to closure funcrefs
-  - locals that are closed over compile to databufs/elembufs
+* Q: Also have first-order implicit coercibility?
 
 
-## Primea Extensions
+## Heap
 
-* Mutable elembufs and databufs, cannot be shared
+* Uniform representation with 32 bit word size.
 
-* Load and store functions for buffers
+* Use pointer tagging in LSB;.
+  - 1 for pointers, 0 for scalars.
+  - Pointers are real address minus 1; corrected by offset immediate in load/store instructions.
 
-* Closures as funcrefs
+* Q: Allocation and GC strategies?
+
+
+## Primitive types
+
+* Nat and Int compile to heap-allocated big nums; unboxed for small numbers <= 31 bit.
+
+* Word8/16 compile to unboxed scalars; Word32/64 are boxed.
+  - May unbox locally.
+
+* Characters are scalars (unicode code points).
+
+* Text is heap-allocated.
+
+
+## Tuples
+
+* Heap-allocated when first-class.
+
+* Flattened when used as function parameter or result.
+
+* Q: How avoid calling convention mismatch when instantiating polymorphic function with tuple type?
+  - Don't make tuples subtypes of Any, thereby disallowing their use in instantiation?
+
+
+## Options
+
+* Represent null as null pointer.
+
+* Q: union or sum?
+  - If union, don't make it subtype of Any?
+  - If sum, use coercibility?
+
+
+## Objects
+
+* Compile to heap-allocated lookup table over field name hashes.
+  - Either as hash table or ordered list.
+
+* Records of closures and regular public fields; private fields are closed over.
+
+* Field names are hashed; hashes are required to be unique per type.
+
+
+## Functions
+
+* Compile to heap-allocated closures as usual.
+
+* Definitions lifted to the surrounding actor.
+
+* Closed-over locals need indirection through heap if mutable or if definedness cannot be proved.
+
+
+## Actor Objects
+
+* Compile to immediately instantiated modules.
+
+* Private field become regular globals or functions.
+
+* Public methods become exported functions.
+  - In general, have to generate wrapper functions to forward external calls to pre-existing local closure.
+
+* Instantiate via hypervisor; build record of functions forwarding to extracted funcrefs.
+
+* Closed-over definitions must be turned into imports.
+  - Types directly mapping to Wasm types become (immutable) global imports.
+  - Q: What about heap-allocated types? Serialise?
+  - Q: What about functions?
+  - Q: Disallow closing over mutable definitions?
+  - Q: What about definedness checks?
+
+* Closure imports are pre-bound via hypervisor interface.
+
+
+## Actor Classes
+
+* Constructor compiles to function instantiating the actor object.
+
+
+## Async
+
+TODO
+
+
+## Serialisation
+
+TODO
+
+
+# Hypervisor Extensions needed
+
+* Closures as funcrefs?
 
 * Binding imports for modulerefs
 
 * Efficiently extract all exports from an actor
   - as sequence of reference in an elembuf?
-
-* Intrefs?

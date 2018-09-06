@@ -72,7 +72,7 @@ test()
     <= ()
 -- Finished counter.as:
 let Counter : Int -> Counter = func
-let c : Counter = Counter
+let c : Counter = Counter(...)
 let show : Int -> () = func
 let test : () -> () = func
 

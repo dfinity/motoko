@@ -15,8 +15,7 @@ type ret_env = V.value V.cont option
 type scope = val_env
 
 type context =
-  {
-    vals : val_env;
+  { vals : val_env;
     labs : lab_env;
     rets : ret_env;
     async : bool
@@ -29,7 +28,7 @@ let empty_context =
   { vals = V.Env.empty;
     labs = V.Env.empty;
     rets = None;
-    async = false
+    async = false;
   }
 
 
@@ -121,10 +120,10 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit context lit)
   | UnE (op, exp1) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.immutable exp.note.note_typ in
     interpret_exp context exp1 (fun v1 -> k (Operator.unop t op v1))
   | BinE (exp1, op, exp2) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.immutable exp.note.note_typ in
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
         k (try Operator.binop t op v1 v2 with _ ->
@@ -132,7 +131,8 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
       )
     )
   | RelE (exp1, op, exp2) ->
-    let t = T.immutable exp1.note.note_typ in
+    let t = T.join Con.Env.empty (* both types are primitive *)
+      (T.immutable exp1.note.note_typ) (T.immutable exp2.note.note_typ) in
     interpret_exp context exp1 (fun v1 ->
       interpret_exp context exp2 (fun v2 ->
         k (Operator.relop t op v1 v2)
@@ -517,7 +517,7 @@ and interpret_func context id pat f v (k : V.value V.cont) =
     printf "%s%s%s\n" (get_indent ()) id.it (V.debug_string_of_tuple_val v);
   match match_pat pat v with
   | None ->
-    trap pat.at "argument value %s does not patch parameter list"
+    trap pat.at "argument value %s does not match parameter list"
       (V.debug_string_of_val v)
   | Some ve ->
     incr call_depth;
@@ -538,9 +538,10 @@ and interpret_func context id pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog context p : scope =
+let interpret_prog context p : V.value * scope =
   call_depth := 0;
-  let r = ref V.Env.empty in
-  Scheduler.queue (fun () -> interpret_block context p.it (Some r) ignore);
+  let v = ref V.Null in
+  let ve = ref V.Env.empty in
+  Scheduler.queue (fun () -> interpret_block context p.it (Some ve) ((:=) v));
   Scheduler.run ();
-  !r
+  !v, !ve

@@ -21,8 +21,8 @@ Called from file "compile.ml", line 487, characters 72-84
 Called from file "compile.ml", line 489, characters 15-27
 Called from file "compile.ml", line 518, characters 13-33
 Called from file "compile.ml", line 527, characters 20-50
-Called from file "main.ml", line 130, characters 4-24
-Re-raised at file "main.ml", line 137, characters 19-22
+Called from file "main.ml", line 137, characters 4-24
+Re-raised at file "main.ml", line 144, characters 19-22
 Called from file "list.ml", line 85, characters 12-15
-Called from file "main.ml", line 195, characters 25-66
+Called from file "main.ml", line 202, characters 25-66
 Empty .wat file!

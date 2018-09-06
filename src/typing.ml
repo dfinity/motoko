@@ -319,12 +319,14 @@ and infer_exp' context exp : T.typ =
     T.Prim (infer_lit context lit exp.at)
   | UnE (op, exp1) ->
     let t1 = infer_exp_structural context exp1 in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not context.pre then begin
-      if not (Operator.has_unop t1 op) then
+      if not (Operator.has_unop t op) then
         error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t1)
+          (T.string_of_typ t)
     end;
-    t1
+    t
   | BinE (exp1, op, exp2) ->
     let t1 = infer_exp_structural context exp1 in
     let t2 = infer_exp_structural context exp2 in
@@ -415,8 +417,11 @@ and infer_exp' context exp : T.typ =
       error exp1.at "expected function type, found %s" (T.string_of_typ t1')
     )
   | BlockE decs ->
-    let t = infer_block context decs exp.at in
-    t
+    let t, (_, _, ce) = infer_block context decs exp.at in
+    (try T.avoid context.cons ce t with T.Unavoidable c ->
+      error exp.at "inferred block type %s contains the local class type %s"
+        (T.string_of_typ t) (Con.to_string c)
+    )
   | NotE exp1 ->
     if not context.pre then check_exp context T.bool exp1;
     T.bool
@@ -526,8 +531,11 @@ and infer_exp' context exp : T.typ =
     if not context.pre then check_exp context t exp1;
     t
   | DecE dec ->
-    let t = infer_block context [dec] exp.at in
-    t
+    let t, (_, _, ce) = infer_block context [dec] exp.at in
+    (try T.avoid context.cons ce t with T.Unavoidable c ->
+      error exp.at "inferred declaration type %s contains the local class type %s"
+        (T.string_of_typ t) (Con.to_string c)
+    )
     
 
 and check_exp context t exp =
@@ -675,7 +683,9 @@ and infer_pat' context pat : T.typ * val_env =
   | LitP lit ->
     T.Prim (infer_lit context lit pat.at), T.Env.empty
   | SignP (op, lit) ->
-    let t = T.Prim (infer_lit context lit pat.at) in
+    let t1 = T.Prim (infer_lit context lit pat.at) in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not (Operator.has_unop t op) then
       error pat.at "operator is not defined for operand type %s"
         (T.string_of_typ t);
@@ -867,15 +877,10 @@ and check_exp_field context s tfs (tfs_inner, ve) field : T.field list * val_env
 
 (* Blocks and Declarations *)
 
-and infer_block context decs at : T.typ =
+and infer_block context decs at : T.typ * scope =
   let _, _, ce as scope, ce_inner = infer_block_decs context decs in
-(*Printf.printf "[block] infer expressions\n";
-let t =*)
   let t = infer_block_exps (adjoin context scope) ce_inner decs in
-  try T.avoid context.cons ce t with T.Unavoidable c ->
-    error at "inferred block type %s contains the local class type %s"
-      (T.string_of_typ t) (Con.to_string c)
-(*in Printf.printf "[block] done\n"; t*)
+  t, scope
 
 and infer_block_exps context ce_inner decs : T.typ =
   match decs with
@@ -1119,3 +1124,6 @@ and infer_dec_valdecs context dec : val_env =
 
 let check_prog context prog : scope =
   check_block context T.unit prog.it prog.at
+
+let infer_prog context prog : T.typ * scope =
+  infer_block context prog.it prog.at

@@ -8,8 +8,7 @@ type ret_env = V.value V.cont option
 type scope = val_env
 
 type context =
-  {
-    vals : val_env;
+  { vals : val_env;
     labs : lab_env;
     rets : ret_env;
     async : bool
@@ -21,7 +20,7 @@ val adjoin : context -> scope -> context
 
 exception Trap of Source.region * string
 
-val interpret_prog : context -> Syntax.prog -> val_env
+val interpret_prog : context -> Syntax.prog -> V.value * val_env
   (* raise Trap *)
 
 val get_last_region : unit -> Source.region
