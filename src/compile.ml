@@ -309,6 +309,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      [ nr (SetLocal (nr ri)) ] @
 
      (* Bind the fields in the envrionment *)
+     (* We could omit that if we extend E.local_vars_env to also have an offset,
+        and just bind all of them to 'ri' *)
      let mk_field_ptr (env, code) (f : exp_field) =
        let (env', fi) = E.add_local env f.it.id.it in
        let offset = Wasm.I32.mul 4l (E.field_to_index env (f.it.id)) in
