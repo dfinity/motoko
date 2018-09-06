@@ -130,6 +130,7 @@ let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
 let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
@@ -176,6 +177,7 @@ let compile_lit lit = match lit with
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
   | NatLit n      -> [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
+  | NullLit       -> compile_null
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
@@ -217,13 +219,18 @@ and compile_lexp (env : E.t) exp = match exp.it with
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
+  | DotE (e, f) ->
+     let i = E.field_to_index env f in
+     compile_exp env e @
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
 (* Returns an *value*. This may be a pointer (e.g. for function,
 array, tuple, object), but before storing it in a variable it
 needs to be put inside another box.  *)
 and compile_exp (env : E.t) exp = match exp.it with
-  | VarE _ | IdxE _ ->
+  | VarE _ | IdxE _ | DotE _ ->
      compile_lexp env exp @
      load_field 0l
   | AssignE (e1,e2) ->
@@ -291,10 +298,6 @@ and compile_exp (env : E.t) exp = match exp.it with
         store_field (Wasm.I32.of_int_u i)
      in
      List.concat (List.mapi init_elem es)
-  | DotE (e, f) ->
-     let i = E.field_to_index env f in
-     compile_exp env e @
-     load_field i
   | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in

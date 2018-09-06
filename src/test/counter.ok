@@ -138,6 +138,8 @@ Could not find Counter
         (then
           (get_local 3)
           (i32.load)
+          (i32.const 0)
+          (i32.add)
           (i32.load)
           (set_local 5)
           (get_local 5)
@@ -260,4 +262,4 @@ Could not find Counter
   (elem 0 (offset (i32.const 0)) 0 1 2)
 )
 Interpreting the .wat:
-counter.wat:116.5-116.18: runtime trap: unreachable executed
+counter.wat:118.5-118.18: runtime trap: unreachable executed
