@@ -391,6 +391,9 @@ and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match de
         let fi = E.add_fun env f in
         let cmd x = if last then TeeLocal x else SetLocal x in
 
+        (* Get captured variables *)
+        let _captured = Freevars.captured p e in
+
         allocn 1l @ (* Allocate a heap object for the function *)
         dup env @ (* Duplicate position *)
         [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))); (* Store function number *)
