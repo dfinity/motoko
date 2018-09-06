@@ -297,22 +297,26 @@ and compile_exp (env : E.t) exp = match exp.it with
        nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
        nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
      ]
-  | ObjE ({it = Type.Object;_}, _, fs) ->
+  | ObjE ({it = Type.Object;_}, name, fs) ->
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
      (* Find largest index *)
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add 1l (List.fold_left max 0l (List.map fst fis)) in
-     (* Allocate memory, and put position on the stack (return value) *)
+     (* Allocate memory *)
+     let (env1, ri) = E.add_local env name.it in
      allocn n @
+     [ nr (SetLocal (nr ri)) ] @
+
      let init_field (i, e) : Wasm.Ast.instr list =
-        dup env @ (* Duplicate position *)
-	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l i))));
+        [ nr (GetLocal (nr ri));
+	  nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul 4l i))));
           nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
-	compile_exp env e @
+	compile_exp env1 e @
         [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
      in
-     List.concat (List.map init_field fis)
+     List.concat (List.map init_field fis) @
+     [ nr (GetLocal (nr ri)) ]
   | CallE (e1, [], e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
