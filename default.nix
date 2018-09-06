@@ -2,6 +2,11 @@
 
 let stdenv = nixpkgs.stdenv; in
 
+let ocaml_wasm = (import ./ocaml-wasm.nix)
+	{inherit (nixpkgs) stdenv  fetchFromGitHub ocaml;
+         inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
+	}; in
+
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
 let menhir_nix = nixpkgs.fetchurl {
@@ -29,7 +34,7 @@ stdenv.mkDerivation rec {
     menhir
     nixpkgs.ocamlPackages.findlib
     nixpkgs.ocamlPackages.ocamlbuild
-    nixpkgs.ocamlPackages.wasm
+    ocaml_wasm
     nixpkgs.ocamlPackages.zarith
   ];
 
