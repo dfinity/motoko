@@ -298,16 +298,30 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE ({it = Type.Object;_}, name, fs) ->
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
+
      (* Find largest index *)
      let max a b = if Int32.compare a b >= 0 then a else b in
-     let n = Int32.add 1l (List.fold_left max 0l (List.map fst fis)) in
+     let n = Int32.add 1l (List.fold_left max 0l (List.map (fun (f : exp_field) -> E.field_to_index env (f.it.id)) fs)) in
+
      (* Allocate memory *)
      let ri = E.add_anon_local env I32Type in
      allocn n @
      [ nr (SetLocal (nr ri)) ] @
 
+     (* Bind the fields in the envrionment *)
+     let mk_field_ptr (env, code) (f : exp_field) =
+       let (env', fi) = E.add_local env f.it.id.it in
+       let offset = Wasm.I32.mul 4l (E.field_to_index env (f.it.id)) in
+       let code' = [ nr (GetLocal (nr ri));
+                     nr (Wasm.Ast.Const (nr (Wasm.Values.I32 offset)));
+                     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+                     nr (SetLocal (nr fi)); ] in
+       (env', code @ code') in
+     let (env1, field_code) = List.fold_left mk_field_ptr (env, []) fs in
+     field_code @
+
      (* An extra indirection for the 'this' pointer *)
-     let (env1, ti) = E.add_local env name.it in
+     let (env2, ti) = E.add_local env1 name.it in
      allocn 1l @
      [ nr (TeeLocal (nr ti)) ] @
      [ nr (GetLocal (nr ri)) ] @
@@ -315,7 +329,7 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      let init_field (i, e) : Wasm.Ast.instr list =
         [ nr (GetLocal (nr ri)) ] @
-	compile_exp env1 e @
+	compile_exp env2 e @
         store_field i
      in
      List.concat (List.map init_field fis) @
