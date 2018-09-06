@@ -5,7 +5,6 @@ open Source
 open Syntax
 
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
-let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -48,13 +47,15 @@ module E = struct
   (* Common function types *)
   let start_fun_ty = nr (FuncType ([],[]))
   let start_fun_ty_i = 0l
-  let unary_fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  (* First argument is a pointer to the closure *)
+  let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let unary_fun_ty_i = 1l
   let default_fun_tys = [start_fun_ty; unary_fun_ty]
 
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
-  let unary_param_local env : var = nr 0l (* first param *)
+  let unary_closure_local env : var = nr 0l (* first param *)
+  let unary_param_local env : var = nr 1l   (* second param *)
 
   (* The global environment *)
   let mk_global (_ : unit) : t = {
@@ -72,7 +73,7 @@ module E = struct
   (* A new function *)
   let mk_fun_env env n_param =
     { env with
-      locals = ref [];
+      locals = ref [I32Type]; (* the tmp *)
       n_param = n_param;
       local_vars_env = NameEnv.empty;
       depth = 0l;
@@ -80,16 +81,17 @@ module E = struct
       }
 
   let lookup_var env var =
-    match NameEnv.find_opt var.it env.local_vars_env with
+    match NameEnv.find_opt var env.local_vars_env with
       | Some i -> Some (nr i)
-      | None   -> Printf.eprintf "Could not find %s\n" var.it; None
+      | None   -> Printf.eprintf "Could not find %s\n" var; None
 
-  let add_anon_local (env : t) ty = reg env.locals ty
+  let add_anon_local (env : t) ty =
+      let i = reg env.locals ty in
+      Wasm.I32.add env.n_param i
 
   let add_local (env : t) name =
-      let i = reg env.locals I32Type; in
-      let i' = Wasm.I32.add env.n_param i in
-      ({ env with local_vars_env = NameEnv.add name.it i' env.local_vars_env }, i')
+      let i = add_anon_local env I32Type in
+      ({ env with local_vars_env = NameEnv.add name i env.local_vars_env }, i)
 
   let get_locals (env : t) = !(env.locals)
 
@@ -139,7 +141,7 @@ let dup env : instr list = (* duplicate top element *)
   [ nr (TeeLocal (E.tmp_local env));
     nr (GetLocal (E.tmp_local env)) ]
 
-let swap env : instr list = (* swaps top elements *)
+let _swap env : instr list = (* swaps top elements *)
   let i = E.add_anon_local env I32Type in
   [ nr (SetLocal (E.tmp_local env));
     nr (SetLocal (nr i));
@@ -191,7 +193,7 @@ let compile_relop op = match op with
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
 let rec compile_lexp (env : E.t) exp code = match exp.it with
-  | VarE var -> (match E.lookup_var env var with
+  | VarE var -> (match E.lookup_var env var.it with
       | Some i -> code @ [ nr (SetLocal i) ]
       | None   -> [nr Unreachable])
   | IdxE (e1,e2) ->
@@ -204,10 +206,16 @@ let rec compile_lexp (env : E.t) exp code = match exp.it with
      [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
+and compile_lvar env var = match E.lookup_var env var with
+  | Some i -> [ nr (SetLocal i) ]
+  | None   -> [ nr Unreachable ]
+
+and compile_var env var = match E.lookup_var env var with
+  | Some i -> [ nr (GetLocal i) ]
+  | None   -> [ nr Unreachable ]
+
 and compile_exp (env : E.t) exp = match exp.it with
-  | VarE var -> (match E.lookup_var env var with
-      | Some i -> [ nr (GetLocal i) ]
-      | None   -> [ nr Unreachable ])
+  | VarE var -> compile_var env var.it
   | AssignE (e1,e2) ->
      let code1 = compile_exp env e2 in
      compile_lexp env e1 code1 @
@@ -273,7 +281,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
      (* Allocate memory, and put position on the stack (return value) *)
-     allocn (Wasm.I32.of_int_u (4 * List.length es)) @
+     allocn (Wasm.I32.of_int_u (List.length es)) @
      let init_elem i e : Wasm.Ast.instr list =
         dup env @ (* Duplicate position *)
 	[ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*i)))));
@@ -309,33 +317,43 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
 
+     (* Get the closure pointer *)
+     let i = E.add_anon_local env I32Type in
      code1 @
-     [ nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+     [ nr (SetLocal (nr i)) ] @
+
+     (* First arg: The closure pointer *)
+     [ nr (GetLocal (nr i)) ] @
+     (* Second arg: The argument *)
      code2 @
-     swap env @
+     (* And now get the table index *)
+     [ nr (GetLocal (nr i));
+       nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+     (* All done: Call! *)
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
-This requires conceptually two steps:
+This requires conceptually two passes:
  1. First we need to collect all names bound in a block,
     1a  find locations for then (which extends the environment)
         The environment is extended monotonously: The type-checker ensures that
         a Block does not bind the same name twice.
         We would not need to pass in the environment, just out ... but because
         it is bundled in the E.t type, threading it through is also easy.
-    1b  we need to initialize them with a “uninitialized” flag.
-        So one might want to pass out a list of instructions.
-        But here we can be lazy, and rely on the fact that Wasm locals are
-        initialized with zeros.
+    1b  allocate memory for them, and store it in the local, so that they
+        can be captured
+        (So far, this only happens for functions. It needs to happen for
+        all heap-allocated things, and everything that is capture by a closure)
  2. Then we go through the declarations again and generate the actual code.
+    This includes creating the actual closure references.
 
 We could do this in two separate functions, but I chose to do it in one
  * it means all code related to one constructor is in one place and
- * when generating the actual code, we still “know” the memory location,
-   and don’t have to look it up in the environment.
+ * when generating the actual code, we still “know” the id of the local that
+   has the memory location, and don’t have to look it up in the environment.
 *)
 
 
@@ -346,7 +364,7 @@ and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
   | WildP -> (env, [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env p
   | VarP name ->
-      let (env1,i) = E.add_local env name; in
+      let (env1,i) = E.add_local env name.it; in
       (env1, [ nr (SetLocal (nr i) ) ])
   | TupP ps ->
       let get_i i =
@@ -363,78 +381,108 @@ and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
 
   | _ -> todo "compile_pat" (Arrange.pat pat) (env, [ nr Drop ])
 
-and compile_dec last pre_env dec : E.t * (E.t -> Wasm.Ast.instr list) = match dec.it with
-  | TypD _ -> (pre_env, fun _ -> [])
+and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.instr list) = match dec.it with
+  | TypD _ -> (pre_env, [], fun _ -> [])
   | ExpD e ->
-    (pre_env, fun env ->
+    (pre_env, [], fun env ->
       let code = compile_exp env e in
       let drop = if last then [] else [nr Drop] in
       code @ drop
     )
   | LetD (p, e) ->
     let (pre_env1, code2) = compile_pat pre_env p in
-    ( pre_env1, fun env ->
+    ( pre_env1, [], fun env ->
       let code1 = compile_exp env e in
       let stack_fix = if last then dup env else [] in
       code1 @ stack_fix @ code2)
   | VarD (name, e) ->
-      let (pre_env1, i) = E.add_local pre_env name in
-      ( pre_env1, fun env ->
+      let (pre_env1, i) = E.add_local pre_env name.it in
+      ( pre_env1, [], fun env ->
         let code1 = compile_exp env e in
         let cmd x = if last then TeeLocal x else SetLocal x in
         code1 @ [ nr (cmd (nr i) ) ])
   | FuncD (name, [], p, rt, e) ->
-      let (pre_env1, li) = E.add_local pre_env name in
-      ( pre_env1, fun env ->
-	(* All functions are unary for now (arguments passed as heap-allocated tuples) *)
-        let f = compile_func_body env E.unary_fun_ty_i false (Some p) e in
+      let (pre_env1, li) = E.add_local pre_env name.it in
+      (* Get captured variables *)
+      let captured = Freevars.captured p e in
+
+      let alloc_code =
+        (* Allocate a heap object for the function *)
+        allocn (Wasm.I32.of_int_u (1 + List.length captured)) @
+        [ nr (SetLocal (nr li)) ] in
+
+      ( pre_env1, alloc_code, fun env ->
+
+	(* All functions are unary for now (arguments passed as heap-allocated tuples)
+           with the closure itself passed as a first argument *)
+        let f = compile_func env captured p e in
         let fi = E.add_fun env f in
-        let cmd x = if last then TeeLocal x else SetLocal x in
 
-        (* Get captured variables *)
-        let _captured = Freevars.captured p e in
+        (* Store the function number: *)
+        [ nr (GetLocal (nr li));
+          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))); (* Store function number *)
+          nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+        (* Store all captured values *)
+        let store_capture i v =
+          [ nr (GetLocal (nr li));
+	    nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*(1+i))))));
+            nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+          compile_var env v @
+          [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None})] in
+        List.concat (List.mapi store_capture captured) @
+        if last then [ nr (GetLocal (nr li)) ] else [])
 
-        allocn 1l @ (* Allocate a heap object for the function *)
-        dup env @ (* Duplicate position *)
-        [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))); (* Store function number *)
-          nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None});
-          nr (cmd (nr li) ) ])
-  | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, fun _ -> [])
+  | _ -> todo "compile_dec" (Arrange.dec dec) (pre_env, [], fun _ -> [])
 
 and compile_decs env decs : Wasm.Ast.instr list =
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, fun _ -> compile_unit) (* empty declaration list? *)
+    | []          -> (pre_env, [], fun _ -> compile_unit) (* empty declaration list? *)
     | [dec]       -> compile_dec true pre_env dec
     | (dec::decs) ->
-        let (pre_env1, mk_code1) = compile_dec false pre_env dec    in
-        let (pre_env2, mk_code2) = go          pre_env1 decs in
-        (pre_env2, fun env -> mk_code1 env @ mk_code2 env) in
-  let (env1, mk_code) = go env decs in
-  mk_code env1
+        let (pre_env1, alloc_code1, mk_code1) = compile_dec false pre_env dec    in
+        let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
+        (pre_env2, alloc_code1 @ alloc_code2, fun env -> mk_code1 env @ mk_code2 env) in
+  let (env1, alloc_code, mk_code) = go env decs in
+  alloc_code @ mk_code env1
 
-and compile_func_body env func_type_i void (po : pat option) (e : exp) : func =
+and compile_func env captured p (e : exp) : func =
   (* Fresh set of locals *)
-  let env1 = E.mk_fun_env env (match po with | Some _ -> 1l | None -> 0l) in
-  (* Every function has a temporary local as local 0 *)
-  let _ = E.add_anon_local env1 I32Type in
-  (* Destruct the argument (if there is any) *)
-  let (env2, code1) = match po with
-    | Some p ->
-      let (env2, code1) = compile_pat env1 p in
-      (env2, [ nr (GetLocal (E.unary_param_local env)) ] @ code1)
-    | None   -> (env1, []) in
-  let code2 = compile_exp env2 e in
-  (* A slight hack until we track types more pervasively *)
-  let drop = if void then [ nr Drop ] else [] in
-  nr { ftype = nr func_type_i;
+  let env1 = E.mk_fun_env env 2l in
+  (* Allocate locals for the captured environment *)
+  let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
+  (* Load the environment *)
+  let load_capture i v =
+      [ nr (GetLocal (E.unary_closure_local env2));
+        nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.of_int_u (4*(1+i))))));
+        nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+        nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+      compile_lvar env2 v in
+  let code1 = List.concat (List.mapi load_capture captured) in
+  (* Destruct the argument *)
+  let (env3, code2) = compile_pat env2 p in
+  let code3 = compile_exp env3 e in
+  nr { ftype = nr E.unary_fun_ty_i;
+       locals = E.get_locals env3;
+       body =
+        code1 @
+        [ nr (GetLocal (E.unary_param_local env3)) ] @
+        code2 @
+        code3
+     }
+
+and compile_start_func env ds : func =
+  (* Fresh set of locals *)
+  let env1 = E.mk_fun_env env 0l in
+  let code = compile_decs env1 ds in
+  nr { ftype = nr E.start_fun_ty_i;
        locals = E.get_locals env1;
-       body = code1 @ code2 @ drop
+       body = code @ [ nr Drop ]
      }
 
 let compile (prog  : Syntax.prog) : unit =
   let m : module_ =
     let env = E.mk_global () in
-    let start_fun = compile_func_body env E.start_fun_ty_i true None (nr__ (BlockE prog.it)) in
+    let start_fun = compile_start_func env prog.it in
     let i = E.add_fun env start_fun in
 
     let funcs = E.get_funcs env in
