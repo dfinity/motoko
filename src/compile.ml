@@ -163,6 +163,12 @@ let allocn (n : int32) : instr list = (* expect the size (in words), returns the
     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
     nr (SetGlobal heap_ptr)]
 
+let load_field (i : int32) : instr list =
+  [ nr (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul 4l i; sz = None}) ]
+
+let store_field (i : int32) : instr list =
+  [ nr (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul 4l i; sz = None}) ]
+
 let compile_lit lit = match lit with
   | BoolLit true ->  compile_true
   | BoolLit false -> compile_false
@@ -203,7 +209,7 @@ let rec compile_lexp (env : E.t) exp code = match exp.it with
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
      code @
-     [ nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ]
+     store_field 0l
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
 and compile_lvar env var = match E.lookup_var env var with
@@ -225,9 +231,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e2 @ (* idx *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
-     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
-       nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
-     ]
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+     load_field 0l
   | LitE l_ref ->
      compile_lit !l_ref
   | AssertE e1 ->
@@ -285,14 +290,13 @@ and compile_exp (env : E.t) exp = match exp.it with
      let init_elem i e : Wasm.Ast.instr list =
         dup env @ (* Duplicate position *)
 	compile_exp env e @
-        [ nr (Store {ty = I32Type; align = 0; offset = Wasm.I32.of_int_u (4*i); sz = None}) ]
+        store_field (Wasm.I32.of_int_u i)
      in
      List.concat (List.mapi init_elem es)
   | DotE (e, f) ->
      let i = E.field_to_index env f in
      compile_exp env e @
-     [ nr (Load {ty = I32Type; align = 0; offset = Wasm.I32.mul 4l i; sz = None})
-     ]
+     load_field i
   | ObjE ({it = Type.Object;_}, name, fs) ->
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
@@ -307,7 +311,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let init_field (i, e) : Wasm.Ast.instr list =
         [ nr (GetLocal (nr ri)) ] @
 	compile_exp env1 e @
-        [ nr (Store {ty = I32Type; align = 0; offset = Wasm.I32.mul 4l i; sz = None}) ]
+        store_field i
      in
      List.concat (List.map init_field fis) @
      [ nr (GetLocal (nr ri)) ]
@@ -325,8 +329,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      (* Second arg: The argument *)
      code2 @
      (* And now get the table index *)
-     [ nr (GetLocal (nr i));
-       nr (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+     [ nr (GetLocal (nr i)) ] @
+     load_field 0l @
      (* All done: Call! *)
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
@@ -365,14 +369,12 @@ and compile_pat env pat : E.t * Wasm.Ast.instr list  = match pat.it with
       let (env1,i) = E.add_local env name.it; in
       (env1, [ nr (SetLocal (nr i) ) ])
   | TupP ps ->
-      let get_i i =
-        [ nr (Load {ty = I32Type; align = 0; offset = Wasm.I32.of_int_u (4*i); sz = None}) ] in
       let rec go i ps env = match ps with
         | [] -> (env, [ nr Drop ])
         | (p::ps) ->
           let (env1, code1) = compile_pat env p in
           let (env2, code2) = go (i+1) ps env1 in
-          (env2, dup env @ get_i i @ code1 @ code2) in
+          (env2, dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
       go 0 ps env
 
   | _ -> todo "compile_pat" (Arrange.pat pat) (env, [ nr Drop ])
@@ -416,13 +418,13 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
 
         (* Store the function number: *)
         [ nr (GetLocal (nr li));
-          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))); (* Store function number *)
-          nr (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ] @
+          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] @ (* Store function number *)
+        store_field 0l @
         (* Store all captured values *)
         let store_capture i v =
           [ nr (GetLocal (nr li)) ] @
           compile_var env v @
-          [ nr (Store {ty = I32Type; align = 0; offset = Wasm.I32.of_int_u (4*(i+1)); sz = None}) ] in
+          store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
         if last then [ nr (GetLocal (nr li)) ] else [])
 
@@ -446,8 +448,8 @@ and compile_func env captured p (e : exp) : func =
   let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
   (* Load the environment *)
   let load_capture i v =
-      [ nr (GetLocal (E.unary_closure_local env2));
-        nr (Load {ty = I32Type; align = 0; offset = Wasm.I32.of_int_u (4*(1+i)); sz = None}) ] @
+      [ nr (GetLocal (E.unary_closure_local env2)) ] @
+      load_field (Wasm.I32.of_int_u (1+i)) @
       compile_lvar env2 v in
   let code1 = List.concat (List.mapi load_capture captured) in
   (* Destruct the argument *)
