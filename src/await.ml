@@ -2,6 +2,7 @@ open Syntax
 open Source
 module T = Type
 
+
 (* a simple effect analysis to annote expressions as Triv(ial) (await-free) or Await (containing unprotected awaits) *)
 
 (* in future we could merge this with the type-checker
@@ -82,9 +83,11 @@ and effect_cases cases =
     let e = effect_exp exp in
     max_eff e (effect_cases cases')
 
+(*  TBD  
 and effect_block es =
   List.fold_left max_eff T.Triv es
-
+ *)
+            
 and effect_field_exps efs =
   List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
 
@@ -102,25 +105,237 @@ and effect_dec d =
   | ClassD (a, v, tps, p, efs) ->
     effect_field_exps efs 
 
+(* sugar *)                      
+let typ e = e.note.note_typ                   
+let eff e = e.note.note_eff
+                      
 
 (* the translation *)
-let is_triv exp =
-    (fst exp.it.note) = T.Triv
+let is_triv (exp:exp)  =
+    eff exp = T.Triv
 
 
-(*
-let  (+>) x  e = DecE(FuncD("" @@ no_region ,[], (VarP (x@@no_region)) @@ no_region, AnyT@@no_region, e) @@ no_region
-			   )
+              
+let answerT = Type.unit
+let contT typ = T.Func([],typ,answerT)
 
-let ( * ) x e = CallE(VarE (x @! no_region) @@ no_region,[],e) @@ no_region
-let ( ** ) e e = CallE(e,[],e) @@ no_region
-*)
-(*
+(* primitives *)
+                
+              
+let id_stamp = ref 0
 
-let c_exp context exp =
-    match exp.it with
-    | t when is_triv exp ->
-      let k = ""
-      k +> k * (t_exp context t)
-    |    
-*)
+let fresh_id t =
+  let v = Printf.sprintf "$%i" (!id_stamp) in
+  let k = {it = VarE (v@@no_region);
+           at = no_region;
+           note = {note_typ = t;
+                   note_eff = T.Triv}
+           } 
+  in
+  (id_stamp := !id_stamp + 1;
+   k)
+
+let fresh_cont typ = fresh_id (contT typ)
+
+(* the empty identifier names the implicit return label *)
+let id_ret = "" 
+    
+(* Lambda and continuation abstraction *)
+                          
+let  (-->) k e =
+  match k.it with
+  | VarE v ->
+    {it=DecE(FuncD("" @@ no_region,
+                [],
+                {it=VarP v;at=no_region;note=k.note},
+                AnyT@@no_region, (* bogus,  but we shouln't use it anymore *)
+                e)@@no_region
+            );
+     at = e.at;
+     note = {note_typ = Type.Func([],typ k,typ e);
+             note_eff = T.Triv}
+    }
+  | _ -> failwith "Impossible"
+
+let id x =
+  match x.it with
+  | VarE x -> x
+  | _ -> failwith "Impossible"
+
+let prim_make_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
+                                  T.unit,
+                                  T.Async (T.Var ("t",0))))
+let prim_set_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
+                                  T.Tup [T.Async (T.Var ("t",0)); T.Var("t",0)],
+                                  T.unit))
+let prim_get_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
+                                  T.Tup [T.Async (T.Var ("t",0)); contT (T.Var("t",0))],
+                                  T.unit))
+let prim_scheduler_queue = fresh_id (T.Func([],
+                                  T.Func([],T.unit,T.unit),
+                                  T.unit))
+let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
+                           
+let decE dec =
+  let note =
+      match dec.it with
+      | LetD (_,exp) ->
+        exp.note
+      | ExpD exp ->
+        exp.note 
+      | VarD (id,exp) ->
+        {note_typ = T.Mut (typ exp);
+         note_eff = eff exp}
+      | _ -> failwith "NYI"
+   in
+   { it = DecE dec;
+     at = no_region;
+     note = note;
+   }
+
+        
+(* let varP x = {it=VarP (id x); at = x.at; note = x.note} *)
+let varP x = {x with it=VarP (id x)}
+let letD x exp = LetD (varP x,exp) @@ no_region
+let letE x exp1 exp2 =
+  { it = BlockE [LetD (varP x,exp1) @@ no_region;
+                 ExpD exp2 @@ no_region];
+    at = no_region;
+    note = {note_typ = typ exp1;
+            note_eff = max_eff (eff exp1) (eff exp2)}           
+  }
+let expD exp = ExpD exp @@ no_region                                  
+let tupE exps =
+   let effs = List.map effect_exp exps in
+   let eff = List.fold_left max_eff Type.Triv effs in
+   {it = TupE exps;
+    at = no_region;
+    note = {note_typ = T.Tup (List.map typ exps);
+            note_eff = eff}
+   }
+                             
+            
+                            
+    
+(* Lambda and continuation application *)
+    
+let ( -@- ) e e =
+  match e.note.note_typ with
+  | Type.Func([],_,t) ->
+     {it = CallE(e,[],e);
+      at = no_region;
+      note = {note_typ = t;
+              note_eff = Type.Triv}
+     }
+  | _ -> failwith "Impossible"
+                           
+    
+
+                   
+(* Label environments *)
+
+module LabelEnv = Env.Make(String) 
+             
+type label_sort = Cont of exp | Label
+
+                           
+let rec c_exp context exp =
+  match exp.it with
+  | _ when is_triv exp ->
+    let k = fresh_cont (typ exp) in
+    k --> k -@- (t_exp context exp)
+  | _ -> failwith "NYI"
+
+and t_exp context exp =
+  { it = t_exp' context exp.it;
+    at = exp.at;
+    note = exp.note;}
+and t_exp' context exp' =    
+  match exp' with
+  | VarE _ 
+  | LitE _ -> exp'
+  | UnE (op, exp1) ->
+    UnE (op, t_exp context exp1)
+  | BinE (exp1, op, exp2) ->
+    BinE (t_exp context exp1, op, t_exp context exp2)
+  | RelE (exp1, op, exp2) ->
+    RelE (t_exp context exp1, op, t_exp context exp2)
+  | TupE exps ->
+    TupE (List.map (t_exp context) exps)
+  | ProjE (exp1, n) ->
+    ProjE (t_exp context exp1, n)
+  | ObjE (sort, id, fields) ->
+    let fields' = List.map (fun {it = {id; mut; priv; exp = exp1}; at; note;} ->
+                            {it = {id; mut; priv; exp = t_exp context exp1}; at; note}) fields
+    in                    
+    ObjE (sort, id, fields')
+  | DotE (exp1, id) ->
+    DotE (t_exp context exp1, id)
+  | AssignE (exp1, exp2) ->
+    AssignE (t_exp context exp1, t_exp context exp2)
+  | ArrayE exps ->
+    ArrayE (List.map (t_exp context) exps)
+  | IdxE (exp1, exp2) ->
+    IdxE (t_exp context exp1, t_exp context exp2)
+  | BlockE decs ->
+    BlockE (t_decs context decs)
+  | NotE exp1 ->
+    NotE (t_exp context exp1)     
+  | AndE (exp1, exp2) ->
+    AndE (t_exp context exp1, t_exp context exp2)
+  | OrE (exp1, exp2) ->
+    OrE (t_exp context exp1, t_exp context exp2)
+  | IfE (exp1, exp2, exp3) ->
+    IfE (t_exp context exp1, t_exp context exp2, t_exp context exp3)
+  | SwitchE (exp1, cases) ->
+    let cases' = List.map
+                  (fun {it = {pat;exp}; at; note} ->
+                     {it = {pat;exp = t_exp context exp1}; at; note})
+                  cases
+    in
+    SwitchE (t_exp context exp1, cases')
+  | WhileE (exp1, exp2) ->
+    WhileE (t_exp context exp1, t_exp context exp2)
+  | LoopE (exp1, exp2_opt) ->
+    LoopE (t_exp context exp1, Lib.Option.map (t_exp context) exp2_opt)
+  | ForE (pat, exp1, exp2) ->
+    ForE (pat, t_exp context exp1, t_exp context exp2)
+  | LabelE (id, _typ, exp1) ->
+    let context' = LabelEnv.add id.it Label context in
+    LabelE (id, _typ, t_exp context' exp1)
+  | BreakE (id, exp1) ->
+    begin
+      match LabelEnv.find_opt id.it context with
+      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
+      | Some Label -> BreakE (id, t_exp context exp1)
+      | None -> failwith "t_exp: Impossible"
+    end
+  | RetE exp1 ->
+    begin
+      match LabelEnv.find_opt id_ret context with
+      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
+      | Some Label -> RetE (t_exp context exp1)
+      | None -> failwith "t_exp: Impossible"
+    end
+  | AsyncE exp1 ->
+     let async = fresh_id (T.Async (typ exp1)) in
+     let v1 = fresh_id (typ exp1) in
+     let k' = fresh_cont (typ exp1) in
+     let u1 = fresh_id T.unit in
+     let u2 = fresh_id T.unit in
+     let context' = LabelEnv.add id_ret (Cont k') context in
+     (letE async (prim_make_async -@- tupE [])
+      (letE k' (v1 --> prim_set_async -@- (tupE [async;v1]))
+         (letE u1 (prim_scheduler_queue -@- (u2 --> c_exp context' exp1 -@- k'))
+            async)))
+     .it
+  | _ -> failwith "NYI"
+
+and t_decs context decs = failwith "NYI"           
+(*                  
+and t_exps context exps exps'  =
+  match exps with
+  | [] -> k (List.rev vs)
+  | exp::exps' ->
+    t_exps context exp ((t_exp context exp)::exps')(fun v -> interpret_exps context exps' (v::vs) k)
+ *)
