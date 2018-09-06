@@ -336,7 +336,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      in
      List.concat (List.map init_field fis) @
      [ nr (GetLocal (nr ri)) ]
-  | CallE (e1, [], e2) ->
+  | CallE (e1, _, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
 
@@ -434,7 +434,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         store_field 0l @
         if last then [ nr (GetLocal (nr i)) ] @ load_field 0l else [])
 
-  | FuncD (name, [], p, rt, e) ->
+  | FuncD (name, _, p, rt, e) ->
       let li = E.add_anon_local pre_env I32Type in
       let (pre_env1, vi) = E.add_local pre_env name.it in
       (* Get captured variables *)
