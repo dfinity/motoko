@@ -1,0 +1,13 @@
+-- Checking objects2.as:
+type O = {self : () -> O; x : Nat}
+let o : {self : () -> O; x : Nat}
+-- Interpreting objects2.as:
+self()
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
+self()
+  <= {self = func; x = 1}
+-- Finished objects2.as:
+let o : {self : () -> O; x : Nat} = {self = func; x = 1}
+

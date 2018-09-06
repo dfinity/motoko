@@ -1,0 +1,50 @@
+-- Checking closures.as:
+let add1 : Nat -> Nat
+var answer : Nat
+let answer2 : Nat
+var answer3 : Nat
+var answers : Nat[]
+let fs : (Nat -> Nat)[]
+let test_answer : Nat -> ()
+let test_answer2 : () -> ()
+let test_answer3 : () -> ()
+let test_answers : Nat -> ()
+-- Interpreting closures.as:
+add1(1)
+  <= 2
+add1(2)
+  <= 3
+add1(3)
+  <= 4
+test_answer(42)
+  <= ()
+test_answers(44)
+  <= ()
+test_answer2()
+  <= ()
+test_answer3()
+  <= ()
+-- Finished closures.as:
+let add1 : Nat -> Nat = func
+
+closures.as:25.42-25.44: fatal error, Invalid_argument("as_nat")
+
+Raised at file "value.ml", line 163, characters 22-42
+Called from file "value.ml", line 214, characters 34-44
+Called from file "main.ml", line 37, characters 18-62
+Called from file "map.ml", line 270, characters 20-25
+Called from file "map.ml", line 270, characters 10-18
+Called from file "main.ml", line 79, characters 6-42
+
+Last context:
+add1 = func
+answer = 42
+answer2 = 42
+answer3 = 51
+answers = [43, 44]
+fs = [func, func, func]
+test_answer = func
+test_answer2 = func
+test_answer3 = func
+test_answers = func
+

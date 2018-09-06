@@ -1,0 +1,8 @@
+-- Checking array.as:
+let a : var Nat[]
+let b : var Nat[]
+-- Interpreting array.as:
+-- Finished array.as:
+let a : var Nat[] = [1, 5, 42]
+let b : var Nat[] = [2, 6, 23]
+

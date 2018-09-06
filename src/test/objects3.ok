@@ -1,0 +1,7 @@
+-- Checking objects3.as:
+type Q = {this : var Q?; x : Nat}
+let q : Q
+-- Interpreting objects3.as:
+-- Finished objects3.as:
+let q : Q = {this = {this = {...}; x = 4}; x = 4}
+
