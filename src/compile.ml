@@ -139,6 +139,13 @@ let dup env : instr list = (* duplicate top element *)
   [ nr (TeeLocal (E.tmp_local env));
     nr (GetLocal (E.tmp_local env)) ]
 
+let swap env : instr list = (* swaps top elements *)
+  let i = E.add_anon_local env I32Type in
+  [ nr (SetLocal (E.tmp_local env));
+    nr (SetLocal (nr i));
+    nr (GetLocal (E.tmp_local env));
+    nr (GetLocal (nr i))]
+
 let _alloc env : instr list = (* expect the size on the stack, returns the pointer *)
   [ nr (SetLocal (E.tmp_local env));
     nr (GetGlobal heap_ptr);
@@ -302,8 +309,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
 
-     code2 @
      code1 @ (* TODO: Wrong order! *)
+     code2 @
+     swap env @
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
