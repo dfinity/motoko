@@ -140,6 +140,9 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
     )
   | TupE exps ->
     interpret_exps context exps [] (fun vs -> k (V.Tup vs))
+  | OptE exp1 ->
+    (* TBR: use a different representation? *)
+    interpret_exp context exp1 k
   | ProjE (exp1, n) ->
     interpret_exp context exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
@@ -307,7 +310,9 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | AnnotP (pat, _typ) -> declare_pat pat
+  | OptP pat1 -> declare_pat pat1
+  | AltP (pat1, pat2) -> declare_pat pat1
+  | AnnotP (pat1, _typ) -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
   match pats with
@@ -322,9 +327,18 @@ and define_id context id v =
     
 and define_pat context pat v =
   match pat.it with
-  | WildP | LitP _ | SignP _ -> ()
+  | WildP -> ()
+  | LitP _ | SignP _ ->
+    if match_pat pat v = None
+    then trap pat.at "value %s does not match pattern" (V.debug_string_of_val v)
+    else ()
   | VarP id -> define_id context id v
   | TupP pats -> define_pats context pats (V.as_tup v)
+  | OptP pat1 ->
+    if v = V.Null
+    then trap pat.at "value %s does not match pattern" (V.debug_string_of_val v)
+    else define_pat context pat1 v  (* TBR: different representation? *)
+  | AltP _ -> ()
   | AnnotP (pat1, _typ) -> define_pat context pat1 v
 
 and define_pats context pats vs =
@@ -352,7 +366,7 @@ and match_pat pat v : val_env option =
   | WildP -> Some V.Env.empty
   | VarP id -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
   | LitP lit ->
-    if match_lit lit v 
+    if match_lit lit v
     then Some V.Env.empty
     else None
   | SignP (op, lit) ->
@@ -360,6 +374,15 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | OptP pat1 ->
+    if v = V.Null
+    then None
+    else match_pat pat1 v (* TBR: use a different representation? *)
+  | AltP (pat1, pat2) ->
+    (match match_pat pat1 v with
+    | None -> match_pat pat2 v
+    | some -> some
+    )
   | AnnotP (pat1, _typ) ->
     match_pat pat1 v
 

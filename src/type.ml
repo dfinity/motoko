@@ -85,7 +85,9 @@ let rec string_of_typ_nullary vs = function
     sprintf "%s<%s>" (string_of_con vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
-    sprintf "(%s)" (String.concat ", " (List.map (string_of_typ' vs) ts))
+    sprintf "(%s%s)"
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (if List.length ts = 1 then "," else "")
   | Obj (Object, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
@@ -433,6 +435,8 @@ let rec sub env t1 t2 =
 let rec join env t1 t2 =
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
+  | _, Pre
+  | Pre, _ -> Pre
   | _, Any
   | Any, _ -> Any
   | Prim Nat, Prim Int
@@ -447,6 +451,8 @@ let rec join env t1 t2 =
 let rec meet env t1 t2 =
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
+  | _, Pre
+  | Pre, _ -> Pre
   | _, Any -> t1
   | Any, _ -> t2
   | Prim Nat, Prim Int

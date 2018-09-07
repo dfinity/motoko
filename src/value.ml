@@ -227,8 +227,9 @@ let rec string_of_val_nullary d conenv t v =
       (String.concat ", " (List.map T.string_of_typ ts))
   | T.Tup ts ->
     let vs = as_tup v in
-    sprintf "(%s)"
+    sprintf "(%s%s)"
       (String.concat ", " (List.map2 (string_of_val' d conenv) ts vs))
+      (if List.length ts = 1 then "," else "")
   | T.Array t ->
     let a = as_array v in
     sprintf "[%s]" (String.concat ", "
@@ -294,7 +295,9 @@ let rec debug_string_of_val_nullary d = function
   | Char c -> string_of_char c
   | Text t -> string_of_text t
   | Tup vs ->
-    sprintf "(%s)" (String.concat ", " (List.map (debug_string_of_val' d) vs))
+    sprintf "(%s%s)"
+      (String.concat ", " (List.map (debug_string_of_val' d) vs))
+      (if List.length vs = 1 then "," else "")
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
