@@ -1,5 +1,10 @@
 Interpreter:
 -- Checking coverage.as:
+let f : () -> ()
+-- Interpreting coverage.as:
+-- Finished coverage.as:
+let f : () -> () = func
+
 coverage.as:4.7-4.8: warning, this pattern does not cover all possible values
 coverage.as:5.11-5.12: warning, this pattern alternative is unreachable
 coverage.as:5.8-5.12: warning, this pattern does not cover all possible values
@@ -20,11 +25,6 @@ coverage.as:27.24-27.33: warning, this case is unreachable
 coverage.as:28.24-28.33: warning, this case is unreachable
 coverage.as:29.38-29.39: warning, this pattern alternative is unreachable
 coverage.as:29.3-29.45: warning, the cases in this switch do not cover all possible values
-let f : () -> ()
--- Interpreting coverage.as:
--- Finished coverage.as:
-let f : () -> () = func
-
 Compiler:
 coverage.as:4.7-4.8: warning, this pattern does not cover all possible values
 coverage.as:5.11-5.12: warning, this pattern alternative is unreachable
@@ -842,4 +842,3 @@ coverage.as:29.3-29.45: warning, the cases in this switch do not cover all possi
   (elem 0 (offset (i32.const 0)) 0 1 2 3 4 5 6 7 8)
 )
 Interpreting the .wat:
-coverage.wat:1.1-1.21: syntax error: unknown operator
