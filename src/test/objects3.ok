@@ -13,8 +13,8 @@ let q : Q = {this = {this = {...}; x = 4}; x = 4}
 let unopt : <T>(T?) -> T = func
 
 Compiler:
-compile_pat: (OptP (VarP y))
-Could not find y
+compile_pat: (OptP (VarP x))
+Could not find x
 (module
   (type $0 (func))
   (type $1 (func (param i32 i32) (result i32)))
@@ -23,30 +23,13 @@ Could not find y
   (global $0 (mut i32) (i32.const 0))
   (func $0
     (type 1)
-    (local i32 i32 i32)
-    (get_global 0)
-    (get_global 0)
-    (i32.const 4)
-    (i32.add)
-    (set_global 0)
-    (set_local 3)
+    (local i32)
     (get_local 1)
     (set_local 2)
-    (block
-      (result i32)
-      (get_local 2)
-      (set_local 2)
-      (get_local 3)
-      (get_local 2)
-      (i32.store)
-      (i32.const 1)
-    )
+    (block (result i32) (get_local 2) (i32.const 0) (br 1) (i32.const 1))
     (if (then) (else (unreachable)))
-    (get_local 3)
+    (unreachable)
     (i32.load)
-    (set_local 4)
-    (block (result i32) (get_local 4) (i32.const 0) (br 0) (i32.const 1))
-    (if (result i32) (then (unreachable) (i32.load)) (else (unreachable)))
   )
   (func $1
     (type 0)
@@ -157,4 +140,4 @@ Could not find y
   (elem 0 (offset (i32.const 0)) 0 1)
 )
 Interpreting the .wat:
-objects3.wat:32.60-32.73: runtime trap: unreachable executed
+objects3.wat:119.49-119.62: runtime trap: unreachable executed
