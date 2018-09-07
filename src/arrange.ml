@@ -37,6 +37,7 @@ let rec exp e = match e.it with
   | IsE (e, t)          -> "IsE"     $$ [exp e; typ t]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | DecE d              -> "DecE"    $$ [dec d]
+  | OptE e              -> "OptE"    $$ [exp e]
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
@@ -45,6 +46,8 @@ and pat p = match p.it with
   | AnnotP (p, t) -> "AnnotP"     $$ [ pat p; typ t]
   | LitP l        -> "LitP"       $$ [ lit !l ]
   | SignP (uo, l) -> "SignP"      $$ [ unop uo ; lit !l ]
+  | OptP p        -> "OptP"       $$ [ pat p ]
+  | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"

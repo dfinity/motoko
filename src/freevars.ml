@@ -12,9 +12,8 @@ let (//) x y = S.remove y x
 
 let (///) x (f,b) = f ++ S.diff x b
 let (+++) (f,b) x = (S.union f x, b)
-let union_binders f xs =
-  List.fold_left (fun (f1,b1) (f2,b2) -> (f1 ++ f2, b1 ++ b2)) (S.empty, S.empty)
-  (List.map f xs)
+let (++++) (f1, b1) (f2,b2) = (S.union f1 f2, S.union b1 b2)
+let union_binders f xs = List.fold_left (++++) (S.empty, S.empty) (List.map f xs)
 let close (f,b) = S.diff f b
 
 let rec exp e : t = match e.it with
@@ -50,6 +49,7 @@ let rec exp e : t = match e.it with
   | IsE (e, t)          -> exp e
   | AnnotE (e, t)       -> exp e
   | DecE d              -> close (dec d)
+  | OptE e              -> exp e
 
 and exps es : t = unions exp es
 
@@ -60,6 +60,8 @@ and pat p : (t * t) = match p.it with
   | AnnotP (p, t) -> pat p
   | LitP l        -> (S.empty, S.empty)
   | SignP (uo, l) -> (S.empty, S.empty)
+  | OptP p        -> pat p
+  | AltP (p1, p2) -> pat p1 ++++ pat p2
 
 and pats ps : (t * t) = union_binders pat ps
 
