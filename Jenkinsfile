@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Build and test') {
             steps {
-                sh 'nix build'
+                sh 'nix-build'
             }
         }
     }
