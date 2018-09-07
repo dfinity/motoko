@@ -690,8 +690,9 @@ and gather_pat ve pat : val_env =
 
 and infer_pat_exhaustive context pat : T.typ * val_env =
   let t, ve = infer_pat context pat in
-  if not (Coverage.check_pat pat) then
-    warn pat.at "this pattern does not cover all possible values";
+  if not context.pre then
+    if not (Coverage.check_pat pat) then
+      warn pat.at "this pattern does not cover all possible values";
   t, ve
 
 and infer_pat context pat : T.typ * val_env =
@@ -745,8 +746,9 @@ and infer_pats at context pats ts ve : T.typ list * val_env =
 
 and check_pat_exhaustive context t pat : val_env =
   let ve = check_pat context t pat in
-  if not (Coverage.check_pat pat) then
-    warn pat.at "this pattern does not cover all possible values";
+  if not context.pre then
+    if not (Coverage.check_pat pat) then
+      warn pat.at "this pattern does not cover all possible values";
   ve
 
 and check_pat context t pat : val_env =
@@ -786,11 +788,8 @@ and check_pat' context t pat : val_env =
     )
   | OptP pat1 ->
     (match t with
-    | T.Opt t1 ->
+    | T.Opt t1 | t1 ->
       check_pat context t1 pat1
-    | _ ->
-      error pat.at "option pattern cannot consume expected type %s"
-        (T.string_of_typ t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat context t pat1 in
@@ -964,7 +963,7 @@ and infer_dec context ce_inner dec : T.typ =
     if not context.pre then begin
       let _cs, _ts, te, ce = check_typ_binds context typbinds in
       let context' = adjoin_typs context te ce in
-      let _, ve = infer_pat {context' with pre = true} pat in
+      let _, ve = infer_pat_exhaustive context' pat in
       let t2 = check_typ context' typ in
       let context'' =
         {context' with labs = T.Env.empty; rets = Some t2; async = false} in
@@ -978,7 +977,7 @@ and infer_dec context ce_inner dec : T.typ =
       let context' = adjoin_typs context te ce in
       let c = T.Env.find id.it context.typs in
       let context' = (*context'*) add_typ context' id.it c (Con.Env.find c ce_inner) in
-      let _, ve = infer_pat {context' with pre = true} pat in
+      let _, ve = infer_pat_exhaustive context' pat in
       let context'' =
         {context' with labs = T.Env.empty; rets = None; async = false} in
       ignore (infer_obj (adjoin_vals context'' ve) sort.it ("anon-self" @@ no_region) fields)
@@ -1168,7 +1167,7 @@ and infer_dec_valdecs context dec : val_env =
   | FuncD (id, typbinds, pat, typ, _) ->
     let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
-    let t1, _ = infer_pat_exhaustive {context' with pre = true} pat in
+    let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = check_typ context' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
@@ -1178,7 +1177,7 @@ and infer_dec_valdecs context dec : val_env =
     let cs, ts, te, ce = check_typ_binds context typbinds in
     let context' = adjoin_typs context te ce in
     let c = T.Env.find id.it context.typs in
-    let t1, _ = infer_pat_exhaustive {context' with pre = true} pat in
+    let t1, _ = infer_pat {context' with pre = true} pat in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))

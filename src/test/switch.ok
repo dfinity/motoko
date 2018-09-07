@@ -707,18 +707,18 @@ Compiler:
           (block
             (result i32)
             (get_local 15)
-            (i32.const 3)
-            (i32.eq)
-            (if (then) (else (i32.const 0) (br 1)))
-            (i32.const 1)
-          )
-          (if
-            (then)
-            (else
-              (block
-                (result i32)
-                (get_local 15)
-                (set_local 14)
+            (set_local 14)
+            (block
+              (result i32)
+              (get_local 14)
+              (i32.const 3)
+              (i32.eq)
+              (if (then) (else (i32.const 0) (br 1)))
+              (i32.const 1)
+            )
+            (if
+              (then)
+              (else
                 (block
                   (result i32)
                   (get_local 14)
@@ -727,20 +727,20 @@ Compiler:
                   (if (then) (else (i32.const 0) (br 1)))
                   (i32.const 1)
                 )
-                (if
-                  (then)
-                  (else
-                    (block
-                      (result i32)
-                      (get_local 14)
-                      (i32.const 5)
-                      (i32.eq)
-                      (if (then) (else (i32.const 0) (br 1)))
-                      (i32.const 1)
-                    )
-                    (if (then) (else (i32.const 0) (br 2)))
-                  )
-                )
+                (if (then) (else (i32.const 0) (br 2)))
+              )
+            )
+            (i32.const 1)
+          )
+          (if
+            (then)
+            (else
+              (block
+                (result i32)
+                (get_local 15)
+                (i32.const 5)
+                (i32.eq)
+                (if (then) (else (i32.const 0) (br 1)))
                 (i32.const 1)
               )
               (if (then) (else (i32.const 0) (br 2)))

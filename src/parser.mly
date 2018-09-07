@@ -449,14 +449,14 @@ pat_un :
 pat_bin :
   | p=pat_un
     { p }
+  | p1=pat_bin OR p2=pat_bin
+    { AltP(p1, p2) @? at $sloc }
   | p=pat_bin COLON t=typ
     { AnnotP(p, t) @? at $sloc }
 
 pat :
   | p=pat_bin
     { p }
-  | p1=pat_bin semicolon p2=pat
-    { AltP(p1, p2) @? at $sloc }
 
 return_typ :
   | COLON t=typ { t }
