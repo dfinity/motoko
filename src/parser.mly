@@ -111,6 +111,10 @@ seplist(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
+seplist1(X, SEP) :
+  | (* empty *) { [] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
+
 
 (* Basics *)
 
@@ -153,8 +157,10 @@ typ_obj :
 typ_nullary :
   | p=PRIM
     { PrimT(p) @@ at $sloc }
-  | LPAR ts=seplist(typ_item, COMMA) RPAR
-    { match ts with [t] -> t | _ -> TupT(ts) @@ at $sloc }
+  | LPAR t=typ RPAR
+    { t }
+  | LPAR ts=seplist1(typ_item, COMMA) RPAR
+    { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
   | s=sort_opt tfs=typ_obj
@@ -286,8 +292,10 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | LPAR es = seplist(exp, COMMA) RPAR
-    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | LPAR e=exp RPAR
+    { e }
+  | LPAR es=seplist1(exp, COMMA) RPAR
+    { TupE(es) @? at $sloc }
   | s=sort xf=id_opt efs=exp_obj
     { let anon = if s.it = Type.Actor then "actor" else "object" in
       ObjE(s, xf anon $sloc, efs) @? at $sloc }
@@ -421,8 +429,10 @@ pat_nullary :
     { VarP(x) @? at $sloc }
   | l=lit
     { LitP(ref l) @? at $sloc }
-  | LPAR ps=seplist(pat, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
+  | LPAR p=pat RPAR
+    { p }
+  | LPAR ps=seplist1(pat_bin, COMMA) RPAR
+    { TupP(ps) @? at $sloc }
 
 pat_post :
   | p=pat_nullary
@@ -439,12 +449,14 @@ pat_un :
 pat_bin :
   | p=pat_un
     { p }
+  | p=pat_bin COLON t=typ
+    { AnnotP(p, t) @? at $sloc }
 
 pat :
   | p=pat_bin
     { p }
-  | p=pat COLON t=typ
-    { AnnotP(p, t) @? at $sloc }
+  | p1=pat_bin semicolon p2=pat
+    { AltP(p1, p2) @? at $sloc }
 
 return_typ :
   | COLON t=typ { t }

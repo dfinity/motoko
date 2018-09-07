@@ -91,15 +91,15 @@ type pat = (pat', typ_note) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)
+  | LitP of lit ref                            (* literal *)
+  | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
   | AnnotP of pat * typ                        (* type annotation *)
-  | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
-  | SignP of unop * lit ref                    (* signed literal *)
+  | AltP of pat * pat                          (* disjunctive *)
 (*
-  | ObjP of pat_field list                     (* object *)
   | AsP of pat * pat                           (* conjunctive *)
-  | OrP of pat * pat                           (* disjunctive *)
+  | ObjP of pat_field list                     (* object *)
 
 and pat_field = pat_field' Source.phrase
 and pat_field' = {id : id; pat : pat}

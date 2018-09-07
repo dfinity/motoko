@@ -670,6 +670,8 @@ and gather_pat ve pat : val_env =
     T.Env.add id.it T.Pre ve
   | TupP pats ->
     List.fold_left gather_pat ve pats
+  | AltP (pat1, pat2) ->
+    gather_pat ve pat1
   | OptP pat1
   | AnnotP (pat1, _) ->
     gather_pat ve pat1
@@ -704,6 +706,13 @@ and infer_pat' context pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat context pat1 in
     T.Opt t1, ve
+  | AltP (pat1, pat2) ->
+    let t1, ve1 = infer_pat context pat1 in
+    let t2, ve2 = infer_pat context pat2 in
+    let t = T.join context.cons t1 t2 in
+    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
+      error pat.at "variables are not allowed in pattern alternatives";
+    t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ context typ in
     t, check_pat context t pat1
@@ -760,6 +769,12 @@ and check_pat' context t pat : val_env =
       error pat.at "option pattern cannot consume expected type %s"
         (T.string_of_typ t)
     )
+  | AltP (pat1, pat2) ->
+    let ve1 = check_pat context t pat1 in
+    let ve2 = check_pat context t pat2 in
+    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
+      error pat.at "variables are not allowed in pattern alternatives";
+    T.Env.empty
   | _ ->
     let t', ve = infer_pat context pat in
     if not (T.sub context.cons t' t) then

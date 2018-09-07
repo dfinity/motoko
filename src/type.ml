@@ -85,7 +85,9 @@ let rec string_of_typ_nullary vs = function
     sprintf "%s<%s>" (string_of_con vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
-    sprintf "(%s)" (String.concat ", " (List.map (string_of_typ' vs) ts))
+    sprintf "(%s%s)"
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (if List.length ts = 1 then "," else "")
   | Obj (Object, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
