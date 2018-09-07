@@ -394,7 +394,7 @@ We could do this in two separate functions, but I chose to do it in one
 *)
 
 
-and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list  = match pat.it with
+and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list = match pat.it with
   (* The undestructed value is on top of the stack. *)
   (* The returned code consumes it, and fills all the variables. *)
   (* If the pattern does not match, it branches to the depths at fail_depth
@@ -427,14 +427,25 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
       go 0 ps env
 
   | _ ->
-      let t = E.depth_to env fail_depth in
-      todo "compile_pat" (Arrange.pat pat) (env, [], [ nr (Br (nr t)) ])
+      todo "compile_pat" (Arrange.pat pat) (env, [], compile_fail env fail_depth)
+
+and compile_fail env fail_depth =
+  let t = E.depth_to env fail_depth in
+  compile_false @ [ nr (Br (nr t)) ]
 
 (* Used for pattern that usually succed (let, function arguments) *)
 and compile_mono_pat env pat =
-  let (env1, alloc_code, code) = compile_pat (E.inc_depth env) (E.current_depth env) pat
-  in (env1, alloc_code, [ nr (SetLocal (E.tmp_local env));
-                          nr (Block ([], [ nr (GetLocal (E.tmp_local env)) ] @ code)) ])
+  let (env1, alloc_code, code) = compile_pat (E.inc_depth env) (E.current_depth env) pat in
+  let wrapped_code =
+    [ nr (SetLocal (E.tmp_local env));
+      nr (Block ([I32Type],
+        [ nr (GetLocal (E.tmp_local env)) ] @
+        code @
+        compile_true
+      ));
+      nr (If ([],[], [ nr Unreachable ]))
+    ] in
+  (env1, alloc_code, wrapped_code)
 
 and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.instr list) = match dec.it with
   | TypD _ -> (pre_env, [], fun _ -> [])
