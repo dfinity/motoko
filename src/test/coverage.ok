@@ -1,0 +1,845 @@
+Interpreter:
+-- Checking coverage.as:
+coverage.as:4.7-4.8: warning, this pattern does not cover all possible values
+coverage.as:5.11-5.12: warning, this pattern alternative is unreachable
+coverage.as:5.8-5.12: warning, this pattern does not cover all possible values
+coverage.as:7.11-7.12: warning, this pattern alternative is unreachable
+coverage.as:8.11-8.12: warning, this pattern alternative is unreachable
+coverage.as:12.8-12.9: warning, this pattern does not cover all possible values
+coverage.as:13.11-13.12: warning, this pattern alternative is unreachable
+coverage.as:13.8-13.12: warning, this pattern does not cover all possible values
+coverage.as:15.17-15.18: warning, this pattern alternative is unreachable
+coverage.as:16.12-16.13: warning, this pattern alternative is unreachable
+coverage.as:20.3-20.25: warning, the cases in this switch do not cover all possible values
+coverage.as:21.24-21.33: warning, this case is unreachable
+coverage.as:21.3-21.35: warning, the cases in this switch do not cover all possible values
+coverage.as:24.24-24.33: warning, this case is unreachable
+coverage.as:25.24-25.33: warning, this case is unreachable
+coverage.as:26.24-26.33: warning, this case is unreachable
+coverage.as:27.24-27.33: warning, this case is unreachable
+coverage.as:28.24-28.33: warning, this case is unreachable
+coverage.as:29.38-29.39: warning, this pattern alternative is unreachable
+coverage.as:29.3-29.45: warning, the cases in this switch do not cover all possible values
+let f : () -> ()
+-- Interpreting coverage.as:
+-- Finished coverage.as:
+let f : () -> () = func
+
+Compiler:
+coverage.as:4.7-4.8: warning, this pattern does not cover all possible values
+coverage.as:5.11-5.12: warning, this pattern alternative is unreachable
+coverage.as:5.8-5.12: warning, this pattern does not cover all possible values
+coverage.as:7.11-7.12: warning, this pattern alternative is unreachable
+coverage.as:8.11-8.12: warning, this pattern alternative is unreachable
+coverage.as:12.8-12.9: warning, this pattern does not cover all possible values
+coverage.as:13.11-13.12: warning, this pattern alternative is unreachable
+coverage.as:13.8-13.12: warning, this pattern does not cover all possible values
+coverage.as:15.17-15.18: warning, this pattern alternative is unreachable
+coverage.as:16.12-16.13: warning, this pattern alternative is unreachable
+coverage.as:20.3-20.25: warning, the cases in this switch do not cover all possible values
+coverage.as:21.24-21.33: warning, this case is unreachable
+coverage.as:21.3-21.35: warning, the cases in this switch do not cover all possible values
+coverage.as:24.24-24.33: warning, this case is unreachable
+coverage.as:25.24-25.33: warning, this case is unreachable
+coverage.as:26.24-26.33: warning, this case is unreachable
+coverage.as:27.24-27.33: warning, this case is unreachable
+coverage.as:28.24-28.33: warning, this case is unreachable
+coverage.as:29.38-29.39: warning, this pattern alternative is unreachable
+coverage.as:29.3-29.45: warning, the cases in this switch do not cover all possible values
+(module
+  (type $0 (func))
+  (type $1 (func (param i32 i32) (result i32)))
+  (table $0 9 9 anyfunc)
+  (memory $0 1024)
+  (global $0 (mut i32) (i32.const 0))
+  (func $0
+    (type 1)
+    (local i32 i32)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 3)
+      (block (result i32) (get_local 3) (drop) (i32.const 1))
+      (if
+        (then)
+        (else
+          (block (result i32) (get_local 3) (drop) (i32.const 1))
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $1
+    (type 1)
+    (local i32 i32)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 3)
+      (block (result i32) (get_local 3) (drop) (i32.const 1))
+      (if
+        (then)
+        (else
+          (block
+            (result i32)
+            (get_local 3)
+            (i32.const 6)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $2
+    (type 1)
+    (local i32 i32)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 3)
+      (block
+        (result i32)
+        (get_local 3)
+        (i32.const 5)
+        (i32.eq)
+        (if (then) (else (i32.const 0) (br 1)))
+        (i32.const 1)
+      )
+      (if
+        (then)
+        (else
+          (block (result i32) (get_local 3) (drop) (i32.const 1))
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $3
+    (type 1)
+    (local i32 i32)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 3)
+      (block
+        (result i32)
+        (get_local 3)
+        (i32.const 5)
+        (i32.eq)
+        (if (then) (else (i32.const 0) (br 1)))
+        (i32.const 1)
+      )
+      (if
+        (then)
+        (else
+          (block
+            (result i32)
+            (get_local 3)
+            (i32.const 5)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $4
+    (type 1)
+    (local i32)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 2)))
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $5
+    (type 1)
+    (local i32 i32)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 3)
+    (get_local 1)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 2)
+      (get_local 3)
+      (get_local 2)
+      (i32.store)
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $6
+    (type 1)
+    (local i32)
+    (get_local 1)
+    (set_local 2)
+    (block (result i32) (get_local 2) (drop) (i32.const 1))
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+  )
+  (func $7
+    (type 1)
+    (local
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+    )
+    (get_local 1)
+    (set_local 2)
+    (block (result i32) (get_local 2) (drop) (i32.const 1))
+    (if (then) (else (unreachable)))
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 3)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 8)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 9)
+    (get_local 8)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 10)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 11)
+    (get_local 10)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 12)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 13)
+    (get_local 12)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 14)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 15)
+    (get_local 14)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 16)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 17)
+    (get_local 16)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 18)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 19)
+    (get_local 18)
+    (i32.store)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 20)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 21)
+    (get_local 20)
+    (i32.store)
+    (i32.const 0)
+    (set_local 2)
+    (block (result i32) (get_local 2) (drop) (i32.const 1))
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 2)
+      (get_local 3)
+      (get_local 2)
+      (i32.store)
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 2)))
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 4)
+      (block
+        (result i32)
+        (get_local 4)
+        (i32.const 5)
+        (i32.eq)
+        (if (then) (else (i32.const 0) (br 1)))
+        (i32.const 1)
+      )
+      (if
+        (then)
+        (else
+          (block
+            (result i32)
+            (get_local 4)
+            (i32.const 5)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 5)
+      (block
+        (result i32)
+        (get_local 5)
+        (i32.const 5)
+        (i32.eq)
+        (if (then) (else (i32.const 0) (br 1)))
+        (i32.const 1)
+      )
+      (if
+        (then)
+        (else
+          (block (result i32) (get_local 5) (drop) (i32.const 1))
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 6)
+      (block (result i32) (get_local 6) (drop) (i32.const 1))
+      (if
+        (then)
+        (else
+          (block
+            (result i32)
+            (get_local 6)
+            (i32.const 6)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (i32.const 0)
+    (set_local 2)
+    (block
+      (result i32)
+      (get_local 2)
+      (set_local 7)
+      (block (result i32) (get_local 7) (drop) (i32.const 1))
+      (if
+        (then)
+        (else
+          (block (result i32) (get_local 7) (drop) (i32.const 1))
+          (if (then) (else (i32.const 0) (br 3)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if (then) (else (unreachable)))
+    (get_local 8)
+    (i32.const 6)
+    (i32.store)
+    (get_local 10)
+    (i32.const 5)
+    (i32.store)
+    (get_local 12)
+    (i32.const 4)
+    (i32.store)
+    (get_local 14)
+    (i32.const 3)
+    (i32.store)
+    (get_local 16)
+    (i32.const 2)
+    (i32.store)
+    (get_local 18)
+    (i32.const 1)
+    (i32.store)
+    (get_local 20)
+    (i32.const 0)
+    (i32.store)
+    (i32.const 0)
+    (set_local 41)
+    (block (result i32) (get_local 41) (drop) (i32.const 1))
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 0)
+    (set_local 39)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 40)
+    (block
+      (result i32)
+      (get_local 39)
+      (set_local 2)
+      (get_local 40)
+      (get_local 2)
+      (i32.store)
+      (i32.const 1)
+    )
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 0)
+    (set_local 38)
+    (block
+      (result i32)
+      (get_local 38)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 1)))
+      (i32.const 1)
+    )
+    (if (result i32) (then (i32.const 0)) (else (unreachable)))
+    (drop)
+    (i32.const 0)
+    (set_local 37)
+    (block
+      (result i32)
+      (get_local 37)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 1)))
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block
+          (result i32)
+          (get_local 37)
+          (i32.const 5)
+          (i32.eq)
+          (if (then) (else (i32.const 0) (br 1)))
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 36)
+    (block
+      (result i32)
+      (get_local 36)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 1)))
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block (result i32) (get_local 36) (drop) (i32.const 1))
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 34)
+    (block
+      (result i32)
+      (get_local 34)
+      (i32.const 5)
+      (i32.eq)
+      (if (then) (else (i32.const 0) (br 1)))
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (get_global 0)
+        (get_global 0)
+        (i32.const 4)
+        (i32.add)
+        (set_global 0)
+        (set_local 35)
+        (block
+          (result i32)
+          (get_local 34)
+          (set_local 2)
+          (get_local 35)
+          (get_local 2)
+          (i32.store)
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 33)
+    (block (result i32) (get_local 33) (drop) (i32.const 1))
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block
+          (result i32)
+          (get_local 33)
+          (i32.const 6)
+          (i32.eq)
+          (if (then) (else (i32.const 0) (br 1)))
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 31)
+    (block (result i32) (get_local 31) (drop) (i32.const 1))
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (get_global 0)
+        (get_global 0)
+        (i32.const 4)
+        (i32.add)
+        (set_global 0)
+        (set_local 32)
+        (block
+          (result i32)
+          (get_local 31)
+          (set_local 2)
+          (get_local 32)
+          (get_local 2)
+          (i32.store)
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 29)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 30)
+    (block
+      (result i32)
+      (get_local 29)
+      (set_local 2)
+      (get_local 30)
+      (get_local 2)
+      (i32.store)
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block (result i32) (get_local 29) (drop) (i32.const 1))
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 26)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 27)
+    (block
+      (result i32)
+      (get_local 26)
+      (set_local 2)
+      (get_local 27)
+      (get_local 2)
+      (i32.store)
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (get_global 0)
+        (get_global 0)
+        (i32.const 4)
+        (i32.add)
+        (set_global 0)
+        (set_local 28)
+        (block
+          (result i32)
+          (get_local 26)
+          (set_local 2)
+          (get_local 28)
+          (get_local 2)
+          (i32.store)
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 25)
+    (block (result i32) (get_local 25) (drop) (i32.const 1))
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block (result i32) (get_local 25) (drop) (i32.const 1))
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+    (drop)
+    (i32.const 0)
+    (set_local 22)
+    (block
+      (result i32)
+      (get_local 22)
+      (set_local 23)
+      (block
+        (result i32)
+        (get_local 23)
+        (i32.const 5)
+        (i32.eq)
+        (if (then) (else (i32.const 0) (br 1)))
+        (i32.const 1)
+      )
+      (if
+        (then)
+        (else
+          (block
+            (result i32)
+            (get_local 23)
+            (i32.const 6)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if (then) (else (i32.const 0) (br 2)))
+        )
+      )
+      (i32.const 1)
+    )
+    (if
+      (result i32)
+      (then (i32.const 0))
+      (else
+        (block
+          (result i32)
+          (get_local 22)
+          (set_local 24)
+          (block
+            (result i32)
+            (get_local 24)
+            (i32.const 7)
+            (i32.eq)
+            (if (then) (else (i32.const 0) (br 1)))
+            (i32.const 1)
+          )
+          (if
+            (then)
+            (else
+              (block
+                (result i32)
+                (get_local 24)
+                (i32.const 6)
+                (i32.eq)
+                (if (then) (else (i32.const 0) (br 1)))
+                (i32.const 1)
+              )
+              (if (then) (else (i32.const 0) (br 2)))
+            )
+          )
+          (i32.const 1)
+        )
+        (if (result i32) (then (i32.const 0)) (else (unreachable)))
+      )
+    )
+  )
+  (func $8
+    (type 0)
+    (local i32 i32 i32)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (set_local 1)
+    (get_global 0)
+    (get_global 0)
+    (i32.const 4)
+    (i32.add)
+    (set_global 0)
+    (tee_local 2)
+    (get_local 1)
+    (i32.store)
+    (get_local 1)
+    (i32.const 7)
+    (i32.store)
+    (get_local 1)
+    (drop)
+  )
+  (start 8)
+  (elem 0 (offset (i32.const 0)) 0 1 2 3 4 5 6 7 8)
+)
+Interpreting the .wat:
+coverage.wat:1.1-1.21: syntax error: unknown operator
