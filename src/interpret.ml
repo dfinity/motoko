@@ -140,6 +140,9 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
     )
   | TupE exps ->
     interpret_exps context exps [] (fun vs -> k (V.Tup vs))
+  | OptE exp1 ->
+    (* TBR: use a different representation? *)
+    interpret_exp context exp1 k
   | ProjE (exp1, n) ->
     interpret_exp context exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
@@ -307,7 +310,8 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | AnnotP (pat, _typ) -> declare_pat pat
+  | OptP pat1 -> declare_pat pat1
+  | AnnotP (pat1, _typ) -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
   match pats with
@@ -325,6 +329,7 @@ and define_pat context pat v =
   | WildP | LitP _ | SignP _ -> ()
   | VarP id -> define_id context id v
   | TupP pats -> define_pats context pats (V.as_tup v)
+  | OptP pat1 -> define_pat context pat1 v  (* TBR: different representation? *)
   | AnnotP (pat1, _typ) -> define_pat context pat1 v
 
 and define_pats context pats vs =
@@ -360,6 +365,10 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | OptP pat1 ->
+    if v = V.Null
+    then None
+    else match_pat pat1 v (* TBR: use a different representation? *)
   | AnnotP (pat1, _typ) ->
     match_pat pat1 v
 

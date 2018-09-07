@@ -1,7 +1,13 @@
 -- Checking objects3.as:
 type Q = {this : var Q?; x : Nat}
 let q : Q
+let unopt : <T>(T?) -> T
 -- Interpreting objects3.as:
+unopt({this = {this = {...}; x = 4}; x = 4})
+  <= {this = {this = {...}; x = 4}; x = 4}
+unopt({this = {this = {...}; x = 4}; x = 4})
+  <= {this = {this = {...}; x = 4}; x = 4}
 -- Finished objects3.as:
 let q : Q = {this = {this = {...}; x = 4}; x = 4}
+let unopt : <T>(T?) -> T = func
 

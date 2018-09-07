@@ -96,7 +96,8 @@ let assign_op lhs rhs_f at =
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
-    
+%left POWOP
+
 %type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> parse_prog
 %start<Syntax.prog> parse_prog_interactive
@@ -296,6 +297,8 @@ exp_post :
     { e }
   | LBRACKET es=seplist(exp, COMMA) RBRACKET
     { ArrayE(es) @? at $sloc }
+  | e=exp_post QUEST
+    { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
@@ -421,8 +424,14 @@ pat_nullary :
   | LPAR ps=seplist(pat, COMMA) RPAR
     { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
 
-pat_un :
+pat_post :
   | p=pat_nullary
+    { p }
+  | p=pat_post QUEST
+    { OptP(p) @? at $sloc }
+
+pat_un :
+  | p=pat_post
     { p }
   | op=unop l=lit
     { SignP(op, ref l) @? at $sloc }
