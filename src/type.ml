@@ -433,6 +433,8 @@ let rec sub env t1 t2 =
 let rec join env t1 t2 =
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
+  | _, Pre
+  | Pre, _ -> Pre
   | _, Any
   | Any, _ -> Any
   | Prim Nat, Prim Int
@@ -447,6 +449,8 @@ let rec join env t1 t2 =
 let rec meet env t1 t2 =
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
+  | _, Pre
+  | Pre, _ -> Pre
   | _, Any -> t1
   | Any, _ -> t2
   | Prim Nat, Prim Int

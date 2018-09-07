@@ -64,11 +64,12 @@ type binop =
   | MulOp                                       (* x*y *)
   | DivOp                                       (* x/y *)
   | ModOp                                       (* x%y *)
+  | PowOp                                       (* x^y *)
   | AndOp                                       (* bitwise operators... *)
   | OrOp
   | XorOp
-  | ShiftLOp
-  | ShiftROp
+  | ShLOp
+  | ShROp
   | RotLOp
   | RotROp
   | CatOp                                       (* concatenation *)
@@ -91,6 +92,7 @@ and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)
   | TupP of pat list                           (* tuple *)
+  | OptP of pat                                (* option *)
   | AnnotP of pat * typ                        (* type annotation *)
   | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
   | SignP of unop * lit ref                    (* signed literal *)
@@ -118,6 +120,7 @@ and exp' =
   | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
+  | OptE of exp                                (* option injection *)
   | ObjE of sort * id * exp_field list         (* object *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)

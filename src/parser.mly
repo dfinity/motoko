@@ -63,12 +63,12 @@ let assign_op lhs rhs_f at =
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
-%token ADDOP SUBOP MULOP DIVOP MODOP
+%token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token CATOP
 %token EQ LT GT
-%token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN CATASSIGN
+%token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
 %token<string> NAT
@@ -85,7 +85,7 @@ let assign_op lhs rhs_f at =
 %nonassoc IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
-%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
+%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %left IS COLON
 %left OR
 %left AND
@@ -96,7 +96,8 @@ let assign_op lhs rhs_f at =
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
-    
+%left POWOP
+
 %type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> parse_prog
 %start<Syntax.prog> parse_prog_interactive
@@ -230,11 +231,12 @@ lit :
   | MULOP { MulOp }
   | DIVOP { DivOp }
   | MODOP { ModOp }
+  | POWOP { PowOp }
   | ANDOP { AndOp }
   | OROP  { OrOp }
   | XOROP { XorOp }
-  | SHLOP { ShiftLOp }
-  | SHROP { ShiftROp }
+  | SHLOP { ShLOp }
+  | SHROP { ShROp }
   | ROTLOP { RotLOp }
   | ROTROP { RotROp }
   | CATOP { CatOp }
@@ -258,11 +260,12 @@ lit :
   | MULASSIGN { MulOp }
   | DIVASSIGN { DivOp }
   | MODASSIGN { ModOp }
+  | POWASSIGN { PowOp }
   | ANDASSIGN { AndOp }
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
-  | SHLASSIGN { ShiftLOp }
-  | SHRASSIGN { ShiftROp }
+  | SHLASSIGN { ShLOp }
+  | SHRASSIGN { ShROp }
   | ROTLASSIGN { RotLOp }
   | ROTRASSIGN { RotROp }
   | CATASSIGN { CatOp }
@@ -294,6 +297,8 @@ exp_post :
     { e }
   | LBRACKET es=seplist(exp, COMMA) RBRACKET
     { ArrayE(es) @? at $sloc }
+  | e=exp_post QUEST
+    { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
@@ -419,8 +424,14 @@ pat_nullary :
   | LPAR ps=seplist(pat, COMMA) RPAR
     { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
 
-pat_un :
+pat_post :
   | p=pat_nullary
+    { p }
+  | p=pat_post QUEST
+    { OptP(p) @? at $sloc }
+
+pat_un :
+  | p=pat_post
     { p }
   | op=unop l=lit
     { SignP(op, ref l) @? at $sloc }

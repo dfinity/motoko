@@ -1,5 +1,20 @@
 // Numeric operators
 
+func testNat(a : Nat, b : Nat) {
+  let sum1 = a + b;
+  let sum2 = (a + b) : Nat;
+  let diff1 = a - b;
+  let diff2 = (a - b) : Nat;
+  let prod1 = a * b;
+  let prod2 = (a * b) : Nat;
+  let rat1 = a / b;
+  let rat2 = (a / b) : Nat;
+  let mod1 = a % b;
+  let mod2 = (a % b) : Nat;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Nat;
+};
+
 func testInt(a : Int, b : Int) {
   let pos1 = + a;
   let pos2 = (+ a) : Int;
@@ -15,8 +30,40 @@ func testInt(a : Int, b : Int) {
   let rat2 = (a / b) : Int;
   let mod1 = a % b;
   let mod2 = (a % b) : Int;
+  let pow1 = a * b;
+  let pow2 = (a * b) : Int;
 };
 
+func testNatInt(a : Nat, b : Int) {
+  let pos1 = + a;
+  let pos2 = (+ a) : Int;
+  let neg1 = - a;
+  let neg2 = (- a) : Int;
+  let sum1 = a + b;
+  let sum2 = (a + b) : Int;
+  let sum3 = b + a;
+  let sum4 = (b + a) : Int;
+  let diff1 = a - b;
+  let diff2 = (a - b) : Int;
+  let diff3 = b - a;
+  let diff4 = (b - a) : Int;
+  let prod1 = a * b;
+  let prod2 = (a * a) : Int;
+  let prod3 = b * b;
+  let prod4 = (b * a) : Int;
+  let rat1 = a / b;
+  let rat2 = (a / b) : Int;
+  let rat3 = b / a;
+  let rat4 = (b / a) : Int;
+  let mod1 = a % b;
+  let mod2 = (a % b) : Int;
+  let mod3 = b % a;
+  let mod4 = (b % a) : Int;
+  let pow1 = a ** b;
+  let pow2 = (a ** a) : Int;
+  let pow3 = b ** b;
+  let pow4 = (b ** a) : Int;
+};
 
 func testFloat(a : Float, b : Float) {
   let pos1 = + a;
@@ -31,21 +78,9 @@ func testFloat(a : Float, b : Float) {
   let prod2 = (a * b) : Float;
   let rat1 = a / b;
   let rat2 = (a / b) : Float;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Float;
 };
-
-func testNat(a : Nat, b : Nat) {
-  let sum1 = a + b;
-  let sum2 = (a + b) : Nat;
-  let diff1 = a - b;
-  let diff2 = (a - b) : Nat;
-  let prod1 = a * b;
-  let prod2 = (a * b) : Nat;
-  let rat1 = a / b;
-  let rat2 = (a / b) : Nat;
-  let mod1 = a % b;
-  let mod2 = (a % b) : Nat;
-};
-
 
 func testWord8(a : Word8, b : Word8) {
   let sum1 = a + b;
@@ -58,6 +93,8 @@ func testWord8(a : Word8, b : Word8) {
   let rat2 = (a / b) : Word8;
   let mod1 = a % b;
   let mod2 = (a % b) : Word8;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Word8;
 };
 
 func testWord16(a : Word16, b : Word16) {
@@ -71,6 +108,8 @@ func testWord16(a : Word16, b : Word16) {
   let rat2 = (a / b) : Word16;
   let mod1 = a % b;
   let mod2 = (a % b) : Word16;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Word16;
 };
 
 func testWord32(a : Word32, b : Word32) {
@@ -84,6 +123,8 @@ func testWord32(a : Word32, b : Word32) {
   let rat2 = (a / b) : Word32;
   let mod1 = a % b;
   let mod2 = (a % b) : Word32;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Word32;
 };
 
 func testWord64(a : Word64, b : Word64) {
@@ -97,4 +138,6 @@ func testWord64(a : Word64, b : Word64) {
   let rat2 = (a / b) : Word64;
   let mod1 = a % b;
   let mod2 = (a % b) : Word64;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Word64;
 };

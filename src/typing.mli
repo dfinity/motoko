@@ -27,3 +27,4 @@ val adjoin_typs : context -> typ_env -> con_env -> context
 exception Error of Source.region * string
 
 val check_prog : context -> Syntax.prog -> scope (* raise Error *)
+val infer_prog : context -> Syntax.prog -> typ * scope (* raise Error *)

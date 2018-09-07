@@ -288,7 +288,7 @@ testRead()
   <= ()
 -- Finished counter.as:
 let Counter : Int -> Counter = func
-let c : Counter = Counter
+let c : Counter = Counter(...)
 let show : (Text, Int) -> () = func
 let showAsync : (Text, async Int) -> () = func
 let testDec : () -> () = func

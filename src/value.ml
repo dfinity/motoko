@@ -52,6 +52,7 @@ sig
   include Wasm.Int.S
   val neg : t -> t
   val not : t -> t
+  val pow : t -> t -> t
 end
 
 module MakeWord(WasmInt : Wasm.Int.S) =
@@ -59,6 +60,14 @@ struct
   include WasmInt
   let neg w = sub zero w
   let not w = xor w (of_int_s (-1))
+  let one = of_int_u 1
+  let rec pow x y =
+    if y = zero then
+      one
+    else if and_ y one = zero then
+      pow (mul x x) (shr_u y one)
+    else
+      mul x (pow x (sub y one))
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
@@ -69,12 +78,27 @@ module Word8 = MakeWord(Wasm.Int.Make(Int8Rep))
 module Word16 = MakeWord(Wasm.Int.Make(Int16Rep))
 module Word32 = MakeWord(Wasm.I32)
 module Word64 = MakeWord(Wasm.I64)
-module Float = Wasm.F64
+
+module type FloatType =
+sig
+  include Wasm.Float.S
+  val pow : t -> t -> t
+end
+
+module MakeFloat(WasmFloat : Wasm.Float.S) =
+struct
+  include WasmFloat
+  let pow x y = of_float (to_float x ** to_float y)
+end
+
+module Float = MakeFloat(Wasm.F64)
+
 
 module type NumType =
 sig
   include module type of Z
   val sub : t -> t -> t
+  val pow' : t -> t -> t
   val eq : t -> t -> bool
   val ne : t -> t -> bool
   val le : t -> t -> bool
@@ -89,6 +113,13 @@ struct
   let ne x y = not (eq x y)
   let le = leq
   let ge = geq
+
+  let max_int = of_int max_int
+
+  let pow' x y =
+    if gt y max_int
+    then raise (Invalid_argument "Int.pow")
+    else pow x (to_int y)
 end
 
 module Nat : NumType with type t = Z.t =
@@ -189,7 +220,7 @@ let rec string_of_val_nullary d conenv t v =
   | T.Prim T.Float -> Float.to_string (as_float v)
   | T.Prim T.Char -> string_of_char (as_char v)
   | T.Prim T.Text -> string_of_text (as_text v)
-  | T.Con (c, []) -> Con.to_string c
+  | T.Con (c, []) -> Con.to_string c ^ "(...)"
   | T.Con (c, ts) ->
     sprintf "%s<%s>"
       (Con.to_string c)

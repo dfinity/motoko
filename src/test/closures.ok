@@ -1,0 +1,38 @@
+-- Checking closures.as:
+let add1 : Nat -> Nat
+var answer : Nat
+let answer2 : Nat
+var answer3 : Nat
+var answers : Nat[]
+let fs : (Nat -> Nat)[]
+let test_answer : Nat -> ()
+let test_answer2 : () -> ()
+let test_answer3 : () -> ()
+let test_answers : Nat -> ()
+-- Interpreting closures.as:
+add1(1)
+  <= 2
+add1(2)
+  <= 3
+add1(3)
+  <= 4
+test_answer(42)
+  <= ()
+test_answers(44)
+  <= ()
+test_answer2()
+  <= ()
+test_answer3()
+  <= ()
+-- Finished closures.as:
+let add1 : Nat -> Nat = func
+var answer : Nat = 42
+let answer2 : Nat = 42
+var answer3 : Nat = 51
+var answers : Nat[] = [43, 44]
+let fs : (Nat -> Nat)[] = [func, func, func]
+let test_answer : Nat -> () = func
+let test_answer2 : () -> () = func
+let test_answer3 : () -> () = func
+let test_answers : Nat -> () = func
+

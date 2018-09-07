@@ -1,0 +1,18 @@
+-- Checking tuples.as:
+let a : Nat
+let nested1 : (Nat, (Nat, Nat))
+let nested2 : (Nat, Nat)
+let tup1 : (Nat, Nat)
+let x : Nat
+let y : Nat
+let z : Nat
+-- Interpreting tuples.as:
+-- Finished tuples.as:
+let a : Nat = 3
+let nested1 : (Nat, (Nat, Nat)) = (1, (2, 3))
+let nested2 : (Nat, Nat) = (2, 3)
+let tup1 : (Nat, Nat) = (1, 2)
+let x : Nat = 1
+let y : Nat = 2
+let z : Nat = 3
+

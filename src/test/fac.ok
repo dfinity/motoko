@@ -1,0 +1,18 @@
+-- Checking fac.as:
+let fac : Nat -> Nat
+-- Interpreting fac.as:
+fac(5)
+  fac(4)
+    fac(3)
+      fac(2)
+        fac(1)
+          fac(0)
+            <= 1
+          <= 1
+        <= 2
+      <= 6
+    <= 24
+  <= 120
+-- Finished fac.as:
+let fac : Nat -> Nat = func
+

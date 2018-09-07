@@ -1,0 +1,6 @@
+-- Checking let.as:
+let x : Nat
+-- Interpreting let.as:
+-- Finished let.as:
+let x : Nat = 42
+

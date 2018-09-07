@@ -278,7 +278,7 @@ let rec check_lit context t lit at =
   | T.Prim t', _ when t' = infer_lit context lit at ->
     ()
   | t, _ ->
-    error at "expected expression of type %s, found literal of type %s"
+    error at "expected literal of type %s, found literal of type %s"
       (T.string_of_typ t)
       (T.string_of_typ (T.Prim (infer_lit context lit at)))
 
@@ -319,12 +319,14 @@ and infer_exp' context exp : T.typ =
     T.Prim (infer_lit context lit exp.at)
   | UnE (op, exp1) ->
     let t1 = infer_exp_structural context exp1 in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not context.pre then begin
-      if not (Operator.has_unop t1 op) then
+      if not (Operator.has_unop t op) then
         error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t1)
+          (T.string_of_typ t)
     end;
-    t1
+    t
   | BinE (exp1, op, exp2) ->
     let t1 = infer_exp_structural context exp1 in
     let t2 = infer_exp_structural context exp2 in
@@ -348,6 +350,9 @@ and infer_exp' context exp : T.typ =
   | TupE exps ->
     let ts = List.map (infer_exp context) exps in
     T.Tup ts
+  | OptE exp1 ->
+    let t1 = infer_exp context exp1 in
+    T.Opt t1
   | ProjE (exp1, n) ->
     let t1 = infer_exp_structural context exp1 in
     (match t1 with
@@ -415,8 +420,11 @@ and infer_exp' context exp : T.typ =
       error exp1.at "expected function type, found %s" (T.string_of_typ t1')
     )
   | BlockE decs ->
-    let t = infer_block context decs exp.at in
-    t
+    let t, (_, _, ce) = infer_block context decs exp.at in
+    (try T.avoid context.cons ce t with T.Unavoidable c ->
+      error exp.at "inferred block type %s contains the local class type %s"
+        (T.string_of_typ t) (Con.to_string c)
+    )
   | NotE exp1 ->
     if not context.pre then check_exp context T.bool exp1;
     T.bool
@@ -436,11 +444,8 @@ and infer_exp' context exp : T.typ =
     if not context.pre then check_exp context T.bool exp1;
     let t2 = infer_exp context exp2 in
     let t3 = infer_exp context exp3 in
-    (* TBR: join *)
-    if not (T.eq context.cons t2 t3) then
-      error exp.at "if branches have inconsistent types, true is %s, false is %s"
-        (T.string_of_typ t2) (T.string_of_typ t3);
-    t2
+    let t = T.join context.cons t2 t3 in
+    t
   | SwitchE (exp1, cases) ->
     let t1 = if context.pre then T.Pre else infer_exp_structural context exp1 in
     let t = infer_cases context t1 cases in
@@ -526,8 +531,11 @@ and infer_exp' context exp : T.typ =
     if not context.pre then check_exp context t exp1;
     t
   | DecE dec ->
-    let t = infer_block context [dec] exp.at in
-    t
+    let t, (_, _, ce) = infer_block context [dec] exp.at in
+    (try T.avoid context.cons ce t with T.Unavoidable c ->
+      error exp.at "inferred declaration type %s contains the local class type %s"
+        (T.string_of_typ t) (Con.to_string c)
+    )
     
 
 and check_exp context t exp =
@@ -566,6 +574,14 @@ and check_exp' context t exp =
     | _ ->
       error exp.at "%s expression cannot produce expected type %s"
         (if exps = [] then "empty" else "tuple")
+        (T.string_of_typ t)
+    )
+  | OptE exp1 ->
+    (match T.normalize context.cons t with
+    | T.Opt t1 ->
+      check_exp context t1 exp1
+    | _ ->
+      error exp.at "option expression cannot produce expected type %s"
         (T.string_of_typ t)
     )
   | ObjE (sort, id, fields) ->
@@ -623,16 +639,15 @@ and infer_cases context t1 cases : T.typ =
   | [] ->
     (* TBR: T.Bottom? *)
     T.unit
+  | [{it = {pat; exp}; _}] ->
+    let ve = check_pat context t1 pat in
+    let t = infer_exp (adjoin_vals context ve) exp in
+    t
   | {it = {pat; exp}; _}::cases' ->
     let ve = check_pat context t1 pat in
     let t = infer_exp (adjoin_vals context ve) exp in
     let t' = infer_cases context t cases' in
-    (* TBR: join *)
-    if not (T.eq context.cons t t') then
-      error exp.at
-        "switch branches have inconsistent types, this is %s, next is %s"
-        (T.string_of_typ t) (T.string_of_typ t');
-    t
+    T.join context.cons t t'
 
 and check_cases context t1 t2 cases =
   match cases with
@@ -655,6 +670,7 @@ and gather_pat ve pat : val_env =
     T.Env.add id.it T.Pre ve
   | TupP pats ->
     List.fold_left gather_pat ve pats
+  | OptP pat1
   | AnnotP (pat1, _) ->
     gather_pat ve pat1
 
@@ -675,7 +691,9 @@ and infer_pat' context pat : T.typ * val_env =
   | LitP lit ->
     T.Prim (infer_lit context lit pat.at), T.Env.empty
   | SignP (op, lit) ->
-    let t = T.Prim (infer_lit context lit pat.at) in
+    let t1 = T.Prim (infer_lit context lit pat.at) in
+    (* Special case for subtyping *)
+    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not (Operator.has_unop t op) then
       error pat.at "operator is not defined for operand type %s"
         (T.string_of_typ t);
@@ -683,6 +701,9 @@ and infer_pat' context pat : T.typ * val_env =
   | TupP pats ->
     let ts, ve = infer_pats pat.at context pats [] T.Env.empty in
     T.Tup ts, ve
+  | OptP pat1 ->
+    let t1, ve = infer_pat context pat1 in
+    T.Opt t1, ve
   | AnnotP (pat1, typ) ->
     let t = check_typ context typ in
     t, check_pat context t pat1
@@ -698,25 +719,30 @@ and infer_pats at context pats ts ve : T.typ list * val_env =
 
 and check_pat context t pat : val_env =
   assert (pat.note.note_typ = T.Pre);
+  if t = T.Pre then snd (infer_pat context pat) else
   let ve = check_pat' context t pat in
   if not context.pre then
     pat.note <- {note_typ = T.normalize context.cons t; note_eff = T.Triv};
   ve
 
 and check_pat' context t pat : val_env =
+  assert (t <> T.Pre);
   match pat.it with
   | WildP ->
     T.Env.empty
   | VarP id ->
     T.Env.singleton id.it t
   | LitP lit ->
-    check_lit context t lit pat.at;
+    if not context.pre then
+      check_lit context t lit pat.at;
     T.Env.empty
   | SignP (op, lit) ->
-    if not (Operator.has_unop t op) then
-      error pat.at "operator cannot consume expected type %s"
-        (T.string_of_typ t);
-    check_lit context t lit pat.at;
+    if not context.pre then begin
+      if not (Operator.has_unop t op) then
+        error pat.at "operator cannot consume expected type %s"
+          (T.string_of_typ t);
+      check_lit context t lit pat.at
+    end;
     T.Env.empty
   | TupP pats ->
     (match t with
@@ -724,6 +750,14 @@ and check_pat' context t pat : val_env =
       check_pats context ts pats T.Env.empty pat.at
     | _ ->
       error pat.at "tuple pattern cannot consume expected type %s"
+        (T.string_of_typ t)
+    )
+  | OptP pat1 ->
+    (match t with
+    | T.Opt t1 ->
+      check_pat context t1 pat1
+    | _ ->
+      error pat.at "option pattern cannot consume expected type %s"
         (T.string_of_typ t)
     )
   | _ ->
@@ -867,15 +901,10 @@ and check_exp_field context s tfs (tfs_inner, ve) field : T.field list * val_env
 
 (* Blocks and Declarations *)
 
-and infer_block context decs at : T.typ =
+and infer_block context decs at : T.typ * scope =
   let _, _, ce as scope, ce_inner = infer_block_decs context decs in
-(*Printf.printf "[block] infer expressions\n";
-let t =*)
   let t = infer_block_exps (adjoin context scope) ce_inner decs in
-  try T.avoid context.cons ce t with T.Unavoidable c ->
-    error at "inferred block type %s contains the local class type %s"
-      (T.string_of_typ t) (Con.to_string c)
-(*in Printf.printf "[block] done\n"; t*)
+  t, scope
 
 and infer_block_exps context ce_inner decs : T.typ =
   match decs with
@@ -1119,3 +1148,6 @@ and infer_dec_valdecs context dec : val_env =
 
 let check_prog context prog : scope =
   check_block context T.unit prog.it prog.at
+
+let infer_prog context prog : T.typ * scope =
+  infer_block context prog.it prog.at

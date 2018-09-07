@@ -13,8 +13,7 @@ let word_unop fword8 fword16 fword32 fword64 = function
   | T.Word64 -> fun v -> Word64 (fword64 (as_word64 v))
   | _ -> raise (Invalid_argument "unop")
 
-let num_unop fnat fint fword8 fword16 fword32 fword64 ffloat = function
-  | T.Nat -> fun v -> Int (fint (as_int v))
+let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Int -> fun v -> Int (fint (as_int v))
   | T.Float -> fun v -> Float (ffloat (as_float v))
   | t -> word_unop fword8 fword16 fword32 fword64 t
@@ -23,8 +22,8 @@ let unop t op =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in num_unop id id id id id id id p
-    | NegOp -> num_unop Int.neg Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
+    | PosOp -> let id v = v in num_unop id id id id id id p
+    | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
     | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
     )
   | _ -> raise (Invalid_argument "unop")
@@ -58,11 +57,12 @@ let binop t op =
     | MulOp -> num_binop Nat.mul Int.mul Word8.mul Word16.mul Word32.mul Word64.mul Float.mul p
     | DivOp -> num_binop Nat.div Int.div Word8.div_u Word16.div_u Word32.div_u Word64.div_u Float.div p
     | ModOp -> num_binop Nat.rem Int.rem Word8.rem_u Word16.rem_u Word32.rem_u Word64.rem_u Float.div p (* TBR *)
+    | PowOp -> num_binop Nat.pow' Int.pow' Word8.pow Word16.pow Word32.pow Word64.pow Float.pow p (* TBR *)
     | AndOp -> word_binop Word8.and_ Word16.and_ Word32.and_ Word64.and_ p
     | OrOp  -> word_binop Word8.or_ Word16.or_ Word32.or_ Word64.or_ p
     | XorOp -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p
-    | ShiftLOp -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
-    | ShiftROp -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
+    | ShLOp -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
+    | ShROp -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
     | RotLOp -> word_binop Word8.rotl Word16.rotl Word32.rotl Word64.rotl p
     | RotROp -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
     | CatOp -> text_binop (^) p

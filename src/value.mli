@@ -5,23 +5,31 @@ sig
   include Wasm.Int.S
   val neg : t -> t
   val not : t -> t
+  val pow : t -> t -> t
 end
 
 module type NumType =
 sig
   include module type of Z
   val sub : t -> t -> t
+  val pow' : t -> t -> t
   val eq : t -> t -> bool
   val ne : t -> t -> bool
   val le : t -> t -> bool
   val ge : t -> t -> bool
 end
 
+module type FloatType =
+sig
+  include Wasm.Float.S
+  val pow : t -> t -> t
+end
+
 module Word8 : WordType with type bits = int32
 module Word16 : WordType with type bits = int32
 module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
 module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
-module Float : Wasm.Float.S with type bits = int64 and type t = Wasm.F64.t
+module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
 module Nat : NumType with type t = Z.t
 module Int : NumType with type t = Z.t

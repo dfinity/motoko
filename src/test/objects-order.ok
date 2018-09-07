@@ -1,0 +1,6 @@
+-- Checking objects-order.as:
+var x : Int
+-- Interpreting objects-order.as:
+-- Finished objects-order.as:
+var x : Int = 4
+

@@ -23,9 +23,10 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | VarE _ 
   | LitE _ ->
     T.Triv
-  | UnE (_, exp1) 
-  | ProjE (exp1, _) 
-  | DotE (exp1, _) 
+  | UnE (_, exp1)
+  | ProjE (exp1, _)
+  | OptE exp1
+  | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1 
   | LabelE (_, _, exp1) 
