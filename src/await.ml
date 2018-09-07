@@ -401,7 +401,27 @@ and binary context k binE e1 e2 =
     k -->  (c_exp context e1) -@-
              (v1 --> k -@- binE v1 (t_exp context e2))
   | T.Triv, T.Triv ->
-     binE (t_exp context e1) (t_exp context e2)  
+     binE (t_exp context e1) (t_exp context e2)
+
+and nary context k naryE es =
+  let rec nary_aux vs es  =
+    match es with
+    | [] -> k -@- naryE (List.rev vs)
+    | [e1] when eff e1 = T.Triv ->
+       (* TBR: optimization - no need to name the least trivial argument *)
+       k -@- naryE (List.rev (e1::vs))
+    | e1::es ->
+       match eff e1 with
+       | T.Triv ->
+          let v1 = fresh_id (typ e1) in
+          letE v1 (t_exp context e1)
+            (nary_aux (v1::vs) es)
+       | T.Await ->
+          let v1 = fresh_id (typ e1) in
+          (c_exp context e1) -@-
+            (v1 --> nary_aux (v1::vs) es)
+  in
+    k --> nary_aux [] es      
     
 and c_exp context exp =
   { exp with it = (c_exp' context exp).it }
@@ -421,8 +441,7 @@ and c_exp' context exp =
   | RelE (exp1, op, exp2) ->
     binary context k (fun v1 v2 -> e (RelE (v1, op, v2))) exp1 exp2
   | TupE exps ->
-    failwith "NYI" 
-  (*    TupE (List.map (c_exp context) exps)*)
+    nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->
     unary context k (fun v1 -> e (OptE v1)) exp1 
   | ProjE (exp1, n) ->
@@ -436,8 +455,7 @@ and c_exp' context exp =
   | AssignE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (AssignE (v1, v2))) exp1 exp2
   | ArrayE exps ->
-    failwith "NYI"
-    (* ArrayE (List.map (c_exp context) exps) *)
+    nary context k (fun vs -> e (ArrayE vs)) exps
   | IdxE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (exp1, typs, exp2) ->
@@ -453,7 +471,7 @@ and c_exp' context exp =
     failwith "NYI"; 
   | IfE (exp1, exp2, exp3) ->
     failwith "NYI"
-  (*    IfE (c_exp context exp1, c_exp context exp2, c_exp context exp3) *)
+(*    IfE (c_exp context exp1, c_exp context exp2, c_exp context exp3) *)
   | SwitchE (exp1, cases) ->
     failwith "NYI"
 (*    let cases' = List.map
@@ -516,7 +534,7 @@ and c_exp' context exp =
   | IsE (exp1, typ) ->
     unary context k (fun v1 -> e (IsE (v1,typ))) exp1  
   | AnnotE (exp1, typ) ->
-    (* TBR - just erase the annotation? *)
+    (* TBR - just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1  
   | DecE dec ->
      failwith "NYI"
