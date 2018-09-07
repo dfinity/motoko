@@ -141,15 +141,13 @@ end
 let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
 let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
-let compile_four =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ]
 let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
-let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+(* A hack! This needs to be disjoint from all other values *)
+let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int))) ]
 
-(* Heap pointer starts at 4 so that nothing is allocated at the null pointer
-position *)
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
-        value = nr compile_four }
+        value = nr compile_zero }
 
 let heap_ptr : var = nr 0l
 
@@ -308,11 +306,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
-  | OptE e ->
-     allocn 1l @
-     dup env @
-     compile_exp env e @
-     store_field 0l
+  | OptE e -> compile_exp env e (* Subtype! *)
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
      (* Allocate memory, and put position on the stack (return value) *)
