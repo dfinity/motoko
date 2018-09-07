@@ -1,2 +1,4 @@
 *.out
 *.diff
+*.wat
+*.wasm

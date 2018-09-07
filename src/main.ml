@@ -70,15 +70,15 @@ let run (stat_context, dyn_context) lexer parse infer name =
       print_ve ve
     end;
     trace "Interpreting" name;
-    let v, dyn_scope = Interpret.interpret_prog dyn_context prog in
+    let vo, dyn_scope = Interpret.interpret_prog dyn_context prog in
     let dyn_context' = Interpret.adjoin dyn_context dyn_scope in
     trace "Finished" name;
     if !Flags.interactive then
       print_scope stat_context' stat_scope dyn_scope
     else if !Flags.trace then
       print_dyn_ve stat_context' dyn_scope;
-    if !Flags.interactive && v <> Value.unit then
-      print_val stat_context' v t;
+    if !Flags.interactive && vo <> None && vo <> Some Value.unit then
+      print_val stat_context' (Lib.Option.value vo) t;
     Some (stat_context', dyn_context')
   with exn ->
     let r, sort, msg, dump =

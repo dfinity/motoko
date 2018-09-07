@@ -8,7 +8,13 @@ module A = Await
 
 exception Error of Source.region * string
 
-let error at fmt = Printf.ksprintf (fun s -> raise (Error (at, s))) fmt
+let error at fmt =
+  Printf.ksprintf (fun s -> raise (Error (at, s))) fmt
+
+let warn at fmt =
+  Printf.ksprintf (fun s ->
+    Printf.printf "%s: warning, %s\n" (Source.string_of_region at) s;
+  ) fmt
 
 
 (* Contexts *)
@@ -449,6 +455,9 @@ and infer_exp' context exp : T.typ =
   | SwitchE (exp1, cases) ->
     let t1 = if context.pre then T.Pre else infer_exp_structural context exp1 in
     let t = infer_cases context t1 cases in
+    if not context.pre then
+      if not (Coverage.check_cases cases) then
+        warn exp.at "the cases in this switch do not cover all possible values";
     t
   | WhileE (exp1, exp2) ->
     if not context.pre then begin
@@ -469,7 +478,7 @@ and infer_exp' context exp : T.typ =
       let t1 = infer_exp_structural context exp1 in
       if not (is_iter_typ context.cons t1) then
         error exp1.at "expected iterable type, found %s" (T.string_of_typ t1);
-      let ve = check_pat context (elem_typ context.cons t1) pat in
+      let ve = check_pat_exhaustive context (elem_typ context.cons t1) pat in
       check_exp (adjoin_vals context ve) T.unit exp2
     end;
     T.unit
@@ -497,7 +506,7 @@ and infer_exp' context exp : T.typ =
         check_exp context t exp1;
         (*TBR: T.Bottom? *)
       | None ->
-        error exp.at "misplaced return in global context"
+        error exp.at "misplaced return"
     end;
     T.unit
   | AsyncE exp1 ->
@@ -619,7 +628,9 @@ and check_exp' context t exp =
     check_exp context t exp3
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_structural context exp1 in
-    check_cases context t1 t cases
+    check_cases context t1 t cases;
+    if not (Coverage.check_cases cases) then
+      warn exp.at "the cases in this switch do not cover all possible values";
   | LoopE _ | BreakE _ | RetE _ ->
     (* TBR: remove once we have T.Bottom and subtyping? *)
     ignore (infer_exp context exp)
@@ -670,10 +681,19 @@ and gather_pat ve pat : val_env =
     T.Env.add id.it T.Pre ve
   | TupP pats ->
     List.fold_left gather_pat ve pats
+  | AltP (pat1, pat2) ->
+    gather_pat ve pat1
   | OptP pat1
   | AnnotP (pat1, _) ->
     gather_pat ve pat1
 
+
+and infer_pat_exhaustive context pat : T.typ * val_env =
+  let t, ve = infer_pat context pat in
+  if not context.pre then
+    if not (Coverage.check_pat pat) then
+      warn pat.at "this pattern does not cover all possible values";
+  t, ve
 
 and infer_pat context pat : T.typ * val_env =
   assert (pat.note.note_typ = T.Pre);
@@ -704,6 +724,13 @@ and infer_pat' context pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat context pat1 in
     T.Opt t1, ve
+  | AltP (pat1, pat2) ->
+    let t1, ve1 = infer_pat context pat1 in
+    let t2, ve2 = infer_pat context pat2 in
+    let t = T.join context.cons t1 t2 in
+    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
+      error pat.at "variables are not allowed in pattern alternatives";
+    t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ context typ in
     t, check_pat context t pat1
@@ -716,6 +743,13 @@ and infer_pats at context pats ts ve : T.typ list * val_env =
     let ve' = disjoint_union at "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at context pats' (t::ts) ve'
 
+
+and check_pat_exhaustive context t pat : val_env =
+  let ve = check_pat context t pat in
+  if not context.pre then
+    if not (Coverage.check_pat pat) then
+      warn pat.at "this pattern does not cover all possible values";
+  ve
 
 and check_pat context t pat : val_env =
   assert (pat.note.note_typ = T.Pre);
@@ -754,12 +788,15 @@ and check_pat' context t pat : val_env =
     )
   | OptP pat1 ->
     (match t with
-    | T.Opt t1 ->
+    | T.Opt t1 | t1 ->
       check_pat context t1 pat1
-    | _ ->
-      error pat.at "option pattern cannot consume expected type %s"
-        (T.string_of_typ t)
     )
+  | AltP (pat1, pat2) ->
+    let ve1 = check_pat context t pat1 in
+    let ve2 = check_pat context t pat2 in
+    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
+      error pat.at "variables are not allowed in pattern alternatives";
+    T.Env.empty
   | _ ->
     let t', ve = infer_pat context pat in
     if not (T.sub context.cons t' t) then
@@ -926,7 +963,7 @@ and infer_dec context ce_inner dec : T.typ =
     if not context.pre then begin
       let _cs, _ts, te, ce = check_typ_binds context typbinds in
       let context' = adjoin_typs context te ce in
-      let _, ve = infer_pat {context' with pre = true} pat in
+      let _, ve = infer_pat_exhaustive context' pat in
       let t2 = check_typ context' typ in
       let context'' =
         {context' with labs = T.Env.empty; rets = Some t2; async = false} in
@@ -940,8 +977,10 @@ and infer_dec context ce_inner dec : T.typ =
       let context' = adjoin_typs context te ce in
       let c = T.Env.find id.it context.typs in
       let context' = (*context'*) add_typ context' id.it c (Con.Env.find c ce_inner) in
-      let _, ve = infer_pat {context' with pre = true} pat in
-      ignore (infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields)
+      let _, ve = infer_pat_exhaustive context' pat in
+      let context'' =
+        {context' with labs = T.Env.empty; rets = None; async = false} in
+      ignore (infer_obj (adjoin_vals context'' ve) sort.it ("anon-self" @@ no_region) fields)
     end;
     t
   | TypD _ ->
@@ -1120,7 +1159,7 @@ and infer_dec_valdecs context dec : val_env =
     T.Env.empty
   | LetD (pat, exp) ->
     let t = infer_exp {context with pre = true} exp in
-    let ve' = check_pat context t pat in 
+    let ve' = check_pat_exhaustive context t pat in 
     ve'
   | VarD (id, exp) ->
     let t = infer_exp {context with pre = true} exp in

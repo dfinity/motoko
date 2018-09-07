@@ -20,8 +20,7 @@ val adjoin : context -> scope -> context
 
 exception Trap of Source.region * string
 
-val interpret_prog : context -> Syntax.prog -> V.value * val_env
-  (* raise Trap *)
+val interpret_prog : context -> Syntax.prog -> V.value option * val_env
 
 val get_last_region : unit -> Source.region
 val get_last_context : unit -> context

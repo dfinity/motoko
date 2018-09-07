@@ -100,9 +100,9 @@ Productions marked * probably deferred to later versions.
   ( <pat>,* )                                    tuple or brackets
   <pat> ?                                        option
   <pat> : <typ>                                  type annotation
+  <pat> or <pat>                                 disjunctive pattern
+* <pat> and <pat>                                conjunctive pattern
 * { <pat-field>;* }                              object pattern
-* <pat> = <pat>                                  conjunctive pattern
-* <pat> | <pat>                                  disjunctive pattern
 
 <pat-field> ::=                                object pattern fields
 * <id> = <pat>                                   field
