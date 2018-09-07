@@ -4,24 +4,25 @@ coverage.as:5.13-5.14: warning, this pattern alternative is unreachable
 coverage.as:5.8-5.14: warning, this pattern does not cover all possible values
 coverage.as:7.13-7.14: warning, this pattern alternative is unreachable
 coverage.as:8.13-8.14: warning, this pattern alternative is unreachable
-coverage.as:12.8-12.9: warning, this pattern does not cover all possible values
-coverage.as:13.13-13.14: warning, this pattern alternative is unreachable
-coverage.as:13.8-13.14: warning, this pattern does not cover all possible values
-coverage.as:15.13-15.14: warning, this pattern alternative is unreachable
-coverage.as:16.14-16.15: warning, this pattern alternative is unreachable
-coverage.as:20.3-20.25: warning, the cases in this switch do not cover all possible values
-coverage.as:21.24-21.33: warning, this case is unreachable
-coverage.as:21.3-21.35: warning, the cases in this switch do not cover all possible values
+coverage.as:11.7-11.9: warning, this pattern does not cover all possible values
+coverage.as:15.8-15.9: warning, this pattern does not cover all possible values
+coverage.as:16.13-16.14: warning, this pattern alternative is unreachable
+coverage.as:16.8-16.14: warning, this pattern does not cover all possible values
+coverage.as:18.13-18.14: warning, this pattern alternative is unreachable
+coverage.as:19.14-19.15: warning, this pattern alternative is unreachable
+coverage.as:23.3-23.25: warning, the cases in this switch do not cover all possible values
 coverage.as:24.24-24.33: warning, this case is unreachable
-coverage.as:25.24-25.33: warning, this case is unreachable
-coverage.as:26.24-26.33: warning, this case is unreachable
+coverage.as:24.3-24.35: warning, the cases in this switch do not cover all possible values
 coverage.as:27.24-27.33: warning, this case is unreachable
 coverage.as:28.24-28.33: warning, this case is unreachable
-coverage.as:29.42-29.43: warning, this pattern alternative is unreachable
-coverage.as:29.3-29.49: warning, the cases in this switch do not cover all possible values
-coverage.as:30.34-30.48: warning, this case is unreachable
-coverage.as:31.41-31.50: warning, this case is unreachable
-coverage.as:32.3-32.50: warning, the cases in this switch do not cover all possible values
+coverage.as:29.24-29.33: warning, this case is unreachable
+coverage.as:30.24-30.33: warning, this case is unreachable
+coverage.as:31.24-31.33: warning, this case is unreachable
+coverage.as:32.42-32.43: warning, this pattern alternative is unreachable
+coverage.as:32.3-32.49: warning, the cases in this switch do not cover all possible values
+coverage.as:33.34-33.48: warning, this case is unreachable
+coverage.as:34.41-34.50: warning, this case is unreachable
+coverage.as:35.3-35.50: warning, the cases in this switch do not cover all possible values
 let f : () -> ()
 -- Interpreting coverage.as:
 -- Finished coverage.as:

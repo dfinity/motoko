@@ -6,6 +6,9 @@ func f() {
   let (5 or _) = 0;
   let (_ or 6) = 0;
   let (_ or _) = 0;
+  let b? = 0;
+  let _? = 0;
+  let 9? = 0;
 
   func(_ : Nat) {};
   func(x : Nat) {};

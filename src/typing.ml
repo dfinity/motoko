@@ -788,11 +788,8 @@ and check_pat' context t pat : val_env =
     )
   | OptP pat1 ->
     (match t with
-    | T.Opt t1 ->
+    | T.Opt t1 | t1 ->
       check_pat context t1 pat1
-    | _ ->
-      error pat.at "option pattern cannot consume expected type %s"
-        (T.string_of_typ t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat context t pat1 in
