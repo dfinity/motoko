@@ -506,7 +506,7 @@ and infer_exp' context exp : T.typ =
         check_exp context t exp1;
         (*TBR: T.Bottom? *)
       | None ->
-        error exp.at "misplaced return in global context"
+        error exp.at "misplaced return"
     end;
     T.unit
   | AsyncE exp1 ->
@@ -979,7 +979,9 @@ and infer_dec context ce_inner dec : T.typ =
       let c = T.Env.find id.it context.typs in
       let context' = (*context'*) add_typ context' id.it c (Con.Env.find c ce_inner) in
       let _, ve = infer_pat {context' with pre = true} pat in
-      ignore (infer_obj (adjoin_vals context' ve) sort.it ("anon-self" @@ no_region) fields)
+      let context'' =
+        {context' with labs = T.Env.empty; rets = None; async = false} in
+      ignore (infer_obj (adjoin_vals context'' ve) sort.it ("anon-self" @@ no_region) fields)
     end;
     t
   | TypD _ ->
