@@ -106,9 +106,13 @@ module E = struct
 
   let get_types (env : t) = !(env.func_types)
 
+  let current_depth (env : t) = env.depth
+
   let inc_depth (env : t) =
       let label_depths' = Wasm.I32.add env.depth 1l in
       {env with depth = label_depths'}
+
+  let depth_to (env) i = Wasm.I32.sub env.depth i
 
   let add_label (env : t) name =
       { env with ld = NameEnv.add name.it (env.depth) env.ld }
@@ -390,12 +394,18 @@ We could do this in two separate functions, but I chose to do it in one
 *)
 
 
-and compile_pat env pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list  = match pat.it with
-  (* So far, only irrefutable patterns *)
+and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list  = match pat.it with
   (* The undestructed value is on top of the stack. *)
   (* The returned code consumes it, and fills all the variables. *)
+  (* If the pattern does not match, it branches to the depths at fail_depth
+     Later this can be refined to not store anything on the heap until the pattern
+     has succeded, by returning three instruction lists:
+     - allocations
+     - pattern-matching (storing the result in locals)
+     - filling the allocations
+  *)
   | WildP -> (env, [], [ nr Drop ])
-  | AnnotP (p, _) -> compile_pat env p
+  | AnnotP (p, _) -> compile_pat env fail_depth p
   | VarP name ->
       let (env1,i) = E.add_local env name.it; in
       let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
@@ -409,14 +419,22 @@ and compile_pat env pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list  = mat
       let rec go i ps env = match ps with
         | [] -> (env, [], [ nr Drop ])
         | (p::ps) ->
-          let (env1, alloc_code1, code1) = compile_pat env p in
+          let (env1, alloc_code1, code1) = compile_pat env fail_depth p in
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 @ alloc_code2,
             dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
       go 0 ps env
 
-  | _ -> todo "compile_pat" (Arrange.pat pat) (env, [], [ nr Drop ])
+  | _ ->
+      let t = E.depth_to env fail_depth in
+      todo "compile_pat" (Arrange.pat pat) (env, [], [ nr (Br (nr t)) ])
+
+(* Used for pattern that usually succed (let, function arguments) *)
+and compile_mono_pat env pat =
+  let (env1, alloc_code, code) = compile_pat (E.inc_depth env) (E.current_depth env) pat
+  in (env1, alloc_code, [ nr (SetLocal (E.tmp_local env));
+                          nr (Block ([], [ nr (GetLocal (E.tmp_local env)) ] @ code)) ])
 
 and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.instr list) = match dec.it with
   | TypD _ -> (pre_env, [], fun _ -> [])
@@ -427,7 +445,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       code @ drop
     )
   | LetD (p, e) ->
-    let (pre_env1, alloc_code, code2) = compile_pat pre_env p in
+    let (pre_env1, alloc_code, code2) = compile_mono_pat pre_env p in
     ( pre_env1, alloc_code, fun env ->
       let code1 = compile_exp env e in
       let stack_fix = if last then dup env else [] in
@@ -509,7 +527,7 @@ and compile_func env captured p (e : exp) : func =
       set_var_loc env2 v in
   let closure_code = List.concat (List.mapi load_capture captured) in
   (* Destruct the argument *)
-  let (env3, alloc_args_code, destruct_args_code) = compile_pat env2 p in
+  let (env3, alloc_args_code, destruct_args_code) = compile_mono_pat env2 p in
   let body_code = compile_exp env3 e in
   nr { ftype = nr E.unary_fun_ty_i;
        locals = E.get_locals env3;
