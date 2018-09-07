@@ -1,3 +1,10 @@
+(* Notes *)
+
+type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
+
+let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
+
+
 (* Identifiers *)
 
 type id = string Source.phrase
@@ -85,8 +92,6 @@ type relop =
 
 (* Patterns *)
 
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
-
 type pat = (pat', typ_note) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
@@ -95,8 +100,8 @@ and pat' =
   | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
-  | AnnotP of pat * typ                        (* type annotation *)
   | AltP of pat * pat                          (* disjunctive *)
+  | AnnotP of pat * typ                        (* type annotation *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
   | ObjP of pat_field list                     (* object *)
