@@ -450,6 +450,7 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
   *)
   | WildP -> (env, [], [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env fail_depth p
+  | OptP p -> compile_pat env fail_depth p
   | LitP l ->
       let code =
         compile_lit_pat env fail_depth None !l @
@@ -517,9 +518,6 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
           ));
        ] in
       (env4, alloc_code1 @ alloc_code2,  code)
-
-  | _ ->
-      todo "compile_pat" (Arrange.pat pat) (env, [], compile_fail env fail_depth)
 
 and compile_fail env fail_depth =
   let t = E.depth_to env fail_depth in
