@@ -100,7 +100,7 @@ Productions marked * probably deferred to later versions.
   ( <pat>,* )                                    tuple or brackets
   <pat> ?                                        option
   <pat> : <typ>                                  type annotation
-  <pat> | <pat>                                  disjunctive pattern
+  <pat> ; <pat>                                  disjunctive pattern
 * <pat> = <pat>                                  conjunctive pattern
 * { <pat-field>;* }                              object pattern
 
