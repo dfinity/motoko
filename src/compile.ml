@@ -112,6 +112,11 @@ module E = struct
       let label_depths' = Wasm.I32.add env.depth 1l in
       {env with depth = label_depths'}
 
+  (* This is a bit ugly, and maybe can be avoided if the last component returned
+     by compile_pat takes its own env argument, like compile_dec *)
+  let reset_depth (env1 : t) (env2 : t) =
+      { env1 with depth = env2.depth }
+
   let depth_to (env) i = Wasm.I32.sub env.depth i
 
   let add_label (env : t) name =
@@ -136,12 +141,15 @@ end
 let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
 let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_four =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ]
 let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 
+(* Heap pointer starts at 4 so that nothing is allocated at the null pointer
+position *)
 let heap_ptr_global = nr
       { gtype = GlobalType (I32Type, Mutable);
-        value = nr compile_zero }
+        value = nr compile_four }
 
 let heap_ptr : var = nr 0l
 
@@ -197,6 +205,7 @@ let compile_unop env op = match op with
       compile_zero @
       [ nr (GetLocal (E.tmp_local env));
         nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ]
+  | PosOp -> []
   | _ -> todo "compile_unop" (Arrange.unop op) [ nr Unreachable ]
 
 let compile_binop op = match op with
@@ -299,6 +308,11 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
+  | OptE e ->
+     allocn 1l @
+     dup env @
+     compile_exp env e @
+     store_field 0l
   | (ArrayE es | TupE es) ->
      (* Calculate size *)
      (* Allocate memory, and put position on the stack (return value) *)
@@ -368,6 +382,33 @@ and compile_exp (env : E.t) exp = match exp.it with
      load_field 0l @
      (* All done: Call! *)
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+  | SwitchE (e, cs) ->
+    let code1 = compile_exp env e in
+    let i = E.add_anon_local env I32Type in
+
+    let rec go env cs = match cs with
+      | [] -> [ nr Unreachable ]
+      | (c::cs) ->
+          let pat = c.it.pat in
+          let e = c.it.exp in
+          let env1 = E.inc_depth env in
+          let (env2, alloc_code, code) = compile_pat env1 (E.current_depth env1) pat in
+          alloc_code @
+          [ nr (Block ([I32Type],
+              [ nr (GetLocal (nr i)) ] @
+              code @
+              compile_true
+            ));
+            nr (If ([I32Type],
+              (* This is a bit of a hack: We increase the depth in compile_pat
+                 for the Block. We ought to decrease it, and then increase it
+                 again for the If.. but the result is the same *)
+              compile_exp env2 e,
+              go env1 cs));
+          ] in
+      let code2 = go env cs in
+      code1 @ [ nr (SetLocal (nr i)) ] @ code2
+
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
 
@@ -393,6 +434,15 @@ We could do this in two separate functions, but I chose to do it in one
    has the memory location, and don’t have to look it up in the environment.
 *)
 
+and compile_lit_pat env fail_depth opo l = match opo, l with
+  | None, (NatLit _ | IntLit _ | NullLit) ->
+    compile_lit l @
+    [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
+  | Some uo, (NatLit _ | IntLit _) ->
+    compile_lit l @
+    compile_unop env uo @
+    [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
+  | _ -> todo "compile_lit_pat" (Arrange.lit l) [ nr Unreachable ]
 
 and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list = match pat.it with
   (* The undestructed value is on top of the stack. *)
@@ -406,6 +456,23 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
   *)
   | WildP -> (env, [], [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env fail_depth p
+  | LitP l ->
+      let code =
+        compile_lit_pat env fail_depth None !l @
+        [ nr (If ([],
+                  [],
+                  compile_fail (E.inc_depth env) fail_depth
+          )) ]
+      in (env, [], code)
+  | SignP (op, l) ->
+      let code =
+        compile_lit_pat env fail_depth (Some op) !l @
+        [ nr (If ([],
+                  [],
+                  compile_fail (E.inc_depth env) fail_depth
+          )) ]
+      in (env, [], code)
+
   | VarP name ->
       let (env1,i) = E.add_local env name.it; in
       let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
@@ -425,6 +492,37 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
             alloc_code1 @ alloc_code2,
             dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
       go 0 ps env
+
+  | AltP (p1, p2) ->
+      let env1 = E.inc_depth env in
+      let (env2, alloc_code1, code1) = compile_pat env1 (E.current_depth env1) p1 in
+      let env2' = E.inc_depth env2 in
+      let (env3, alloc_code2, code2) = compile_pat env2' (E.current_depth env2') p2 in
+      let env4 = E.reset_depth env3 env in
+
+      let i = E.add_anon_local env I32Type in
+      let code =
+        [ nr (SetLocal (nr i));
+          nr (Block ([I32Type],
+            [ nr (GetLocal (nr i)) ] @
+            code1 @
+            compile_true
+          ));
+          nr (If ([],
+            [],
+            [ nr (Block ([I32Type],
+                [ nr (GetLocal (nr i)) ] @
+                code2 @
+                compile_true
+              ));
+              nr (If ([],
+                [],
+                compile_fail env3 fail_depth
+              ))
+            ]
+          ));
+       ] in
+      (env4, alloc_code1 @ alloc_code2,  code)
 
   | _ ->
       todo "compile_pat" (Arrange.pat pat) (env, [], compile_fail env fail_depth)

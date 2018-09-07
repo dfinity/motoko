@@ -48,8 +48,6 @@ compile_binop: PowOp
 compile_binop: PowOp
 compile_binop: DivOp
 compile_binop: DivOp
-compile_unop: PosOp
-compile_unop: PosOp
 compile_binop: PowOp
 compile_binop: PowOp
 compile_binop: PowOp
@@ -62,14 +60,10 @@ compile_binop: DivOp
 compile_binop: DivOp
 compile_binop: DivOp
 compile_binop: DivOp
-compile_unop: PosOp
-compile_unop: PosOp
 compile_binop: ModOp
 compile_binop: ModOp
 compile_binop: DivOp
 compile_binop: DivOp
-compile_unop: PosOp
-compile_unop: PosOp
 compile_binop: PowOp
 compile_binop: PowOp
 compile_binop: ModOp
@@ -81,7 +75,7 @@ compile_binop: DivOp
   (type $1 (func (param i32 i32) (result i32)))
   (table $0 9 9 anyfunc)
   (memory $0 1024)
-  (global $0 (mut i32) (i32.const 0))
+  (global $0 (mut i32) (i32.const 4))
   (func $0
     (type 1)
     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
@@ -1426,7 +1420,6 @@ compile_binop: DivOp
     (set_local 18)
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
@@ -1440,7 +1433,6 @@ compile_binop: DivOp
     (if (then) (else (unreachable)))
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
@@ -1889,7 +1881,6 @@ compile_binop: DivOp
     (set_local 32)
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
@@ -1903,7 +1894,6 @@ compile_binop: DivOp
     (if (then) (else (unreachable)))
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
@@ -2472,7 +2462,6 @@ compile_binop: DivOp
     (set_local 20)
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
@@ -2486,7 +2475,6 @@ compile_binop: DivOp
     (if (then) (else (unreachable)))
     (get_local 3)
     (i32.load)
-    (unreachable)
     (set_local 2)
     (block
       (result i32)
