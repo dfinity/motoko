@@ -164,7 +164,7 @@ T env [\x.t] =
    \x.T env' [t]
 T env [ break l t ] =
    match env[t] with
-   | Cont ->  return l@(T env [T])
+   | Cont ->  return l@(T env [t])
    | Label -> break l (T env [t])
 T env [ label l t ] =
    let env' = env[l->Label]
