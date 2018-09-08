@@ -57,7 +57,7 @@ let run (stat_env, dyn_env) lexer parse infer name =
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   try
-    let prog = parse Lexer.token lexer in 
+    let prog = parse Lexer.token lexer in
     trace "Checking" name;
     let t, ((ve, te, ce) as stat_scope) = infer stat_env prog in
     let stat_env' = Typing.adjoin stat_env stat_scope in
@@ -102,9 +102,9 @@ let run (stat_env, dyn_env) lexer parse infer name =
 let update_envs envs = function
   | Some envs' -> envs'
   | None -> envs
-  
+
 let run_file envs filename =
-  let ic = open_in filename in 
+  let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let infer env prog = Type.unit, Typing.check_prog env prog in
   let result = run envs lexer Parser.parse_prog infer filename in
