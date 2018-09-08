@@ -3,13 +3,13 @@
 # This works with bash
 
 ASC=../asc
-ASC_FLAGS=-t -d
+ASC_FLAGS=-t -v
 
 TESTS:=$(basename $(wildcard *.as))
 
 all: stats
 
-%.out: %.as $(ASC)
+%.out: %.as $(ASC) Makefile
 	$(ASC) $(ASC_FLAGS) $< >$@ 2>&1 || true
 
 %.ok:

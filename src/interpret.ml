@@ -1,6 +1,5 @@
 open Syntax
 open Source
-open Printf
 
 module V = Value
 module T = Type
@@ -36,24 +35,32 @@ let empty_env =
 
 exception Trap of Source.region * string
 
-let trap at fmt =  Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
+let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
 let unimplemented at msg = trap at "NOT YET IMPLEMENTED: %s" msg
+
+
+(* Tracing *)
+
+let trace_depth = ref 0
+
+let trace fmt =
+  Printf.ksprintf (fun s ->
+    Printf.printf "%s%s\n" (String.make (2 * !trace_depth) ' ') s
+  ) fmt
+
+let string_of_arg = function
+  | V.Tup _ as v -> V.string_of_val v
+  | v -> "(" ^ V.string_of_val v ^ ")"
 
 
 (* Debugging aids *)
 
 let last_env = ref empty_env
 let last_region = ref Source.no_region
-let call_depth = ref 0
 
 let get_last_env () = !last_env
 let get_last_region () = !last_region
-let get_indent () = String.make (2 * !call_depth) ' '
-
-let string_of_arg = function
-  | V.Tup _ as v -> V.string_of_val v
-  | v -> "(" ^ V.string_of_val v ^ ")"
 
 
 (* Schedulinbg *)
@@ -64,7 +71,7 @@ struct
 
   let queue work = Queue.add work q
   let yield () =
-    call_depth := 0;
+    trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
       Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
@@ -236,31 +243,26 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let async = make_async () in
     let k' = fun v1 -> set_async async v1 in
     let env' = {env with labs = V.Env.empty; rets = Some k'; async = true} in
-    if !Flags.debug then
-      printf "%s-> async %s\n" (get_indent ()) (string_of_region exp.at);
+    if !Flags.trace then trace "-> async %s" (string_of_region exp.at);
     Scheduler.queue (fun () ->
-      if !Flags.debug then
-        printf "%s<- async %s\n" (get_indent ()) (string_of_region exp.at);
-      incr call_depth;
+      if !Flags.trace then trace "<- async %s" (string_of_region exp.at);
+      incr trace_depth;
       interpret_exp env' exp1 (fun v ->
-        if !Flags.debug then
-          printf "%s<= %s\n" (get_indent ()) (V.string_of_val v);
-        decr call_depth;
+        if !Flags.trace then trace "<= %s" (V.string_of_val v);
+        decr trace_depth;
         k' v
       )
     );
     k (V.Async async)
   | AwaitE exp1 ->
     interpret_exp env exp1 (fun v1 ->
-      if !Flags.debug then
-        printf "%s=> await %s\n" (get_indent ()) (string_of_region exp.at);
-      decr call_depth;
+      if !Flags.trace then trace "=> await %s" (string_of_region exp.at);
+      decr trace_depth;
       get_async (V.as_async v1) (fun v ->
         Scheduler.queue (fun () ->
-          if !Flags.debug then
-            printf "%s<- await %s%s\n" (get_indent ())
-              (string_of_region exp.at) (string_of_arg v);
-          incr call_depth;
+          if !Flags.trace then
+            trace "<- await %s%s" (string_of_region exp.at) (string_of_arg v);
+          incr trace_depth;
           k v
         )
       );
@@ -454,12 +456,10 @@ and actor_field id t v : V.value =
 
 
 and actor_msg id f v (k : V.value V.cont) =
-  if !Flags.debug then
-    printf "%s-> message %s%s\n" (get_indent ()) id.it (string_of_arg v);
+  if !Flags.trace then trace "-> message %s%s" id.it (string_of_arg v);
   Scheduler.queue (fun () ->
-    if !Flags.debug then
-      printf "%s<- message %s%s\n" (get_indent ()) id.it (string_of_arg v);
-    incr call_depth;
+    if !Flags.trace then trace "<- message %s%s" id.it (string_of_arg v);
+    incr trace_depth;
     f v k
   )
 
@@ -532,18 +532,16 @@ and interpret_decs env decs (k : V.value V.cont) =
 
 
 and interpret_func env id pat f v (k : V.value V.cont) =
-  if !Flags.debug then
-    printf "%s%s%s\n" (get_indent ()) id.it (string_of_arg v);
+  if !Flags.trace then trace "%s%s" id.it (string_of_arg v);
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list"
       (V.string_of_val v)
   | Some ve ->
-    incr call_depth;
+    incr trace_depth;
     let k' = fun v' ->
-      if !Flags.debug then
-        printf "%s<= %s\n" (get_indent ()) (V.string_of_val v');
-      decr call_depth;
+      if !Flags.trace then trace "<= %s" (V.string_of_val v');
+      decr trace_depth;
       k v'
     in
     let env' =
@@ -558,7 +556,7 @@ and interpret_func env id pat f v (k : V.value V.cont) =
 (* Programs *)
 
 let interpret_prog env p : V.value option * scope =
-  call_depth := 0;
+  trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->

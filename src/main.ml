@@ -154,10 +154,12 @@ let argspec = Arg.align
 [
   "-", Arg.Set Flags.interactive,
     " run interactively (default if no files given)";
-  "-t", Arg.Set Flags.trace, " trace phases";
-  "-d", Arg.Set Flags.debug, " debug, trace calls";
+  "-t", Arg.Set Flags.trace, " activate tracing";
+  "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-v", Arg.Unit (fun () -> printf "%s\n" banner; Flags.interactive := false), " show version"
+  "--version",
+    Arg.Unit (fun () -> printf "%s\n" banner; Flags.interactive := false),
+    " show version"
 ]
 
 let initial_envs = (Typing.empty_env, Interpret.empty_env)
@@ -165,8 +167,6 @@ let initial_envs = (Typing.empty_env, Interpret.empty_env)
 let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
+  if !Flags.interactive then printf "%s\n" banner;
   let envs = List.fold_left run_file initial_envs !args in
-  if !Flags.interactive then begin
-    printf "%s\n" banner;
-    run_stdin envs
-  end
+  if !Flags.interactive then run_stdin envs
