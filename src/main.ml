@@ -47,8 +47,8 @@ let print_scope env (ve, te, ce) dyn_ve =
 let print_val env v t =
   printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
 
-let trace heading filename =
-  if !Flags.trace then printf "-- %s %s:\n" heading filename
+let phase heading filename =
+  if !Flags.verbose then printf "-- %s %s:\n" heading filename
 
 
 (* Execute program *)
@@ -58,17 +58,17 @@ let run (stat_env, dyn_env) lexer parse infer name =
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   try
     let prog = parse Lexer.token lexer in
-    trace "Checking" name;
+    phase "Checking" name;
     let t, ((ve, te, ce) as stat_scope) = infer stat_env prog in
     let stat_env' = Typing.adjoin stat_env stat_scope in
     if !Flags.trace then begin
       print_ce ce;
       print_stat_ve ve
     end;
-    trace "Interpreting" name;
+    phase "Interpreting" name;
     let vo, dyn_scope = Interpret.interpret_prog dyn_env prog in
     let dyn_env' = Interpret.adjoin dyn_env dyn_scope in
-    trace "Finished" name;
+    phase "Finished" name;
     if !Flags.interactive then
       print_scope stat_env' stat_scope dyn_scope
     else if !Flags.trace then
@@ -94,7 +94,7 @@ let run (stat_env, dyn_env) lexer parse infer name =
       printf "\nLast environment:\n";
       print_dyn_ve_untyped (Interpret.get_last_env ()).Interpret.vals
     end;
-    if !Flags.trace then printf "\n";
+    if !Flags.verbose then printf "\n";
     if not !Flags.interactive then exit 1;
     None
 
@@ -103,13 +103,20 @@ let update_envs envs = function
   | Some envs' -> envs'
   | None -> envs
 
+let run_string envs s name =
+  let lexer = Lexing.from_string s in
+  let infer env prog = Type.unit, Typing.check_prog env prog in
+  let result = run envs lexer Parser.parse_prog infer name in
+  if !Flags.verbose then printf "\n";
+  update_envs envs result
+
 let run_file envs filename =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let infer env prog = Type.unit, Typing.check_prog env prog in
   let result = run envs lexer Parser.parse_prog infer filename in
   close_in ic;
-  if !Flags.trace then printf "\n";
+  if !Flags.verbose then printf "\n";
   update_envs envs result
 
 
@@ -148,7 +155,7 @@ let run_stdin envs =
 (* Argument handling *)
 
 let args = ref []
-let add_arg source = args := !args @ [source]; Flags.interactive := false
+let add_arg source = args := !args @ [source]
 
 let argspec = Arg.align
 [
@@ -162,11 +169,14 @@ let argspec = Arg.align
     " show version"
 ]
 
-let initial_envs = (Typing.empty_env, Interpret.empty_env)
-
 let () =
   Printexc.record_backtrace true;
+  Flags.privileged := true;
+  let envs0 = (Typing.empty_env, Interpret.empty_env) in
+  let envs = run_string envs0 Prelude.prelude "prelude" in
+  Flags.privileged := false;
   Arg.parse argspec add_arg usage;
+  if !args = [] then Flags.interactive := true;
   if !Flags.interactive then printf "%s\n" banner;
-  let envs = List.fold_left run_file initial_envs !args in
-  if !Flags.interactive then run_stdin envs
+  let envs' = List.fold_left run_file envs !args in
+  if !Flags.interactive then run_stdin envs'

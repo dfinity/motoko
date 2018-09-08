@@ -123,6 +123,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
   match exp.it with
+  | PrimE s ->
+    k (V.Func (V.prim s))
   | VarE id ->
     (match Lib.Promise.value_opt (V.Env.find id.it env.vals) with
     | Some v -> k v

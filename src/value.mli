@@ -44,7 +44,8 @@ module Env : Env.S with type key = string
 
 type unicode = int
 
-type value =
+type func = value -> value cont -> unit
+and value =
   | Null
   | Bool of bool
   | Nat of Nat.t
@@ -59,7 +60,7 @@ type value =
   | Tup of value list
   | Obj of value Env.t
   | Array of value array
-  | Func of (value -> value cont -> unit)
+  | Func of func
   | Async of async
   | Mut of value ref
 
@@ -68,9 +69,14 @@ and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
 
-(* Projections *)
+(* Shorthands *)
 
 val unit : value
+
+val prim : string -> func
+
+
+(* Projections *)
 
 val as_null : value -> unit
 val as_bool : value -> bool

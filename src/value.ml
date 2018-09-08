@@ -132,8 +132,9 @@ end
 
 type unicode = int
 
-type value =
-  | Null 
+type func = value -> value cont -> unit
+and value =
+  | Null
   | Bool of bool
   | Nat of Nat.t
   | Int of Int.t
@@ -147,7 +148,7 @@ type value =
   | Tup of value list
   | Obj of value Env.t
   | Array of value array
-  | Func of (value -> value cont -> unit)
+  | Func of func
   | Async of async
   | Mut of value ref
 
@@ -155,7 +156,8 @@ and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
-let unit = Tup []
+
+(* Projections *)
 
 let invalid s = raise (Invalid_argument s)
 
@@ -176,6 +178,16 @@ let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
+
+
+(* Primitives *)
+
+let unit = Tup []
+
+let prim = function
+  | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "length" -> fun v k -> k (Nat (Nat.of_int (Array.length (as_array v))))
+  | _ -> raise (Invalid_argument "Value.prim")
 
 
 (* Pretty Printing *)

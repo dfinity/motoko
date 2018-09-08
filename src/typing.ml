@@ -154,8 +154,10 @@ let rec check_typ env typ : T.typ =
 	    T.Con (c, ts)
     | None -> error id.at "unbound type identifier %s" id.it
     )
-  | PrimT prim ->
-    T.Prim prim
+  | PrimT s ->
+    (try T.Prim (T.prim s) with Invalid_argument _ ->
+      error typ.at "unknown primitive type"
+    )
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
@@ -264,9 +266,9 @@ let infer_lit env lit at : T.prim =
     assert false
 
 let rec check_lit env t lit at =
-  match t, !lit with
+  match T.normalize env.cons t, !lit with
   | T.Opt _, NullLit -> ()
-  | T.Opt t, _ -> check_lit env t lit at
+  | T.Opt t', _ -> check_lit env t' lit at
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat at s)
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
@@ -314,6 +316,8 @@ and infer_exp_mut env exp : T.typ =
 
 and infer_exp' env exp : T.typ =
   match exp.it with
+  | PrimE _ ->
+    error exp.at "cannot infer type of primitive"
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
     | Some T.Pre ->
@@ -558,6 +562,13 @@ and check_exp env t exp =
 
 and check_exp' env t exp =
   match exp.it with
+  | PrimE s ->
+    (match T.nonopt env.cons t with
+    | T.Func _ -> ()
+    | _ ->
+      error exp.at "primitive expression cannot produce expected type %s"
+        (T.string_of_typ t)
+    )
   | LitE lit ->
     check_lit env t lit exp.at
   | UnE (op, exp1) ->
@@ -753,9 +764,9 @@ and check_pat_exhaustive env t pat : val_env =
 and check_pat env t pat : val_env =
   assert (pat.note.note_typ = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
+  let t' = T.normalize env.cons t in
   let ve = check_pat' env t pat in
-  if not env.pre then
-    pat.note <- {note_typ = T.normalize env.cons t; note_eff = T.Triv};
+  if not env.pre then pat.note <- {note_typ = t'; note_eff = T.Triv};
   ve
 
 and check_pat' env t pat : val_env =
@@ -770,10 +781,11 @@ and check_pat' env t pat : val_env =
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
+      let t' = T.normalize env.cons t in
       if not (Operator.has_unop t op) then
         error pat.at "operator cannot consume expected type %s"
-          (T.string_of_typ t);
-      check_lit env t lit pat.at
+          (T.string_of_typ t');
+      check_lit env t' lit pat.at
     end;
     T.Env.empty
   | TupP pats ->
