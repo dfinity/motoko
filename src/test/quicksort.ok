@@ -99,5 +99,5 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
 let QS : <T>((T, T) -> Int) -> QS<T> = func
 let a : var Int[] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
-let qs : QS<Int> = QS<Int>
+let qs : QS<Int> = {partition = func; quicksort = func; swap = func; trace = func}
 

@@ -1,7 +1,4 @@
 open Printf
-(*TBR*)
-
-module T = Type
 
 
 (* Environments *)
@@ -192,97 +189,14 @@ let add_unicode buf = function
   | c when 0x20 <= c && c < 0x7f -> Buffer.add_char buf (Char.chr c)
   | c -> Printf.bprintf buf "\\u{%02x}" c
 
-let string_of_char c =
-  let buf = Buffer.create 10 in
-  Buffer.add_char buf '\"';
-  add_unicode buf c;
-  Buffer.add_char buf '\"';
+let string_of_string lsep s rsep =
+  let buf = Buffer.create 256 in
+  Buffer.add_char buf lsep;
+  List.iter (add_unicode buf) s;
+  Buffer.add_char buf rsep;
   Buffer.contents buf
 
-let string_of_text s =
-  let buf = Buffer.create (String.length s + 256) in
-  Buffer.add_char buf '\"';
-  List.iter (add_unicode buf) (Wasm.Utf8.decode s);
-  Buffer.add_char buf '\"';
-  Buffer.contents buf
-
-let rec string_of_val_nullary d conenv t v =
-  match T.normalize conenv t with
-  | T.Any -> "any"
-  | T.Prim T.Null -> as_null v; "null"
-  | T.Prim T.Bool -> if as_bool v then "true" else "false"
-  | T.Prim T.Nat -> Nat.to_string (as_nat v)
-  | T.Prim T.Int ->  Int.to_string (as_int v)
-  | T.Prim T.Word8 -> Word8.to_string_u (as_word8 v)
-  | T.Prim T.Word16 -> Word16.to_string_u (as_word16 v)
-  | T.Prim T.Word32 -> Word32.to_string_u (as_word32 v)
-  | T.Prim T.Word64 -> Word64.to_string_u (as_word64 v)
-  | T.Prim T.Float -> Float.to_string (as_float v)
-  | T.Prim T.Char -> string_of_char (as_char v)
-  | T.Prim T.Text -> string_of_text (as_text v)
-  | T.Con (c, []) -> Con.to_string c ^ "(...)"
-  | T.Con (c, ts) ->
-    sprintf "%s<%s>"
-      (Con.to_string c)
-      (String.concat ", " (List.map T.string_of_typ ts))
-  | T.Tup ts ->
-    let vs = as_tup v in
-    sprintf "(%s%s)"
-      (String.concat ", " (List.map2 (string_of_val' d conenv) ts vs))
-      (if List.length ts = 1 then "," else "")
-  | T.Array t ->
-    let a = as_array v in
-    sprintf "[%s]" (String.concat ", "
-      (List.map (string_of_val' d conenv t) (Array.to_list a)))
-  | T.Obj (T.Object, fs) ->
-    let ve = as_obj v in
-    sprintf "{%s}"
-      (if d = 0 then "..." else
-       String.concat "; " (List.map (fun {T.name; typ} ->
-        sprintf "%s = %s" name (string_of_val' (d - 1) conenv typ (Env.find name ve))
-      ) fs))
-  | T.Func _ ->
-    "func"
-  | T.Mut t ->
-    string_of_val_nullary d conenv t !(as_mut v)
-  | _ ->
-    sprintf "(%s)" (string_of_val' d conenv t v)
-
-and string_of_val' d conenv t v =
-  match Type.normalize conenv t with
-  | T.Opt t ->
-    (match v with
-    | Null -> "null"
-    | _ -> string_of_val' d conenv t v
-    )
-  | T.Async t ->
-    let {result; waiters} = as_async v in
-    sprintf "async %s" (string_of_def_nullary d conenv t result)
-  | T.Like t -> 
-    sprintf "like %s" (T.string_of_typ t) (* TBR *)
-  | T.Obj (T.Actor, fs) ->
-    sprintf "actor %s" (string_of_val_nullary d conenv (T.Obj (T.Object, fs)) v)
-  | T.Mut t ->
-    string_of_val' d conenv t !(as_mut v)
-  | _ -> string_of_val_nullary d conenv t v
-
-and string_of_def_nullary d conenv t def =
-  match Lib.Promise.value_opt def with
-  | Some v -> string_of_val_nullary d conenv t v
-  | None -> "_"
-
-and string_of_def' d conenv t def =
-  match Lib.Promise.value_opt def with
-  | Some v -> string_of_val' d conenv t v
-  | None -> "_"
-
-let string_of_val conenv t v = string_of_val' !Flags.print_depth conenv t v
-let string_of_def conenv t d = string_of_def' !Flags.print_depth conenv t d
-
-
-(* Debug pretty printing *)
-
-let rec debug_string_of_val_nullary d = function
+let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Nat n -> Nat.to_string n
@@ -292,43 +206,40 @@ let rec debug_string_of_val_nullary d = function
   | Word32 w -> Word32.to_string_u w
   | Word64 w -> Word64.to_string_u w
   | Float f -> Float.to_string f
-  | Char c -> string_of_char c
-  | Text t -> string_of_text t
+  | Char c -> string_of_string '\'' [c] '\''
+  | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
   | Tup vs ->
     sprintf "(%s%s)"
-      (String.concat ", " (List.map (debug_string_of_val' d) vs))
+      (String.concat ", " (List.map (string_of_val' d) vs))
       (if List.length vs = 1 then "," else "")
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (debug_string_of_val' (d - 1) v)) (Env.bindings ve)))
+      sprintf "%s = %s" x (string_of_val' (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
-      (List.map (debug_string_of_val' d) (Array.to_list a)))
+      (List.map (string_of_val' d) (Array.to_list a)))
   | Func f -> "func"
-  | v -> "(" ^ debug_string_of_val' d v ^ ")"
+  | v -> "(" ^ string_of_val' d v ^ ")"
 
-and debug_string_of_val' d = function
+and string_of_val' d = function
+  | Async {result; waiters = []} ->
+    sprintf "async %s" (string_of_def_nullary d result)
   | Async {result; waiters} ->
-    sprintf "async %s #%i" (debug_string_of_def_nullary d result)
-      (List.length waiters)
-  | Mut r -> sprintf "%s" (debug_string_of_val' d !r)
-  | v -> debug_string_of_val_nullary d v
+    sprintf "async[%d] %s"
+      (List.length waiters) (string_of_def_nullary d result)
+  | Mut r -> sprintf "%s" (string_of_val' d !r)
+  | v -> string_of_val_nullary d v
 
-and debug_string_of_def_nullary d def =
+and string_of_def_nullary d def =
   match Lib.Promise.value_opt def with
-  | Some v -> debug_string_of_val_nullary d v
+  | Some v -> string_of_val_nullary d v
   | None -> "_"
 
-and debug_string_of_def' d def =
+and string_of_def' d def =
   match Lib.Promise.value_opt def with
-  | Some v -> debug_string_of_val' d v
+  | Some v -> string_of_val' d v
   | None -> "_"
 
-let debug_string_of_val v = debug_string_of_val' !Flags.print_depth v
-let debug_string_of_def d = debug_string_of_def' !Flags.print_depth d
-
-
-let debug_string_of_tuple_val = function
-  | Tup _ as v -> debug_string_of_val v
-  | v -> "(" ^ debug_string_of_val v ^ ")"
+let string_of_val v = string_of_val' !Flags.print_depth v
+let string_of_def d = string_of_def' !Flags.print_depth d

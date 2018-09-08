@@ -19,14 +19,14 @@ Bank(100)
   <= {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 test()
   -> async bank.as:56.40-68.2
-  <= async _ #0
+  <= async _
 <- async bank.as:56.40-68.2
   -> message getReserve()
   => await bank.as:57.17-57.40
 <- message getReserve()
   getReserve()
     -> async bank.as:7.32-7.51
-    <= async _ #0
+    <= async _
 <- async bank.as:7.32-7.51
 <- await bank.as:57.17-57.40({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message split(10)
@@ -34,7 +34,7 @@ test()
 <- message split(10)
   split(10)
     -> async bank.as:23.39-26.4
-    <= async _ #0
+    <= async _
 <- async bank.as:23.39-26.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
@@ -44,7 +44,7 @@ test()
 <- message split(10)
   split(10)
     -> async bank.as:23.39-26.4
-    <= async _ #0
+    <= async _
 <- async bank.as:23.39-26.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
@@ -57,7 +57,7 @@ test()
     <= ()
   transfer({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, 5)
     -> async bank.as:46.79-49.2
-    <= async _ #0
+    <= async _
   => await bank.as:63.3-63.28
 <- async bank.as:46.79-49.2
   -> message split(5)
@@ -65,7 +65,7 @@ test()
 <- message split(5)
   split(5)
     -> async bank.as:23.39-26.4
-    <= async _ #0
+    <= async _
 <- async bank.as:23.39-26.4
   Account(5)
     <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
@@ -88,8 +88,8 @@ test()
 let Account : Int -> Account = func
 let Bank : Int -> Bank = func
 let Issuer : () -> Issuer = func
-let bank : Bank = Bank(...)
-let main : async (Account, Account) = async (Account(...), Account(...))
+let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
+let main : async (Account, Account) = async ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 let show : (Text, Account) -> () = func
 let test : () -> async (Account, Account) = func
 let transfer : (Account, Account, Int) -> async () = func

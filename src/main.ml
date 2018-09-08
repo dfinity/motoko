@@ -19,28 +19,25 @@ let print_ce =
     printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 
-let print_ve =
+let print_stat_ve =
   Type.Env.iter (fun x t ->
     let t' = Type.immutable t in
     printf "%s %s : %s\n"
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
 
-let print_dyn_ve context dyn_ve =
+let print_dyn_ve context =
   Value.Env.iter (fun x d ->
     let t = Type.Env.find x context.Typing.vals in
     let t' = Type.immutable t in
     printf "%s %s : %s = %s\n"
-      (if t == t' then "let" else "var") x (Type.string_of_typ t')
-      (match Lib.Promise.value_opt d with
-      | None -> "_"
-      | Some v -> Value.string_of_val context.Typing.cons t v
-      )
-  ) dyn_ve
+      (if t == t' then "let" else "var") x
+      (Type.string_of_typ t') (Value.string_of_def d)
+  )
 
-let print_debug_ve =
+let print_dyn_ve_untyped =
   Value.Env.iter (fun x d ->
-    printf "%s = %s\n" x (Value.debug_string_of_def d)
+    printf "%s = %s\n" x (Value.string_of_def d)
   )
 
 let print_scope context (ve, te, ce) dyn_ve =
@@ -48,8 +45,7 @@ let print_scope context (ve, te, ce) dyn_ve =
   print_dyn_ve context dyn_ve
 
 let print_val context v t =
-  printf "%s : %s\n"
-    (Value.string_of_val context.Typing.cons t v) (Type.string_of_typ t)
+  printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
 
 let trace heading filename =
   if !Flags.trace then printf "-- %s %s:\n" heading filename
@@ -67,7 +63,7 @@ let run (stat_context, dyn_context) lexer parse infer name =
     let stat_context' = Typing.adjoin stat_context stat_scope in
     if !Flags.trace then begin
       print_ce ce;
-      print_ve ve
+      print_stat_ve ve
     end;
     trace "Interpreting" name;
     let vo, dyn_scope = Interpret.interpret_prog dyn_context prog in
@@ -96,7 +92,7 @@ let run (stat_context, dyn_context) lexer parse infer name =
       printf "\n";
       Printexc.print_backtrace stderr; flush_all ();
       printf "\nLast context:\n";
-      print_debug_ve (Interpret.get_last_context ()).Interpret.vals
+      print_dyn_ve_untyped (Interpret.get_last_context ()).Interpret.vals
     end;
     if !Flags.trace then printf "\n";
     if not !Flags.interactive then exit 1;

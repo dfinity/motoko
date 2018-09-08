@@ -93,9 +93,5 @@ val as_mut : value -> value ref
 
 (* Pretty Printing *)
 
-val string_of_val : Type.kind Con.Env.t -> Type.typ -> value -> string
-val string_of_def : Type.kind Con.Env.t -> Type.typ -> def -> string
-
-val debug_string_of_val : value -> string
-val debug_string_of_def : def -> string
-val debug_string_of_tuple_val : value -> string
+val string_of_val : value -> string
+val string_of_def : def -> string

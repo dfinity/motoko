@@ -51,6 +51,10 @@ let get_last_context () = !last_context
 let get_last_region () = !last_region
 let get_indent () = String.make (2 * !call_depth) ' '
 
+let string_of_arg = function
+  | V.Tup _ as v -> V.string_of_val v
+  | v -> "(" ^ V.string_of_val v ^ ")"
+
 
 (* Schedulinbg *)
 
@@ -246,7 +250,7 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
       incr call_depth;
       interpret_exp context' exp1 (fun v ->
         if !Flags.debug then
-          printf "%s<= %s\n" (get_indent ()) (V.debug_string_of_val v);
+          printf "%s<= %s\n" (get_indent ()) (V.string_of_val v);
         decr call_depth;
         k' v
       )
@@ -260,8 +264,8 @@ and interpret_exp_mut context exp (k : V.value V.cont) =
       get_async (V.as_async v1) (fun v ->
         Scheduler.queue (fun () ->
           if !Flags.debug then
-            printf "%s<- await %s%s\n" (get_indent ()) (string_of_region exp.at)
-              (V.debug_string_of_tuple_val v);
+            printf "%s<- await %s%s\n" (get_indent ())
+              (string_of_region exp.at) (string_of_arg v);
           incr call_depth;
           k v
         )
@@ -293,7 +297,7 @@ and interpret_exps context exps vs (k : V.value list V.cont) =
 and interpret_cases context cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    trap at "switch value %s does not match any case" (V.debug_string_of_val v)
+    trap at "switch value %s does not match any case" (V.string_of_val v)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals context ve) exp k
@@ -330,13 +334,13 @@ and define_pat context pat v =
   | WildP -> ()
   | LitP _ | SignP _ ->
     if match_pat pat v = None
-    then trap pat.at "value %s does not match pattern" (V.debug_string_of_val v)
+    then trap pat.at "value %s does not match pattern" (V.string_of_val v)
     else ()
   | VarP id -> define_id context id v
   | TupP pats -> define_pats context pats (V.as_tup v)
   | OptP pat1 ->
     if v = V.Null
-    then trap pat.at "value %s does not match pattern" (V.debug_string_of_val v)
+    then trap pat.at "value %s does not match pattern" (V.string_of_val v)
     else define_pat context pat1 v  (* TBR: different representation? *)
   | AltP _ -> ()
   | AnnotP (pat1, _typ) -> define_pat context pat1 v
@@ -457,12 +461,10 @@ and actor_field id t v : V.value =
 
 and actor_msg id f v (k : V.value V.cont) =
   if !Flags.debug then
-    printf "%s-> message %s%s\n" (get_indent ()) id.it
-      (V.debug_string_of_tuple_val v);
+    printf "%s-> message %s%s\n" (get_indent ()) id.it (string_of_arg v);
   Scheduler.queue (fun () ->
     if !Flags.debug then
-      printf "%s<- message %s%s\n" (get_indent ()) id.it
-        (V.debug_string_of_tuple_val v);
+      printf "%s<- message %s%s\n" (get_indent ()) id.it (string_of_arg v);
     incr call_depth;
     f v k
   )
@@ -537,16 +539,16 @@ and interpret_decs context decs (k : V.value V.cont) =
 
 and interpret_func context id pat f v (k : V.value V.cont) =
   if !Flags.debug then
-    printf "%s%s%s\n" (get_indent ()) id.it (V.debug_string_of_tuple_val v);
+    printf "%s%s%s\n" (get_indent ()) id.it (string_of_arg v);
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list"
-      (V.debug_string_of_val v)
+      (V.string_of_val v)
   | Some ve ->
     incr call_depth;
     let k' = fun v' ->
       if !Flags.debug then
-        printf "%s<= %s\n" (get_indent ()) (V.debug_string_of_val v');
+        printf "%s<= %s\n" (get_indent ()) (V.string_of_val v');
       decr call_depth;
       k v'
     in
