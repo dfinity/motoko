@@ -1,7 +1,0 @@
--- Checking control.as:
-type Control <: actor {testBlock : () -> (); testLoop : () -> (); testLoopWhile : () -> (); testNestedWhile : () -> (); testWhile : () -> ()}
-let Control : () -> Control
--- Interpreting control.as:
--- Finished control.as:
-let Control : () -> Control = func
-

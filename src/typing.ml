@@ -13,7 +13,7 @@ let error at fmt =
 
 let warn at fmt =
   Printf.ksprintf (fun s ->
-    Printf.printf "%s: warning, %s\n" (Source.string_of_region at) s;
+    Printf.eprintf "%s: warning, %s\n" (Source.string_of_region at) s;
   ) fmt
 
 

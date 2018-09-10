@@ -1,8 +1,0 @@
--- Checking objects1.as:
-let p : {get_y : () -> Int; x : Nat}
--- Interpreting objects1.as:
-get_y()
-  <= 2
--- Finished objects1.as:
-let p : {get_y : () -> Int; x : Nat} = {get_y = func; x = 3; y = 2}
-

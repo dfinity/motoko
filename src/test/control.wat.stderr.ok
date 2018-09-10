@@ -1,0 +1,12 @@
+compile_exp: (LoopE
+  (LabelE
+    continue l
+    (TupT)
+    (BlockE
+      (ExpD
+        (IfE (LitE (BoolLit true)) (BreakE l (TupE)) (BreakE continue l (TupE)))
+      )
+    )
+  )
+  (CallE (VarE condition) (TupE))
+)

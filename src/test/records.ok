@@ -1,8 +1,0 @@
--- Checking records.as:
-let rec1 : {a : Nat; b : Nat}
-let rec2 : {b : Nat; c : Nat; d : {a : Nat; b : Nat}}
--- Interpreting records.as:
--- Finished records.as:
-let rec1 : {a : Nat; b : Nat} = {a = 1; b = 2}
-let rec2 : {b : Nat; c : Nat; d : {a : Nat; b : Nat}} = {b = 3; c = 4; d = {a = 1; b = 2}}
-
