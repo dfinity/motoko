@@ -3,7 +3,7 @@
 # This works with bash
 
 ASC=../asc
-ASC_FLAGS=-t -v
+ASC_FLAGS=-r -t -v
 
 
 SAMPLES:=$(basename $(wildcard *.as))
