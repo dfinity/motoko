@@ -1,0 +1,4 @@
+compile_exp: (AndE
+  (LitE (BoolLit false))
+  (BlockE (ExpD (AssertE (LitE (BoolLit false)))) (ExpD (LitE (BoolLit true))))
+)

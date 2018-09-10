@@ -2,3 +2,6 @@
 *.wat
 *.wat.stderr
 *.wasm
+*.run
+*.wat-run
+*.tc
