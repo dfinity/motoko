@@ -14,9 +14,9 @@ let _ = if true (new {x = 5}) else (new {var x = 5});
 let _ = if true 1 else (-1);  // ok
 let _ = if true true else (5 : Any);  // ok
 
-let _ = switch 0 { case 0 true case _ 5 };
-let _ = switch 0 { case 0 2 case 2 (-5) case 3 "text" case _ () };
-let _ = switch 0 { case 0 true case _ (() : Any) };  // ok
+let _ = switch 0 { case 0 true; case _ 5 };
+let _ = switch 0 { case 0 2 case 2 (-5); case 3 "text"; case _ () };
+let _ = switch 0 { case 0 true; case _ (() : Any); };  // ok
 
 
 // Local types (not) escaping.
