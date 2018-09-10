@@ -302,9 +302,13 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e2 @
      compile_relop op
   | OrE (e1, e2) ->
-     compile_exp env e1 @
-     compile_exp env e2 @
-     [ nr (Binary (Wasm.Values.I32 IntOp.Or)) ]
+     let code1 = compile_exp env e1 in
+     let code2 = compile_exp (E.inc_depth env) e2 in
+     code1 @ [ nr (If ([I32Type], compile_true, code2)) ]
+  | AndE (e1, e2) ->
+     let code1 = compile_exp env e1 in
+     let code2 = compile_exp (E.inc_depth env) e2 in
+     code1 @ [ nr (If ([I32Type], code2, compile_false)) ]
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp (E.inc_depth env) e2 in
