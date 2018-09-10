@@ -8,17 +8,19 @@ Commands
 
    Runs all tests, fails if any fail.
 
-* `make test.out`
+* `make test.run`
 
-   Runs `asc` on `test.as`, and writes the output to `test.out`
+   Runs `asc -r` on `test.as`, and writes the output to `test.run`
 
-* `make test.diff`
+   Analogous: `make test.wat`, `make test.wat.stderr` `make test.wat-run`
 
-   Writes the difference between `test.out` and `test.ok` to `test.diff`
+* `make test.run.diff`
 
-* `make test.refresh`
+   Writes the difference between `test.run` and `test.run.ok` to `test.run.diff`
 
-   Copies `test.out` to `test.ok`.
+* `make test.run.refresh`
+
+   Copies `test.run` to `test.run.ok`.
 
 * `make current`  (or `make accept)
 

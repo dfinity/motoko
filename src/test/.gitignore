@@ -1,0 +1,3 @@
+*.diff
+*.wat
+*.wasm
