@@ -438,115 +438,59 @@ and nary context k naryE es =
   k --> nary_aux [] es
                  
 and c_and context k e1 e2 =
-  match eff e1, eff e2 with
-  | T.Triv, T.Await ->
-    let v2 = fresh_id (typ e2) in     
+ let e2 = match eff e2 with
+    | T.Triv -> k -@- t_exp context e2
+    | T.Await -> c_exp context e2 -@- k
+ in
+ match eff e1 with
+  | T.Triv ->
     k -->  ifE (t_exp context e1)
-               ((c_exp context e2) -@- (v2 --> k -@- v2))
+               e2
                (k -@- boolE false)
                answerT
-  | T.Await, T.Await ->
-    let v1 = fresh_id (typ e1) in
-    let v2 = fresh_id (typ e2) in     
-    k -->  (c_exp context e1) -@-
-            (v1 -->
-               ifE v1
-                 ((c_exp context e2) -@- (v2 --> k -@- v2))
-                 (k -@- boolE false)
-                 answerT)
-  | T.Await, T.Triv ->
+  | T.Await ->
     let v1 = fresh_id (typ e1) in
     k -->  (c_exp context e1) -@-
             (v1 -->
                ifE v1
-                 (k -@- t_exp context e2)
+                 e2
                  (k -@- boolE false)
                  answerT)
-  | T.Triv, T.Triv ->
-    failwith "Impossible:c_and"
- 
 
 and c_or context k e1 e2 =
-  match eff e1, eff e2 with
-  | T.Triv, T.Await ->
-    let v2 = fresh_id (typ e2) in     
+  let e2 = match eff e2 with
+    | T.Triv -> k -@- t_exp context e2
+    | T.Await -> c_exp context e2 -@- k
+  in
+  match eff e1 with
+  | T.Triv ->
     k -->  ifE (t_exp context e1)
                (k -@- boolE true)
-               ((c_exp context e2) -@- (v2 --> k -@- v2))
+               e2
                answerT
-  | T.Await, T.Await ->
-    let v1 = fresh_id (typ e1) in
-    let v2 = fresh_id (typ e2) in     
-    k -->  (c_exp context e1) -@-
-            (v1 -->
-               ifE v1
-                 (k -@- boolE true)
-                 ((c_exp context e2) -@- (v2 --> k -@- v2))
-                 answerT)
-  | T.Await, T.Triv ->
+  | T.Await ->
     let v1 = fresh_id (typ e1) in
     k -->  (c_exp context e1) -@-
             (v1 -->
                ifE v1
                  (k -@- boolE true)
-                 (k -@- t_exp context e2)
+                 e2
                  answerT)
-  | T.Triv, T.Triv ->
-     failwith "Impossible:c_or"
 
 and c_if context k e1 e2 e3 =
-  match eff e1, eff e2, eff e3 with
-  | T.Triv, T.Triv, T.Await ->
-    k -->  ifE (t_exp context e1)
-               (k -@- t_exp context e1)
-               ((c_exp context e2) -@- k)
-               answerT
-  | T.Triv, T.Await, T.Triv ->
-    k -->  ifE (t_exp context e1)
-               ((c_exp context e1) -@- k)
-               (k -@- t_exp context e2)
-               answerT    
-  | T.Triv, T.Await, T.Await ->
-    k -->  ifE (t_exp context e1)
-               ((c_exp context e1) -@- k)
-               ((c_exp context e2) -@- k)
-               answerT
-  | T.Await, T.Triv, T.Triv ->
+  let trans_branch exp = match eff exp with
+    | T.Triv -> k -@- t_exp context exp
+    | T.Await -> c_exp context exp -@- k
+  in
+  let e2 = trans_branch e2 in
+  let e3 = trans_branch e3 in               
+  match eff e1 with
+  | T.Triv ->
+    k -->  ifE (t_exp context e1) e2 e3 answerT
+  | T.Await ->
     let v1 = fresh_id (typ e1) in
     k -->  (c_exp context e1) -@-
-            (v1 -->
-                (ifE v1
-                     (k -@- (t_exp context e2))
-                     (k -@- (t_exp context e3))
-                     answerT))
-  | T.Await, T.Triv, T.Await ->
-    let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-            (v1 -->
-                (ifE v1
-                   (k -@- (t_exp context e2))
-                   ((c_exp context e3) -@- k)
-                   answerT))
-              
-  | T.Await, T.Await, T.Triv ->
-    let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-            (v1 -->
-                ifE v1
-                    ((c_exp context e2) -@- k)
-                    (k -@- t_exp context e3)
-                    answerT)
-  | T.Await, T.Await, T.Await ->
-    let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-            (v1 -->
-                ifE v1
-                  ((c_exp context e2) -@- k)
-                  ((c_exp context e3) -@- k)
-                  answerT)
-  | T.Triv, T.Triv, T.Triv ->
-     failwith "Impossible:c_if"
-       
+      (v1 --> ifE v1 e2 e3 answerT)
     
 and c_exp context exp =
   { exp with it = (c_exp' context exp).it }
