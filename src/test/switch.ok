@@ -1,4 +1,6 @@
 -- Checking switch.as:
+switch.as:65.3-65.14: warning, the cases in this switch do not cover all possible values
+let f : () -> ()
 let no : Nat?
 let oo : {}?
 let x1 : Nat
@@ -12,6 +14,7 @@ let x8 : Nat
 let x9 : Nat
 -- Interpreting switch.as:
 -- Finished switch.as:
+let f : () -> () = func
 let no : Nat? = 0
 let oo : {}? = {}
 let x1 : Nat = 1

@@ -17,6 +17,6 @@ let i2 : Int = 4095
 let n : Nat = 0
 let s : Text = "a \t\"\u{00}bb\'bc\\de txx\\x\"\u{23442}\n"
 let short : Word16 = 65535
-let u : Char = "\u{a34}"
+let u : Char = '\u{a34}'
 let word : Word32 = 4294967295
 

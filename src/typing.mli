@@ -8,7 +8,7 @@ type ret_env = typ option
 
 type scope = val_env * typ_env * con_env
 
-type context =
+type env =
   { vals : val_env;
     typs : typ_env;
     cons : con_env;
@@ -18,13 +18,13 @@ type context =
     pre : bool;
   }
 
-val empty_context : context
-val adjoin : context -> scope -> context
-val adjoin_vals : context -> val_env -> context
-val adjoin_typs : context -> typ_env -> con_env -> context
+val empty_env : env
+val adjoin : env -> scope -> env
+val adjoin_vals : env -> val_env -> env
+val adjoin_typs : env -> typ_env -> con_env -> env
 
 
 exception Error of Source.region * string
 
-val check_prog : context -> Syntax.prog -> scope (* raise Error *)
-val infer_prog : context -> Syntax.prog -> typ * scope (* raise Error *)
+val check_prog : env -> Syntax.prog -> scope (* raise Error *)
+val infer_prog : env -> Syntax.prog -> typ * scope (* raise Error *)

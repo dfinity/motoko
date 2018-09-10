@@ -21,6 +21,7 @@ let effect_exp (exp:Syntax.exp) : T.eff =
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
+  | PrimE _
   | VarE _ 
   | LitE _ ->
     T.Triv
@@ -256,6 +257,7 @@ let rec t_exp context exp =
   { exp with it = t_exp' context exp.it }
 and t_exp' context exp' =
   match exp' with
+  | PrimE _
   | VarE _ 
   | LitE _ -> exp'
   | UnE (op, exp1) ->
@@ -432,9 +434,10 @@ and c_exp' context exp =
   match exp.it with
   | _ when is_triv exp ->
     k --> k -@- (t_exp context exp)
+  | PrimE _
   | VarE _ 
   | LitE _ ->
-     failwith "Impossible"
+    assert false
   | UnE (op, exp1) ->
     unary context k (fun v1 -> e (UnE(op, v1))) exp1
   | BinE (exp1, op, exp2) ->

@@ -71,7 +71,7 @@ test()
     <= ()
 -- Finished counter.as:
 let Counter : Int -> Counter = func
-let c : Counter = Counter(...)
+let c : Counter = {c = 0; dec = func; read = func}
 let show : Int -> () = func
 let test : () -> () = func
 
