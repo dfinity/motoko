@@ -60,12 +60,11 @@ let phase heading filename =
 
 (* Typechecking *)
 
-let typecheck to_stdout env lexer name =
-  let infer env prog = Type.unit, Typing.check_prog env prog in
+let typecheck to_stdout env lexer parse infer name =
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   try
-    let prog = Parser.parse_prog Lexer.token lexer in
+    let prog = parse Lexer.token lexer in
     phase "Checking" name;
     let t, ((ve, te, ce) as stat_scope) = infer env prog in
     let env' = Typing.adjoin env stat_scope in
@@ -96,12 +95,16 @@ let typecheck to_stdout env lexer name =
 
 let typecheck_string env s name =
   let lexer = Lexing.from_string s in
-  typecheck false env lexer name
+  let parse = Parser.parse_prog in
+  let infer env prog = Type.unit, Typing.check_prog env prog in
+  typecheck false env lexer parse infer name
 
 let typecheck_file env filename =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
-  match typecheck false env lexer filename with
+  let parse = Parser.parse_prog in
+  let infer env prog = Type.unit, Typing.check_prog env prog in
+  match typecheck false env lexer parse infer filename with
   | Some r -> r
   | None   -> exit 1
 
@@ -144,8 +147,6 @@ let run_mod_or_fail dyn_env (name, t, stat_env, stat_scope, prog) =
     | Some r -> r
     | None -> exit 1
 
-
-(* There is some duplication with `run` below. But here we want errors to stderr! *)
 let compile_mod (name, _t, _stat_env, _stat_scope, prog) =
   phase "Compiling" name;
   Compile.compile prog
@@ -166,7 +167,9 @@ let lexer_stdin buf len =
   in loop 0
 
 let parse_and_run_stdin (static_env, dynamic_env) lexer =
-    match typecheck true static_env lexer "stdin" with
+    let parse = Parser.parse_prog_interactive in
+    let infer = Typing.infer_prog in
+    match typecheck true static_env lexer parse infer "stdin" with
     | Some (senv', mod_closure) ->
       begin match run_mod dynamic_env mod_closure with
       | Some denv' -> Some (senv', denv')
