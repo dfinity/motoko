@@ -382,7 +382,7 @@ exp_nondec :
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary e1=exp ELSE e2=exp
     { IfE(b, e1, e2) @? at $sloc }
-  | SWITCH e=exp_nullary LCURLY cs=case* RCURLY
+  | SWITCH e=exp_nullary LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
   | WHILE e1=exp_nullary e2=exp
     { WhileE(e1, e2) @? at $sloc }
