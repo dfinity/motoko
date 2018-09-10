@@ -50,6 +50,20 @@ let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
 
+let prim = function
+  | "Null" -> Null
+  | "Bool" -> Bool
+  | "Nat" -> Nat
+  | "Int" -> Int
+  | "Word8" -> Word8
+  | "Word16" -> Word16
+  | "Word32" -> Word32
+  | "Word64" -> Word64
+  | "Float" -> Float
+  | "Char" -> Char
+  | "Text" -> Text
+  | _ -> raise (Invalid_argument "Type.prim")
+
 
 (* Pretty printing *)
 
@@ -271,6 +285,7 @@ let rec normalize env = function
     | Some _ -> t
     | None -> assert false
     )
+  | Mut t -> Mut (normalize env t)
   | t -> t
 
 let nonopt env t =

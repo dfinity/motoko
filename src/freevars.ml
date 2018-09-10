@@ -19,6 +19,7 @@ let close (f,b) = S.diff f b
 let rec exp e : t = match e.it with
   | VarE i              -> S.singleton i.it
   | LitE l              -> S.empty
+  | PrimE _             -> S.empty
   | UnE (uo, e)         -> exp e
   | BinE (e1, bo, e2)   -> exps [e1; e2]
   | RelE (e1, ro, e2)   -> exps [e1; e2]

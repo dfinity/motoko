@@ -38,6 +38,7 @@ let rec exp e = match e.it with
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | DecE d              -> "DecE"    $$ [dec d]
   | OptE e              -> "OptE"    $$ [exp e]
+  | PrimE p             -> "PrimE"   $$ [Atom p]
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
@@ -63,7 +64,6 @@ and lit (l:lit) = match l with
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; prim p]
-
 
 and unop uo = match uo with
   | PosOp -> Atom "PosOp"
@@ -122,7 +122,7 @@ and exp_field (ef : exp_field)
 
 and typ t = match t.it with
   | VarT (s,ts)         -> "VarT" $$ [id s] @ List.map typ ts
-  | PrimT p             -> "PrimT" $$ [prim p]
+  | PrimT p             -> "PrimT" $$ [Atom p]
   | ObjT (s,ts)         -> "ObjT" $$ [sort s] @ List.map typ_field ts
   | ArrayT (m,t)        -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]

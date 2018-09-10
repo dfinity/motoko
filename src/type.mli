@@ -50,6 +50,8 @@ val bool : typ
 val nat : typ
 val int : typ
 
+val prim : string -> prim
+
 
 (* Normalization and Classification *)
 

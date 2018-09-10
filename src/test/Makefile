@@ -4,7 +4,7 @@
 
 ASC=../asc
 WASM=wasm
-ASC_FLAGS=-t -d
+ASC_FLAGS=-t -v
 
 TESTS:=$(basename $(wildcard *.as))
 
@@ -12,7 +12,7 @@ all: stats
 
 SHELL=/bin/bash
 
-%.out : %.as $(ASC)
+%.out : %.as $(ASC) Makefile
 	@echo "TEST: $*"
 # Show output when this is an explicit target, otherwise be silent
 	@if [ "$(MAKECMDGOALS)" = "$@" ]; \

@@ -77,9 +77,7 @@ let assign_op lhs rhs_f at =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
-
-%token<Type.prim> PRIM
-
+%token PRIM
 %token UNDERSCORE
 
 %nonassoc IF_NO_ELSE LOOP_NO_WHILE
@@ -155,8 +153,6 @@ typ_obj :
     { tfs }
 
 typ_nullary :
-  | p=PRIM
-    { PrimT(p) @@ at $sloc }
   | LPAR t=typ RPAR
     { t }
   | LPAR ts=seplist1(typ_item, COMMA) RPAR
@@ -177,6 +173,8 @@ typ_post :
 typ_pre :
   | t=typ_post
     { t }
+  | PRIM s=TEXT
+    { PrimT(s) @@ at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(t) @@ at $sloc }
   | LIKE t=typ_pre
@@ -348,7 +346,9 @@ exp_bin :
 
 exp_pre :
   | e=exp_bin
-    { e } 
+    { e }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc }
   | RETURN eo=exp_pre?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       RetE(e) @? at $sloc }

@@ -19,9 +19,9 @@ and mut' = Const | Var
 
 type typ = typ' Source.phrase
 and typ' =
-  | VarT of id * typ list                     (* constructor *)
-  | PrimT of Type.prim                         (* primitive *)
-  | ObjT of sort * typ_field list             (* object *)
+  | PrimT of string                            (* primitive *)
+  | VarT of id * typ list                      (* constructor *)
+  | ObjT of sort * typ_field list              (* object *)
   | ArrayT of mut * typ                        (* array *)
   | OptT of typ                                (* option *)
   | TupT of typ list                           (* tuple *)
@@ -118,6 +118,7 @@ and priv' = Public | Private
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
+  | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
   | UnE of unop * exp                          (* unary operator *)
