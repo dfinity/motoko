@@ -220,6 +220,19 @@ let letE x exp1 exp2 =
     note = {note_typ = typ exp1;
             note_eff = max_eff (eff exp1) (eff exp2)}           
   }
+let boolE b =
+  { it = LitE (ref (BoolLit true));
+    at = no_region;
+    note = {note_typ = T.bool;
+            note_eff = T.Triv}
+  }
+let ifE exp1 exp2 exp3 typ =
+  { it = IfE (exp1,exp2, exp3);
+    at = no_region;
+    note = {note_typ = typ;
+            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+           }           
+  }
 let expD exp = ExpD exp @@ no_region                                  
 let tupE exps =
    let effs = List.map effect_exp exps in
@@ -381,8 +394,7 @@ and unary context k unE e1 =
     k -->  (c_exp context e1) -@-
              (v1 --> k -@- unE v1)
   | T.Triv ->
-     (* failwith "Impossible";  *)
-     unE (t_exp context e1) 
+    failwith "Impossible:unary"
     
 and binary context k binE e1 e2 =
   match eff e1, eff e2 with
@@ -403,8 +415,7 @@ and binary context k binE e1 e2 =
     k -->  (c_exp context e1) -@-
              (v1 --> k -@- binE v1 (t_exp context e2))
   | T.Triv, T.Triv ->
-     (* failwith "Impossible";  *)
-     binE (t_exp context e1) (t_exp context e2)
+    failwith "Impossible:binary";  
 
 and nary context k naryE es =
   let rec nary_aux vs es  =
@@ -424,7 +435,118 @@ and nary context k naryE es =
           (c_exp context e1) -@-
             (v1 --> nary_aux (v1::vs) es)
   in
-    k --> nary_aux [] es      
+  k --> nary_aux [] es
+                 
+and c_and context k e1 e2 =
+  match eff e1, eff e2 with
+  | T.Triv, T.Await ->
+    let v2 = fresh_id (typ e2) in     
+    k -->  ifE (t_exp context e1)
+               ((c_exp context e2) -@- (v2 --> k -@- v2))
+               (k -@- boolE false)
+               answerT
+  | T.Await, T.Await ->
+    let v1 = fresh_id (typ e1) in
+    let v2 = fresh_id (typ e2) in     
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+               ifE v1
+                 ((c_exp context e2) -@- (v2 --> k -@- v2))
+                 (k -@- boolE false)
+                 answerT)
+  | T.Await, T.Triv ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+               ifE v1
+                 (k -@- t_exp context e2)
+                 (k -@- boolE false)
+                 answerT)
+  | T.Triv, T.Triv ->
+    failwith "Impossible:c_and"
+ 
+
+and c_or context k e1 e2 =
+  match eff e1, eff e2 with
+  | T.Triv, T.Await ->
+    let v2 = fresh_id (typ e2) in     
+    k -->  ifE (t_exp context e1)
+               (k -@- boolE true)
+               ((c_exp context e2) -@- (v2 --> k -@- v2))
+               answerT
+  | T.Await, T.Await ->
+    let v1 = fresh_id (typ e1) in
+    let v2 = fresh_id (typ e2) in     
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+               ifE v1
+                 (k -@- boolE true)
+                 ((c_exp context e2) -@- (v2 --> k -@- v2))
+                 answerT)
+  | T.Await, T.Triv ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+               ifE v1
+                 (k -@- boolE true)
+                 (k -@- t_exp context e2)
+                 answerT)
+  | T.Triv, T.Triv ->
+     failwith "Impossible:c_or"
+
+and c_if context k e1 e2 e3 =
+  match eff e1, eff e2, eff e3 with
+  | T.Triv, T.Triv, T.Await ->
+    k -->  ifE (t_exp context e1)
+               (k -@- t_exp context e1)
+               ((c_exp context e2) -@- k)
+               answerT
+  | T.Triv, T.Await, T.Triv ->
+    k -->  ifE (t_exp context e1)
+               ((c_exp context e1) -@- k)
+               (k -@- t_exp context e2)
+               answerT    
+  | T.Triv, T.Await, T.Await ->
+    k -->  ifE (t_exp context e1)
+               ((c_exp context e1) -@- k)
+               ((c_exp context e2) -@- k)
+               answerT
+  | T.Await, T.Triv, T.Triv ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+                (ifE v1
+                     (k -@- (t_exp context e2))
+                     (k -@- (t_exp context e3))
+                     answerT))
+  | T.Await, T.Triv, T.Await ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+                (ifE v1
+                   (k -@- (t_exp context e2))
+                   ((c_exp context e3) -@- k)
+                   answerT))
+              
+  | T.Await, T.Await, T.Triv ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+                ifE v1
+                    ((c_exp context e2) -@- k)
+                    (k -@- t_exp context e3)
+                    answerT)
+  | T.Await, T.Await, T.Await ->
+    let v1 = fresh_id (typ e1) in
+    k -->  (c_exp context e1) -@-
+            (v1 -->
+                ifE v1
+                  ((c_exp context e2) -@- k)
+                  ((c_exp context e3) -@- k)
+                  answerT)
+  | T.Triv, T.Triv, T.Triv ->
+     failwith "Impossible:c_if"
+       
     
 and c_exp context exp =
   { exp with it = (c_exp' context exp).it }
@@ -470,12 +592,11 @@ and c_exp' context exp =
   | NotE exp1 ->
     unary context k (fun v1 -> e (NotE v1)) exp1 
   | AndE (exp1, exp2) ->
-    failwith "NYI";
+    c_and context k exp1 exp2
   | OrE (exp1, exp2) ->
-    failwith "NYI"; 
+    c_or context k exp1 exp2
   | IfE (exp1, exp2, exp3) ->
-    failwith "NYI"
-(*    IfE (c_exp context exp1, c_exp context exp2, c_exp context exp3) *)
+    c_if context k exp1 exp2 exp3 
   | SwitchE (exp1, cases) ->
     failwith "NYI"
 (*    let cases' = List.map
