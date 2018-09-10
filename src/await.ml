@@ -146,7 +146,7 @@ let id_ret = ""
 let  (-->) k e =
   match k.it with
   | VarE v ->
-    {it=DecE(FuncD("" @@ no_region,
+     {it=DecE(FuncD("" @@ no_region, (* no recursion *)
                 [],
                 {it=VarP v;at=no_region;note=k.note},
                 AnyT@@no_region, (* bogus,  but we shouln't use it anymore *)
@@ -220,6 +220,14 @@ let letE x exp1 exp2 =
     note = {note_typ = typ exp1;
             note_eff = max_eff (eff exp1) (eff exp2)}           
   }
+
+let unitE =
+  { it = TupE [];
+    at = no_region;
+    note = {note_typ = T.Tup [];
+            note_eff = T.Triv}
+  }
+  
 let boolE b =
   { it = LitE (ref (BoolLit true));
     at = no_region;
@@ -311,7 +319,7 @@ and t_exp' context exp' =
   | SwitchE (exp1, cases) ->
     let cases' = List.map
                   (fun {it = {pat;exp}; at; note} ->
-                     {it = {pat;exp = t_exp context exp1}; at; note})
+                     {it = {pat;exp = t_exp context exp}; at; note})
                   cases
     in
     SwitchE (t_exp context exp1, cases')
@@ -491,7 +499,73 @@ and c_if context k e1 e2 e3 =
     let v1 = fresh_id (typ e1) in
     k -->  (c_exp context e1) -@-
       (v1 --> ifE v1 e2 e3 answerT)
-    
+
+and c_while context k e1 e2 =
+ let loop = fresh_id (contT T.unit) in
+ let v2 = fresh_id T.unit in                    
+ let e2 = match eff e2 with
+    | T.Triv -> loop -@- t_exp context e2
+    | T.Await -> c_exp context e2 -@- loop
+ in
+ match eff e1 with
+ | T.Triv ->
+    k --> letE loop (v2 -->
+                       ifE (t_exp context e1)
+                         e2
+                         (k -@- unitE)
+                          answerT)
+               (loop -@- unitE)
+ | T.Await ->
+    let v1 = fresh_id T.bool in                      
+    k --> letE loop (v2 -->
+                       (c_exp context e1) -@-
+                        (v1 --> 
+                           ifE v1
+                             e2
+                             (k -@- unitE)
+                             answerT))
+               (loop -@- unitE)
+
+and c_loop_none context k e1 =
+ let loop = fresh_id (contT T.unit) in
+ match eff e1 with
+ | T.Triv ->
+    failwith "Impossible"
+ | T.Await ->
+    let v1 = fresh_id T.unit in                      
+    k --> letE loop (v1 -->
+                       (c_exp context e1) -@- loop)
+               (loop -@- unitE)
+
+and c_loop_some context k e1 e2 =
+ let loop = fresh_id (contT T.unit) in
+ let u = fresh_id T.unit in
+ let v1 = fresh_id T.unit in
+ let e2 = match eff e2 with
+   | T.Triv -> ifE (t_exp context e2)
+                 (loop -@- unitE)
+                 (k -@- unitE)
+                 answerT
+   | T.Await ->
+       let v2 = fresh_id T.bool in                    
+       c_exp context e2 -@-
+         (v2 --> ifE v2
+                   (loop -@- unitE)
+                   (k -@- unitE)
+                   answerT)
+ in
+ match eff e1 with
+ | T.Triv ->
+     k --> letE loop (u -->
+                        letE v1 (t_exp context e1)
+                          e2)
+             (loop -@- unitE)
+ | T.Await ->
+     k --> letE loop (u -->
+                        (c_exp context e1) -@-
+                        (v1 --> e2))
+             (loop -@- unitE)
+               
 and c_exp context exp =
   { exp with it = (c_exp' context exp).it }
 and c_exp' context exp =
@@ -542,19 +616,30 @@ and c_exp' context exp =
   | IfE (exp1, exp2, exp3) ->
     c_if context k exp1 exp2 exp3 
   | SwitchE (exp1, cases) ->
-    failwith "NYI"
-(*    let cases' = List.map
-                  (fun {it = {pat;exp}; at; note} ->
-                     {it = {pat;exp = c_exp context exp1}; at; note})
+    let cases' = List.map
+                   (fun {it = {pat;exp}; at; note} ->
+                     let exp' = match eff exp with
+                       | T.Triv -> k -@- (t_exp context exp)
+                       | T.Await -> (c_exp context exp) -@- k
+                     in
+                     {it = {pat;exp = exp' }; at; note})
                   cases
     in
-    SwitchE (c_exp context exp1, cases') *)
+    begin
+    match eff exp1 with
+    | T.Triv ->
+       k --> {exp with it = SwitchE(t_exp context exp1, cases')}
+    | T.Await ->
+       let v1 = fresh_id (typ exp1) in
+       c_exp context exp1 -@-
+         (v1 --> {exp with it = SwitchE(v1,cases')})
+    end
   | WhileE (exp1, exp2) ->
-    failwith "NYI"
-  (*    WhileE (c_exp context exp1, c_exp context exp2) *)
-  | LoopE (exp1, exp2_opt) ->
-    failwith "NYI"     
-  (* LoopE (c_exp context exp1, Lib.Option.map (c_exp context) exp2_opt) *)
+    c_while context k exp1 exp2
+  | LoopE (exp1, None) ->
+    c_loop_none context k exp1 
+  | LoopE (exp1, Some exp2) ->
+    c_loop_some context k exp1 exp2                 
   | ForE (pat, exp1, exp2) ->
     failwith "NYI" 
   (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
