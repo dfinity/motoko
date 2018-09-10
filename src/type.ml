@@ -252,46 +252,52 @@ let avoid env env' t =
 
 (* Equivalence *)
 
-(* TBR: Use something more efficient for eqs than an associ list? *)
-(* TBR: Thread back eqs so that we don't check multiple times *)
+module S = Set.Make (struct type t = typ let compare = compare end)
+module M = Map.Make (struct type t = typ let compare = compare end)
 
-let eq_list eq env eqs xs1 xs2 =
-  try List.for_all2 (eq env eqs) xs1 xs2 with Invalid_argument _ -> false
+type co_assumptions = S.t M.t
+
+let eq_list eq env co xs1 xs2 =
+  try List.for_all2 (eq env co) xs1 xs2 with Invalid_argument _ -> false
   
 let rec eq (env : con_env) t1 t2 : bool =
-  eq_typ env [] t1 t2
+  eq_typ env (ref M.empty) t1 t2
 
-and eq_typ env (eqs : (typ * typ list) list) t1 t2 =
+and eq_typ env (co : co_assumptions ref) t1 t2 =
 (*printf "[eq] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
   t1 == t2 ||
-  match List.assoc_opt t1 eqs with
-  | Some ts when List.mem t2 ts -> true
-  | Some ts -> eq_typ' env ((t1, t2::ts)::eqs) t1 t2
-  | None -> eq_typ' env ((t1, [t2])::eqs) t1 t2
+  match M.find_opt t1 !co with
+  | Some s when S.mem t2 s -> true
+  | Some s ->
+    co := M.add t1 (S.add t2 s) !co;
+    eq_typ' env co t1 t2
+  | None ->
+    co := M.add t1 (S.singleton t2) !co;
+    eq_typ' env co t1 t2
 
-and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
+and eq_typ' env co t1 t2 =
   match t1, t2 with
   | Var (_, i1), Var (_, i2) ->
     i1 = i2
   | Con (con1, ts1), Con (con2, ts2) ->
-    con1 = con2 && eq_list eq_typ env eqs ts1 ts2 ||
+    con1 = con2 && eq_list eq_typ env co ts1 ts2 ||
     (match Con.Env.find_opt con1 env, Con.Env.find_opt con2 env with
     | Some (Def (tbs, t)), _ -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (open_ ts1 t) t2
+      eq_typ env co (open_ ts1 t) t2
     | _, Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (open_ ts2 t)
+      eq_typ env co t1 (open_ ts2 t)
     | _ -> false
     )
   | Con (con1, ts1), t2 ->
     (match Con.Env.find_opt con1 env with
     | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (open_ ts1 t) t2
+      eq_typ env co (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Con.Env.find_opt con2 env with
     | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (open_ ts2 t)
+      eq_typ env co t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 ->
@@ -299,40 +305,40 @@ and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
   | Obj (a1, tfs1), Obj (a2, tfs2) ->
     a1 = a2 &&
     (* assuming tf1 and tf2 are sorted by var *)
-    eq_list eq_field env eqs tfs1 tfs2
+    eq_list eq_field env co tfs1 tfs2
   | Array t1, Array t2 ->
-    eq_typ env eqs t1 t2
+    eq_typ env co t1 t2
   | Opt (t1), Opt (t2) ->
-    eq_typ env eqs t1 t2
+    eq_typ env co t1 t2
   | Tup (ts1), Tup (ts2) ->
-    eq_list eq_typ env eqs ts1 ts2
+    eq_list eq_typ env co ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
-    (match eq_binds env eqs tbs1 tbs2 with
+    (match eq_binds env co tbs1 tbs2 with
     | Some (ts, env') ->
-      eq_typ env' eqs (open_ ts t11) (open_ ts t21) &&
-      eq_typ env' eqs (open_ ts t12) (open_ ts t22)
+      eq_typ env' co (open_ ts t11) (open_ ts t21) &&
+      eq_typ env' co (open_ ts t12) (open_ ts t22)
     | None -> false
     )
   | Async t1, Async t2 ->
-    eq_typ env eqs t1 t2
+    eq_typ env co t1 t2
   | Like t1, Like t2 ->
-    eq_typ env eqs t1 t2
+    eq_typ env co t1 t2
   | Mut t1, Mut t2 ->
-    eq_typ env eqs t1 t2
+    eq_typ env co t1 t2
   | Any, Any -> true
   | _, _ -> false
 
-and eq_field env eqs tf1 tf2 =
+and eq_field env co tf1 tf2 =
   tf1.name = tf2.name &&
-  eq_typ env eqs tf1.typ tf2.typ
+  eq_typ env co tf1.typ tf2.typ
 
-and eq_binds env eqs tbs1 tbs2 =
-  if eq_list eq_bind env eqs tbs1 tbs2
+and eq_binds env co tbs1 tbs2 =
+  if eq_list eq_bind env co tbs1 tbs2
   then Some (open_binds env tbs1)
   else None
 
-and eq_bind env eqs tb1 tb2 =
-  eq_typ env eqs tb1.bound tb2.bound
+and eq_bind env co tb1 tb2 =
+  eq_typ env co tb1.bound tb2.bound
 
 
 (* Subtyping *)
