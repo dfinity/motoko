@@ -250,108 +250,116 @@ let avoid env env' t =
   avoid' env env' t
 
 
-(* Equivalence *)
+(* Equivalence & Subtyping *)
 
-module S = Set.Make (struct type t = typ let compare = compare end)
-module M = Map.Make (struct type t = typ let compare = compare end)
+module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-type co_assumptions = S.t M.t
+type rel = Eq | Sub
 
-let eq_list eq env co xs1 xs2 =
-  try List.for_all2 (eq env co) xs1 xs2 with Invalid_argument _ -> false
-  
-let rec eq (env : con_env) t1 t2 : bool =
-  eq_typ env (ref M.empty) t1 t2
+let rel_list p rel env co xs1 xs2 =
+  try List.for_all2 (p rel env co) xs1 xs2 with Invalid_argument _ -> false
 
-and eq_typ env (co : co_assumptions ref) t1 t2 =
-(*printf "[eq] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
-  t1 == t2 ||
-  match M.find_opt t1 !co with
-  | Some s when S.mem t2 s -> true
-  | Some s ->
-    co := M.add t1 (S.add t2 s) !co;
-    eq_typ' env co t1 t2
-  | None ->
-    co := M.add t1 (S.singleton t2) !co;
-    eq_typ' env co t1 t2
-
-and eq_typ' env co t1 t2 =
+let rec rel_typ rel env co t1 t2 =
+(*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
+  t1 == t2 || S.mem (t1, t2) !co || begin
+  co := S.add (t1, t2) !co;
   match t1, t2 with
-  | Var (_, i1), Var (_, i2) ->
-    i1 = i2
+  | Any, Any -> 
+    true
+  | _, Any when rel = Sub ->
+    true
   | Con (con1, ts1), Con (con2, ts2) ->
-    con1 = con2 && eq_list eq_typ env co ts1 ts2 ||
-    (match Con.Env.find_opt con1 env, Con.Env.find_opt con2 env with
-    | Some (Def (tbs, t)), _ -> (* TBR this may fail to terminate *)
-      eq_typ env co (open_ ts1 t) t2
-    | _, Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env co t1 (open_ ts2 t)
-    | _ -> false
+    (match Con.Env.find con1 env, Con.Env.find con2 env with
+    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+      rel_typ rel env co (open_ ts1 t) t2
+    | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
+      rel_typ rel env co t1 (open_ ts2 t)
+    | _ when con1 = con2 ->
+      rel_list rel_typ Eq env co ts1 ts2
+    | Abs (tbs, t), _ when rel = Sub ->
+      rel_typ rel env co (open_ ts1 t) t2
+    | _ ->
+      false
     )
   | Con (con1, ts1), t2 ->
-    (match Con.Env.find_opt con1 env with
-    | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env co (open_ ts1 t) t2
+    (match Con.Env.find con1 env, t2 with
+    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+      rel_typ rel env co (open_ ts1 t) t2
+    | Abs (tbs, t), Opt t2' when rel = Sub ->
+      rel_typ rel env co t1 t2'
+    | Abs (tbs, t), _ when rel = Sub ->
+      rel_typ rel env co (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
-    (match Con.Env.find_opt con2 env with
-    | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env co t1 (open_ ts2 t)
+    (match Con.Env.find con2 env with
+    | Def (tbs, t) -> (* TBR this may fail to terminate *)
+      rel_typ rel env co t1 (open_ ts2 t)
     | _ -> false
     )
-  | Prim p1, Prim p2 ->
-    p1 = p2
+  | Prim p1, Prim p2 when p1 = p2 ->
+    true
+  | Prim p1, Prim p2 when rel = Sub ->
+    p1 = Nat && p2 = Int
   | Obj (a1, tfs1), Obj (a2, tfs2) ->
     a1 = a2 &&
-    (* assuming tf1 and tf2 are sorted by var *)
-    eq_list eq_field env co tfs1 tfs2
-  | Array t1, Array t2 ->
-    eq_typ env co t1 t2
-  | Opt (t1), Opt (t2) ->
-    eq_typ env co t1 t2
-  | Tup (ts1), Tup (ts2) ->
-    eq_list eq_typ env co ts1 ts2
+    rel_fields rel env co tfs1 tfs2
+  | Array t1', Array t2' ->
+    rel_typ rel env co t1' t2'
+  | Opt t1', Opt t2' ->
+    rel_typ rel env co t1' t2'
+  | Prim Null, Opt t2' when rel = Sub ->
+    true
+  | t1, Opt t2' when rel = Sub ->
+    rel_typ rel env co t1 t2'
+  | Tup ts1, Tup ts2 ->
+    rel_list rel_typ rel env co ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
-    (match eq_binds env co tbs1 tbs2 with
+    (match rel_binds rel env co tbs1 tbs2 with
     | Some (ts, env') ->
-      eq_typ env' co (open_ ts t11) (open_ ts t21) &&
-      eq_typ env' co (open_ ts t12) (open_ ts t22)
+      rel_typ rel env' co (open_ ts t21) (open_ ts t11) &&
+      rel_typ rel env' co (open_ ts t12) (open_ ts t22)
     | None -> false
     )
-  | Async t1, Async t2 ->
-    eq_typ env co t1 t2
-  | Like t1, Like t2 ->
-    eq_typ env co t1 t2
-  | Mut t1, Mut t2 ->
-    eq_typ env co t1 t2
-  | Any, Any -> true
+  | Async t1', Async t2' ->
+    rel_typ rel env co t1' t2'
+  | Like t1', Like t2' ->
+    rel_typ rel env co t1' t2'
+  | Mut t1', Mut t2' ->
+    rel_typ Eq env co t1' t2'
+  | _, _ -> false
+  end
+
+and rel_fields rel env co tfs1 tfs2 =
+  (* Assume that tf1 and tf2 are sorted. *)
+  match tfs1, tfs2 with
+  | [], [] ->
+    true
+  | _, [] when rel = Sub ->
+    true
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare tf1.name tf2.name with
+    | 0 ->
+      rel_typ rel env co tf1.typ tf2.typ &&
+      rel_fields rel env co tfs1' tfs2'
+    | -1 when rel = Sub ->
+      rel_fields rel env co tfs1' tfs2
+    | _ -> false
+    )
   | _, _ -> false
 
-and eq_field env co tf1 tf2 =
-  tf1.name = tf2.name &&
-  eq_typ env co tf1.typ tf2.typ
-
-and eq_binds env co tbs1 tbs2 =
-  if eq_list eq_bind env co tbs1 tbs2
-  then Some (open_binds env tbs1)
+and rel_binds rel env co tbs1 tbs2 =
+  let ts, env' = open_binds env tbs2 in
+  if rel_list (rel_bind ts) rel env' co tbs2 tbs1
+  then Some (ts, env')
   else None
 
-and eq_bind env co tb1 tb2 =
-  eq_typ env co tb1.bound tb2.bound
+and rel_bind ts rel env co tb1 tb2 =
+  rel_typ rel env co (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 
-(* Subtyping *)
-
-let rec sub env t1 t2 =
-  t1 == t2 ||
-  (* TBR: this is just a quick hack *)
-  match normalize env t1, normalize env t2 with
-  | _, Any -> true
-  | Prim Nat, Prim Int -> true
-  | Opt t1', Opt t2' -> sub env t1' t2'
-  | t1', Opt t2' -> sub env t1' t2'
-  | t1', t2' -> eq env t1' t2'
+and eq (env : con_env) t1 t2 : bool = rel_typ Eq env (ref S.empty) t1 t2
+and sub (env : con_env) t1 t2 : bool = rel_typ Sub env (ref S.empty) t1 t2
 
 
 (* Join and Meet *)
@@ -437,6 +445,8 @@ and string_of_typ' vs t =
     sprintf "var %s[]" (string_of_typ_nullary vs t)
   | Array t ->
     sprintf "%s[]" (string_of_typ_nullary vs t)
+  | Func ([], t1, t2) ->
+    sprintf "%s -> %s" (string_of_typ_nullary vs t1) (string_of_typ' vs t2)
   | Func (tbs, t1, t2) ->
     let vs' = names_of_binds vs tbs in
     sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)

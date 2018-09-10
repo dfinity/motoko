@@ -98,6 +98,19 @@ type B = <X <: Int, Y <: T<X, Int>> X -> Y;
 func f(x : A) : A = x : B;
 };
 
+{
+class C<X>() {};
+type A = <X <: C<X>> X -> X;
+type B = <X <: C<X>> X -> X;
+func f(x : A) : A = x : B;
+};
+
+{
+class C<X>() {};
+type A = <X <: C<Y>, Y <: C<X>> X -> Y;
+type B = <X <: C<Y>, Y <: C<X>> X -> Y;
+func f(x : A) : A = x : B;
+};
 
 // Recursion
 
