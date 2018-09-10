@@ -65,105 +65,6 @@ let prim = function
   | _ -> raise (Invalid_argument "Type.prim")
 
 
-(* Pretty printing *)
-
-open Printf
-
-let string_of_prim = function
-  | Null -> "Null"
-  | Bool -> "Bool"
-  | Nat -> "Nat"
-  | Int -> "Int"
-  | Float -> "Float"
-  | Word8 -> "Word8"
-  | Word16 -> "Word16"
-  | Word32 -> "Word32"
-  | Word64 -> "Word64"
-  | Char -> "Char"
-  | Text -> "Text"
-
-let string_of_var (x, i) =
-  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
-
-let string_of_con vs c =
-  let s = Con.to_string c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
-
-let rec string_of_typ_nullary vs = function
-  | Pre -> "???"
-  | Any -> "Any"
-  | Prim p -> string_of_prim p
-  | Var (s, i) -> string_of_var (List.nth vs i)
-  | Con (c, []) -> string_of_con vs c
-  | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con vs c)
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
-  | Tup ts ->
-    sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
-      (if List.length ts = 1 then "," else "")
-  | Obj (Object, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
-  | t -> sprintf "(%s)" (string_of_typ' vs t)
-
-and string_of_typ' vs t =
-  match t with
-  | Array (Mut t) ->
-    sprintf "var %s[]" (string_of_typ_nullary vs t)  
-  | Array t ->
-    sprintf "%s[]" (string_of_typ_nullary vs t)
-  | Func (tbs, t1, t2) ->
-    let vs' = names_of_binds vs tbs in
-    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
-  | Opt t ->
-    sprintf "%s?"  (string_of_typ_nullary vs t)
-  | Async t -> 
-    sprintf "async %s" (string_of_typ_nullary vs t)
-  | Like t -> 
-    sprintf "like %s" (string_of_typ_nullary vs t)
-  | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
-  | Mut t ->
-    sprintf "var %s" (string_of_typ' vs t)
-  | t -> string_of_typ_nullary vs t
-
-and string_of_field vs {name; typ} =
-  sprintf "%s : %s" name (string_of_typ' vs typ)
-
-and names_of_binds vs bs =
-  List.map (fun b -> name_of_var vs (b.var, 0)) bs
-
-and name_of_var vs v =
-  match vs with
-  | [] -> v
-  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
-
-and string_of_bind vs v {bound; _} =
-  string_of_var v ^
-  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
-
-and string_of_binds vs vs' = function
-  | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
-
-let string_of_typ = string_of_typ' []
-
-
-let strings_of_kind k =
-  let op, tbs, t =
-    match k with
-    | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
-  in
-  let vs = names_of_binds [] tbs in
-  op, string_of_binds vs vs tbs, string_of_typ' vs t
-
-let string_of_kind k =
-  let op, sbs, st = strings_of_kind k in
-  sprintf "%s %s%s" op sbs st
-
-
 (* Shifting *)
 
 let rec shift i n t =
@@ -363,8 +264,8 @@ let rec eq (env : con_env) t1 t2 : bool =
 and eq_typ env (eqs : (typ * typ list) list) t1 t2 =
 (*printf "[eq] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
   t1 == t2 ||
-  match List.assq_opt t1 eqs with
-  | Some ts when List.memq t2 ts -> true (* physical equivalence! *)
+  match List.assoc_opt t1 eqs with
+  | Some ts when List.mem t2 ts -> true
   | Some ts -> eq_typ' env ((t1, t2::ts)::eqs) t1 t2
   | None -> eq_typ' env ((t1, [t2])::eqs) t1 t2
 
@@ -481,6 +382,119 @@ let rec meet env t1 t2 =
   | Opt t1', t2' -> meet env t1' t2'
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> failwith "meet"  (* TBR *)
+
+
+(* Pretty printing *)
+
+open Printf
+
+let string_of_prim = function
+  | Null -> "Null"
+  | Bool -> "Bool"
+  | Nat -> "Nat"
+  | Int -> "Int"
+  | Float -> "Float"
+  | Word8 -> "Word8"
+  | Word16 -> "Word16"
+  | Word32 -> "Word32"
+  | Word64 -> "Word64"
+  | Char -> "Char"
+  | Text -> "Text"
+
+let string_of_var (x, i) =
+  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
+
+let string_of_con vs c =
+  let s = Con.to_string c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
+
+let rec string_of_typ_nullary vs = function
+  | Pre -> "???"
+  | Any -> "Any"
+  | Prim p -> string_of_prim p
+  | Var (s, i) -> string_of_var (List.nth vs i)
+  | Con (c, []) -> string_of_con vs c
+  | Con (c, ts) ->
+    sprintf "%s<%s>" (string_of_con vs c)
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+  | Tup ts ->
+    sprintf "(%s%s)"
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (if List.length ts = 1 then "," else "")
+  | Obj (Object, fs) ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | t -> sprintf "(%s)" (string_of_typ' vs t)
+
+and string_of_typ' vs t =
+  match t with
+  | Array (Mut t) ->
+    sprintf "var %s[]" (string_of_typ_nullary vs t)
+  | Array t ->
+    sprintf "%s[]" (string_of_typ_nullary vs t)
+  | Func (tbs, t1, t2) ->
+    let vs' = names_of_binds vs tbs in
+    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
+      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
+  | Opt t ->
+    sprintf "%s?"  (string_of_typ_nullary vs t)
+  | Async t ->
+    sprintf "async %s" (string_of_typ_nullary vs t)
+  | Like t ->
+    sprintf "like %s" (string_of_typ_nullary vs t)
+  | Obj (Actor, fs) ->
+    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
+  | Mut t ->
+    sprintf "var %s" (string_of_typ' vs t)
+  | t -> string_of_typ_nullary vs t
+
+and string_of_field vs {name; typ} =
+  sprintf "%s : %s" name (string_of_typ' vs typ)
+
+and names_of_binds vs bs =
+  List.map (fun b -> name_of_var vs (b.var, 0)) bs
+
+and name_of_var vs v =
+  match vs with
+  | [] -> v
+  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
+
+and string_of_bind vs v {bound; _} =
+  string_of_var v ^
+  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
+
+and string_of_binds vs vs' = function
+  | [] -> ""
+  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
+
+let string_of_typ = string_of_typ' []
+
+
+let strings_of_kind k =
+  let op, tbs, t =
+    match k with
+    | Def (tbs, t) -> "=", tbs, t
+    | Abs (tbs, t) -> "<:", tbs, t
+  in
+  let vs = names_of_binds [] tbs in
+  op, string_of_binds vs vs tbs, string_of_typ' vs t
+
+let string_of_kind k =
+  let op, sbs, st = strings_of_kind k in
+  sprintf "%s %s%s" op sbs st
+
+
+let rec string_of_typ_expand env t =
+  let s = string_of_typ t in
+  match t with
+  | Con (c, ts) ->
+    (match Con.Env.find c env with
+    | Abs _ -> s
+    | Def _ ->
+      match normalize env t with
+      | Prim _ -> s
+      | t' -> s ^ " = " ^ string_of_typ_expand env t'
+    )
+  | _ -> s
 
 
 (* Environments *)

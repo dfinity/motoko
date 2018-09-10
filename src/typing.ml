@@ -189,8 +189,8 @@ and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
   if s = T.Actor && not (is_async_typ env.cons t) then
-    error typ.at "actor field %s has non-async type %s"
-      id.it (T.string_of_typ t);
+    error typ.at "actor field %s has non-async type\n  %s"
+      id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
@@ -216,8 +216,9 @@ and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
     let t = check_typ env typ in
     if not env.pre then begin
       if not (T.sub env.cons t tb.T.bound) then
-        error typ.at "type argument %s does not match parameter bound %s"
-          (T.string_of_typ t) (T.string_of_typ tb.T.bound)
+        error typ.at "type argument\n  %s\ndoes not match parameter bound\n  %s"
+          (T.string_of_typ_expand env.cons t)
+          (T.string_of_typ_expand env.cons tb.T.bound)
     end;
     let ts' = check_typ_bounds env tbs' typs' at in
     t::ts'
@@ -288,9 +289,9 @@ let rec check_lit env t lit at =
   | T.Prim t', _ when t' = infer_lit env lit at ->
     ()
   | t, _ ->
-    error at "expected literal of type %s, found literal of type %s"
-      (T.string_of_typ t)
+    error at "literal of type\n  %s\ndoes not have expected type\n  %s"
       (T.string_of_typ (T.Prim (infer_lit env lit at)))
+      (T.string_of_typ_expand env.cons t)
 
 
 (* Expressions *)
@@ -302,8 +303,8 @@ and infer_exp_structural env exp : T.typ =
   let t = infer_exp env exp in
   let t' = T.structural env.cons t in
   if t' = T.Pre then
-    error exp.at "cannot infer type of expression while trying to infer surrounding class type, because its type is a forward reference to type %s"
-      (T.string_of_typ t);
+    error exp.at "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
+      (T.string_of_typ_expand env.cons t);
   t'
 
 and infer_exp_mut env exp : T.typ =
@@ -335,8 +336,8 @@ and infer_exp' env exp : T.typ =
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not env.pre then begin
       if not (Operator.has_unop t op) then
-        error exp.at "operator is not defined for operand type %s"
-          (T.string_of_typ t)
+        error exp.at "operator is not defined for operand type\n  %s"
+          (T.string_of_typ_expand env.cons t)
     end;
     t
   | BinE (exp1, op, exp2) ->
@@ -345,8 +346,9 @@ and infer_exp' env exp : T.typ =
     let t = T.join env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_binop t op) then
-        error exp.at "operator not defined for operand types %s and %s"
-          (T.string_of_typ t1) (T.string_of_typ t2)
+        error exp.at "operator not defined for operand types\n  %sand\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+          (T.string_of_typ_expand env.cons t2)
     end;
     t
   | RelE (exp1, op, exp2) ->
@@ -355,8 +357,9 @@ and infer_exp' env exp : T.typ =
     let t = T.join env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_relop t op) then
-        error exp.at "operator not defined for operand types %s and %s"
-          (T.string_of_typ t1) (T.string_of_typ t2)
+        error exp.at "operator not defined for operand types\n  %sand\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+          (T.string_of_typ_expand env.cons t2)
     end;
     T.bool
   | TupE exps ->
@@ -372,11 +375,12 @@ and infer_exp' env exp : T.typ =
       (match List.nth_opt ts n with
       | Some t -> t
       | None ->
-        error exp.at "tuple projection %n >= %n is out-of-bounds"
-          n (List.length ts)
+        error exp.at "tuple projection %n is out of bounds for type\n  %s"
+          n (T.string_of_typ_expand env.cons t1)
       )
     | t1' ->
-      error exp.at "expected tuple type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected tuple type, but expression produces type\n  %s"
+        (T.string_of_typ_expand env.cons t1')
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj env sort.it id fields)
@@ -387,11 +391,12 @@ and infer_exp' env exp : T.typ =
       (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
-        error exp1.at "object of type %s has no field named %s"
-          (T.string_of_typ t) id.it
+        error exp1.at "field name %s does not exist in type\n  %s"
+          id.it (T.string_of_typ_expand env.cons t)
       )
     | t1' ->
-      error exp1.at "expected object type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected object type, but expression produces type\n  %s"
+        (T.string_of_typ_expand env.cons t1')
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -419,7 +424,8 @@ and infer_exp' env exp : T.typ =
       if not env.pre then check_exp env T.nat exp2;
       t
     | t1' ->
-      error exp1.at "expected array type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected array type, but expression produces type\n  %s"
+        (T.string_of_typ_expand env.cons t1')
     )
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp_structural env exp1 in
@@ -429,13 +435,14 @@ and infer_exp' env exp : T.typ =
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
     | t1' ->
-      error exp1.at "expected function type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected function type, but expression produces type\n  %s"
+        (T.string_of_typ_expand env.cons t1')
     )
   | BlockE decs ->
     let t, (_, _, ce) = infer_block env decs exp.at in
     (try T.avoid env.cons ce t with T.Unavoidable c ->
-      error exp.at "inferred block type %s contains the local class type %s"
-        (T.string_of_typ t) (Con.to_string c)
+      error exp.at "local class type %s is contained in inferred block type\n  %s"
+        (Con.to_string c) (T.string_of_typ_expand env.cons t)
     )
   | NotE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
@@ -461,8 +468,10 @@ and infer_exp' env exp : T.typ =
       t = T.Any &&
       T.structural env.cons t2 <> T.Any && T.structural env.cons t3 <> T.Any
     then
-      warn exp.at "this if has type %s because branches have inconsistent types, true produces %s, false produces %s"
-        (T.string_of_typ t) (T.string_of_typ t2) (T.string_of_typ t3);
+      warn exp.at "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
+        (T.string_of_typ t)
+        (T.string_of_typ_expand env.cons t2)
+        (T.string_of_typ_expand env.cons t3);
     t
   | SwitchE (exp1, cases) ->
     let t1 = if env.pre then T.Pre else infer_exp_structural env exp1 in
@@ -489,7 +498,8 @@ and infer_exp' env exp : T.typ =
       (* TBR: generalise beyond arrays *)
       let t1 = infer_exp_structural env exp1 in
       if not (is_iter_typ env.cons t1) then
-        error exp1.at "expected iterable type, found %s" (T.string_of_typ t1);
+        error exp1.at "expected iterable type, but expression has type\n  %s"
+          (T.string_of_typ_expand env.cons t1);
       let ve = check_pat_exhaustive env (elem_typ env.cons t1) pat in
       check_exp (adjoin_vals env ve) T.unit exp2
     end;
@@ -533,7 +543,8 @@ and infer_exp' env exp : T.typ =
     (match t1 with
     | T.Async t -> t
     | t1' ->
-      error exp1.at "expected async type, found %s" (T.string_of_typ t1')
+      error exp1.at "expected async type, but expression has type\n  %s"
+        (T.string_of_typ_expand env.cons t1')
     )
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
@@ -554,8 +565,8 @@ and infer_exp' env exp : T.typ =
   | DecE dec ->
     let t, (_, _, ce) = infer_block env [dec] exp.at in
     (try T.avoid env.cons ce t with T.Unavoidable c ->
-      error exp.at "inferred declaration type %s contains the local class type %s"
-        (T.string_of_typ t) (Con.to_string c)
+      error exp.at "local class name %s is contained in inferred declaration type\n  %s"
+        (Con.to_string c) (T.string_of_typ_expand env.cons t)
     )
     
 
@@ -574,60 +585,60 @@ and check_exp' env t exp =
     (match T.nonopt env.cons t with
     | T.Func _ -> ()
     | _ ->
-      error exp.at "primitive expression cannot produce expected type %s"
-        (T.string_of_typ t)
+      error exp.at "primitive cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | LitE lit ->
     check_lit env t lit exp.at
   | UnE (op, exp1) ->
     if not (Operator.has_unop t op) then
-      error exp.at "operator cannot produce expected type %s"
-        (T.string_of_typ t);
+      error exp.at "operator cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     check_exp env t exp1
   | BinE (exp1, op, exp2) ->
     if not (Operator.has_binop t op) then
-      error exp.at "operator cannot produce expected type %s"
-        (T.string_of_typ t);
+      error exp.at "operator cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     check_exp env t exp1;
     check_exp env t exp2
   | RelE (exp1, op, exp2) ->
     if not (T.sub env.cons t T.bool) then
-      error exp.at "operator cannot produce expected type %s"
-        (T.string_of_typ t);
+      error exp.at "operator cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     ignore (infer_exp env exp)
   | TupE exps ->
     (match T.nonopt env.cons t with
     | T.Tup ts when List.length ts = List.length exps ->
       List.iter2 (check_exp env) ts exps
     | _ ->
-      error exp.at "%s expression cannot produce expected type %s"
+      error exp.at "%s expression cannot produce expected type\n  %s"
         (if exps = [] then "empty" else "tuple")
-        (T.string_of_typ t)
+        (T.string_of_typ_expand env.cons t)
     )
   | OptE exp1 ->
     (match T.normalize env.cons t with
     | T.Opt t1 ->
       check_exp env t1 exp1
     | _ ->
-      error exp.at "option expression cannot produce expected type %s"
-        (T.string_of_typ t)
+      error exp.at "option expression cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | ObjE (sort, id, fields) ->
     (match T.nonopt env.cons t with
     | T.Obj (s, tfs) when s = sort.it ->
       ignore (check_obj env s tfs id fields exp.at)
     | _ ->
-      error exp.at "%s expression cannot produce expected type %s"
+      error exp.at "%s expression cannot produce expected type\n  %s"
         (if sort.it = T.Actor then "actor" else "object")
-        (T.string_of_typ t)
+        (T.string_of_typ_expand env.cons t)
     )
   | ArrayE exps ->
     (match T.nonopt env.cons t with
     | T.Array t1 ->
       List.iter (check_exp env (T.immutable t1)) exps
     | _ ->
-      error exp.at "array expression cannot produce expected type %s"
-        (T.string_of_typ t)
+      error exp.at "array expression cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | AsyncE exp1 ->
     (match T.nonopt env.cons t with
@@ -635,8 +646,8 @@ and check_exp' env t exp =
       let env' = {env with labs = T.Env.empty; rets = Some t; async = true} in
       check_exp env' t exp1
     | _ ->
-      error exp.at "async expression cannot produce expected type %s"
-        (T.string_of_typ t)
+      error exp.at "async expression cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | BlockE decs ->
     ignore (check_block env t decs exp.at)
@@ -655,8 +666,9 @@ and check_exp' env t exp =
   | _ ->
     let t' = infer_exp env exp in
     if not (T.sub env.cons t' t) then
-      error exp.at "expected type %s, found %s"
-        (T.string_of_typ t) (T.string_of_typ t')
+      error exp.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t')
+        (T.string_of_typ_expand env.cons t)
 
 
 (* Cases *)
@@ -676,10 +688,13 @@ and infer_cases env t1 t2o cases : T.typ =
         let t' = T.join env.cons t t'' in
         if
           t' = T.Any &&
-          T.structural env.cons t <> T.Any && T.structural env.cons t'' <> T.Any
+          T.structural env.cons t <> T.Any &&
+          T.structural env.cons t'' <> T.Any
         then
-          warn at "the switch has type %s because branches have inconsistent types, this case produces %s, the previous %s"
-            (T.string_of_typ t') (T.string_of_typ t) (T.string_of_typ t'');
+          warn at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
+            (T.string_of_typ t')
+            (T.string_of_typ_expand env.cons t)
+            (T.string_of_typ_expand env.cons t'');
         t'
     in infer_cases env t (Some t') cases'
 
@@ -738,8 +753,8 @@ and infer_pat' env pat : T.typ * val_env =
     (* Special case for subtyping *)
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not (Operator.has_unop t op) then
-      error pat.at "operator is not defined for operand type %s"
-        (T.string_of_typ t);
+      error pat.at "operator is not defined for operand type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     t, T.Env.empty
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
@@ -796,8 +811,8 @@ and check_pat' env t pat : val_env =
     if not env.pre then begin
       let t' = T.normalize env.cons t in
       if not (Operator.has_unop t op) then
-        error pat.at "operator cannot consume expected type %s"
-          (T.string_of_typ t');
+        error pat.at "operator cannot consume expected type\n  %s"
+          (T.string_of_typ_expand env.cons t');
       check_lit env t' lit pat.at
     end;
     T.Env.empty
@@ -806,8 +821,8 @@ and check_pat' env t pat : val_env =
     | T.Tup ts ->
       check_pats env ts pats T.Env.empty pat.at
     | _ ->
-      error pat.at "tuple pattern cannot consume expected type %s"
-        (T.string_of_typ t)
+      error pat.at "tuple pattern cannot consume expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | OptP pat1 ->
     (match t with
@@ -823,8 +838,9 @@ and check_pat' env t pat : val_env =
   | _ ->
     let t', ve = infer_pat env pat in
     if not (T.sub env.cons t' t) then
-      error pat.at "expected type %s, found %s"
-        (T.string_of_typ t) (T.string_of_typ t');
+      error pat.at "pattern of type\n  %s\ncannot consume expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand env.cons t');
     ve
 
 and check_pats env ts pats ve at : val_env =
@@ -874,9 +890,9 @@ print_ve env.vals;*)
   let pre_ve = gather_exp_fields id.it fields in
   let pre_ve' = List.fold_left (fun ve {T.name; typ = t} ->
       if not (T.Env.mem name ve) then
-        error at "%s expression cannot produce expected type %s, field %s is missing"
-          (if s = T.Actor then "actor" else "object")
-          (T.string_of_typ t) name;
+        error at "%s expression without field %s cannot produce expected type\n  %s"
+          (if s = T.Actor then "actor" else "object") name
+          (T.string_of_typ_expand env.cons t);
       T.Env.add name t ve
     ) pre_ve tfs
   in
@@ -924,8 +940,8 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
   in
   if not env.pre then begin
     if s = T.Actor && priv.it = Public && not (is_async_typ env.cons t) then
-      error field.at "public actor field %s has non-async type %s"
-        id.it (T.string_of_typ t)
+      error field.at "public actor field %s has non-async type\n  %s"
+        id.it (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in
   let tfs_inner' = {T.name = id.it; typ = t} :: tfs_inner in
@@ -1021,7 +1037,8 @@ and check_block_exps env ce_inner t decs at =
   match decs with
   | [] ->
     if not (T.sub env.cons T.unit t) then
-      error at "empty block cannot produce type %s" (T.string_of_typ t)
+      error at "empty block cannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
   | [dec] ->
     check_dec env ce_inner t dec
   | dec::decs' ->
@@ -1058,8 +1075,9 @@ and check_dec env ce_inner t dec =
     let t' = infer_dec env ce_inner dec in
     (* TBR: special-case unit? *)
     if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-      error dec.at "expected type %s, found %s"
-        (T.string_of_typ t) (T.string_of_typ t');
+      error dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand env.cons t');
 
 
 (*
