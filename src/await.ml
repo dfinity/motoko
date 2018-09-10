@@ -330,7 +330,7 @@ and t_exp' context exp' =
      let k' = fresh_cont (typ exp1) in
      let u1 = fresh_id T.unit in
      let u2 = fresh_id T.unit in
-     let context' = LabelEnv.add id_ret (Cont k') context in
+     let context' = LabelEnv.add id_ret (Cont k') LabelEnv.empty in
      (letE async (prim_make_async typ1 -@- tupE [])
       (letE k' (v1 --> prim_set_async typ1 -@- (tupE [async;v1]))
          (letE u1 (prim_scheduler_queue -@- (u2 --> c_exp context' exp1 -@- k'))
@@ -401,6 +401,7 @@ and binary context k binE e1 e2 =
     k -->  (c_exp context e1) -@-
              (v1 --> k -@- binE v1 (t_exp context e2))
   | T.Triv, T.Triv ->
+     (* failwith "Impossible";  *)
      binE (t_exp context e1) (t_exp context e2)
 
 and nary context k naryE es =
@@ -408,7 +409,7 @@ and nary context k naryE es =
     match es with
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
-       (* TBR: optimization - no need to name the least trivial argument *)
+       (* TBR: optimization - no need to name the last trivial argument *)
        k -@- naryE (List.rev (e1::vs))
     | e1::es ->
        match eff e1 with
