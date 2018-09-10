@@ -154,6 +154,8 @@ let rec check_typ env typ : T.typ =
 	    T.Con (c, ts)
     | None -> error id.at "unbound type identifier %s" id.it
     )
+  | PrimT "Any" ->
+    T.Any
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error typ.at "unknown primitive type"
@@ -455,10 +457,16 @@ and infer_exp' env exp : T.typ =
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
     let t = T.join env.cons t2 t3 in
+    if
+      t = T.Any &&
+      T.structural env.cons t2 <> T.Any && T.structural env.cons t3 <> T.Any
+    then
+      warn exp.at "this if has type %s because branches have inconsistent types, true produces %s, false produces %s"
+        (T.string_of_typ t) (T.string_of_typ t2) (T.string_of_typ t3);
     t
   | SwitchE (exp1, cases) ->
     let t1 = if env.pre then T.Pre else infer_exp_structural env exp1 in
-    let t = infer_cases env t1 cases in
+    let t = infer_cases env t1 None cases in
     if not env.pre then
       if not (Coverage.check_cases cases) then
         warn exp.at "the cases in this switch do not cover all possible values";
@@ -653,22 +661,27 @@ and check_exp' env t exp =
 
 (* Cases *)
 
-(* TBR: compute refutability of pats and enforce accordingly (refutable in all cases but last, irrefutable elsewhere) *)
-
-and infer_cases env t1 cases : T.typ =
+and infer_cases env t1 t2o cases : T.typ =
   match cases with
   | [] ->
-    (* TBR: T.Bottom? *)
-    T.unit
-  | [{it = {pat; exp}; _}] ->
+    (* TBR: default to T.Bottom? *)
+    Lib.Option.get t2o T.unit
+  | {it = {pat; exp}; at; _}::cases' ->
     let ve = check_pat env t1 pat in
     let t = infer_exp (adjoin_vals env ve) exp in
-    t
-  | {it = {pat; exp}; _}::cases' ->
-    let ve = check_pat env t1 pat in
-    let t = infer_exp (adjoin_vals env ve) exp in
-    let t' = infer_cases env t cases' in
-    T.join env.cons t t'
+    let t' =
+      match t2o with
+      | None -> t
+      | Some t'' ->
+        let t' = T.join env.cons t t'' in
+        if
+          t' = T.Any &&
+          T.structural env.cons t <> T.Any && T.structural env.cons t'' <> T.Any
+        then
+          warn at "the switch has type %s because branches have inconsistent types, this case produces %s, the previous %s"
+            (T.string_of_typ t') (T.string_of_typ t) (T.string_of_typ t'');
+        t'
+    in infer_cases env t (Some t') cases'
 
 and check_cases env t1 t2 cases =
   match cases with

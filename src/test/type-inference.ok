@@ -1,3 +1,9 @@
 -- Checking type-inference.as:
-type-inference.as:43.1-48.2: type error, inferred block type T/3 contains the local class type C/3
+type-inference.as:10.9-10.28: warning, this if has type Any because branches have inconsistent types, true produces Bool, false produces Nat
+type-inference.as:11.9-11.27: warning, this if has type Any because branches have inconsistent types, true produces Nat, false produces Float
+type-inference.as:12.9-12.33: warning, this if has type Any because branches have inconsistent types, true produces (), false produces {}
+type-inference.as:13.9-13.53: warning, this if has type Any because branches have inconsistent types, true produces {x : Nat}, false produces {x : var Nat}
+type-inference.as:17.32-17.40: warning, the switch has type Any because branches have inconsistent types, this case produces Nat, the previous Bool
+type-inference.as:18.41-18.54: warning, the switch has type Any because branches have inconsistent types, this case produces Text, the previous Int
+type-inference.as:57.1-62.2: type error, inferred block type T/3 contains the local class type C/3
 

@@ -91,7 +91,7 @@ let string_of_con vs c =
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
-  | Any -> "any"
+  | Any -> "Any"
   | Prim p -> string_of_prim p
   | Var (s, i) -> string_of_var (List.nth vs i)
   | Con (c, []) -> string_of_con vs c
@@ -362,6 +362,7 @@ let rec eq (env : con_env) t1 t2 : bool =
 
 and eq_typ env (eqs : (typ * typ list) list) t1 t2 =
 (*printf "[eq] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
+  t1 == t2 ||
   match List.assq_opt t1 eqs with
   | Some ts when List.memq t2 ts -> true (* physical equivalence! *)
   | Some ts -> eq_typ' env ((t1, t2::ts)::eqs) t1 t2
@@ -436,6 +437,7 @@ and eq_bind env eqs tb1 tb2 =
 (* Subtyping *)
 
 let rec sub env t1 t2 =
+  t1 == t2 ||
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
   | _, Any -> true
@@ -448,6 +450,7 @@ let rec sub env t1 t2 =
 (* Join and Meet *)
 
 let rec join env t1 t2 =
+  if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
   | _, Pre
@@ -464,6 +467,7 @@ let rec join env t1 t2 =
 
 
 let rec meet env t1 t2 =
+  if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
   | _, Pre
