@@ -4,19 +4,35 @@ open Syntax
 module S = Set.Make(String)
 
 
-type t = S.t
+(* A set of free variables *)
+type f = S.t
+
+(* Operations: Union and removal *)
 let (++) x y = S.union x y
 let unions f xs = List.fold_left S.union S.empty (List.map f xs)
-
 let (//) x y = S.remove y x
 
-let (///) x (f,b) = f ++ S.diff x b
-let (+++) (f,b) x = (S.union f x, b)
+(* A combined set of free variables and defined variables,
+   e.g. in patterns and declaration *)
+type fb = S.t * S.t
+
+(* Operations: *)
+
+(* This adds a set of free variabls to a combine set *)
+let (+++) ((f,b) : fb)  x = (S.union f x, b)
+(* This takes the union of two combined sets *)
 let (++++) (f1, b1) (f2,b2) = (S.union f1 f2, S.union b1 b2)
 let union_binders f xs = List.fold_left (++++) (S.empty, S.empty) (List.map f xs)
+
+(* The bound variables from the second argument scope over the first *)
+let (///) (x : f) ((f,b) : fb) = f ++ S.diff x b
+
+(* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,b) = S.diff f b
 
-let rec exp e : t = match e.it with
+(* One traversal for each syntactic category, named by that category *)
+
+let rec exp e : f = match e.it with
   | VarE i              -> S.singleton i.it
   | LitE l              -> S.empty
   | PrimE _             -> S.empty
@@ -52,9 +68,9 @@ let rec exp e : t = match e.it with
   | DecE d              -> close (dec d)
   | OptE e              -> exp e
 
-and exps es : t = unions exp es
+and exps es : f = unions exp es
 
-and pat p : (t * t) = match p.it with
+and pat p : fb = match p.it with
   | WildP         -> (S.empty, S.empty)
   | VarP i        -> (S.empty, S.singleton i.it)
   | TupP ps       -> pats ps
@@ -64,16 +80,16 @@ and pat p : (t * t) = match p.it with
   | OptP p        -> pat p
   | AltP (p1, p2) -> pat p1 ++++ pat p2
 
-and pats ps : (t * t) = union_binders pat ps
+and pats ps : fb = union_binders pat ps
 
 and case (c : case) = exp c.it.exp /// pat c.it.pat
 
-and cases cs : t = unions case cs
+and cases cs : f = unions case cs
 
-and exp_field (ef : exp_field) : t * t
+and exp_field (ef : exp_field) : fb
   = (exp ef.it.exp, S.singleton ef.it.id.it)
 
-and exp_fields efs : (t * t) = union_binders exp_field efs
+and exp_fields efs : fb = union_binders exp_field efs
 
 and id i = S.singleton i.it
 
@@ -90,4 +106,4 @@ and dec d = match d.it with
 (* The variables captured by a function. May include the function itself! *)
 and captured p e = S.elements (exp e /// pat p)
 
-and decs ps : (t * t) = union_binders dec ps
+and decs ps : fb = union_binders dec ps
