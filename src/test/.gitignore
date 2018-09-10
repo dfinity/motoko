@@ -1,3 +1,4 @@
 *.diff
 *.wat
+*.wat.stderr
 *.wasm

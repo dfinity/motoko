@@ -45,8 +45,8 @@ GENERATED := \
 	@echo "Please run 'make accept' or 'make $*.refresh'"
 	@exit 1
 
-%.diff: %.ok %.out
-	@diff -u $*.ok $*.out | tee $@ || true
+%.diff: %.ok %
+	@diff -u $*.ok $* | tee $@ || true
 
 %.refresh: %
 	cat $* >$*.ok
@@ -72,8 +72,11 @@ current: $(addsuffix .refresh, $(GENERATED))
 accept: current
 
 clean:
-	rm -f $(addsuffix .diff, $(GENERATED)) $(addsuffix .out, $(GENERATED))
+	rm -f $(addsuffix .diff, $(GENERATED)) $(GENERATED)
 
 .PHONY: stats current accept all
 
 FORCE:
+
+.PRECIOUS: $(GENERATED)
+
