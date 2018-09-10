@@ -1,6 +1,0 @@
-Interpreter:
-type-inference.as:18.29-18.33: syntax error, unexpected token
-
-Compiler:
-type-inference.as:18.29-18.33: syntax error, unexpected token
-Empty .wat file!

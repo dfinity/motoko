@@ -12,26 +12,33 @@ all: stats
 
 SHELL=/bin/bash
 
-%.out : %.as $(ASC) Makefile
-	@echo "TEST: $*"
-# Show output when this is an explicit target, otherwise be silent
-	@if [ "$(MAKECMDGOALS)" = "$@" ]; \
-	then exec > >(tee $@); \
-	else exec > $@; \
-	fi; \
-	exec 2>&1; \
-	\
-	echo "Interpreter:"; \
-	$(ASC) -r -v $(ASC_FLAGS) $< ; \
-	echo "Compiler:"; \
-	$(ASC) -c $< > $*.wat; \
-	cat $*.wat; \
-	if [ -s $*.wat ];\
-	  then echo "Interpreting the .wat:"; \
-	  $(WASM) $*.wat ; \
-	  else echo "Empty .wat file!"; \
-	fi; \
-	true
+GENERATED := \
+  $(addsuffix .tc, $(TESTS)) \
+  $(addsuffix .run, $(TESTS)) \
+  $(addsuffix .wat, $(TESTS)) \
+  $(addsuffix .wat.stderr, $(TESTS)) \
+  $(addsuffix .wat-run, $(TESTS))
+
+%.tc : %.as $(ASC) Makefile
+	$(ASC) --typecheck-only $< > $@ 2>&1 || true
+
+%.run : %.as %.tc
+	if [ -s $*.tc ]; \
+	then echo "Typecheck failed"; touch $@; \
+	else $(ASC) -r -v $< > $@ 2>&1 || true; \
+	fi
+
+%.wat %.wat.stderr : %.as %.tc
+	if [ -s $*.tc ]; \
+	then echo "Typecheck failed"; touch $@; touch $@.stderr; \
+	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
+	fi
+
+%.wat-run : %.wat
+	if [ -s $< ];\
+	then $(WASM) $< > $@ 2>&1 || true; \
+	else echo "Empty .wat file!"; touch $@; \
+	fi
 
 %.ok:
 	@echo "$@ missing"
@@ -41,18 +48,16 @@ SHELL=/bin/bash
 %.diff: %.ok %.out
 	@diff -u $*.ok $*.out | tee $@ || true
 
-%.refresh: %.out
-	cat $*.out >$*.ok
-
-%.wat: %.as
-	$(ASC) -c $< > $@
+%.refresh: %
+	cat $* >$*.ok
 
 %.wasm: %.wat
-	$(WASM) -d $< -o $@
+	$(WASM) -d $< -o $@ || true
+	touch $@
 
-stats: $(addsuffix .diff,$(TESTS))
+stats: $(addsuffix .diff,$(GENERATED))
 	@failed=""; \
-	for test in $(TESTS); do \
+	for test in $(GENERATED); do \
 	  if [ -s $$test.diff ]; then \
 	    failed="$$failed $$test"; \
 	  fi; \
@@ -63,14 +68,12 @@ stats: $(addsuffix .diff,$(TESTS))
 	fi
 
 # refresh all
-current: $(addsuffix .refresh, $(TESTS))
+current: $(addsuffix .refresh, $(GENERATED))
 accept: current
 
 clean:
-	rm -f $(addsuffix .diff, $(TESTS)) $(addsuffix .out, $(TESTS))
+	rm -f $(addsuffix .diff, $(GENERATED)) $(addsuffix .out, $(GENERATED))
 
-.PHONY: stats current accept all # $(addsuffix .refresh, $(TESTS))
+.PHONY: stats current accept all
 
 FORCE:
-
-.PRECIOUS: %.out

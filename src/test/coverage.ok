@@ -1,6 +1,0 @@
-Interpreter:
-coverage.as:24.24-24.28: syntax error, unexpected token
-
-Compiler:
-coverage.as:24.24-24.28: syntax error, unexpected token
-Empty .wat file!
