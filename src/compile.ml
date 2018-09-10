@@ -4,6 +4,8 @@ open Wasm.Types
 open Source
 open Syntax
 
+
+(* Helper functions to produce annotated terms *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 let nr_ x = { it = x; at = no_region; note = () }
 let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
@@ -14,10 +16,11 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
 (* The compiler environment.
 
-Almost immutable..
-the mutable parts (`ref`) are used to register things like locals and functions.
-This should be monotone in some sense: Stuff is only added, and it should not
-have a semantics difference in which order they are added.
+It is almost immutable..
+
+The mutable parts (`ref`) are used to register things like locals and
+functions.  This should be monotone in the sense that entries are only added,
+and that the order should not matter in a significant way.
 
 *)
 
@@ -32,15 +35,19 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
+    (* Function defined in this module *)
     funcs : func list ref;
+    (* Types registered in this module *)
     func_types : func_type Wasm.Source.phrase list ref;
-    n_param : int32; (* to calculate GetLocal indices *)
+    (* Number of parameters in the current function, to calculate indices of locals *)
+    n_param : int32;
+    (* Types of locals *)
     locals : value_type list ref;
-    (* Current depths *)
+    (* Current block nesting depth *)
     depth : int32;
-    (* Label to depth *)
+    (* A mapping from jump label to their depth *)
     ld : int32 NameEnv.t;
-    (* Local variables *)
+    (* Mapping ActorScript varables to WebAssembly locals *)
     local_vars_env : int32 NameEnv.t;
     (* Field labels to index *)
     (* (This is for the prototypical simple tuple-implementations for objects *)
@@ -60,7 +67,7 @@ module E = struct
   let unary_closure_local env : var = nr 0l (* first param *)
   let unary_param_local env : var = nr 1l   (* second param *)
 
-  (* The global environment *)
+  (* The initial global environment *)
   let mk_global (_ : unit) : t = {
     funcs = ref [];
     func_types = ref default_fun_tys;
@@ -73,10 +80,10 @@ module E = struct
     field_env = ref NameEnv.empty;
   }
 
-  (* A new function *)
+  (* Resetting the environment for a new function *)
   let mk_fun_env env n_param =
     { env with
-      locals = ref [I32Type]; (* the tmp *)
+      locals = ref [I32Type]; (* the first tmp local *)
       n_param = n_param;
       local_vars_env = NameEnv.empty;
       depth = 0l;
@@ -102,6 +109,7 @@ module E = struct
 
   let get_funcs (env : t) = !(env.funcs)
 
+  (* Currently unused, until we add functions to the table *)
   let _add_type (env : t) ty = reg env.func_types ty
 
   let get_types (env : t) = !(env.func_types)
@@ -138,6 +146,8 @@ module E = struct
 
 end
 
+(* Function called compile_* return a list of instructions (and maybe other stuff) *)
+
 let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
 let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
@@ -145,11 +155,8 @@ let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 (* A hack! This needs to be disjoint from all other values *)
 let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int))) ]
 
-let heap_ptr_global = nr
-      { gtype = GlobalType (I32Type, Mutable);
-        value = nr compile_zero }
 
-let heap_ptr : var = nr 0l
+(* Stack utilities *)
 
 let dup env : instr list = (* duplicate top element *)
   [ nr (TeeLocal (E.tmp_local env));
@@ -161,6 +168,17 @@ let _swap env : instr list = (* swaps top elements *)
     nr (SetLocal (nr i));
     nr (GetLocal (E.tmp_local env));
     nr (GetLocal (nr i))]
+
+(* Heap and allocations *)
+
+(* Until we have GC, we simply keep track of the end of the used heap
+   in this global, and bump it if we allocate stuff.
+   Memory addresses are 32 bit (I32Type).
+   *)
+let heap_ptr_global = nr
+      { gtype = GlobalType (I32Type, Mutable);
+        value = nr compile_zero }
+let heap_ptr : var = nr 0l
 
 let _alloc env : instr list = (* expect the size on the stack, returns the pointer *)
   [ nr (SetLocal (E.tmp_local env));
@@ -183,6 +201,8 @@ let load_field (i : int32) : instr list =
 
 let store_field (i : int32) : instr list =
   [ nr (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul 4l i; sz = None}) ]
+
+(* Compilation functions for the various syntactic categories *)
 
 let compile_lit lit = match lit with
   | BoolLit true ->  compile_true
@@ -227,7 +247,9 @@ and set_var_loc env var = match E.lookup_var env var with
   | Some i -> [ nr (SetLocal i) ]
   | None   -> [ nr Unreachable ]
 
-(* Calculate a memory location *)
+(* compile_lexp is used for expressions on the left of an
+assignment operator, and calculates (puts on the stack) the
+memory location of such a thing. *)
 and compile_lexp (env : E.t) exp = match exp.it with
   | VarE var ->
      get_var_loc env var.it
@@ -244,10 +266,14 @@ and compile_lexp (env : E.t) exp = match exp.it with
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
-(* Returns an *value*. This may be a pointer (e.g. for function,
-array, tuple, object), but before storing it in a variable it
-needs to be put inside another box.  *)
+(* compile_exp returns an *value*.
+Currently, number (I32Type) are just repesented as such, but other
+types may be point (e.g. for function, array, tuple, object).
+
+Local variables (which maybe mutable, or have delayed initialisation)
+are also points, but points to such values, and need to be read first.  *)
 and compile_exp (env : E.t) exp = match exp.it with
+  (* We can reuse the code in compile_lexp here *)
   | VarE _ | IdxE _ | DotE _ ->
      compile_lexp env exp @
      load_field 0l
@@ -307,8 +333,8 @@ and compile_exp (env : E.t) exp = match exp.it with
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
   | OptE e -> compile_exp env e (* Subtype! *)
+
   | (ArrayE es | TupE es) ->
-     (* Calculate size *)
      (* Allocate memory, and put position on the stack (return value) *)
      allocn (Wasm.I32.of_int_u (List.length es)) @
      let init_elem i e : Wasm.Ast.instr list =
@@ -317,11 +343,12 @@ and compile_exp (env : E.t) exp = match exp.it with
         store_field (Wasm.I32.of_int_u i)
      in
      List.concat (List.mapi init_elem es)
+
   | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
      (* Resolve fields to index *)
      let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
 
-     (* Find largest index *)
+     (* Find largest index, to know the size of the heap representation *)
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add 1l (List.fold_left max 0l (List.map (fun (f : exp_field) -> E.field_to_index env (f.it.id)) fs)) in
 
@@ -351,13 +378,17 @@ and compile_exp (env : E.t) exp = match exp.it with
      [ nr (GetLocal (nr ri)) ] @
      store_field 0l @
 
+     (* Write all the fields *)
      let init_field (i, e) : Wasm.Ast.instr list =
         [ nr (GetLocal (nr ri)) ] @
 	compile_exp env2 e @
         store_field i
      in
      List.concat (List.map init_field fis) @
+
+     (* Return the pointer to the object *)
      [ nr (GetLocal (nr ri)) ]
+
   | CallE (e1, _, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -376,6 +407,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      load_field 0l @
      (* All done: Call! *)
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -408,24 +440,29 @@ and compile_exp (env : E.t) exp = match exp.it with
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
-This requires conceptually two passes:
+This requires conceptually thre passes:
  1. First we need to collect all names bound in a block,
-    1a  find locations for then (which extends the environment)
-        The environment is extended monotonously: The type-checker ensures that
-        a Block does not bind the same name twice.
-        We would not need to pass in the environment, just out ... but because
-        it is bundled in the E.t type, threading it through is also easy.
-    1b  allocate memory for them, and store it in the local, so that they
-        can be captured
-        (So far, this only happens for functions. It needs to happen for
-        all heap-allocated things, and everything that is capture by a closure)
- 2. Then we go through the declarations again and generate the actual code.
+    and find locations for then (which extends the environment).
+    The environment is extended monotonously: The type-checker ensures that
+    a Block does not bind the same name twice.
+    We would not need to pass in the environment, just out ... but because
+    it is bundled in the E.t type, threading it through is also easy.
+
+ 2. We need to allocate memory for them, and store the pointer in the
+    WebAssembly local, so that they can be captured by closures.
+
+ 3. We go through the declarations, generate the actual code and fill the
+    allocated memory.
     This includes creating the actual closure references.
 
-We could do this in two separate functions, but I chose to do it in one
+We could do this in separate functions, but I chose to do it in one
  * it means all code related to one constructor is in one place and
  * when generating the actual code, we still “know” the id of the local that
    has the memory location, and don’t have to look it up in the environment.
+
+The first phase works with the `pre_env` passed to `compile_dec`,
+while the third phase is a function that expects the final environment. This
+enabled mutual recursion.
 *)
 
 and compile_lit_pat env fail_depth opo l = match opo, l with
@@ -439,14 +476,13 @@ and compile_lit_pat env fail_depth opo l = match opo, l with
   | _ -> todo "compile_lit_pat" (Arrange.lit l) [ nr Unreachable ]
 
 and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr list = match pat.it with
-  (* The undestructed value is on top of the stack. *)
-  (* The returned code consumes it, and fills all the variables. *)
-  (* If the pattern does not match, it branches to the depths at fail_depth
-     Later this can be refined to not store anything on the heap until the pattern
-     has succeded, by returning three instruction lists:
-     - allocations
-     - pattern-matching (storing the result in locals)
-     - filling the allocations
+  (* It returns:
+     - the extended environment
+     - the code to allocate memory
+     - the code to do the pattern matching.
+       This expects the  undestructed value is on top of the stack,
+       consumes it, and fills the heap
+       If the pattern does not match, it branches to the depth at fail_depth.
   *)
   | WildP -> (env, [], [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env fail_depth p
@@ -523,7 +559,7 @@ and compile_fail env fail_depth =
   let t = E.depth_to env fail_depth in
   compile_false @ [ nr (Br (nr t)) ]
 
-(* Used for pattern that usually succed (let, function arguments) *)
+(* Used for mono patterns (let, function arguments) *)
 and compile_mono_pat env pat =
   let (env1, alloc_code, code) = compile_pat (E.inc_depth env) (E.current_depth env) pat in
   let wrapped_code =
@@ -581,7 +617,6 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         store_field 0l
       in
 
-
       ( pre_env1, alloc_code, fun env ->
 
 	(* All functions are unary for now (arguments passed as heap-allocated tuples)
@@ -601,6 +636,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         List.concat (List.mapi store_capture captured) @
         if last then [ nr (GetLocal (nr li)) ] else [])
 
+  (* Classes are desguared to functions and objects. *)
   | ClassD (name, typ_params, s, p, efs) ->
     compile_dec last pre_env (nr_ (FuncD (name, typ_params, p, nr_ AnyT,
       nr__ (ObjE (s, nr_ "WHATTOPUTHERE", efs)))))
@@ -616,10 +652,13 @@ and compile_decs env decs : Wasm.Ast.instr list =
   let (env1, alloc_code, mk_code) = go env decs in
   alloc_code @ mk_code env1
 
+(* Create a WebAssembly func from a pattern (for the argument) and the body.
+Parameter `captured` should contain the, well, captured local variables that
+the function will find in the closure. *)
 and compile_func env captured p (e : exp) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 2l in
-  (* Allocate locals for the captured environment *)
+  (* Allocate locals for the captured variables *)
   let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
   (* Load the environment *)
   let load_capture i v =
@@ -629,6 +668,7 @@ and compile_func env captured p (e : exp) : func =
   let closure_code = List.concat (List.mapi load_capture captured) in
   (* Destruct the argument *)
   let (env3, alloc_args_code, destruct_args_code) = compile_mono_pat env2 p in
+  (* Compile the body *)
   let body_code = compile_exp env3 e in
   nr { ftype = nr E.unary_fun_ty_i;
        locals = E.get_locals env3;
