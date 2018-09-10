@@ -22,7 +22,7 @@ SHELL=/bin/bash
 	exec 2>&1; \
 	\
 	echo "Interpreter:"; \
-	$(ASC) $(ASC_FLAGS) $< ; \
+	$(ASC) -r -v $(ASC_FLAGS) $< ; \
 	echo "Compiler:"; \
 	$(ASC) -c $< > $*.wat; \
 	cat $*.wat; \
