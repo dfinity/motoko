@@ -190,7 +190,9 @@ let prim_scheduler_queue  =
   prim_of_id "scheduler_queue" (T.Func([],T.Func([],T.unit,T.unit), T.unit))
 let prim_sheduler_yield = 
   prim_of_id "scheduler_yield" (T.Func([],T.unit, T.unit))
-
+let prim_await typ = 
+  prim_of_id "await" (T.Func([],contT typ, T.unit))
+             
 
 let decE dec =
   let note =
@@ -644,30 +646,23 @@ and c_exp' context exp =
     failwith "NYI" 
   (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
   | LabelE (id, _typ, exp1) ->
-    failwith "NYI"
-(*    let context' = LabelEnv.add id.it Label context in
-    LabelE (id, _typ, c_exp context' exp1) *)
+    let context' = LabelEnv.add id.it (Cont k) context in
+    k --> c_exp context' exp1 -@- k
   | BreakE (id, exp1) ->
-    failwith "NYI" 
-(*    begin
+    begin
       match LabelEnv.find_opt id.it context with
-      | Some (Cont k) -> RetE (k -@- (c_exp context exp1))
-      | Some Label -> BreakE (id, c_exp context exp1)
+      | Some (Cont k) -> e (RetE (c_exp context exp1 -@- k))
+      | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
-*)
   | RetE exp1 ->
-    failwith "NYI"
-(*    begin
+    begin
       match LabelEnv.find_opt id_ret context with
-      | Some (Cont k) -> RetE (k -@- (c_exp context exp1))
-      | Some Label -> RetE (c_exp context exp1)
+      | Some (Cont k) -> e (RetE (c_exp context exp1 -@- k))
+      | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
- *)
   | AsyncE exp1 ->
-     failwith "NYI"
-(*             
      let async = fresh_id (T.Async (typ exp1)) in
      let typ1 = typ exp1 in
      let v1 = fresh_id (typ exp1) in
@@ -676,19 +671,25 @@ and c_exp' context exp =
      let u2 = fresh_id T.unit in
      let context' = LabelEnv.add id_ret (Cont k') context in
      (letE async (prim_make_async typ1 -@- tupE [])
-      (letE k' (v1 --> prim_sec_async typ1 -@- (tupE [async;v1]))
-         (letE u1 (prim_scheduler_queue -@- (u2 --> c_exp context' exp1 -@- k'))
-            async)))
-       .it
- *)
-  | AwaitE _ ->
-    failwith "NYI" (* an await never has effect T.Triv *)
+         (letE k' (v1 --> prim_set_async typ1 -@- (tupE [async;v1]))
+                 (letE u1 (prim_scheduler_queue -@- (u2 --> c_exp context' exp1 -@- k'))
+                  k -->  k -@- async)))
+  | AwaitE exp1 ->
+     begin
+       let v1 = fresh_id (typ exp1) in 
+       match eff exp1 with
+       | T.Triv ->
+          k --> prim_await (typ exp1) -@- (tupE [t_exp context exp1;k])
+       | T.Await ->
+          k --> (c_exp context  exp1) -@-
+            (v1 --> prim_await (typ exp1) -@- (tupE [v1;k]))
+     end
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE exp1)) exp1  
   | IsE (exp1, typ) ->
     unary context k (fun v1 -> e (IsE (v1,typ))) exp1  
   | AnnotE (exp1, typ) ->
-    (* TBR - just erase the annotation instead? *)
+    (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1  
   | DecE dec ->
      failwith "NYI"
