@@ -12,6 +12,8 @@ TESTS = $(basename $(wildcard *.as))
 
 SHELL = /bin/bash
 
+SUFFIXES = .tc .run .wat .wat.stderr .wat-run
+
 GENERATED = \
   $(addsuffix .tc, $(TESTS)) \
   $(addsuffix .run, $(TESTS)) \
@@ -55,8 +57,11 @@ $(OKDIR)/%.ok:
 $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
 	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* | tee $@ || true
 
-%.refresh: $(OUTDIR)/%
-	cp $< $(OKDIR)/$*.ok
+
+$(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
+
+$(addsuffix .refresh, $(GENERATED)) : %.refresh : $(OUTDIR)/%
+	mkdir -p $(OKDIR) && cp $< $(OKDIR)/$*.ok
 
 %.wasm: %.wat
 	$(WASM) -d $< -o $@ || true
@@ -85,5 +90,5 @@ clean:
 
 FORCE:
 
-.PRECIOUS: $(GENERATED)
+.PRECIOUS: $(GENERATED_OUT)
 
