@@ -1,0 +1,3 @@
+-- Checking nonlinear-pat.as:
+nonlinear-pat.as:1.11-1.12: type error, duplicate binding for x in block
+

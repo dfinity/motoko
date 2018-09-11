@@ -225,7 +225,7 @@ let argspec = Arg.align
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "--version",
-    Arg.Unit (fun () -> printf "%s\n" banner),
+    Arg.Unit (fun () -> printf "%s\n" banner; exit 0),
     " show version"
 ]
 

@@ -65,105 +65,6 @@ let prim = function
   | _ -> raise (Invalid_argument "Type.prim")
 
 
-(* Pretty printing *)
-
-open Printf
-
-let string_of_prim = function
-  | Null -> "Null"
-  | Bool -> "Bool"
-  | Nat -> "Nat"
-  | Int -> "Int"
-  | Float -> "Float"
-  | Word8 -> "Word8"
-  | Word16 -> "Word16"
-  | Word32 -> "Word32"
-  | Word64 -> "Word64"
-  | Char -> "Char"
-  | Text -> "Text"
-
-let string_of_var (x, i) =
-  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
-
-let string_of_con vs c =
-  let s = Con.to_string c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
-
-let rec string_of_typ_nullary vs = function
-  | Pre -> "???"
-  | Any -> "Any"
-  | Prim p -> string_of_prim p
-  | Var (s, i) -> string_of_var (List.nth vs i)
-  | Con (c, []) -> string_of_con vs c
-  | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con vs c)
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
-  | Tup ts ->
-    sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
-      (if List.length ts = 1 then "," else "")
-  | Obj (Object, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
-  | t -> sprintf "(%s)" (string_of_typ' vs t)
-
-and string_of_typ' vs t =
-  match t with
-  | Array (Mut t) ->
-    sprintf "var %s[]" (string_of_typ_nullary vs t)  
-  | Array t ->
-    sprintf "%s[]" (string_of_typ_nullary vs t)
-  | Func (tbs, t1, t2) ->
-    let vs' = names_of_binds vs tbs in
-    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
-  | Opt t ->
-    sprintf "%s?"  (string_of_typ_nullary vs t)
-  | Async t -> 
-    sprintf "async %s" (string_of_typ_nullary vs t)
-  | Like t -> 
-    sprintf "like %s" (string_of_typ_nullary vs t)
-  | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
-  | Mut t ->
-    sprintf "var %s" (string_of_typ' vs t)
-  | t -> string_of_typ_nullary vs t
-
-and string_of_field vs {name; typ} =
-  sprintf "%s : %s" name (string_of_typ' vs typ)
-
-and names_of_binds vs bs =
-  List.map (fun b -> name_of_var vs (b.var, 0)) bs
-
-and name_of_var vs v =
-  match vs with
-  | [] -> v
-  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
-
-and string_of_bind vs v {bound; _} =
-  string_of_var v ^
-  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
-
-and string_of_binds vs vs' = function
-  | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
-
-let string_of_typ = string_of_typ' []
-
-
-let strings_of_kind k =
-  let op, tbs, t =
-    match k with
-    | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
-  in
-  let vs = names_of_binds [] tbs in
-  op, string_of_binds vs vs tbs, string_of_typ' vs t
-
-let string_of_kind k =
-  let op, sbs, st = strings_of_kind k in
-  sprintf "%s %s%s" op sbs st
-
-
 (* Shifting *)
 
 let rec shift i n t =
@@ -349,102 +250,116 @@ let avoid env env' t =
   avoid' env env' t
 
 
-(* Equivalence *)
+(* Equivalence & Subtyping *)
 
-(* TBR: Use something more efficient for eqs than an associ list? *)
-(* TBR: Thread back eqs so that we don't check multiple times *)
+module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-let eq_list eq env eqs xs1 xs2 =
-  try List.for_all2 (eq env eqs) xs1 xs2 with Invalid_argument _ -> false
-  
-let rec eq (env : con_env) t1 t2 : bool =
-  eq_typ env [] t1 t2
+type rel = Eq | Sub
 
-and eq_typ env (eqs : (typ * typ list) list) t1 t2 =
-(*printf "[eq] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
-  t1 == t2 ||
-  match List.assq_opt t1 eqs with
-  | Some ts when List.memq t2 ts -> true (* physical equivalence! *)
-  | Some ts -> eq_typ' env ((t1, t2::ts)::eqs) t1 t2
-  | None -> eq_typ' env ((t1, [t2])::eqs) t1 t2
+let rel_list p rel env co xs1 xs2 =
+  try List.for_all2 (p rel env co) xs1 xs2 with Invalid_argument _ -> false
 
-and eq_typ' env (eqs : (typ * typ list) list) t1 t2 =
+let rec rel_typ rel env co t1 t2 =
+(*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
+  t1 == t2 || S.mem (t1, t2) !co || begin
+  co := S.add (t1, t2) !co;
   match t1, t2 with
-  | Var (_, i1), Var (_, i2) ->
-    i1 = i2
+  | Any, Any -> 
+    true
+  | _, Any when rel = Sub ->
+    true
   | Con (con1, ts1), Con (con2, ts2) ->
-    con1 = con2 && eq_list eq_typ env eqs ts1 ts2 ||
-    (match Con.Env.find_opt con1 env, Con.Env.find_opt con2 env with
-    | Some (Def (tbs, t)), _ -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (open_ ts1 t) t2
-    | _, Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (open_ ts2 t)
-    | _ -> false
+    (match Con.Env.find con1 env, Con.Env.find con2 env with
+    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+      rel_typ rel env co (open_ ts1 t) t2
+    | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
+      rel_typ rel env co t1 (open_ ts2 t)
+    | _ when con1 = con2 ->
+      rel_list rel_typ Eq env co ts1 ts2
+    | Abs (tbs, t), _ when rel = Sub ->
+      rel_typ rel env co (open_ ts1 t) t2
+    | _ ->
+      false
     )
   | Con (con1, ts1), t2 ->
-    (match Con.Env.find_opt con1 env with
-    | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs (open_ ts1 t) t2
+    (match Con.Env.find con1 env, t2 with
+    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+      rel_typ rel env co (open_ ts1 t) t2
+    | Abs (tbs, t), Opt t2' when rel = Sub ->
+      rel_typ rel env co t1 t2'
+    | Abs (tbs, t), _ when rel = Sub ->
+      rel_typ rel env co (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
-    (match Con.Env.find_opt con2 env with
-    | Some (Def (tbs, t)) -> (* TBR this may fail to terminate *)
-      eq_typ env eqs t1 (open_ ts2 t)
+    (match Con.Env.find con2 env with
+    | Def (tbs, t) -> (* TBR this may fail to terminate *)
+      rel_typ rel env co t1 (open_ ts2 t)
     | _ -> false
     )
-  | Prim p1, Prim p2 ->
-    p1 = p2
+  | Prim p1, Prim p2 when p1 = p2 ->
+    true
+  | Prim p1, Prim p2 when rel = Sub ->
+    p1 = Nat && p2 = Int
   | Obj (a1, tfs1), Obj (a2, tfs2) ->
     a1 = a2 &&
-    (* assuming tf1 and tf2 are sorted by var *)
-    eq_list eq_field env eqs tfs1 tfs2
-  | Array t1, Array t2 ->
-    eq_typ env eqs t1 t2
-  | Opt (t1), Opt (t2) ->
-    eq_typ env eqs t1 t2
-  | Tup (ts1), Tup (ts2) ->
-    eq_list eq_typ env eqs ts1 ts2
+    rel_fields rel env co tfs1 tfs2
+  | Array t1', Array t2' ->
+    rel_typ rel env co t1' t2'
+  | Opt t1', Opt t2' ->
+    rel_typ rel env co t1' t2'
+  | Prim Null, Opt t2' when rel = Sub ->
+    true
+  | t1, Opt t2' when rel = Sub ->
+    rel_typ rel env co t1 t2'
+  | Tup ts1, Tup ts2 ->
+    rel_list rel_typ rel env co ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
-    (match eq_binds env eqs tbs1 tbs2 with
+    (match rel_binds rel env co tbs1 tbs2 with
     | Some (ts, env') ->
-      eq_typ env' eqs (open_ ts t11) (open_ ts t21) &&
-      eq_typ env' eqs (open_ ts t12) (open_ ts t22)
+      rel_typ rel env' co (open_ ts t21) (open_ ts t11) &&
+      rel_typ rel env' co (open_ ts t12) (open_ ts t22)
     | None -> false
     )
-  | Async t1, Async t2 ->
-    eq_typ env eqs t1 t2
-  | Like t1, Like t2 ->
-    eq_typ env eqs t1 t2
-  | Mut t1, Mut t2 ->
-    eq_typ env eqs t1 t2
-  | Any, Any -> true
+  | Async t1', Async t2' ->
+    rel_typ rel env co t1' t2'
+  | Like t1', Like t2' ->
+    rel_typ rel env co t1' t2'
+  | Mut t1', Mut t2' ->
+    rel_typ Eq env co t1' t2'
+  | _, _ -> false
+  end
+
+and rel_fields rel env co tfs1 tfs2 =
+  (* Assume that tf1 and tf2 are sorted. *)
+  match tfs1, tfs2 with
+  | [], [] ->
+    true
+  | _, [] when rel = Sub ->
+    true
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare tf1.name tf2.name with
+    | 0 ->
+      rel_typ rel env co tf1.typ tf2.typ &&
+      rel_fields rel env co tfs1' tfs2'
+    | -1 when rel = Sub ->
+      rel_fields rel env co tfs1' tfs2
+    | _ -> false
+    )
   | _, _ -> false
 
-and eq_field env eqs tf1 tf2 =
-  tf1.name = tf2.name &&
-  eq_typ env eqs tf1.typ tf2.typ
-
-and eq_binds env eqs tbs1 tbs2 =
-  if eq_list eq_bind env eqs tbs1 tbs2
-  then Some (open_binds env tbs1)
+and rel_binds rel env co tbs1 tbs2 =
+  let ts, env' = open_binds env tbs2 in
+  if rel_list (rel_bind ts) rel env' co tbs2 tbs1
+  then Some (ts, env')
   else None
 
-and eq_bind env eqs tb1 tb2 =
-  eq_typ env eqs tb1.bound tb2.bound
+and rel_bind ts rel env co tb1 tb2 =
+  rel_typ rel env co (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 
-(* Subtyping *)
-
-let rec sub env t1 t2 =
-  t1 == t2 ||
-  (* TBR: this is just a quick hack *)
-  match normalize env t1, normalize env t2 with
-  | _, Any -> true
-  | Prim Nat, Prim Int -> true
-  | Opt t1', Opt t2' -> sub env t1' t2'
-  | t1', Opt t2' -> sub env t1' t2'
-  | t1', t2' -> eq env t1' t2'
+and eq (env : con_env) t1 t2 : bool = rel_typ Eq env (ref S.empty) t1 t2
+and sub (env : con_env) t1 t2 : bool = rel_typ Sub env (ref S.empty) t1 t2
 
 
 (* Join and Meet *)
@@ -481,6 +396,121 @@ let rec meet env t1 t2 =
   | Opt t1', t2' -> meet env t1' t2'
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> failwith "meet"  (* TBR *)
+
+
+(* Pretty printing *)
+
+open Printf
+
+let string_of_prim = function
+  | Null -> "Null"
+  | Bool -> "Bool"
+  | Nat -> "Nat"
+  | Int -> "Int"
+  | Float -> "Float"
+  | Word8 -> "Word8"
+  | Word16 -> "Word16"
+  | Word32 -> "Word32"
+  | Word64 -> "Word64"
+  | Char -> "Char"
+  | Text -> "Text"
+
+let string_of_var (x, i) =
+  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
+
+let string_of_con vs c =
+  let s = Con.to_string c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
+
+let rec string_of_typ_nullary vs = function
+  | Pre -> "???"
+  | Any -> "Any"
+  | Prim p -> string_of_prim p
+  | Var (s, i) -> string_of_var (List.nth vs i)
+  | Con (c, []) -> string_of_con vs c
+  | Con (c, ts) ->
+    sprintf "%s<%s>" (string_of_con vs c)
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+  | Tup ts ->
+    sprintf "(%s%s)"
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (if List.length ts = 1 then "," else "")
+  | Obj (Object, fs) ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | t -> sprintf "(%s)" (string_of_typ' vs t)
+
+and string_of_typ' vs t =
+  match t with
+  | Array (Mut t) ->
+    sprintf "var %s[]" (string_of_typ_nullary vs t)
+  | Array t ->
+    sprintf "%s[]" (string_of_typ_nullary vs t)
+  | Func ([], t1, t2) ->
+    sprintf "%s -> %s" (string_of_typ_nullary vs t1) (string_of_typ' vs t2)
+  | Func (tbs, t1, t2) ->
+    let vs' = names_of_binds vs tbs in
+    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
+      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
+  | Opt t ->
+    sprintf "%s?"  (string_of_typ_nullary vs t)
+  | Async t ->
+    sprintf "async %s" (string_of_typ_nullary vs t)
+  | Like t ->
+    sprintf "like %s" (string_of_typ_nullary vs t)
+  | Obj (Actor, fs) ->
+    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
+  | Mut t ->
+    sprintf "var %s" (string_of_typ' vs t)
+  | t -> string_of_typ_nullary vs t
+
+and string_of_field vs {name; typ} =
+  sprintf "%s : %s" name (string_of_typ' vs typ)
+
+and names_of_binds vs bs =
+  List.map (fun b -> name_of_var vs (b.var, 0)) bs
+
+and name_of_var vs v =
+  match vs with
+  | [] -> v
+  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
+
+and string_of_bind vs v {bound; _} =
+  string_of_var v ^
+  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
+
+and string_of_binds vs vs' = function
+  | [] -> ""
+  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
+
+let string_of_typ = string_of_typ' []
+
+
+let strings_of_kind k =
+  let op, tbs, t =
+    match k with
+    | Def (tbs, t) -> "=", tbs, t
+    | Abs (tbs, t) -> "<:", tbs, t
+  in
+  let vs = names_of_binds [] tbs in
+  op, string_of_binds vs vs tbs, string_of_typ' vs t
+
+let string_of_kind k =
+  let op, sbs, st = strings_of_kind k in
+  sprintf "%s %s%s" op sbs st
+
+
+let rec string_of_typ_expand env t =
+  let s = string_of_typ t in
+  match t with
+  | Con (c, ts) ->
+    (match Con.Env.find c env with
+    | Abs _ -> s
+    | Def _ ->
+      match normalize env t with
+      | Prim _ -> s
+      | t' -> s ^ " = " ^ string_of_typ_expand env t'
+    )
+  | _ -> s
 
 
 (* Environments *)

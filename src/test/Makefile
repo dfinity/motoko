@@ -2,60 +2,72 @@
 
 # This works with bash
 
-ASC=../asc
-WASM=wasm
-ASC_FLAGS=-t -v
+ASC = ../asc
+WASM = wasm
+ASC_FLAGS = -t -v
+OKDIR = ok
+OUTDIR = _out
 
-TESTS:=$(basename $(wildcard *.as))
+TESTS = $(basename $(wildcard *.as))
 
-all: stats
+SHELL = /bin/bash
 
-SHELL=/bin/bash
+SUFFIXES = .tc .run .wat .wat.stderr .wat-run
 
-GENERATED := \
+GENERATED = \
   $(addsuffix .tc, $(TESTS)) \
   $(addsuffix .run, $(TESTS)) \
   $(addsuffix .wat, $(TESTS)) \
   $(addsuffix .wat.stderr, $(TESTS)) \
-  $(addsuffix .wat-run, $(TESTS))
+  $(addsuffix .wat-run, $(TESTS)) \
 
-%.tc : %.as $(ASC) Makefile
+GENERATED_OUT = $(addprefix $(OUTDIR)/, $(GENERATED))
+
+all: stats
+
+$(OUTDIR):
+	mkdir -p $@
+
+$(OUTDIR)/%.tc: %.as $(ASC) Makefile
 	$(ASC) --typecheck-only $< > $@ 2>&1 || true
 
-%.run : %.as %.tc
-	if [ -s $*.tc ]; \
+$(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
+	@if [ -s $*.tc ]; \
 	then echo "Typecheck failed"; touch $@; \
 	else $(ASC) -r -v $< > $@ 2>&1 || true; \
 	fi
 
-%.wat %.wat.stderr : %.as %.tc
-	if [ -s $*.tc ]; \
+$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
+	@if [ -s $*.tc ]; \
 	then echo "Typecheck failed"; touch $@; touch $@.stderr; \
 	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
 	fi
 
-%.wat-run : %.wat
-	if [ -s $< ];\
+$(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
+	@if [ -s $< ]; \
 	then $(WASM) $< > $@ 2>&1 || true; \
 	else echo "Empty .wat file!"; touch $@; \
 	fi
 
-%.ok:
+$(OKDIR)/%.ok:
 	@echo "$@ missing"
 	@echo "Please run 'make accept' or 'make $*.refresh'"
 	@exit 1
 
-%.diff: %.ok %
-	@diff -u $*.ok $* | tee $@ || true
+$(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
+	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* | tee $@ || true
 
-%.refresh: %
-	cat $* >$*.ok
+
+$(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
+
+$(addsuffix .refresh, $(GENERATED)) : %.refresh : $(OUTDIR)/%
+	mkdir -p $(OKDIR) && cp $< $(OKDIR)/$*.ok
 
 %.wasm: %.wat
 	$(WASM) -d $< -o $@ || true
 	touch $@
 
-stats: $(addsuffix .diff,$(GENERATED))
+stats: $(OUTDIR) $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \
 	for test in $(GENERATED); do \
 	  if [ -s $$test.diff ]; then \
@@ -72,11 +84,11 @@ current: $(addsuffix .refresh, $(GENERATED))
 accept: current
 
 clean:
-	rm -f $(addsuffix .diff, $(GENERATED)) $(GENERATED)
+	rm -rf $(OUTDIR)
 
-.PHONY: stats current accept all
+.PHONY: stats current accept all %.refresh
 
 FORCE:
 
-.PRECIOUS: $(GENERATED)
+.PRECIOUS: $(GENERATED_OUT)
 

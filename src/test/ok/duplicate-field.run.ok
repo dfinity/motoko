@@ -1,0 +1,3 @@
+-- Checking duplicate-field.as:
+duplicate-field.as:4.3-4.4: type error, duplicate field name m in object
+
