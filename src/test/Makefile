@@ -3,7 +3,7 @@
 # This works with bash
 
 ASC = ../asc
-WASM = ../wasm
+WASM = wasm
 ASC_FLAGS = -t -v
 OKDIR = ok
 OUTDIR = _out
@@ -12,13 +12,14 @@ TESTS = $(basename $(wildcard *.as))
 
 SHELL = /bin/bash
 
-OUTTESTS = $(addprefix $(OUTDIR)/, $(TESTS))
 GENERATED = \
-  $(addsuffix .tc, $(OUTTESTS)) \
-  $(addsuffix .run, $(OUTTESTS)) \
-  $(addsuffix .wat, $(OUTTESTS)) \
-  $(addsuffix .wat.stderr, $(OUTTESTS)) \
-  $(addsuffix .wat-run, $(OUTTESTS))
+  $(addsuffix .tc, $(TESTS)) \
+  $(addsuffix .run, $(TESTS)) \
+  $(addsuffix .wat, $(TESTS)) \
+  $(addsuffix .wat.stderr, $(TESTS)) \
+  $(addsuffix .wat-run, $(TESTS)) \
+
+GENERATED_OUT = $(addprefix $(OUTDIR)/, $(GENERATED))
 
 all: stats
 
@@ -61,7 +62,7 @@ $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
 	$(WASM) -d $< -o $@ || true
 	touch $@
 
-stats: $(OUTDIR) $(addsuffix .diff,$(GENERATED))
+stats: $(OUTDIR) $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \
 	for test in $(GENERATED); do \
 	  if [ -s $$test.diff ]; then \
