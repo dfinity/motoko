@@ -52,7 +52,7 @@ stdenv.mkDerivation rec {
   # run the test suite
   doInstallCheck = true;
   installCheckPhase = ''
-    $out/bin/asc -v
+    $out/bin/asc --version
     make -C test ASC=$out/bin/asc all
     make -C samples ASC=$out/bin/asc all
   '';
