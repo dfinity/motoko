@@ -29,7 +29,7 @@ $(OUTDIR):
 	mkdir -p $@
 
 $(OUTDIR)/%.tc: %.as $(ASC) Makefile
-	$(ASC) --typecheck-only $< > $@ 2>&1 || true
+	mkdir -p $(OUTDIR); $(ASC) --typecheck-only $< > $@ 2>&1 || true
 
 $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \

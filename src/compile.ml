@@ -27,7 +27,7 @@ and that the order should not matter in a significant way.
 module E = struct
 
   (* Utilities, internal to E *)
-  let reg (ref : 'a list ref) (x : 'a) =
+  let reg (ref : 'a list ref) (x : 'a) : int32 =
       let i = Wasm.I32.of_int_u (List.length !ref) in
       ref := !ref @ [ x ];
       i
@@ -66,6 +66,12 @@ module E = struct
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
   let unary_param_local env : var = nr 1l   (* second param *)
+
+  (* Indices of known global functions *)
+  let array_get_funid = 0l
+  let array_set_funid = 1l
+  let array_len_funid = 2l
+
 
   (* The initial global environment *)
   let mk_global (_ : unit) : t = {
@@ -163,7 +169,7 @@ let dup env : instr list = (* duplicate top element *)
   [ nr (TeeLocal (E.tmp_local env));
     nr (GetLocal (E.tmp_local env)) ]
 
-let _swap env : instr list = (* swaps top elements *)
+let swap env : instr list = (* swaps top elements *)
   let i = E.add_anon_local env I32Type in
   [ nr (SetLocal (E.tmp_local env));
     nr (SetLocal (nr i));
@@ -357,37 +363,40 @@ and compile_exp (env : E.t) exp = match exp.it with
      allocn (Wasm.I32.of_int_u (4 + List.length es)) @
      [ nr (SetLocal (nr i)) ] @
 
-     (* Allocate closures for  get, set, len *)
+     (* Allocate closures for  get, set, len,
+        and put them on the stack.
+        Also put the length on the stack. *)
      allocn (Wasm.I32.of_int_u 2) @
      dup env @
-     compile_const 0l @ (* table entry for get *)
+     compile_const E.array_get_funid @
      store_field 0l @
      dup env @
      [ nr (GetLocal (nr i)) ] @
      store_field 1l @
-     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 0l @
 
      allocn (Wasm.I32.of_int_u 2) @
      dup env @
-     compile_const 1l @ (* table entry for set *)
+     compile_const E.array_set_funid @
      store_field 0l @
      dup env @
      [ nr (GetLocal (nr i)) ] @
      store_field 1l @
-     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 1l @
 
      allocn (Wasm.I32.of_int_u 2) @
      dup env @
-     compile_const 2l @ (* table entry for len *)
+     compile_const E.array_len_funid @
      store_field 0l @
      dup env @
      [ nr (GetLocal (nr i)) ] @
      store_field 1l @
-     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 2l @
 
-     [ nr (GetLocal (nr i)) ] @
-     compile_const (Wasm.I32.of_int_u (List.length es)) @ (* length *)
-     store_field 3l @
+     compile_const (Wasm.I32.of_int_u (List.length es)) @
+
+     (* Write these four things to the array *)
+     [ nr (GetLocal (nr i)) ] @ swap env @ store_field 3l @
+     [ nr (GetLocal (nr i)) ] @ swap env @ store_field 2l @
+     [ nr (GetLocal (nr i)) ] @ swap env @ store_field 1l @
+     [ nr (GetLocal (nr i)) ] @ swap env @ store_field 0l @
 
      let init_elem idx e : Wasm.Ast.instr list =
         [ nr (GetLocal (nr i)) ] @
@@ -782,12 +791,18 @@ let add_array_funcs env =
           get_array_object @
           load_field 3l
      } in
-  let _ = E.add_fun env get_fun in
+  let i = E.add_fun env get_fun in
+  assert (Int32.to_int i == Int32.to_int E.array_get_funid);
   let _ = E.field_to_index env (nr_ "get") in
-  let _ = E.add_fun env set_fun in
+
+  let i = E.add_fun env set_fun in
+  assert (Int32.to_int i == Int32.to_int E.array_set_funid);
   let _ = E.field_to_index env (nr_ "set") in
-  let _ = E.add_fun env len_fun in
+
+  let i = E.add_fun env len_fun in
+  assert (Int32.to_int i == Int32.to_int E.array_len_funid);
   let _ = E.field_to_index env (nr_ "len") in
+
   ()
 
 
