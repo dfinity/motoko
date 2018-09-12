@@ -14,7 +14,4 @@ type Char = prim "Char";
 type Text = prim "Text";
 
 let abs : Int -> Nat = prim "abs";
-
-// TODO: make this a method
-let length : <T_> T_[] -> Nat = prim "length";
 |}

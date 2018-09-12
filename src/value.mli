@@ -105,6 +105,8 @@ val as_char : value -> unicode
 val as_text : value -> string
 val as_array : value -> value array
 val as_tup : value -> value list
+val as_unit : value -> unit
+val as_pair : value -> value * value
 val as_obj : value -> value Env.t
 val as_func : value -> (value -> value cont -> unit)
 val as_async : value -> async

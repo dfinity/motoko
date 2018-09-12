@@ -386,13 +386,13 @@ and infer_exp' env exp : T.typ =
     fst (infer_obj env sort.it id fields)
   | DotE (exp1, id) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Obj (_, tfs) as t ->
+    (match T.as_obj t1 with
+    | T.Obj (_, tfs) ->
       (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error exp1.at "field name %s does not exist in type\n  %s"
-          id.it (T.string_of_typ_expand env.cons t)
+          id.it (T.string_of_typ_expand env.cons t1)
       )
     | t1' ->
       error exp1.at "expected object type, but expression produces type\n  %s"

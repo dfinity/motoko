@@ -186,7 +186,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        (V.as_func v1) v2 k
+        try (V.as_func v1) v2 k with Invalid_argument s -> trap exp.at "%s" s
       )
     )
   | BlockE decs ->

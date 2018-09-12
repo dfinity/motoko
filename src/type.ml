@@ -64,6 +64,17 @@ let prim = function
   | "Text" -> Text
   | _ -> raise (Invalid_argument "Type.prim")
 
+let array_obj t =
+  let immut t =
+    [ {name = "get"; typ = Func ([], Prim Nat, t)};
+      {name = "len"; typ = Func ([], unit, Prim Nat)};
+    ] in
+  let mut t = immut t @
+    [ {name = "set"; typ = Func ([], Tup [Prim Nat; t], unit)} ] in
+  match t with
+  | Mut t' -> Obj (Object, mut t')
+  | t -> Obj (Object, immut t)
+
 
 (* Shifting *)
 
@@ -203,6 +214,10 @@ let rec structural env = function
   | Like t -> structural env t (*TBR*)
   | t -> t
 
+let as_obj = function
+  | Array t -> array_obj t
+  | t -> t
+
 let immutable = function
   | Mut t -> t
   | t -> t
@@ -306,6 +321,8 @@ let rec rel_typ rel env co t1 t2 =
     rel_fields rel env co tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ rel env co t1' t2'
+  | Array t1', Obj _ when rel = Sub ->
+    rel_typ rel env co (array_obj t1') t2
   | Opt t1', Opt t2' ->
     rel_typ rel env co t1' t2'
   | Prim Null, Opt t2' when rel = Sub ->
@@ -377,6 +394,8 @@ let rec join env t1 t2 =
   | Opt t1', Opt t2' -> Opt (join env t1' t2')
   | t1', Opt t2'
   | Opt t1', t2' -> Opt (join env t1' t2')
+  | Array t1', (Obj _ as t2) -> join env (array_obj t1') t2
+  | (Obj _ as t1), Array t2' -> join env t1 (array_obj t2')
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> Any
 

@@ -26,6 +26,7 @@ sanity:
 clean:
 	rm -f *~ .*~
 	$(OCAMLBUILD) -clean
+	(cd test; make clean)
 
 test: $(NAME)
 	$(MAKE) -C test ASC=../$(NAME) all

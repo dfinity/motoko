@@ -204,7 +204,35 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
-let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
+let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
+let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+
+let obj_of_array a =
+  let get =
+    Func (fun v k ->
+      let n = as_nat v in
+      if Nat.lt n (Nat.of_int (Array.length a)) then
+        k (a.(Nat.to_int n))
+      else
+        raise (Invalid_argument "array index out of bounds")
+    )
+  in
+  let set =
+    Func (fun v k ->
+      let v1, v2 = as_pair v in
+      let n = as_nat v1 in
+      if Nat.lt n (Nat.of_int (Array.length a)) then
+        k (a.(Nat.to_int n) <- v2; Tup [])
+      else
+        raise (Invalid_argument "array index out of bounds")
+    )
+  in
+  let len =
+    Func (fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
+  in
+  Env.from_list ["get", get; "set", set; "len", len]
+
+let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
@@ -216,7 +244,6 @@ let unit = Tup []
 
 let prim = function
   | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
-  | "length" -> fun v k -> k (Nat (Nat.of_int (Array.length (as_array v))))
   | _ -> raise (Invalid_argument "Value.prim")
 
 

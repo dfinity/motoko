@@ -52,6 +52,8 @@ val int : typ
 
 val prim : string -> prim
 
+val as_obj : typ -> typ
+
 
 (* Normalization and Classification *)
 
