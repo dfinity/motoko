@@ -269,114 +269,115 @@ let avoid env env' t =
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-type rel = Eq | Sub
+let rel_list p env rel eq xs1 xs2 =
+  try List.for_all2 (p env rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let rel_list p rel env co xs1 xs2 =
-  try List.for_all2 (p rel env co) xs1 xs2 with Invalid_argument _ -> false
-
-let rec rel_typ rel env co t1 t2 =
+let rec rel_typ env rel eq t1 t2 =
 (*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
-  t1 == t2 || S.mem (t1, t2) !co || begin
-  co := S.add (t1, t2) !co;
+  t1 == t2 || S.mem (t1, t2) !rel || begin
+  rel := S.add (t1, t2) !rel;
   match t1, t2 with
   | Any, Any -> 
     true
-  | _, Any when rel = Sub ->
+  | _, Any when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Con.Env.find con1 env, Con.Env.find con2 env with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_typ env rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel env co t1 (open_ ts2 t)
+      rel_typ env rel eq t1 (open_ ts2 t)
     | _ when con1 = con2 ->
-      rel_list rel_typ Eq env co ts1 ts2
-    | Abs (tbs, t), _ when rel = Sub ->
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_list eq_typ env rel eq ts1 ts2
+    | Abs (tbs, t), _ when rel != eq ->
+      rel_typ env rel eq (open_ ts1 t) t2
     | _ ->
       false
     )
   | Con (con1, ts1), t2 ->
     (match Con.Env.find con1 env, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel env co (open_ ts1 t) t2
-    | Abs (tbs, t), Opt t2' when rel = Sub ->
-      rel_typ rel env co t1 t2'
-    | Abs (tbs, t), _ when rel = Sub ->
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_typ env rel eq (open_ ts1 t) t2
+    | Abs (tbs, t), Opt t2' when rel != eq ->
+      rel_typ env rel eq t1 t2'
+    | Abs (tbs, t), _ when rel != eq ->
+      rel_typ env rel eq (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Con.Env.find con2 env with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel env co t1 (open_ ts2 t)
+      rel_typ env rel eq t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     true
-  | Prim p1, Prim p2 when rel = Sub ->
+  | Prim p1, Prim p2 when rel != eq ->
     p1 = Nat && p2 = Int
   | Obj (a1, tfs1), Obj (a2, tfs2) ->
     a1 = a2 &&
-    rel_fields rel env co tfs1 tfs2
+    rel_fields env rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ rel env co t1' t2'
-  | Array t1', Obj _ when rel = Sub ->
-    rel_typ rel env co (array_obj t1') t2
+    rel_typ env rel eq t1' t2'
+  | Array t1', Obj _ when rel != eq ->
+    rel_typ env rel eq (array_obj t1') t2
   | Opt t1', Opt t2' ->
-    rel_typ rel env co t1' t2'
-  | Prim Null, Opt t2' when rel = Sub ->
+    rel_typ env rel eq t1' t2'
+  | Prim Null, Opt t2' when rel != eq ->
     true
-  | t1, Opt t2' when rel = Sub ->
-    rel_typ rel env co t1 t2'
+  | t1, Opt t2' when rel != eq ->
+    rel_typ env rel eq t1 t2'
   | Tup ts1, Tup ts2 ->
-    rel_list rel_typ rel env co ts1 ts2
+    rel_list rel_typ env rel eq ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
-    (match rel_binds rel env co tbs1 tbs2 with
+    (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
-      rel_typ rel env' co (open_ ts t21) (open_ ts t11) &&
-      rel_typ rel env' co (open_ ts t12) (open_ ts t22)
+      rel_typ env' rel eq (open_ ts t21) (open_ ts t11) &&
+      rel_typ env' rel eq (open_ ts t12) (open_ ts t22)
     | None -> false
     )
   | Async t1', Async t2' ->
-    rel_typ rel env co t1' t2'
+    rel_typ env rel eq t1' t2'
   | Like t1', Like t2' ->
-    rel_typ rel env co t1' t2'
+    rel_typ env rel eq t1' t2'
   | Mut t1', Mut t2' ->
-    rel_typ Eq env co t1' t2'
+    eq_typ env rel eq t1' t2'
   | _, _ -> false
   end
 
-and rel_fields rel env co tfs1 tfs2 =
+and rel_fields env rel eq tfs1 tfs2 =
   (* Assume that tf1 and tf2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
     true
-  | _, [] when rel = Sub ->
+  | _, [] when rel != eq ->
     true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare tf1.name tf2.name with
     | 0 ->
-      rel_typ rel env co tf1.typ tf2.typ &&
-      rel_fields rel env co tfs1' tfs2'
-    | -1 when rel = Sub ->
-      rel_fields rel env co tfs1' tfs2
+      rel_typ env rel eq tf1.typ tf2.typ &&
+      rel_fields env rel eq tfs1' tfs2'
+    | -1 when rel != eq ->
+      rel_fields env rel eq tfs1' tfs2
     | _ -> false
     )
   | _, _ -> false
 
-and rel_binds rel env co tbs1 tbs2 =
+and rel_binds env rel eq tbs1 tbs2 =
   let ts, env' = open_binds env tbs2 in
-  if rel_list (rel_bind ts) rel env' co tbs2 tbs1
+  if rel_list (rel_bind ts) env' rel eq tbs2 tbs1
   then Some (ts, env')
   else None
 
-and rel_bind ts rel env co tb1 tb2 =
-  rel_typ rel env co (open_ ts tb1.bound) (open_ ts tb2.bound)
+and rel_bind ts env rel eq tb1 tb2 =
+  rel_typ env rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
+and eq_typ env rel eq t1 t2 = rel_typ env eq eq t1 t2
 
-and eq (env : con_env) t1 t2 : bool = rel_typ Eq env (ref S.empty) t1 t2
-and sub (env : con_env) t1 t2 : bool = rel_typ Sub env (ref S.empty) t1 t2
+and eq (env : con_env) t1 t2 : bool =
+  let eq = ref S.empty in eq_typ env eq eq t1 t2
+and sub (env : con_env) t1 t2 : bool =
+  rel_typ env (ref S.empty) (ref S.empty) t1 t2
 
 
 (* Join and Meet *)
