@@ -27,3 +27,8 @@ assert (b[1] == 6);
 
 b.set(2, 7);
 assert (b[2] == 7);
+
+let oa : {get : Nat -> Nat} = a;
+let ob : {set : (Nat, Nat) -> ()} = b;
+assert (oa.get(2) == 42);
+ob.set(2, 22);
