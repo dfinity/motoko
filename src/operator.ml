@@ -57,7 +57,7 @@ let binop t op =
     | MulOp -> num_binop Nat.mul Int.mul Word8.mul Word16.mul Word32.mul Word64.mul Float.mul p
     | DivOp -> num_binop Nat.div Int.div Word8.div_u Word16.div_u Word32.div_u Word64.div_u Float.div p
     | ModOp -> num_binop Nat.rem Int.rem Word8.rem_u Word16.rem_u Word32.rem_u Word64.rem_u Float.div p (* TBR *)
-    | PowOp -> num_binop Nat.pow' Int.pow' Word8.pow Word16.pow Word32.pow Word64.pow Float.pow p (* TBR *)
+    | PowOp -> num_binop Nat.pow Int.pow Word8.pow Word16.pow Word32.pow Word64.pow Float.pow p (* TBR *)
     | AndOp -> word_binop Word8.and_ Word16.and_ Word32.and_ Word64.and_ p
     | OrOp  -> word_binop Word8.or_ Word16.or_ Word32.or_ Word64.or_ p
     | XorOp -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p

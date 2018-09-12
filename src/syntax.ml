@@ -1,3 +1,10 @@
+(* Notes *)
+
+type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
+
+let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
+
+
 (* Identifiers *)
 
 type id = string Source.phrase
@@ -12,9 +19,9 @@ and mut' = Const | Var
 
 type typ = typ' Source.phrase
 and typ' =
-  | VarT of id * typ list                     (* constructor *)
-  | PrimT of Type.prim                         (* primitive *)
-  | ObjT of sort * typ_field list             (* object *)
+  | PrimT of string                            (* primitive *)
+  | VarT of id * typ list                      (* constructor *)
+  | ObjT of sort * typ_field list              (* object *)
   | ArrayT of mut * typ                        (* array *)
   | OptT of typ                                (* option *)
   | TupT of typ list                           (* tuple *)
@@ -85,20 +92,19 @@ type relop =
 
 (* Patterns *)
 
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
-
 type pat = (pat', typ_note) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)
-  | TupP of pat list                           (* tuple *)
-  | AnnotP of pat * typ                        (* type annotation *)
-  | LitP of lit ref                            (* literal *) (* only in switch case, for now *)
+  | LitP of lit ref                            (* literal *)
   | SignP of unop * lit ref                    (* signed literal *)
+  | TupP of pat list                           (* tuple *)
+  | OptP of pat                                (* option *)
+  | AltP of pat * pat                          (* disjunctive *)
+  | AnnotP of pat * typ                        (* type annotation *)
 (*
-  | ObjP of pat_field list                     (* object *)
   | AsP of pat * pat                           (* conjunctive *)
-  | OrP of pat * pat                           (* disjunctive *)
+  | ObjP of pat_field list                     (* object *)
 
 and pat_field = pat_field' Source.phrase
 and pat_field' = {id : id; pat : pat}
@@ -112,6 +118,7 @@ and priv' = Public | Private
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
+  | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
   | UnE of unop * exp                          (* unary operator *)
@@ -119,6 +126,7 @@ and exp' =
   | RelE of exp * relop * exp                  (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
+  | OptE of exp                                (* option injection *)
   | ObjE of sort * id * exp_field list         (* object *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)

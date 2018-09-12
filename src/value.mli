@@ -10,13 +10,27 @@ end
 
 module type NumType =
 sig
-  include module type of Z
+  type t
+  val zero : t
+  val abs : t -> t
+  val neg : t -> t
+  val add : t -> t -> t
   val sub : t -> t -> t
-  val pow' : t -> t -> t
+  val mul : t -> t -> t
+  val div : t -> t -> t
+  val rem : t -> t -> t
+  val pow : t -> t -> t
   val eq : t -> t -> bool
   val ne : t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
   val le : t -> t -> bool
   val ge : t -> t -> bool
+  val compare : t -> t -> int
+  val to_int : t -> int
+  val of_int : int -> t
+  val of_string : string -> t
+  val to_string : t -> string
 end
 
 module type FloatType =
@@ -31,8 +45,8 @@ module Word32 : WordType with type bits = int32 and type t = Wasm.I32.t
 module Word64 : WordType with type bits = int64 and type t = Wasm.I64.t
 module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
-module Nat : NumType with type t = Z.t
-module Int : NumType with type t = Z.t
+module Nat : NumType with type t = Big_int.big_int
+module Int : NumType with type t = Big_int.big_int
 
 
 (* Environment *)
@@ -44,7 +58,8 @@ module Env : Env.S with type key = string
 
 type unicode = int
 
-type value =
+type func = value -> value cont -> unit
+and value =
   | Null
   | Bool of bool
   | Nat of Nat.t
@@ -59,7 +74,7 @@ type value =
   | Tup of value list
   | Obj of value Env.t
   | Array of value array
-  | Func of (value -> value cont -> unit)
+  | Func of func
   | Async of async
   | Mut of value ref
 
@@ -68,9 +83,14 @@ and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
 
-(* Projections *)
+(* Shorthands *)
 
 val unit : value
+
+val prim : string -> func
+
+
+(* Projections *)
 
 val as_null : value -> unit
 val as_bool : value -> bool
@@ -85,17 +105,20 @@ val as_char : value -> unicode
 val as_text : value -> string
 val as_array : value -> value array
 val as_tup : value -> value list
+val as_unit : value -> unit
+val as_pair : value -> value * value
 val as_obj : value -> value Env.t
 val as_func : value -> (value -> value cont -> unit)
 val as_async : value -> async
 val as_mut : value -> value ref
 
 
+(* Ordering *)
+
+val compare : value -> value -> int
+
+
 (* Pretty Printing *)
 
-val string_of_val : Type.kind Con.Env.t -> Type.typ -> value -> string
-val string_of_def : Type.kind Con.Env.t -> Type.typ -> def -> string
-
-val debug_string_of_val : value -> string
-val debug_string_of_def : def -> string
-val debug_string_of_tuple_val : value -> string
+val string_of_val : value -> string
+val string_of_def : def -> string

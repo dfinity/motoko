@@ -1,5 +1,0 @@
--- Checking menhir-bug.as:
-type A = {x : {}}
--- Interpreting menhir-bug.as:
--- Finished menhir-bug.as:
-

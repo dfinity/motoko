@@ -1,8 +1,0 @@
--- Checking fib.as:
-let a : var Nat[]
-var i : Nat
--- Interpreting fib.as:
--- Finished fib.as:
-let a : var Nat[] = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
-var i : Nat = 10
-

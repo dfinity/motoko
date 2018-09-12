@@ -60,19 +60,19 @@ C[ await t ] =
 C[ await e ] =
    \\k.C[e] (\\v.await(v,k))
 C[ if e1 then e2 else e3 ]  =
-   \\k.C[e1](\\b.if b then C[e1] k else C[e2] k)
+   \\k.C[e1](\\b.if b then C[e1]@k else C[e2]@k)
 C[ if t1 then e2 else e3 ]  =
-   \\k.if T[t1] then C[e1] k else C[e2] k)
+   \\k.if T[t1] then C[e1] k else C[e2]@k)
 C[ if e1 then t2 else t3 ]  =
    \\k.C[e1](\\b.k @ (if b then T[t1] else T[t2]))
 C[ while t1 do e2 ] =
   \\k. let rec l = \u. if  T[t1] then C[e2]@l else k@u in
        l@()
 C[ while e1 do t2 ] =
-  \\k. let rec l = \\u. C[e1](\\v.if v then T[t2] ; l@u else k@u)in
+  \\k. let rec l = \u. C[e1](\\v.if v then T[t2] ; l@u else k@u)in
        l@()
 C[ while e1 do e2 ] =
-  \\k. let rec l = \\u. C[e1](\\v.if v then C[e2] l else k@()) in
+  \\k. let rec l = \u. C[e1](\\v.if v then C[e2]@l else k@()) in
        l@()
 C[ label l e ] = \\l. C[e] @ l	   // we use label l to name the continuation
 C[ break l e ] = \\k. C[e] @ l     // discard k, continue from l
@@ -164,7 +164,7 @@ T env [\x.t] =
    \x.T env' [t]
 T env [ break l t ] =
    match env[t] with
-   | Cont ->  return l@(T env [T])
+   | Cont ->  return l@(T env [t])
    | Label -> break l (T env [t])
 T env [ label l t ] =
    let env' = env[l->Label]

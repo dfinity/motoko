@@ -20,7 +20,7 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = {note_typ = Type.Pre; note_eff = Type.Triv}}
+let (@?) it at = {it; at; note = empty_typ_note}
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -77,9 +77,7 @@ let assign_op lhs rhs_f at =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
-
-%token<Type.prim> PRIM
-
+%token PRIM
 %token UNDERSCORE
 
 %nonassoc IF_NO_ELSE LOOP_NO_WHILE
@@ -96,7 +94,8 @@ let assign_op lhs rhs_f at =
 %left ANDOP
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
-    
+%left POWOP
+
 %type<Syntax.exp> exp exp_nullary
 %start<Syntax.prog> parse_prog
 %start<Syntax.prog> parse_prog_interactive
@@ -108,6 +107,10 @@ let assign_op lhs rhs_f at =
 seplist(X, SEP) :
   | (* empty *) { [] }
   | x=X { [x] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
+
+seplist1(X, SEP) :
+  | (* empty *) { [] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 
@@ -150,10 +153,10 @@ typ_obj :
     { tfs }
 
 typ_nullary :
-  | p=PRIM
-    { PrimT(p) @@ at $sloc }
-  | LPAR ts=seplist(typ_item, COMMA) RPAR
-    { match ts with [t] -> t | _ -> TupT(ts) @@ at $sloc }
+  | LPAR t=typ RPAR
+    { t }
+  | LPAR ts=seplist1(typ_item, COMMA) RPAR
+    { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
   | s=sort_opt tfs=typ_obj
@@ -170,6 +173,8 @@ typ_post :
 typ_pre :
   | t=typ_post
     { t }
+  | PRIM s=TEXT
+    { PrimT(s) @@ at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(t) @@ at $sloc }
   | LIKE t=typ_pre
@@ -285,8 +290,10 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | LPAR es = seplist(exp, COMMA) RPAR
-    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | LPAR e=exp RPAR
+    { e }
+  | LPAR es=seplist1(exp, COMMA) RPAR
+    { TupE(es) @? at $sloc }
   | s=sort xf=id_opt efs=exp_obj
     { let anon = if s.it = Type.Actor then "actor" else "object" in
       ObjE(s, xf anon $sloc, efs) @? at $sloc }
@@ -296,6 +303,8 @@ exp_post :
     { e }
   | LBRACKET es=seplist(exp, COMMA) RBRACKET
     { ArrayE(es) @? at $sloc }
+  | e=exp_post QUEST
+    { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
@@ -337,7 +346,9 @@ exp_bin :
 
 exp_pre :
   | e=exp_bin
-    { e } 
+    { e }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc }
   | RETURN eo=exp_pre?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       RetE(e) @? at $sloc }
@@ -371,7 +382,7 @@ exp_nondec :
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary e1=exp ELSE e2=exp
     { IfE(b, e1, e2) @? at $sloc }
-  | SWITCH e=exp_nullary LCURLY cs=case* RCURLY
+  | SWITCH e=exp_nullary LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
   | WHILE e1=exp_nullary e2=exp
     { WhileE(e1, e2) @? at $sloc }
@@ -418,11 +429,19 @@ pat_nullary :
     { VarP(x) @? at $sloc }
   | l=lit
     { LitP(ref l) @? at $sloc }
-  | LPAR ps=seplist(pat, COMMA) RPAR
-    { match ps with [p] -> p | _ -> TupP(ps) @? at $sloc }
+  | LPAR p=pat RPAR
+    { p }
+  | LPAR ps=seplist1(pat_bin, COMMA) RPAR
+    { TupP(ps) @? at $sloc }
+
+pat_post :
+  | p=pat_nullary
+    { p }
+  | p=pat_post QUEST
+    { OptP(p) @? at $sloc }
 
 pat_un :
-  | p=pat_nullary
+  | p=pat_post
     { p }
   | op=unop l=lit
     { SignP(op, ref l) @? at $sloc }
@@ -430,12 +449,14 @@ pat_un :
 pat_bin :
   | p=pat_un
     { p }
+  | p1=pat_bin OR p2=pat_bin
+    { AltP(p1, p2) @? at $sloc }
+  | p=pat_bin COLON t=typ
+    { AnnotP(p, t) @? at $sloc }
 
 pat :
   | p=pat_bin
     { p }
-  | p=pat COLON t=typ
-    { AnnotP(p, t) @? at $sloc }
 
 return_typ :
   | COLON t=typ { t }

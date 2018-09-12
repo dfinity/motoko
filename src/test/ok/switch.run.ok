@@ -1,0 +1,5 @@
+-- Checking switch.as:
+-- Interpreting switch.as:
+-- Finished switch.as:
+
+switch.as:65.3-65.14: warning, the cases in this switch do not cover all possible values

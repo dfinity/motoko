@@ -201,18 +201,8 @@ rule token = parse
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
-  | "Int" { PRIM Type.Int }
-  | "Bool" { PRIM Type.Bool }
-  | "Char"  { PRIM Type.Char }
-  | "Nat"  { PRIM Type.Nat }
-  | "Float" { PRIM Type.Float }
-  | "Null" { PRIM Type.Null }
-  | "Text"  { PRIM Type.Text }
-  | "Word8"  { PRIM Type.Word8 }
-  | "Word16"  { PRIM Type.Word16 }
-  | "Word32"  { PRIM Type.Word32 }
-  | "Word64"  { PRIM Type.Word64 }
-  
+
+  | "prim" as s { if !Flags.privileged then PRIM else ID s }
   | id as s { ID s }
 
   | "//"utf8_no_nl*eof { EOF }
