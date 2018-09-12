@@ -3,7 +3,7 @@ open Source
 
 module V = Value
 
-module ValSet = Set.Make(struct type t = V.value let compare = compare end)
+module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 
 type desc =

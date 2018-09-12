@@ -351,8 +351,8 @@ and match_lit lit v : bool =
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Nat n' -> n = n'
-  | IntLit i, V.Int i' -> i = i'
+  | NatLit n, V.Nat n' -> V.Nat.eq n n'
+  | IntLit i, V.Int i' -> V.Int.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'
   | Word32Lit w, V.Word32 w' -> w = w'
@@ -474,7 +474,7 @@ and interpret_block env decs ro (k : V.value V.cont) =
   interpret_decs (adjoin_vals env ve) decs k
 
 
-and declare_dec dec : val_env =     
+and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
@@ -491,7 +491,7 @@ and declare_decs decs ve : val_env =
     declare_decs decs' (V.Env.adjoin ve ve')
 
 
-and interpret_dec env dec (k : V.value V.cont) =     
+and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k

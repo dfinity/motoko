@@ -209,11 +209,11 @@ let compile_lit lit = match lit with
   | BoolLit false -> compile_false
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      ->
-    (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
-    with Z.Overflow -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Z.to_string n); [ nr Unreachable ])
+    (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NatLit n      ->
-    (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Z.to_int32 n)))) ]
-    with Z.Overflow -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Z.to_string n); [ nr Unreachable ])
+    (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 

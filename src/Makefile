@@ -2,7 +2,7 @@ NAME = asc
 BUILD = byte
 MAIN = main
 
-OPAM_PACKAGES = wasm zarith
+OPAM_PACKAGES = wasm num
 
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain
