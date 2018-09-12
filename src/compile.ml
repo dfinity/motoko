@@ -148,10 +148,11 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_true =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
-let compile_false = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
-let compile_zero =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
-let compile_unit =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_true =    [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 1l))) ]
+let compile_false =   [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_zero =    [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_unit =    [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
+let compile_const i = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 i))) ]
 (* A hack! This needs to be disjoint from all other values *)
 let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int))) ]
 
@@ -257,6 +258,8 @@ and compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
   | DotE (e, f) ->
@@ -338,7 +341,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | RetE e -> compile_exp env e @ [ nr Return ]
   | OptE e -> compile_exp env e (* Subtype! *)
 
-  | (ArrayE es | TupE es) ->
+  | TupE es ->
      (* Allocate memory, and put position on the stack (return value) *)
      allocn (Wasm.I32.of_int_u (List.length es)) @
      let init_elem i e : Wasm.Ast.instr list =
@@ -347,6 +350,52 @@ and compile_exp (env : E.t) exp = match exp.it with
         store_field (Wasm.I32.of_int_u i)
      in
      List.concat (List.mapi init_elem es)
+
+  | ArrayE es ->
+     (* Allocate memory, and put position on the stack (return value) *)
+     let i = E.add_anon_local env I32Type in
+     allocn (Wasm.I32.of_int_u (4 + List.length es)) @
+     [ nr (SetLocal (nr i)) ] @
+
+     (* Allocate closures for  get, set, len *)
+     allocn (Wasm.I32.of_int_u 2) @
+     dup env @
+     compile_const 0l @ (* table entry for get *)
+     store_field 0l @
+     dup env @
+     [ nr (GetLocal (nr i)) ] @
+     store_field 1l @
+     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 0l @
+
+     allocn (Wasm.I32.of_int_u 2) @
+     dup env @
+     compile_const 1l @ (* table entry for set *)
+     store_field 0l @
+     dup env @
+     [ nr (GetLocal (nr i)) ] @
+     store_field 1l @
+     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 1l @
+
+     allocn (Wasm.I32.of_int_u 2) @
+     dup env @
+     compile_const 2l @ (* table entry for len *)
+     store_field 0l @
+     dup env @
+     [ nr (GetLocal (nr i)) ] @
+     store_field 1l @
+     [ nr (GetLocal (nr i)) ] @ _swap env @ store_field 2l @
+
+     [ nr (GetLocal (nr i)) ] @
+     compile_const (Wasm.I32.of_int_u (List.length es)) @ (* length *)
+     store_field 3l @
+
+     let init_elem idx e : Wasm.Ast.instr list =
+        [ nr (GetLocal (nr i)) ] @
+	compile_exp env e @
+        store_field (Wasm.I32.of_int_u (4 + idx))
+     in
+     List.concat (List.mapi init_elem es) @
+     [ nr (GetLocal (nr i)) ]
 
   | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
      (* Resolve fields to index *)
@@ -693,9 +742,62 @@ and compile_start_func env ds : func =
        body = code @ [ nr Drop ]
      }
 
+let add_array_funcs env =
+  let header_size = 4l in
+  let get_array_object = [ nr (GetLocal (nr 0l)) ] @ load_field 1l in
+  let get_single_arg =   [ nr (GetLocal (nr 1l)) ] in
+  let get_first_arg =    [ nr (GetLocal (nr 1l)) ] @ load_field 0l in
+  let get_second_arg =   [ nr (GetLocal (nr 1l)) ] @ load_field 1l in
+  let index_to_position =
+        [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 header_size)));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)); (* skip header *)
+          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 4l)));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul));
+          nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))] in
+
+  let get_fun = nr {
+       ftype = nr E.unary_fun_ty_i;
+       locals = [];
+       body =
+          get_array_object @
+          get_single_arg @ (* the index *)
+          index_to_position @
+          load_field 0l
+     } in
+  let set_fun = nr {
+       ftype = nr E.unary_fun_ty_i;
+       locals = [];
+       body =
+          get_array_object @
+          get_first_arg @ (* the index *)
+          index_to_position @
+          get_second_arg @ (* the value *)
+          store_field 0l @
+          compile_unit
+     } in
+  let len_fun = nr {
+       ftype = nr E.unary_fun_ty_i;
+       locals = [];
+       body =
+          get_array_object @
+          load_field 3l
+     } in
+  let _ = E.add_fun env get_fun in
+  let _ = E.field_to_index env (nr_ "get") in
+  let _ = E.add_fun env set_fun in
+  let _ = E.field_to_index env (nr_ "set") in
+  let _ = E.add_fun env len_fun in
+  let _ = E.field_to_index env (nr_ "len") in
+  ()
+
+
+
 let compile (prog  : Syntax.prog) : unit =
   let m : module_ =
     let env = E.mk_global () in
+
+    add_array_funcs env;
+
     let start_fun = compile_start_func env prog.it in
     let i = E.add_fun env start_fun in
 
