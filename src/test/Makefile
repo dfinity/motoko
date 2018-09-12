@@ -43,7 +43,7 @@ $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
 		echo Hack until opam wasm package is updated >/dev/null; \
 		mv $@ $@.tmp; \
-		sed -E 's/call_indirect ([$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $@.tmp > $@; \
+		sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $@.tmp > $@; \
 		rm $@.tmp; \
 	fi
 
