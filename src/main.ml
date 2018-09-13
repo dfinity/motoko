@@ -55,7 +55,7 @@ let print_val env v t =
   printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
 
 let phase heading filename =
-  if !Flags.verbose then printf "-- %s %s:\n" heading filename
+  if !Flags.verbose then printf "-- %s %s:\n%!" heading filename
 
 
 (* Typechecking *)

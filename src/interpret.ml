@@ -347,7 +347,7 @@ and define_id env id v =
 and define_pat env pat v =
   match pat.it with
   | WildP -> ()
-  | LitP _ | SignP _ ->
+  | LitP _ | SignP _ | AltP _ ->
     if match_pat pat v = None
     then trap pat.at "value %s does not match pattern" (V.string_of_val v)
     else ()
@@ -357,7 +357,6 @@ and define_pat env pat v =
     if v = V.Null
     then trap pat.at "value %s does not match pattern" (V.string_of_val v)
     else define_pat env pat1 v  (* TBR: different representation? *)
-  | AltP _ -> ()
   | AnnotP (pat1, _typ) -> define_pat env pat1 v
 
 and define_pats env pats vs =
