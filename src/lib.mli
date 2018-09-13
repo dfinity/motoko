@@ -21,6 +21,8 @@ sig
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
   val map_filter : ('a -> 'b option) -> 'a list -> 'b list
+
+  val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
 end
 
 module List32 :
@@ -30,6 +32,11 @@ sig
   val nth : 'a list -> int32 -> 'a (* raises Failure *)
   val take : int32 -> 'a list -> 'a list (* raises Failure *)
   val drop : int32 -> 'a list -> 'a list (* raises Failure *)
+end
+
+module Array :
+sig
+  val compare : ('a -> 'a -> int) -> 'a array -> 'a array -> int
 end
 
 module Array32 :

@@ -29,7 +29,7 @@ $(OUTDIR):
 	mkdir -p $@
 
 $(OUTDIR)/%.tc: %.as $(ASC) Makefile
-	$(ASC) --typecheck-only $< > $@ 2>&1 || true
+	mkdir -p $(OUTDIR); $(ASC) --typecheck-only $< > $@ 2>&1 || true
 
 $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \
@@ -41,12 +41,16 @@ $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \
 	then echo "Typecheck failed"; touch $@; touch $@.stderr; \
 	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
+		echo Hack until opam wasm package is updated >/dev/null; \
+		mv $@ $@.tmp; \
+		sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $@.tmp > $@; \
+		rm $@.tmp; \
 	fi
 
 $(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
 	@if [ -s $< ]; \
 	then $(WASM) $< > $@ 2>&1 || true; \
-	else echo "Empty .wat file!"; touch $@; \
+	else echo "Empty .wat file $*.wat!"; touch $@; \
 	fi
 
 $(OKDIR)/%.ok:

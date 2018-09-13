@@ -3,7 +3,7 @@ open Source
 
 module V = Value
 
-module ValSet = Set.Make(struct type t = V.value let compare = compare end)
+module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 
 type desc =
@@ -143,7 +143,7 @@ and fail ctxt desc sets : bool =
 
 let warn at fmt =
 	Printf.ksprintf (fun s ->
-    Printf.eprintf "%s: warning, %s\n" (Source.string_of_region at) s;
+    Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
 let check_cases cases : bool =

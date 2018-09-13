@@ -93,6 +93,16 @@ struct
       match f x with
       | None -> map_filter f xs
       | Some y -> y :: map_filter f xs
+
+  let rec compare f xs ys =
+    match xs, ys with
+    | [], [] -> 0
+    | [], _ -> -1
+    | _, [] -> +1
+    | x::xs', y::ys' ->
+      match f x y with
+      | 0 -> compare f xs' ys'
+      | n -> n
 end
 
 module List32 =
@@ -125,6 +135,22 @@ struct
     | 0l, _ -> xs
     | n, _::xs' when n > 0l -> drop (Int32.sub n 1l) xs'
     | _ -> failwith "drop"
+end
+
+module Array =
+struct
+  include Array
+
+  let rec compare f x y = compare' f x y 0
+  and compare' f x y i =
+    match i = Array.length x, i = Array.length y with
+    | true, true -> 0
+    | true, false -> -1
+    | false, true -> +1
+    | false, false ->
+      match f x.(i) y.(i) with
+      | 0 -> compare' f x y (i + 1)
+      | n -> n
 end
 
 module Array32 =

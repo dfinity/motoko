@@ -64,6 +64,22 @@ let prim = function
   | "Text" -> Text
   | _ -> raise (Invalid_argument "Type.prim")
 
+let iter_obj t =
+  Obj (Object, [{name = "next"; typ = Func ([], unit, Opt t)}])
+
+let array_obj t =
+  let immut t =
+    [ {name = "get";  typ = Func ([], Prim Nat, t)};
+      {name = "len";  typ = Func ([], unit, Prim Nat)};
+      {name = "keys"; typ = Func ([], unit, iter_obj (Prim Nat))};
+      {name = "vals"; typ = Func ([], unit, iter_obj t)};
+    ] in
+  let mut t = immut t @
+    [ {name = "set"; typ = Func ([], Tup [Prim Nat; t], unit)} ] in
+  match t with
+  | Mut t' -> Obj (Object, List.sort compare (mut t'))
+  | t -> Obj (Object, List.sort compare (immut t))
+
 
 (* Shifting *)
 
@@ -189,11 +205,6 @@ let rec normalize env = function
   | Mut t -> Mut (normalize env t)
   | t -> t
 
-let nonopt env t =
-  match normalize env t with
-  | Opt t -> normalize env t
-  | t -> t
-
 let rec structural env = function
   | Con (con, ts) ->
     (match Con.Env.find_opt con env with
@@ -203,9 +214,59 @@ let rec structural env = function
   | Like t -> structural env t (*TBR*)
   | t -> t
 
-let immutable = function
-  | Mut t -> t
-  | t -> t
+
+(* Projections *)
+
+let is_prim p = function Prim p' -> p = p' | _ -> false
+let is_obj = function Obj _ -> true | _ -> false
+let is_array = function Array _ -> true | _ -> false
+let is_opt = function Opt _ -> true | _ -> false
+let is_tup = function Tup _ -> true | _ -> false
+let is_unit = function Tup [] -> true | _ -> false
+let is_pair = function Tup [_; _] -> true | _ -> false
+let is_func = function Func _ -> true | _ -> false
+let is_async = function Async _ -> true | _ -> false
+let is_mut = function Mut _ -> true | _ -> false
+
+let invalid s = raise (Invalid_argument ("Type." ^ s))
+
+let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
+let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
+let as_array = function Array t -> t | _ -> invalid "as_array"
+let as_opt = function Opt t -> t | _ -> invalid "as_opt"
+let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
+let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
+let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
+let as_func = function Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func"
+let as_async = function Async t -> t | _ -> invalid "as_async"
+let as_mut = function Mut t -> t | _ -> invalid "as_mut"
+let as_immut = function Mut t -> t | t -> t
+
+let as_prim_sub p env t = match structural env t with
+  Prim p' when p = p' -> () | _ -> invalid "as_prim_sub"
+let rec as_obj_sub env t = match structural env t with
+  Obj (s, tfs) -> s, tfs | Array t -> as_obj_sub env (array_obj t) | _ -> invalid "as_obj_sub"
+let as_array_sub env t = match structural env t with
+  Array t -> t | _ -> invalid "as_array_sub"
+let as_opt_sub env t = match structural env t with
+  Opt t -> t | t -> t
+let as_tup_sub env t = match structural env t with
+  Tup ts -> ts | _ -> invalid "as_tup_sub"
+let as_unit_sub env t = match structural env t with
+  Tup [] -> () | _ -> invalid "as_unit_sub"
+let as_pair_sub env t = match structural env t with
+  Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair_sub"
+let as_func_sub env t = match structural env t with
+  Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func_sub"
+let as_mono_func_sub env t = match structural env t with
+  Func ([], t1, t2) -> t1, t2 | _ -> invalid "as_func_sub"
+let as_async_sub env t = match structural env t with
+  Async t -> t | _ -> invalid "as_async_sub"
+
+let lookup_field name' tfs =
+  match List.find_opt (fun {name; _} -> name = name') tfs with
+  | Some {typ = t; _} -> t
+  | None -> invalid "lookup_field"
 
 
 (* Avoiding local constructors *)
@@ -254,112 +315,115 @@ let avoid env env' t =
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-type rel = Eq | Sub
+let rel_list p env rel eq xs1 xs2 =
+  try List.for_all2 (p env rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let rel_list p rel env co xs1 xs2 =
-  try List.for_all2 (p rel env co) xs1 xs2 with Invalid_argument _ -> false
-
-let rec rel_typ rel env co t1 t2 =
+let rec rel_typ env rel eq t1 t2 =
 (*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
-  t1 == t2 || S.mem (t1, t2) !co || begin
-  co := S.add (t1, t2) !co;
+  t1 == t2 || S.mem (t1, t2) !rel || begin
+  rel := S.add (t1, t2) !rel;
   match t1, t2 with
   | Any, Any -> 
     true
-  | _, Any when rel = Sub ->
+  | _, Any when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Con.Env.find con1 env, Con.Env.find con2 env with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_typ env rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel env co t1 (open_ ts2 t)
+      rel_typ env rel eq t1 (open_ ts2 t)
     | _ when con1 = con2 ->
-      rel_list rel_typ Eq env co ts1 ts2
-    | Abs (tbs, t), _ when rel = Sub ->
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_list eq_typ env rel eq ts1 ts2
+    | Abs (tbs, t), _ when rel != eq ->
+      rel_typ env rel eq (open_ ts1 t) t2
     | _ ->
       false
     )
   | Con (con1, ts1), t2 ->
     (match Con.Env.find con1 env, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel env co (open_ ts1 t) t2
-    | Abs (tbs, t), Opt t2' when rel = Sub ->
-      rel_typ rel env co t1 t2'
-    | Abs (tbs, t), _ when rel = Sub ->
-      rel_typ rel env co (open_ ts1 t) t2
+      rel_typ env rel eq (open_ ts1 t) t2
+    | Abs (tbs, t), Opt t2' when rel != eq ->
+      rel_typ env rel eq t1 t2'
+    | Abs (tbs, t), _ when rel != eq ->
+      rel_typ env rel eq (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Con.Env.find con2 env with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel env co t1 (open_ ts2 t)
+      rel_typ env rel eq t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     true
-  | Prim p1, Prim p2 when rel = Sub ->
+  | Prim p1, Prim p2 when rel != eq ->
     p1 = Nat && p2 = Int
   | Obj (a1, tfs1), Obj (a2, tfs2) ->
     a1 = a2 &&
-    rel_fields rel env co tfs1 tfs2
+    rel_fields env rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ rel env co t1' t2'
+    rel_typ env rel eq t1' t2'
+  | Array t1', Obj _ when rel != eq ->
+    rel_typ env rel eq (array_obj t1') t2
   | Opt t1', Opt t2' ->
-    rel_typ rel env co t1' t2'
-  | Prim Null, Opt t2' when rel = Sub ->
+    rel_typ env rel eq t1' t2'
+  | Prim Null, Opt t2' when rel != eq ->
     true
-  | t1, Opt t2' when rel = Sub ->
-    rel_typ rel env co t1 t2'
+  | t1, Opt t2' when rel != eq ->
+    rel_typ env rel eq t1 t2'
   | Tup ts1, Tup ts2 ->
-    rel_list rel_typ rel env co ts1 ts2
+    rel_list rel_typ env rel eq ts1 ts2
   | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
-    (match rel_binds rel env co tbs1 tbs2 with
+    (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
-      rel_typ rel env' co (open_ ts t21) (open_ ts t11) &&
-      rel_typ rel env' co (open_ ts t12) (open_ ts t22)
+      rel_typ env' rel eq (open_ ts t21) (open_ ts t11) &&
+      rel_typ env' rel eq (open_ ts t12) (open_ ts t22)
     | None -> false
     )
   | Async t1', Async t2' ->
-    rel_typ rel env co t1' t2'
+    rel_typ env rel eq t1' t2'
   | Like t1', Like t2' ->
-    rel_typ rel env co t1' t2'
+    rel_typ env rel eq t1' t2'
   | Mut t1', Mut t2' ->
-    rel_typ Eq env co t1' t2'
+    eq_typ env rel eq t1' t2'
   | _, _ -> false
   end
 
-and rel_fields rel env co tfs1 tfs2 =
+and rel_fields env rel eq tfs1 tfs2 =
   (* Assume that tf1 and tf2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
     true
-  | _, [] when rel = Sub ->
+  | _, [] when rel != eq ->
     true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare tf1.name tf2.name with
     | 0 ->
-      rel_typ rel env co tf1.typ tf2.typ &&
-      rel_fields rel env co tfs1' tfs2'
-    | -1 when rel = Sub ->
-      rel_fields rel env co tfs1' tfs2
+      rel_typ env rel eq tf1.typ tf2.typ &&
+      rel_fields env rel eq tfs1' tfs2'
+    | -1 when rel != eq ->
+      rel_fields env rel eq tfs1' tfs2
     | _ -> false
     )
   | _, _ -> false
 
-and rel_binds rel env co tbs1 tbs2 =
+and rel_binds env rel eq tbs1 tbs2 =
   let ts, env' = open_binds env tbs2 in
-  if rel_list (rel_bind ts) rel env' co tbs2 tbs1
+  if rel_list (rel_bind ts) env' rel eq tbs2 tbs1
   then Some (ts, env')
   else None
 
-and rel_bind ts rel env co tb1 tb2 =
-  rel_typ rel env co (open_ ts tb1.bound) (open_ ts tb2.bound)
+and rel_bind ts env rel eq tb1 tb2 =
+  rel_typ env rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
+and eq_typ env rel eq t1 t2 = rel_typ env eq eq t1 t2
 
-and eq (env : con_env) t1 t2 : bool = rel_typ Eq env (ref S.empty) t1 t2
-and sub (env : con_env) t1 t2 : bool = rel_typ Sub env (ref S.empty) t1 t2
+and eq (env : con_env) t1 t2 : bool =
+  let eq = ref S.empty in eq_typ env eq eq t1 t2
+and sub (env : con_env) t1 t2 : bool =
+  rel_typ env (ref S.empty) (ref S.empty) t1 t2
 
 
 (* Join and Meet *)
@@ -377,6 +441,8 @@ let rec join env t1 t2 =
   | Opt t1', Opt t2' -> Opt (join env t1' t2')
   | t1', Opt t2'
   | Opt t1', t2' -> Opt (join env t1' t2')
+  | Array t1', (Obj _ as t2) -> join env (array_obj t1') t2
+  | (Obj _ as t1), Array t2' -> join env t1 (array_obj t2')
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> Any
 

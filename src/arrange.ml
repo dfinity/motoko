@@ -54,8 +54,8 @@ and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Z.to_string n) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Z.to_string i) ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_string n) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_string i) ]
   | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_string_u w) ]
   | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_string_u w) ]
   | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_string_u w) ]

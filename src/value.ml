@@ -93,33 +93,63 @@ module Float = MakeFloat(Wasm.F64)
 
 module type NumType =
 sig
-  include module type of Z
+  type t
+  val zero : t
+  val abs : t -> t
+  val neg : t -> t
+  val add : t -> t -> t
   val sub : t -> t -> t
-  val pow' : t -> t -> t
+  val mul : t -> t -> t
+  val div : t -> t -> t
+  val rem : t -> t -> t
+  val pow : t -> t -> t
   val eq : t -> t -> bool
   val ne : t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
   val le : t -> t -> bool
   val ge : t -> t -> bool
+  val compare : t -> t -> int
+  val to_int : t -> int
+  val of_int : int -> t
+  val of_string : string -> t
+  val to_string : t -> string
 end
 
-module Int : NumType with type t = Z.t =
+module Int : NumType with type t = Big_int.big_int =
 struct
-  include Z
-  let of_string s = Z.of_string (String.concat "" (String.split_on_char '_' s))
-  let eq = equal
+  open Big_int
+  type t = big_int
+  let zero = zero_big_int
+  let sub = sub_big_int
+  let abs = abs_big_int
+  let neg = minus_big_int
+  let add = add_big_int
+  let mul = mult_big_int
+  let div = div_big_int
+  let rem = mod_big_int (* Is rem and mod the same here? *)
+  let eq = eq_big_int
   let ne x y = not (eq x y)
-  let le = leq
-  let ge = geq
+  let lt = lt_big_int
+  let gt = gt_big_int
+  let le = le_big_int
+  let ge = ge_big_int
+  let compare = compare_big_int
+  let to_int = int_of_big_int
+  let of_int = big_int_of_int
+  let to_string = string_of_big_int
+  let of_string s =
+    big_int_of_string (String.concat "" (String.split_on_char '_' s))
 
-  let max_int = of_int max_int
+  let max_int = big_int_of_int max_int
 
-  let pow' x y =
+  let pow x y =
     if gt y max_int
     then raise (Invalid_argument "Int.pow")
-    else pow x (to_int y)
+    else power_big_int_positive_int x (int_of_big_int y)
 end
 
-module Nat : NumType with type t = Z.t =
+module Nat : NumType with type t = Big_int.big_int =
 struct
   include Int
   let sub x y =
@@ -159,7 +189,7 @@ and 'a cont = 'a -> unit
 
 (* Projections *)
 
-let invalid s = raise (Invalid_argument s)
+let invalid s = raise (Invalid_argument ("Value." ^ s))
 
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
@@ -174,7 +204,55 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
-let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
+let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
+let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+
+let obj_of_array a =
+  let get =
+    Func (fun v k ->
+      let n = as_nat v in
+      if Nat.lt n (Nat.of_int (Array.length a)) then
+        k (a.(Nat.to_int n))
+      else
+        raise (Invalid_argument "array index out of bounds")
+    )
+  in
+  let set =
+    Func (fun v k ->
+      let v1, v2 = as_pair v in
+      let n = as_nat v1 in
+      if Nat.lt n (Nat.of_int (Array.length a)) then
+        k (a.(Nat.to_int n) <- v2; Tup [])
+      else
+        raise (Invalid_argument "array index out of bounds")
+    )
+  in
+  let len =
+    Func (fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
+  in
+  let keys =
+    Func (fun v k ->
+      as_unit v;
+      let i = ref 0 in
+      let next = fun v k' ->
+        if !i = Array.length a then k' Null else
+        let v = Nat (Nat.of_int !i) in incr i; k' v
+      in k (Obj (Env.singleton "next" (Func next)))
+    )
+  in
+  let vals =
+    Func (fun v k ->
+      as_unit v;
+      let i = ref 0 in
+      let next = fun v k' ->
+        if !i = Array.length a then k' Null else
+        let v = a.(!i) in incr i; k' v
+      in k (Obj (Env.singleton "next" (Func next)))
+    )
+  in
+  Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
+
+let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
 let as_func = function Func f -> f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
@@ -186,8 +264,24 @@ let unit = Tup []
 
 let prim = function
   | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
-  | "length" -> fun v k -> k (Nat (Nat.of_int (Array.length (as_array v))))
   | _ -> raise (Invalid_argument "Value.prim")
+
+
+(* Ordering *)
+
+let generic_compare = compare
+
+let rec compare x1 x2 =
+  if x1 == x2 then 0 else
+  match x1, x2 with
+  | Nat n1, Nat n2 -> Nat.compare n1 n2
+  | Int n1, Int n2 -> Int.compare n1 n2
+  | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
+  | Obj fs1, Obj fs2 -> Env.compare compare fs1 fs2
+  | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
+  | Mut r1, Mut r2 -> compare !r1 !r2
+  | Async _, Async _ -> raise (Invalid_argument "Value.compare")
+  | _ -> generic_compare x1 x2
 
 
 (* Pretty Printing *)
