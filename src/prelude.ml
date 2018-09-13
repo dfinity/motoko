@@ -13,5 +13,19 @@ type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
 
+type Iter<T_> = {next : () -> T_?};
+
 let abs : Int -> Nat = prim "abs";
+
+func ignore (_ : Any) {};
+
+class range(x : Nat, y : Nat) {
+  private var i = x;
+  next() : Nat? { if (i > y) null else {let j = i; i += 1; j} };
+};
+
+class revrange(x : Nat, y : Nat) {
+  private var i = x + 1;
+  next() : Nat? { if (i <= y) null else {i -= 1; i} };
+};
 |}

@@ -390,7 +390,7 @@ exp_nondec :
     { LoopE(e, None) @? at $sloc }
   | LOOP e1=exp WHILE e2=exp
     { LoopE(e1, Some e2) @? at $sloc }
-  | FOR p=pat IN e1=exp_nullary e2=exp
+  | FOR LPAR p=pat IN e1=exp RPAR e2=exp
     { ForE(p, e1, e2) @? at $sloc }
 
 exp :

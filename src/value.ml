@@ -189,7 +189,7 @@ and 'a cont = 'a -> unit
 
 (* Projections *)
 
-let invalid s = raise (Invalid_argument s)
+let invalid s = raise (Invalid_argument ("Value." ^ s))
 
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
@@ -230,7 +230,27 @@ let obj_of_array a =
   let len =
     Func (fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
   in
-  Env.from_list ["get", get; "set", set; "len", len]
+  let keys =
+    Func (fun v k ->
+      as_unit v;
+      let i = ref 0 in
+      let next = fun v k' ->
+        if !i = Array.length a then k' Null else
+        let v = Nat (Nat.of_int !i) in incr i; k' v
+      in k (Obj (Env.singleton "next" (Func next)))
+    )
+  in
+  let vals =
+    Func (fun v k ->
+      as_unit v;
+      let i = ref 0 in
+      let next = fun v k' ->
+        if !i = Array.length a then k' Null else
+        let v = a.(!i) in incr i; k' v
+      in k (Obj (Env.singleton "next" (Func next)))
+    )
+  in
+  Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
 let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
 let as_func = function Func f -> f | _ -> invalid "as_func"

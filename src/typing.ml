@@ -83,16 +83,6 @@ let disjoint_union at fmt env1 env2 =
 
 (* Type Analysis *)
 
-(* Types one can iterate over using `for` *)
-let is_iter_typ ce = function
-  | T.Array _ -> true
-  | _ -> false
-
-(* Element type of iterable_type  *)
-let elem_typ ce = function
-  | T.Array t -> T.immutable t
-  | _ -> assert false
-
 (* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
 let rec is_shared_typ ce t =
   match T.structural ce t with
@@ -297,7 +287,7 @@ let rec check_lit env t lit at =
 (* Expressions *)
 
 let rec infer_exp env exp : T.typ =
-  T.immutable (infer_exp_mut env exp)
+  T.as_immut (infer_exp_mut env exp)
 
 and infer_exp_structural env exp : T.typ =
   let t = infer_exp env exp in
@@ -370,40 +360,39 @@ and infer_exp' env exp : T.typ =
     T.Opt t1
   | ProjE (exp1, n) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Tup ts ->
-      (match List.nth_opt ts n with
+    (try
+      let ts = T.as_tup env.cons t1 in
+      match List.nth_opt ts n with
       | Some t -> t
       | None ->
         error exp.at "tuple projection %n is out of bounds for type\n  %s"
           n (T.string_of_typ_expand env.cons t1)
-      )
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected tuple type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj env sort.it id fields)
   | DotE (exp1, id) ->
     let t1 = infer_exp_structural env exp1 in
-    (match T.as_obj t1 with
-    | T.Obj (_, tfs) ->
-      (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
+    (try
+      let _, tfs = T.as_obj env.cons t1 in
+      match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error exp1.at "field name %s does not exist in type\n  %s"
           id.it (T.string_of_typ_expand env.cons t1)
-      )
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected object type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
-      match infer_exp_mut env exp1 with
-      | T.Mut t2 ->
+      let t1 = infer_exp_mut env exp1 in
+      try
+        let t2 = T.as_mut t1 in
         check_exp env t2 exp2
-      | _ ->
+      with Invalid_argument _ ->
         error exp.at "expected mutable assignment target";
     end;
     T.unit
@@ -419,24 +408,24 @@ and infer_exp' env exp : T.typ =
     T.Array t1
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Array t -> 
+    (try
+      let t = T.as_array env.cons t1 in
       if not env.pre then check_exp env T.nat exp2;
       t
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected array type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Func (tbs, t2, t) ->
+    (try
+      let tbs, t2, t = T.as_func env.cons t1 in
       let ts = check_typ_bounds env tbs typs exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | BlockE decs ->
     let t, (_, _, ce) = infer_block env decs exp.at in
@@ -495,13 +484,19 @@ and infer_exp' env exp : T.typ =
     T.unit
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
-      (* TBR: generalise beyond arrays *)
       let t1 = infer_exp_structural env exp1 in
-      if not (is_iter_typ env.cons t1) then
+      (try
+        let _, tfs = T.as_obj env.cons t1 in
+        let t = T.lookup_field "next" tfs in
+        let t1, t2 = T.as_mono_func env.cons t in
+        T.as_unit env.cons t1;
+        let t2' = T.as_opt env.cons t2 in
+        let ve = check_pat_exhaustive env t2' pat in
+        check_exp (adjoin_vals env ve) T.unit exp2
+      with Invalid_argument _ ->
         error exp1.at "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand env.cons t1);
-      let ve = check_pat_exhaustive env (elem_typ env.cons t1) pat in
-      check_exp (adjoin_vals env ve) T.unit exp2
+          (T.string_of_typ_expand env.cons t1)
+      );
     end;
     T.unit
   | LabelE (id, typ, exp1) ->
@@ -540,11 +535,11 @@ and infer_exp' env exp : T.typ =
     if not env.async then
       error exp.at "misplaced await";
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Async t -> t
-    | t1' ->
+    (try
+      T.as_async env.cons t1
+    with Invalid_argument _ ->
       error exp1.at "expected async type, but expression has type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
@@ -635,7 +630,7 @@ and check_exp' env t exp =
   | ArrayE exps ->
     (match T.nonopt env.cons t with
     | T.Array t1 ->
-      List.iter (check_exp env (T.immutable t1)) exps
+      List.iter (check_exp env (T.as_immut t1)) exps
     | _ ->
       error exp.at "array expression cannot produce expected type\n  %s"
         (T.string_of_typ_expand env.cons t)
@@ -817,17 +812,20 @@ and check_pat' env t pat : val_env =
     end;
     T.Env.empty
   | TupP pats ->
-    (match t with
-    | T.Tup ts ->
+    (try
+      let ts = T.as_tup env.cons t in
       check_pats env ts pats T.Env.empty pat.at
-    | _ ->
+    with Invalid_argument _ ->
       error pat.at "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand env.cons t)
     )
   | OptP pat1 ->
-    (match t with
-    | T.Opt t1 | t1 ->
+    (try
+      let t1 = T.as_opt env.cons t in
       check_pat env t1 pat1
+    with Invalid_argument _ ->
+      error pat.at "option pattern cannot consume expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -935,7 +933,7 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
     | t ->
       (* When checking object in analysis mode *)
       if not env.pre then
-        check_exp (adjoin_vals env ve) (T.immutable t) exp;
+        check_exp (adjoin_vals env ve) (T.as_immut t) exp;
       t
   in
   if not env.pre then begin

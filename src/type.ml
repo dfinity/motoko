@@ -64,16 +64,21 @@ let prim = function
   | "Text" -> Text
   | _ -> raise (Invalid_argument "Type.prim")
 
+let iter_obj t =
+  Obj (Object, [{name = "next"; typ = Func ([], unit, Opt t)}])
+
 let array_obj t =
   let immut t =
-    [ {name = "get"; typ = Func ([], Prim Nat, t)};
-      {name = "len"; typ = Func ([], unit, Prim Nat)};
+    [ {name = "get";  typ = Func ([], Prim Nat, t)};
+      {name = "len";  typ = Func ([], unit, Prim Nat)};
+      {name = "keys"; typ = Func ([], unit, iter_obj (Prim Nat))};
+      {name = "vals"; typ = Func ([], unit, iter_obj t)};
     ] in
   let mut t = immut t @
     [ {name = "set"; typ = Func ([], Tup [Prim Nat; t], unit)} ] in
   match t with
-  | Mut t' -> Obj (Object, mut t')
-  | t -> Obj (Object, immut t)
+  | Mut t' -> Obj (Object, List.sort compare (mut t'))
+  | t -> Obj (Object, List.sort compare (immut t))
 
 
 (* Shifting *)
@@ -214,13 +219,41 @@ let rec structural env = function
   | Like t -> structural env t (*TBR*)
   | t -> t
 
-let as_obj = function
-  | Array t -> array_obj t
-  | t -> t
 
-let immutable = function
-  | Mut t -> t
-  | t -> t
+(* Projections *)
+
+let invalid s = raise (Invalid_argument ("Type." ^ s))
+
+let as_prim p env t = match structural env t with
+  Prim p' when p = p' -> () | _ -> invalid "as_prim"
+let rec as_obj env t = match structural env t with
+  Obj (s, tfs) -> s, tfs | Array t -> as_obj env (array_obj t) | _ -> invalid "as_obj"
+let as_array env t = match structural env t with
+  Array t -> t | _ -> invalid "as_array"
+let as_opt env t = match structural env t with
+  Opt t -> t | t -> t
+let as_tup env t = match structural env t with
+  Tup ts -> ts | _ -> invalid "as_tup"
+let as_unit env t = match structural env t with
+  Tup [] -> () | _ -> invalid "as_unit"
+let as_pair env t = match structural env t with
+  Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
+let as_func env t = match structural env t with
+  Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func"
+let as_mono_func env t = match structural env t with
+  Func ([], t1, t2) -> t1, t2 | _ -> invalid "as_func"
+let as_async env t = match structural env t with
+  Async t -> t | _ -> invalid "as_async"
+
+let as_mut t = match t with
+  Mut t -> t | _ -> invalid "as_mut"
+let as_immut t = match t with
+  Mut t -> t | t -> t
+
+let lookup_field name' tfs =
+  match List.find_opt (fun {name; _} -> name = name') tfs with
+  | Some {typ = t; _} -> t
+  | None -> invalid "lookup_field"
 
 
 (* Avoiding local constructors *)

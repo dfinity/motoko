@@ -133,10 +133,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (op, exp1) ->
-    let t = T.immutable exp.note.note_typ in
+    let t = T.as_immut exp.note.note_typ in
     interpret_exp env exp1 (fun v1 -> k (Operator.unop t op v1))
   | BinE (exp1, op, exp2) ->
-    let t = T.immutable exp.note.note_typ in
+    let t = T.as_immut exp.note.note_typ in
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         k (try Operator.binop t op v1 v2 with _ ->
@@ -145,7 +145,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | RelE (exp1, op, exp2) ->
     let t = T.join Con.Env.empty (* both types are primitive *)
-      (T.immutable exp1.note.note_typ) (T.immutable exp2.note.note_typ) in
+      (T.as_immut exp1.note.note_typ) (T.as_immut exp2.note.note_typ) in
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         k (Operator.relop t op v1 v2)
@@ -186,7 +186,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
+        (V.as_func v1) v2 k
+(*
         try (V.as_func v1) v2 k with Invalid_argument s -> trap exp.at "%s" s
+*)
       )
     )
   | BlockE decs ->
@@ -216,24 +219,38 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_cases env cases exp.at v1 k
     )
   | WhileE (exp1, exp2) ->
-    let k_continue = fun v -> interpret_exp env exp k in
+    let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
       then interpret_exp env exp2 k_continue
       else k V.unit
     )
   | LoopE (exp1, None) ->
-    interpret_exp env exp1 (fun v -> interpret_exp env exp k)
+    interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LoopE (exp1, Some exp2) ->
-    interpret_exp env exp1 (fun _v1 ->
+    interpret_exp env exp1 (fun v1 ->
+      V.as_unit v1;
       interpret_exp env exp2 (fun v2 ->
         if V.as_bool v2
         then interpret_exp env exp k
         else k V.unit
       )
     )
-  | ForE (pat, exp1, exp2)->
-    unimplemented exp.at "for loops"
+  | ForE (pat, exp1, exp2) ->
+    interpret_exp env exp1 (fun v1 ->
+      let next = V.as_func (V.Env.find "next" (V.as_obj v1)) in
+      let rec k_continue = fun v ->
+        V.as_unit v;
+        next V.unit (fun v' ->
+          if v' = V.Null then k V.unit else
+          match match_pat pat v' with
+          | None ->
+            trap pat.at "value %s does not match pattern" (V.string_of_val v')
+          | Some ve ->
+            interpret_exp (adjoin_vals env ve) exp2 k_continue
+        )
+      in k_continue V.unit
+    )
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id.it k env.labs} in
     interpret_exp env' exp1 k
@@ -372,7 +389,7 @@ and match_pat pat v : val_env option =
     then Some V.Env.empty
     else None
   | SignP (op, lit) ->
-    let t = T.immutable pat.note.note_typ in
+    let t = T.as_immut pat.note.note_typ in
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty

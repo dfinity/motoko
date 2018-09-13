@@ -52,7 +52,24 @@ val int : typ
 
 val prim : string -> prim
 
-val as_obj : typ -> typ
+
+(* Projections *)
+
+val as_prim : prim -> con_env -> typ -> unit
+val as_obj : con_env -> typ -> sort * field list
+val as_array : con_env -> typ -> typ
+val as_opt : con_env -> typ -> typ
+val as_tup : con_env -> typ -> typ list
+val as_unit : con_env -> typ -> unit
+val as_pair : con_env -> typ -> typ * typ
+val as_func : con_env -> typ -> bind list * typ * typ
+val as_mono_func : con_env -> typ -> typ * typ
+val as_async : con_env -> typ -> typ
+
+val as_mut : typ -> typ
+val as_immut : typ -> typ
+
+val lookup_field : string -> field list -> typ
 
 
 (* Normalization and Classification *)
@@ -60,7 +77,6 @@ val as_obj : typ -> typ
 val normalize : con_env -> typ -> typ
 val nonopt : con_env -> typ -> typ
 val structural : con_env -> typ -> typ
-val immutable : typ -> typ
 
 exception Unavoidable of con
 val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
