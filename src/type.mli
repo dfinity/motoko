@@ -53,21 +53,41 @@ val int : typ
 val prim : string -> prim
 
 
-(* Projections *)
+(* Inspection & Projection *)
 
-val as_prim : prim -> con_env -> typ -> unit
-val as_obj : con_env -> typ -> sort * field list
-val as_array : con_env -> typ -> typ
-val as_opt : con_env -> typ -> typ
-val as_tup : con_env -> typ -> typ list
-val as_unit : con_env -> typ -> unit
-val as_pair : con_env -> typ -> typ * typ
-val as_func : con_env -> typ -> bind list * typ * typ
-val as_mono_func : con_env -> typ -> typ * typ
-val as_async : con_env -> typ -> typ
+val is_prim : prim -> typ -> bool
+val is_obj : typ -> bool
+val is_array : typ -> bool
+val is_opt : typ -> bool
+val is_tup : typ -> bool
+val is_unit : typ -> bool
+val is_pair : typ -> bool
+val is_func : typ -> bool
+val is_async : typ -> bool
+val is_mut : typ -> bool
 
+val as_prim : prim -> typ -> unit
+val as_obj : typ -> sort * field list
+val as_array : typ -> typ
+val as_opt : typ -> typ
+val as_tup : typ -> typ list
+val as_unit : typ -> unit
+val as_pair : typ -> typ * typ
+val as_func : typ -> bind list * typ * typ
+val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
+
+val as_prim_sub : prim -> con_env -> typ -> unit
+val as_obj_sub : con_env -> typ -> sort * field list
+val as_array_sub : con_env -> typ -> typ
+val as_opt_sub : con_env -> typ -> typ
+val as_tup_sub : con_env -> typ -> typ list
+val as_unit_sub : con_env -> typ -> unit
+val as_pair_sub : con_env -> typ -> typ * typ
+val as_func_sub : con_env -> typ -> bind list * typ * typ
+val as_mono_func_sub : con_env -> typ -> typ * typ
+val as_async_sub : con_env -> typ -> typ
 
 val lookup_field : string -> field list -> typ
 
@@ -75,7 +95,6 @@ val lookup_field : string -> field list -> typ
 (* Normalization and Classification *)
 
 val normalize : con_env -> typ -> typ
-val nonopt : con_env -> typ -> typ
 val structural : con_env -> typ -> typ
 
 exception Unavoidable of con

@@ -276,12 +276,11 @@ let rec check_lit env t lit at =
     lit := Word64Lit (check_word64 at s)
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) -> 
     lit := FloatLit (check_float at s)
-  | T.Prim t', _ when t' = infer_lit env lit at ->
-    ()
   | t, _ ->
-    error at "literal of type\n  %s\ndoes not have expected type\n  %s"
-      (T.string_of_typ (T.Prim (infer_lit env lit at)))
-      (T.string_of_typ_expand env.cons t)
+    let t' = T.Prim (infer_lit env lit at) in
+    if not (T.sub env.cons t' t) then
+      error at "literal of type\n  %s\ndoes not have expected type\n  %s"
+        (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
 
 
 (* Expressions *)
@@ -361,7 +360,7 @@ and infer_exp' env exp : T.typ =
   | ProjE (exp1, n) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let ts = T.as_tup env.cons t1 in
+      let ts = T.as_tup_sub env.cons t1 in
       match List.nth_opt ts n with
       | Some t -> t
       | None ->
@@ -376,7 +375,7 @@ and infer_exp' env exp : T.typ =
   | DotE (exp1, id) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let _, tfs = T.as_obj env.cons t1 in
+      let _, tfs = T.as_obj_sub env.cons t1 in
       match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
@@ -409,7 +408,7 @@ and infer_exp' env exp : T.typ =
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let t = T.as_array env.cons t1 in
+      let t = T.as_array_sub env.cons t1 in
       if not env.pre then check_exp env T.nat exp2;
       t
     with Invalid_argument _ ->
@@ -419,7 +418,7 @@ and infer_exp' env exp : T.typ =
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let tbs, t2, t = T.as_func env.cons t1 in
+      let tbs, t2, t = T.as_func_sub env.cons t1 in
       let ts = check_typ_bounds env tbs typs exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
@@ -486,11 +485,11 @@ and infer_exp' env exp : T.typ =
     if not env.pre then begin
       let t1 = infer_exp_structural env exp1 in
       (try
-        let _, tfs = T.as_obj env.cons t1 in
+        let _, tfs = T.as_obj_sub env.cons t1 in
         let t = T.lookup_field "next" tfs in
-        let t1, t2 = T.as_mono_func env.cons t in
-        T.as_unit env.cons t1;
-        let t2' = T.as_opt env.cons t2 in
+        let t1, t2 = T.as_mono_func_sub env.cons t in
+        T.as_unit_sub env.cons t1;
+        let t2' = T.as_opt_sub env.cons t2 in
         let ve = check_pat_exhaustive env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ ->
@@ -536,7 +535,7 @@ and infer_exp' env exp : T.typ =
       error exp.at "misplaced await";
     let t1 = infer_exp_structural env exp1 in
     (try
-      T.as_async env.cons t1
+      T.as_async_sub env.cons t1
     with Invalid_argument _ ->
       error exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand env.cons t1)
@@ -575,87 +574,39 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env t exp =
-  match exp.it with
-  | PrimE s ->
-    (match T.nonopt env.cons t with
-    | T.Func _ -> ()
-    | _ ->
-      error exp.at "primitive cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | LitE lit ->
+  match exp.it, T.as_opt_sub env.cons t with
+  | PrimE s, T.Func _ ->
+    ()
+  | LitE lit, _ ->
     check_lit env t lit exp.at
-  | UnE (op, exp1) ->
-    if not (Operator.has_unop t op) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    check_exp env t exp1
-  | BinE (exp1, op, exp2) ->
-    if not (Operator.has_binop t op) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    check_exp env t exp1;
-    check_exp env t exp2
-  | RelE (exp1, op, exp2) ->
-    if not (T.sub env.cons t T.bool) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    ignore (infer_exp env exp)
-  | TupE exps ->
-    (match T.nonopt env.cons t with
-    | T.Tup ts when List.length ts = List.length exps ->
-      List.iter2 (check_exp env) ts exps
-    | _ ->
-      error exp.at "%s expression cannot produce expected type\n  %s"
-        (if exps = [] then "empty" else "tuple")
-        (T.string_of_typ_expand env.cons t)
-    )
-  | OptE exp1 ->
-    (match T.normalize env.cons t with
-    | T.Opt t1 ->
-      check_exp env t1 exp1
-    | _ ->
-      error exp.at "option expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | ObjE (sort, id, fields) ->
-    (match T.nonopt env.cons t with
-    | T.Obj (s, tfs) when s = sort.it ->
-      ignore (check_obj env s tfs id fields exp.at)
-    | _ ->
-      error exp.at "%s expression cannot produce expected type\n  %s"
-        (if sort.it = T.Actor then "actor" else "object")
-        (T.string_of_typ_expand env.cons t)
-    )
-  | ArrayE exps ->
-    (match T.nonopt env.cons t with
-    | T.Array t1 ->
-      List.iter (check_exp env (T.as_immut t1)) exps
-    | _ ->
-      error exp.at "array expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | AsyncE exp1 ->
-    (match T.nonopt env.cons t with
-    | T.Async t ->
-      let env' = {env with labs = T.Env.empty; rets = Some t; async = true} in
-      check_exp env' t exp1
-    | _ ->
-      error exp.at "async expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | BlockE decs ->
+  | UnE (op, exp1), t' when Operator.has_unop t' op ->
+    check_exp env t' exp1
+  | BinE (exp1, op, exp2), t' when Operator.has_binop t' op ->
+    check_exp env t' exp1;
+    check_exp env t' exp2
+  | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+    List.iter2 (check_exp env) ts exps
+  | OptE exp1, t' when T.is_opt t ->
+    check_exp env t' exp1
+  | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
+    ignore (check_obj env s tfs id fields exp.at)
+  | ArrayE exps, T.Array t' ->
+    List.iter (check_exp env (T.as_immut t')) exps
+  | AsyncE exp1, T.Async t' ->
+    let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
+    check_exp env' t' exp1
+  | BlockE decs, _ ->
     ignore (check_block env t decs exp.at)
-  | IfE (exp1, exp2, exp3) ->
+  | IfE (exp1, exp2, exp3), _ ->
     check_exp env T.bool exp1;
     check_exp env t exp2;
     check_exp env t exp3
-  | SwitchE (exp1, cases) ->
+  | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_structural env exp1 in
     check_cases env t1 t cases;
     if not (Coverage.check_cases cases) then
       warn exp.at "the cases in this switch do not cover all possible values";
-  | LoopE _ | BreakE _ | RetE _ ->
+  | (LoopE _ | BreakE _ | RetE _), _ ->
     (* TBR: remove once we have T.Bottom and subtyping? *)
     ignore (infer_exp env exp)
   | _ ->
@@ -813,7 +764,7 @@ and check_pat' env t pat : val_env =
     T.Env.empty
   | TupP pats ->
     (try
-      let ts = T.as_tup env.cons t in
+      let ts = T.as_tup t in
       check_pats env ts pats T.Env.empty pat.at
     with Invalid_argument _ ->
       error pat.at "tuple pattern cannot consume expected type\n  %s"
@@ -821,7 +772,7 @@ and check_pat' env t pat : val_env =
     )
   | OptP pat1 ->
     (try
-      let t1 = T.as_opt env.cons t in
+      let t1 = T.as_opt t in
       check_pat env t1 pat1
     with Invalid_argument _ ->
       error pat.at "option pattern cannot consume expected type\n  %s"

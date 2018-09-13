@@ -205,11 +205,6 @@ let rec normalize env = function
   | Mut t -> Mut (normalize env t)
   | t -> t
 
-let nonopt env t =
-  match normalize env t with
-  | Opt t -> normalize env t
-  | t -> t
-
 let rec structural env = function
   | Con (con, ts) ->
     (match Con.Env.find_opt con env with
@@ -222,33 +217,51 @@ let rec structural env = function
 
 (* Projections *)
 
+let is_prim p = function Prim p' -> p = p' | _ -> false
+let is_obj = function Obj _ -> true | _ -> false
+let is_array = function Array _ -> true | _ -> false
+let is_opt = function Opt _ -> true | _ -> false
+let is_tup = function Tup _ -> true | _ -> false
+let is_unit = function Tup [] -> true | _ -> false
+let is_pair = function Tup [_; _] -> true | _ -> false
+let is_func = function Func _ -> true | _ -> false
+let is_async = function Async _ -> true | _ -> false
+let is_mut = function Mut _ -> true | _ -> false
+
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
-let as_prim p env t = match structural env t with
-  Prim p' when p = p' -> () | _ -> invalid "as_prim"
-let rec as_obj env t = match structural env t with
-  Obj (s, tfs) -> s, tfs | Array t -> as_obj env (array_obj t) | _ -> invalid "as_obj"
-let as_array env t = match structural env t with
-  Array t -> t | _ -> invalid "as_array"
-let as_opt env t = match structural env t with
-  Opt t -> t | t -> t
-let as_tup env t = match structural env t with
-  Tup ts -> ts | _ -> invalid "as_tup"
-let as_unit env t = match structural env t with
-  Tup [] -> () | _ -> invalid "as_unit"
-let as_pair env t = match structural env t with
-  Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
-let as_func env t = match structural env t with
-  Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func"
-let as_mono_func env t = match structural env t with
-  Func ([], t1, t2) -> t1, t2 | _ -> invalid "as_func"
-let as_async env t = match structural env t with
-  Async t -> t | _ -> invalid "as_async"
+let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
+let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
+let as_array = function Array t -> t | _ -> invalid "as_array"
+let as_opt = function Opt t -> t | _ -> invalid "as_opt"
+let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
+let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
+let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
+let as_func = function Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func"
+let as_async = function Async t -> t | _ -> invalid "as_async"
+let as_mut = function Mut t -> t | _ -> invalid "as_mut"
+let as_immut = function Mut t -> t | t -> t
 
-let as_mut t = match t with
-  Mut t -> t | _ -> invalid "as_mut"
-let as_immut t = match t with
-  Mut t -> t | t -> t
+let as_prim_sub p env t = match structural env t with
+  Prim p' when p = p' -> () | _ -> invalid "as_prim_sub"
+let rec as_obj_sub env t = match structural env t with
+  Obj (s, tfs) -> s, tfs | Array t -> as_obj_sub env (array_obj t) | _ -> invalid "as_obj_sub"
+let as_array_sub env t = match structural env t with
+  Array t -> t | _ -> invalid "as_array_sub"
+let as_opt_sub env t = match structural env t with
+  Opt t -> t | t -> t
+let as_tup_sub env t = match structural env t with
+  Tup ts -> ts | _ -> invalid "as_tup_sub"
+let as_unit_sub env t = match structural env t with
+  Tup [] -> () | _ -> invalid "as_unit_sub"
+let as_pair_sub env t = match structural env t with
+  Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair_sub"
+let as_func_sub env t = match structural env t with
+  Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func_sub"
+let as_mono_func_sub env t = match structural env t with
+  Func ([], t1, t2) -> t1, t2 | _ -> invalid "as_func_sub"
+let as_async_sub env t = match structural env t with
+  Async t -> t | _ -> invalid "as_async_sub"
 
 let lookup_field name' tfs =
   match List.find_opt (fun {name; _} -> name = name') tfs with
