@@ -177,43 +177,44 @@ let _swap env : instr list = (* swaps top elements *)
 
 (* Heap and allocations *)
 
-(* Until we have GC, we simply keep track of the end of the used heap
-   in this global, and bump it if we allocate stuff.
-   Memory addresses are 32 bit (I32Type).
-   *)
-let heap_ptr_global = nr
-      { gtype = GlobalType (I32Type, Mutable);
-        value = nr compile_zero }
-let heap_ptr : var = nr 0l
-
-let _alloc env : instr list = (* expect the size on the stack, returns the pointer *)
-  [ nr (SetLocal (E.tmp_local env));
-    nr (GetGlobal heap_ptr);
-    nr (GetGlobal heap_ptr);
-    nr (GetLocal (E.tmp_local env));
-    nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
-    nr (SetGlobal heap_ptr)]
-
-let allocn (n : int32) : instr list =
-  (* expect the size (in words), returns the pointer *)
-  [ nr (GetGlobal heap_ptr);
-    nr (GetGlobal heap_ptr);
-    nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l n))));
-    nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
-    nr (SetGlobal heap_ptr)]
-
-let load_field (i : int32) : instr list =
-  [ nr (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul 4l i; sz = None}) ]
 
 let load_ptr : instr list =
   [ nr (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ]
 
-let store_field (i : int32) : instr list =
-  [ nr (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul 4l i; sz = None}) ]
-
 let store_ptr : instr list =
   [ nr (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ]
 
+module Heap = struct
+
+  (* General heap object functionalty (allocation, setting fields, reading fields) *)
+
+  (* Until we have GC, we simply keep track of the end of the used heap
+     in this global, and bump it if we allocate stuff.
+     Memory addresses are 32 bit (I32Type).
+     *)
+  let word_size = 4l
+
+  let globals = [ nr
+      { gtype = GlobalType (I32Type, Mutable);
+        value = nr compile_zero } ]
+
+  let heap_ptr : var = nr 0l
+
+  let alloc (n : int32) : instr list =
+    (* expect the size (in words), returns the pointer *)
+    [ nr (GetGlobal heap_ptr);
+      nr (GetGlobal heap_ptr) ] @
+    compile_const (Wasm.I32.mul word_size n) @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+      nr (SetGlobal heap_ptr)]
+
+  let load_field (i : int32) : instr list =
+    [ nr (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None}) ]
+
+  let store_field (i : int32) : instr list =
+    [ nr (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None}) ]
+
+end (* Heap *)
 
 module Tuple = struct
   (* A tuple is a heap object with a statically known number of elements.
@@ -226,7 +227,7 @@ module Tuple = struct
     let n = List.length element_instructions in
 
     let i = E.add_anon_local env I32Type in
-    allocn (Wasm.I32.of_int_u n) @
+    Heap.alloc (Wasm.I32.of_int_u n) @
     [ nr (SetLocal (nr i)) ] @
 
     let compile_self = [ nr (GetLocal (nr i)) ] in
@@ -234,7 +235,7 @@ module Tuple = struct
     let init_elem idx instrs : Wasm.Ast.instr list =
       compile_self @
       instrs compile_self @
-      store_field (Wasm.I32.of_int_u idx)
+      Heap.store_field (Wasm.I32.of_int_u idx)
     in
     List.concat (List.mapi init_elem element_instructions) @
 
@@ -263,10 +264,10 @@ module Array = struct
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
 
   let common_funcs env =
-    let get_array_object = [ nr (GetLocal (nr 0l)) ] @ load_field 1l in
+    let get_array_object = [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l in
     let get_single_arg =   [ nr (GetLocal (nr 1l)) ] in
-    let get_first_arg =    [ nr (GetLocal (nr 1l)) ] @ load_field 0l in
-    let get_second_arg =   [ nr (GetLocal (nr 1l)) ] @ load_field 1l in
+    let get_first_arg =    [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 0l in
+    let get_second_arg =   [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 1l in
 
     let get_fun = nr {
          ftype = nr E.unary_fun_ty_i;
@@ -293,7 +294,7 @@ module Array = struct
          locals = [];
          body =
             get_array_object @
-            load_field 3l
+            Heap.load_field 3l
        } in
     let i = E.add_fun env get_fun in
     assert (Int32.to_int i == Int32.to_int array_get_funid);
@@ -400,7 +401,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | AssignE (e1,e2) ->
      compile_lexp env e1 @
      compile_exp env e2 @
-     store_field 0l @
+     Heap.store_field 0l @
      compile_unit
   | LitE l_ref ->
      compile_lit !l_ref
@@ -470,7 +471,7 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      (* Allocate memory *)
      let ri = E.add_anon_local env I32Type in
-     allocn n @
+     Heap.alloc n @
      [ nr (SetLocal (nr ri)) ] @
 
      (* Bind the fields in the envrionment *)
@@ -489,16 +490,16 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      (* An extra indirection for the 'this' pointer *)
      let (env2, ti) = E.add_local env1 name.it in
-     allocn 1l @
+     Heap.alloc 1l @
      [ nr (TeeLocal (nr ti)) ] @
      [ nr (GetLocal (nr ri)) ] @
-     store_field 0l @
+     Heap.store_field 0l @
 
      (* Write all the fields *)
      let init_field (i, e) : Wasm.Ast.instr list =
         [ nr (GetLocal (nr ri)) ] @
 	compile_exp env2 e @
-        store_field i
+        Heap.store_field i
      in
      List.concat (List.map init_field fis) @
 
@@ -520,7 +521,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      code2 @
      (* And now get the table index *)
      [ nr (GetLocal (nr i)) ] @
-     load_field 0l @
+     Heap.load_field 0l @
      (* All done: Call! *)
      [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
 
@@ -622,7 +623,7 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
 
   | VarP name ->
       let (env1,i) = E.add_local env name.it; in
-      let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
+      let alloc_code = Heap.alloc 1l @ [ nr (SetLocal (nr i)) ] in
       let code =
         [ nr (SetLocal (E.tmp_local env));
           nr (GetLocal (nr i));
@@ -637,7 +638,7 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 @ alloc_code2,
-            dup env @ load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
+            dup env @ Heap.load_field (Wasm.I32.of_int_u i) @ code1 @ code2) in
       go 0 ps env
 
   | AltP (p1, p2) ->
@@ -706,7 +707,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
   | VarD (name, e) ->
       let (pre_env1, i) = E.add_local pre_env name.it in
 
-      let alloc_code = allocn 1l @ [ nr (SetLocal (nr i)) ] in
+      let alloc_code = Heap.alloc 1l @ [ nr (SetLocal (nr i)) ] in
 
       ( pre_env1, alloc_code, fun env ->
         let code1 = compile_exp env e in
@@ -723,11 +724,11 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
 
       let alloc_code =
         (* Allocate a heap object for the function *)
-        allocn (Wasm.I32.of_int_u (1 + List.length captured)) @
+        Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) @
         [ nr (SetLocal (nr li)) ] @
 
         (* Allocate an extra indirection for the variable *)
-        allocn 1l @
+        Heap.alloc 1l @
         [ nr (TeeLocal (nr vi)) ] @
         [ nr (GetLocal (nr li)) ] @
         store_ptr
@@ -743,12 +744,12 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         (* Store the function number: *)
         [ nr (GetLocal (nr li));
           nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] @ (* Store function number *)
-        store_field 0l @
+        Heap.store_field 0l @
         (* Store all captured values *)
         let store_capture i v =
           [ nr (GetLocal (nr li)) ] @
           get_var_loc env v @
-          store_field (Wasm.I32.of_int_u (1+i)) in
+          Heap.store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
         if last then [ nr (GetLocal (nr li)) ] else [])
 
@@ -779,7 +780,7 @@ and compile_func env captured p (e : exp) : func =
   (* Load the environment *)
   let load_capture i v =
       [ nr (GetLocal (E.unary_closure_local env2)) ] @
-      load_field (Wasm.I32.of_int_u (1+i)) @
+      Heap.load_field (Wasm.I32.of_int_u (1+i)) @
       set_var_loc env2 v in
   let closure_code = List.concat (List.mapi load_capture captured) in
   (* Destruct the argument *)
@@ -828,7 +829,7 @@ let compile (prog  : Syntax.prog) : unit =
         offset = nr compile_zero;
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
       start = Some (nr i);
-      globals = [ heap_ptr_global ];
+      globals = Heap.globals;
       memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     };
   in
