@@ -33,11 +33,13 @@ let ob : {set : (Nat, Nat) -> ()} = b;
 assert(oa.get(2) == 42);
 ob.set(2, 22);
 
-/*
 func opt_eq(x : Nat?, y : Nat) : Bool {
   switch x { case null { false };
              case (i?) { i == y } }
 };
+
+var emptyit = ([]: Nat[]).keys();
+switch (emptyit.next()) { case null {}; case _ {assert false} };
 
 var it = a.keys();
 assert (opt_eq(it.next(), 0));
@@ -45,7 +47,11 @@ assert (opt_eq(it.next(), 1));
 assert (opt_eq(it.next(), 2));
 switch (it.next()) { case null {}; case _ {assert false} };
 
-*/
+var it2 = a.vals();
+assert (opt_eq(it2.next(), 1));
+assert (opt_eq(it2.next(), 2));
+assert (opt_eq(it2.next(), 42));
+switch (it2.next()) { case null {}; case _ {assert false} };
 
 /*
 var i = 0;

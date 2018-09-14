@@ -73,7 +73,7 @@ module E = struct
     NameEnv.add "set" 1l (
     NameEnv.add "len" 2l (
     NameEnv.add "keys" 3l (
-    NameEnv.add "vars" 4l (
+    NameEnv.add "vals" 4l (
     NameEnv.empty
     )))))
 
@@ -256,6 +256,9 @@ end (* Tuple *)
 
 module Func = struct
 
+  let load_closure i = [ nr (GetLocal (nr 0l)) ] @ Heap.load_field i
+  let load_argument  = [ nr (GetLocal (nr 1l)) ]
+
   let unary_of_body env mk_body =
     (* Fresh set of locals *)
     (* Reserve two locals for closure and argument *)
@@ -344,10 +347,10 @@ module Array = struct
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
 
   let common_funcs env =
-    let get_array_object = [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l in
-    let get_single_arg =   [ nr (GetLocal (nr 1l)) ] in
-    let get_first_arg =    [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 0l in
-    let get_second_arg =   [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 1l in
+    let get_array_object = Func.load_closure 1l in
+    let get_single_arg =   Func.load_argument in
+    let get_first_arg =    Func.load_argument @ Heap.load_field 0l in
+    let get_second_arg =   Func.load_argument @ Heap.load_field 1l in
 
     let get_fun = Func.unary_of_body env (fun env1 ->
             get_array_object @
@@ -367,17 +370,18 @@ module Array = struct
             get_array_object @
             Heap.load_field len_field
        ) in
-    let keys_next_fun = Func.unary_of_body env (fun env1 ->
+
+    let mk_next_fun mk_code = Func.unary_of_body env (fun env1 ->
             let i = E.add_anon_local env1 I32Type in
             (* Get pointer to counter from closure *)
-            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+            Func.load_closure 1l @
             (* Read pointer *)
             load_ptr @
             [ nr (SetLocal (nr i)) ] @
 
-            [ nr (GetLocal (nr 1l)) ] @
+            [ nr (GetLocal (nr i)) ] @
             (* Get pointer to array from closure *)
-            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
+            Func.load_closure 2l @
             (* Get length *)
             Heap.load_field len_field @
             [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
@@ -392,11 +396,11 @@ module Array = struct
               compile_const 1l @
               [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
               store_ptr @
-              (* Return old value *)
-              [ nr (GetLocal (nr i)) ]
+              (* Return stuff *)
+              mk_code (Func.load_closure 2l) [ nr (GetLocal (nr i)) ]
             )) ]
        ) in
-    let keys_fun = Func.unary_of_body env (fun env1 ->
+    let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* counter *)
             let i = E.add_anon_local env1 I32Type in
             Tuple.lit env1 [ compile_zero ] @
@@ -405,61 +409,30 @@ module Array = struct
             (* next function *)
             let ni = E.add_anon_local env1 I32Type in
             Tuple.lit env1 [
-              compile_const array_keys_next_funid;
+              compile_const next_funid;
               [ nr (GetLocal (nr i)) ];
               get_array_object ] @
             [ nr (SetLocal (nr ni)) ] @
 
             Object.lit env1 (nr__ "WHATTOPUTHERE") [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
        ) in
-    let vals_next_fun = Func.unary_of_body env (fun env1 ->
-            let i = E.add_anon_local env1 I32Type in
-            (* Get pointer to counter from closure *)
-            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
-            (* Read pointer *)
-            load_ptr @
-            [ nr (SetLocal (nr i)) ] @
 
-            [ nr (GetLocal (nr 1l)) ] @
-            (* Get pointer to array from closure *)
-            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
-            (* Get length *)
-            Heap.load_field len_field @
-            [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
-            [ nr (If ([I32Type],
-              (* Then *)
-              compile_null,
-              (* Else *)
-              (* Get point to counter from closure *)
-              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
-              (* Store increased counter *)
-              [ nr (GetLocal (nr i)) ] @
-              compile_const 1l @
-              [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
-              store_ptr @
+
+    let keys_next_fun = mk_next_fun (fun get_array get_i ->
+              (* Return old value *)
+              get_i
+            ) in
+    let keys_fun = mk_iterator array_keys_next_funid in
+
+    let vals_next_fun = mk_next_fun (fun get_array get_i ->
               (* Lookup old value *)
-              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
-              [ nr (GetLocal (nr i)) ] @
+              get_array @
+              get_i @
               idx @
               load_ptr
-             )) ]
-       ) in
-    let vals_fun = Func.unary_of_body env (fun env1 ->
-            (* counter *)
-            let i = E.add_anon_local env1 I32Type in
-            Tuple.lit env1 [ compile_zero ] @
-            [ nr (SetLocal (nr i)) ] @
+            ) in
+    let vals_fun = mk_iterator array_vals_next_funid in
 
-            (* next function *)
-            let ni = E.add_anon_local env1 I32Type in
-            Tuple.lit env1 [
-              compile_const array_vals_next_funid;
-              [ nr (GetLocal (nr i)) ];
-              get_array_object ] @
-            [ nr (SetLocal (nr ni)) ] @
-
-            Object.lit env1 (nr__ "WHATTOPUTHERE") [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
-       ) in
     let i = E.add_fun env get_fun in
     assert (Int32.to_int i == Int32.to_int array_get_funid);
 
