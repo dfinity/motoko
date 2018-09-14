@@ -1,67 +1,13 @@
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE revrange) (TupE (LitE (NatLit 1)) (LitE (NatLit 2))))
-  (BlockE (ExpD (AssertE (LitE (BoolLit false)))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE revrange) (TupE (LitE (NatLit 0)) (LitE (NatLit 0))))
-  (BlockE (ExpD (AssertE (RelE (VarE j) EqOp (LitE (NatLit 0))))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE revrange) (TupE (LitE (NatLit 3)) (LitE (NatLit 3))))
-  (BlockE (ExpD (AssertE (RelE (VarE j) EqOp (LitE (NatLit 3))))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE revrange) (TupE (LitE (NatLit 10)) (LitE (NatLit 0))))
-  (BlockE
-    (ExpD
-      (AssertE (RelE (VarE j) EqOp (BinE (VarE i) SubOp (LitE (NatLit 1)))))
-    )
-    (ExpD (AssignE (VarE i) (BinE (VarE i) SubOp (LitE (NatLit 1)))))
-  )
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE revrange) (TupE (LitE (NatLit 30)) (LitE (NatLit 2))))
-  (BlockE
-    (ExpD (AssertE (RelE (VarE j) EqOp (VarE i))))
-    (ExpD (AssignE (VarE i) (BinE (VarE i) SubOp (LitE (NatLit 1)))))
-  )
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE range) (TupE (LitE (NatLit 3)) (LitE (NatLit 2))))
-  (BlockE (ExpD (AssertE (LitE (BoolLit false)))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE range) (TupE (LitE (NatLit 0)) (LitE (NatLit 0))))
-  (BlockE (ExpD (AssertE (RelE (VarE j) EqOp (LitE (NatLit 0))))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE range) (TupE (LitE (NatLit 3)) (LitE (NatLit 3))))
-  (BlockE (ExpD (AssertE (RelE (VarE j) EqOp (LitE (NatLit 3))))))
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE range) (TupE (LitE (NatLit 3)) (LitE (NatLit 10))))
-  (BlockE
-    (ExpD (AssertE (RelE (VarE j) EqOp (VarE i))))
-    (ExpD (AssignE (VarE i) (BinE (VarE i) AddOp (LitE (NatLit 1)))))
-  )
-)
-compile_exp: (ForE
-  (VarP j)
-  (CallE (VarE range) (TupE (LitE (NatLit 0)) (LitE (NatLit 100))))
-  (BlockE
-    (ExpD (AssertE (RelE (VarE j) EqOp (VarE i))))
-    (ExpD (AssignE (VarE i) (BinE (VarE i) AddOp (LitE (NatLit 1)))))
-  )
-)
+Could not find revrange
+Could not find revrange
+Could not find revrange
+Could not find revrange
+Could not find revrange
+Could not find range
+Could not find range
+Could not find range
+Could not find range
+Could not find range
 Could not find abs
 Could not find ignore
 Could not find ignore

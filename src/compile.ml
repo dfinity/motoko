@@ -269,6 +269,26 @@ module Func = struct
          body = code
        }
 
+  (* Expect the function closure and the argument on the stack *)
+  let call env =
+   (* Pop the argument *)
+   let i = E.add_anon_local env I32Type in
+   [ nr (SetLocal (nr i)) ] @
+
+   (* Pop the closure pointer *)
+   let fi = E.add_anon_local env I32Type in
+   [ nr (SetLocal (nr fi)) ] @
+
+   (* First arg: The closure pointer *)
+   [ nr (GetLocal (nr fi)) ] @
+   (* Second arg: The argument *)
+   [ nr (GetLocal (nr i)) ] @
+   (* And now get the table index *)
+   [ nr (GetLocal (nr fi)) ] @
+   Heap.load_field 0l @
+   (* All done: Call! *)
+   [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+
 end (* Func *)
 
 module Object = struct
@@ -318,6 +338,10 @@ module Object = struct
      let i = E.field_to_index env f in
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
+
+  let load_idx env f =
+     let i = E.field_to_index env f in
+     Heap.load_field i
 
 end (* Object *)
 
@@ -414,7 +438,8 @@ module Array = struct
               get_array_object ] @
             [ nr (SetLocal (nr ni)) ] @
 
-            Object.lit env1 (nr__ "WHATTOPUTHERE") [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
+            Object.lit env1 (nr__ "WHATTOPUTHERE")
+              [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
        ) in
 
 
@@ -608,7 +633,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | RetE e -> compile_exp env e @ [ nr Return ]
   | OptE e -> compile_exp env e (* Subtype! *)
 
-  | TupE [] -> compile_zero
+  | TupE [] -> compile_unit
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE (_, name, fs) ->
@@ -616,24 +641,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
      Object.lit env name fs'
   | CallE (e1, _, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-
-     (* Get the closure pointer *)
-     let i = E.add_anon_local env I32Type in
-     code1 @
-     [ nr (SetLocal (nr i)) ] @
-
-     (* First arg: The closure pointer *)
-     [ nr (GetLocal (nr i)) ] @
-     (* Second arg: The argument *)
-     code2 @
-     (* And now get the table index *)
-     [ nr (GetLocal (nr i)) ] @
-     Heap.load_field 0l @
-     (* All done: Call! *)
-     [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
-
+     compile_exp env e1 @
+     compile_exp env e2 @
+     Func.call env
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -660,6 +670,36 @@ and compile_exp (env : E.t) exp = match exp.it with
           ] in
       let code2 = go env cs in
       code1 @ [ nr (SetLocal (nr i)) ] @ code2
+
+  | ForE (p, e1, e2) ->
+     let code1 = compile_exp env e1 in
+     let (env1, alloc_code, code2) = compile_mono_pat (E.inc_depth env) p in
+     let code3 = compile_exp env1 e2 in
+
+     let i = E.add_anon_local env I32Type in
+     (* Store the iterator *)
+     code1 @
+     [ nr (SetLocal (nr i)) ] @
+
+     [ nr (Loop ([],
+       [ nr (GetLocal (nr i)) ] @
+       Object.load_idx env1 (nr__ "next") @
+       compile_unit @
+       Func.call env1 @
+       let oi = E.add_anon_local env I32Type in
+       [ nr (SetLocal (nr oi)) ] @
+
+       (* Check for null *)
+       [ nr (GetLocal (nr oi)) ] @
+       compile_null @
+       [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+       [ nr (If ([],
+          [],
+          alloc_code @ [ nr (GetLocal (nr oi)) ] @ code2 @ code3 @
+          [ nr Drop ; nr (Br (nr 1l)) ]
+       ))]
+     ))] @
+     compile_unit
 
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
