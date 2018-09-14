@@ -84,7 +84,8 @@ let assign_op lhs rhs_f at =
 %nonassoc ELSE WHILE
 
 %right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
-%left IS COLON
+%left COLON
+%left IS
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -343,7 +344,7 @@ exp_bin :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
     { OrE(e1, e2) @? at $sloc }
-  | e1=exp_bin IS e2=exp
+  | e1=exp_bin IS e2=exp_bin
     { IsE(e1, e2) @? at $sloc }
   | e=exp_bin COLON t=typ
     { AnnotE(e, t) @? at $sloc }
