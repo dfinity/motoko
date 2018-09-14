@@ -245,6 +245,56 @@ module Tuple = struct
 
 end (* Tuple *)
 
+module Object = struct
+
+  let lit env name fs =
+     (* Find largest index, to know the size of the heap representation *)
+     let max a b = if Int32.compare a b >= 0 then a else b in
+     let n = Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs)) in
+
+     (* Allocate memory *)
+     let ri = E.add_anon_local env I32Type in
+     Heap.alloc n @
+     [ nr (SetLocal (nr ri)) ] @
+
+     (* Bind the fields in the envrionment *)
+     (* We could omit that if we extend E.local_vars_env to also have an offset,
+        and just bind all of them to 'ri' *)
+     let mk_field_ptr (env, code) (id, mk_is) =
+       let (env', fi) = E.add_local env id.it in
+       let offset = Wasm.I32.mul 4l (E.field_to_index env id) in
+       let code' = [ nr (GetLocal (nr ri));
+                     nr (Wasm.Ast.Const (nr (Wasm.Values.I32 offset)));
+                     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
+                     nr (SetLocal (nr fi)); ] in
+       (env', code @ code') in
+     let (env1, field_code) = List.fold_left mk_field_ptr (env, []) fs in
+     field_code @
+
+     (* An extra indirection for the 'this' pointer *)
+     let (env2, ti) = E.add_local env1 name.it in
+     Tuple.lit env1 [ [nr (GetLocal (nr ri))] ] @
+     [ nr (SetLocal (nr ti)) ] @
+
+     (* Write all the fields *)
+     let init_field (id, mk_is) : Wasm.Ast.instr list =
+        let i = E.field_to_index env id in
+        [ nr (GetLocal (nr ri)) ] @
+	mk_is env2 @
+        Heap.store_field i
+     in
+     List.concat (List.map init_field fs) @
+
+     (* Return the pointer to the object *)
+     [ nr (GetLocal (nr ri)) ]
+
+  let idx env f =
+     let i = E.field_to_index env f in
+     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ] @
+     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
+
+end (* Object *)
+
 module Array = struct
   let header_size = 4l
   let element_size = 4l
@@ -323,7 +373,8 @@ module Array = struct
         compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
 
-end
+end (* Array *)
+
 
 (* The actual compiler code that looks at the AST *)
 
@@ -381,10 +432,8 @@ and compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e2 @ (* idx *)
      Array.idx
   | DotE (e, f) ->
-     let i = E.field_to_index env f in
      compile_exp env e @
-     [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ] @
-     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
+     Object.idx env f
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
 (* compile_exp returns an *value*.
@@ -461,51 +510,10 @@ and compile_exp (env : E.t) exp = match exp.it with
 
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
-  | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
-     (* Resolve fields to index *)
-     let fis = List.map (fun (f : exp_field) -> (E.field_to_index env (f.it.id), f.it.exp)) fs in
-
-     (* Find largest index, to know the size of the heap representation *)
-     let max a b = if Int32.compare a b >= 0 then a else b in
-     let n = Int32.add 1l (List.fold_left max 0l (List.map (fun (f : exp_field) -> E.field_to_index env (f.it.id)) fs)) in
-
-     (* Allocate memory *)
-     let ri = E.add_anon_local env I32Type in
-     Heap.alloc n @
-     [ nr (SetLocal (nr ri)) ] @
-
-     (* Bind the fields in the envrionment *)
-     (* We could omit that if we extend E.local_vars_env to also have an offset,
-        and just bind all of them to 'ri' *)
-     let mk_field_ptr (env, code) (f : exp_field) =
-       let (env', fi) = E.add_local env f.it.id.it in
-       let offset = Wasm.I32.mul 4l (E.field_to_index env (f.it.id)) in
-       let code' = [ nr (GetLocal (nr ri));
-                     nr (Wasm.Ast.Const (nr (Wasm.Values.I32 offset)));
-                     nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
-                     nr (SetLocal (nr fi)); ] in
-       (env', code @ code') in
-     let (env1, field_code) = List.fold_left mk_field_ptr (env, []) fs in
-     field_code @
-
-     (* An extra indirection for the 'this' pointer *)
-     let (env2, ti) = E.add_local env1 name.it in
-     Heap.alloc 1l @
-     [ nr (TeeLocal (nr ti)) ] @
-     [ nr (GetLocal (nr ri)) ] @
-     Heap.store_field 0l @
-
-     (* Write all the fields *)
-     let init_field (i, e) : Wasm.Ast.instr list =
-        [ nr (GetLocal (nr ri)) ] @
-	compile_exp env2 e @
-        Heap.store_field i
-     in
-     List.concat (List.map init_field fis) @
-
-     (* Return the pointer to the object *)
-     [ nr (GetLocal (nr ri)) ]
-
+  | ObjE (_, name, fs) ->
+     (* TODO: This treats actors like any old object *)
+     let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
+     Object.lit env name fs'
   | CallE (e1, _, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -728,10 +736,8 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         [ nr (SetLocal (nr li)) ] @
 
         (* Allocate an extra indirection for the variable *)
-        Heap.alloc 1l @
-        [ nr (TeeLocal (nr vi)) ] @
-        [ nr (GetLocal (nr li)) ] @
-        store_ptr
+        Tuple.lit pre_env1 [ [nr (GetLocal (nr li))] ] @
+        [ nr (SetLocal (nr vi)) ]
       in
 
       ( pre_env1, alloc_code, fun env ->
