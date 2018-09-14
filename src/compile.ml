@@ -245,6 +245,20 @@ module Tuple = struct
 
 end (* Tuple *)
 
+module Func = struct
+
+  let unary_of_body env mk_body =
+    (* Fresh set of locals *)
+    (* Reserve two locals for closure and argument *)
+    let env1 = E.mk_fun_env env 2l in
+    let code = mk_body env1 in
+    nr { ftype = nr E.unary_fun_ty_i;
+         locals = E.get_locals env1;
+         body = code
+       }
+
+end (* Func *)
+
 module Object = struct
 
   let lit env name fs =
@@ -296,20 +310,27 @@ module Object = struct
 end (* Object *)
 
 module Array = struct
-  let header_size = 4l
+  let header_size = 6l
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let array_get_funid = 0l
-  let array_set_funid = 1l
-  let array_len_funid = 2l
+  let array_get_funid       = 0l
+  let array_set_funid       = 1l
+  let array_len_funid       = 2l
+  let array_keys_funid      = 3l
+  let array_keys_next_funid = 4l
+  let array_vals_funid      = 5l
+  let array_vals_next_funid = 6l
+
+  let len_field = 5l
+
 
   (* Expects on the stack the pointer to the array and the index
      of the element, and returns the point to the element. *)
   let idx =
     compile_const header_size @
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
-    compile_const element_size@
+    compile_const element_size @
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
 
@@ -319,33 +340,117 @@ module Array = struct
     let get_first_arg =    [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 0l in
     let get_second_arg =   [ nr (GetLocal (nr 1l)) ] @ Heap.load_field 1l in
 
-    let get_fun = nr {
-         ftype = nr E.unary_fun_ty_i;
-         locals = [];
-         body =
+    let get_fun = Func.unary_of_body env (fun env1 ->
             get_array_object @
             get_single_arg @ (* the index *)
             idx @
             load_ptr
-       } in
-    let set_fun = nr {
-         ftype = nr E.unary_fun_ty_i;
-         locals = [];
-         body =
+       ) in
+    let set_fun = Func.unary_of_body env (fun env1 ->
             get_array_object @
             get_first_arg @ (* the index *)
             idx @
             get_second_arg @ (* the value *)
             store_ptr @
             compile_unit
-       } in
-    let len_fun = nr {
-         ftype = nr E.unary_fun_ty_i;
-         locals = [];
-         body =
+       ) in
+    let len_fun = Func.unary_of_body env (fun env1 ->
             get_array_object @
-            Heap.load_field 3l
-       } in
+            Heap.load_field len_field
+       ) in
+    let keys_next_fun = Func.unary_of_body env (fun env1 ->
+            let i = E.add_anon_local env1 I32Type in
+            (* Get pointer to counter from closure *)
+            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+            (* Read pointer *)
+            load_ptr @
+            [ nr (SetLocal (nr i)) ] @
+
+            [ nr (GetLocal (nr 1l)) ] @
+            (* Get pointer to array from closure *)
+            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
+            (* Get length *)
+            Heap.load_field len_field @
+            [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+            [ nr (If ([I32Type],
+              (* Then *)
+              compile_null,
+              (* Else *)
+              (* Get point to counter from closure *)
+              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+              (* Store increased counter *)
+              [ nr (GetLocal (nr i)) ] @
+              compile_const 1l @
+              [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+              store_ptr @
+              (* Return old value *)
+              [ nr (GetLocal (nr i)) ]
+            )) ]
+       ) in
+    let keys_fun = Func.unary_of_body env (fun env1 ->
+            (* counter *)
+            let i = E.add_anon_local env1 I32Type in
+            Tuple.lit env1 [ compile_zero ] @
+            [ nr (SetLocal (nr i)) ] @
+
+            (* next function *)
+            let ni = E.add_anon_local env1 I32Type in
+            Tuple.lit env1 [
+              compile_const array_keys_next_funid;
+              [ nr (GetLocal (nr i)) ];
+              get_array_object ] @
+            [ nr (SetLocal (nr ni)) ] @
+
+            Object.lit env1 (nr__ "WHATTOPUTHERE") [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
+       ) in
+    let vals_next_fun = Func.unary_of_body env (fun env1 ->
+            let i = E.add_anon_local env1 I32Type in
+            (* Get pointer to counter from closure *)
+            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+            (* Read pointer *)
+            load_ptr @
+            [ nr (SetLocal (nr i)) ] @
+
+            [ nr (GetLocal (nr 1l)) ] @
+            (* Get pointer to array from closure *)
+            [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
+            (* Get length *)
+            Heap.load_field len_field @
+            [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+            [ nr (If ([I32Type],
+              (* Then *)
+              compile_null,
+              (* Else *)
+              (* Get point to counter from closure *)
+              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+              (* Store increased counter *)
+              [ nr (GetLocal (nr i)) ] @
+              compile_const 1l @
+              [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+              store_ptr @
+              (* Lookup old value *)
+              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 2l @
+              [ nr (GetLocal (nr i)) ] @
+              idx @
+              load_ptr
+             )) ]
+       ) in
+    let vals_fun = Func.unary_of_body env (fun env1 ->
+            (* counter *)
+            let i = E.add_anon_local env1 I32Type in
+            Tuple.lit env1 [ compile_zero ] @
+            [ nr (SetLocal (nr i)) ] @
+
+            (* next function *)
+            let ni = E.add_anon_local env1 I32Type in
+            Tuple.lit env1 [
+              compile_const array_vals_next_funid;
+              [ nr (GetLocal (nr i)) ];
+              get_array_object ] @
+            [ nr (SetLocal (nr ni)) ] @
+
+            Object.lit env1 (nr__ "WHATTOPUTHERE") [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
+       ) in
     let i = E.add_fun env get_fun in
     assert (Int32.to_int i == Int32.to_int array_get_funid);
     let _ = E.field_to_index env (nr_ "get") in
@@ -358,6 +463,20 @@ module Array = struct
     assert (Int32.to_int i == Int32.to_int array_len_funid);
     let _ = E.field_to_index env (nr_ "len") in
 
+    let i = E.add_fun env keys_fun in
+    assert (Int32.to_int i == Int32.to_int array_keys_funid);
+    let _ = E.field_to_index env (nr_ "keys") in
+
+    let i = E.add_fun env keys_next_fun in
+    assert (Int32.to_int i == Int32.to_int array_keys_next_funid);
+
+    let i = E.add_fun env vals_fun in
+    assert (Int32.to_int i == Int32.to_int array_vals_funid);
+    let _ = E.field_to_index env (nr_ "vals") in
+
+    let i = E.add_fun env vals_next_fun in
+    assert (Int32.to_int i == Int32.to_int array_vals_next_funid);
+
     ()
 
   (* Compile an array literal. *)
@@ -369,6 +488,10 @@ module Array = struct
         Tuple.lit env [ compile_const array_set_funid; compile_self])
       ; (fun compile_self ->
         Tuple.lit env [ compile_const array_len_funid; compile_self])
+      ; (fun compile_self ->
+        Tuple.lit env [ compile_const array_keys_funid; compile_self])
+      ; (fun compile_self ->
+        Tuple.lit env [ compile_const array_vals_funid; compile_self])
       ; (fun compile_self ->
         compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
@@ -778,30 +901,27 @@ and compile_decs env decs : Wasm.Ast.instr list =
 (* Create a WebAssembly func from a pattern (for the argument) and the body.
 Parameter `captured` should contain the, well, captured local variables that
 the function will find in the closure. *)
+
 and compile_func env captured p (e : exp) : func =
-  (* Fresh set of locals *)
-  let env1 = E.mk_fun_env env 2l in
-  (* Allocate locals for the captured variables *)
-  let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
-  (* Load the environment *)
-  let load_capture i v =
-      [ nr (GetLocal (E.unary_closure_local env2)) ] @
-      Heap.load_field (Wasm.I32.of_int_u (1+i)) @
-      set_var_loc env2 v in
-  let closure_code = List.concat (List.mapi load_capture captured) in
-  (* Destruct the argument *)
-  let (env3, alloc_args_code, destruct_args_code) = compile_mono_pat env2 p in
-  (* Compile the body *)
-  let body_code = compile_exp env3 e in
-  nr { ftype = nr E.unary_fun_ty_i;
-       locals = E.get_locals env3;
-       body =
-        closure_code @
-        alloc_args_code @
-        [ nr (GetLocal (E.unary_param_local env3)) ] @
-        destruct_args_code @
-        body_code
-     }
+  Func.unary_of_body env (fun env1 ->
+    (* Allocate locals for the captured variables *)
+    let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
+    (* Load the environment *)
+    let load_capture i v =
+        [ nr (GetLocal (E.unary_closure_local env2)) ] @
+        Heap.load_field (Wasm.I32.of_int_u (1+i)) @
+        set_var_loc env2 v in
+    let closure_code = List.concat (List.mapi load_capture captured) in
+    (* Destruct the argument *)
+    let (env3, alloc_args_code, destruct_args_code) = compile_mono_pat env2 p in
+    (* Compile the body *)
+    let body_code = compile_exp env3 e in
+
+    closure_code @
+    alloc_args_code @
+    [ nr (GetLocal (E.unary_param_local env3)) ] @
+    destruct_args_code @
+    body_code)
 
 and compile_start_func env ds : func =
   (* Fresh set of locals *)
