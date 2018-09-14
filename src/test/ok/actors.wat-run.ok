@@ -1,1 +1,1 @@
-/bin/bash: wasm: command not found
+_out/actors.wat:121.5-121.18: runtime trap: unreachable executed
