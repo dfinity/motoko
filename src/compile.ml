@@ -222,10 +222,9 @@ module Tuple = struct
   (* The argument is a list of functions that receive a function that
      puts the pointer to the array itself on to the stack, for recursive
      structures *)
-  let lit env element_instructions : instr list =
+  let lit_rec env element_instructions : instr list =
     let n = List.length element_instructions in
 
-    (* Allocate memory, and put position on the stack (return value) *)
     let i = E.add_anon_local env I32Type in
     allocn (Wasm.I32.of_int_u n) @
     [ nr (SetLocal (nr i)) ] @
@@ -240,6 +239,8 @@ module Tuple = struct
     List.concat (List.mapi init_elem element_instructions) @
 
     compile_self
+
+  let lit env eis = lit_rec env (List.map (fun x _ -> x) eis)
 
 end (* Tuple *)
 
@@ -310,33 +311,15 @@ module Array = struct
 
   (* Compile an array literal. *)
   let lit env element_instructions =
-    Tuple.lit env
+    Tuple.lit_rec env
      ([ (fun compile_self ->
-          allocn (Wasm.I32.of_int_u 2) @
-          dup env @
-          compile_const array_get_funid @
-          store_field 0l @
-          dup env @
-          compile_self @
-          store_field 1l)
+        Tuple.lit env [ compile_const array_get_funid; compile_self])
       ; (fun compile_self ->
-          allocn (Wasm.I32.of_int_u 2) @
-          dup env @
-          compile_const array_set_funid @
-          store_field 0l @
-          dup env @
-          compile_self @
-          store_field 1l)
+        Tuple.lit env [ compile_const array_set_funid; compile_self])
       ; (fun compile_self ->
-          allocn (Wasm.I32.of_int_u 2) @
-          dup env @
-          compile_const array_len_funid @
-          store_field 0l @
-          dup env @
-          compile_self @
-          store_field 1l)
+        Tuple.lit env [ compile_const array_len_funid; compile_self])
       ; (fun compile_self ->
-          compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
+        compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
 
 end
@@ -475,16 +458,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | RetE e -> compile_exp env e @ [ nr Return ]
   | OptE e -> compile_exp env e (* Subtype! *)
 
-  | TupE es ->
-     (* Allocate memory, and put position on the stack (return value) *)
-     allocn (Wasm.I32.of_int_u (List.length es)) @
-     let init_elem i e : Wasm.Ast.instr list =
-        dup env @ (* Duplicate position *)
-	compile_exp env e @
-        store_field (Wasm.I32.of_int_u i)
-     in
-     List.concat (List.mapi init_elem es)
-
+  | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE (_, name, fs) -> (* TODO: This treats actors like any old object *) 
      (* Resolve fields to index *)
