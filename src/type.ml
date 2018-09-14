@@ -1,7 +1,8 @@
 (* Representation *)
 
 type con = Con.t
-type sort = Object | Actor
+type obj_sort = Object | Actor
+type func_sort = Call | Construct
 type eff = Triv | Await
 
 type prim =
@@ -22,14 +23,15 @@ and typ =
   | Var of string * int                       (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of sort * field list                  (* object *)
+  | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of bind list * typ * typ             (* function *)
+  | Func of func_sort * bind list * typ * typ (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
+  | Class                                     (* class *)
   | Any                                       (* top *)
   | Pre                                       (* pre-type *)
 
@@ -65,17 +67,17 @@ let prim = function
   | _ -> raise (Invalid_argument "Type.prim")
 
 let iter_obj t =
-  Obj (Object, [{name = "next"; typ = Func ([], unit, Opt t)}])
+  Obj (Object, [{name = "next"; typ = Func (Call, [], unit, Opt t)}])
 
 let array_obj t =
   let immut t =
-    [ {name = "get";  typ = Func ([], Prim Nat, t)};
-      {name = "len";  typ = Func ([], unit, Prim Nat)};
-      {name = "keys"; typ = Func ([], unit, iter_obj (Prim Nat))};
-      {name = "vals"; typ = Func ([], unit, iter_obj t)};
+    [ {name = "get";  typ = Func (Call, [], Prim Nat, t)};
+      {name = "len";  typ = Func (Call, [], unit, Prim Nat)};
+      {name = "keys"; typ = Func (Call, [], unit, iter_obj (Prim Nat))};
+      {name = "vals"; typ = Func (Call, [], unit, iter_obj t)};
     ] in
   let mut t = immut t @
-    [ {name = "set"; typ = Func ([], Tup [Prim Nat; t], unit)} ] in
+    [ {name = "set"; typ = Func (Call, [], Tup [Prim Nat; t], unit)} ] in
   match t with
   | Mut t' -> Obj (Object, List.sort compare (mut t'))
   | t -> Obj (Object, List.sort compare (immut t))
@@ -90,14 +92,15 @@ let rec shift i n t =
   | Con (c, ts) -> Con (c, List.map (shift i n) ts)
   | Array t -> Array (shift i n t)
   | Tup ts -> Tup (List.map (shift i n) ts)
-  | Func (tbs, t1, t2) ->
+  | Func (s, tbs, t1, t2) ->
     let i' = i + List.length tbs in
-    Func (List.map (shift_bind i' n) tbs, shift i' n t1, shift i' n t2)
+    Func (s, List.map (shift_bind i' n) tbs, shift i' n t1, shift i' n t2)
   | Opt t -> Opt (shift i n t)
   | Async t -> Async (shift i n t)
   | Like t -> Like (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
+  | Class -> Class
   | Any -> Any
   | Pre -> Pre
 
@@ -122,14 +125,15 @@ let rec subst sigma t =
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
-  | Func (tbs, t1, t2) ->
+  | Func (s, tbs, t1, t2) ->
     let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
-    Func (List.map (subst_bind sigma') tbs, subst sigma' t1, subst sigma' t2)
+    Func (s, List.map (subst_bind sigma') tbs, subst sigma' t1, subst sigma' t2)
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Like t -> Like (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
+  | Class -> Class
   | Any -> Any
   | Pre -> Pre
 
@@ -160,14 +164,15 @@ let rec open' i ts t =
   | Con (c, ts') -> Con (c, List.map (open' i ts) ts')
   | Array t -> Array (open' i ts t)
   | Tup ts' -> Tup (List.map (open' i ts) ts')
-  | Func (tbs, t1, t2) ->
+  | Func (s, tbs, t1, t2) ->
     let i' = i + List.length tbs in
-    Func (List.map (open_bind i' ts) tbs, open' i' ts t1, open' i' ts t2)
+    Func (s, List.map (open_bind i' ts) tbs, open' i' ts t1, open' i' ts t2)
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Like t -> Like (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
+  | Class -> Class
   | Any -> Any
   | Pre -> Pre
 
@@ -237,7 +242,7 @@ let as_opt = function Opt t -> t | _ -> invalid "as_opt"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
-let as_func = function Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func"
+let as_func = function Func (s, tbs, t1, t2) -> s, tbs, t1, t2 | _ -> invalid "as_func"
 let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
@@ -257,9 +262,9 @@ let as_unit_sub env t = match structural env t with
 let as_pair_sub env t = match structural env t with
   Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair_sub"
 let as_func_sub env t = match structural env t with
-  Func (tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func_sub"
+  Func (_, tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func_sub"
 let as_mono_func_sub env t = match structural env t with
-  Func ([], t1, t2) -> t1, t2 | _ -> invalid "as_func_sub"
+  Func (_, [], t1, t2) -> t1, t2 | _ -> invalid "as_func_sub"
 let as_async_sub env t = match structural env t with
   Async t -> t | _ -> invalid "as_async_sub"
 
@@ -274,7 +279,7 @@ let lookup_field name' tfs =
 exception Unavoidable of con
 
 let rec avoid' env env' = function
-  | (Prim _ | Var _ | Any | Pre) as t -> t
+  | (Prim _ | Var _ | Any | Class | Pre) as t -> t
   | Con (c, ts) ->
     (match Con.Env.find_opt c env' with
     | Some (Abs _) -> raise (Unavoidable c)
@@ -289,8 +294,9 @@ let rec avoid' env env' = function
     )
   | Array t -> Array (avoid' env env' t)
   | Tup ts -> Tup (List.map (avoid' env env') ts)
-  | Func (tbs, t1, t2) ->
+  | Func (s, tbs, t1, t2) ->
     Func (
+      s,
       List.map (avoid_bind env env') tbs,
       avoid' env env' t1, avoid' env env' t2
     )
@@ -375,13 +381,18 @@ let rec rel_typ env rel eq t1 t2 =
     rel_typ env rel eq t1 t2'
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ env rel eq ts1 ts2
-  | Func (tbs1, t11, t12), Func (tbs2, t21, t22) ->
+  | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
+    (s1 = s2 || rel != eq && s2 = Call) &&
     (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
       rel_typ env' rel eq (open_ ts t21) (open_ ts t11) &&
       rel_typ env' rel eq (open_ ts t12) (open_ ts t22)
     | None -> false
     )
+  | Func (Construct, _, _, _), Class when rel != eq ->
+    true
+  | Class, Class ->
+    true
   | Async t1', Async t2' ->
     rel_typ env rel eq t1' t2'
   | Like t1', Like t2' ->
@@ -488,9 +499,14 @@ let string_of_con vs c =
   let s = Con.to_string c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
+let string_of_func_sort = function
+  | Call -> ""
+  | Construct -> "class "
+
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
+  | Class -> "Class"
   | Prim p -> string_of_prim p
   | Var (s, i) -> string_of_var (List.nth vs i)
   | Con (c, []) -> string_of_con vs c
@@ -511,11 +527,13 @@ and string_of_typ' vs t =
     sprintf "var %s[]" (string_of_typ_nullary vs t)
   | Array t ->
     sprintf "%s[]" (string_of_typ_nullary vs t)
-  | Func ([], t1, t2) ->
-    sprintf "%s -> %s" (string_of_typ_nullary vs t1) (string_of_typ' vs t2)
-  | Func (tbs, t1, t2) ->
+  | Func (s, [], t1, t2) ->
+    sprintf "%s%s -> %s" (string_of_func_sort s)
+      (string_of_typ_nullary vs t1) (string_of_typ' vs t2)
+  | Func (s, tbs, t1, t2) ->
     let vs' = names_of_binds vs tbs in
-    sprintf "%s%s -> %s" (string_of_binds (vs' @ vs) vs' tbs)
+    sprintf "%s%s%s -> %s"
+      (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
       (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
   | Opt t ->
     sprintf "%s?"  (string_of_typ_nullary vs t)

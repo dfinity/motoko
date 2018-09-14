@@ -10,7 +10,7 @@ Productions marked * probably deferred to later versions.
   actor? { <typ-field>;* }                      object
   var? <typ> [ ]                                array
   <typ> ?                                       option
-  <typ-params>? <typ> -> <typ>                  function
+  <class>? <typ-params>? <typ> -> <typ>         function
   async <typ>                                   future
   like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple

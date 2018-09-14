@@ -12,26 +12,27 @@ type id = string Source.phrase
 
 (* Types *)
 
-type sort = Type.sort Source.phrase
+type obj_sort = Type.obj_sort Source.phrase
+type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
 type typ = typ' Source.phrase
 and typ' =
-  | PrimT of string                            (* primitive *)
-  | VarT of id * typ list                      (* constructor *)
-  | ObjT of sort * typ_field list              (* object *)
-  | ArrayT of mut * typ                        (* array *)
-  | OptT of typ                                (* option *)
-  | TupT of typ list                           (* tuple *)
-  | FuncT of typ_bind list * typ * typ         (* function *)
-  | AsyncT of typ                              (* future *)
-  | LikeT of typ                               (* expansion *)
-  | AnyT                                       (* top *)
+  | PrimT of string                                (* primitive *)
+  | VarT of id * typ list                          (* constructor *)
+  | ObjT of obj_sort * typ_field list              (* object *)
+  | ArrayT of mut * typ                            (* array *)
+  | OptT of typ                                    (* option *)
+  | TupT of typ list                               (* tuple *)
+  | FuncT of func_sort * typ_bind list * typ * typ (* function *)
+  | AsyncT of typ                                  (* future *)
+  | LikeT of typ                                   (* expansion *)
+  | AnyT                                           (* top *)
 (*
-  | UnionT of type * typ                       (* union *)
-  | AtomT of string                            (* atom *)
+  | UnionT of type * typ                           (* union *)
+  | AtomT of string                                (* atom *)
 *)
 
 and typ_field = typ_field' Source.phrase
@@ -127,7 +128,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of sort * id * exp_field list         (* object *)
+  | ObjE of obj_sort * id * exp_field list     (* object *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
@@ -148,7 +149,7 @@ and exp' =
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | IsE of exp * typ                           (* instance-of *)
+  | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
   | DecE of dec                                (* declaration *)
 (*
@@ -174,7 +175,7 @@ and dec' =
   | VarD of id * exp                                   (* mutable *)
   | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
   | TypD of id * typ_bind list * typ                   (* type *)
-  | ClassD of id * typ_bind list * sort * pat * exp_field list (* class *)
+  | ClassD of id * typ_bind list * obj_sort * pat * exp_field list (* class *)
 
 
 (* Program *)

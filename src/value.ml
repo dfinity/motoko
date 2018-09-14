@@ -161,6 +161,7 @@ end
 (* Types *)
 
 type unicode = int
+type class_ = int
 
 type func = value -> value cont -> unit
 and value =
@@ -176,15 +177,22 @@ and value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of value Env.t
   | Array of value array
-  | Func of func
+  | Obj of class_ option * value Env.t
+  | Func of class_ option * func
   | Async of async
   | Mut of value ref
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
+
+
+(* Classes *)
+
+let class_counter = ref 0
+
+let new_class () = incr class_counter; !class_counter
 
 
 (* Projections *)
@@ -209,7 +217,7 @@ let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 
 let obj_of_array a =
   let get =
-    Func (fun v k ->
+    Func (None, fun v k ->
       let n = as_nat v in
       if Nat.lt n (Nat.of_int (Array.length a)) then
         k (a.(Nat.to_int n))
@@ -218,7 +226,7 @@ let obj_of_array a =
     )
   in
   let set =
-    Func (fun v k ->
+    Func (None, fun v k ->
       let v1, v2 = as_pair v in
       let n = as_nat v1 in
       if Nat.lt n (Nat.of_int (Array.length a)) then
@@ -228,32 +236,32 @@ let obj_of_array a =
     )
   in
   let len =
-    Func (fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
+    Func (None, fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
   in
   let keys =
-    Func (fun v k ->
+    Func (None, fun v k ->
       as_unit v;
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
         let v = Nat (Nat.of_int !i) in incr i; k' v
-      in k (Obj (Env.singleton "next" (Func next)))
+      in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
   let vals =
-    Func (fun v k ->
+    Func (None, fun v k ->
       as_unit v;
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
         let v = a.(!i) in incr i; k' v
-      in k (Obj (Env.singleton "next" (Func next)))
+      in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
-let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
-let as_func = function Func f -> f | _ -> invalid "as_func"
+let as_obj = function Obj (co, ve) -> co, ve | Array a -> None, obj_of_array a | _ -> invalid "as_obj"
+let as_func = function Func (co, f) -> co, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
@@ -277,8 +285,12 @@ let rec compare x1 x2 =
   | Nat n1, Nat n2 -> Nat.compare n1 n2
   | Int n1, Int n2 -> Int.compare n1 n2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
-  | Obj fs1, Obj fs2 -> Env.compare compare fs1 fs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
+  | Obj (c1, fs1), Obj (c2, fs2) ->
+    (match generic_compare c1 c2 with
+    | 0 -> Env.compare compare fs1 fs2
+    | n -> n
+    )
   | Mut r1, Mut r2 -> compare !r1 !r2
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2
@@ -318,14 +330,15 @@ let rec string_of_val_nullary d = function
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val' d) vs))
       (if List.length vs = 1 then "," else "")
-  | Obj ve ->
+  | Obj (_, ve) ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
       sprintf "%s = %s" x (string_of_val' (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val' d) (Array.to_list a)))
-  | Func f -> "func"
+  | Func (None, _) -> "func"
+  | Func (Some _, _) -> "class"
   | v -> "(" ^ string_of_val' d v ^ ")"
 
 and string_of_val' d = function

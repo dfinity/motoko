@@ -137,13 +137,17 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline sort :
+%inline obj_sort :
   | NEW { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
 
-%inline sort_opt :
+%inline obj_sort_opt :
   | (* empty *) { Type.Object @@ no_region }
-  | s=sort { s }
+  | s=obj_sort { s }
+
+%inline func_sort_opt :
+  | (* empty *) { Type.Call @@ no_region }
+  | CLASS { Type.Construct @@ at $sloc }
 
 
 (* Types *)
@@ -159,7 +163,7 @@ typ_nullary :
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
-  | s=sort_opt tfs=typ_obj
+  | s=obj_sort_opt tfs=typ_obj
     { ObjT(s, tfs) @@ at $sloc }
 
 typ_post :
@@ -185,8 +189,8 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | tps=typ_params_opt t1=typ_pre ARROW t2=typ 
-    { FuncT(tps, t1, t2) @@ at $sloc }
+  | s=func_sort_opt tps=typ_params_opt t1=typ_pre ARROW t2=typ 
+    { FuncT(s, tps, t1, t2) @@ at $sloc }
 
 typ_item :
   | id COLON t=typ { t }
@@ -203,7 +207,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
-    { let t = FuncT(tps, t1, t2) @@ span x.at t2.at in
+    { let t = FuncT(Type.Call @@ no_region, tps, t1, t2) @@ span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :
@@ -294,7 +298,7 @@ exp_nullary :
     { e }
   | LPAR es=seplist1(exp, COMMA) RPAR
     { TupE(es) @? at $sloc }
-  | s=sort xf=id_opt efs=exp_obj
+  | s=obj_sort xf=id_opt efs=exp_obj
     { let anon = if s.it = Type.Actor then "actor" else "object" in
       ObjE(s, xf anon $sloc, efs) @? at $sloc }
 
@@ -339,8 +343,8 @@ exp_bin :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
     { OrE(e1, e2) @? at $sloc }
-  | e=exp_bin IS t=typ
-    { IsE(e, t) @? at $sloc }
+  | e1=exp_bin IS e2=exp
+    { IsE(e1, e2) @? at $sloc }
   | e=exp_bin COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
@@ -484,7 +488,7 @@ dec_nonexp :
     { (fd (xf "func" $sloc)).it @@ at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @@ at $sloc }
-  | s=sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
+  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
     { ClassD(xf "class" $sloc, tps, s, p, efs) @@ at $sloc }
 
 dec :

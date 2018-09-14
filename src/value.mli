@@ -57,6 +57,7 @@ module Env : Env.S with type key = string
 (* Types *)
 
 type unicode = int
+type class_
 
 type func = value -> value cont -> unit
 and value =
@@ -72,9 +73,9 @@ and value =
   | Char of unicode
   | Text of string
   | Tup of value list
-  | Obj of value Env.t
   | Array of value array
-  | Func of func
+  | Obj of class_ option * value Env.t
+  | Func of class_ option * func
   | Async of async
   | Mut of value ref
 
@@ -107,10 +108,15 @@ val as_array : value -> value array
 val as_tup : value -> value list
 val as_unit : value -> unit
 val as_pair : value -> value * value
-val as_obj : value -> value Env.t
-val as_func : value -> (value -> value cont -> unit)
+val as_obj : value -> class_ option * value Env.t
+val as_func : value -> class_ option * (value -> value cont -> unit)
 val as_async : value -> async
 val as_mut : value -> value ref
+
+
+(* Classes *)
+
+val new_class : unit -> class_
 
 
 (* Ordering *)

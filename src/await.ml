@@ -118,7 +118,7 @@ let is_triv (exp:exp)  =
     eff exp = T.Triv
               
 let answerT = Type.unit
-let contT typ = T.Func([],typ,answerT)
+let contT typ = T.Func(T.Call, [], typ, answerT)
 
 (* primitives *)
 let exp_of_id name typ =
@@ -154,7 +154,7 @@ let  (-->) k e =
                 e)@@no_region
             );
      at = e.at;
-     note = {note_typ = Type.Func([],typ k,typ e);
+     note = {note_typ = T.Func(T.Call, [], typ k, typ e);
              note_eff = T.Triv}
     }
   | _ -> failwith "Impossible"
@@ -191,21 +191,21 @@ let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
 
 let prim_of_id name typ = exp_of_id ("@" ^ name) typ
 let prim_make_async typ =
-  prim_of_id "make_async" (T.Func([], T.unit,T.Async typ))
+  prim_of_id "make_async" (T.Func(T.Call, [], T.unit,T.Async typ))
 let prim_set_async typ =
-  prim_of_id "set_async" (T.Func([],T.Tup [T.Async typ; typ], T.unit))
+  prim_of_id "set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
 let prim_get_async typ = 
-  prim_of_id "get_async" (T.Func([], T.Tup [T.Async typ; contT typ], T.unit))
+  prim_of_id "get_async" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
 let prim_scheduler_queue  =
-  prim_of_id "scheduler_queue" (T.Func([],T.Func([],T.unit,T.unit), T.unit))
+  prim_of_id "scheduler_queue" (T.Func(T.Call, [], T.Func(T.Call, [], T.unit, T.unit), T.unit))
 let prim_sheduler_yield = 
-  prim_of_id "scheduler_yield" (T.Func([],T.unit, T.unit))
+  prim_of_id "scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
 let prim_await typ = 
-  prim_of_id "await" (T.Func([],contT typ, T.unit))
+  prim_of_id "await" (T.Func(T.Call, [], contT typ, T.unit))
 let prim_promise_make typ =
-  prim_of_id "promise_make" (T.Func([], T.unit, typ))             
+  prim_of_id "promise_make" (T.Func(T.Call, [], T.unit, typ))             
 let prim_promise_fullfill typ =
-  prim_of_id "promise_fullfill" (T.Func([],T.Tup[typ;typ],T.unit))
+  prim_of_id "promise_fullfill" (T.Func(T.Call, [], T.Tup [typ; typ], T.unit))
              
 
 let decE dec =
@@ -296,8 +296,8 @@ let define_id_mutE x exp1 =
     
 let ( -@- ) e e =
   match e.note.note_typ with
-  | Type.Func([],_,t) ->
-     {it = CallE(e,[],e);
+  | Type.Func(_, [], _, t) ->
+     {it = CallE(e, [], e);
       at = no_region;
       note = {note_typ = t;
               note_eff = Type.Triv}

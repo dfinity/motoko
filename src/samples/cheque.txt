@@ -3,10 +3,10 @@ type Account <: actor {credit : Int -> (); deposit : Cheque -> (); getBalance : 
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
 type Cheque <: actor {deposit : () -> ()}
 type Issuer <: actor {hasIssued : (like Account) -> async Bool}
-let Account : Int -> Account
-let Bank : Int -> Bank
-let Cheque : (Int, Account) -> Cheque
-let Issuer : () -> Issuer
+let Account : class Int -> Account
+let Bank : class Int -> Bank
+let Cheque : class (Int, Account) -> Cheque
+let Issuer : class () -> Issuer
 let bank : Bank
 let main : async (Account, Account)
 let show : (Text, Account) -> ()
@@ -111,10 +111,10 @@ test()
   showBalance("b2", 15)
     <= ()
 -- Finished cheque.as:
-let Account : Int -> Account = func
-let Bank : Int -> Bank = func
-let Cheque : (Int, Account) -> Cheque = func
-let Issuer : () -> Issuer = func
+let Account : class Int -> Account = class
+let Bank : class Int -> Bank = class
+let Cheque : class (Int, Account) -> Cheque = class
+let Issuer : class () -> Issuer = class
 let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}}
 let main : async (Account, Account) = async ({balance = 5; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
 let show : (Text, Account) -> () = func

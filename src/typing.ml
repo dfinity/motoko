@@ -101,13 +101,14 @@ let rec is_shared_typ ce t =
     List.for_all (fun {T.name; typ} -> is_shared_typ ce typ) fs
   | T.Obj (T.Actor, fs) -> true
   | T.Mut _ -> false
+  | T.Class -> true
   | T.Any -> false (* TBR *)
   | T.Pre -> assert false
 
 (* Type of an actor field *)
 and is_async_typ ce t =
   match T.structural ce t with
-  | T.Func (tbs, t1, t2) ->
+  | T.Func (_s, tbs, t1, t2) ->
     let ts, ce' = T.open_binds ce tbs in
     is_shared_typ ce' (T.open_ ts t1) &&
     (match T.normalize ce' (T.open_ ts t2) with
@@ -146,6 +147,8 @@ let rec check_typ env typ : T.typ =
     )
   | PrimT "Any" ->
     T.Any
+  | PrimT "Class" ->
+    T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error typ.at "unknown primitive type"
@@ -155,13 +158,13 @@ let rec check_typ env typ : T.typ =
     T.Array (infer_mut mut t)
   | TupT typs ->
     T.Tup (List.map (check_typ env) typs)
-  | FuncT (binds, typ1, typ2) ->
+  | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
     let t1 = check_typ env' typ1 in
     let t2 = check_typ env' typ2 in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
-    T.Func (T.close_binds cs tbs, T.close cs t1, T.close cs t2)
+    T.Func (sort.it, T.close_binds cs tbs, T.close cs t1, T.close cs t2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | AsyncT typ ->
@@ -543,13 +546,11 @@ and infer_exp' env exp : T.typ =
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.unit
-  | IsE (exp1, typ) ->
+  | IsE (exp1, exp2) ->
+    (* TBR: restrict t1 to objects? *)
     if not env.pre then begin
-      (* TBR: what if T has free type variables? How will we check this, sans type passing? *) 
       let _t1 = infer_exp env exp1 in
-      let _t = check_typ env typ in
-      (* TBR: check that t <: t1 *)
-      ()
+      check_exp env T.Class exp2
     end;
     T.bool
   | AnnotE (exp1, typ) ->
@@ -1081,7 +1082,7 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
       match dec.it with
       | ClassD _ ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add id.it (T.Func (pre_tbs, T.Pre, t2)) ve
+        T.Env.add id.it (T.Func (T.Construct, pre_tbs, T.Pre, t2)) ve
       | _ -> ve
     in ve', T.Env.add id.it c te, Con.Env.add c pre_k ce
 
@@ -1160,7 +1161,7 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it (T.Func (T.Call, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, typbinds, sort, pat, fields) ->
@@ -1170,7 +1171,7 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it (T.Func (T.Construct, tbs, T.close cs t1, T.close cs t2))
 
 
 (* Programs *)
