@@ -1,7 +1,7 @@
 NAME = actorscript
 MAIN = main
 DIRS = figures
-SRCFILES = $(shell ls *.cls *.tex *.bib Makefile)
+SRCFILES = $(wildcard *.cls *.tex *.bib Makefile)
 DIRFILES = $(shell ls $(DIRS:%=%/*))
 FILES = $(SRCFILES) $(DIRFILES)
 
