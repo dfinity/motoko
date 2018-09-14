@@ -32,33 +32,3 @@ let oa : {get : Nat -> Nat} = a;
 let ob : {set : (Nat, Nat) -> ()} = b;
 assert(oa.get(2) == 42);
 ob.set(2, 22);
-
-var i = 0;
-
-i := 0;
-for (j in a.keys()) {
-  assert(j == i);
-  i += 1;
-};
-assert(i == a.len());
-
-i := 0;
-for (n in a.vals()) {
-  assert(n == a[i]);
-  i += 1;
-};
-assert(i == a.len());
-
-i := 0;
-for (j in b.keys()) {
-  assert(j == i);
-  i += 1;
-};
-assert(i == b.len());
-
-i := 0;
-for (n in b.vals()) {
-  assert(n == b[i]);
-  i += 1;
-};
-assert(i == b.len());
