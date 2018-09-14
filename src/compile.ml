@@ -68,6 +68,15 @@ module E = struct
   let unary_param_local env : var = nr 1l   (* second param *)
 
 
+  let init_field_env =
+    NameEnv.add "get" 0l (
+    NameEnv.add "set" 1l (
+    NameEnv.add "len" 2l (
+    NameEnv.add "keys" 3l (
+    NameEnv.add "vars" 4l (
+    NameEnv.empty
+    )))))
+
   (* The initial global environment *)
   let mk_global (_ : unit) : t = {
     funcs = ref [];
@@ -78,7 +87,7 @@ module E = struct
     n_param = 0l;
     depth = 0l;
     ld = NameEnv.empty;
-    field_env = ref NameEnv.empty;
+    field_env = ref init_field_env;
   }
 
   (* Resetting the environment for a new function *)
@@ -453,26 +462,21 @@ module Array = struct
        ) in
     let i = E.add_fun env get_fun in
     assert (Int32.to_int i == Int32.to_int array_get_funid);
-    let _ = E.field_to_index env (nr_ "get") in
 
     let i = E.add_fun env set_fun in
     assert (Int32.to_int i == Int32.to_int array_set_funid);
-    let _ = E.field_to_index env (nr_ "set") in
 
     let i = E.add_fun env len_fun in
     assert (Int32.to_int i == Int32.to_int array_len_funid);
-    let _ = E.field_to_index env (nr_ "len") in
 
     let i = E.add_fun env keys_fun in
     assert (Int32.to_int i == Int32.to_int array_keys_funid);
-    let _ = E.field_to_index env (nr_ "keys") in
 
     let i = E.add_fun env keys_next_fun in
     assert (Int32.to_int i == Int32.to_int array_keys_next_funid);
 
     let i = E.add_fun env vals_fun in
     assert (Int32.to_int i == Int32.to_int array_vals_funid);
-    let _ = E.field_to_index env (nr_ "vals") in
 
     let i = E.add_fun env vals_next_fun in
     assert (Int32.to_int i == Int32.to_int array_vals_next_funid);
@@ -631,6 +635,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | RetE e -> compile_exp env e @ [ nr Return ]
   | OptE e -> compile_exp env e (* Subtype! *)
 
+  | TupE [] -> compile_zero
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE (_, name, fs) ->
