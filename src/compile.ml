@@ -168,7 +168,7 @@ let dup env : instr list = (* duplicate top element *)
   [ nr (TeeLocal (E.tmp_local env));
     nr (GetLocal (E.tmp_local env)) ]
 
-let swap env : instr list = (* swaps top elements *)
+let _swap env : instr list = (* swaps top elements *)
   let i = E.add_anon_local env I32Type in
   [ nr (SetLocal (E.tmp_local env));
     nr (SetLocal (nr i));
@@ -214,6 +214,34 @@ let store_field (i : int32) : instr list =
 let store_ptr : instr list =
   [ nr (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ]
 
+
+module Tuple = struct
+  (* A tuple is a heap object with a statically known number of elements.
+     This is also used as the primitive representation of objects etc. *)
+
+  (* The argument is a list of functions that receive a function that
+     puts the pointer to the array itself on to the stack, for recursive
+     structures *)
+  let lit env element_instructions : instr list =
+    let n = List.length element_instructions in
+
+    (* Allocate memory, and put position on the stack (return value) *)
+    let i = E.add_anon_local env I32Type in
+    allocn (Wasm.I32.of_int_u n) @
+    [ nr (SetLocal (nr i)) ] @
+
+    let compile_self = [ nr (GetLocal (nr i)) ] in
+
+    let init_elem idx instrs : Wasm.Ast.instr list =
+      compile_self @
+      instrs compile_self @
+      store_field (Wasm.I32.of_int_u idx)
+    in
+    List.concat (List.mapi init_elem element_instructions) @
+
+    compile_self
+
+end (* Tuple *)
 
 module Array = struct
   let header_size = 4l
@@ -282,55 +310,34 @@ module Array = struct
 
   (* Compile an array literal. *)
   let lit env element_instructions =
-    let n = List.length element_instructions in
-
-    (* Allocate memory, and put position on the stack (return value) *)
-    let i = E.add_anon_local env I32Type in
-    allocn (Wasm.I32.of_int_u (4 + n)) @
-    [ nr (SetLocal (nr i)) ] @
-
-    (* Allocate closures for get, set, len,
-       and put them on the stack.
-       Also put the length on the stack. *)
-    allocn (Wasm.I32.of_int_u 2) @
-    dup env @
-    compile_const array_get_funid @
-    store_field 0l @
-    dup env @
-    [ nr (GetLocal (nr i)) ] @
-    store_field 1l @
-
-    allocn (Wasm.I32.of_int_u 2) @
-    dup env @
-    compile_const array_set_funid @
-    store_field 0l @
-    dup env @
-    [ nr (GetLocal (nr i)) ] @
-    store_field 1l @
-
-    allocn (Wasm.I32.of_int_u 2) @
-    dup env @
-    compile_const array_len_funid @
-    store_field 0l @
-    dup env @
-    [ nr (GetLocal (nr i)) ] @
-    store_field 1l @
-
-    compile_const (Wasm.I32.of_int_u n) @
-
-    (* Write these four things to the array *)
-    [ nr (GetLocal (nr i)) ] @ swap env @ store_field 3l @
-    [ nr (GetLocal (nr i)) ] @ swap env @ store_field 2l @
-    [ nr (GetLocal (nr i)) ] @ swap env @ store_field 1l @
-    [ nr (GetLocal (nr i)) ] @ swap env @ store_field 0l @
-
-    let init_elem idx intrs : Wasm.Ast.instr list =
-       [ nr (GetLocal (nr i)) ] @
-       intrs @
-       store_field (Wasm.I32.of_int_u (4 + idx))
-    in
-    List.concat (List.mapi init_elem element_instructions) @
-    [ nr (GetLocal (nr i)) ]
+    Tuple.lit env
+     ([ (fun compile_self ->
+          allocn (Wasm.I32.of_int_u 2) @
+          dup env @
+          compile_const array_get_funid @
+          store_field 0l @
+          dup env @
+          compile_self @
+          store_field 1l)
+      ; (fun compile_self ->
+          allocn (Wasm.I32.of_int_u 2) @
+          dup env @
+          compile_const array_set_funid @
+          store_field 0l @
+          dup env @
+          compile_self @
+          store_field 1l)
+      ; (fun compile_self ->
+          allocn (Wasm.I32.of_int_u 2) @
+          dup env @
+          compile_const array_len_funid @
+          store_field 0l @
+          dup env @
+          compile_self @
+          store_field 1l)
+      ; (fun compile_self ->
+          compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
+      ] @ List.map (fun is _ -> is) element_instructions)
 
 end
 
