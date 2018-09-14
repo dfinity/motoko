@@ -6,7 +6,7 @@ compile_exp: (AsyncE
 )
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE issuer)))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE reserve)))))
-compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarT Account))))))
+compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE balance)))))
 compile_exp: (AsyncE
   (BlockE
@@ -14,4 +14,4 @@ compile_exp: (AsyncE
     (ExpD (RetE (CallE (VarE Account) (VarE amount))))
   )
 )
-compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarT Account))))))
+compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
