@@ -254,6 +254,18 @@ module Tuple = struct
 
 end (* Tuple *)
 
+module Var = struct
+
+  let get_loc env var = match E.lookup_var env var with
+    | Some i -> [ nr (GetLocal i) ]
+    | None   -> [ nr Unreachable ]
+
+  let set_loc env var = match E.lookup_var env var with
+    | Some i -> [ nr (SetLocal i) ]
+    | None   -> [ nr Unreachable ]
+
+end (* Var *)
+
 module Func = struct
 
   let load_closure i = [ nr (GetLocal (nr 0l)) ] @ Heap.load_field i
@@ -288,6 +300,66 @@ module Func = struct
    Heap.load_field 0l @
    (* All done: Call! *)
    [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+
+   (* Create a WebAssembly func from a pattern (for the argument) and the body.
+   Parameter `captured` should contain the, well, captured local variables that
+   the function will find in the closure. *)
+
+  let compile_func env captured mk_pat mk_body : func =
+    unary_of_body env (fun env1 ->
+      (* Allocate locals for the captured variables *)
+      let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
+      (* Load the environment *)
+      let load_capture i v =
+          [ nr (GetLocal (E.unary_closure_local env2)) ] @
+          Heap.load_field (Wasm.I32.of_int_u (1+i)) @
+          Var.set_loc env2 v in
+      let closure_code = List.concat (List.mapi load_capture captured) in
+      (* Destruct the argument *)
+      let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
+
+      (* Compile the body *)
+      let body_code = mk_body env3 in
+
+      closure_code @
+      alloc_args_code @
+      [ nr (GetLocal (E.unary_param_local env3)) ] @
+      destruct_args_code @
+      body_code)
+
+  (* Compile a function declaration *)
+  let dec pre_env last name rt captured mk_pat mk_body =
+      let li = E.add_anon_local pre_env I32Type in
+      let (pre_env1, vi) = E.add_local pre_env name.it in
+
+      let alloc_code =
+        (* Allocate a heap object for the function *)
+        Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) @
+        [ nr (SetLocal (nr li)) ] @
+
+        (* Allocate an extra indirection for the variable *)
+        Tuple.lit pre_env1 [ [nr (GetLocal (nr li))] ] @
+        [ nr (SetLocal (nr vi)) ]
+      in
+
+      ( pre_env1, alloc_code, fun env ->
+
+	(* All functions are unary for now (arguments passed as heap-allocated tuples)
+           with the closure itself passed as a first argument *)
+        let f = compile_func env captured mk_pat mk_body in
+        let fi = E.add_fun env f in
+
+        (* Store the function number: *)
+        [ nr (GetLocal (nr li));
+          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] @ (* Store function number *)
+        Heap.store_field 0l @
+        (* Store all captured values *)
+        let store_capture i v =
+          [ nr (GetLocal (nr li)) ] @
+          Var.get_loc env v @
+          Heap.store_field (Wasm.I32.of_int_u (1+i)) in
+        List.concat (List.mapi store_capture captured) @
+        if last then [ nr (GetLocal (nr li)) ] else [])
 
 end (* Func *)
 
@@ -552,20 +624,13 @@ let compile_relop op = match op with
   | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ]
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
-let rec get_var_loc env var = match E.lookup_var env var with
-  | Some i -> [ nr (GetLocal i) ]
-  | None   -> [ nr Unreachable ]
-
-and set_var_loc env var = match E.lookup_var env var with
-  | Some i -> [ nr (SetLocal i) ]
-  | None   -> [ nr Unreachable ]
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, and calculates (puts on the stack) the
 memory location of such a thing. *)
-and compile_lexp (env : E.t) exp = match exp.it with
+let rec compile_lexp (env : E.t) exp = match exp.it with
   | VarE var ->
-     get_var_loc env var.it
+     Var.get_loc env var.it
   | IdxE (e1,e2) ->
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
@@ -880,39 +945,11 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         if last then [ nr (GetLocal (nr i)) ] @ load_ptr else [])
 
   | FuncD (name, _, p, rt, e) ->
-      let li = E.add_anon_local pre_env I32Type in
-      let (pre_env1, vi) = E.add_local pre_env name.it in
       (* Get captured variables *)
       let captured = Freevars.captured p e in
-
-      let alloc_code =
-        (* Allocate a heap object for the function *)
-        Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) @
-        [ nr (SetLocal (nr li)) ] @
-
-        (* Allocate an extra indirection for the variable *)
-        Tuple.lit pre_env1 [ [nr (GetLocal (nr li))] ] @
-        [ nr (SetLocal (nr vi)) ]
-      in
-
-      ( pre_env1, alloc_code, fun env ->
-
-	(* All functions are unary for now (arguments passed as heap-allocated tuples)
-           with the closure itself passed as a first argument *)
-        let f = compile_func env captured p e in
-        let fi = E.add_fun env f in
-
-        (* Store the function number: *)
-        [ nr (GetLocal (nr li));
-          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] @ (* Store function number *)
-        Heap.store_field 0l @
-        (* Store all captured values *)
-        let store_capture i v =
-          [ nr (GetLocal (nr li)) ] @
-          get_var_loc env v @
-          Heap.store_field (Wasm.I32.of_int_u (1+i)) in
-        List.concat (List.mapi store_capture captured) @
-        if last then [ nr (GetLocal (nr li)) ] else [])
+      let mk_pat env1 = compile_mono_pat env1 p in
+      let mk_body env1 = compile_exp env1 e in
+      Func.dec pre_env last name rt captured mk_pat mk_body
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, typ_params, s, p, efs) ->
@@ -930,30 +967,6 @@ and compile_decs env decs : Wasm.Ast.instr list =
   let (env1, alloc_code, mk_code) = go env decs in
   alloc_code @ mk_code env1
 
-(* Create a WebAssembly func from a pattern (for the argument) and the body.
-Parameter `captured` should contain the, well, captured local variables that
-the function will find in the closure. *)
-
-and compile_func env captured p (e : exp) : func =
-  Func.unary_of_body env (fun env1 ->
-    (* Allocate locals for the captured variables *)
-    let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
-    (* Load the environment *)
-    let load_capture i v =
-        [ nr (GetLocal (E.unary_closure_local env2)) ] @
-        Heap.load_field (Wasm.I32.of_int_u (1+i)) @
-        set_var_loc env2 v in
-    let closure_code = List.concat (List.mapi load_capture captured) in
-    (* Destruct the argument *)
-    let (env3, alloc_args_code, destruct_args_code) = compile_mono_pat env2 p in
-    (* Compile the body *)
-    let body_code = compile_exp env3 e in
-
-    closure_code @
-    alloc_args_code @
-    [ nr (GetLocal (E.unary_param_local env3)) ] @
-    destruct_args_code @
-    body_code)
 
 and compile_start_func env ds : func =
   (* Fresh set of locals *)
