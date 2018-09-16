@@ -149,7 +149,8 @@ let run_mod_or_fail dyn_env (name, t, stat_env, stat_scope, prog) =
 
 let compile_mod (name, _t, _stat_env, _stat_scope, prog) =
   phase "Compiling" name;
-  Compile.compile prog
+  let m = Compile.compile prog in
+  Compile.print_wat m
 
 (* Interactively *)
 

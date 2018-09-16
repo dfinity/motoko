@@ -1,9 +1,14 @@
 pipeline {
     agent any
     stages {
-        stage('Build and test') {
+        stage('Build and test (native)') {
             steps {
-                sh 'nix-build'
+                sh 'nix-build -A native'
+            }
+        }
+        stage('Build and test (js)') {
+            steps {
+                sh 'nix-build -A js'
             }
         }
     }

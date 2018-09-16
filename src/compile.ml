@@ -1002,8 +1002,7 @@ and compile_start_func env ds : func =
      }
 
 
-let compile (prog  : Syntax.prog) : unit =
-  let m : module_ =
+let compile (prog  : Syntax.prog) : module_ =
     let env = E.mk_global () in
 
     Array.common_funcs env;
@@ -1026,7 +1025,11 @@ let compile (prog  : Syntax.prog) : unit =
       start = Some (nr i);
       globals = Heap.globals;
       memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
-    };
-  in
-  Wasm.Print.module_ stdout 100 m
+    }
+
+let print_wat (wat : module_) : unit =
+    Wasm.Print.module_ stdout 100 wat
+
+let string_of_wat (wat : module_) : string =
+    Wasm.Sexpr.to_string 100 (Wasm.Arrange.module_ wat)
 
