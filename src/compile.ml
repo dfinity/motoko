@@ -377,7 +377,7 @@ module Object = struct
      let i = Int32.add header_size fi in
      i
 
-  let lit env name fs =
+  let lit env no fs =
      (* Find largest index, to know the size of the heap representation *)
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add header_size (
@@ -403,9 +403,13 @@ module Object = struct
      field_code @
 
      (* An extra indirection for the 'this' pointer *)
-     let (env2, ti) = E.add_local env1 name.it in
-     Tuple.lit env1 [ [nr (GetLocal (nr ri))] ] @
-     [ nr (SetLocal (nr ti)) ] @
+     let (env2, this_code) = match no with
+      | Some name -> let (env2, ti) = E.add_local env1 name.it in
+                     (env2, Tuple.lit env1 [ [nr (GetLocal (nr ri))] ] @
+                            [ nr (SetLocal (nr ti)) ])
+      | None -> (env1, []) in
+     this_code @
+
 
      (* Write all the fields *)
      let init_field (id, mk_is) : Wasm.Ast.instr list =
@@ -523,7 +527,7 @@ module Array = struct
               get_array_object ] @
             [ nr (SetLocal (nr ni)) ] @
 
-            Object.lit env1 (nr__ "WHATTOPUTHERE")
+            Object.lit env1 None
               [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
        ) in
 
@@ -718,7 +722,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE (_, name, fs) ->
      (* TODO: This treats actors like any old object *)
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
-     Object.lit env name fs'
+     Object.lit env (Some name) fs'
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
@@ -958,7 +962,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       let mk_body env1 =
         (* TODO: This treats actors like any old object *)
         let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) efs in
-        Object.lit env1 (nr_ "WHATTOPUTHERE") fs' in
+        Object.lit env1 None fs' in
       Func.dec pre_env last name captured mk_pat mk_body
 
 and compile_decs env decs : Wasm.Ast.instr list =
