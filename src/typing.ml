@@ -13,7 +13,7 @@ let error at fmt =
 
 let warn at fmt =
   Printf.ksprintf (fun s ->
-    Printf.eprintf "%s: warning, %s\n" (Source.string_of_region at) s;
+    Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
 
@@ -83,16 +83,6 @@ let disjoint_union at fmt env1 env2 =
 
 (* Type Analysis *)
 
-(* Types one can iterate over using `for` *)
-let is_iter_typ ce = function
-  | T.Array _ -> true
-  | _ -> false
-
-(* Element type of iterable_type  *)
-let elem_typ ce = function
-  | T.Array t -> T.immutable t
-  | _ -> assert false
-
 (* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
 let rec is_shared_typ ce t =
   match T.structural ce t with
@@ -111,13 +101,14 @@ let rec is_shared_typ ce t =
     List.for_all (fun {T.name; typ} -> is_shared_typ ce typ) fs
   | T.Obj (T.Actor, fs) -> true
   | T.Mut _ -> false
+  | T.Class -> true
   | T.Any -> false (* TBR *)
   | T.Pre -> assert false
 
 (* Type of an actor field *)
 and is_async_typ ce t =
   match T.structural ce t with
-  | T.Func (tbs, t1, t2) ->
+  | T.Func (_s, tbs, t1, t2) ->
     let ts, ce' = T.open_binds ce tbs in
     is_shared_typ ce' (T.open_ ts t1) &&
     (match T.normalize ce' (T.open_ ts t2) with
@@ -156,6 +147,8 @@ let rec check_typ env typ : T.typ =
     )
   | PrimT "Any" ->
     T.Any
+  | PrimT "Class" ->
+    T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error typ.at "unknown primitive type"
@@ -165,13 +158,13 @@ let rec check_typ env typ : T.typ =
     T.Array (infer_mut mut t)
   | TupT typs ->
     T.Tup (List.map (check_typ env) typs)
-  | FuncT (binds, typ1, typ2) ->
+  | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
     let t1 = check_typ env' typ1 in
     let t2 = check_typ env' typ2 in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
-    T.Func (T.close_binds cs tbs, T.close cs t1, T.close cs t2)
+    T.Func (sort.it, T.close_binds cs tbs, T.close cs t1, T.close cs t2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | AsyncT typ ->
@@ -286,18 +279,17 @@ let rec check_lit env t lit at =
     lit := Word64Lit (check_word64 at s)
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) -> 
     lit := FloatLit (check_float at s)
-  | T.Prim t', _ when t' = infer_lit env lit at ->
-    ()
   | t, _ ->
-    error at "literal of type\n  %s\ndoes not have expected type\n  %s"
-      (T.string_of_typ (T.Prim (infer_lit env lit at)))
-      (T.string_of_typ_expand env.cons t)
+    let t' = T.Prim (infer_lit env lit at) in
+    if not (T.sub env.cons t' t) then
+      error at "literal of type\n  %s\ndoes not have expected type\n  %s"
+        (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
 
 
 (* Expressions *)
 
 let rec infer_exp env exp : T.typ =
-  T.immutable (infer_exp_mut env exp)
+  T.as_immut (infer_exp_mut env exp)
 
 and infer_exp_structural env exp : T.typ =
   let t = infer_exp env exp in
@@ -370,40 +362,39 @@ and infer_exp' env exp : T.typ =
     T.Opt t1
   | ProjE (exp1, n) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Tup ts ->
-      (match List.nth_opt ts n with
+    (try
+      let ts = T.as_tup_sub env.cons t1 in
+      match List.nth_opt ts n with
       | Some t -> t
       | None ->
         error exp.at "tuple projection %n is out of bounds for type\n  %s"
           n (T.string_of_typ_expand env.cons t1)
-      )
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected tuple type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj env sort.it id fields)
   | DotE (exp1, id) ->
     let t1 = infer_exp_structural env exp1 in
-    (match T.as_obj t1 with
-    | T.Obj (_, tfs) ->
-      (match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
+    (try
+      let _, tfs = T.as_obj_sub env.cons t1 in
+      match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error exp1.at "field name %s does not exist in type\n  %s"
           id.it (T.string_of_typ_expand env.cons t1)
-      )
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected object type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
-      match infer_exp_mut env exp1 with
-      | T.Mut t2 ->
+      let t1 = infer_exp_mut env exp1 in
+      try
+        let t2 = T.as_mut t1 in
         check_exp env t2 exp2
-      | _ ->
+      with Invalid_argument _ ->
         error exp.at "expected mutable assignment target";
     end;
     T.unit
@@ -419,24 +410,24 @@ and infer_exp' env exp : T.typ =
     T.Array t1
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Array t -> 
+    (try
+      let t = T.as_array_sub env.cons t1 in
       if not env.pre then check_exp env T.nat exp2;
       t
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected array type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Func (tbs, t2, t) ->
+    (try
+      let tbs, t2, t = T.as_func_sub env.cons t1 in
       let ts = check_typ_bounds env tbs typs exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
-    | t1' ->
+    with Invalid_argument _ ->
       error exp1.at "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | BlockE decs ->
     let t, (_, _, ce) = infer_block env decs exp.at in
@@ -495,13 +486,19 @@ and infer_exp' env exp : T.typ =
     T.unit
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
-      (* TBR: generalise beyond arrays *)
       let t1 = infer_exp_structural env exp1 in
-      if not (is_iter_typ env.cons t1) then
+      (try
+        let _, tfs = T.as_obj_sub env.cons t1 in
+        let t = T.lookup_field "next" tfs in
+        let t1, t2 = T.as_mono_func_sub env.cons t in
+        T.as_unit_sub env.cons t1;
+        let t2' = T.as_opt_sub env.cons t2 in
+        let ve = check_pat_exhaustive env t2' pat in
+        check_exp (adjoin_vals env ve) T.unit exp2
+      with Invalid_argument _ ->
         error exp1.at "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand env.cons t1);
-      let ve = check_pat_exhaustive env (elem_typ env.cons t1) pat in
-      check_exp (adjoin_vals env ve) T.unit exp2
+          (T.string_of_typ_expand env.cons t1)
+      );
     end;
     T.unit
   | LabelE (id, typ, exp1) ->
@@ -540,22 +537,20 @@ and infer_exp' env exp : T.typ =
     if not env.async then
       error exp.at "misplaced await";
     let t1 = infer_exp_structural env exp1 in
-    (match t1 with
-    | T.Async t -> t
-    | t1' ->
+    (try
+      T.as_async_sub env.cons t1
+    with Invalid_argument _ ->
       error exp1.at "expected async type, but expression has type\n  %s"
-        (T.string_of_typ_expand env.cons t1')
+        (T.string_of_typ_expand env.cons t1)
     )
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.unit
-  | IsE (exp1, typ) ->
+  | IsE (exp1, exp2) ->
+    (* TBR: restrict t1 to objects? *)
     if not env.pre then begin
-      (* TBR: what if T has free type variables? How will we check this, sans type passing? *) 
       let _t1 = infer_exp env exp1 in
-      let _t = check_typ env typ in
-      (* TBR: check that t <: t1 *)
-      ()
+      check_exp env T.Class exp2
     end;
     T.bool
   | AnnotE (exp1, typ) ->
@@ -580,87 +575,39 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env t exp =
-  match exp.it with
-  | PrimE s ->
-    (match T.nonopt env.cons t with
-    | T.Func _ -> ()
-    | _ ->
-      error exp.at "primitive cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | LitE lit ->
+  match exp.it, T.as_opt_sub env.cons t with
+  | PrimE s, T.Func _ ->
+    ()
+  | LitE lit, _ ->
     check_lit env t lit exp.at
-  | UnE (op, exp1) ->
-    if not (Operator.has_unop t op) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    check_exp env t exp1
-  | BinE (exp1, op, exp2) ->
-    if not (Operator.has_binop t op) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    check_exp env t exp1;
-    check_exp env t exp2
-  | RelE (exp1, op, exp2) ->
-    if not (T.sub env.cons t T.bool) then
-      error exp.at "operator cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    ignore (infer_exp env exp)
-  | TupE exps ->
-    (match T.nonopt env.cons t with
-    | T.Tup ts when List.length ts = List.length exps ->
-      List.iter2 (check_exp env) ts exps
-    | _ ->
-      error exp.at "%s expression cannot produce expected type\n  %s"
-        (if exps = [] then "empty" else "tuple")
-        (T.string_of_typ_expand env.cons t)
-    )
-  | OptE exp1 ->
-    (match T.normalize env.cons t with
-    | T.Opt t1 ->
-      check_exp env t1 exp1
-    | _ ->
-      error exp.at "option expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | ObjE (sort, id, fields) ->
-    (match T.nonopt env.cons t with
-    | T.Obj (s, tfs) when s = sort.it ->
-      ignore (check_obj env s tfs id fields exp.at)
-    | _ ->
-      error exp.at "%s expression cannot produce expected type\n  %s"
-        (if sort.it = T.Actor then "actor" else "object")
-        (T.string_of_typ_expand env.cons t)
-    )
-  | ArrayE exps ->
-    (match T.nonopt env.cons t with
-    | T.Array t1 ->
-      List.iter (check_exp env (T.immutable t1)) exps
-    | _ ->
-      error exp.at "array expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | AsyncE exp1 ->
-    (match T.nonopt env.cons t with
-    | T.Async t ->
-      let env' = {env with labs = T.Env.empty; rets = Some t; async = true} in
-      check_exp env' t exp1
-    | _ ->
-      error exp.at "async expression cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | BlockE decs ->
+  | UnE (op, exp1), t' when Operator.has_unop t' op ->
+    check_exp env t' exp1
+  | BinE (exp1, op, exp2), t' when Operator.has_binop t' op ->
+    check_exp env t' exp1;
+    check_exp env t' exp2
+  | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+    List.iter2 (check_exp env) ts exps
+  | OptE exp1, t' when T.is_opt t ->
+    check_exp env t' exp1
+  | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
+    ignore (check_obj env s tfs id fields exp.at)
+  | ArrayE exps, T.Array t' ->
+    List.iter (check_exp env (T.as_immut t')) exps
+  | AsyncE exp1, T.Async t' ->
+    let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
+    check_exp env' t' exp1
+  | BlockE decs, _ ->
     ignore (check_block env t decs exp.at)
-  | IfE (exp1, exp2, exp3) ->
+  | IfE (exp1, exp2, exp3), _ ->
     check_exp env T.bool exp1;
     check_exp env t exp2;
     check_exp env t exp3
-  | SwitchE (exp1, cases) ->
+  | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_structural env exp1 in
     check_cases env t1 t cases;
     if not (Coverage.check_cases cases) then
       warn exp.at "the cases in this switch do not cover all possible values";
-  | LoopE _ | BreakE _ | RetE _ ->
+  | (LoopE _ | BreakE _ | RetE _), _ ->
     (* TBR: remove once we have T.Bottom and subtyping? *)
     ignore (infer_exp env exp)
   | _ ->
@@ -817,17 +764,20 @@ and check_pat' env t pat : val_env =
     end;
     T.Env.empty
   | TupP pats ->
-    (match t with
-    | T.Tup ts ->
+    (try
+      let ts = T.as_tup t in
       check_pats env ts pats T.Env.empty pat.at
-    | _ ->
+    with Invalid_argument _ ->
       error pat.at "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand env.cons t)
     )
   | OptP pat1 ->
-    (match t with
-    | T.Opt t1 | t1 ->
+    (try
+      let t1 = T.as_opt t in
       check_pat env t1 pat1
+    with Invalid_argument _ ->
+      error pat.at "option pattern cannot consume expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -935,7 +885,7 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
     | t ->
       (* When checking object in analysis mode *)
       if not env.pre then
-        check_exp (adjoin_vals env ve) (T.immutable t) exp;
+        check_exp (adjoin_vals env ve) (T.as_immut t) exp;
       t
   in
   if not env.pre then begin
@@ -1132,7 +1082,7 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
       match dec.it with
       | ClassD _ ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add id.it (T.Func (pre_tbs, T.Pre, t2)) ve
+        T.Env.add id.it (T.Func (T.Construct, pre_tbs, T.Pre, t2)) ve
       | _ -> ve
     in ve', T.Env.add id.it c te, Con.Env.add c pre_k ce
 
@@ -1211,7 +1161,7 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it (T.Func (T.Call, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, typbinds, sort, pat, fields) ->
@@ -1221,7 +1171,7 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it (T.Func (T.Construct, tbs, T.close cs t1, T.close cs t2))
 
 
 (* Programs *)

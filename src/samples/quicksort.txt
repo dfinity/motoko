@@ -1,7 +1,7 @@
 -- Checking quicksort.as:
 type Array<T> = var T[]
 type QS<T> <: {quicksort : (Array<T>, Nat, Nat) -> ()}
-let QS : <T>((T, T) -> Int) -> QS<T>
+let QS : class <T>((T, T) -> Int) -> QS<T>
 let a : Array<Int>
 let cmpi : (Int, Int) -> Int
 let qs : QS<Int>
@@ -97,7 +97,7 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished quicksort.as:
-let QS : <T>((T, T) -> Int) -> QS<T> = func
+let QS : class <T>((T, T) -> Int) -> QS<T> = class
 let a : Array<Int> = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = {partition = func; quicksort = func; swap = func; trace = func}

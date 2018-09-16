@@ -1,1 +1,1 @@
-_out/bank-example.wat:52.5-52.18: runtime trap: unreachable executed
+_out/bank-example.wat:214.5-214.18: runtime trap: unreachable executed

@@ -10,7 +10,7 @@ Productions marked * probably deferred to later versions.
   actor? { <typ-field>;* }                      object
   var? <typ> [ ]                                array
   <typ> ?                                       option
-  <typ-params>? <typ> -> <typ>                  function
+  <class>? <typ-params>? <typ> -> <typ>         function
   async <typ>                                   future
   like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
@@ -103,6 +103,7 @@ Productions marked * probably deferred to later versions.
   <pat> or <pat>                                 disjunctive pattern
 * <pat> and <pat>                                conjunctive pattern
 * { <pat-field>;* }                              object pattern
+* async <pat>                                    asynchronous
 
 <pat-field> ::=                                object pattern fields
 * <id> = <pat>                                   field
@@ -110,17 +111,17 @@ Productions marked * probably deferred to later versions.
 
 ## Declarations
 ```
-<dec> ::=                                              declaration
-  <exp>                                                  expression
-  let <pat> = <exp>                                      immutable
-  var <id> (: <typ>)? = <exp>                            mutable
-  func <id>? <typ-params>? <pat> (: <typ>)? = <exp>      function
-  type <id> <typ-params>? = <typ>                        type
-  actor? class <id> <typ-params>? <pat> = <exp>          class
+<dec> ::=                                                 declaration
+  <exp>                                                     expression
+  let <pat> = <exp>                                         immutable
+  var <id> (: <typ>)? = <exp>                               mutable
+  func <id>? <typ-params>? <pat> (: <typ>)? = <exp>         function
+  type <id> <typ-params>? = <typ>                           type
+  actor? class <id> <typ-params>? <pat> (: <typ>)? = <exp>  class
 ```
 
 ## Programs
 ```
-<prog> ::= <dec>;*                                              declaration
+<prog> ::= <dec>;*
 
 ```

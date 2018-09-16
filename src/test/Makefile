@@ -71,10 +71,10 @@ $(addsuffix .refresh, $(GENERATED)) : %.refresh : $(OUTDIR)/%
 	$(WASM) -d $< -o $@ || true
 	touch $@
 
-stats: $(OUTDIR) $(addsuffix .diff,$(GENERATED_OUT))
+stats: $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \
 	for test in $(GENERATED); do \
-	  if [ -s $$test.diff ]; then \
+	  if [ -s $(OUTDIR)/$$test.diff ]; then \
 	    failed="$$failed $$test"; \
 	  fi; \
 	done; \

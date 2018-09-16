@@ -12,7 +12,7 @@ let rec exp e = match e.it with
   | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, i, efs)    -> "ObjE"    $$ [sort s; id i] @ List.map exp_field efs
+  | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
   | DotE (e, i)         -> "DotE"    $$ [exp e; id i]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE es           -> "ArrayE"  $$ List.map exp es
@@ -34,7 +34,7 @@ let rec exp e = match e.it with
   | AsyncE e            -> "AsyncE"  $$ [exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
-  | IsE (e, t)          -> "IsE"     $$ [exp e; typ t]
+  | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | DecE d              -> "DecE"    $$ [dec d]
   | OptE e              -> "OptE"    $$ [exp e]
@@ -98,9 +98,13 @@ and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
 and prim p = Atom (Type.string_of_prim p)
 
-and sort s = match s.it with
+and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
   | Type.Actor  -> Atom "Actor"
+
+and func_sort s = match s.it with
+  | Type.Call      -> Atom "Call"
+  | Type.Construct -> Atom "Construct"
 
 and mut m = match m.it with
   | Const -> Atom "Const"
@@ -121,13 +125,13 @@ and exp_field (ef : exp_field)
 
 
 and typ t = match t.it with
-  | VarT (s,ts)         -> "VarT" $$ [id s] @ List.map typ ts
+  | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]
-  | ObjT (s,ts)         -> "ObjT" $$ [sort s] @ List.map typ_field ts
-  | ArrayT (m,t)        -> "ArrayT" $$ [mut m; typ t]
+  | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | TupT ts             -> "TupT" $$ List.map typ ts
-  | FuncT (tbs, at, rt) -> "FuncT" $$ List.map typ_bind tbs @ [ typ at; typ rt]
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | LikeT  t            -> "LikeT" $$ [typ t]
   | AnyT                -> Atom "AnyT"
@@ -143,4 +147,4 @@ and dec d = match d.it with
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, tp, s, p, efs) ->
-    "ClassD" $$ [id i] @ List.map typ_bind tp @ [sort s; pat p] @ List.map exp_field efs
+    "ClassD" $$ [id i] @ List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs

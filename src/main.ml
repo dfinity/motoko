@@ -28,7 +28,7 @@ let print_ce =
 
 let print_stat_ve =
   Type.Env.iter (fun x t ->
-    let t' = Type.immutable t in
+    let t' = Type.as_immut t in
     printf "%s %s : %s\n"
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
@@ -36,7 +36,7 @@ let print_stat_ve =
 let print_dyn_ve env =
   Value.Env.iter (fun x d ->
     let t = Type.Env.find x env.Typing.vals in
-    let t' = Type.immutable t in
+    let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
       (Type.string_of_typ t') (Value.string_of_def d)
@@ -55,7 +55,7 @@ let print_val env v t =
   printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
 
 let phase heading filename =
-  if !Flags.verbose then printf "-- %s %s:\n" heading filename
+  if !Flags.verbose then printf "-- %s %s:\n%!" heading filename
 
 
 (* Typechecking *)
