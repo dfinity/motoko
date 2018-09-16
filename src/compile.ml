@@ -268,7 +268,8 @@ end (* Var *)
 
 module Func = struct
 
-  let load_closure i = [ nr (GetLocal (nr 0l)) ] @ Heap.load_field i
+  let load_the_closure = [ nr (GetLocal (nr 0l)) ]
+  let load_closure i = load_the_closure @ Heap.load_field i
   let load_argument  = [ nr (GetLocal (nr 1l)) ]
 
   let unary_of_body env mk_body =
@@ -367,7 +368,7 @@ module Object = struct
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
   let header_size = 1l
 
-  let _class_position = 0l
+  let class_position = 0l
 
   let default_header = [ compile_const 1l ]
 
@@ -377,7 +378,7 @@ module Object = struct
      let i = Int32.add header_size fi in
      i
 
-  let lit env no fs =
+  let lit env no co fs =
      (* Find largest index, to know the size of the heap representation *)
      let max a b = if Int32.compare a b >= 0 then a else b in
      let n = Int32.add header_size (
@@ -402,7 +403,7 @@ module Object = struct
      let (env1, field_code) = List.fold_left mk_field_ptr (env, []) fs in
      field_code @
 
-     (* An extra indirection for the 'this' pointer *)
+     (* An extra indirection for the 'this' pointer, if present *)
      let (env2, this_code) = match no with
       | Some name -> let (env2, ti) = E.add_local env1 name.it in
                      (env2, Tuple.lit env1 [ [nr (GetLocal (nr ri))] ] @
@@ -410,6 +411,11 @@ module Object = struct
       | None -> (env1, []) in
      this_code @
 
+     (* Write the class field *)
+     [ nr (GetLocal (nr ri)) ] @
+     (match co with | Some class_instrs -> class_instrs
+                    | None -> compile_const 1l ) @
+     Heap.store_field class_position @
 
      (* Write all the fields *)
      let init_field (id, mk_is) : Wasm.Ast.instr list =
@@ -503,7 +509,7 @@ module Array = struct
               compile_null,
               (* Else *)
               (* Get point to counter from closure *)
-              [ nr (GetLocal (nr 0l)) ] @ Heap.load_field 1l @
+              Func.load_closure 1l @
               (* Store increased counter *)
               [ nr (GetLocal (nr i)) ] @
               compile_const 1l @
@@ -527,7 +533,7 @@ module Array = struct
               get_array_object ] @
             [ nr (SetLocal (nr ni)) ] @
 
-            Object.lit env1 None
+            Object.lit env1 None None
               [ (nr_ "next", fun _ -> [ nr (GetLocal (nr ni)) ]) ]
        ) in
 
@@ -692,6 +698,12 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code2 = compile_exp (E.inc_depth env) e2 in
      let code3 = compile_exp (E.inc_depth env) e3 in
      code1 @ [ nr (If ([I32Type], code2, code3)) ]
+  | IsE (e1, e2) ->
+     let code1 = compile_exp env e1 in
+     let code2 = compile_exp env e2 in
+     code1 @ Heap.load_field Object.class_position @
+     code2 @
+     [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
   | BlockE decs ->
      compile_decs env decs
   | DecE dec ->
@@ -722,7 +734,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE (_, name, fs) ->
      (* TODO: This treats actors like any old object *)
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
-     Object.lit env (Some name) fs'
+     Object.lit env (Some name) None fs'
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
@@ -962,7 +974,10 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       let mk_body env1 =
         (* TODO: This treats actors like any old object *)
         let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) efs in
-        Object.lit env1 None fs' in
+        (* this is run within the function. The first argument is a pointer
+           to the closure, which happens to be the class function. *)
+        let mk_class = Func.load_the_closure in
+        Object.lit env1 None (Some mk_class) fs' in
       Func.dec pre_env last name captured mk_pat mk_body
 
 and compile_decs env decs : Wasm.Ast.instr list =
