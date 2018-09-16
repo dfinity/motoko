@@ -41,7 +41,7 @@ let rec exp e : f = match e.it with
   | RelE (e1, ro, e2)   -> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
-  | ObjE (s, i, efs)    -> close (union_binders exp_field efs) // i.it
+  | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE es           -> exps es
@@ -105,5 +105,9 @@ and dec d = match d.it with
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e = S.elements (exp e /// pat p)
+
+(* The variables captured by a class function. May include the function itself! *)
+and captured_exp_fields p efs = S.elements (close (exp_fields efs) /// pat p)
+
 
 and decs ps : fb = union_binders dec ps

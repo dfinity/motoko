@@ -328,7 +328,7 @@ module Func = struct
       body_code)
 
   (* Compile a function declaration *)
-  let dec pre_env last name rt captured mk_pat mk_body =
+  let dec pre_env last name captured mk_pat mk_body =
       let li = E.add_anon_local pre_env I32Type in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
@@ -944,17 +944,22 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         store_ptr @
         if last then [ nr (GetLocal (nr i)) ] @ load_ptr else [])
 
-  | FuncD (name, _, p, rt, e) ->
+  | FuncD (name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 = compile_exp env1 e in
-      Func.dec pre_env last name rt captured mk_pat mk_body
+      Func.dec pre_env last name captured mk_pat mk_body
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, typ_params, s, p, efs) ->
-    compile_dec last pre_env (nr_ (FuncD (name, typ_params, p, nr_ AnyT,
-      nr__ (ObjE (s, nr_ "WHATTOPUTHERE", efs)))))
+      let captured = Freevars.captured_exp_fields p efs in
+      let mk_pat env1 = compile_mono_pat env1 p in
+      let mk_body env1 =
+        (* TODO: This treats actors like any old object *)
+        let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) efs in
+        Object.lit env1 (nr_ "WHATTOPUTHERE") fs' in
+      Func.dec pre_env last name captured mk_pat mk_body
 
 and compile_decs env decs : Wasm.Ast.instr list =
   let rec go pre_env decs = match decs with
