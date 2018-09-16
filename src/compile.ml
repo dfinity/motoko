@@ -292,11 +292,24 @@ module Func = struct
 end (* Func *)
 
 module Object = struct
+  (* First word: Class pointer (0x1, an invalid pointer, when none) *)
+  let header_size = 1l
+
+  let _class_position = 0l
+
+  let default_header = [ compile_const 1l ]
+
+  (* Takes the header into account *)
+  let field_position env f =
+     let fi = E.field_to_index env f in
+     let i = Int32.add header_size fi in
+     i
 
   let lit env name fs =
      (* Find largest index, to know the size of the heap representation *)
      let max a b = if Int32.compare a b >= 0 then a else b in
-     let n = Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs)) in
+     let n = Int32.add header_size (
+             Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs))) in
 
      (* Allocate memory *)
      let ri = E.add_anon_local env I32Type in
@@ -308,7 +321,7 @@ module Object = struct
         and just bind all of them to 'ri' *)
      let mk_field_ptr (env, code) (id, mk_is) =
        let (env', fi) = E.add_local env id.it in
-       let offset = Wasm.I32.mul 4l (E.field_to_index env id) in
+       let offset = Wasm.I32.mul 4l (field_position env id) in
        let code' = [ nr (GetLocal (nr ri));
                      nr (Wasm.Ast.Const (nr (Wasm.Values.I32 offset)));
                      nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
@@ -324,7 +337,7 @@ module Object = struct
 
      (* Write all the fields *)
      let init_field (id, mk_is) : Wasm.Ast.instr list =
-        let i = E.field_to_index env id in
+        let i = field_position env id in
         [ nr (GetLocal (nr ri)) ] @
 	mk_is env2 @
         Heap.store_field i
@@ -335,18 +348,18 @@ module Object = struct
      [ nr (GetLocal (nr ri)) ]
 
   let idx env f =
-     let i = E.field_to_index env f in
+     let i = field_position env f in
      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ] @
      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ]
 
   let load_idx env f =
-     let i = E.field_to_index env f in
+     let i = field_position env f in
      Heap.load_field i
 
 end (* Object *)
 
 module Array = struct
-  let header_size = 6l
+  let header_size = Int32.add Object.header_size 6l
   let element_size = 4l
 
   (* Indices of known global functions *)
@@ -358,7 +371,7 @@ module Array = struct
   let array_vals_funid      = 5l
   let array_vals_next_funid = 6l
 
-  let len_field = 5l
+  let len_field = Int32.add Object.header_size 5l
 
 
   (* Expects on the stack the pointer to the array and the index
@@ -484,7 +497,8 @@ module Array = struct
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tuple.lit_rec env
-     ([ (fun compile_self ->
+     (List.map (fun i _ -> i) Object.default_header @
+      [ (fun compile_self ->
         Tuple.lit env [ compile_const array_get_funid; compile_self])
       ; (fun compile_self ->
         Tuple.lit env [ compile_const array_set_funid; compile_self])
