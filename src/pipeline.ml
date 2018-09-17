@@ -1,5 +1,10 @@
 open Printf
 
+type stat_env = Typing.env
+type dyn_env = Interpret.env
+type env = stat_env * dyn_env
+
+
 (* Diagnostics *)
 
 let phase heading name =
@@ -46,7 +51,9 @@ let print_val _senv v t =
 
 (* Parsing *)
 
-let parse_with lexer parser name : Syntax.prog option =
+type parse_result = Syntax.prog
+
+let parse_with lexer parser name : parse_result option =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
@@ -73,6 +80,8 @@ let parse_file filename =
 
 (* Checking *)
 
+type check_result = Syntax.prog * Type.typ * Typing.scope
+
 let check_prog infer senv prog name : (Type.typ * Typing.scope) option =
   try
     phase "Checking" name;
@@ -85,8 +94,7 @@ let check_prog infer senv prog name : (Type.typ * Typing.scope) option =
   with Typing.Error (at, msg) ->
     error at "type" msg; None
 
-let check_with parse infer senv name
-  : (Syntax.prog * Type.typ * Typing.scope) option =
+let check_with parse infer senv name : check_result option =
   match parse name with
   | None -> None
   | Some prog ->
@@ -100,6 +108,9 @@ let check_file =
 
 
 (* Interpretation *)
+
+type interpret_result =
+  Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope
 
 let interpret_prog denv prog name : (Value.value * Interpret.scope) option =
   try
@@ -118,8 +129,7 @@ let interpret_prog denv prog name : (Value.value * Interpret.scope) option =
     eprintf "%!";
     None
 
-let interpret_with check (senv, denv) name
-  : (Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope) option =
+let interpret_with check (senv, denv) name : interpret_result option =
   match check senv name with
   | None -> None
   | Some (prog, t, sscope) ->
@@ -133,6 +143,8 @@ let interpret_file = interpret_with check_file
 
 (* Running *)
 
+type run_result = env
+
 let output_dscope (senv, _) t v sscope dscope =
   if !Flags.trace then print_dyn_ve senv dscope
 
@@ -141,8 +153,7 @@ let output_scope (senv, _) t v sscope dscope =
   if v <> Value.unit then print_val senv v t
 
 
-let run_with interpret output ((senv, denv) as env) name
-  : (Typing.env * Interpret.env) option =
+let run_with interpret output ((senv, denv) as env) name : run_result option =
   let result = interpret env name in
   let env' =
     match result with
@@ -166,11 +177,13 @@ let run_file = run_with interpret_file output_dscope
 
 (* Compilation *)
 
+type compile_result = Wasm.Ast.module_ * Typing.scope
+
 let compile_prog prog name : Wasm.Ast.module_ =
   phase "Compiling" name;
   Compile.compile prog
 
-let compile_with check senv name : (Wasm.Ast.module_ * Typing.scope) option =
+let compile_with check senv name : compile_result option =
   match check senv name with
   | None -> None
   | Some (prog, t, scope) ->
