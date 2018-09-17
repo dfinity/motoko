@@ -2,5 +2,5 @@
 -- Interpreting actors.as:
 actors.as:22.9-22.12: execution error, arithmetic overflow
 actors.as:21.15-21.18: execution error, arithmetic overflow
--- Finished actors.as:
+-- Aborted actors.as:
 

@@ -29,17 +29,17 @@ $(OUTDIR):
 	mkdir -p $@
 
 $(OUTDIR)/%.tc: %.as $(ASC) Makefile
-	mkdir -p $(OUTDIR); $(ASC) --typecheck-only $< > $@ 2>&1 || true
+	mkdir -p $(OUTDIR); $(ASC) --check $< > $@ 2>&1 || true
 
 $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \
-	then echo "Typecheck failed"; touch $@; \
+	then echo "Checking failed"; touch $@; \
 	else $(ASC) -r -v $< > $@ 2>&1 || true; \
 	fi
 
 $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \
-	then echo "Typecheck failed"; touch $@; touch $@.stderr; \
+	then echo "Checking failed"; touch $@; touch $@.stderr; \
 	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
 		echo Hack until opam wasm package is updated >/dev/null; \
 		mv $@ $@.tmp; \

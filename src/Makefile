@@ -18,7 +18,7 @@ all: $(NAME) test
 $(NAME): $(MAIN).$(BUILD)
 	mv $< $@
 
-asc.js: js_main.byte
+$(NAME).js: js_main.byte
 	js_of_ocaml +nat.js $< -o $@
 
 $(MAIN).$(BUILD): sanity

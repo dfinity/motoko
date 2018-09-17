@@ -34,7 +34,13 @@
     (i32.store)
     (i32.const 0)
   )
-  (func $2 (type 1) (local i32) (get_local 0) (i32.load offset=4) (i32.load offset=24))
+  (func $2
+    (type 1)
+    (local i32)
+    (get_local 0)
+    (i32.load offset=4)
+    (i32.load offset=24)
+  )
   (func $3
     (type 1)
     (local i32 i32 i32 i32 i32 i32 i32)
@@ -197,7 +203,27 @@
   )
   (func $7
     (type 1)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (local
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+    )
     (get_global 0)
     (get_global 0)
     (i32.const 4)
@@ -586,7 +612,27 @@
   )
   (func $8
     (type 1)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (local
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+    )
     (get_global 0)
     (get_global 0)
     (i32.const 4)
@@ -975,7 +1021,27 @@
   )
   (func $9
     (type 1)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (local
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+    )
     (get_global 0)
     (get_global 0)
     (i32.const 4)
@@ -1364,7 +1430,27 @@
   )
   (func $10
     (type 1)
-    (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+    (local
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+      i32
+    )
     (get_global 0)
     (get_global 0)
     (i32.const 4)

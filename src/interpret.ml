@@ -296,7 +296,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun  v ->
       if V.as_bool v
       then k V.unit
-      else trap exp.at "Assertion failure"
+      else trap exp.at "assertion failure"
     )
   | IsE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
