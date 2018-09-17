@@ -116,8 +116,9 @@ let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
 let check_file senv n = check_with parse_file infer_prog_unit senv n
-let check_files senv ns =
-  check_with (fun _n -> parse_files ns) infer_prog_unit senv "all"
+let check_files senv = function
+  | [n] -> check_file senv n
+  | ns -> check_with (fun _n -> parse_files ns) infer_prog_unit senv "all"
 
 
 (* Interpretation *)
@@ -153,8 +154,9 @@ let interpret_with check (senv, denv) name : interpret_result option =
 let interpret_string env s =
   interpret_with (fun senv name -> check_string senv s name) env
 let interpret_file env n = interpret_with check_file env n
-let interpret_files env ns =
-  interpret_with (fun senv _name -> check_files senv ns) env "all"
+let interpret_files env = function
+  | [n] -> interpret_file env n
+  | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
 
 
 (* Running *)
@@ -190,8 +192,10 @@ let run_with interpret output ((senv, denv) as env) name : run_result option =
 let run_string env s =
   run_with (fun env name -> interpret_string env s name) output_dscope env
 let run_file env n = run_with interpret_file output_dscope env n
-let run_files env ns =
-  run_with (fun env _name -> interpret_files env ns) output_dscope env "all"
+let run_files env = function
+  | [n] -> run_file env n
+  | ns ->
+    run_with (fun env _name -> interpret_files env ns) output_dscope env "all"
 
 
 (* Compilation *)
@@ -216,8 +220,9 @@ let compile_with check senv name : compile_result option =
 let compile_string senv s =
   compile_with (fun senv name -> check_string senv s name) senv
 let compile_file senv n = compile_with check_file senv n
-let compile_files senv ns =
-  compile_with (fun env _name -> check_files senv ns) senv "all" 
+let compile_files senv = function
+  | [n] -> compile_file senv n
+  | ns -> compile_with (fun env _name -> check_files senv ns) senv "all" 
 
 
 (* Interactively *)
