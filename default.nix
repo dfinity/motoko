@@ -66,17 +66,21 @@ rec {
       nixpkgs.ocamlPackages.js_of_ocaml
       nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx
+      nixpkgs.nodejs
     ];
 
     buildPhase = ''
       make asc.js
     '';
 
-    doInstallCheck = false;
-
     installPhase = ''
       mkdir -p $out
       cp asc.js $out
     '';
+
+    installCheckPhase = ''
+      NODE_PATH=$out/ node test/node-test.js
+    '';
+
   });
 }

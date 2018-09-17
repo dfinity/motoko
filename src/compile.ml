@@ -1027,9 +1027,13 @@ let compile (prog  : Syntax.prog) : module_ =
       memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     }
 
-let print_wat (wat : module_) : unit =
-    Wasm.Print.module_ stdout 100 wat
+let print_wat (m : module_) : unit =
+    Wasm.Print.module_ stdout 100 m
 
-let string_of_wat (wat : module_) : string =
-    Wasm.Sexpr.to_string 100 (Wasm.Arrange.module_ wat)
+let string_of_wat (m : module_) : string =
+    Wasm.Sexpr.to_string 100 (Wasm.Arrange.module_ m)
+
+let wasm_of_wat (m : module_) : string =
+    Wasm.Encode.encode m
+
 

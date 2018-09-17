@@ -86,22 +86,36 @@ let typecheck_string env s name =
   let infer env prog = Type.unit, Typing.check_prog env prog in
   typecheck false env lexer parse infer name
 
-let compile_mod (name, _t, _stat_env, _stat_scope, prog) : string =
+let compile_mod (name, _t, _stat_env, _stat_scope, prog) =
   phase "Compiling" name;
-  let m = Compile.compile prog in
-  Compile.string_of_wat m
+  Compile.compile prog
 
-let js_compile source =
+let js_compile_wat source =
   Flags.privileged := true;
   match typecheck_string Typing.empty_env Prelude.prelude "prelude" with
   | Some (env1, prel) ->
       begin match typecheck_string env1 source "js-input" with
-      | Some (_, tc'ed_mod) -> compile_mod tc'ed_mod
+      | Some (_, tc'ed_mod) ->
+         let m = compile_mod tc'ed_mod in
+         Compile.string_of_wat m
       | None -> ""
       end
  | None -> ""
 
+let js_compile_wasm source =
+  Flags.privileged := true;
+  match typecheck_string Typing.empty_env Prelude.prelude "prelude" with
+  | Some (env1, prel) ->
+      begin match typecheck_string env1 source "js-input" with
+      | Some (_, tc'ed_mod) ->
+         let m = compile_mod tc'ed_mod in
+         Bytes.of_string (Compile.wasm_of_wat m)
+      | None -> Bytes.empty
+      end
+ | None -> Bytes.empty
+
 let _ = Js.export "asc"
     (object%js
-       method compile s = Js.string (js_compile (Js.to_string s))
+       method compileWat s  = Js.string (js_compile_wat (Js.to_string s))
+       method compileWasm s = Js.bytestring (js_compile_wasm (Js.to_string s))
      end);

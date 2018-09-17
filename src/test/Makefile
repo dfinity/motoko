@@ -87,6 +87,9 @@ stats: $(addsuffix .diff,$(GENERATED_OUT))
 current: $(addsuffix .refresh, $(GENERATED))
 accept: current
 
+js:
+	NODE_PATH=../ node node-test.js
+
 clean:
 	rm -rf $(OUTDIR)
 
@@ -95,4 +98,5 @@ clean:
 FORCE:
 
 .PRECIOUS: $(GENERATED_OUT)
+
 
