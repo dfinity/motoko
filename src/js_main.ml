@@ -2,7 +2,7 @@ let senv, _ = Pipeline.init ()
 
 (* TBR: propagate error messages? *)
 let js_compile_with convert source =
-  match Pipeline.compile_string (Js.to_string source) senv "js-input" with
+  match Pipeline.compile_string senv (Js.to_string source) "js-input" with
   | Some (module_, _) -> Js.some (convert module_)
   | None -> Js.null
 
