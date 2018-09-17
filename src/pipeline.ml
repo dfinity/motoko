@@ -171,11 +171,18 @@ let compile_prog prog name : Wasm.Ast.module_ =
   Compile.compile prog
 
 let compile_with check senv name : (Wasm.Ast.module_ * Typing.scope) option =
-  match check senv name with
-  | None -> None
-  | Some (prog, t, scope) ->
-    let module_ = compile_prog prog name in
-    Some (module_, scope)
+  Flags.privileged := true;
+  match check_string Prelude.prelude Typing.empty_env "prelude" with
+  | None ->
+    Flags.privileged := false;
+    None
+  | Some (prel_prog,_,_) ->
+    Flags.privileged := false;
+    match check senv name with
+    | None -> None
+    | Some (prog, t, scope) ->
+      let module_ = compile_prog [prel_prog; prog] name in
+      Some (module_, scope)
 
 let compile_string s = compile_with (check_string s)
 let compile_file = compile_with check_file
