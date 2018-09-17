@@ -1001,35 +1001,27 @@ and compile_start_func env ds : func =
        body = code @ [ nr Drop ]
      }
 
-
 let compile (prog  : Syntax.prog) : module_ =
-    let env = E.mk_global () in
+  let env = E.mk_global () in
 
-    Array.common_funcs env;
+  Array.common_funcs env;
 
-    let start_fun = compile_start_func env prog.it in
-    let i = E.add_fun env start_fun in
+  let start_fun = compile_start_func env prog.it in
+  let i = E.add_fun env start_fun in
 
-    let funcs = E.get_funcs env in
-    let nf = List.length funcs in
-    let nf' = Wasm.I32.of_int_u nf in
+  let funcs = E.get_funcs env in
+  let nf = List.length funcs in
+  let nf' = Wasm.I32.of_int_u nf in
 
-    nr { empty_module with
-      types = E.get_types env;
-      funcs = funcs;
-      tables = [ nr { ttype = TableType ({min = nf'; max = Some nf'}, AnyFuncType) } ];
-      elems = [ nr {
-        index = nr 0l;
-        offset = nr compile_zero;
-        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
-      start = Some (nr i);
-      globals = Heap.globals;
-      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
-    }
-
-let print_wat (wat : module_) : unit =
-    Wasm.Print.module_ stdout 100 wat
-
-let string_of_wat (wat : module_) : string =
-    Wasm.Sexpr.to_string 100 (Wasm.Arrange.module_ wat)
-
+  nr { empty_module with
+    types = E.get_types env;
+    funcs = funcs;
+    tables = [ nr { ttype = TableType ({min = nf'; max = Some nf'}, AnyFuncType) } ];
+    elems = [ nr {
+      index = nr 0l;
+      offset = nr compile_zero;
+      init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
+    start = Some (nr i);
+    globals = Heap.globals;
+    memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+  }

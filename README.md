@@ -3,17 +3,43 @@
 A simple language for writing Dfinity actors.
 
 
+## Installation using Nix
+
+To install the `asc` binary into your nix environment, use
+
+```
+$ nix-env -i -f . -A hypervisor
+```
+
 ## Development using Nix
 
+To enter a shell with the necessary dependencies, you can use
+
 ```
-$ nix-build -A native
+$ nix-shell -A native
 ```
 
-or
+Then you can run `make asc` in `src/` to build the `asc` binary, and use the
+test suite in `src/test`.
 
+
+To build `asc.js`, the JavaScript library, use
 ```
 nix-build -A js
 ```
+
+## Installation and development without Nix
+
+You do not have to use nix:
+
+ * Use your system’s package manager to install `ocaml` and
+   [`opam`](https://opam.ocaml.org/doc/Install.html)
+ * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
+   ```
+   opam install wasm num
+   ```
+ * Make sure `wasm` (a binary form the `wasm` package) is in the path to run
+   the tests.
 
 
 ## Introduction
