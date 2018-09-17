@@ -34,12 +34,12 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | LabelE (_, _, exp1) 
   | BreakE (_, exp1) 
   | RetE exp1   
-  | IsE (exp1, _) 
   | AnnotE (exp1, _) 
-  | LoopE (exp1, None) -> 
-    effect_exp exp1
+  | LoopE (exp1, None) ->  
+    effect_exp exp1 
   | BinE (exp1, _, exp2)
-  | IdxE (exp1, exp2) 
+  | IdxE (exp1, exp2)
+  | IsE (exp1, exp2) 
   | RelE (exp1, _, exp2) 
   | AssignE (exp1, exp2) 
   | CallE (exp1, _, exp2) 
@@ -47,7 +47,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | OrE (exp1, exp2) 
   | WhileE (exp1, exp2) 
   | LoopE (exp1, Some exp2) 
-  | ForE (_, exp1, exp2)-> 
+  | ForE (_, exp1, exp2)->
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
@@ -404,8 +404,8 @@ and t_exp' context exp' =
   | AwaitE _ -> failwith "Impossible" (* an await never has effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
-  | IsE (exp1, typ) ->
-    IsE (t_exp context exp1,typ) 
+  | IsE (exp1, exp2) ->
+    IsE (t_exp context exp1, t_exp context exp2) 
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp context exp1,typ)
   | DecE dec ->
@@ -726,8 +726,8 @@ and c_exp' context exp =
      end
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE exp1)) exp1  
-  | IsE (exp1, typ) ->
-    unary context k (fun v1 -> e (IsE (v1,typ))) exp1  
+  | IsE (exp1, exp2) ->
+    binary context k (fun v1 v2 -> e (IsE (v1,v2))) exp1 exp2
   | AnnotE (exp1, typ) ->
     (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1  
