@@ -70,10 +70,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let e2 = effect_cases cases in
     max_eff e1 e2
   | AsyncE exp1 ->
-    let _ = effect_exp exp1 in
     T.Triv
   | AwaitE exp1 ->
-    let _ = effect_exp exp1 in
     T.Await 
   | DecE d ->
     effect_dec d
@@ -93,9 +91,12 @@ and effect_block es =
             
 and effect_field_exps efs =
   List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
+                 
+and effect_dec dec =
+  dec.note.note_eff
 
-and effect_dec d =
-  match d.it with
+and infer_effect_dec dec =    
+  match dec.it with
   | ExpD e
   | LetD (_,e) 
   | VarD (_, e) ->
@@ -103,15 +104,16 @@ and effect_dec d =
   | TypD (v, tps, t) ->
     T.Triv
   | FuncD (v, tps, p, t, e) ->
-    let _ = effect_exp e in
     T.Triv
   | ClassD (a, v, tps, p, efs) ->
-    effect_field_exps efs 
+    T.Triv
 
 (* sugar *)                      
 let typ e = e.note.note_typ                   
+
 let eff e = e.note.note_eff
-let typ_dec dec = failwith "NYI" (* ideally add annotations on decs *)
+
+let typ_dec dec = dec.note.note_typ
                           
 (* the translation *)
 let is_triv (exp:exp)  =
@@ -147,15 +149,18 @@ let id_ret = ""
 let  (-->) k e =
   match k.it with
   | VarE v ->
-     {it=DecE(FuncD("" @@ no_region, (* no recursion *)
-                [],
-                {it=VarP v;at=no_region;note=k.note},
-                AnyT@@no_region, (* bogus,  but we shouln't use it anymore *)
-                e)@@no_region
+     let note = {note_typ = T.Func(T.Call, [], typ k, typ e);
+                 note_eff = T.Triv} in
+     {it=DecE({it=FuncD("" @@ no_region, (* no recursion *)
+                        [],
+                        {it=VarP v;at=no_region;note=k.note},
+                        AnyT@@no_region, (* bogus,  but we shouln't use it anymore *)
+                        e);
+               at = no_region;
+               note;}
             );
      at = e.at;
-     note = {note_typ = T.Func(T.Call, [], typ k, typ e);
-             note_eff = T.Triv}
+     note;
     }
   | _ -> failwith "Impossible"
 
@@ -228,12 +233,12 @@ let decE dec =
   
 (* let varP x = {it=VarP (id x); at = x.at; note = x.note} *)
 let varP x = {x with it=VarP (id_of_exp x)}
-let letD x exp = LetD (varP x,exp) @@ no_region
-let letE x exp1 exp2 =
-  { it = BlockE [LetD (varP x,exp1) @@ no_region;
-                 ExpD exp2 @@ no_region];
+let letD x exp = { exp with it = LetD (varP x,exp) }
+let letE x exp1 exp2 = 
+  { it = BlockE [letD x exp1;
+                 {exp2 with it = ExpD exp2}];
     at = no_region;
-    note = {note_typ = typ exp1;
+    note = {note_typ = typ exp2;
             note_eff = max_eff (eff exp1) (eff exp2)}           
   }
 
@@ -269,8 +274,8 @@ let tupE exps =
 
 (* TBC: we need a new primitive that just declares a promise *)
 let declare_idE x typ exp1 =
-  { it = BlockE [LetD (varP x,x) @@ no_region;
-                 ExpD exp1 @@ no_region];
+  { it = BlockE [letD x x;
+                 {exp1 with it = ExpD exp1}];
     at = no_region;
     note = exp1.note;
    }
@@ -759,7 +764,7 @@ and c_dec' context dec =
      let patenv,pat' = rename_pat pat in
      let dec' = {dec with it = LetD(pat',v)} in
      let block =
-       { it = BlockE ((dec'::define_pat patenv pat)@[{it=ExpD v;at = no_region; note = ()}]);
+       { it = BlockE ((dec'::define_pat patenv pat)@[{v with it = ExpD v}]);
          at = no_region;
          note = {note_typ = typ exp;
                  note_eff = eff exp}
@@ -821,7 +826,7 @@ and declare_dec dec exp : exp =
   | ExpD _
   | TypD _ -> exp
   | LetD (pat, _) -> declare_pat pat exp
-  | VarD (id, _)
+  | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
   | FuncD (id, _, _, _, _)
   | ClassD (id, _, _, _, _) -> declare_id id (typ_dec dec) exp
 
@@ -890,11 +895,8 @@ and define_pat patenv pat : dec list =
   | LitP _ | SignP _ ->
     []
   | VarP id ->
-     [ {it = ExpD 
-               (define_idE (idE id pat.note.note_typ) (PatEnv.find id.it patenv));
-        at = no_region;
-        note = ();
-       }
+     [ let d = (define_idE (idE id pat.note.note_typ) (PatEnv.find id.it patenv)) in
+       {d with it = ExpD d}  
      ]
   | TupP pats -> define_pats patenv pats  
   | OptP pat1 -> define_pat patenv pat1

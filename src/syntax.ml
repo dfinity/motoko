@@ -168,7 +168,7 @@ and case' = {pat : pat; exp : exp}
 
 (* Declarations *)
 
-and dec = dec' Source.phrase
+and dec = (dec',typ_note) Source.annotated_phrase
 and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)

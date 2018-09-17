@@ -941,6 +941,7 @@ and infer_block_exps env ce_inner decs : T.typ =
     infer_block_exps env ce_inner decs'
 
 and infer_dec env ce_inner dec : T.typ =
+  let t = 
   match dec.it with
   | ExpD exp ->
     infer_exp env exp
@@ -973,7 +974,12 @@ and infer_dec env ce_inner dec : T.typ =
     end;
     t
   | TypD _ ->
-    T.unit
+     T.unit
+  in
+  let eff = A.infer_effect_dec dec in
+  dec.note <- {note_typ = t; note_eff = eff};
+  t              
+  
 
 
 and check_block env t decs at : scope =
@@ -996,8 +1002,9 @@ and check_block_exps env ce_inner t decs at =
     check_block_exps env ce_inner t decs' at
 
 and check_dec env ce_inner t dec =
-  match dec.it with
-  | ExpD exp -> check_exp env t exp
+  begin
+    match dec.it with
+    | ExpD exp -> check_exp env t exp
 (* TBR: push in external type annotation;
    unfortunately, this is enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -1020,16 +1027,18 @@ and check_dec env ce_inner t dec =
       error exp.at "function expression cannot produce expected type %s"
         (T.string_of_typ t)
     )
-*)
-  | _ ->
-    let t' = infer_dec env ce_inner dec in
-    (* TBR: special-case unit? *)
-    if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-      error dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-        (T.string_of_typ_expand env.cons t');
-
-
+ *)
+    | _ ->
+       let t' = infer_dec env ce_inner dec in
+       (* TBR: special-case unit? *)
+       if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
+         error dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+           (T.string_of_typ_expand env.cons t)
+           (T.string_of_typ_expand env.cons t');
+  end;
+  let eff = A.infer_effect_dec dec in
+  dec.note <- {note_typ = t; note_eff = eff};
+  
 (*
 and print_ce =
   Con.Env.iter (fun c k ->

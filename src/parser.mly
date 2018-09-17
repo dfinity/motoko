@@ -29,7 +29,7 @@ let name_exp e =
   | VarE x -> [], e, dup_var x
   | _ ->
     let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
-    [LetD (VarP x @? x.at, e) @@ e.at], dup_var x, dup_var x
+    [LetD (VarP x @? x.at, e) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
@@ -48,7 +48,7 @@ let assign_op lhs rhs_f at =
   let e = AssignE (lhs', rhs_f rhs') @? at in
   match ds with
   | [] -> e
-  | ds -> BlockE (ds @ [ExpD e @@ e.at]) @? at
+  | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
 %}
 
@@ -478,25 +478,25 @@ dec_nonexp :
         match p.it with
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
-      in LetD (p', e') @@ at $sloc }
+      in LetD (p', e') @? at $sloc }
   | VAR x=id t=return_typ? EQ e=exp
     { let e' =
         match t with
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
-      in VarD(x, e') @@ at $sloc }
+      in VarD(x, e') @? at $sloc }
   | FUNC xf=id_opt fd=func_dec
-    { (fd (xf "func" $sloc)).it @@ at $sloc }
+    { (fd (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
-    { TypD(x, tps, t) @@ at $sloc }
+    { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
-    { ClassD(xf "class" $sloc, tps, s, p, efs) @@ at $sloc }
+    { ClassD(xf "class" $sloc, tps, s, p, efs) @? at $sloc }
 
 dec :
   | d=dec_nonexp
     { d }
   | e=exp_nondec
-    { ExpD e @@ at $sloc }
+    { ExpD e @? at $sloc }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
@@ -508,7 +508,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun x -> FuncD(x, tps, p, t, e) @@ at $sloc }
+      in fun x -> FuncD(x, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
