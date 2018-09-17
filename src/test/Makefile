@@ -39,18 +39,18 @@ $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 
 $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	@if [ -s $*.tc ]; \
-	then echo "Checking failed"; touch $@; touch $@.stderr; \
-	else $(ASC) -c $< > $@ 2> $@.stderr || true; \
+	then echo "Checking failed"; > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
+	else $(ASC) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
 		echo Hack until opam wasm package is updated >/dev/null; \
-		mv $@ $@.tmp; \
-		sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $@.tmp > $@; \
-		rm $@.tmp; \
+		mv $(OUTDIR)/$*.wat $(OUTDIR)/$*.wat.tmp ; \
+		sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $(OUTDIR)/$*.wat.tmp > $(OUTDIR)/$*.wat; \
+		rm $(OUTDIR)/$*.wat.tmp; \
 	fi
 
 $(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
 	@if [ -s $< ]; \
 	then $(WASM) $< > $@ 2>&1 || true; \
-	else echo "Empty .wat file $*.wat!"; touch $@; \
+	else echo "Empty .wat file $*.wat!"; > $@; \
 	fi
 
 $(OKDIR)/%.ok:

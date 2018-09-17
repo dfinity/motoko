@@ -49,6 +49,8 @@ module E = struct
     ld : int32 NameEnv.t;
     (* Mapping ActorScript varables to WebAssembly locals *)
     local_vars_env : int32 NameEnv.t;
+    (* Mapping primitives to WebAssembly locals *)
+    primitives_env : int32 NameEnv.t;
     (* Field labels to index *)
     (* (This is for the prototypical simple tuple-implementations for objects *)
     field_env : int32 NameEnv.t ref;
@@ -84,6 +86,7 @@ module E = struct
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
     local_vars_env = NameEnv.empty;
+    primitives_env = NameEnv.empty;
     n_param = 0l;
     depth = 0l;
     ld = NameEnv.empty;
@@ -105,6 +108,11 @@ module E = struct
       | Some i -> Some (nr i)
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
+  let lookup_prim env var =
+    match NameEnv.find_opt var env.primitives_env with
+      | Some i -> Some (nr i)
+      | None   -> Printf.eprintf "Could not find primitive %s\n" var; None
+
   let add_anon_local (env : t) ty =
       let i = reg env.locals ty in
       Wasm.I32.add env.n_param i
@@ -116,6 +124,9 @@ module E = struct
   let get_locals (env : t) = !(env.locals)
 
   let add_fun (env : t) f = reg env.funcs f
+
+  let add_prim (env : t) name i =
+    { env with primitives_env = NameEnv.add name i env.primitives_env }
 
   let get_funcs (env : t) = !(env.funcs)
 
@@ -363,6 +374,48 @@ module Func = struct
         if last then [ nr (GetLocal (nr li)) ] else [])
 
 end (* Func *)
+
+(* Primitive functions *)
+module Prim = struct
+
+  let abs_fun env = Func.unary_of_body env (fun env1 ->
+      Func.load_argument @
+      compile_zero @
+      [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS));
+        nr (If ([I32Type],
+          compile_zero @
+          Func.load_argument @
+          [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ],
+          Func.load_argument
+        ))
+      ])
+
+  (* Until we have a notion of static function reference, we need to allocate
+     a closure for the function *)
+  let allocate env n mk_fun =
+    let fi = E.add_fun env (mk_fun env) in
+    let i = E.add_anon_local env I32Type in
+    let code = Tuple.lit env [ compile_const fi ] @
+               [ nr (SetLocal (nr i)) ] in
+    let env1 = E.add_prim env n i in
+    (env1, code)
+
+  let declare env =
+    let rec go env = function
+      | [] -> (env,[])
+      | (n,f) :: xs -> let (env1, code1) = allocate env n f in
+                       let (env2, code2) = go env1 xs
+                       in (env2, code1 @ code2)
+    in go env
+      [ "abs", abs_fun ]
+
+  let lit env p =
+    begin match E.lookup_prim env p with
+    | Some i -> [ nr (GetLocal i) ]
+    | None   -> [ nr Unreachable ]
+    end
+
+end (* Prim *)
 
 module Object = struct
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
@@ -631,6 +684,7 @@ let compile_relop op = match op with
   | EqOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
   | GeOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeS)) ]
   | GtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS)) ]
+  | LeOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS)) ]
   | LtOp -> [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ]
   | _ -> todo "compile_relop" (Arrange.relop op) [ nr Unreachable ]
 
@@ -674,6 +728,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | NotE e ->
      compile_exp env e @
      [ nr (If ([I32Type], compile_false, compile_true)) ]
+  | PrimE p -> Prim.lit env p
   | UnE (op, e1) ->
      compile_exp env e1 @
      compile_unop env op
@@ -980,7 +1035,9 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         Object.lit env1 None (Some mk_class) fs' in
       Func.dec pre_env last name captured mk_pat mk_body
 
-and compile_decs env decs : Wasm.Ast.instr list =
+and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env decs)
+
+and compile_decs_block env decs : (E.t * Wasm.Ast.instr list) =
   let rec go pre_env decs = match decs with
     | []          -> (pre_env, [], fun _ -> compile_unit) (* empty declaration list? *)
     | [dec]       -> compile_dec true pre_env dec
@@ -989,24 +1046,35 @@ and compile_decs env decs : Wasm.Ast.instr list =
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
         (pre_env2, alloc_code1 @ alloc_code2, fun env -> mk_code1 env @ mk_code2 env) in
   let (env1, alloc_code, mk_code) = go env decs in
-  alloc_code @ mk_code env1
+  (env1, alloc_code @ mk_code env1)
 
 
-and compile_start_func env ds : func =
+and compile_start_func env (progs : Syntax.prog list) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
-  let code = compile_decs env1 ds in
+  (* Allocate the primitive functions *)
+  let (env2, code1) = Prim.declare env1 in
+
+  let rec go env = function
+    | []          -> (env, [])
+    | (prog::progs) ->
+        let (env1, code1) = compile_decs_block env prog.it in
+        let (env2, code2) = go env1 progs in
+        (env2, code1 @ [ nr Drop ] @ code2) in
+
+  let (env3, code2) = go env2 progs in
+
   nr { ftype = nr E.start_fun_ty_i;
-       locals = E.get_locals env1;
-       body = code @ [ nr Drop ]
+       locals = E.get_locals env3;
+       body = code1 @ code2
      }
 
-let compile (prog  : Syntax.prog) : module_ =
+let compile (progs : Syntax.prog list) : module_ =
   let env = E.mk_global () in
 
   Array.common_funcs env;
 
-  let start_fun = compile_start_func env prog.it in
+  let start_fun = compile_start_func env progs in
   let i = E.add_fun env start_fun in
 
   let funcs = E.get_funcs env in

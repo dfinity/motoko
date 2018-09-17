@@ -8,7 +8,7 @@ A simple language for writing Dfinity actors.
 To install the `asc` binary into your nix environment, use
 
 ```
-$ nix-env -i -f . -A hypervisor
+$ nix-env -i -f . -A native
 ```
 
 ## Development using Nix

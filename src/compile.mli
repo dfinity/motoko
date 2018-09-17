@@ -1,1 +1,1 @@
-val compile : Syntax.prog -> Wasm.Ast.module_
+val compile : Syntax.prog list -> Wasm.Ast.module_
