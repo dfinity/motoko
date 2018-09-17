@@ -207,12 +207,16 @@ let prim_sheduler_yield =
   prim_of_id "scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
 let prim_await typ = 
   prim_of_id "await" (T.Func(T.Call, [], contT typ, T.unit))
+
+(* TBD:             
 let prim_promise_make typ =
   prim_of_id "promise_make" (T.Func(T.Call, [], T.unit, typ))             
 let prim_promise_fullfill typ =
   prim_of_id "promise_fullfill" (T.Func(T.Call, [], T.Tup [typ; typ], T.unit))
-             
 
+ *)
+
+(* TBD:
 let decE dec =
   let note =
       match dec.it with
@@ -229,9 +233,8 @@ let decE dec =
      at = no_region;
      note = note;
    }
-
+ *)
   
-(* let varP x = {it=VarP (id x); at = x.at; note = x.note} *)
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
 let letE x exp1 exp2 = 
@@ -737,7 +740,6 @@ and c_exp' context exp =
     (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1  
   | DecE dec ->
-     (* TBR *)
    (c_dec context dec)  
 
 and c_block context k decs  = 
@@ -794,7 +796,7 @@ and c_dec' context dec =
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let k = fresh_cont func_typ in
-    let v = fresh_id func_typ in (* TBC : this should be the type of function *)
+    let v = fresh_id func_typ in 
     let u = fresh_id T.unit in
     k --> letE v ({it = DecE (t_dec context dec);
                    at = no_region;
@@ -803,6 +805,7 @@ and c_dec' context dec =
             (letE u (define_idE (idE id func_typ) v)
                    (k -@- v))
   | ClassD (id, typbinds, sort, pat, fields) ->
+    (* TBR *)
     failwith "NYI: hopefully similar to FuncD"
 
 and c_decs context k decs =
@@ -855,7 +858,6 @@ and declare_pats pats exp : exp =
   | [] -> exp
   | pat::pats' ->
     declare_pat pat (declare_pats pats' exp)
-
 
 and rename_pat pat =
   let (patenv,pat') = rename_pat' pat in
