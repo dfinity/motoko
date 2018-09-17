@@ -1,15 +1,15 @@
 -- Checking bank.as:
-type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+type Account <: actor {getBalance : () -> async Int/1; isCompatible : (like Account) -> async Bool/1; join : Account -> (); split : Int/1 -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
-type Issuer <: actor {hasIssued : (like Account) -> async Bool}
-let Account : class Int -> Account
-let Bank : class Int -> Bank
+type Issuer <: actor {hasIssued : (like Account) -> async Bool/1}
+let Account : class Int/1 -> Account
+let Bank : class Int/1 -> Bank
 let Issuer : class () -> Issuer
 let bank : Bank
 let main : async (Account, Account)
-let show : (Text, Account) -> ()
+let show : (Text/1, Account) -> ()
 let test : () -> async (Account, Account)
-let transfer : (Account, Account, Int) -> async ()
+let transfer : (Account, Account, Int/1) -> async ()
 -- Interpreting bank.as:
 Bank(100)
   Issuer()
@@ -85,12 +85,12 @@ test()
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
 -- Finished bank.as:
-let Account : class Int -> Account = class
-let Bank : class Int -> Bank = class
+let Account : class Int/1 -> Account = class
+let Bank : class Int/1 -> Bank = class
 let Issuer : class () -> Issuer = class
 let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 let main : async (Account, Account) = async ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
-let show : (Text, Account) -> () = func
+let show : (Text/1, Account) -> () = func
 let test : () -> async (Account, Account) = func
-let transfer : (Account, Account, Int) -> async () = func
+let transfer : (Account, Account, Int/1) -> async () = func
 

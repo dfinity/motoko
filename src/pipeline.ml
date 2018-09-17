@@ -1,5 +1,10 @@
 open Printf
 
+type stat_env = Typing.env
+type dyn_env = Interpret.env
+type env = stat_env * dyn_env
+
+
 (* Diagnostics *)
 
 let phase heading name =
@@ -46,7 +51,9 @@ let print_val _senv v t =
 
 (* Parsing *)
 
-let parse_with lexer parser name : Syntax.prog option =
+type parse_result = Syntax.prog
+
+let parse_with lexer parser name : parse_result option =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
@@ -70,10 +77,22 @@ let parse_file filename =
   close_in ic;
   result
 
+let parse_files filenames =
+  let open Source in
+  let rec loop progs = function
+    | [] -> Some (List.concat (List.rev progs) @@ no_region)
+    | filename::filenames' ->
+      match parse_file filename with
+      | None -> None
+      | Some prog -> loop (prog.it::progs) filenames'
+  in loop [] filenames
+
 
 (* Checking *)
 
-let check_prog infer senv prog name : (Type.typ * Typing.scope) option =
+type check_result = Syntax.prog * Type.typ * Typing.scope
+
+let check_prog infer senv name prog : (Type.typ * Typing.scope) option =
   try
     phase "Checking" name;
     let t, ((ve, te, ce) as scope) = infer senv prog in
@@ -85,23 +104,29 @@ let check_prog infer senv prog name : (Type.typ * Typing.scope) option =
   with Typing.Error (at, msg) ->
     error at "type" msg; None
 
-let check_with parse infer senv name
-  : (Syntax.prog * Type.typ * Typing.scope) option =
+let check_with parse infer senv name : check_result option =
   match parse name with
   | None -> None
   | Some prog ->
-    match check_prog infer senv prog name with
+    match check_prog infer senv name prog with
     | None -> None
     | Some (t, scope) -> Some (prog, t, scope)
 
-let check_string s = check_with (parse_string s) Typing.infer_prog
-let check_file =
-  check_with parse_file (fun env p -> Type.unit, Typing.check_prog env p)
+let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
+
+let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
+let check_file senv n = check_with parse_file infer_prog_unit senv n
+let check_files senv = function
+  | [n] -> check_file senv n
+  | ns -> check_with (fun _n -> parse_files ns) infer_prog_unit senv "all"
 
 
 (* Interpretation *)
 
-let interpret_prog denv prog name : (Value.value * Interpret.scope) option =
+type interpret_result =
+  Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope
+
+let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
   try
     phase "Interpreting" name;
     let vo, scope = Interpret.interpret_prog denv prog in
@@ -118,20 +143,25 @@ let interpret_prog denv prog name : (Value.value * Interpret.scope) option =
     eprintf "%!";
     None
 
-let interpret_with check (senv, denv) name
-  : (Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope) option =
+let interpret_with check (senv, denv) name : interpret_result option =
   match check senv name with
   | None -> None
   | Some (prog, t, sscope) ->
-    match interpret_prog denv prog name with
+    match interpret_prog denv name prog with
     | None -> None
     | Some (v, dscope) -> Some (prog, t, v, sscope, dscope)
 
-let interpret_string s = interpret_with (check_string s)
-let interpret_file = interpret_with check_file
+let interpret_string env s =
+  interpret_with (fun senv name -> check_string senv s name) env
+let interpret_file env n = interpret_with check_file env n
+let interpret_files env = function
+  | [n] -> interpret_file env n
+  | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
 
 
 (* Running *)
+
+type run_result = env
 
 let output_dscope (senv, _) t v sscope dscope =
   if !Flags.trace then print_dyn_ve senv dscope
@@ -141,8 +171,7 @@ let output_scope (senv, _) t v sscope dscope =
   if v <> Value.unit then print_val senv v t
 
 
-let run_with interpret output ((senv, denv) as env) name
-  : (Typing.env * Interpret.env) option =
+let run_with interpret output ((senv, denv) as env) name : run_result option =
   let result = interpret env name in
   let env' =
     match result with
@@ -160,32 +189,40 @@ let run_with interpret output ((senv, denv) as env) name
   if !Flags.verbose then printf "\n";
   env'
 
-let run_string s = run_with (interpret_string s) output_dscope
-let run_file = run_with interpret_file output_dscope
+let run_string env s =
+  run_with (fun env name -> interpret_string env s name) output_dscope env
+let run_file env n = run_with interpret_file output_dscope env n
+let run_files env = function
+  | [n] -> run_file env n
+  | ns ->
+    run_with (fun env _name -> interpret_files env ns) output_dscope env "all"
 
 
 (* Compilation *)
 
-let compile_prog prog name : Wasm.Ast.module_ =
+type compile_result = Wasm.Ast.module_ * Typing.scope
+
+let prelude = ref []
+
+let compile_prog name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
-  Compile.compile prog
+  Compile.compile [prog]
 
-let compile_with check senv name : (Wasm.Ast.module_ * Typing.scope) option =
-  Flags.privileged := true;
-  match check_string Prelude.prelude Typing.empty_env "prelude" with
-  | None ->
-    Flags.privileged := false;
-    None
-  | Some (prel_prog,_,_) ->
-    Flags.privileged := false;
-    match check senv name with
-    | None -> None
-    | Some (prog, t, scope) ->
-      let module_ = compile_prog [prel_prog; prog] name in
-      Some (module_, scope)
+let compile_with check senv name : compile_result option =
+  match check senv name with
+  | None -> None
+  | Some (prog, t, scope) ->
+    let open Source in
+    let prog' = (!prelude @ prog.it) @@ prog.at in
+    let module_ = compile_prog name prog' in
+    Some (module_, scope)
 
-let compile_string s = compile_with (check_string s)
-let compile_file = compile_with check_file
+let compile_string senv s =
+  compile_with (fun senv name -> check_string senv s name) senv
+let compile_file senv n = compile_with check_file senv n
+let compile_files senv = function
+  | [n] -> compile_file senv n
+  | ns -> compile_with (fun env _name -> check_files senv ns) senv "all" 
 
 
 (* Interactively *)
@@ -214,13 +251,15 @@ let parse_lexer lexer name =
     None
   | some -> some
 
-let check_lexer lexer = check_with (parse_lexer lexer) Typing.infer_prog
-let interpret_lexer lexer = interpret_with (check_lexer lexer)
-let run_lexer lexer = run_with (interpret_lexer lexer) output_scope
+let check_lexer senv lexer = check_with (parse_lexer lexer) Typing.infer_prog senv
+let interpret_lexer env lexer =
+  interpret_with (fun senv name -> check_lexer senv lexer name) env
+let run_lexer env lexer =
+  run_with (fun env name -> interpret_lexer env lexer name) output_scope env
 
 let run_stdin env =
   let lexer = Lexing.from_function lexer_stdin in
-  let rec loop env = loop (Lib.Option.get (run_lexer lexer env "stdin") env) in
+  let rec loop env = loop (Lib.Option.get (run_lexer env lexer "stdin") env) in
   try loop env with End_of_file ->
     printf "\n%!"
 
@@ -230,10 +269,12 @@ let run_stdin env =
 let init () =
   let empty_env = (Typing.empty_env, Interpret.empty_env) in
   Flags.privileged := true;
-  match run_string Prelude.prelude empty_env "prelude" with
+  match check_string Typing.empty_env Prelude.prelude "prelude" with
   | None ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
-  | Some env ->
+  | Some (prog, _, _) ->
+    prelude := prog.Source.it;
+    let env = run_string empty_env Prelude.prelude "prelude" in
     Flags.privileged := false;
-    env
+    Lib.Option.value env

@@ -40,15 +40,15 @@ let exit_on_failure = function
   | Some x -> x
   | None -> exit 1
 
-let process_file ((senv, denv) as env) name =
+let process_files ((senv, denv) as env) names =
   match !mode with
   | Default -> assert false
-  | Run | Interact -> exit_on_failure (Pipeline.run_file env name)
+  | Run | Interact -> exit_on_failure (Pipeline.run_files env names)
   | Check ->
-    let _, _, sscope = exit_on_failure (Pipeline.check_file senv name) in
+    let _, _, sscope = exit_on_failure (Pipeline.check_files senv names) in
     (Typing.adjoin senv sscope, denv)
   | Compile ->
-    let module_, sscope = exit_on_failure (Pipeline.compile_file senv name) in
+    let module_, sscope = exit_on_failure (Pipeline.compile_files senv names) in
     (* TBR: output to file *)
     Wasm.Print.module_ stdout 80 module_;
     (Typing.adjoin senv sscope, denv)
@@ -60,7 +60,7 @@ let () =
     Arg.parse argspec add_arg usage;
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
     if !mode = Interact then printf "%s\n" banner;
-    let env' = List.fold_left process_file env !args in
+    let env' = process_files env !args in
     if !mode = Interact then Pipeline.run_stdin env'
   with exn ->
     printf "%!";

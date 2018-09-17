@@ -585,8 +585,6 @@
     (get_local 10)
     (i32.const 9)
     (i32.store)
-    (get_local 10)
-    (drop)
     (drop)
   )
   (start 13)

@@ -1,18 +1,18 @@
 -- Checking cheque.as:
-type Account <: actor {credit : Int -> (); deposit : Cheque -> (); getBalance : () -> async Int; invoice : (Int, Account) -> async Cheque; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
+type Account <: actor {credit : Int/1 -> (); deposit : Cheque -> (); getBalance : () -> async Int/1; invoice : (Int/1, Account) -> async Cheque; isCompatible : (like Account) -> async Bool/1; join : Account -> (); split : Int/1 -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
 type Cheque <: actor {deposit : () -> ()}
-type Issuer <: actor {hasIssued : (like Account) -> async Bool}
-let Account : class Int -> Account
-let Bank : class Int -> Bank
-let Cheque : class (Int, Account) -> Cheque
+type Issuer <: actor {hasIssued : (like Account) -> async Bool/1}
+let Account : class Int/1 -> Account
+let Bank : class Int/1 -> Bank
+let Cheque : class (Int/1, Account) -> Cheque
 let Issuer : class () -> Issuer
 let bank : Bank
 let main : async (Account, Account)
-let show : (Text, Account) -> ()
-let showBalance : (Text, Int) -> ()
+let show : (Text/1, Account) -> ()
+let showBalance : (Text/1, Int/1) -> ()
 let test : () -> async (Account, Account)
-let transfer : (Account, Account, Int) -> async ()
+let transfer : (Account, Account, Int/1) -> async ()
 -- Interpreting cheque.as:
 Bank(100)
   Issuer()
@@ -111,14 +111,14 @@ test()
   showBalance("b2", 15)
     <= ()
 -- Finished cheque.as:
-let Account : class Int -> Account = class
-let Bank : class Int -> Bank = class
-let Cheque : class (Int, Account) -> Cheque = class
+let Account : class Int/1 -> Account = class
+let Bank : class Int/1 -> Bank = class
+let Cheque : class (Int/1, Account) -> Cheque = class
 let Issuer : class () -> Issuer = class
 let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 80; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}}
 let main : async (Account, Account) = async ({balance = 5; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
-let show : (Text, Account) -> () = func
-let showBalance : (Text, Int) -> () = func
+let show : (Text/1, Account) -> () = func
+let showBalance : (Text/1, Int/1) -> () = func
 let test : () -> async (Account, Account) = func
-let transfer : (Account, Account, Int) -> async () = func
+let transfer : (Account, Account, Int/1) -> async () = func
 
