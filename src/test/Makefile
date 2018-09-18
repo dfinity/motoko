@@ -1,9 +1,8 @@
-# Makefile for actorscript test cases
+# Makefile for ActorScript test cases
 
-# This works with bash
-
-ASC = ../asc
+VERBOSE = 0
 WASM = wasm
+ASC = ../asc
 ASC_FLAGS = -t -v
 OKDIR = ok
 OUTDIR = _out
@@ -30,9 +29,9 @@ all: stats
 $(OUTDIR):
 	mkdir -p $@
 
-$(OUTDIR)/%.tc: %.as $(ASC) Makefile
+$(OUTDIR)/%.tc: %.as $(ASC) Makefile $(OUTDIR)
 	@echo -n [check] $*
-	@mkdir -p $(OUTDIR); $(ASC) --check $< > $@ 2>&1 || true
+	@$(ASC) --check $< > $@ 2>&1 || true
 	@if [ -s $@ ];  then echo " ✗"; else echo " ✓"; fi
 
 $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
@@ -47,11 +46,11 @@ $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
 	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
 	else \
-          echo "[comp]  $*"; \
+	  echo "[comp]  $*"; \
 	  $(ASC) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
 	  echo Hack until opam wasm package is updated >/dev/null; \
 	  mv $(OUTDIR)/$*.wat $(OUTDIR)/$*.wat.tmp ; \
-          sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $(OUTDIR)/$*.wat.tmp > $(OUTDIR)/$*.wat; \
+	  sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $(OUTDIR)/$*.wat.tmp > $(OUTDIR)/$*.wat; \
 	  rm $(OUTDIR)/$*.wat.tmp; \
 	fi
 
@@ -63,19 +62,23 @@ $(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
 	else > $@; \
 	fi
 
+$(OKDIR):
+	mkdir -p $@
+
 $(OKDIR)/%.ok:
 	@echo "$@ missing"
 	@echo "Please run 'make accept' or 'make $*.refresh'"
 	@exit 1
 
 $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
-	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* | tee $@ || true
+	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* > $@ || true
+	@if [[ $(VERBOSE) -ne 0 ]]; then cat $@; fi
 
 
-$(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
+$(addsuffix .refresh, $(TESTS)): %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
 
-$(addsuffix .refresh, $(GENERATED)) : %.refresh : $(OUTDIR)/%
-	@mkdir -p $(OKDIR) && cp $< $(OKDIR)/$*.ok
+$(addsuffix .refresh, $(GENERATED)): %.refresh: $(OUTDIR)/% $(OKDIR)
+	@cp $< $(OKDIR)/$*.ok
 
 %.wasm: %.wat
 	$(WASM) -d $< -o $@ || true
@@ -85,12 +88,12 @@ stats: $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \
 	for test in $(GENERATED); do \
 	  if [ -s $(OUTDIR)/$$test.diff ]; then \
-	    failed="$$failed $$test"; \
+	    failed="$$failed\n  $$test"; \
 	  fi; \
 	done; \
 	if [ -z "$$failed" ]; \
 	then echo "All passed!"; \
-	else echo "Failed tests:$$failed"; exit 1; \
+	else echo -e "Failed tests:$$failed"; exit 1; \
 	fi
 
 # refresh all

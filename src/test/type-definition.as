@@ -5,6 +5,7 @@ type Id = <T> T->T;
 type Seq<A> = (A,Seq<A>?);
 type A = (B,A);
 type B = (A,B);
+type None = ();  // shadowing prelude
 
 // Test printing of shadowed type constructors
 class C() {};

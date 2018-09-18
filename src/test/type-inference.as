@@ -52,23 +52,30 @@ let a =
 };
 
 
+// Any Type
+
+type Top = Any;
+func top(top : Top) {
+  switch top {
+    case 1 ();
+    case true ();
+    case null ();
+    case _ ();
+  };
+};
+
 // Bottom Type
 
 type Bot = None;
 func bot(bot : Bot) {
-  let a = bot.1;
+  //let a = bot.1;
   let b = bot.x;
   let c = bot();
   let d = bot(1, 2);
   let e = bot<Int>(5);
   let f = bot[1];
   let g = bot + bot * bot;
-  switch bot {
-    case 1 ();
-    case true ();
-    case null ();
-    case _ ();
-  };
+  for (x in bot) {};
 };
 
 // This is an error.

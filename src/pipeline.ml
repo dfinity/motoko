@@ -213,7 +213,10 @@ let compile_with check senv name : compile_result option =
   | None -> None
   | Some (prog, t, scope) ->
     let open Source in
-    let prog' = (!prelude @ prog.it) @@ prog.at in
+    let open Syntax in
+    let (@?) it at = {it; at; note = empty_typ_note} in
+    let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
+    let prog' = (!prelude @ [block]) @@ prog.at in
     let module_ = compile_prog name prog' in
     Some (module_, scope)
 
@@ -267,15 +270,16 @@ let run_stdin env =
 (* Prelude *)
 
 let init () =
-  let empty_env = (Typing.empty_env, Interpret.empty_env) in
-  Flags.privileged := true;
-  match run_string empty_env Prelude.prelude "prelude" with
-  | None ->
+  try
+    Flags.privileged := true;
+    let prog, _t, sscope = Lib.Option.value
+      (check_string Typing.empty_env Prelude.prelude "prelude") in
+    let _v, dscope = Lib.Option.value
+      (interpret_prog Interpret.empty_env "prelude" prog) in
+    Flags.privileged := false;
+    prelude := prog.Source.it;
+    Typing.adjoin Typing.empty_env sscope,
+      Interpret.adjoin Interpret.empty_env dscope
+  with Not_found ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
-  | Some env ->
-    let prog, _, _ =
-      Lib.Option.value (check_string Typing.empty_env Prelude.prelude "prelude") in
-    prelude := prog.Source.it;
-    Flags.privileged := false;
-    env
