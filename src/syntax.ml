@@ -151,6 +151,8 @@ and exp' =
   | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
   | DecE of dec                                (* declaration *)
+  | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
+  | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)

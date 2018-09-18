@@ -314,6 +314,25 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 k
   | DecE dec ->
     interpret_block env [dec] None k
+  | DeclareE (id, typ, exp1) ->
+    let env = adjoin_vals env (declare_id id) in
+    interpret_exp env exp1 k
+  | DefineE (id, mut, exp1) ->
+    interpret_exp env exp (fun v ->
+      let v' =
+        match mut.it with
+        | Const -> v
+        | Var -> V.Mut (ref v)
+      in
+      define_id env id v';
+      k V.unit
+    )
+
+                
+                
+                
+
+
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with

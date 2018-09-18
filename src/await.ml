@@ -74,7 +74,11 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | AwaitE exp1 ->
     T.Await 
   | DecE d ->
-    effect_dec d
+     effect_dec d
+  | DeclareE (_, _, exp1) ->
+     effect_exp exp1
+  | DefineE (_, _, exp1) ->
+     effect_exp exp1
     
 and effect_cases cases =
   match cases with
@@ -276,28 +280,20 @@ let tupE exps =
    }
 
 (* TBC: we need a new primitive that just declares a promise *)
-let declare_idE x typ exp1 =
-  { it = BlockE [letD x x;
-                 {exp1 with it = ExpD exp1}];
+let declare_idE x  typ exp1 =
+  { it = DeclareE (x, typ, exp1);
     at = no_region;
     note = exp1.note;
    }
 
 (* TBC: we need a new primitive that just defines a promise *)
-let define_idE x exp1 =
-  { it = AssignE (x,exp1);
+let define_idE x mut exp1 =
+  { it = DefineE (x, mut @@ no_region, exp1);
     at = no_region;
     note = { note_typ = T.unit;
              note_eff =T.Triv}
   }
 
-(* TBC: we need a new primitive that just defines a mutable promise *)    
-let define_id_mutE x exp1 =
-  { it = AssignE (x,exp1);
-    at = no_region;
-    note = { note_typ = T.unit;
-             note_eff =T.Triv}
-  }
 
             
 (* Lambda and continuation application *)
@@ -417,7 +413,12 @@ and t_exp' context exp' =
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp context exp1,typ)
   | DecE dec ->
-    DecE (t_dec context dec) 
+    DecE (t_dec context dec)
+  | DeclareE (id, typ, exp1) ->
+    DeclareE (id, typ, t_exp context exp1)
+  | DefineE (id, mut ,exp1) ->
+    DefineE (id, mut, t_exp context exp1)
+           
 
 and t_block context decs : dec list= 
   List.map (t_dec context) decs
@@ -733,7 +734,7 @@ and c_exp' context exp =
             (v1 --> prim_await (typ exp1) -@- (tupE [v1;k]))
      end
   | AssertE exp1 ->
-    unary context k (fun v1 -> e (AssertE exp1)) exp1  
+    unary context k (fun v1 -> e (AssertE v1)) exp1  
   | IsE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (IsE (v1,v2))) exp1 exp2
   | AnnotE (exp1, typ) ->
@@ -741,7 +742,10 @@ and c_exp' context exp =
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1  
   | DecE dec ->
    (c_dec context dec)  
-
+  | DeclareE (id, typ, exp1) ->
+     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
+  | DefineE (id, mut, exp1) ->
+    unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1                                    
 and c_block context k decs  = 
    k --> declare_decs decs (c_decs context k decs)
 
@@ -785,12 +789,12 @@ and c_dec' context dec =
      begin
      match eff exp with
      | T.Triv ->
-        k -->  k -@- define_id_mutE (idE id (T.Mut(exp.note.note_typ))) (t_exp context exp)
+        k -->  k -@- define_idE id Var (t_exp context exp)
      | T.Await ->
         let v = fresh_id (typ exp) in
         k -->  (c_exp context exp) -@-
                 (v -->
-                  k -@- define_id_mutE (idE id (T.Mut(exp.note.note_typ))) v)
+                  k -@- define_idE id Var v)
      end                                       
   | FuncD (id,typbinds, pat, typ, exp) ->
      (* todo: use a block not lets as in LetD *)
@@ -802,7 +806,7 @@ and c_dec' context dec =
                    at = no_region;
                    note = {note_typ = func_typ;
                            note_eff = T.Triv}})
-            (letE u (define_idE (idE id func_typ) v)
+            (letE u (define_idE id Const v)
                    (k -@- v))
   | ClassD (id, typbinds, sort, pat, fields) ->
     (* TBR *)
@@ -842,8 +846,8 @@ and declare_decs decs exp : exp =
 (* Patterns *)
 
 and declare_id id typ exp =
-  declare_idE (idE id typ) typ exp
-    
+  declare_idE id typ exp
+              
 and declare_pat pat exp : exp =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  exp
@@ -897,7 +901,7 @@ and define_pat patenv pat : dec list =
   | LitP _ | SignP _ ->
     []
   | VarP id ->
-     [ let d = (define_idE (idE id pat.note.note_typ) (PatEnv.find id.it patenv)) in
+     [ let d = define_idE id Const (PatEnv.find id.it patenv) in
        {d with it = ExpD d}  
      ]
   | TupP pats -> define_pats patenv pats  

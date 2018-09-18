@@ -557,6 +557,30 @@ and infer_exp' env exp : T.typ =
       error exp.at "local class name %s is contained in inferred declaration type\n  %s"
         (Con.to_string c) (T.string_of_typ_expand env.cons t)
     )
+  (* DeclareE and DefineE should not occur in source code *)
+  | DeclareE (id, typ, exp1) ->
+    let env' = adjoin_vals env (T.Env.singleton id.it typ) in
+    infer_exp env' exp1 
+  | DefineE (id, mut, exp1) ->
+     begin
+       match T.Env.find_opt id.it env.vals with
+       | Some T.Pre ->
+          error id.at "cannot infer type of forward variable %s" id.it;
+       | Some t1 -> 
+          if not env.pre then begin
+              try
+                let t2 = match mut.it with | Var -> T.as_mut t1 | Const -> t1 in
+                check_exp env t2 exp1
+              with Invalid_argument _ ->
+                error exp.at "expected mutable assignment target";
+            end;
+       | None -> error id.at "unbound variable %s" id.it
+    end;
+    T.unit
+
+                
+                
+     
     
 
 and check_exp env t exp =
