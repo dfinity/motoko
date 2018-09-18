@@ -269,7 +269,11 @@ let run_stdin env =
 let init () =
   let empty_env = (Typing.empty_env, Interpret.empty_env) in
   Flags.privileged := true;
-  match run_string empty_env Prelude.prelude "prelude" with
+  let prel_source =
+    if !Flags.dfinity_mode
+    then Prelude.dfinity_prelude
+    else Prelude.prelude in
+  match run_string empty_env prel_source "prelude" with
   | None ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
