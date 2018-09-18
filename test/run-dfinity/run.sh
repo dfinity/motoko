@@ -10,6 +10,7 @@ name="$(basename $1 .wasm)"
 
 
 ulimit -c 0
+trap 'if [[ $? -eq 139 ]]; then echo "segfault !"; fi' CHLD
 trap 'echo Segmentation fault!' SEGV
 
 export LANG=C
