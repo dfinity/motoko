@@ -23,5 +23,6 @@ Available commands:
     "id": "#inject/1 (the-answer)",
     "type": "actorref"
 }
-> ERROR: Module "#inject/1 (the-answer)" does not export function "start"
-> > 
+> dsh: no such sys: ("console","log32")
+CallStack (from HasCallStack):
+  error, called at src/Network/DFINITY/Hypervisor.hs:651:12 in dfinity-hypervisor-0.0.0-55hODadUYpnIy7h1enFuR6:Network.DFINITY.Hypervisor

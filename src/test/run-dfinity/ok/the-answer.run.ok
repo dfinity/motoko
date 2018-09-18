@@ -1,8 +1,5 @@
 -- Checking prelude:
 -- Interpreting prelude:
--- Finished prelude:
-
--- Checking prelude:
 -- Checking the-answer.as:
 -- Interpreting the-answer.as:
 log32(42)

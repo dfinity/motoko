@@ -39,6 +39,8 @@ module E = struct
 
     (* Imports defined *)
     imports : import list ref;
+    (* Expors defined *)
+    exports : export list ref;
     (* Function defined in this module *)
     funcs : func list ref;
     (* Types registered in this module *)
@@ -92,6 +94,7 @@ module E = struct
   let mk_global (_ : unit) : t = {
     dfinity_mode = !Flags.dfinity_mode;
     imports = ref [];
+    exports = ref [];
     funcs = ref [];
     func_types = ref default_fun_tys;
     (* Actually unused outside mk_fun_env: *)
@@ -139,6 +142,8 @@ module E = struct
     then reg env.imports i
     else raise (Invalid_argument "add all imports before all functions!")
 
+  let add_export (env : t) e = let _ = reg env.exports e in ()
+
   let add_fun (env : t) f =
     let i = reg env.funcs f in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
@@ -149,7 +154,7 @@ module E = struct
     { env with primitives_env = NameEnv.add name i env.primitives_env }
 
   let get_imports (env : t) = !(env.imports)
-
+  let get_exports (env : t) = !(env.exports)
   let get_funcs (env : t) = !(env.funcs)
 
   (* Currently unused, until we add functions to the table *)
@@ -412,6 +417,7 @@ module Prim = struct
         ))
       ])
 
+
   (* Until we have a notion of static function reference, we need to allocate
      a closure for the function *)
   let allocate env n mk_fun =
@@ -422,20 +428,19 @@ module Prim = struct
     let env1 = E.add_prim env n i in
     (env1, code)
 
-  let declare env =
-    let rec go env = function
+  let rec declare env = function
       | [] -> (env,[])
       | (n,f) :: xs -> let (env1, code1) = allocate env n f in
-                       let (env2, code2) = go env1 xs
+                       let (env2, code2) = declare env1 xs
                        in (env2, code1 @ code2)
-    in go env
-      [ "abs", abs_fun ]
 
   let lit env p =
     begin match E.lookup_prim env p with
     | Some i -> [ nr (GetLocal i) ]
     | None   -> [ nr Unreachable ]
     end
+
+  let default_prims = [ "abs", abs_fun ]
 
 end (* Prim *)
 
@@ -688,8 +693,21 @@ module Dfinity = struct
       item_name = explode "log32";
       idesc = nr (FuncImport (nr E.console_log32_fun_ty_i))
     }) in
-    assert (Int32.to_int i == Int32.to_int (console_log32_i env));
+    assert (Int32.to_int i == Int32.to_int (console_log32_i env))
 
+  let log32_fun env = Func.unary_of_body env (fun env1 ->
+      Func.load_argument @
+      [ nr (Call (nr (console_log32_i env))) ] @
+      compile_unit
+      )
+
+  let prims = [ "log32", log32_fun ]
+
+  let export_start_fun env i =
+    E.add_export env (nr {
+      name = explode "start";
+      edesc = nr (FuncExport (nr i))
+    })
 
 end (* Dfinity *)
 
@@ -1097,7 +1115,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
-  let (env2, code1) = Prim.declare env1 in
+  let (env2, code1) = Prim.declare env1 Prim.default_prims in
+  let (env3, code2) =
+    if E.dfinity_mode env2
+    then Prim.declare env2 Dfinity.prims
+    else (env2, []) in
 
   let rec go env = function
     | []          -> (env, [])
@@ -1106,11 +1128,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
         let (env2, code2) = go env1 progs in
         (env2, code1 @ [ nr Drop ] @ code2) in
 
-  let (env3, code2) = go env2 progs in
+  let (env3, code3) = go env3 progs in
 
   nr { ftype = nr E.start_fun_ty_i;
        locals = E.get_locals env3;
-       body = code1 @ code2
+       body = code1 @ code2 @ code3
      }
 
 let compile (progs : Syntax.prog list) : module_ =
@@ -1121,6 +1143,8 @@ let compile (progs : Syntax.prog list) : module_ =
 
   let start_fun = compile_start_func env progs in
   let i = E.add_fun env start_fun in
+  if E.dfinity_mode env then Dfinity.export_start_fun env i;
+
 
   let funcs = E.get_funcs env in
   let nf = List.length funcs in
@@ -1138,4 +1162,5 @@ let compile (progs : Syntax.prog list) : module_ =
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     imports = E.get_imports env;
+    exports = E.get_exports env;
   }
