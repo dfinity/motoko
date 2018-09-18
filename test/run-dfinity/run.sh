@@ -9,6 +9,7 @@ fi
 name="$(basename $1 .wasm)"
 
 
+ulimit -c 0
 trap 'echo Segmentation fault!' SEGV
 
 export LANG=C
