@@ -8,6 +8,11 @@ fi
 
 name="$(basename $1 .wasm)"
 
-dsh reset
-dsh new -a $1
-dsh run $name start
+function dsh_ () {
+  echo "\$ dsh $@"
+  dsh $@
+}
+
+dsh_ reset
+dsh_ new -a $1
+dsh_ run $name start
