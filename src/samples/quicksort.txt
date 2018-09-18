@@ -1,10 +1,10 @@
 -- Checking quicksort.as:
 type Array<T> = var T[]
-type QS<T> <: {quicksort : (Array<T>, Nat/1, Nat/1) -> ()}
-let QS : class <T>((T, T) -> Int/1) -> QS<T>
-let a : Array<Int/1>
-let cmpi : (Int/1, Int/1) -> Int/1
-let qs : QS<Int/1>
+type QS<T> <: {quicksort : (Array<T>, Nat, Nat) -> ()}
+let QS : class <T>((T, T) -> Int) -> QS<T>
+let a : Array<Int>
+let cmpi : (Int, Int) -> Int
+let qs : QS<Int>
 -- Interpreting quicksort.as:
 QS(func)
   <= {partition = func; quicksort = func; swap = func; trace = func}
@@ -97,8 +97,8 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished quicksort.as:
-let QS : class <T>((T, T) -> Int/1) -> QS<T> = class
-let a : Array<Int/1> = [2, 3, 5, 8, 9]
-let cmpi : (Int/1, Int/1) -> Int/1 = func
-let qs : QS<Int/1> = {partition = func; quicksort = func; swap = func; trace = func}
+let QS : class <T>((T, T) -> Int) -> QS<T> = class
+let a : Array<Int> = [2, 3, 5, 8, 9]
+let cmpi : (Int, Int) -> Int = func
+let qs : QS<Int> = {partition = func; quicksort = func; swap = func; trace = func}
 

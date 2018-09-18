@@ -269,12 +269,13 @@ let run_stdin env =
 let init () =
   let empty_env = (Typing.empty_env, Interpret.empty_env) in
   Flags.privileged := true;
-  match check_string Typing.empty_env Prelude.prelude "prelude" with
+  match run_string empty_env Prelude.prelude "prelude" with
   | None ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
-  | Some (prog, _, _) ->
+  | Some env ->
+    let prog, _, _ =
+      Lib.Option.value (check_string Typing.empty_env Prelude.prelude "prelude") in
     prelude := prog.Source.it;
-    let env = run_string empty_env Prelude.prelude "prelude" in
     Flags.privileged := false;
-    Lib.Option.value env
+    env

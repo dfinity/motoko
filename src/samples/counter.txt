@@ -1,9 +1,9 @@
 -- Checking counter.as:
-type Counter <: actor {dec : () -> (); read : () -> async Int/1}
-let Counter : class Int/1 -> Counter
+type Counter <: actor {dec : () -> (); read : () -> async Int}
+let Counter : class Int -> Counter
 let c : Counter
-let show : (Text/1, Int/1) -> ()
-let showAsync : (Text/1, async Int/1) -> ()
+let show : (Text, Int) -> ()
+let showAsync : (Text, async Int) -> ()
 let testDec : () -> ()
 let testRead : () -> ()
 -- Interpreting counter.as:
@@ -287,10 +287,10 @@ testRead()
     <= ()
   <= ()
 -- Finished counter.as:
-let Counter : class Int/1 -> Counter = class
+let Counter : class Int -> Counter = class
 let c : Counter = {c = -10; dec = func; read = func}
-let show : (Text/1, Int/1) -> () = func
-let showAsync : (Text/1, async Int/1) -> () = func
+let show : (Text, Int) -> () = func
+let showAsync : (Text, async Int) -> () = func
 let testDec : () -> () = func
 let testRead : () -> () = func
 
