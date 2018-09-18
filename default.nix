@@ -8,7 +8,7 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
 	}; in
 
 # Include dsh
-let dev_in_nix = (import ./nix/dev-in-nix) {}; in
+let dev_in_nix = (import ./nix/dev-in-nix) { v8 = true; }; in
 let dsh = dev_in_nix.hypervisor; in
 
 # We need a newer version of menhir.

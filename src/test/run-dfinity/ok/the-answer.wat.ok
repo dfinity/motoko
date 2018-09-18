@@ -651,6 +651,8 @@
     (drop)
   )
   (export "start" (func 16))
+  (export "mem" (memory 0))
+  (export "table" (table 0))
   (start 16)
   (elem 0 (offset (i32.const 0)) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14)
 )

@@ -718,6 +718,15 @@ module Dfinity = struct
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr i))
+    });
+    (* these export seems to be wanted by the hypervisor/v8 *)
+    E.add_export env (nr {
+      name = explode "mem";
+      edesc = nr (MemoryExport (nr 0l))
+    });
+    E.add_export env (nr {
+      name = explode "table";
+      edesc = nr (TableExport (nr 0l))
     })
 
 end (* Dfinity *)

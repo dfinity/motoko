@@ -12,6 +12,11 @@ $ dsh new -a _out/the-answer.wasm
 }
 
 $ dsh run the-answer start
-10dsh: BAD TAKE
-CallStack (from HasCallStack):
-  error, called at ./Hero/Hero.hs:112:30 in dhc-0.1.0-8ODwqNNLE94FgxyNqL1y1X:Hero.Hero
+4242{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (the-answer)",
+    "type": "actorref"
+}
+
+Leaked 1 instances of wasm::Engine, made 1, freed 0!
