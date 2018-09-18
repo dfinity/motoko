@@ -40,7 +40,7 @@ rec {
       nixpkgs.ocamlPackages.ocamlbuild
       ocaml_wasm
       nixpkgs.ocamlPackages.zarith
-      dsh
+      dev_in_nix.hypervisor
     ];
 
     buildPhase = ''
@@ -87,4 +87,7 @@ rec {
     '';
 
   });
+
+  wasm = ocaml_wasm;
+  dsh = dev_in_nix.hypervisor;
 }

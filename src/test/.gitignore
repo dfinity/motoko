@@ -1,3 +1,5 @@
+_out
+
 *.diff
 *.wat
 *.wat.stderr
