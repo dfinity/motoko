@@ -134,7 +134,15 @@ let exp_of_id name typ =
            note_eff = T.Triv}
   } 
                 
-              
+(* primitives *)
+let primE name typ =
+  {it = PrimE name;
+   at = no_region;
+   note = {note_typ = typ;
+           note_eff = T.Triv}
+  } 
+
+    
 let id_stamp = ref 0
 
 let fresh_id typ =
@@ -198,19 +206,18 @@ let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
 
 *)                         
 
-let prim_of_id name typ = exp_of_id ("@" ^ name) typ
 let prim_make_async typ =
-  prim_of_id "make_async" (T.Func(T.Call, [], T.unit,T.Async typ))
+  primE "@make_async" (T.Func(T.Call, [], T.unit,T.Async typ))
 let prim_set_async typ =
-  prim_of_id "set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
+  primE "@set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
 let prim_get_async typ = 
-  prim_of_id "get_async" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
+  primE "@get_async" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
 let prim_scheduler_queue  =
-  prim_of_id "scheduler_queue" (T.Func(T.Call, [], T.Func(T.Call, [], T.unit, T.unit), T.unit))
+  primE "@scheduler_queue" (T.Func(T.Call, [], T.Func(T.Call, [], T.unit, T.unit), T.unit))
 let prim_sheduler_yield = 
-  prim_of_id "scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
+  primE "@scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
 let prim_await typ = 
-  prim_of_id "await" (T.Func(T.Call, [], contT typ, T.unit))
+  primE "@await" (T.Func(T.Call, [], contT typ, T.unit))
 
 (* TBD:             
 let prim_promise_make typ =
@@ -911,4 +918,5 @@ and define_pat patenv pat : dec list =
 
 and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
-    
+
+and t_prog prog:prog = {prog with it = t_decs LabelEnv.empty prog.it}

@@ -61,7 +61,7 @@ let get_last_env () = !last_env
 let get_last_region () = !last_region
 
 
-(* Schedulinbg *)
+(* Scheduling *)
 
 module Scheduler =
 struct
@@ -93,7 +93,60 @@ let set_async async v =
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
+let await async k at =
+  if !Flags.trace then trace "=> await %s" (string_of_region at);
+  decr trace_depth;
+  get_async async (fun v ->
+  Scheduler.queue (fun () ->
+      if !Flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg v);
+      incr trace_depth;
+      k v
+    )
+  );
+  Scheduler.yield ()
 
+
+let extended_prim s at =
+  match s with
+  | "@make_async" ->
+     fun v k -> V.as_unit v; k (V.Async (make_async()))
+  | "@set_async" ->
+     fun v k ->
+     begin
+       match V.as_tup v with
+       | [async;v] ->
+          set_async (V.as_async async) v;
+          k (V.unit)
+       | _ -> failwith "Impossible"
+     end
+  | "@get_async" ->
+     fun v k ->
+       begin
+       match V.as_tup v with
+       | [async;v] ->
+          get_async (V.as_async async) k
+       | _ -> failwith "Impossible"
+       end 
+  | "@scheduler_queue" ->
+     fun v k -> let (call,f)  = V.as_func v in
+                Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ()));
+                k (V.unit)
+  | "@scheduler_yield" ->
+     fun v k -> V.as_unit v;
+                Scheduler.yield(); (* TBR - this feels wrong *)
+                k (V.unit)
+  | "@await" ->
+     fun v k ->
+       begin
+       match V.as_tup v with
+       | [async;v] ->
+          await (V.as_async async) k at
+       | _ -> failwith "Impossible"
+       end 
+  | _ -> V.prim s                
+
+                       
 (* Literals *)
 
 let interpret_lit env lit : V.value =
@@ -122,7 +175,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   match exp.it with
   | PrimE s ->
-    k (V.Func (None, V.prim s))
+    let at = exp.at in
+    k (V.Func (None, extended_prim s at))
   | VarE id ->
     (match Lib.Promise.value_opt (V.Env.find id.it env.vals) with
     | Some v -> k v
