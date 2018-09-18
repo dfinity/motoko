@@ -28,27 +28,5 @@ this case produces type
   Int
 the previous produce type
   Text
-prelude:19.24-19.34: internal error, Not_found
-
-Last environment:
-abs = func
-ignore = func
-range = class
-revrange = class
-
-Raised at file "map.ml", line 130, characters 16-25
-Called from file "type.ml", line 623, characters 11-29
-Called from file "typing.ml", line 433, characters 26-61
-Called from file "typing.ml", line 302, characters 10-28
-Called from file "typing.ml", line 290, characters 13-36
-Called from file "typing.ml", line 1144, characters 12-47
-Called from file "typing.ml", line 1134, characters 16-41
-Called from file "list.ml", line 96, characters 24-34
-Called from file "typing.ml", line 1133, characters 4-162
-Called from file "typing.ml", line 1052, characters 11-63
-Called from file "typing.ml", line 969, characters 24-49
-Called from file "pipeline.ml", line 115, characters 43-70
-Called from file "pipeline.ml", line 98, characters 37-52
-Called from file "pipeline.ml", line 111, characters 10-41
-Called from file "main.ml", line 48, characters 39-72
-Called from file "main.ml", line 63, characters 15-38
+type-inference.as:83.1-88.2: type error, local class type C/3 is contained in inferred block type
+  T/3 = C/3
