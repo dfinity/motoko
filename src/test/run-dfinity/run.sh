@@ -8,6 +8,7 @@ fi
 
 name="$(basename $1 .wasm)"
 
+export LANG=C
 function dsh_ () {
   echo "\$ dsh $@"
   dsh $@
