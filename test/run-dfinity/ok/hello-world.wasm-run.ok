@@ -12,5 +12,4 @@ $ dsh new -a _out/hello-world.wasm
 }
 
 $ dsh run hello-world start
-Segmentation fault
-Return value: 139
+Segmentation Fault

@@ -9,14 +9,13 @@ fi
 name="$(basename $1 .wasm)"
 
 
-ulimit -c 0
-trap 'if [[ $? -eq 139 ]]; then echo "segfault !"; fi' CHLD
-trap 'echo Segmentation fault!' SEGV
 
 export LANG=C
 function dsh_ () {
   echo "\$ dsh $@"
-  dsh $@ || echo "Return value: $?"
+
+  # hide the segmentation fault message
+  { dsh $@; } 2>&1 | sed -e 's,.*egmentation.*,Segmentation Fault,'
 }
 
 dsh_ reset
