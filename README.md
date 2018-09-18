@@ -31,7 +31,7 @@ nix-build -A js
 If you want to install `wasm` and `dsh` binaries with nix (for example because
 you maintain your Ocaml installation manually), run
 
-``
+```
 nix-env -i -f . -A wasm
 nix-env -i -f . -A dsh
 ```
