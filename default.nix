@@ -1,8 +1,8 @@
-{ nixpkgs ? (import ./nixpkgs.nix) {} }:
+{ nixpkgs ? (import ./nix/nixpkgs.nix) {} }:
 
 let stdenv = nixpkgs.stdenv; in
 
-let ocaml_wasm = (import ./ocaml-wasm.nix)
+let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
 	{inherit (nixpkgs) stdenv  fetchFromGitHub ocaml;
          inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 	}; in
@@ -20,7 +20,6 @@ let menhir = (import menhir_nix) {
   version = "20180703";
   sha256 = "16wv5m7ky27qb8krlycw79dqgzfnpm6rkppc9f26gyw15riicpxb";
   }; in
-
 
 rec {
   native = stdenv.mkDerivation {

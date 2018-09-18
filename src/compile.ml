@@ -35,6 +35,12 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
+    dfinity_mode : bool;
+
+    (* Imports defined *)
+    imports : import list ref;
+    (* Expors defined *)
+    exports : export list ref;
     (* Function defined in this module *)
     funcs : func list ref;
     (* Types registered in this module *)
@@ -56,13 +62,18 @@ module E = struct
     field_env : int32 NameEnv.t ref;
   }
 
+  let dfinity_mode (e : t) = e.dfinity_mode
+
   (* Common function types *)
   let start_fun_ty = nr (FuncType ([],[]))
   let start_fun_ty_i = 0l
   (* First argument is a pointer to the closure *)
   let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let unary_fun_ty_i = 1l
-  let default_fun_tys = [start_fun_ty; unary_fun_ty]
+  (* The console.log32 type *)
+  let console_log32_fun_ty = nr (FuncType ([I32Type],[]))
+  let console_log32_fun_ty_i = 2l
+  let default_fun_tys = [start_fun_ty; unary_fun_ty; console_log32_fun_ty]
 
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
@@ -81,6 +92,9 @@ module E = struct
 
   (* The initial global environment *)
   let mk_global (_ : unit) : t = {
+    dfinity_mode = !Flags.dfinity_mode;
+    imports = ref [];
+    exports = ref [];
     funcs = ref [];
     func_types = ref default_fun_tys;
     (* Actually unused outside mk_fun_env: *)
@@ -123,11 +137,24 @@ module E = struct
 
   let get_locals (env : t) = !(env.locals)
 
-  let add_fun (env : t) f = reg env.funcs f
+  let add_import (env : t) i =
+    if !(env.funcs) = []
+    then reg env.imports i
+    else raise (Invalid_argument "add all imports before all functions!")
+
+  let add_export (env : t) e = let _ = reg env.exports e in ()
+
+  let add_fun (env : t) f =
+    let i = reg env.funcs f in
+    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
+    Int32.add i n
+
 
   let add_prim (env : t) name i =
     { env with primitives_env = NameEnv.add name i env.primitives_env }
 
+  let get_imports (env : t) = !(env.imports)
+  let get_exports (env : t) = !(env.exports)
   let get_funcs (env : t) = !(env.funcs)
 
   (* Currently unused, until we add functions to the table *)
@@ -390,6 +417,7 @@ module Prim = struct
         ))
       ])
 
+
   (* Until we have a notion of static function reference, we need to allocate
      a closure for the function *)
   let allocate env n mk_fun =
@@ -400,20 +428,19 @@ module Prim = struct
     let env1 = E.add_prim env n i in
     (env1, code)
 
-  let declare env =
-    let rec go env = function
+  let rec declare env = function
       | [] -> (env,[])
       | (n,f) :: xs -> let (env1, code1) = allocate env n f in
-                       let (env2, code2) = go env1 xs
+                       let (env2, code2) = declare env1 xs
                        in (env2, code1 @ code2)
-    in go env
-      [ "abs", abs_fun ]
 
   let lit env p =
     begin match E.lookup_prim env p with
     | Some i -> [ nr (GetLocal i) ]
     | None   -> [ nr Unreachable ]
     end
+
+  let default_prims = [ "abs", abs_fun ]
 
 end (* Prim *)
 
@@ -498,13 +525,14 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let array_get_funid       = 0l
-  let array_set_funid       = 1l
-  let array_len_funid       = 2l
-  let array_keys_funid      = 3l
-  let array_keys_next_funid = 4l
-  let array_vals_funid      = 5l
-  let array_vals_next_funid = 6l
+  let fun_id env i = if E.dfinity_mode env then Int32.add i 1l else i
+  let array_get_funid       env = fun_id env 0l
+  let array_set_funid       env = fun_id env 1l
+  let array_len_funid       env = fun_id env 2l
+  let array_keys_funid      env = fun_id env 3l
+  let array_keys_next_funid env = fun_id env 4l
+  let array_vals_funid      env = fun_id env 5l
+  let array_vals_next_funid env = fun_id env 6l
 
   let len_field = Int32.add Object.header_size 5l
 
@@ -595,7 +623,7 @@ module Array = struct
               (* Return old value *)
               get_i
             ) in
-    let keys_fun = mk_iterator array_keys_next_funid in
+    let keys_fun env = mk_iterator (array_keys_next_funid env) in
 
     let vals_next_fun = mk_next_fun (fun get_array get_i ->
               (* Lookup old value *)
@@ -604,50 +632,84 @@ module Array = struct
               idx @
               load_ptr
             ) in
-    let vals_fun = mk_iterator array_vals_next_funid in
+    let vals_fun env = mk_iterator (array_vals_next_funid env) in
 
     let i = E.add_fun env get_fun in
-    assert (Int32.to_int i == Int32.to_int array_get_funid);
+    assert (Int32.to_int i == Int32.to_int (array_get_funid env));
 
     let i = E.add_fun env set_fun in
-    assert (Int32.to_int i == Int32.to_int array_set_funid);
+    assert (Int32.to_int i == Int32.to_int (array_set_funid env));
 
     let i = E.add_fun env len_fun in
-    assert (Int32.to_int i == Int32.to_int array_len_funid);
+    assert (Int32.to_int i == Int32.to_int (array_len_funid env));
 
-    let i = E.add_fun env keys_fun in
-    assert (Int32.to_int i == Int32.to_int array_keys_funid);
+    let i = E.add_fun env (keys_fun env) in
+    assert (Int32.to_int i == Int32.to_int (array_keys_funid env));
 
     let i = E.add_fun env keys_next_fun in
-    assert (Int32.to_int i == Int32.to_int array_keys_next_funid);
+    assert (Int32.to_int i == Int32.to_int (array_keys_next_funid env));
 
-    let i = E.add_fun env vals_fun in
-    assert (Int32.to_int i == Int32.to_int array_vals_funid);
+    let i = E.add_fun env (vals_fun env) in
+    assert (Int32.to_int i == Int32.to_int (array_vals_funid env));
 
     let i = E.add_fun env vals_next_fun in
-    assert (Int32.to_int i == Int32.to_int array_vals_next_funid);
-
-    ()
+    assert (Int32.to_int i == Int32.to_int (array_vals_next_funid env))
 
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tuple.lit_rec env
      (List.map (fun i _ -> i) Object.default_header @
       [ (fun compile_self ->
-        Tuple.lit env [ compile_const array_get_funid; compile_self])
+        Tuple.lit env [ compile_const (array_get_funid env); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const array_set_funid; compile_self])
+        Tuple.lit env [ compile_const (array_set_funid env); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const array_len_funid; compile_self])
+        Tuple.lit env [ compile_const (array_len_funid env); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const array_keys_funid; compile_self])
+        Tuple.lit env [ compile_const (array_keys_funid env); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const array_vals_funid; compile_self])
+        Tuple.lit env [ compile_const (array_vals_funid env); compile_self])
       ; (fun compile_self ->
         compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
 
 end (* Array *)
+
+module Dfinity = struct
+
+  (* function ids for imported stuff *)
+  let console_log32_i env = 0l
+
+  (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
+  (* Ok to use as long as everything is ASCII *)
+  let explode s =
+    let rec exp i l =
+      if i < 0 then l else exp (i - 1) (Char.code s.[i] :: l) in
+    exp (String.length s - 1) []
+
+  let system_imports env =
+    let i = E.add_import env (nr {
+      module_name = explode "console";
+      item_name = explode "log32";
+      idesc = nr (FuncImport (nr E.console_log32_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (console_log32_i env))
+
+  let log32_fun env = Func.unary_of_body env (fun env1 ->
+      Func.load_argument @
+      [ nr (Call (nr (console_log32_i env))) ] @
+      compile_unit
+      )
+
+  let prims = [ "log32", log32_fun ]
+
+  let export_start_fun env i =
+    E.add_export env (nr {
+      name = explode "start";
+      edesc = nr (FuncExport (nr i))
+    })
+
+end (* Dfinity *)
 
 
 (* The actual compiler code that looks at the AST *)
@@ -1053,7 +1115,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
-  let (env2, code1) = Prim.declare env1 in
+  let (env2, code1) = Prim.declare env1 Prim.default_prims in
+  let (env3, code2) =
+    if E.dfinity_mode env2
+    then Prim.declare env2 Dfinity.prims
+    else (env2, []) in
 
   let rec go env = function
     | []          -> (env, [])
@@ -1062,20 +1128,23 @@ and compile_start_func env (progs : Syntax.prog list) : func =
         let (env2, code2) = go env1 progs in
         (env2, code1 @ [ nr Drop ] @ code2) in
 
-  let (env3, code2) = go env2 progs in
+  let (env3, code3) = go env3 progs in
 
   nr { ftype = nr E.start_fun_ty_i;
        locals = E.get_locals env3;
-       body = code1 @ code2
+       body = code1 @ code2 @ code3
      }
 
 let compile (progs : Syntax.prog list) : module_ =
   let env = E.mk_global () in
 
+  if E.dfinity_mode env then Dfinity.system_imports env;
   Array.common_funcs env;
 
   let start_fun = compile_start_func env progs in
   let i = E.add_fun env start_fun in
+  if E.dfinity_mode env then Dfinity.export_start_fun env i;
+
 
   let funcs = E.get_funcs env in
   let nf = List.length funcs in
@@ -1092,4 +1161,6 @@ let compile (progs : Syntax.prog list) : module_ =
     start = Some (nr i);
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+    imports = E.get_imports env;
+    exports = E.get_exports env;
   }

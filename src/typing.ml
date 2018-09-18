@@ -430,7 +430,8 @@ and infer_exp' env exp : T.typ =
     let t, (_, _, ce) = infer_block env decs exp.at in
     (try T.avoid env.cons ce t with T.Unavoidable c ->
       error exp.at "local class type %s is contained in inferred block type\n  %s"
-        (Con.to_string c) (T.string_of_typ_expand env.cons t)
+        (Con.to_string c)
+        (T.string_of_typ_expand (Con.Env.adjoin env.cons ce) t)
     )
   | NotE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
@@ -487,7 +488,7 @@ and infer_exp' env exp : T.typ =
         let _, tfs = T.as_obj_sub "next" env.cons t1 in
         let t = T.lookup_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub env.cons t in
-        T.as_unit_sub env.cons t1;
+        if not (T.sub env.cons T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub env.cons t2 in
         let ve = check_pat_exhaustive env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2

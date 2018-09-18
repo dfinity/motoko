@@ -4,11 +4,19 @@ The ActorScript test suite
 Commands
 --------
 
-* `make` (or `make stats`)
+* `make`
 
    Runs all tests, fails if any fail.
 
-* `make _out/test.run`
+* `make accept`
+
+   Refreshes all output
+
+* `make clean`
+
+   Cleans
+
+* `make _out/test.run` (within a subdirectory
 
    Runs `asc -r` on `test.as`, and writes the output to `_out/test.run`
 
@@ -28,13 +36,6 @@ Commands
 
    Copies `_out/test.run` to `ok/test.run.ok`.
 
-* `make test.refresh`
-
-   Refreshes all output for `test`
-
-* `make current` (or `make accept)
-
-   Refreshes all output
 
 Adding a new test
 -----------------
