@@ -29,8 +29,9 @@ all: stats
 $(OUTDIR):
 	mkdir -p $@
 
-$(OUTDIR)/%.tc: %.as $(ASC) Makefile $(OUTDIR)
+$(OUTDIR)/%.tc: %.as $(ASC) Makefile
 	@echo -n [check] $*
+	@mkdir -p $(OUTDIR)
 	@$(ASC) --check $< > $@ 2>&1 || true
 	@if [ -s $@ ];  then echo " ✗"; else echo " ✓"; fi
 
@@ -77,7 +78,8 @@ $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
 
 $(addsuffix .refresh, $(TESTS)): %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
 
-$(addsuffix .refresh, $(GENERATED)): %.refresh: $(OUTDIR)/% $(OKDIR)
+$(addsuffix .refresh, $(GENERATED)): %.refresh: $(OUTDIR)/%
+	@mkdir -p $(OKDIR)
 	@cp $< $(OKDIR)/$*.ok
 
 %.wasm: %.wat
