@@ -272,6 +272,7 @@ let unit = Tup []
 
 let prim = function
   | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "log32" -> fun v k -> Printf.printf "log32(%s)\n" (Int.to_string (as_int v)); k unit
   | _ -> raise (Invalid_argument "Value.prim")
 
 

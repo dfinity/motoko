@@ -34,5 +34,5 @@ class revrange(x : Nat, y : Nat) {
 
 let dfinity_prelude = prelude ^
 {|
-let log32 : Int -> () = primt "log32";
+let log32 : Int -> () = prim "log32";
 |}

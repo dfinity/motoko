@@ -1,10 +1,9 @@
 # Makefile for actorscript test cases
 
-# This works with bash
+ASC ?= ../../asc
+WASM ?= wasm
+ASC_FLAGS ?=
 
-ASC = ../../asc
-WASM = wasm
-ASC_FLAGS = -t -v
 OKDIR = ok
 OUTDIR = _out
 
@@ -23,7 +22,8 @@ $(OUTDIR):
 
 $(OUTDIR)/%.tc: %.as $(ASC) Makefile
 	@echo -n [check] $*
-	@mkdir -p $(OUTDIR); $(ASC) --check $< > $@ 2>&1 || true
+	@mkdir -p $(OUTDIR)
+	@$(ASC) $(ASC_FLAGS) --check $< > $@ 2>&1 || true
 	@if [ -s $@ ];  then echo " ✗"; else echo " ✓"; fi
 
 $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
@@ -31,7 +31,7 @@ $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	then > $@; \
 	else \
 	  echo "[run]   $*"; \
-	  $(ASC) -r -v $< > $@ 2>&1 || true; \
+	  $(ASC) $(ASC_FLAGS) -r -v $< > $@ 2>&1 || true; \
 	fi
 
 $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
@@ -39,7 +39,7 @@ $(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
 	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
 	else \
           echo "[comp]  $*"; \
-	  $(ASC) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
+	  $(ASC) $(ASC_FLAGS) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
 	  echo Hack until opam wasm package is updated >/dev/null; \
 	  mv $(OUTDIR)/$*.wat $(OUTDIR)/$*.wat.tmp ; \
           sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $(OUTDIR)/$*.wat.tmp > $(OUTDIR)/$*.wat; \
@@ -51,6 +51,22 @@ $(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
 	then \
 	 echo "[exec]  $*";\
 	 $(WASM) $< > $@ 2>&1 || true; \
+	else > $@; \
+	fi
+
+$(OUTDIR)/%.wasm: $(OUTDIR)/%.wat
+	@if [ -s $< ]; \
+	then \
+	 echo "[wasm]  $*";\
+	 $(WASM) -d $< -o $@ || true; \
+	else > $@; \
+	fi
+
+$(OUTDIR)/%.wasm-run: $(OUTDIR)/%.wasm
+	@if [ -s $< ]; \
+	then \
+	 echo "[dsh]   $*";\
+	 ./run.sh $< > $@ 2>&1 || true; \
 	else > $@; \
 	fi
 
@@ -68,9 +84,6 @@ $(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %
 $(addsuffix .refresh, $(GENERATED)) : %.refresh : $(OUTDIR)/%
 	@mkdir -p $(OKDIR) && cp $< $(OKDIR)/$*.ok
 
-%.wasm: %.wat
-	$(WASM) -d $< -o $@ || true
-	touch $@
 
 stats: $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \

@@ -57,8 +57,8 @@ let process_files ((senv, denv) as env) names =
 let () =
   Printexc.record_backtrace true;
   try
-    let env = Pipeline.init () in
     Arg.parse argspec add_arg usage;
+    let env = Pipeline.init () in
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
     if !mode = Interact then printf "%s\n" banner;
     let env' = process_files env !args in
