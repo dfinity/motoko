@@ -1,0 +1,4 @@
+compile_lit: (CharLit 2612)
+compile_lit: (Word32Lit 4294967295)
+compile_lit: (Word16Lit 65535)
+compile_lit: (Word8Lit 255)

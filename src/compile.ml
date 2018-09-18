@@ -70,10 +70,20 @@ module E = struct
   (* First argument is a pointer to the closure *)
   let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let unary_fun_ty_i = 1l
-  (* The console.log32 type *)
-  let console_log32_fun_ty = nr (FuncType ([I32Type],[]))
-  let console_log32_fun_ty_i = 2l
-  let default_fun_tys = [start_fun_ty; unary_fun_ty; console_log32_fun_ty]
+  (* Type of the system API *)
+  let test_print_fun_ty = nr (FuncType ([I32Type],[]))
+  let test_print_fun_ty_i = 2l
+  let test_show_i32fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  let test_show_i32fun_ty_i = 3l
+  let data_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
+  let data_externalize_fun_ty_i = 4l
+  let default_fun_tys = [
+      start_fun_ty;
+      unary_fun_ty;
+      test_print_fun_ty;
+      test_show_i32fun_ty;
+      data_externalize_fun_ty;
+      ]
 
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
@@ -525,7 +535,7 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = if E.dfinity_mode env then Int32.add i 1l else i
+  let fun_id env i = if E.dfinity_mode env then Int32.add i 3l else i
   let array_get_funid       env = fun_id env 0l
   let array_set_funid       env = fun_id env 1l
   let array_len_funid       env = fun_id env 2l
@@ -678,7 +688,9 @@ end (* Array *)
 module Dfinity = struct
 
   (* function ids for imported stuff *)
-  let console_log32_i env = 0l
+  let test_print_i env = 0l
+  let test_show_i32_i env = 1l
+  let data_externalize_i env = 2l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -689,24 +701,64 @@ module Dfinity = struct
 
   let system_imports env =
     let i = E.add_import env (nr {
-      module_name = explode "console";
-      item_name = explode "log32";
-      idesc = nr (FuncImport (nr E.console_log32_fun_ty_i))
+      module_name = explode "test";
+      item_name = explode "print";
+      idesc = nr (FuncImport (nr E.test_print_fun_ty_i))
     }) in
-    assert (Int32.to_int i == Int32.to_int (console_log32_i env))
+    assert (Int32.to_int i == Int32.to_int (test_print_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "test";
+      item_name = explode "show_i32";
+      idesc = nr (FuncImport (nr E.test_show_i32fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "data";
+      item_name = explode "externalize";
+      idesc = nr (FuncImport (nr E.data_externalize_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (data_externalize_i env))
 
   let log32_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
-      [ nr (Call (nr (console_log32_i env))) ] @
+      [ nr (Call (nr (test_show_i32_i env))) ] @
+      [ nr (Call (nr (test_print_i env))) ] @
       compile_unit
       )
 
-  let prims = [ "log32", log32_fun ]
+  let print_fun env = Func.unary_of_body env (fun env1 ->
+      (* Calculate the offset *)
+      Func.load_argument @
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Array.header_size)))) ;
+       nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+      (* Calculate the length *)
+      Func.load_argument @
+      Heap.load_field (Array.len_field) @
+      (* Externalize *)
+      [ nr (Call (nr (data_externalize_i env))) ] @
+      (* Call print *)
+      [ nr (Call (nr (test_print_i env))) ] @
+      compile_unit
+      )
+
+  let prims = [ "log32", log32_fun;
+                "print", print_fun ]
 
   let export_start_fun env i =
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr i))
+    });
+    (* these export seems to be wanted by the hypervisor/v8 *)
+    E.add_export env (nr {
+      name = explode "mem";
+      edesc = nr (MemoryExport (nr 0l))
+    });
+    E.add_export env (nr {
+      name = explode "table";
+      edesc = nr (TableExport (nr 0l))
     })
 
 end (* Dfinity *)
@@ -714,7 +766,7 @@ end (* Dfinity *)
 
 (* The actual compiler code that looks at the AST *)
 
-let compile_lit lit = match lit with
+let compile_lit env lit = match lit with
   | BoolLit true ->  compile_true
   | BoolLit false -> compile_false
   (* This maps int to int32, instead of a proper arbitrary precision library *)
@@ -725,6 +777,7 @@ let compile_lit lit = match lit with
     (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
+  | TextLit t     -> Array.lit env (List.map compile_const (List.map Int32.of_int (Wasm.Utf8.decode t)))
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
@@ -783,7 +836,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      Heap.store_field 0l @
      compile_unit
   | LitE l_ref ->
-     compile_lit !l_ref
+     compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 @
      [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
@@ -945,10 +998,10 @@ enabled mutual recursion.
 
 and compile_lit_pat env fail_depth opo l = match opo, l with
   | None, (NatLit _ | IntLit _ | NullLit) ->
-    compile_lit l @
+    compile_lit env l @
     [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
   | Some uo, (NatLit _ | IntLit _) ->
-    compile_lit l @
+    compile_lit env l @
     compile_unop env uo @
     [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
   | _ -> todo "compile_lit_pat" (Arrange.lit l) [ nr Unreachable ]

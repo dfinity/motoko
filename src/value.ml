@@ -214,6 +214,7 @@ let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+let as_string = function Text t -> t | _ -> invalid "as_text"
 
 let obj_of_array a =
   let get =
@@ -272,6 +273,7 @@ let unit = Tup []
 
 let prim = function
   | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "print" -> fun v k -> Printf.printf "%s" (as_string v); k unit
   | "log32" -> fun v k -> Printf.printf "log32(%s)\n" (Int.to_string (as_int v)); k unit
   | _ -> raise (Invalid_argument "Value.prim")
 

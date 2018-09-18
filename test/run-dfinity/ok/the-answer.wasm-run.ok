@@ -1,0 +1,22 @@
+$ dsh reset
+{
+    "stateRoot": "0x5d52ee16b5c922b81668a6060ed483ea693ff05e"
+}
+
+$ dsh new -a _out/the-answer.wasm
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (the-answer)",
+    "type": "actorref"
+}
+
+$ dsh run the-answer start
+4242{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (the-answer)",
+    "type": "actorref"
+}
+
+Leaked 1 instances of wasm::Engine, made 1, freed 0!

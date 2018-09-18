@@ -7,6 +7,10 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
          inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 	}; in
 
+# Include dsh
+let dev_in_nix = (import ./nix/dev-in-nix) { v8 = true; }; in
+let dsh = dev_in_nix.hypervisor; in
+
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
 let menhir_nix = nixpkgs.fetchurl {
@@ -25,7 +29,7 @@ rec {
   native = stdenv.mkDerivation {
     name = "native";
 
-    src = nixpkgs.lib.cleanSource ./src;
+    src = nixpkgs.lib.cleanSource ./.;
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
@@ -36,15 +40,16 @@ rec {
       nixpkgs.ocamlPackages.ocamlbuild
       ocaml_wasm
       nixpkgs.ocamlPackages.zarith
+      dev_in_nix.hypervisor
     ];
 
     buildPhase = ''
-      make BUILD=native asc
+      make -C src BUILD=native asc
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp asc $out/bin
+      cp src/asc $out/bin
     '';
 
     # The binary does not work until we use wrapProgram, which runs in
@@ -53,7 +58,7 @@ rec {
     doInstallCheck = true;
     installCheckPhase = ''
       $out/bin/asc --version
-      make -C test ASC=$out/bin/asc all
+      make -C test VERBOSE=1 ASC=$out/bin/asc all
       make -C samples ASC=$out/bin/asc all
     '';
   };
@@ -69,12 +74,12 @@ rec {
     ];
 
     buildPhase = ''
-      make asc.js
+      make -C src asc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp asc.js $out
+      cp src/asc.js $out
     '';
 
     installCheckPhase = ''
@@ -82,4 +87,7 @@ rec {
     '';
 
   });
+
+  wasm = ocaml_wasm;
+  dsh = dev_in_nix.hypervisor;
 }
