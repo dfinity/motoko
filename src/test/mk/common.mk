@@ -3,6 +3,7 @@
 ASC ?= ../../asc
 WASM ?= wasm
 ASC_FLAGS ?=
+VERBOSE ?= 0
 
 OKDIR = ok
 OUTDIR = _out
@@ -76,7 +77,8 @@ $(OKDIR)/%.ok:
 	@exit 1
 
 $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
-	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* | tee $@ || true
+	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* > $@ || true
+	@if [[ $(VERBOSE) -ne 0 ]]; then cat $@; fi
 
 
 $(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
@@ -89,12 +91,12 @@ stats: $(addsuffix .diff,$(GENERATED_OUT))
 	@failed=""; \
 	for test in $(GENERATED); do \
 	  if [ -s $(OUTDIR)/$$test.diff ]; then \
-	    failed="$$failed $$test"; \
+	    failed="$$failed\n $$test"; \
 	  fi; \
 	done; \
 	if [ -z "$$failed" ]; \
 	then echo "All passed!"; \
-	else echo "Failed tests:$$failed"; exit 1; \
+	else echo -e "Failed tests:$$failed"; exit 1; \
 	fi
 
 # refresh all

@@ -1,3 +1,5 @@
+-- Checking prelude:
+-- Interpreting prelude:
 -- Checking overflow.as:
 -- Interpreting overflow.as:
 overflow.as:17.9-17.24: execution error, arithmetic overflow

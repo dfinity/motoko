@@ -1,3 +1,5 @@
+-- Checking prelude:
+-- Interpreting prelude:
 -- Checking TRAP-write-before-init.as:
 -- Interpreting TRAP-write-before-init.as:
 TRAP-write-before-init.as:1.1-1.2: execution error, accessing identifier before its definition

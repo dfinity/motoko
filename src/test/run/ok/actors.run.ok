@@ -1,3 +1,5 @@
+-- Checking prelude:
+-- Interpreting prelude:
 -- Checking actors.as:
 -- Interpreting actors.as:
 actors.as:22.9-22.12: execution error, arithmetic overflow
