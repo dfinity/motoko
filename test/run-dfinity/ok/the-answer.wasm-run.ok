@@ -20,3 +20,4 @@ $ dsh run the-answer start
 }
 
 Leaked 1 instances of wasm::Engine, made 1, freed 0!
+Return value: 1

@@ -8,10 +8,13 @@ fi
 
 name="$(basename $1 .wasm)"
 
+
+trap 'echo Segmentation fault!' SEGV
+
 export LANG=C
 function dsh_ () {
   echo "\$ dsh $@"
-  dsh $@
+  dsh $@ || echo "Return value: $?"
 }
 
 dsh_ reset

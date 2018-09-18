@@ -12,4 +12,5 @@ $ dsh new -a _out/hello-world.wasm
 }
 
 $ dsh run hello-world start
-./run.sh: line 12: 25281 Segmentation fault      dsh $@
+Segmentation fault
+Return value: 139
