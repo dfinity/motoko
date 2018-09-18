@@ -70,10 +70,12 @@ module E = struct
   (* First argument is a pointer to the closure *)
   let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let unary_fun_ty_i = 1l
-  (* The console.log32 type *)
-  let console_log32_fun_ty = nr (FuncType ([I32Type],[]))
-  let console_log32_fun_ty_i = 2l
-  let default_fun_tys = [start_fun_ty; unary_fun_ty; console_log32_fun_ty]
+  (* Type of the system API *)
+  let test_print_fun_ty = nr (FuncType ([I32Type],[]))
+  let test_print_fun_ty_i = 2l
+  let test_show_i32fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  let test_show_i32fun_ty_i = 3l
+  let default_fun_tys = [start_fun_ty; unary_fun_ty; test_print_fun_ty; test_show_i32fun_ty ]
 
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
@@ -525,7 +527,7 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = if E.dfinity_mode env then Int32.add i 1l else i
+  let fun_id env i = if E.dfinity_mode env then Int32.add i 2l else i
   let array_get_funid       env = fun_id env 0l
   let array_set_funid       env = fun_id env 1l
   let array_len_funid       env = fun_id env 2l
@@ -678,7 +680,8 @@ end (* Array *)
 module Dfinity = struct
 
   (* function ids for imported stuff *)
-  let console_log32_i env = 0l
+  let test_print_i env = 0l
+  let test_show_i32_i env = 1l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -689,15 +692,23 @@ module Dfinity = struct
 
   let system_imports env =
     let i = E.add_import env (nr {
-      module_name = explode "console";
-      item_name = explode "log32";
-      idesc = nr (FuncImport (nr E.console_log32_fun_ty_i))
+      module_name = explode "test";
+      item_name = explode "print";
+      idesc = nr (FuncImport (nr E.test_print_fun_ty_i))
     }) in
-    assert (Int32.to_int i == Int32.to_int (console_log32_i env))
+    assert (Int32.to_int i == Int32.to_int (test_print_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "test";
+      item_name = explode "show_i32";
+      idesc = nr (FuncImport (nr E.test_show_i32fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (test_show_i32_i env))
 
   let log32_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
-      [ nr (Call (nr (console_log32_i env))) ] @
+      [ nr (Call (nr (test_show_i32_i env))) ] @
+      [ nr (Call (nr (test_print_i env))) ] @
       compile_unit
       )
 

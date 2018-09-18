@@ -8,8 +8,6 @@ fi
 
 name="$(basename $1 .wasm)"
 
-dsh <<__END__
-reset
-new -a $1
-run $name start
-__END__
+dsh reset
+dsh new -a $1
+dsh run $name start
