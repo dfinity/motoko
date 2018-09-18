@@ -4,6 +4,9 @@ open Value
 module T = Type
 
 
+let impossible _ = raise (Invalid_argument "impossible")
+
+
 (* Unary operators *)
 
 let word_unop fword8 fword16 fword32 fword64 = function
@@ -26,6 +29,7 @@ let unop t op =
     | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
     | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
     )
+  | T.Non -> impossible
   | _ -> raise (Invalid_argument "unop")
 
 
@@ -67,6 +71,7 @@ let binop t op =
     | RotROp -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
     | CatOp -> text_binop (^) p
     )
+  | T.Non -> impossible
   | _ -> raise (Invalid_argument "binop")
 
 
@@ -106,6 +111,7 @@ let relop t op =
     | LeOp -> ord_relop Nat.le Int.le Word8.le_u Word16.le_u Word32.le_u Word64.le_u Float.le (<=) (<=) p
     | GeOp -> ord_relop Nat.ge Int.ge Word8.ge_u Word16.ge_u Word32.ge_u Word64.ge_u Float.ge (>=) (>=) p
     )
+  | T.Non -> impossible
   | _ -> raise (Invalid_argument "relop")
 
 

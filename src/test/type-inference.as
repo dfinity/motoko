@@ -52,6 +52,25 @@ let a =
 };
 
 
+// Bottom Type
+
+type Bot = None;
+func bot(bot : Bot) {
+  let a = bot.1;
+  let b = bot.x;
+  let c = bot();
+  let d = bot(1, 2);
+  let e = bot<Int>(5);
+  let f = bot[1];
+  let g = bot + bot * bot;
+  switch bot {
+    case 1 ();
+    case true ();
+    case null ();
+    case _ ();
+  };
+};
+
 // This is an error.
 let _ =
 {

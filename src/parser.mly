@@ -215,7 +215,7 @@ typ_bind :
   | x=id SUB t=typ
     { {var = x; bound = t} @@ at $sloc }
   | x=id
-    { {var = x; bound = AnyT @@ at $sloc} @@ at $sloc }
+    { {var = x; bound = PrimT "Any" @@ at $sloc} @@ at $sloc }
 
 
 

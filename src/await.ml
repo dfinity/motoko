@@ -154,7 +154,7 @@ let  (-->) k e =
      {it=DecE({it=FuncD("" @@ no_region, (* no recursion *)
                         [],
                         {it=VarP v;at=no_region;note=k.note},
-                        AnyT@@no_region, (* bogus,  but we shouln't use it anymore *)
+                        PrimT "Any"@@no_region, (* bogus,  but we shouln't use it anymore *)
                         e);
                at = no_region;
                note;}

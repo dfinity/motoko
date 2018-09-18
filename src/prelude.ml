@@ -1,6 +1,7 @@
 let prelude =
 {|
 type Any = prim "Any";
+type None = prim "None";
 type Class = prim "Class";
 type Null = prim "Null";
 type Bool = prim "Bool";

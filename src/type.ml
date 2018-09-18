@@ -33,6 +33,7 @@ and typ =
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
   | Any                                       (* top *)
+  | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : string; bound : typ}
@@ -102,6 +103,7 @@ let rec shift i n t =
   | Mut t -> Mut (shift i n t)
   | Class -> Class
   | Any -> Any
+  | Non -> Non
   | Pre -> Pre
 
 and shift_bind i n {var; bound} =
@@ -135,6 +137,7 @@ let rec subst sigma t =
   | Mut t -> Mut (subst sigma t)
   | Class -> Class
   | Any -> Any
+  | Non -> Non
   | Pre -> Pre
 
 and subst_bind sigma {var; bound} =
@@ -174,6 +177,7 @@ let rec open' i ts t =
   | Mut t -> Mut (open' i ts t)
   | Class -> Class
   | Any -> Any
+  | Non -> Non
   | Pre -> Pre
 
 and open_bind i ts {var; bound} =
@@ -248,25 +252,45 @@ let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 
 let as_prim_sub p env t = match structural env t with
-  Prim p' when p = p' -> () | _ -> invalid "as_prim_sub"
-let rec as_obj_sub env t = match structural env t with
-  Obj (s, tfs) -> s, tfs | Array t -> as_obj_sub env (array_obj t) | _ -> invalid "as_obj_sub"
+  | Prim p' when p = p' -> ()
+  | Non -> ()
+  | _ -> invalid "as_prim_sub"
+let rec as_obj_sub name env t = match structural env t with
+  | Obj (s, tfs) -> s, tfs
+  | Array t -> as_obj_sub name env (array_obj t)
+  | Non -> Object, [{name; typ = Non}]
+  | _ -> invalid "as_obj_sub"
 let as_array_sub env t = match structural env t with
-  Array t -> t | _ -> invalid "as_array_sub"
+  | Array t -> t
+  | Non -> Non
+  | _ -> invalid "as_array_sub"
 let as_opt_sub env t = match structural env t with
-  Opt t -> t | t -> t
-let as_tup_sub env t = match structural env t with
-  Tup ts -> ts | _ -> invalid "as_tup_sub"
+  | Opt t -> t
+  | t -> t
+let as_tup_sub n env t = match structural env t with
+  | Tup ts -> ts
+  | Non -> Lib.List.make n Non
+  | _ -> invalid "as_tup_sub"
 let as_unit_sub env t = match structural env t with
-  Tup [] -> () | _ -> invalid "as_unit_sub"
+  | Tup []
+  | Non -> ()
+  | _ -> invalid "as_unit_sub"
 let as_pair_sub env t = match structural env t with
-  Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair_sub"
-let as_func_sub env t = match structural env t with
-  Func (_, tbs, t1, t2) -> tbs, t1, t2 | _ -> invalid "as_func_sub"
+  | Tup [t1; t2] -> t1, t2
+  | Non -> Non, Non
+  | _ -> invalid "as_pair_sub"
+let as_func_sub n env t = match structural env t with
+  | Func (_, tbs, t1, t2) -> tbs, t1, t2
+  | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
+  | _ -> invalid "as_func_sub"
 let as_mono_func_sub env t = match structural env t with
-  Func (_, [], t1, t2) -> t1, t2 | _ -> invalid "as_func_sub"
+  | Func (_, [], t1, t2) -> t1, t2
+  | Non -> Any, Non
+  | _ -> invalid "as_func_sub"
 let as_async_sub env t = match structural env t with
-  Async t -> t | _ -> invalid "as_async_sub"
+  | Async t -> t
+  | Non -> Non
+  | _ -> invalid "as_async_sub"
 
 let lookup_field name' tfs =
   match List.find_opt (fun {name; _} -> name = name') tfs with
@@ -279,7 +303,7 @@ let lookup_field name' tfs =
 exception Unavoidable of con
 
 let rec avoid' env env' = function
-  | (Prim _ | Var _ | Any | Class | Pre) as t -> t
+  | (Prim _ | Var _ | Any | Non | Class | Pre) as t -> t
   | Con (c, ts) ->
     (match Con.Env.find_opt c env' with
     | Some (Abs _) -> raise (Unavoidable c)
@@ -332,6 +356,10 @@ let rec rel_typ env rel eq t1 t2 =
   | Any, Any -> 
     true
   | _, Any when rel != eq ->
+    true
+  | Non, Non ->
+    true
+  | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Con.Env.find con1 env, Con.Env.find con2 env with
@@ -437,9 +465,9 @@ and sub (env : con_env) t1 t2 : bool =
   rel_typ env (ref S.empty) (ref S.empty) t1 t2
 
 
-(* Join and Meet *)
+(* Least upper bound and greatest lower bound *)
 
-let rec join env t1 t2 =
+let rec lub env t1 t2 =
   if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
@@ -447,18 +475,20 @@ let rec join env t1 t2 =
   | Pre, _ -> Pre
   | _, Any
   | Any, _ -> Any
+  | _, Non -> t1
+  | Non, _ -> t2
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
-  | Opt t1', Opt t2' -> Opt (join env t1' t2')
+  | Opt t1', Opt t2' -> Opt (lub env t1' t2')
   | t1', Opt t2'
-  | Opt t1', t2' -> Opt (join env t1' t2')
-  | Array t1', (Obj _ as t2) -> join env (array_obj t1') t2
-  | (Obj _ as t1), Array t2' -> join env t1 (array_obj t2')
+  | Opt t1', t2' -> Opt (lub env t1' t2')
+  | Array t1', (Obj _ as t2) -> lub env (array_obj t1') t2
+  | (Obj _ as t1), Array t2' -> lub env t1 (array_obj t2')
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> Any
 
 
-let rec meet env t1 t2 =
+let rec glb env t1 t2 =
   if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
   match normalize env t1, normalize env t2 with
@@ -466,13 +496,15 @@ let rec meet env t1 t2 =
   | Pre, _ -> Pre
   | _, Any -> t1
   | Any, _ -> t2
+  | _, Non -> Non
+  | Non, _ -> Non
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
-  | Opt t1', Opt t2' -> Opt (meet env t1' t2')
+  | Opt t1', Opt t2' -> Opt (glb env t1' t2')
   | t1', Opt t2'
-  | Opt t1', t2' -> meet env t1' t2'
+  | Opt t1', t2' -> glb env t1' t2'
   | t1', t2' when eq env t1' t2' -> t1
-  | _ -> failwith "meet"  (* TBR *)
+  | _ -> Non
 
 
 (* Pretty printing *)
@@ -506,6 +538,7 @@ let string_of_func_sort = function
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
+  | Non -> "None"
   | Class -> "Class"
   | Prim p -> string_of_prim p
   | Var (s, i) -> string_of_var (List.nth vs i)

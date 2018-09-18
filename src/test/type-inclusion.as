@@ -10,6 +10,18 @@ func f4(x : Null) : Any = x;
 func f5(x : Int) : Any = x;
 };
 
+// Bottom Type
+
+{
+type A = {x : Int; y : Int};
+class C() {};
+func f1(x : None) : None = x;
+func f2(x : None) : A = x;
+func f3(x : None) : C = x;
+func f4(x : None) : Null = x;
+func f5(x : None) : Int = x;
+};
+
 // Number Types
 
 {

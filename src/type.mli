@@ -33,6 +33,7 @@ and typ =
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
   | Any                                       (* top *)
+  | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : string; bound : typ}
@@ -81,13 +82,13 @@ val as_mut : typ -> typ
 val as_immut : typ -> typ
 
 val as_prim_sub : prim -> con_env -> typ -> unit
-val as_obj_sub : con_env -> typ -> obj_sort * field list
+val as_obj_sub : string -> con_env -> typ -> obj_sort * field list
 val as_array_sub : con_env -> typ -> typ
 val as_opt_sub : con_env -> typ -> typ
-val as_tup_sub : con_env -> typ -> typ list
+val as_tup_sub : int -> con_env -> typ -> typ list
 val as_unit_sub : con_env -> typ -> unit
 val as_pair_sub : con_env -> typ -> typ * typ
-val as_func_sub : con_env -> typ -> bind list * typ * typ
+val as_func_sub : int -> con_env -> typ -> bind list * typ * typ
 val as_mono_func_sub : con_env -> typ -> typ * typ
 val as_async_sub : con_env -> typ -> typ
 
@@ -108,8 +109,8 @@ val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
 val eq : con_env -> typ -> typ -> bool
 val sub : con_env -> typ -> typ -> bool
 
-val join : con_env -> typ -> typ -> typ
-val meet : con_env -> typ -> typ -> typ
+val lub : con_env -> typ -> typ -> typ
+val glb : con_env -> typ -> typ -> typ
 
 
 (* First-order substitution *)

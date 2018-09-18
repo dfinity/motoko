@@ -103,6 +103,7 @@ let rec is_shared_typ ce t =
   | T.Mut _ -> false
   | T.Class -> true
   | T.Any -> false (* TBR *)
+  | T.Non -> true
   | T.Pre -> assert false
 
 (* Type of an actor field *)
@@ -145,10 +146,9 @@ let rec check_typ env typ : T.typ =
 	    T.Con (c, ts)
     | None -> error id.at "unbound type identifier %s" id.it
     )
-  | PrimT "Any" ->
-    T.Any
-  | PrimT "Class" ->
-    T.Class
+  | PrimT "Any" -> T.Any
+  | PrimT "None" -> T.Non
+  | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error typ.at "unknown primitive type"
@@ -175,8 +175,6 @@ let rec check_typ env typ : T.typ =
     check_ids (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort compare fs)
-  | AnyT ->
-    T.Any
 
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
@@ -335,7 +333,7 @@ and infer_exp' env exp : T.typ =
   | BinE (exp1, op, exp2) ->
     let t1 = infer_exp_structural env exp1 in
     let t2 = infer_exp_structural env exp2 in
-    let t = T.join env.cons t1 t2 in
+    let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_binop t op) then
         error exp.at "operator not defined for operand types\n  %sand\n  %s"
@@ -346,7 +344,7 @@ and infer_exp' env exp : T.typ =
   | RelE (exp1, op, exp2) ->
     let t1 = infer_exp_structural env exp1 in
     let t2 = infer_exp_structural env exp2 in
-    let t = T.join env.cons t1 t2 in
+    let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_relop t op) then
         error exp.at "operator not defined for operand types\n  %sand\n  %s"
@@ -363,7 +361,7 @@ and infer_exp' env exp : T.typ =
   | ProjE (exp1, n) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let ts = T.as_tup_sub env.cons t1 in
+      let ts = T.as_tup_sub n env.cons t1 in
       match List.nth_opt ts n with
       | Some t -> t
       | None ->
@@ -378,7 +376,7 @@ and infer_exp' env exp : T.typ =
   | DotE (exp1, id) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let _, tfs = T.as_obj_sub env.cons t1 in
+      let _, tfs = T.as_obj_sub id.it env.cons t1 in
       match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
@@ -398,15 +396,14 @@ and infer_exp' env exp : T.typ =
         error exp.at "expected mutable assignment target";
     end;
     T.unit
-  | ArrayE [] ->
-    (* TBR: T.Bottom? *)
-    error exp.at "cannot infer type of empty array (use a type annotation)"
   | ArrayE exps ->
     let ts = List.map (infer_exp env) exps in
-    let t1 = List.hd ts in
-    (* TBR: join *)
-    if not (List.for_all (T.eq env.cons t1) (List.tl ts)) then
-      error exp.at "array contains elements of inconsistent types";
+    let t1 = List.fold_left (T.lub env.cons) T.Non ts in
+    if
+      t1 = T.Any && List.for_all (fun t -> T.structural env.cons t <> T.Any) ts
+    then
+      warn exp.at "this array has type %s because elements have inconsistent types"
+        (T.string_of_typ (T.Array t1));
     T.Array t1
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_structural env exp1 in
@@ -421,7 +418,7 @@ and infer_exp' env exp : T.typ =
   | CallE (exp1, typs, exp2) ->
     let t1 = infer_exp_structural env exp1 in
     (try
-      let tbs, t2, t = T.as_func_sub env.cons t1 in
+      let tbs, t2, t = T.as_func_sub (List.length typs) env.cons t1 in
       let ts = check_typ_bounds env tbs typs exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
@@ -454,7 +451,7 @@ and infer_exp' env exp : T.typ =
     if not env.pre then check_exp env T.bool exp1;
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
-    let t = T.join env.cons t2 t3 in
+    let t = T.lub env.cons t2 t3 in
     if
       t = T.Any &&
       T.structural env.cons t2 <> T.Any && T.structural env.cons t3 <> T.Any
@@ -465,8 +462,8 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t3);
     t
   | SwitchE (exp1, cases) ->
-    let t1 = if env.pre then T.Pre else infer_exp_structural env exp1 in
-    let t = infer_cases env t1 None cases in
+    let t1 = infer_exp_structural env exp1 in
+    let t = infer_cases env t1 T.Non cases in
     if not env.pre then
       if not (Coverage.check_cases cases) then
         warn exp.at "the cases in this switch do not cover all possible values";
@@ -482,13 +479,12 @@ and infer_exp' env exp : T.typ =
       check_exp env T.unit exp1;
       Lib.Option.app (check_exp env T.bool) expo
     end;
-    (* TBR: T.Bottom? *)
-    T.unit
+    T.Non
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
       let t1 = infer_exp_structural env exp1 in
       (try
-        let _, tfs = T.as_obj_sub env.cons t1 in
+        let _, tfs = T.as_obj_sub "next" env.cons t1 in
         let t = T.lookup_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub env.cons t in
         T.as_unit_sub env.cons t1;
@@ -516,18 +512,16 @@ and infer_exp' env exp : T.typ =
         | _ -> id.it
       in error id.at "unbound label %s" name
     );
-    (* TBR: T.Bottom? *)
-    T.unit
+    T.Non
   | RetE exp1 ->
     if not env.pre then begin
       match env.rets with
       | Some t ->
-        check_exp env t exp1;
-        (*TBR: T.Bottom? *)
+        check_exp env t exp1
       | None ->
         error exp.at "misplaced return"
     end;
-    T.unit
+    T.Non
   | AsyncE exp1 ->
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
@@ -607,9 +601,6 @@ and check_exp' env t exp =
     check_cases env t1 t cases;
     if not (Coverage.check_cases cases) then
       warn exp.at "the cases in this switch do not cover all possible values";
-  | (LoopE _ | BreakE _ | RetE _), _ ->
-    (* TBR: remove once we have T.Bottom and subtyping? *)
-    ignore (infer_exp env exp)
   | _ ->
     let t' = infer_exp env exp in
     if not (T.sub env.cons t' t) then
@@ -620,38 +611,30 @@ and check_exp' env t exp =
 
 (* Cases *)
 
-and infer_cases env t1 t2o cases : T.typ =
+and infer_cases env t_pat t cases : T.typ =
   match cases with
-  | [] ->
-    (* TBR: default to T.Bottom? *)
-    Lib.Option.get t2o T.unit
+  | [] -> t
   | {it = {pat; exp}; at; _}::cases' ->
-    let ve = check_pat env t1 pat in
-    let t = infer_exp (adjoin_vals env ve) exp in
-    let t' =
-      match t2o with
-      | None -> t
-      | Some t'' ->
-        let t' = T.join env.cons t t'' in
-        if
-          t' = T.Any &&
-          T.structural env.cons t <> T.Any &&
-          T.structural env.cons t'' <> T.Any
-        then
-          warn at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
-            (T.string_of_typ t')
-            (T.string_of_typ_expand env.cons t)
-            (T.string_of_typ_expand env.cons t'');
-        t'
-    in infer_cases env t (Some t') cases'
+    let ve = check_pat env t_pat pat in
+    let t' = infer_exp (adjoin_vals env ve) exp in
+    let t'' = T.lub env.cons t t' in
+    if
+      t'' = T.Any &&
+      T.structural env.cons t <> T.Any && T.structural env.cons t' <> T.Any
+    then
+      warn at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
+        (T.string_of_typ t'')
+        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand env.cons t');
+    infer_cases env t_pat t'' cases'
 
-and check_cases env t1 t2 cases =
+and check_cases env t_pat t cases =
   match cases with
   | [] -> ()
   | {it = {pat; exp}; _}::cases' ->
-    let ve = check_pat env t1 pat in
-    check_exp (adjoin_vals env ve) t2 exp;
-    check_cases env t1 t2 cases'
+    let ve = check_pat env t_pat pat in
+    check_exp (adjoin_vals env ve) t exp;
+    check_cases env t_pat t cases'
 
 
 (* Patterns *)
@@ -712,7 +695,7 @@ and infer_pat' env pat : T.typ * val_env =
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
-    let t = T.join env.cons t1 t2 in
+    let t = T.lub env.cons t1 t2 in
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error pat.at "variables are not allowed in pattern alternatives";
     t, T.Env.empty

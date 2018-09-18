@@ -14,7 +14,8 @@ Productions marked * probably deferred to later versions.
   async <typ>                                   future
   like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
-  any                                           top
+  Any                                           top
+  None                                          bottom
 * <typ> | <typ>                                 union
 * # <id>                                        atom
 

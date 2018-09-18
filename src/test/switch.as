@@ -43,7 +43,7 @@ let no : Nat? = 0;
 let x7 = switch no {
   case null 0;
   case 0 1;
-  case n n;
+  case (n?) n;
 };
 assert (x7 == 1);
 

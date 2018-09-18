@@ -142,7 +142,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     )
   | RelE (exp1, op, exp2) ->
-    let t = T.join Con.Env.empty (* both types are primitive *)
+    let t = T.lub Con.Env.empty (* both types are primitive *)
       (T.as_immut exp1.note.note_typ) (T.as_immut exp2.note.note_typ) in
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->

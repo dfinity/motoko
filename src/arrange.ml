@@ -134,7 +134,6 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | LikeT  t            -> "LikeT" $$ [typ t]
-  | AnyT                -> Atom "AnyT"
 
 and id i = Atom i.it
 
