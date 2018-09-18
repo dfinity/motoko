@@ -37,8 +37,8 @@ clean:
 	(cd test; make clean)
 
 test: $(NAME)
-	$(MAKE) -C test ASC=../$(NAME) all
-	$(MAKE) -C samples ASC=../$(NAME) all
+	$(MAKE) -C ../test ASC=../src/$(NAME) all
+	$(MAKE) -C ../samples ASC=../src/$(NAME) all
 
 accept: $(NAME)
-	$(MAKE) -C test ASC=../$(NAME) accept
+	$(MAKE) -C ../test ASC=../src/$(NAME) accept

@@ -29,7 +29,7 @@ rec {
   native = stdenv.mkDerivation {
     name = "native";
 
-    src = nixpkgs.lib.cleanSource ./src;
+    src = nixpkgs.lib.cleanSource ./.;
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
@@ -44,12 +44,12 @@ rec {
     ];
 
     buildPhase = ''
-      make BUILD=native asc
+      make -C src BUILD=native asc
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp asc $out/bin
+      cp src/asc $out/bin
     '';
 
     # The binary does not work until we use wrapProgram, which runs in
@@ -74,12 +74,12 @@ rec {
     ];
 
     buildPhase = ''
-      make asc.js
+      make -C src asc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp asc.js $out
+      cp src/asc.js $out
     '';
 
     installCheckPhase = ''
