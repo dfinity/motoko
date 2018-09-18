@@ -38,7 +38,7 @@ You do not have to use nix:
    ```
    opam install wasm num
    ```
- * Make sure `wasm` (a binary form the `wasm` package) is in the path to run
+ * Make sure `wasm` (a binary from the `wasm` package) is in the path to run
    the tests.
 
 
