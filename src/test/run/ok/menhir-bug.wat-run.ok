@@ -1,1 +1,1 @@
-_out/menhir-bug.wat:589.5-589.11: invalid module: type mismatch: operator requires [_] but stack has []
+_out/menhir-bug.wat:590.5-590.11: invalid module: type mismatch: operator requires [_] but stack has []

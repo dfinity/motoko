@@ -7,6 +7,10 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
          inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 	}; in
 
+# Include dsh
+let dev_in_nix = (import ./nix/dev-in-nix) {}; in
+let dsh = dev_in_nix.hypervisor; in
+
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
 let menhir_nix = nixpkgs.fetchurl {
@@ -36,6 +40,7 @@ rec {
       nixpkgs.ocamlPackages.ocamlbuild
       ocaml_wasm
       nixpkgs.ocamlPackages.zarith
+      dsh
     ];
 
     buildPhase = ''
@@ -53,7 +58,7 @@ rec {
     doInstallCheck = true;
     installCheckPhase = ''
       $out/bin/asc --version
-      make -C test ASC=$out/bin/asc all
+      make -C test VERBOSE=1 ASC=$out/bin/asc all
       make -C samples ASC=$out/bin/asc all
     '';
   };

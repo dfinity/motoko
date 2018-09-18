@@ -1,0 +1,3 @@
+[submodule "nix/dev-in-nix"]
+	path = nix/dev-in-nix
+	url = git@github.com:dfinity-lab/dev-in-nix

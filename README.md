@@ -39,7 +39,9 @@ You do not have to use nix:
    opam install wasm num
    ```
  * Make sure `wasm` (a binary from the `wasm` package) is in the path to run
-   the tests.
+   the `run` tests.
+ * Make sure `dsh` (a binary from the `hs-hypervisor` package) is in the path
+   to run the `run-dfinity` tests.
 
 
 ## Introduction
