@@ -257,13 +257,16 @@ module Heap = struct
 
   let heap_ptr : var = nr 0l
 
-  let alloc (n : int32) : instr list =
+  let alloc_bytes (n : int32) : instr list =
     (* expect the size (in words), returns the pointer *)
     [ nr (GetGlobal heap_ptr);
       nr (GetGlobal heap_ptr) ] @
-    compile_const (Wasm.I32.mul word_size n) @
+    compile_const n @
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
       nr (SetGlobal heap_ptr)]
+
+  let alloc (n : int32) : instr list =
+    alloc_bytes (Wasm.I32.mul word_size n)
 
   let load_field (i : int32) : instr list =
     [ nr (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None}) ]
@@ -530,6 +533,35 @@ module Object = struct
 
 end (* Object *)
 
+module Text = struct
+  let header_size = 1l
+
+  let len_field = 0l
+
+  let lit env s =
+    let bytes = List.map Int32.of_int (Wasm.Utf8.decode s) in
+    let n = Int32.of_int (List.length bytes) in
+
+    let i = E.add_anon_local env I32Type in
+    Heap.alloc_bytes (Int32.add (Int32.mul header_size Heap.word_size) n) @
+    [ nr (SetLocal (nr i)) ] @
+
+    let compile_self = [ nr (GetLocal (nr i)) ] in
+
+    compile_self @
+    compile_const n @
+    Heap.store_field len_field @
+
+    let init_elem i n : Wasm.Ast.instr list =
+      compile_self @
+      compile_const n @
+      let offset = Int32.add (Int32.mul header_size Heap.word_size) (Int32.of_int i) in
+      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Pack8}) ]
+    in
+    List.concat (List.mapi init_elem bytes) @
+    compile_self
+end (* String *)
+
 module Array = struct
   let header_size = Int32.add Object.header_size 6l
   let element_size = 4l
@@ -731,11 +763,11 @@ module Dfinity = struct
   let print_fun env = Func.unary_of_body env (fun env1 ->
       (* Calculate the offset *)
       Func.load_argument @
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Array.header_size)))) ;
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Text.header_size)))) ;
        nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
       (* Calculate the length *)
       Func.load_argument @
-      Heap.load_field (Array.len_field) @
+      Heap.load_field (Text.len_field) @
       (* Externalize *)
       [ nr (Call (nr (data_externalize_i env))) ] @
       (* Call print *)
@@ -777,7 +809,7 @@ let compile_lit env lit = match lit with
     (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
-  | TextLit t     -> Array.lit env (List.map compile_const (List.map Int32.of_int (Wasm.Utf8.decode t)))
+  | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
