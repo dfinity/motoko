@@ -30,10 +30,7 @@ class revrange(x : Nat, y : Nat) {
   private var i = x + 1;
   next() : Nat? { if (i <= y) null else {i -= 1; i} };
 };
-|}
 
-let dfinity_prelude = prelude ^
-{|
-let log32 : Int -> () = prim "log32";
+let printInt : Int -> () = prim "printInt";
 let print : Text -> () = prim "print";
 |}

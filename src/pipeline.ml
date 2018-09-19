@@ -53,12 +53,12 @@ let print_val _senv v t =
 
 type parse_result = Syntax.prog
 
-let parse_with lexer parser name : parse_result option =
+let parse_with mode lexer parser name : parse_result option =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    Some (parser Lexer.token lexer)
+    Some (parser (Lexer.token mode) lexer)
   with
     | Lexer.Error (at, msg) -> error at "syntax" msg; None
     | Parser.Error ->
@@ -67,13 +67,13 @@ let parse_with lexer parser name : parse_result option =
 let parse_string s name =
   let lexer = Lexing.from_string s in
   let parser = Parser.parse_prog in
-  parse_with lexer parser name
+  parse_with Lexer.Normal lexer parser name
 
 let parse_file filename =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let parser = Parser.parse_prog in
-  let result = parse_with lexer parser filename in
+  let result = parse_with Lexer.Normal lexer parser filename in
   close_in ic;
   result
 
@@ -158,37 +158,39 @@ let interpret_files env = function
   | [n] -> interpret_file env n
   | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
 
+
 (* Prelude *)
 
-let check_prelude dfinity_mode =
+let prelude_name = "prelude"
+
+let check_prelude () : Syntax.prog * stat_env =
   try
-    let prel_source =
-      if dfinity_mode
-      then Prelude.dfinity_prelude
-      else Prelude.prelude in
-    let priv_env = { Typing.empty_env with Typing.privileged = true } in
-    let prog, _t, sscope = Lib.Option.value
-      (check_string priv_env prel_source "prelude") in
-    let senv' = Typing.adjoin Typing.empty_env sscope in
-    (prog, senv')
+    let lexer = Lexing.from_string Prelude.prelude in
+    let parser = Parser.parse_prog in
+    let prog = Lib.Option.value
+      (parse_with Lexer.Privileged lexer parser prelude_name) in
+    let _t, sscope = Lib.Option.value
+      (check_prog infer_prog_unit Typing.empty_env prelude_name prog) in
+    let senv = Typing.adjoin Typing.empty_env sscope in
+    prog, senv
   with Not_found ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
 
-let init_static dfinity_mode =
-  let (prog, senv') = check_prelude dfinity_mode in
-  senv'
+let prelude, initial_stat_env = check_prelude ()
 
-let init dfinity_mode =
+let run_prelude () : dyn_env =
   try
-    let (prog, senv') = check_prelude dfinity_mode in
     let _v, dscope = Lib.Option.value
-      (interpret_prog Interpret.empty_env "prelude" prog) in
-    let denv' = Interpret.adjoin Interpret.empty_env dscope in
-    (senv', denv')
+      (interpret_prog Interpret.empty_env prelude_name prelude) in
+    Interpret.adjoin Interpret.empty_env dscope
   with Not_found ->
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
+
+let initial_dyn_env = run_prelude ()
+let initial_env = (initial_stat_env, initial_dyn_env)
+
 
 (* Running *)
 
@@ -231,31 +233,31 @@ let run_files env = function
 
 (* Compilation *)
 
+type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = Wasm.Ast.module_
 
-let compile_prog dfinity_mode name prog : Wasm.Ast.module_ =
+let compile_prog mode name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
-  Compile.compile dfinity_mode [prog]
+  Compile.compile mode [prog]
 
-let compile_with dfinity_mode check name : compile_result option =
-  let (prelude_prog, senv) = check_prelude dfinity_mode in
-  match check senv name with
+let compile_with check mode name : compile_result option =
+  match check initial_stat_env name with
   | None -> None
   | Some (prog, _t, _scope) ->
     let open Source in
     let open Syntax in
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
-    let prog' = (prelude_prog.it @ [block]) @@ prog.at in
-    let module_ = compile_prog dfinity_mode name prog' in
+    let prog' = (prelude.it @ [block]) @@ prog.at in
+    let module_ = compile_prog mode name prog' in
     Some module_
 
-let compile_string dfinity_mode s =
-  compile_with dfinity_mode (fun senv name -> check_string senv s name)
-let compile_file dfinity_mode n = compile_with dfinity_mode check_file n
-let compile_files dfinity_mode = function
-  | [n] -> compile_file dfinity_mode n
-  | ns -> compile_with dfinity_mode (fun senv _name -> check_files senv ns) "all"
+let compile_string mode s =
+  compile_with (fun senv name -> check_string senv s name) mode
+let compile_file mode n = compile_with check_file mode n
+let compile_files mode = function
+  | [n] -> compile_file mode n
+  | ns -> compile_with (fun senv _name -> check_files senv ns) mode "all"
 
 
 (* Interactively *)
@@ -276,7 +278,7 @@ let lexer_stdin buf len =
 let parse_lexer lexer name =
   let open Lexing in
   if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
-  match parse_with lexer Parser.parse_prog_interactive name with
+  match parse_with Lexer.Normal lexer Parser.parse_prog_interactive name with
   | None ->
     Lexing.flush_input lexer;
     (* Reset beginning-of-line, too, to sync consecutive positions. *)
@@ -295,5 +297,3 @@ let run_stdin env =
   let rec loop env = loop (Lib.Option.get (run_lexer env lexer "stdin") env) in
   try loop env with End_of_file ->
     printf "\n%!"
-
-

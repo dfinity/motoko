@@ -20,7 +20,7 @@ let set_mode m () =
   end;
   mode := m
 
-let dfinity_mode = ref false
+let compile_mode = ref Pipeline.WasmMode
 
 let argspec = Arg.align
 [
@@ -33,7 +33,9 @@ let argspec = Arg.align
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity", Arg.Set dfinity_mode, " compile for dfinity";
+  "--dfinity",
+    Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
+      " compile for dfinity";
 ]
 
 
@@ -48,18 +50,15 @@ let process_files names : unit =
   | Default ->
     assert false
   | Run ->
-    let env = Pipeline.init !dfinity_mode in
-    ignore (exit_on_failure (Pipeline.run_files env names))
+    ignore (exit_on_failure Pipeline.(run_files initial_env names))
   | Interact ->
     printf "%s\n" banner;
-    let env = Pipeline.init !dfinity_mode in
-    let env' = exit_on_failure (Pipeline.run_files env names) in
-    Pipeline.run_stdin env'
+    let env = exit_on_failure Pipeline.(run_files initial_env names) in
+    Pipeline.run_stdin env
   | Check ->
-    let senv = Pipeline.init_static !dfinity_mode in
-    ignore (exit_on_failure (Pipeline.check_files senv names));
+    ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
   | Compile ->
-    let module_ = exit_on_failure (Pipeline.compile_files !dfinity_mode names) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     (* TBR: output to file *)
     Wasm.Print.module_ stdout 80 module_
 

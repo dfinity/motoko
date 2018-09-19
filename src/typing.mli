@@ -16,7 +16,6 @@ type env =
     rets : ret_env;
     async : bool;
     pre : bool;
-    privileged : bool;
   }
 
 val empty_env : env

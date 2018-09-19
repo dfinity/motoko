@@ -19,5 +19,6 @@ let string_of_pos pos =
     string_of_int pos.line ^ "." ^ string_of_int (pos.column + 1)
 
 let string_of_region r =
+  if r.left.file = "" then "(unknown location)" else
   r.left.file ^ ":" ^ string_of_pos r.left ^
   (if r.right = r.left then "" else "-" ^ string_of_pos r.right)

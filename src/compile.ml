@@ -24,6 +24,8 @@ and that the order should not matter in a significant way.
 
 *)
 
+type mode = WasmMode | DfinityMode
+
 module E = struct
 
   (* Utilities, internal to E *)
@@ -35,7 +37,7 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
-    dfinity_mode : bool;
+    mode : mode;
 
     (* Imports defined *)
     imports : import list ref;
@@ -62,7 +64,7 @@ module E = struct
     field_env : int32 NameEnv.t ref;
   }
 
-  let dfinity_mode (e : t) = e.dfinity_mode
+  let mode (e : t) = e.mode
 
   (* Common function types *)
   let start_fun_ty = nr (FuncType ([],[]))
@@ -101,8 +103,8 @@ module E = struct
     )))))
 
   (* The initial global environment *)
-  let mk_global (dfinity_mode : bool) : t = {
-    dfinity_mode = dfinity_mode;
+  let mk_global mode : t = {
+    mode;
     imports = ref [];
     exports = ref [];
     funcs = ref [];
@@ -556,7 +558,7 @@ module Text = struct
       compile_self @
       compile_const n @
       let offset = Int32.add (Int32.mul header_size Heap.word_size) (Int32.of_int i) in
-      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Pack8}) ]
+      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Mem8}) ]
     in
     List.concat (List.mapi init_elem bytes) @
     compile_self
@@ -567,7 +569,10 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = if E.dfinity_mode env then Int32.add i 3l else i
+  let fun_id env i = match E.mode env with
+    | WasmMode -> i
+    | DfinityMode -> Int32.add i 3l
+
   let array_get_funid       env = fun_id env 0l
   let array_set_funid       env = fun_id env 1l
   let array_len_funid       env = fun_id env 2l
@@ -1202,9 +1207,10 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   (* Allocate the primitive functions *)
   let (env2, code1) = Prim.declare env1 Prim.default_prims in
   let (env3, code2) =
-    if E.dfinity_mode env2
-    then Prim.declare env2 Dfinity.prims
-    else (env2, []) in
+    match E.mode env2 with
+    | WasmMode -> (env2, [])
+    | DfinityMode -> Prim.declare env2 Dfinity.prims
+  in
 
   let rec go env = function
     | []          -> (env, [])
@@ -1220,15 +1226,15 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
-let compile dfinity_mode (progs : Syntax.prog list) : module_ =
-  let env = E.mk_global dfinity_mode in
+let compile mode (progs : Syntax.prog list) : module_ =
+  let env = E.mk_global mode in
 
-  if E.dfinity_mode env then Dfinity.system_imports env;
+  if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;
 
   let start_fun = compile_start_func env progs in
   let i = E.add_fun env start_fun in
-  if E.dfinity_mode env then Dfinity.export_start_fun env i;
+  if E.mode env = DfinityMode then Dfinity.export_start_fun env i;
 
 
   let funcs = E.get_funcs env in
