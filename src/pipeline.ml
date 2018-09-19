@@ -271,16 +271,15 @@ let run_stdin env =
 
 let init () =
   try
-    Flags.privileged := true;
     let prel_source =
       if !Flags.dfinity_mode
       then Prelude.dfinity_prelude
       else Prelude.prelude in
+    let priv_env = { Typing.empty_env with Typing.privileged = true } in
     let prog, _t, sscope = Lib.Option.value
-      (check_string Typing.empty_env prel_source "prelude") in
+      (check_string priv_env prel_source "prelude") in
     let _v, dscope = Lib.Option.value
       (interpret_prog Interpret.empty_env "prelude" prog) in
-    Flags.privileged := false;
     prelude := prog.Source.it;
     Typing.adjoin Typing.empty_env sscope,
       Interpret.adjoin Interpret.empty_env dscope

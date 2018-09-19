@@ -35,6 +35,7 @@ type env =
     rets : ret_env;
     async : bool;
     pre : bool;
+    privileged : bool;
   }
 
 let empty_env =
@@ -45,6 +46,7 @@ let empty_env =
     rets = None;
     async = false;
     pre = false;
+    privileged = false;
   }
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -80,6 +82,11 @@ let adjoin_typs c te ce =
 let disjoint_union at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2 with T.Env.Clash k -> error at fmt k
 
+
+let guard_prim env at =
+    if env.privileged
+    then ()
+    else error at "primitive expression in user code found"
 
 (* Type Analysis *)
 
@@ -310,6 +317,7 @@ and infer_exp_mut env exp : T.typ =
 and infer_exp' env exp : T.typ =
   match exp.it with
   | PrimE _ ->
+    guard_prim env exp.at;
     error exp.at "cannot infer type of primitive"
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with
@@ -596,7 +604,7 @@ and check_exp env t exp =
 and check_exp' env t exp =
   match exp.it, T.as_opt_sub env.cons t with
   | PrimE s, T.Func _ ->
-    ()
+    guard_prim env exp.at
   | LitE lit, _ ->
     check_lit env t lit exp.at
   | UnE (op, exp1), t' when Operator.has_unop t' op ->

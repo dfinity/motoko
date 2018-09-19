@@ -202,7 +202,7 @@ rule token = parse
   | "var" { VAR }
   | "while" { WHILE }
 
-  | "prim" as s { if !Flags.privileged then PRIM else ID s }
+  | "prim" { PRIM }
   | id as s { ID s }
 
   | "//"utf8_no_nl*eof { EOF }
