@@ -8,6 +8,30 @@ module Env = Env.Make(String)
 
 (* Numeric Representations *)
 
+let rec add_digits buf s i j k =
+  if i < j then begin
+    if k = 0 then Buffer.add_char buf '_';
+    Buffer.add_char buf s.[i];
+    add_digits buf s (i + 1) j ((k + 2) mod 3)
+  end
+
+let is_digit c = '0' <= c && c <= '9'
+let isnt_digit c = not (is_digit c)
+
+let group_num s =
+  let len = String.length s in
+  let mant = Lib.Option.get (Lib.String.find_from_opt is_digit s 0) len in
+  let point = Lib.Option.get (Lib.String.find_from_opt isnt_digit s mant) len in
+  let frac = Lib.Option.get (Lib.String.find_from_opt is_digit s point) len in
+  let exp = Lib.Option.get (Lib.String.find_from_opt isnt_digit s frac) len in
+  let buf = Buffer.create (len*4/3) in
+  Buffer.add_substring buf s 0 mant;
+  add_digits buf s mant point ((point - mant) mod 3 + 3);
+  Buffer.add_substring buf s point (frac - point);
+  add_digits buf s frac exp 3;
+  Buffer.add_substring buf s exp (len - exp);
+  Buffer.contents buf
+
 (* Represent n-bit integers using k-bit (n<=k) integers by shifting left/right by k-n bits *)
 module SubRep(Rep : Wasm.Int.RepType)(Width : sig val bitwidth : int end) :
   Wasm.Int.RepType with type t = Rep.t =
@@ -41,7 +65,7 @@ struct
   let shift_right_logical = Rep.shift_right_logical
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
-  let to_string i = Rep.to_string (proj i)
+  let to_string i = group_num (Rep.to_string (proj i))
 end
 
 module type WordType =
@@ -50,6 +74,7 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
+  val to_string : t -> string
 end
 
 module MakeWord(WasmInt : Wasm.Int.S) =
@@ -65,6 +90,7 @@ struct
       pow (mul x x) (shr_u y one)
     else
       mul x (pow x (sub y one))
+  let to_string w = group_num (WasmInt.to_string_u w)
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
@@ -86,6 +112,7 @@ module MakeFloat(WasmFloat : Wasm.Float.S) =
 struct
   include WasmFloat
   let pow x y = of_float (to_float x ** to_float y)
+  let to_string w = group_num (WasmFloat.to_string w)
 end
 
 module Float = MakeFloat(Wasm.F64)
@@ -137,7 +164,7 @@ struct
   let compare = compare_big_int
   let to_int = int_of_big_int
   let of_int = big_int_of_int
-  let to_string = string_of_big_int
+  let to_string i = group_num (string_of_big_int i)
   let of_string s =
     big_int_of_string (String.concat "" (String.split_on_char '_' s))
 
@@ -214,7 +241,6 @@ let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
-let as_string = function Text t -> t | _ -> invalid "as_text"
 
 let obj_of_array a =
   let get =
@@ -271,15 +297,6 @@ let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
 let unit = Tup []
 
-let prim = function
-  | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
-  | "print" -> fun v k -> Printf.printf "%s" (as_string v); k unit
-  | "printInt" ->
-    fun v k ->
-      Printf.printf "printInt(%s)\n" (Int.to_string (as_int v));
-      k unit
-  | _ -> raise (Invalid_argument "Value.prim")
-
 
 (* Ordering *)
 
@@ -325,10 +342,10 @@ let rec string_of_val_nullary d = function
   | Bool b -> if b then "true" else "false"
   | Nat n -> Nat.to_string n
   | Int i -> Int.to_string i
-  | Word8 w -> Word8.to_string_u w
-  | Word16 w -> Word16.to_string_u w
-  | Word32 w -> Word32.to_string_u w
-  | Word64 w -> Word64.to_string_u w
+  | Word8 w -> Word8.to_string w
+  | Word16 w -> Word16.to_string w
+  | Word32 w -> Word32.to_string w
+  | Word64 w -> Word64.to_string w
   | Float f -> Float.to_string f
   | Char c -> string_of_string '\'' [c] '\''
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'

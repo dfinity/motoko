@@ -6,6 +6,7 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
+  val to_string : t -> string
 end
 
 module type NumType =
@@ -87,8 +88,6 @@ and 'a cont = 'a -> unit
 (* Shorthands *)
 
 val unit : value
-
-val prim : string -> func
 
 
 (* Projections *)

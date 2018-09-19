@@ -34,3 +34,17 @@ class revrange(x : Nat, y : Nat) {
 let printInt : Int -> () = prim "printInt";
 let print : Text -> () = prim "print";
 |}
+
+
+(* Primitives *)
+
+open Value
+
+let prim = function
+  | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "print" -> fun v k -> Printf.printf "%s" (as_text v); k unit
+  | "printInt" ->
+    fun v k ->
+      Printf.printf "printInt(%s)\n" (Int.to_string (as_int v));
+      k unit
+  | _ -> raise (Invalid_argument "Value.prim")

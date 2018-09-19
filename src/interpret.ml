@@ -110,41 +110,40 @@ let await async k at =
 let extended_prim s at =
   match s with
   | "@make_async" ->
-     fun v k -> V.as_unit v; k (V.Async (make_async()))
+    fun v k -> V.as_unit v; k (V.Async (make_async ()))
   | "@set_async" ->
-     fun v k ->
-     begin
-       match V.as_tup v with
-       | [async;v] ->
-          set_async (V.as_async async) v;
-          k (V.unit)
-       | _ -> failwith "Impossible"
-     end
+    fun v k ->
+      (match V.as_tup v with
+      | [async; v] ->
+        set_async (V.as_async async) v;
+        k (V.unit)
+      | _ -> assert false
+      )
   | "@get_async" ->
-     fun v k ->
-       begin
-       match V.as_tup v with
-       | [async;v] ->
-          get_async (V.as_async async) k
-       | _ -> failwith "Impossible"
-       end 
+    fun v k ->
+      (match V.as_tup v with
+      | [async; v] ->
+        get_async (V.as_async async) k
+      | _ -> assert false
+      )
   | "@scheduler_queue" ->
-     fun v k -> let (call,f)  = V.as_func v in
-                Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ()));
-                k (V.unit)
+    fun v k ->
+      let call, f  = V.as_func v in
+      Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ()));
+      k V.unit
   | "@scheduler_yield" ->
-     fun v k -> V.as_unit v;
-                Scheduler.yield(); (* TBR - this feels wrong *)
-                k (V.unit)
+    fun v k ->
+      V.as_unit v;
+      Scheduler.yield (); (* TBR - this feels wrong *)
+      k V.unit
   | "@await" ->
-     fun v k ->
-       begin
-       match V.as_tup v with
-       | [async;v] ->
-          await (V.as_async async) k at
-       | _ -> failwith "Impossible"
-       end 
-  | _ -> V.prim s                
+    fun v k ->
+      (match V.as_tup v with
+      | [async; v] ->
+        await (V.as_async async) k at
+      | _ -> assert false
+      )
+  | _ -> Prelude.prim s
 
                        
 (* Literals *)

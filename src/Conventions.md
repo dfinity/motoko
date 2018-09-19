@@ -1,6 +1,6 @@
 Lexical:
 
-* Lines: 80 characters, Nix newlines.
+* Lines: 80 characters, nix newlines, no trailing spaces.
 
 * Indentation: 2 spaces, no tabs.
 
@@ -12,6 +12,8 @@ Language:
 * Naming: OCaml conventions, lower snake_case for values and types, upper CamlCase for constructors, modules and module types.
 
 * Exceptions: only for hard failures, prefer options otherwise.
+
+* Impossible cases: use `assert false`.
 
 * Modules: interface files, except for modules with only transparent or trivial definitions.
 
