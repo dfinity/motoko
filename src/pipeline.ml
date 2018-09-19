@@ -203,6 +203,7 @@ let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope;
   if v <> Value.unit then print_val senv v t
 
+let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let run_with interpret output ((senv, denv) as env) name : run_result option =
   let result = interpret env name in
@@ -211,12 +212,18 @@ let run_with interpret output ((senv, denv) as env) name : run_result option =
     | None ->
       phase "Aborted" name;
       None
-    | Some (_prog, t, v, sscope, dscope) ->
+    | Some (prog, t, v, sscope, dscope) ->
       phase "Finished" name;
       let senv' = Typing.adjoin senv sscope in
       let denv' = Interpret.adjoin denv dscope in
       let env' = (senv', denv') in
-      output env' t v sscope dscope;
+      (* TBR: hack *)
+      let t', v' =
+        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
+        then t, v
+        else Type.unit, Value.unit
+      in
+      output env' t' v' sscope dscope;
       Some env'
   in
   if !Flags.verbose then printf "\n";
