@@ -160,10 +160,10 @@ let interpret_files env = function
 
 (* Prelude *)
 
-let check_prelude () =
+let check_prelude dfinity_mode =
   try
     let prel_source =
-      if !Flags.dfinity_mode
+      if dfinity_mode
       then Prelude.dfinity_prelude
       else Prelude.prelude in
     let priv_env = { Typing.empty_env with Typing.privileged = true } in
@@ -175,9 +175,13 @@ let check_prelude () =
     error Source.no_region "fatal" "initializing prelude failed";
     exit 1
 
-let init () =
+let init_static dfinity_mode =
+  let (prog, senv') = check_prelude dfinity_mode in
+  senv'
+
+let init dfinity_mode =
   try
-    let (prog, senv') = check_prelude () in
+    let (prog, senv') = check_prelude dfinity_mode in
     let _v, dscope = Lib.Option.value
       (interpret_prog Interpret.empty_env "prelude" prog) in
     let denv' = Interpret.adjoin Interpret.empty_env dscope in
@@ -229,12 +233,12 @@ let run_files env = function
 
 type compile_result = Wasm.Ast.module_
 
-let compile_prog name prog : Wasm.Ast.module_ =
+let compile_prog dfinity_mode name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
-  Compile.compile [prog]
+  Compile.compile dfinity_mode [prog]
 
-let compile_with check name : compile_result option =
-  let (prelude_prog, senv) = check_prelude () in
+let compile_with dfinity_mode check name : compile_result option =
+  let (prelude_prog, senv) = check_prelude dfinity_mode in
   match check senv name with
   | None -> None
   | Some (prog, _t, _scope) ->
@@ -243,15 +247,15 @@ let compile_with check name : compile_result option =
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
     let prog' = (prelude_prog.it @ [block]) @@ prog.at in
-    let module_ = compile_prog name prog' in
+    let module_ = compile_prog dfinity_mode name prog' in
     Some module_
 
-let compile_string s =
-  compile_with (fun senv name -> check_string senv s name)
-let compile_file n = compile_with check_file n
-let compile_files = function
-  | [n] -> compile_file n
-  | ns -> compile_with (fun senv _name -> check_files senv ns) "all" 
+let compile_string dfinity_mode s =
+  compile_with dfinity_mode (fun senv name -> check_string senv s name)
+let compile_file dfinity_mode n = compile_with dfinity_mode check_file n
+let compile_files dfinity_mode = function
+  | [n] -> compile_file dfinity_mode n
+  | ns -> compile_with dfinity_mode (fun senv _name -> check_files senv ns) "all"
 
 
 (* Interactively *)

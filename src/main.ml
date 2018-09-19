@@ -20,6 +20,8 @@ let set_mode m () =
   end;
   mode := m
 
+let dfinity_mode = ref false
+
 let argspec = Arg.align
 [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -31,7 +33,7 @@ let argspec = Arg.align
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity", Arg.Set Flags.dfinity_mode, " compile for dfinity";
+  "--dfinity", Arg.Set dfinity_mode, " compile for dfinity";
 ]
 
 
@@ -46,18 +48,18 @@ let process_files names : unit =
   | Default ->
     assert false
   | Run ->
-    let env = Pipeline.init () in
+    let env = Pipeline.init !dfinity_mode in
     ignore (exit_on_failure (Pipeline.run_files env names))
   | Interact ->
     printf "%s\n" banner;
-    let env = Pipeline.init () in
+    let env = Pipeline.init !dfinity_mode in
     let env' = exit_on_failure (Pipeline.run_files env names) in
     Pipeline.run_stdin env'
   | Check ->
-    let (senv, _) = Pipeline.init () in
+    let senv = Pipeline.init_static !dfinity_mode in
     ignore (exit_on_failure (Pipeline.check_files senv names));
   | Compile ->
-    let module_ = exit_on_failure (Pipeline.compile_files names) in
+    let module_ = exit_on_failure (Pipeline.compile_files !dfinity_mode names) in
     (* TBR: output to file *)
     Wasm.Print.module_ stdout 80 module_
 

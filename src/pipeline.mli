@@ -2,7 +2,8 @@ type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-val init : unit -> env
+val init : bool -> env
+val init_static : bool -> stat_env
 
 type parse_result = Syntax.prog
 val parse_file   : string -> Syntax.prog option
@@ -30,8 +31,8 @@ val run_string : env -> string -> string -> run_result option
 val run_lexer  : env -> Lexing.lexbuf -> string -> run_result option
 
 type compile_result = Wasm.Ast.module_
-val compile_file   : string -> compile_result option
-val compile_files  : string list -> compile_result option
-val compile_string : string -> string -> compile_result option
+val compile_file   : bool -> string -> compile_result option
+val compile_files  : bool -> string list -> compile_result option
+val compile_string : bool -> string -> string -> compile_result option
 
 val run_stdin : env -> unit

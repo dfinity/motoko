@@ -101,8 +101,8 @@ module E = struct
     )))))
 
   (* The initial global environment *)
-  let mk_global (_ : unit) : t = {
-    dfinity_mode = !Flags.dfinity_mode;
+  let mk_global (dfinity_mode : bool) : t = {
+    dfinity_mode = dfinity_mode;
     imports = ref [];
     exports = ref [];
     funcs = ref [];
@@ -1188,8 +1188,8 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
-let compile (progs : Syntax.prog list) : module_ =
-  let env = E.mk_global () in
+let compile dfinity_mode (progs : Syntax.prog list) : module_ =
+  let env = E.mk_global dfinity_mode in
 
   if E.dfinity_mode env then Dfinity.system_imports env;
   Array.common_funcs env;
