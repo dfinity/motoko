@@ -1,4 +1,6 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix) {} }:
+{ nixpkgs ? (import ./nix/nixpkgs.nix) {},
+  test ? true
+}:
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -40,7 +42,7 @@ rec {
       nixpkgs.ocamlPackages.ocamlbuild
       ocaml_wasm
       nixpkgs.ocamlPackages.zarith
-      dev_in_nix.hypervisor
+      (if test then dev_in_nix.hypervisor else null)
     ];
 
     buildPhase = ''
