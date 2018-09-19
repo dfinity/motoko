@@ -30,8 +30,8 @@ val run_string : env -> string -> string -> run_result option
 val run_lexer  : env -> Lexing.lexbuf -> string -> run_result option
 
 type compile_result = Wasm.Ast.module_
-val compile_file   : stat_env -> string -> compile_result option
-val compile_files  : stat_env -> string list -> compile_result option
-val compile_string : stat_env -> string -> string -> compile_result option
+val compile_file   : string -> compile_result option
+val compile_files  : string list -> compile_result option
+val compile_string : string -> string -> compile_result option
 
 val run_stdin : env -> unit

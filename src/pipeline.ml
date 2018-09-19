@@ -158,6 +158,33 @@ let interpret_files env = function
   | [n] -> interpret_file env n
   | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
 
+(* Prelude *)
+
+let check_prelude () =
+  try
+    let prel_source =
+      if !Flags.dfinity_mode
+      then Prelude.dfinity_prelude
+      else Prelude.prelude in
+    let priv_env = { Typing.empty_env with Typing.privileged = true } in
+    let prog, _t, sscope = Lib.Option.value
+      (check_string priv_env prel_source "prelude") in
+    let senv' = Typing.adjoin Typing.empty_env sscope in
+    (prog, senv')
+  with Not_found ->
+    error Source.no_region "fatal" "initializing prelude failed";
+    exit 1
+
+let init () =
+  try
+    let (prog, senv') = check_prelude () in
+    let _v, dscope = Lib.Option.value
+      (interpret_prog Interpret.empty_env "prelude" prog) in
+    let denv' = Interpret.adjoin Interpret.empty_env dscope in
+    (senv', denv')
+  with Not_found ->
+    error Source.no_region "fatal" "initializing prelude failed";
+    exit 1
 
 (* Running *)
 
@@ -202,13 +229,12 @@ let run_files env = function
 
 type compile_result = Wasm.Ast.module_
 
-let prelude = ref []
-
 let compile_prog name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
   Compile.compile [prog]
 
-let compile_with check senv name : compile_result option =
+let compile_with check name : compile_result option =
+  let (prelude_prog, senv) = check_prelude () in
   match check senv name with
   | None -> None
   | Some (prog, _t, _scope) ->
@@ -216,16 +242,16 @@ let compile_with check senv name : compile_result option =
     let open Syntax in
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
-    let prog' = (!prelude @ [block]) @@ prog.at in
+    let prog' = (prelude_prog.it @ [block]) @@ prog.at in
     let module_ = compile_prog name prog' in
     Some module_
 
-let compile_string senv s =
-  compile_with (fun senv name -> check_string senv s name) senv
-let compile_file senv n = compile_with check_file senv n
-let compile_files senv = function
-  | [n] -> compile_file senv n
-  | ns -> compile_with (fun env _name -> check_files senv ns) senv "all" 
+let compile_string s =
+  compile_with (fun senv name -> check_string senv s name)
+let compile_file n = compile_with check_file n
+let compile_files = function
+  | [n] -> compile_file n
+  | ns -> compile_with (fun senv _name -> check_files senv ns) "all" 
 
 
 (* Interactively *)
@@ -267,22 +293,3 @@ let run_stdin env =
     printf "\n%!"
 
 
-(* Prelude *)
-
-let init () =
-  try
-    let prel_source =
-      if !Flags.dfinity_mode
-      then Prelude.dfinity_prelude
-      else Prelude.prelude in
-    let priv_env = { Typing.empty_env with Typing.privileged = true } in
-    let prog, _t, sscope = Lib.Option.value
-      (check_string priv_env prel_source "prelude") in
-    let _v, dscope = Lib.Option.value
-      (interpret_prog Interpret.empty_env "prelude" prog) in
-    prelude := prog.Source.it;
-    Typing.adjoin Typing.empty_env sscope,
-      Interpret.adjoin Interpret.empty_env dscope
-  with Not_found ->
-    error Source.no_region "fatal" "initializing prelude failed";
-    exit 1

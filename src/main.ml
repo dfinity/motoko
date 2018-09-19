@@ -41,20 +41,23 @@ let exit_on_failure = function
   | Some x -> x
   | None -> exit 1
 
-let process_files ((senv, denv) as env) names : unit =
+let process_files names : unit =
   match !mode with
   | Default ->
     assert false
   | Run ->
+    let env = Pipeline.init () in
     ignore (exit_on_failure (Pipeline.run_files env names))
   | Interact ->
     printf "%s\n" banner;
+    let env = Pipeline.init () in
     let env' = exit_on_failure (Pipeline.run_files env names) in
     Pipeline.run_stdin env'
   | Check ->
+    let (senv, _) = Pipeline.init () in
     ignore (exit_on_failure (Pipeline.check_files senv names));
   | Compile ->
-    let module_ = exit_on_failure (Pipeline.compile_files senv names) in
+    let module_ = exit_on_failure (Pipeline.compile_files names) in
     (* TBR: output to file *)
     Wasm.Print.module_ stdout 80 module_
 
@@ -62,9 +65,8 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    let env = Pipeline.init () in
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
-    process_files env !args
+    process_files !args
   with exn ->
     printf "%!";
     let at = Source.string_of_region (Interpret.get_last_region ()) in
