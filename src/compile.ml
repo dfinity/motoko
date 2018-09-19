@@ -758,7 +758,7 @@ module Dfinity = struct
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env))
 
-  let log32_fun env = Func.unary_of_body env (fun env1 ->
+  let printInt_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
       [ nr (Call (nr (test_show_i32_i env))) ] @
       [ nr (Call (nr (test_print_i env))) ] @
@@ -780,7 +780,7 @@ module Dfinity = struct
       compile_unit
       )
 
-  let prims = [ "log32", log32_fun;
+  let prims = [ "printInt", printInt_fun;
                 "print", print_fun ]
 
   let export_start_fun env i =
