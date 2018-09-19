@@ -200,7 +200,7 @@ let run_files env = function
 
 (* Compilation *)
 
-type compile_result = Wasm.Ast.module_ * Typing.scope
+type compile_result = Wasm.Ast.module_
 
 let prelude = ref []
 
@@ -211,14 +211,14 @@ let compile_prog name prog : Wasm.Ast.module_ =
 let compile_with check senv name : compile_result option =
   match check senv name with
   | None -> None
-  | Some (prog, t, scope) ->
+  | Some (prog, _t, _scope) ->
     let open Source in
     let open Syntax in
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
     let prog' = (!prelude @ [block]) @@ prog.at in
     let module_ = compile_prog name prog' in
-    Some (module_, scope)
+    Some module_
 
 let compile_string senv s =
   compile_with (fun senv name -> check_string senv s name) senv

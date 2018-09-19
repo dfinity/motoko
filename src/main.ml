@@ -41,18 +41,22 @@ let exit_on_failure = function
   | Some x -> x
   | None -> exit 1
 
-let process_files ((senv, denv) as env) names =
+let process_files ((senv, denv) as env) names : unit =
   match !mode with
-  | Default -> assert false
-  | Run | Interact -> exit_on_failure (Pipeline.run_files env names)
+  | Default ->
+    assert false
+  | Run ->
+    ignore (exit_on_failure (Pipeline.run_files env names))
+  | Interact ->
+    printf "%s\n" banner;
+    let env' = exit_on_failure (Pipeline.run_files env names) in
+    Pipeline.run_stdin env'
   | Check ->
-    let _, _, sscope = exit_on_failure (Pipeline.check_files senv names) in
-    (Typing.adjoin senv sscope, denv)
+    ignore (exit_on_failure (Pipeline.check_files senv names));
   | Compile ->
-    let module_, sscope = exit_on_failure (Pipeline.compile_files senv names) in
+    let module_ = exit_on_failure (Pipeline.compile_files senv names) in
     (* TBR: output to file *)
-    Wasm.Print.module_ stdout 80 module_;
-    (Typing.adjoin senv sscope, denv)
+    Wasm.Print.module_ stdout 80 module_
 
 let () =
   Printexc.record_backtrace true;
@@ -60,9 +64,7 @@ let () =
     Arg.parse argspec add_arg usage;
     let env = Pipeline.init () in
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
-    if !mode = Interact then printf "%s\n" banner;
-    let env' = process_files env !args in
-    if !mode = Interact then Pipeline.run_stdin env'
+    process_files env !args
   with exn ->
     printf "%!";
     let at = Source.string_of_region (Interpret.get_last_region ()) in
