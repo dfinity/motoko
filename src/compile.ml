@@ -768,8 +768,8 @@ module Dfinity = struct
   let print_fun env = Func.unary_of_body env (fun env1 ->
       (* Calculate the offset *)
       Func.load_argument @
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Text.header_size)))) ;
-       nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+      compile_const (Int32.mul Heap.word_size Text.header_size) @
+      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
       (* Calculate the length *)
       Func.load_argument @
       Heap.load_field (Text.len_field) @
