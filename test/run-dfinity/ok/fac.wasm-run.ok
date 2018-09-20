@@ -12,7 +12,7 @@ $ dsh new -a _out/fac.wasm
 }
 
 $ dsh run fac start
-120120{
+120{
     "modId": "#inject/0",
     "storage": [],
     "id": "#inject/1 (fac)",

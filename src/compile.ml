@@ -1258,7 +1258,7 @@ let compile mode (progs : Syntax.prog list) : module_ =
       index = nr 0l;
       offset = nr (compile_const ni');
       init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-    start = Some (nr i);
+    start = if E.mode env = DfinityMode then None else Some (nr i);
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     imports = imports;

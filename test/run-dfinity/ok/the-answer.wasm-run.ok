@@ -12,7 +12,7 @@ $ dsh new -a _out/the-answer.wasm
 }
 
 $ dsh run the-answer start
-4242{
+42{
     "modId": "#inject/0",
     "storage": [],
     "id": "#inject/1 (the-answer)",
