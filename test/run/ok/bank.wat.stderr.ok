@@ -15,5 +15,3 @@ compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE issuer)))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE reserve)))))
-Could not find primitive print
-Could not find primitive printInt

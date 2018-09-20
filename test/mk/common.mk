@@ -27,7 +27,7 @@ $(OUTDIR)/%.tc: %.as $(ASC) Makefile
 	@$(ASC) $(ASC_FLAGS) --check $< > $@ 2>&1 || true
 	@if [ -s $@ ];  then echo " ✗"; else echo " ✓"; fi
 
-$(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
+$(OUTDIR)/%.run: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
 	then > $@; \
 	else \
@@ -35,7 +35,7 @@ $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	  $(ASC) $(ASC_FLAGS) -r -v $< > $@ 2>&1 || true; \
 	fi
 
-$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
+$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
 	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
 	else \

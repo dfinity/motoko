@@ -2,5 +2,3 @@ compile_lit: (CharLit 2612)
 compile_lit: (Word32Lit 4294967295)
 compile_lit: (Word16Lit 6_5535)
 compile_lit: (Word8Lit 255)
-Could not find primitive print
-Could not find primitive printInt

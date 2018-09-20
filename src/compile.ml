@@ -780,8 +780,13 @@ module Dfinity = struct
       compile_unit
       )
 
-  let prims = [ "printInt", printInt_fun;
-                "print", print_fun ]
+  let prims : (string * (E.t -> func)) list =
+    [ "printInt", printInt_fun;
+      "print",    print_fun ]
+
+  let stub_prims : (string * (E.t -> func)) list =
+    [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ]));
+      "print",    (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ])) ]
 
   let export_start_fun env i =
     E.add_export env (nr {
@@ -1206,11 +1211,10 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
   let (env2, code1) = Prim.declare env1 Prim.default_prims in
-  let (env3, code2) =
-    match E.mode env2 with
-    | WasmMode -> (env2, [])
-    | DfinityMode -> Prim.declare env2 Dfinity.prims
-  in
+  let (env3, code2) = Prim.declare env2
+    ( match E.mode env2 with
+      | WasmMode ->    Dfinity.stub_prims
+      | DfinityMode -> Dfinity.prims ) in
 
   let rec go env = function
     | []          -> (env, [])

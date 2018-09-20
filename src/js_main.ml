@@ -1,6 +1,7 @@
 (* TBR: propagate error messages? *)
 let js_compile_with dfinity_mode convert source =
-  match Pipeline.compile_string dfinity_mode (Js.to_string source) "js-input" with
+  let mode = if dfinity_mode then Pipeline.DfinityMode else Pipeline.WasmMode in
+  match Pipeline.compile_string mode (Js.to_string source) "js-input" with
   | Some module_ -> Js.some (convert module_)
   | None -> Js.null
 

@@ -1,1 +1,0 @@
-_out/TRAP-write-before-init.wat:603.5-603.18: runtime trap: unreachable executed

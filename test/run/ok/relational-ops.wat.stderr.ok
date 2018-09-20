@@ -18,5 +18,3 @@ compile_relop: NeqOp
 compile_relop: NeqOp
 compile_relop: NeqOp
 compile_relop: NeqOp
-Could not find primitive print
-Could not find primitive printInt

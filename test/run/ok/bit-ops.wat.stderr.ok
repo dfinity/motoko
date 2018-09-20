@@ -62,5 +62,3 @@ compile_binop: OrOp
 compile_binop: OrOp
 compile_unop: NotOp
 compile_unop: NotOp
-Could not find primitive print
-Could not find primitive printInt

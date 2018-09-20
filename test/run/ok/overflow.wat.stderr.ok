@@ -15,5 +15,3 @@ compile_lit: Overflow in literal 9223372036854775808
 compile_lit: Overflow in literal 9223372036854775808
 compile_lit: Overflow in literal 9223372036854775807
 compile_lit: Overflow in literal 9223372036854775808
-Could not find primitive print
-Could not find primitive printInt

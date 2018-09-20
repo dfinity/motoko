@@ -10,5 +10,3 @@ compile_exp: (LoopE
   )
   (CallE (VarE condition) (TupE))
 )
-Could not find primitive print
-Could not find primitive printInt
