@@ -1,5 +1,5 @@
 # copied from https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/development/ocaml-modules/wasm/default.nix
-# and updated
+# and updated to use the git submodule
 
 { stdenv, fetchFromGitHub, ocaml, findlib, ocamlbuild }:
 
@@ -11,12 +11,7 @@ stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
   version = "1.0";
 
-  src = fetchFromGitHub {
-    owner = "WebAssembly";
-    repo = "spec";
-    rev = "4ccad09cb1716a713a46192557717d498c4b483a";
-    sha256 = "0pdy2yi77w2m7dr0kmwq7sh5a62nnw6fphxn1yvc56qvsdvip3qw";
-  };
+  src = ../vendor/wasm-spec;
 
   buildInputs = [ ocaml findlib ocamlbuild ];
 

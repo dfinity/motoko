@@ -46,13 +46,14 @@ You do not have to use nix:
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
    ```
-   opam install wasm num
+   opam install num
    ```
- * Make sure `wasm` (a binary from the `wasm` package) is in the path to run
-   the `run` tests.
+ * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
+   `make install` therein.
+ * Make sure `wasm` (a binary found in `vendor/wasm-spec/interpreter`) is in
+   the path to run the `run` tests.
  * Make sure `dsh` (a binary from the `hs-hypervisor` package) is in the path
    to run the `run-dfinity` tests.
-
 
 
 ## Introduction

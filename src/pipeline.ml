@@ -53,12 +53,12 @@ let print_val _senv v t =
 
 type parse_result = Syntax.prog
 
-let parse_with lexer parser name : parse_result option =
+let parse_with mode lexer parser name : parse_result option =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    Some (parser Lexer.token lexer)
+    Some (parser (Lexer.token mode) lexer)
   with
     | Lexer.Error (at, msg) -> error at "syntax" msg; None
     | Parser.Error ->
@@ -67,13 +67,13 @@ let parse_with lexer parser name : parse_result option =
 let parse_string s name =
   let lexer = Lexing.from_string s in
   let parser = Parser.parse_prog in
-  parse_with lexer parser name
+  parse_with Lexer.Normal lexer parser name
 
 let parse_file filename =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let parser = Parser.parse_prog in
-  let result = parse_with lexer parser filename in
+  let result = parse_with Lexer.Normal lexer parser filename in
   close_in ic;
   result
 
@@ -163,6 +163,39 @@ let interpret_files env = function
   | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
 
 
+(* Prelude *)
+
+let prelude_name = "prelude"
+
+let check_prelude () : Syntax.prog * stat_env =
+  try
+    let lexer = Lexing.from_string Prelude.prelude in
+    let parser = Parser.parse_prog in
+    let prog = Lib.Option.value
+      (parse_with Lexer.Privileged lexer parser prelude_name) in
+    let _t, sscope = Lib.Option.value
+      (check_prog infer_prog_unit Typing.empty_env prelude_name prog) in
+    let senv = Typing.adjoin Typing.empty_env sscope in
+    prog, senv
+  with Not_found ->
+    error Source.no_region "fatal" "initializing prelude failed";
+    exit 1
+
+let prelude, initial_stat_env = check_prelude ()
+
+let run_prelude () : dyn_env =
+  try
+    let _v, dscope = Lib.Option.value
+      (interpret_prog Interpret.empty_env prelude_name prelude) in
+    Interpret.adjoin Interpret.empty_env dscope
+  with Not_found ->
+    error Source.no_region "fatal" "initializing prelude failed";
+    exit 1
+
+let initial_dyn_env = run_prelude ()
+let initial_env = (initial_stat_env, initial_dyn_env)
+
+
 (* Running *)
 
 type run_result = env
@@ -174,6 +207,7 @@ let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope;
   if v <> Value.unit then print_val senv v t
 
+let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let run_with interpret output ((senv, denv) as env) name : run_result option =
   let result = interpret env name in
@@ -182,12 +216,18 @@ let run_with interpret output ((senv, denv) as env) name : run_result option =
     | None ->
       phase "Aborted" name;
       None
-    | Some (_prog, t, v, sscope, dscope) ->
+    | Some (prog, t, v, sscope, dscope) ->
       phase "Finished" name;
       let senv' = Typing.adjoin senv sscope in
       let denv' = Interpret.adjoin denv dscope in
       let env' = (senv', denv') in
-      output env' t v sscope dscope;
+      (* TBR: hack *)
+      let t', v' =
+        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
+        then t, v
+        else Type.unit, Value.unit
+      in
+      output env' t' v' sscope dscope;
       Some env'
   in
   if !Flags.verbose then printf "\n";
@@ -204,32 +244,31 @@ let run_files env = function
 
 (* Compilation *)
 
-type compile_result = Wasm.Ast.module_ * Typing.scope
+type compile_mode = Compile.mode = WasmMode | DfinityMode
+type compile_result = Wasm.Ast.module_
 
-let prelude = ref []
-
-let compile_prog name prog : Wasm.Ast.module_ =
+let compile_prog mode name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
-  Compile.compile [prog]
+  Compile.compile mode [prog]
 
-let compile_with check senv name : compile_result option =
-  match check senv name with
+let compile_with check mode name : compile_result option =
+  match check initial_stat_env name with
   | None -> None
-  | Some (prog, t, scope) ->
+  | Some (prog, _t, _scope) ->
     let open Source in
     let open Syntax in
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
-    let prog' = (!prelude @ [block]) @@ prog.at in
-    let module_ = compile_prog name prog' in
-    Some (module_, scope)
+    let prog' = (prelude.it @ [block]) @@ prog.at in
+    let module_ = compile_prog mode name prog' in
+    Some module_
 
-let compile_string senv s =
-  compile_with (fun senv name -> check_string senv s name) senv
-let compile_file senv n = compile_with check_file senv n
-let compile_files senv = function
-  | [n] -> compile_file senv n
-  | ns -> compile_with (fun env _name -> check_files senv ns) senv "all" 
+let compile_string mode s =
+  compile_with (fun senv name -> check_string senv s name) mode
+let compile_file mode n = compile_with check_file mode n
+let compile_files mode = function
+  | [n] -> compile_file mode n
+  | ns -> compile_with (fun senv _name -> check_files senv ns) mode "all"
 
 
 (* Interactively *)
@@ -250,7 +289,7 @@ let lexer_stdin buf len =
 let parse_lexer lexer name =
   let open Lexing in
   if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
-  match parse_with lexer Parser.parse_prog_interactive name with
+  match parse_with Lexer.Normal lexer Parser.parse_prog_interactive name with
   | None ->
     Lexing.flush_input lexer;
     (* Reset beginning-of-line, too, to sync consecutive positions. *)
@@ -269,25 +308,3 @@ let run_stdin env =
   let rec loop env = loop (Lib.Option.get (run_lexer env lexer "stdin") env) in
   try loop env with End_of_file ->
     printf "\n%!"
-
-
-(* Prelude *)
-
-let init () =
-  try
-    Flags.privileged := true;
-    let prel_source =
-      if !Flags.dfinity_mode
-      then Prelude.dfinity_prelude
-      else Prelude.prelude in
-    let prog, _t, sscope = Lib.Option.value
-      (check_string Typing.empty_env prel_source "prelude") in
-    let _v, dscope = Lib.Option.value
-      (interpret_prog Interpret.empty_env "prelude" prog) in
-    Flags.privileged := false;
-    prelude := prog.Source.it;
-    Typing.adjoin Typing.empty_env sscope,
-      Interpret.adjoin Interpret.empty_env dscope
-  with Not_found ->
-    error Source.no_region "fatal" "initializing prelude failed";
-    exit 1

@@ -2,6 +2,8 @@
 open Parser
 module Utf8 = Wasm.Utf8
 
+type mode = Normal | Privileged
+
 exception Error of Source.region * string
 
 let convert_pos pos =
@@ -101,7 +103,7 @@ let text = '"' character* '"'
 let id = letter ((letter | digit | '_')*)
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
-rule token = parse
+rule token mode = parse
   | "(" { LPAR }
   | ")" { RPAR }
   | "[" { LBRACKET }
@@ -202,15 +204,15 @@ rule token = parse
   | "var" { VAR }
   | "while" { WHILE }
 
-  | "prim" as s { if !Flags.privileged then PRIM else ID s }
+  | "prim" as s { if mode = Privileged then PRIM else ID s }
   | id as s { ID s }
 
   | "//"utf8_no_nl*eof { EOF }
-  | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
-  | "//"utf8_no_nl* { token lexbuf (* causes error on following position *) }
-  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token lexbuf }
-  | space#'\n' { token lexbuf }
-  | '\n' { Lexing.new_line lexbuf; token lexbuf }
+  | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token mode lexbuf }
+  | "//"utf8_no_nl* { token mode lexbuf (* causes error on following position *) }
+  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; token mode lexbuf }
+  | space#'\n' { token mode lexbuf }
+  | '\n' { Lexing.new_line lexbuf; token mode lexbuf }
   | eof { EOF }
 
   | utf8 { error lexbuf "malformed operator" }

@@ -24,6 +24,8 @@ and that the order should not matter in a significant way.
 
 *)
 
+type mode = WasmMode | DfinityMode
+
 module E = struct
 
   (* Utilities, internal to E *)
@@ -35,7 +37,7 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
-    dfinity_mode : bool;
+    mode : mode;
 
     (* Imports defined *)
     imports : import list ref;
@@ -62,7 +64,7 @@ module E = struct
     field_env : int32 NameEnv.t ref;
   }
 
-  let dfinity_mode (e : t) = e.dfinity_mode
+  let mode (e : t) = e.mode
 
   (* Common function types *)
   let start_fun_ty = nr (FuncType ([],[]))
@@ -101,8 +103,8 @@ module E = struct
     )))))
 
   (* The initial global environment *)
-  let mk_global (_ : unit) : t = {
-    dfinity_mode = !Flags.dfinity_mode;
+  let mk_global mode : t = {
+    mode;
     imports = ref [];
     exports = ref [];
     funcs = ref [];
@@ -257,13 +259,16 @@ module Heap = struct
 
   let heap_ptr : var = nr 0l
 
-  let alloc (n : int32) : instr list =
+  let alloc_bytes (n : int32) : instr list =
     (* expect the size (in words), returns the pointer *)
     [ nr (GetGlobal heap_ptr);
       nr (GetGlobal heap_ptr) ] @
-    compile_const (Wasm.I32.mul word_size n) @
+    compile_const n @
     [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add));
       nr (SetGlobal heap_ptr)]
+
+  let alloc (n : int32) : instr list =
+    alloc_bytes (Wasm.I32.mul word_size n)
 
   let load_field (i : int32) : instr list =
     [ nr (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None}) ]
@@ -530,12 +535,44 @@ module Object = struct
 
 end (* Object *)
 
+module Text = struct
+  let header_size = 1l
+
+  let len_field = 0l
+
+  let lit env s =
+    let bytes = List.map Int32.of_int (Wasm.Utf8.decode s) in
+    let n = Int32.of_int (List.length bytes) in
+
+    let i = E.add_anon_local env I32Type in
+    Heap.alloc_bytes (Int32.add (Int32.mul header_size Heap.word_size) n) @
+    [ nr (SetLocal (nr i)) ] @
+
+    let compile_self = [ nr (GetLocal (nr i)) ] in
+
+    compile_self @
+    compile_const n @
+    Heap.store_field len_field @
+
+    let init_elem i n : Wasm.Ast.instr list =
+      compile_self @
+      compile_const n @
+      let offset = Int32.add (Int32.mul header_size Heap.word_size) (Int32.of_int i) in
+      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Pack8}) ]
+    in
+    List.concat (List.mapi init_elem bytes) @
+    compile_self
+end (* String *)
+
 module Array = struct
   let header_size = Int32.add Object.header_size 6l
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = if E.dfinity_mode env then Int32.add i 3l else i
+  let fun_id env i = match E.mode env with
+    | WasmMode -> i
+    | DfinityMode -> Int32.add i 3l
+
   let array_get_funid       env = fun_id env 0l
   let array_set_funid       env = fun_id env 1l
   let array_len_funid       env = fun_id env 2l
@@ -721,7 +758,7 @@ module Dfinity = struct
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env))
 
-  let log32_fun env = Func.unary_of_body env (fun env1 ->
+  let printInt_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
       [ nr (Call (nr (test_show_i32_i env))) ] @
       [ nr (Call (nr (test_print_i env))) ] @
@@ -731,11 +768,11 @@ module Dfinity = struct
   let print_fun env = Func.unary_of_body env (fun env1 ->
       (* Calculate the offset *)
       Func.load_argument @
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Array.header_size)))) ;
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Text.header_size)))) ;
        nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
       (* Calculate the length *)
       Func.load_argument @
-      Heap.load_field (Array.len_field) @
+      Heap.load_field (Text.len_field) @
       (* Externalize *)
       [ nr (Call (nr (data_externalize_i env))) ] @
       (* Call print *)
@@ -743,8 +780,13 @@ module Dfinity = struct
       compile_unit
       )
 
-  let prims = [ "log32", log32_fun;
-                "print", print_fun ]
+  let prims : (string * (E.t -> func)) list =
+    [ "printInt", printInt_fun;
+      "print",    print_fun ]
+
+  let stub_prims : (string * (E.t -> func)) list =
+    [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ]));
+      "print",    (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ])) ]
 
   let export_start_fun env i =
     E.add_export env (nr {
@@ -777,7 +819,7 @@ let compile_lit env lit = match lit with
     (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
-  | TextLit t     -> Array.lit env (List.map compile_const (List.map Int32.of_int (Wasm.Utf8.decode t)))
+  | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
@@ -1169,10 +1211,10 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
   let (env2, code1) = Prim.declare env1 Prim.default_prims in
-  let (env3, code2) =
-    if E.dfinity_mode env2
-    then Prim.declare env2 Dfinity.prims
-    else (env2, []) in
+  let (env3, code2) = Prim.declare env2
+    ( match E.mode env2 with
+      | WasmMode ->    Dfinity.stub_prims
+      | DfinityMode -> Dfinity.prims ) in
 
   let rec go env = function
     | []          -> (env, [])
@@ -1188,15 +1230,15 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
-let compile (progs : Syntax.prog list) : module_ =
-  let env = E.mk_global () in
+let compile mode (progs : Syntax.prog list) : module_ =
+  let env = E.mk_global mode in
 
-  if E.dfinity_mode env then Dfinity.system_imports env;
+  if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;
 
   let start_fun = compile_start_func env progs in
   let i = E.add_fun env start_fun in
-  if E.dfinity_mode env then Dfinity.export_start_fun env i;
+  if E.mode env = DfinityMode then Dfinity.export_start_fun env i;
 
 
   let funcs = E.get_funcs env in

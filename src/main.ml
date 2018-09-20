@@ -20,6 +20,8 @@ let set_mode m () =
   end;
   mode := m
 
+let compile_mode = ref Pipeline.WasmMode
+
 let argspec = Arg.align
 [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -32,7 +34,9 @@ let argspec = Arg.align
   "-a", Arg.Set Flags.async_lowering, " translate async/await (implies -r)";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity", Arg.Set Flags.dfinity_mode, " compile for dfinity";
+  "--dfinity",
+    Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
+      " compile for dfinity";
 ]
 
 
@@ -42,28 +46,29 @@ let exit_on_failure = function
   | Some x -> x
   | None -> exit 1
 
-let process_files ((senv, denv) as env) names =
+let process_files names : unit =
   match !mode with
-  | Default -> assert false
-  | Run | Interact -> exit_on_failure (Pipeline.run_files env names)
+  | Default ->
+    assert false
+  | Run ->
+    ignore (exit_on_failure Pipeline.(run_files initial_env names))
+  | Interact ->
+    printf "%s\n" banner;
+    let env = exit_on_failure Pipeline.(run_files initial_env names) in
+    Pipeline.run_stdin env
   | Check ->
-    let _, _, sscope = exit_on_failure (Pipeline.check_files senv names) in
-    (Typing.adjoin senv sscope, denv)
+    ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
   | Compile ->
-    let module_, sscope = exit_on_failure (Pipeline.compile_files senv names) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     (* TBR: output to file *)
-    Wasm.Print.module_ stdout 80 module_;
-    (Typing.adjoin senv sscope, denv)
+    Wasm.Print.module_ stdout 80 module_
 
 let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    let env = Pipeline.init () in
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
-    if !mode = Interact then printf "%s\n" banner;
-    let env' = process_files env !args in
-    if !mode = Interact then Pipeline.run_stdin env'
+    process_files !args
   with exn ->
     printf "%!";
     let at = Source.string_of_region (Interpret.get_last_region ()) in

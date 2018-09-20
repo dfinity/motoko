@@ -30,10 +30,21 @@ class revrange(x : Nat, y : Nat) {
   private var i = x + 1;
   next() : Nat? { if (i <= y) null else {i -= 1; i} };
 };
-|}
 
-let dfinity_prelude = prelude ^
-{|
-let log32 : Int -> () = prim "log32";
+let printInt : Int -> () = prim "printInt";
 let print : Text -> () = prim "print";
 |}
+
+
+(* Primitives *)
+
+open Value
+
+let prim = function
+  | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "print" -> fun v k -> Printf.printf "%s" (as_text v); k unit
+  | "printInt" ->
+    fun v k ->
+      Printf.printf "printInt(%s)\n" (Int.to_string (as_int v));
+      k unit
+  | _ -> raise (Invalid_argument "Value.prim")

@@ -27,7 +27,7 @@ $(OUTDIR)/%.tc: %.as $(ASC) Makefile
 	@$(ASC) $(ASC_FLAGS) --check $< > $@ 2>&1 || true
 	@if [ -s $@ ];  then echo " ✗"; else echo " ✓"; fi
 
-$(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
+$(OUTDIR)/%.run: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
 	then > $@; \
 	else \
@@ -35,16 +35,12 @@ $(OUTDIR)/%.run: %.as $(OUTDIR)/%.tc
 	  $(ASC) $(ASC_FLAGS) -r -v $< > $@ 2>&1 || true; \
 	fi
 
-$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(OUTDIR)/%.tc
+$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
 	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
 	else \
           echo "[comp]  $*"; \
 	  $(ASC) $(ASC_FLAGS) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
-	  echo Hack until opam wasm package is updated >/dev/null; \
-	  mv $(OUTDIR)/$*.wat $(OUTDIR)/$*.wat.tmp ; \
-          sed -E 's/call_indirect ([$$]?[-_.a-zA-Z0-9]+)/call_indirect (type \1)/g' < $(OUTDIR)/$*.wat.tmp > $(OUTDIR)/$*.wat; \
-	  rm $(OUTDIR)/$*.wat.tmp; \
 	fi
 
 $(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
