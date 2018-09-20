@@ -37,7 +37,11 @@ exception Trap of Source.region * string
 
 let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
-
+let find id env =
+  try V.Env.find id env
+  with Not_found ->
+    trap no_region "unbound identifier %s" id
+         
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -130,7 +134,10 @@ let extended_prim s at =
        end 
   | "@scheduler_queue" ->
      fun v k -> let (call,f)  = V.as_func v in
-                Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ()));
+                (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
+                Scheduler.queue (fun () -> f  V.unit (fun v -> (* (try V.as_unit v with _ ->
+                                                                  failwith ("unexpected value: " ^ V.string_of_val v));*)
+                                                                ())); 
                 k (V.unit)
   | "@scheduler_yield" ->
      fun v k -> V.as_unit v;
@@ -178,7 +185,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let at = exp.at in
     k (V.Func (None, extended_prim s at))
   | VarE id ->
-    (match Lib.Promise.value_opt (V.Env.find id.it env.vals) with
+    (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"
     )
@@ -215,7 +222,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      k (V.Env.find id.it fs)
+      k (find id.it fs)
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
@@ -297,7 +304,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ForE (pat, exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      let _, next = V.as_func (V.Env.find "next" fs) in
+      let _, next = V.as_func (find "next" fs) in
       let rec k_continue = fun v ->
         V.as_unit v;
         next V.unit (fun v' ->
@@ -314,7 +321,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = {env with labs = V.Env.add id.it k env.labs} in
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
-    interpret_exp env exp1 (V.Env.find id.it env.labs)
+    interpret_exp env exp1 (find id.it env.labs)
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
@@ -430,7 +437,7 @@ and declare_pats pats ve : val_env =
 
 
 and define_id env id v =
-  Lib.Promise.fulfill (V.Env.find id.it env.vals) v
+  Lib.Promise.fulfill (find id.it env.vals) v
     
 and define_pat env pat v =
   match pat.it with

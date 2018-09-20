@@ -110,7 +110,11 @@ let check_with parse infer senv name : check_result option =
   | Some prog ->
     match check_prog infer senv name prog with
     | None -> None
-    | Some (t, scope) -> Some (prog, t, scope)
+    | Some (t, scope) ->
+       Wasm.Sexpr.print 80 (Arrange.prog prog);
+       let prog = Await.t_prog prog in
+       Wasm.Sexpr.print 80 (Arrange.prog prog);
+       Some (prog, t, scope)
 
 let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
 

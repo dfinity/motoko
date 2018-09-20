@@ -149,3 +149,5 @@ and dec d = match d.it with
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, tp, s, p, efs) ->
     "ClassD" $$ [id i] @ List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
+
+and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
