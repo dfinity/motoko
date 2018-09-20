@@ -1,4 +1,4 @@
-SUFFIXES = .tc .run .wat .wat.stderr .wasm .wasm-run
+SUFFIXES = .tc .run .wat.stderr .wasm-run
 ASC_FLAGS = --dfinity
 
 include ../mk/common.mk
