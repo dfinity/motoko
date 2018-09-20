@@ -25,7 +25,7 @@ $(MAIN).$(BUILD): sanity
 	$(OCAMLBUILD) $@
 
 js_main.byte: js_main.ml
-	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) -plugin-tag "package(js_of_ocaml.ocamlbuild)" $@
+	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
 
 
 sanity:
