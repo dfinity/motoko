@@ -558,7 +558,7 @@ module Text = struct
       compile_self @
       compile_const n @
       let offset = Int32.add (Int32.mul header_size Heap.word_size) (Int32.of_int i) in
-      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Mem8}) ]
+      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Pack8}) ]
     in
     List.concat (List.mapi init_elem bytes) @
     compile_self
