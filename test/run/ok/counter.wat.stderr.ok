@@ -1,1 +1,3 @@
 compile_exp: (AsyncE (BlockE (ExpD (VarE c))))
+Could not find primitive print
+Could not find primitive printInt

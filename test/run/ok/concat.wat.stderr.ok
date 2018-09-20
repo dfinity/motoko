@@ -1,3 +1,5 @@
 compile_binop: CatOp
 compile_binop: CatOp
 compile_binop: CatOp
+Could not find primitive print
+Could not find primitive printInt

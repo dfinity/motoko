@@ -1,26 +1,3 @@
--- Checking prelude:
-type Any = Any
-type Bool = Bool
-type Char = Char
-type Class = Class
-type Float = Float
-type Int = Int
-type Iter<T_> = {next : () -> T_?}
-type Nat = Nat
-type None = None
-type Null = Null
-type Text = Text
-type Word16 = Word16
-type Word32 = Word32
-type Word64 = Word64
-type Word8 = Word8
-type range <: {next : () -> Nat?}
-type revrange <: {next : () -> Nat?}
-let abs : Int -> Nat
-let ignore : Any -> ()
-let range : class (Nat, Nat) -> range
-let revrange : class (Nat, Nat) -> revrange
--- Interpreting prelude:
 -- Checking bank.as:
 type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
 type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}

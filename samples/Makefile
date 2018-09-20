@@ -2,7 +2,7 @@
 
 # This works with bash
 
-ASC=../asc
+ASC=../src/asc
 ASC_FLAGS=-r -t -v
 
 

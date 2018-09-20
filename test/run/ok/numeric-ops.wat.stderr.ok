@@ -48,3 +48,5 @@ compile_binop: ModOp
 compile_binop: ModOp
 compile_binop: DivOp
 compile_binop: DivOp
+Could not find primitive print
+Could not find primitive printInt

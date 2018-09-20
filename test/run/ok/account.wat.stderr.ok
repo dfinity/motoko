@@ -12,3 +12,5 @@ compile_exp: (AsyncE
   )
 )
 compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
+Could not find primitive print
+Could not find primitive printInt
