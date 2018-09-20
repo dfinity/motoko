@@ -53,12 +53,19 @@ let print_val _senv v t =
 
 type parse_result = Syntax.prog
 
+let dump_prog flag prog =
+    if !flag then
+      Wasm.Sexpr.print 80 (Arrange.prog prog)
+    else ()
+
 let parse_with mode lexer parser name : parse_result option =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    Some (parser (Lexer.token mode) lexer)
+    Some (let prog = parser (Lexer.token mode) lexer in
+          dump_prog Flags.dump_parse prog;
+          prog)
   with
     | Lexer.Error (at, msg) -> error at "syntax" msg; None
     | Parser.Error ->
@@ -104,6 +111,16 @@ let check_prog infer senv name prog : (Type.typ * Typing.scope) option =
   with Typing.Error (at, msg) ->
     error at "type" msg; None
 
+let await_lowering prog name =
+  if !Flags.await_lowering then
+    begin
+      phase "Await Lowering" name;
+      let prog' = Await.t_prog prog in
+      dump_prog Flags.dump_lowering prog';
+      prog'
+    end
+  else prog
+
 let check_with parse infer senv name : check_result option =
   match parse name with
   | None -> None
@@ -111,10 +128,8 @@ let check_with parse infer senv name : check_result option =
     match check_prog infer senv name prog with
     | None -> None
     | Some (t, scope) ->
-       Wasm.Sexpr.print 80 (Arrange.prog prog);
-       let prog = Await.t_prog prog in
-       Wasm.Sexpr.print 80 (Arrange.prog prog);
-       Some (prog, t, scope)
+       let prog' = await_lowering prog name in
+       Some (prog', t, scope)
 
 let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
 

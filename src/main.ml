@@ -31,7 +31,9 @@ let argspec = Arg.align
   "-t", Arg.Set Flags.trace, " activate tracing";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-a", Arg.Set Flags.async_lowering, " translate async/await (implies -r)";
+  "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
+  "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
   "--dfinity",
