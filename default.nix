@@ -1,5 +1,6 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
-  test ? true
+  test ? true,
+  test-dsh ? false,
 }:
 
 let stdenv = nixpkgs.stdenv; in
@@ -27,7 +28,17 @@ let menhir = (import menhir_nix) {
   sha256 = "16wv5m7ky27qb8krlycw79dqgzfnpm6rkppc9f26gyw15riicpxb";
   }; in
 
+let commonBuildInputs = [
+      nixpkgs.ocaml
+      menhir
+      nixpkgs.ocamlPackages.findlib
+      nixpkgs.ocamlPackages.ocamlbuild
+      ocaml_wasm
+      nixpkgs.ocamlPackages.zarith
+  ]; in
+
 rec {
+
   native = stdenv.mkDerivation {
     name = "native";
 
@@ -35,15 +46,8 @@ rec {
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = [
-      nixpkgs.ocaml
-      menhir
-      nixpkgs.ocamlPackages.findlib
-      nixpkgs.ocamlPackages.ocamlbuild
-      ocaml_wasm
-      nixpkgs.ocamlPackages.zarith
-      (if test then dev_in_nix.hypervisor else null)
-    ];
+    buildInputs = commonBuildInputs ++
+      (if test-dsh then [ dev_in_nix.hypervisor ] else []);
 
     buildPhase = ''
       make -C src BUILD=native asc
@@ -60,15 +64,20 @@ rec {
     doInstallCheck = true;
     installCheckPhase = ''
       $out/bin/asc --version
-      make -C test VERBOSE=1 ASC=$out/bin/asc all
       make -C samples ASC=$out/bin/asc all
-    '';
+      make -C test/run VERBOSE=1 ASC=$out/bin/asc all
+      make -C test/tc-fail VERBOSE=1 ASC=$out/bin/asc all
+      make -C test/tc-only VERBOSE=1 ASC=$out/bin/asc all
+    '' +
+      (if test-dsh then ''
+      make -C test/run-dfinity VERBOSE=1 ASC=$out/bin/asc all
+      '' else "");
   };
 
   js = native.overrideAttrs (oldAttrs: {
     name = "js";
 
-    buildInputs = oldAttrs.buildInputs ++ [
+    buildInputs = commonBuildInputs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
       nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx

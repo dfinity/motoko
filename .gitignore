@@ -1,6 +1,8 @@
 .database
 /result*
 
+nix/dev-in-nix
+
 **/*~
 **/_build
 **/_output
