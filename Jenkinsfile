@@ -4,8 +4,6 @@ pipeline {
         stage ('git submodule') {
             steps {
                 sh 'git submodule update --init --recursive'
-            }
-            steps {
                 sh 'git clone --recursive git@github.com:dfinity-lab/dev-in-nix nix/dev-in-nix'
             }
         }
