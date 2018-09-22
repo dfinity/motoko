@@ -768,8 +768,8 @@ module Dfinity = struct
   let print_fun env = Func.unary_of_body env (fun env1 ->
       (* Calculate the offset *)
       Func.load_argument @
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Int32.mul Heap.word_size Text.header_size)))) ;
-       nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+      compile_const (Int32.mul Heap.word_size Text.header_size) @
+      [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
       (* Calculate the length *)
       Func.load_argument @
       Heap.load_field (Text.len_field) @
@@ -1240,22 +1240,27 @@ let compile mode (progs : Syntax.prog list) : module_ =
   let i = E.add_fun env start_fun in
   if E.mode env = DfinityMode then Dfinity.export_start_fun env i;
 
+  let imports = E.get_imports env in
+  let ni = List.length imports in
+  let ni' = Int32.of_int ni in
 
   let funcs = E.get_funcs env in
   let nf = List.length funcs in
   let nf' = Wasm.I32.of_int_u nf in
 
+  let table_sz = Int32.add nf' ni' in
+
   nr { empty_module with
     types = E.get_types env;
     funcs = funcs;
-    tables = [ nr { ttype = TableType ({min = nf'; max = Some nf'}, AnyFuncType) } ];
+    tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
     elems = [ nr {
       index = nr 0l;
-      offset = nr compile_zero;
-      init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u i)) funcs } ];
-    start = Some (nr i);
+      offset = nr (compile_const ni');
+      init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
+    start = if E.mode env = DfinityMode then None else Some (nr i);
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
-    imports = E.get_imports env;
+    imports = imports;
     exports = E.get_exports env;
   }

@@ -44,19 +44,25 @@ let argspec = Arg.align
 
 (* Main *)
 
-let exit_on_failure = function
+let exit_on_none = function
   | Some x -> x
   | None -> exit 1
+
+let exit_on_failure = function
+  | Ok x -> x
+  | Error (at, category, msg) ->
+    eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg;
+    exit 1
 
 let process_files names : unit =
   match !mode with
   | Default ->
     assert false
   | Run ->
-    ignore (exit_on_failure Pipeline.(run_files initial_env names))
+    ignore (exit_on_none Pipeline.(run_files initial_env names))
   | Interact ->
     printf "%s\n" banner;
-    let env = exit_on_failure Pipeline.(run_files initial_env names) in
+    let env = exit_on_none Pipeline.(run_files initial_env names) in
     Pipeline.run_stdin env
   | Check ->
     ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
