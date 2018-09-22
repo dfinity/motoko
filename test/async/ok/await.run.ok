@@ -1,0 +1,36 @@
+-- Checking await.as:
+-- Await Lowering await.as:
+-- Interpreting await.as:
+abcdege-whileg-label(unknown location): execution error, unbound identifier $74
+cnt: printInt(0)
+ i: printInt(0)
+
+cnt: printInt(1)
+ i: printInt(1)
+
+cnt: printInt(2)
+ i: printInt(2)
+
+cnt: printInt(3)
+ i: printInt(4)
+
+cnt: printInt(4)
+ i: printInt(5)
+
+cnt: printInt(5)
+ i: printInt(3)
+
+cnt: printInt(6)
+ i: printInt(6)
+
+cnt: printInt(7)
+ i: printInt(7)
+
+cnt: printInt(8)
+ i: printInt(8)
+
+cnt: printInt(9)
+ i: printInt(9)
+
+e-exit-- Finished await.as:
+

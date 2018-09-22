@@ -1,4 +1,4 @@
 SUFFIXES = .tc .run 
-ASC_FLAGS ?= -a -v -dp -dl
+ASC_FLAGS ?= -a 
 
 include ../mk/common.mk
