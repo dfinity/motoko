@@ -133,8 +133,8 @@ let extended_prim s at =
   | "@scheduler_queue" ->
      fun v k -> let (call,f)  = V.as_func v in
                 (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
-                Scheduler.queue (fun () -> f  V.unit (fun v -> (* (try V.as_unit v with _ ->
-                                                                  failwith ("unexpected value: " ^ V.string_of_val v));*)
+                Scheduler.queue (fun () -> f  V.unit (fun v -> (try V.as_unit v with _ ->
+                                                                  failwith ("unexpected value: " ^ V.string_of_val v));
                                                                 ())); 
                 k (V.unit)
 (*
@@ -149,10 +149,11 @@ let extended_prim s at =
       Scheduler.yield (); (* TBR - this feels wrong *)
       k V.unit
   | "@await" ->
-    fun v k ->
+     fun v k ->
       (match V.as_tup v with
-      | [async; v] ->
-        await (V.as_async async) k at
+       | [async; w] ->
+        let (_,f) = V.as_func w in
+        await (V.as_async async) (fun v -> f v k) at
       | _ -> assert false
       )
   | _ -> Prelude.prim s
@@ -329,6 +330,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
+    assert(not(!Flags.await_lowering)); 
     let async = make_async () in
     let k' = fun v1 -> set_async async v1 in
     let env' = {env with labs = V.Env.empty; rets = Some k'; async = true} in
@@ -344,6 +346,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     );
     k (V.Async async)
   | AwaitE exp1 ->
+    assert(not(!Flags.await_lowering));
     interpret_exp env exp1 (fun v1 ->
       if !Flags.trace then trace "=> await %s" (string_of_region exp.at);
       decr trace_depth;
@@ -383,7 +386,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env = adjoin_vals env (declare_id id) in
     interpret_exp env exp1 k
   | DefineE (id, mut, exp1) ->
-    interpret_exp env exp (fun v ->
+    interpret_exp env exp1 (fun v ->
       let v' =
         match mut.it with
         | Const -> v
