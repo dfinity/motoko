@@ -705,7 +705,7 @@ and c_exp' context exp =
   (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add id.it (Cont k) context in
-    k --> (c_exp context' exp1) -@- k
+    k --> ((c_exp context' exp1) -@- k)
   | BreakE (id, exp1) ->
     begin
       match LabelEnv.find_opt id.it context with
