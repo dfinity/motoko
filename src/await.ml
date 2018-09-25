@@ -270,7 +270,7 @@ let boolE b =
             note_eff = T.Triv}
   }
 let ifE exp1 exp2 exp3 typ =
-  { it = IfE (exp1,exp2, exp3);
+  { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = {note_typ = typ;
             note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
@@ -286,14 +286,12 @@ let tupE exps =
             note_eff = eff}
    }
 
-(* TBC: we need a new primitive that just declares a promise *)
 let declare_idE x  typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
     note = exp1.note;
    }
 
-(* TBC: we need a new primitive that just defines a promise *)
 let define_idE x mut exp1 =
   { it = DefineE (x, mut @@ no_region, exp1);
     at = no_region;
@@ -520,17 +518,17 @@ and c_and context k e1 e2 =
                answerT
   | T.Await ->
     let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
+    k -->  ((c_exp context e1) -@-
             (v1 -->
                ifE v1
                  e2
                  (k -@- boolE false)
-                 answerT)
+                 answerT))
 
 and c_or context k e1 e2 =
   let e2 = match eff e2 with
     | T.Triv -> k -@- t_exp context e2
-    | T.Await -> c_exp context e2 -@- k
+    | T.Await -> (c_exp context e2) -@- k
   in
   match eff e1 with
   | T.Triv ->
@@ -540,12 +538,12 @@ and c_or context k e1 e2 =
                answerT
   | T.Await ->
     let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
+    k --> ((c_exp context e1) -@-
             (v1 -->
                ifE v1
                  (k -@- boolE true)
                  e2
-                 answerT)
+                 answerT))
 
 and c_if context k e1 e2 e3 =
   let trans_branch exp = match eff exp with
@@ -559,15 +557,15 @@ and c_if context k e1 e2 e3 =
     k -->  ifE (t_exp context e1) e2 e3 answerT
   | T.Await ->
     let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-      (v1 --> ifE v1 e2 e3 answerT)
+    k -->  ((c_exp context e1) -@-
+              (v1 --> ifE v1 e2 e3 answerT))
 
 and c_while context k e1 e2 =
  let loop = fresh_id (contT T.unit) in
  let v2 = fresh_id T.unit in                    
  let e2 = match eff e2 with
     | T.Triv -> loop -@- t_exp context e2
-    | T.Await -> c_exp context e2 -@- loop
+    | T.Await -> (c_exp context e2) -@- loop
  in
  match eff e1 with
  | T.Triv ->
@@ -693,7 +691,7 @@ and c_exp' context exp =
        k --> {exp with it = SwitchE(t_exp context exp1, cases')}
     | T.Await ->
        let v1 = fresh_id (typ exp1) in
-       c_exp context exp1 -@-
+       (c_exp context exp1) -@-
          (v1 --> {exp with it = SwitchE(v1,cases')})
     end
   | WhileE (exp1, exp2) ->
@@ -707,18 +705,20 @@ and c_exp' context exp =
   (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add id.it (Cont k) context in
-    k --> c_exp context' exp1 -@- k
+    k --> (c_exp context' exp1) -@- k
   | BreakE (id, exp1) ->
     begin
       match LabelEnv.find_opt id.it context with
-      | Some (Cont k) -> e (RetE (c_exp context exp1 -@- k))
+      | Some (Cont k') ->
+         k --> ((c_exp context exp1) -@- k')
       | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
   | RetE exp1 ->
     begin
       match LabelEnv.find_opt id_ret context with
-      | Some (Cont k) -> e (RetE (c_exp context exp1 -@- k))
+      | Some (Cont k') ->
+          k --> ((c_exp context exp1) -@- k')                   
       | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
@@ -736,13 +736,13 @@ and c_exp' context exp =
                    k -->  (k -@- async))))
   | AwaitE exp1 ->
      begin
-       let v1 = fresh_id (typ exp1) in 
        match eff exp1 with
        | T.Triv ->
           k --> (prim_await (typ exp1) -@- (tupE [t_exp context exp1;k]))
        | T.Await ->
-          k --> (c_exp context  exp1) -@-
-            (v1 --> (prim_await (typ exp1) -@- (tupE [v1;k])))
+          let v1 = fresh_id (typ exp1) in 
+          k --> ((c_exp context  exp1) -@-
+                 (v1 --> (prim_await (typ exp1) -@- (tupE [v1;k]))))
      end
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1  
@@ -768,11 +768,11 @@ and c_dec context dec =
      match eff exp with
      | T.Triv -> k --> (k -@- (t_exp context exp))
      | T.Await ->
-        k -->  (c_exp context exp) -@- k
+       k -->  ((c_exp context exp) -@- k)
      end                                       
   | TypD _ ->
      let k = fresh_cont T.unit in
-     k --> k -@- unitE
+     k --> (k -@- unitE)
   | LetD (pat,exp) ->
      let k = fresh_cont (typ exp) in
      let v = fresh_id (typ exp) in
@@ -791,7 +791,7 @@ and c_dec context dec =
         k -->  letE v (t_exp context exp)
                  (k -@- block)
      | T.Await ->
-        k -->  (c_exp context exp) -@- (v --> (k -@- block))
+        k -->  ((c_exp context exp) -@- (v --> (k -@- block)))
      end                                       
   | VarD (id,exp) ->
      let k = fresh_cont T.unit in
@@ -825,7 +825,7 @@ and c_decs context k decs =
   match decs with
   |  [] ->
      k -@- unitE
-  | [dec] -> c_dec context dec -@- k
+  | [dec] -> (c_dec context dec) -@- k
   | (dec::decs) ->
      let v = fresh_id (typ_dec dec) in
      (c_dec context dec) -@- (v --> c_decs context k decs)

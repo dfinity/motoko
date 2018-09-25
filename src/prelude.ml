@@ -42,9 +42,9 @@ open Value
 
 let prim = function
   | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
-  | "print" -> fun v k -> Printf.printf "%s" (as_text v); k unit
+  | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" ->
     fun v k ->
-      Printf.printf "printInt(%s)\n" (Int.to_string (as_int v));
+      Printf.printf "printInt(%s)\n%!" (Int.to_string (as_int v));
       k unit
   | _ -> raise (Invalid_argument "Value.prim")
