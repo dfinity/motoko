@@ -28,5 +28,5 @@ var bad_result = m.ActorScript.compileWasm(true,'1+');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result));
 assert.deepStrictEqual(bad_result,
-  {"diagnostics":[{"range":{"start":{"line":1,"character":2},"endd":{"line":1,"character":2}},"source":"syntax","message":"unexpected token"}],"code":null}
+  {"diagnostics":[{"range":{"start":{"line":1,"character":2},"end":{"line":1,"character":2}},"source":"syntax","message":"unexpected token"}],"code":null}
  );

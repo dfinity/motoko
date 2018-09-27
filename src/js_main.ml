@@ -7,7 +7,7 @@ let position_of_pos pos = object%js
 
 let range_of_region at = object%js
   val start = position_of_pos at.left
-  val endd = position_of_pos at.right
+  val _end = position_of_pos at.right
   end
 
 let diagnostics_of_error (at, category, msg) = object%js
