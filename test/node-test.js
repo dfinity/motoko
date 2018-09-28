@@ -40,6 +40,7 @@ assert.deepStrictEqual(bad_result, {
           "character": 2
         }
       },
+      "severity": 1,
       "source": "actorscript",
       "message": "unexpected token"
     }

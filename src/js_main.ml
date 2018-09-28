@@ -13,6 +13,7 @@ let range_of_region at = object%js
 
 let diagnostics_of_error (at, category, msg) = object%js
   val range = range_of_region at
+  val severity = 1 (* 1 means error in the LSP spec *)
   val source = Js.string "actorscript"
   val message = Js.string msg
   end
