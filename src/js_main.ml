@@ -1,7 +1,8 @@
 open Source
 
 let position_of_pos pos = object%js
-  val line = pos.line
+  (* The LSP spec requires zero-based positions *)
+  val line = if pos.line > 0 then pos.line - 1 else 0
   val character = pos.column
   end
 

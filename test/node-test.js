@@ -32,11 +32,11 @@ assert.deepStrictEqual(bad_result, {
     {
       "range": {
         "start": {
-          "line": 1,
+          "line": 0,
           "character": 2
         },
         "end": {
-          "line": 1,
+          "line": 0,
           "character": 2
         }
       },
