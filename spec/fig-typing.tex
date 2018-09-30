@@ -18,10 +18,19 @@ $$
 \text{(context)} & C & ::= &
   \x{id} = \x{typ-params} \x{typ} ~|~
   \x{id} <: \x{typ-params} \x{typ} ~|~
-  \x{id} : \x{typ}
+  \x{id} : \x{typ} ~|~
+  \K{async}
 \end{array}
 $$
 
+$$
+\begin{array}{@{}rcl@{}}
+\x{typ}_1 \meetsynth \x{typ}_2 &:=& \x{typ}_1 \meet \x{typ}_2 \\
+\x{typ}_1 \joinsynth \x{typ}_2 &:=& \x{typ}_1 \join \x{typ}_2 \\
+\x{typ} \meetanal \x{typ} &:=& \x{typ} \\
+\x{typ} \joinanal \x{typ} &:=& \x{typ} \\
+\end{array}
+$$
 
 \subsection*{Types \hfill $\boxed{C \vdash \x{typ}}$}
 
@@ -88,13 +97,6 @@ $$
 }
 $$
 
-$$
-\frac{
-}{
-  C \vdash \KK{any}
-}
-$$
-
 
 \subsection*{Type Fields \hfill $\boxed{C \vdash \x{typ-fields} \dashv C'}$}
 
@@ -123,22 +125,11 @@ $$
 
 $$
 \frac{
+  (C, (\x{id} \Ksub \x{typ})\K,^\ast \vdash \x{typ})^\ast
+  \qquad
+  \x{id}^\ast ~\text{disjoint}
 }{
-  C \vdash {\Klt \Kgt} \dashv \cdot
-}
-$$
-
-$$
-\frac{
-  C \vdash \x{typ}_1
-  \qquad
-  C_1 = \x{id}_1 <: \x{typ}_1
-  \qquad
-  C, C_1 \vdash {\Klt (\x{id} \Ksub \x{typ})\K,^\ast \Kgt} \dashv C'
-  \qquad
-  \Dom(C_1) \setdisj \Dom(C')
-}{
-  C \vdash {\Klt \x{id}_1 \Ksub \x{typ}_1\K, \, (\x{id} \Ksub \x{typ})\K,^\ast \Kgt} \dashv C_1, C'
+  C \vdash {\Klt (\x{id} \Ksub \x{typ})\K,^\ast \Kgt} \dashv (\x{id} \Ksub \x{typ})\K,^\ast 
 }
 $$
 
@@ -160,13 +151,6 @@ $$
 \frac{
 }{
   \x{nat} : \K{nat}
-}
-%$$
-\qquad
-%$$
-\frac{
-}{
-  \x{int} : \K{int}
 }
 %$$
 \qquad
@@ -267,41 +251,39 @@ $$
 
 $$
 \frac{
+  \begin{array}{@{}r@{}}
   \x{binop} : (\x{typ}, \x{typ}) \Kto \x{typ}
+  \\
+  \x{typ} = \x{typ}_1 \meetanalsynth \x{typ}_2
+  \end{array}
   \qquad
-  C \vdash \x{exp}_1 \anal \x{typ}
-  \qquad
-  C \vdash \x{exp}_2 \anal \x{typ}
+  \begin{array}{@{}r@{}}
+  C \vdash \x{exp}_1 \analsynth \x{typ}_1
+  \\
+  C \vdash \x{exp}_2 \analsynth \x{typ}_2
+  \end{array}
 }{
-  C \vdash \x{exp}_1 \x{binop} \x{exp}_2 \anal \x{typ}
+  C \vdash \x{exp}_1 \x{binop} \x{exp}_2 \analsynth \x{typ}
 }
 $$
 
 $$
 \frac{
-  \x{binop} : (\x{typ}, \x{typ}) \Kto \x{typ}
-  \qquad
-  C \vdash \x{exp}_1 \synth \x{typ}
-  \qquad
-  C \vdash \x{exp}_2 \synth \x{typ}
-}{
-  C \vdash \x{exp}_1 \x{binop} \x{exp}_2 \synth \x{typ}
-}
-$$
-FIXME: use meet
-
-$$
-\frac{
+  \begin{array}{@{}r@{}}
   \x{relop} : (\x{typ}, \x{typ}) \Kto \K{Bool}
+  \\
+  \x{typ} = \x{typ}_1 \meetsynth \x{typ}_2
+  \end{array}
   \qquad
-  C \vdash \x{exp}_1 \synth \x{typ}
-  \qquad
-  C \vdash \x{exp}_2 \synth \x{typ}
+  \begin{array}{@{}r@{}}
+  C \vdash \x{exp}_1 \synth \x{typ}_1
+  \\
+  C \vdash \x{exp}_2 \synth \x{typ}_2
+  \end{array}
 }{
   C \vdash \x{exp}_1 \x{relop} \x{exp}_2 \synth \K{Bool}
 }
 $$
-FIXME: use meet
 
 $$
 \frac{
@@ -332,7 +314,7 @@ FIXME: if \K{actor} is present, check that field types are adequate
 
 $$
 \frac{
-  C \vdash \x{exp} \synth \K\{ \x{typ-field}\K;^\ast \K\}
+  C \vdash \x{exp} \synth \KK{actor}^? \K\{ \x{typ-field}\K;^\ast \K\}
   \qquad
   (\x{id} \K: \x{typ}) \in \x{typ-field}\K;^\ast
 }{
@@ -346,7 +328,7 @@ $$
   \qquad
   C \vdash \x{exp}_1 \anal \x{typ}
 }{
-  C \vdash \x{exp}_1 \K{:=} \x{exp}_2 \synth \x{typ}
+  C \vdash \x{exp}_1 \K{:=} \x{exp}_2 \synth \K{()}
 }
 $$
 
@@ -362,21 +344,9 @@ $$
 \frac{
   \x{unop} : \x{typ} \Kto \x{typ}
   \qquad
-  C \vdash \x{exp} \analsynth \K{var} \x{typ}
+  C \vdash \x{exp} \synth \K{var} \x{typ}
 }{
-  C \vdash \x{unop}{\!\K=} \x{exp} \analsynth \x{typ}
-}
-$$
-
-$$
-\frac{
-  \x{binop} : (\x{typ}, \x{typ}) \Kto \x{typ}
-  \qquad
-  C \vdash \x{exp}_1 \anal \K{var} \x{typ}
-  \qquad
-  C \vdash \x{exp}_2 \anal \x{typ}
-}{
-  C \vdash \x{exp}_1 \x{binop}{\!\K=} \x{exp}_2 \anal \x{typ}
+  C \vdash \x{unop}{\!\K=} \x{exp} \synth \K{()}
 }
 $$
 
@@ -386,24 +356,31 @@ $$
   \qquad
   C \vdash \x{exp}_1 \synth \K{var} \x{typ}
   \qquad
-  C \vdash \x{exp}_2 \synth \x{typ}
+  C \vdash \x{exp}_2 \anal \x{typ}
 }{
-  C \vdash \x{exp}_1 \x{binop}{\!\K=} \x{exp}_2 \synth \x{typ}
+  C \vdash \x{exp}_1 \x{binop}{\!\K=} \x{exp}_2 \synth \K{()}
 }
 $$
-FIXME: use meet
+
+$$
+\frac{
+  C \vdash \x{exp} \analsynth \x{typ}
+}{
+  C \vdash \x{exp} \K? \analsynth \x{typ} \K?
+}
+$$
 
 $$
 \frac{
   (C \vdash \x{exp} \anal \x{typ})^\ast
 }{
-  C \vdash \K[ \KK{var}^? \x{exp}\K,^\ast \K] \anal \K{var}^? \x{typ} \K{[]}
+  C \vdash \K[ \void{\KK{var}^?} \x{exp}\K,^\ast \K] \anal \K{var}^? \x{typ} \K{[]}
 }
-\quad
+\qquad
 \frac{
   (C \vdash \x{exp} \synth \x{typ})^\ast
 }{
-  C \vdash \K[ \KK{var}^? \x{exp}\K,^\ast \K] \synth \K{var}^? (\sqcap\x{typ}^\ast) \K{[]}
+  C \vdash \K[ \void{\KK{var}^?} \x{exp}\K,^\ast \K] \synth \void{\K{var}^?} (\sqcap\x{typ}^\ast) \K{[]}
 }
 $$
 
@@ -419,11 +396,13 @@ $$
 
 $$
 \frac{
-  \begin{array}{@{}l@{\qquad}l@{}}
+  \begin{array}[b]{@{}l@{}}
   C \vdash \x{exp}_1 \synth \x{typ-params} \x{typ}' \Kto \x{typ}
   \\
   C \vdash \x{exp}_2 \anal \x{typ}'[\x{typ-args} / \x{typ-params}]
-  &
+  \end{array}
+  \qquad
+  \begin{array}{@{}l@{}}
   C \vdash \x{typ-args} \Ksub \x{typ-params}
   \end{array}
 }{
@@ -461,38 +440,35 @@ $$
 
 $$
 \frac{
+  \begin{array}[b]{@{}l@{}}
   C \vdash \x{exp}_1 \anal \K{Bool}
+  \\
+  \x{typ} = \x{typ}_2 \joinanalsynth \x{typ}_3
+  \end{array}
   \qquad
-  C \vdash \x{exp}_2 \anal \x{typ}
-  \qquad
-  C \vdash \x{exp}_3 \anal \x{typ}
+  \begin{array}[b]{@{}l@{}}
+  C \vdash \x{exp}_2 \analsynth \x{typ}_2
+  \\
+  C \vdash \x{exp}_3 \analsynth \x{typ}_3
+  \end{array}
 }{
-  C \vdash \KK{if} \x{exp}_1 \x{exp}_2 \KK{else} \x{exp}_3 \anal \x{typ}
+  C \vdash \KK{if} \x{exp}_1 \x{exp}_2 \KK{else} \x{exp}_3 \analsynth \x{typ}
 }
 $$
 
 $$
 \frac{
-  C \vdash \x{exp}_1 \anal \K{Bool}
-  \qquad
-  C \vdash \x{exp}_2 \synth \x{typ}
-  \qquad
-  C \vdash \x{exp}_3 \synth \x{typ}
-}{
-  C \vdash \KK{if} \x{exp}_1 \x{exp}_2 \KK{else} \x{exp}_3 \synth \x{typ}
-}
-$$
-FIXME: use meet
-
-$$
-\frac{
+  \begin{array}[b]{@{}l@{}}
   C \vdash \x{exp}_1 \synth \x{typ}'
+  \end{array}
   \qquad
+  \begin{array}[b]{@{}l@{}}
   (C \vdash \x{pat} \anal \x{typ}' \dashv C')^\ast
   \qquad
-  (C, C' \vdash \x{exp} \anal \x{typ})^\ast
+  (C, C' \vdash \x{exp} \analsynth \x{typ})^\ast
+  \end{array}
 }{
-  C \vdash \KK{switch} \x{exp}_1 (\KK{case} \x{pat} \x{exp})^\ast \anal \x{typ}
+  C \vdash \KK{switch} \x{exp}_1 \K\{ (\KK{case} \x{pat} \x{exp})^\ast \K\} \analsynth (\joinanalsynth \x{typ}^\ast)
 }
 $$
 
@@ -519,23 +495,22 @@ $$
 $$
 \frac{
   \begin{array}{@{}c@{}}
-  C \vdash \x{exp}_1 \synth \{{\K{iter}} \K: \K{()} \Kto \K\{\K{next} \K: \K{()} \Kto \x{typ} \K?\}\} 
+  C \vdash \x{exp}_1 \synth \{{\K{iter}} \,\K:\, \K{()} \Kto \K\{\K{next} \,\K:\, \K{()} \Kto \x{typ}\K?\}\} 
   \\
   C \vdash \x{pat} \anal \x{typ} \dashv C'
   \qquad
   C, C' \vdash \x{exp}_2 \anal \K{()}
   \end{array}
 }{
-  C \vdash \KK{for} \x{pat} \KK{in} \x{exp}_1 \x{exp}_2 \synth \K{()}
+  C \vdash \KK{for} \, \K( \x{pat} \KK{in} \x{exp}_1 \K) \x{exp}_2 \synth \K{()}
 }
 $$
-FIXME: saner iterator type
 
 $$
 \frac{
   C, \x{id} : \K{label} \x{typ} \vdash \x{exp} \anal \x{typ}
 }{
-  C \vdash \KK{label} \K: \x{typ} \x{id} \x{exp} \synth \x{typ}
+  C \vdash \KK{label} \x{id} \K: \x{typ} \x{exp} \synth \x{typ}
 }
 $$
 
@@ -561,7 +536,7 @@ $$
 
 $$
 \frac{
-  C, \K{return} : \K{label} \, \K{async} \x{typ} \vdash \x{exp} \anal \x{typ}
+  C\setminus \K{label}, \K{return} : \K{label} \, \x{typ}, \K{async} \vdash \x{exp} \anal \x{typ}
 }{
   C \vdash \KK{async} \x{exp} \anal \K{async} \x{typ}
 }
@@ -569,14 +544,21 @@ $$
 
 $$
 \frac{
-  C(\K{return}) = \K{label} \, \K{async} \x{typ}'
+  C\setminus\K{label}, \K{async} \vdash \x{exp} \synth \x{typ}
+}{
+  C \vdash \KK{async} \x{exp} \synth \K{async} \x{typ}
+}
+$$
+
+$$
+\frac{
+  C(\K{async})
   \qquad
   C \vdash \x{exp} \analsynth \K{async} \x{typ}
 }{
   C \vdash \KK{await} \x{exp} \analsynth \x{typ}
 }
 $$
-FIXME: need async flag in context
 
 $$
 \frac{
@@ -588,11 +570,11 @@ $$
 
 $$
 \frac{
-  C \vdash \x{typ}
+  C \vdash \x{exp}_1 \synth \KK{actor}^? \K\{ \x{typ-field}\K;^\ast \K\}
   \qquad
-  C \vdash \x{exp} \anal \x{typ}
+  C \vdash \x{exp}_2 \anal \K{Class}
 }{
-  C \vdash \x{exp} \K{is} \x{typ} \synth \K{Bool}
+  C \vdash \x{exp}_1 \K{is} \x{exp}_2 \synth \K{Bool}
 }
 $$
 
@@ -630,13 +612,13 @@ $$
 
 $$
 \frac{
-  C, C' \vdash \x{dec} \analsynth \x{typ}' \dashv C'
+  C, C' \vdash \x{dec}\K;^\ast \analsynth \x{typ}' \dashv C'
   \qquad
   C, C' \vdash \x{typ}' = \x{typ}
   \qquad
   C \vdash \x{typ}
 }{
-  C \vdash \K\{ \x{dec} \K\} \analsynth \x{typ}
+  C \vdash \K\{ \x{dec}\K;^\ast \K\} \analsynth \x{typ}
 }
 $$
 
@@ -692,9 +674,27 @@ $$
 
 $$
 \frac{
+  \x{lit} : \x{typ}
+}{
+  C \vdash \x{lit} \synth \x{typ}
+}
+$$
+
+$$
+\frac{
+  \x{unop} : \x{typ} \Kto \x{typ}
+  \qquad
+  C \vdash \x{lit} \synth \x{typ}
+}{
+  C \vdash \x{unop} \x{lit} \synth \x{typ}
+}
+$$
+
+$$
+\frac{
   (C \vdash \x{pat} \analsynth \x{typ} \dashv C')^\ast
   \qquad
-  \Dom(C')
+  (\Dom(C'))^\ast ~\text{disjoint}
 }{
   C \vdash \K( \x{pat}\K,^\ast \K) \analsynth \K( \x{typ}\K,^\ast \K) \dashv C',^\ast
 }
@@ -721,7 +721,7 @@ $$
 $$
 
 
-\subsection*{Declarations \hfill $\boxed{C \vdash \x{dec} \analsynth \x{typ} \dashv C'}$}
+\subsection*{Declarations \hfill $\boxed{C \vdash \x{dec}\K;^\ast \analsynth \x{typ} \dashv C'}$}
 
 $$
 \frac{
