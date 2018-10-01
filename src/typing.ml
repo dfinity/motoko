@@ -85,7 +85,7 @@ let disjoint_union at fmt env1 env2 =
 
 (* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
 let rec is_shared_typ ce t =
-  match T.structural ce t with
+  match T.promote ce t with
   | T.Var _
   | T.Con _ -> false
   | T.Prim p -> true
@@ -108,7 +108,7 @@ let rec is_shared_typ ce t =
 
 (* Type of an actor field *)
 and is_async_typ ce t =
-  match T.structural ce t with
+  match T.promote ce t with
   | T.Func (_s, tbs, t1, t2) ->
     let ts, ce' = T.open_binds ce tbs in
     is_shared_typ ce' (T.open_ ts t1) &&
@@ -289,9 +289,9 @@ let rec check_lit env t lit at =
 let rec infer_exp env exp : T.typ =
   T.as_immut (infer_exp_mut env exp)
 
-and infer_exp_structural env exp : T.typ =
+and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
-  let t' = T.structural env.cons t in
+  let t' = T.promote env.cons t in
   if t' = T.Pre then
     error exp.at "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
       (T.string_of_typ_expand env.cons t);
@@ -321,7 +321,7 @@ and infer_exp' env exp : T.typ =
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
   | UnE (op, exp1) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (* Special case for subtyping *)
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not env.pre then begin
@@ -331,8 +331,8 @@ and infer_exp' env exp : T.typ =
     end;
     t
   | BinE (exp1, op, exp2) ->
-    let t1 = infer_exp_structural env exp1 in
-    let t2 = infer_exp_structural env exp2 in
+    let t1 = infer_exp_promote env exp1 in
+    let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_binop t op) then
@@ -342,8 +342,8 @@ and infer_exp' env exp : T.typ =
     end;
     t
   | RelE (exp1, op, exp2) ->
-    let t1 = infer_exp_structural env exp1 in
-    let t2 = infer_exp_structural env exp2 in
+    let t1 = infer_exp_promote env exp1 in
+    let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_relop t op) then
@@ -359,7 +359,7 @@ and infer_exp' env exp : T.typ =
     let t1 = infer_exp env exp1 in
     T.Opt t1
   | ProjE (exp1, n) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (try
       let ts = T.as_tup_sub n env.cons t1 in
       match List.nth_opt ts n with
@@ -374,7 +374,7 @@ and infer_exp' env exp : T.typ =
   | ObjE (sort, id, fields) ->
     fst (infer_obj env sort.it id fields)
   | DotE (exp1, id) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (try
       let _, tfs = T.as_obj_sub id.it env.cons t1 in
       match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
@@ -400,13 +400,13 @@ and infer_exp' env exp : T.typ =
     let ts = List.map (infer_exp env) exps in
     let t1 = List.fold_left (T.lub env.cons) T.Non ts in
     if
-      t1 = T.Any && List.for_all (fun t -> T.structural env.cons t <> T.Any) ts
+      t1 = T.Any && List.for_all (fun t -> T.promote env.cons t <> T.Any) ts
     then
       warn exp.at "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
     T.Array t1
   | IdxE (exp1, exp2) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (try
       let t = T.as_array_sub env.cons t1 in
       if not env.pre then check_exp env T.nat exp2;
@@ -416,7 +416,7 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
   | CallE (exp1, typs, exp2) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (try
       let tbs, t2, t = T.as_func_sub (List.length typs) env.cons t1 in
       let ts = check_typ_bounds env tbs typs exp.at in
@@ -455,7 +455,7 @@ and infer_exp' env exp : T.typ =
     let t = T.lub env.cons t2 t3 in
     if
       t = T.Any &&
-      T.structural env.cons t2 <> T.Any && T.structural env.cons t3 <> T.Any
+      T.promote env.cons t2 <> T.Any && T.promote env.cons t3 <> T.Any
     then
       warn exp.at "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
         (T.string_of_typ t)
@@ -463,7 +463,7 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t3);
     t
   | SwitchE (exp1, cases) ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
     if not env.pre then
       if not (Coverage.check_cases cases) then
@@ -483,7 +483,7 @@ and infer_exp' env exp : T.typ =
     T.Non
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
-      let t1 = infer_exp_structural env exp1 in
+      let t1 = infer_exp_promote env exp1 in
       (try
         let _, tfs = T.as_obj_sub "next" env.cons t1 in
         let t = T.lookup_field "next" tfs in
@@ -533,7 +533,7 @@ and infer_exp' env exp : T.typ =
   | AwaitE exp1 ->
     if not env.async then
       error exp.at "misplaced await";
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (try
       T.as_async_sub env.cons t1
     with Invalid_argument _ ->
@@ -624,7 +624,7 @@ and check_exp' env t exp =
     check_exp env t exp2;
     check_exp env t exp3
   | SwitchE (exp1, cases), _ ->
-    let t1 = infer_exp_structural env exp1 in
+    let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
     if not (Coverage.check_cases cases) then
       warn exp.at "the cases in this switch do not cover all possible values";
@@ -647,7 +647,7 @@ and infer_cases env t_pat t cases : T.typ =
     let t'' = T.lub env.cons t t' in
     if
       t'' = T.Any &&
-      T.structural env.cons t <> T.Any && T.structural env.cons t' <> T.Any
+      T.promote env.cons t <> T.Any && T.promote env.cons t' <> T.Any
     then
       warn at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
         (T.string_of_typ t'')

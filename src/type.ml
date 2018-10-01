@@ -214,13 +214,13 @@ let rec normalize env = function
   | Mut t -> Mut (normalize env t)
   | t -> t
 
-let rec structural env = function
+let rec promote env = function
   | Con (con, ts) ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t) | Abs (tbs, t)) -> structural env (reduce tbs t ts)
+    | Some (Def (tbs, t) | Abs (tbs, t)) -> promote env (reduce tbs t ts)
     | None -> assert false
     )
-  | Like t -> structural env t (*TBR*)
+  | Like t -> promote env t (*TBR*)
   | t -> t
 
 
@@ -251,43 +251,43 @@ let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 
-let as_prim_sub p env t = match structural env t with
+let as_prim_sub p env t = match promote env t with
   | Prim p' when p = p' -> ()
   | Non -> ()
   | _ -> invalid "as_prim_sub"
-let rec as_obj_sub name env t = match structural env t with
+let rec as_obj_sub name env t = match promote env t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub name env (array_obj t)
   | Non -> Object, [{name; typ = Non}]
   | _ -> invalid "as_obj_sub"
-let as_array_sub env t = match structural env t with
+let as_array_sub env t = match promote env t with
   | Array t -> t
   | Non -> Non
   | _ -> invalid "as_array_sub"
-let as_opt_sub env t = match structural env t with
+let as_opt_sub env t = match promote env t with
   | Opt t -> t
   | t -> t
-let as_tup_sub n env t = match structural env t with
+let as_tup_sub n env t = match promote env t with
   | Tup ts -> ts
   | Non -> Lib.List.make n Non
   | _ -> invalid "as_tup_sub"
-let as_unit_sub env t = match structural env t with
+let as_unit_sub env t = match promote env t with
   | Tup []
   | Non -> ()
   | _ -> invalid "as_unit_sub"
-let as_pair_sub env t = match structural env t with
+let as_pair_sub env t = match promote env t with
   | Tup [t1; t2] -> t1, t2
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
-let as_func_sub n env t = match structural env t with
+let as_func_sub n env t = match promote env t with
   | Func (_, tbs, t1, t2) -> tbs, t1, t2
   | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
-let as_mono_func_sub env t = match structural env t with
+let as_mono_func_sub env t = match promote env t with
   | Func (_, [], t1, t2) -> t1, t2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
-let as_async_sub env t = match structural env t with
+let as_async_sub env t = match promote env t with
   | Async t -> t
   | Non -> Non
   | _ -> invalid "as_async_sub"
