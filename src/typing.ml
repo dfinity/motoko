@@ -479,7 +479,7 @@ and infer_exp' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
     if not env.pre then
-      if not (Coverage.check_cases cases) then
+      if not (Coverage.check_cases env.cons cases t1) then
         warn exp.at "the cases in this switch do not cover all possible values";
     t
   | WhileE (exp1, exp2) ->
@@ -639,7 +639,7 @@ and check_exp' env t exp =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not (Coverage.check_cases cases) then
+    if not (Coverage.check_cases env.cons cases t1) then
       warn exp.at "the cases in this switch do not cover all possible values";
   | _ ->
     let t' = infer_exp env exp in
@@ -701,7 +701,7 @@ and gather_pat ve pat : val_env =
 and infer_pat_exhaustive env pat : T.typ * val_env =
   let t, ve = infer_pat env pat in
   if not env.pre then
-    if not (Coverage.check_pat pat) then
+    if not (Coverage.check_pat env.cons pat t) then
       warn pat.at "this pattern does not cover all possible values";
   t, ve
 
@@ -757,7 +757,7 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
 and check_pat_exhaustive env t pat : val_env =
   let ve = check_pat env t pat in
   if not env.pre then
-    if not (Coverage.check_pat pat) then
+    if not (Coverage.check_pat env.cons pat t) then
       warn pat.at "this pattern does not cover all possible values";
   ve
 
@@ -812,10 +812,10 @@ and check_pat' env t pat : val_env =
     T.Env.empty
   | _ ->
     let t', ve = infer_pat env pat in
-    if not (T.sub env.cons t' t) then
+    if not (T.sub env.cons t t') then
       error pat.at "pattern of type\n  %s\ncannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-        (T.string_of_typ_expand env.cons t');
+        (T.string_of_typ_expand env.cons t')
+        (T.string_of_typ_expand env.cons t);
     ve
 
 and check_pats env ts pats ve at : val_env =
