@@ -405,8 +405,6 @@ let rec rel_typ env rel eq t1 t2 =
     rel_typ env rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
-  | t1, Opt t2' when rel != eq ->
-    rel_typ env rel eq t1 t2'
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ env rel eq ts1 ts2
   | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
@@ -480,8 +478,8 @@ let rec lub env t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
   | Opt t1', Opt t2' -> Opt (lub env t1' t2')
-  | t1', Opt t2'
-  | Opt t1', t2' -> Opt (lub env t1' t2')
+  | Prim Null, Opt t'
+  | Opt t', Prim Null -> Opt t'
   | Array t1', (Obj _ as t2) -> lub env (array_obj t1') t2
   | (Obj _ as t1), Array t2' -> lub env t1 (array_obj t2')
   | t1', t2' when eq env t1' t2' -> t1
@@ -501,8 +499,8 @@ let rec glb env t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Opt t1', Opt t2' -> Opt (glb env t1' t2')
-  | t1', Opt t2'
-  | Opt t1', t2' -> glb env t1' t2'
+  | Prim Null, Opt _
+  | Opt _, Prim Null -> Prim Null
   | t1', t2' when eq env t1' t2' -> t1
   | _ -> Non
 

@@ -259,10 +259,9 @@ let infer_lit env lit at : T.prim =
   | PreLit _ ->
     assert false
 
-let rec check_lit env t lit at =
+let check_lit env t lit at =
   match T.normalize env.cons t, !lit with
   | T.Opt _, NullLit -> ()
-  | T.Opt t', _ -> check_lit env t' lit at
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat at s)
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
