@@ -74,6 +74,7 @@ and value =
   | Char of unicode
   | Text of string
   | Tup of value list
+  | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
   | Func of class_ option * func
@@ -107,6 +108,7 @@ val as_array : value -> value array
 val as_tup : value -> value list
 val as_unit : value -> unit
 val as_pair : value -> value * value
+val as_opt : value -> value
 val as_obj : value -> class_ option * value Env.t
 val as_func : value -> class_ option * (value -> value cont -> unit)
 val as_async : value -> async

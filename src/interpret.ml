@@ -217,8 +217,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | TupE exps ->
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
-    (* TBR: use a different representation? *)
-    interpret_exp env exp1 k
+    interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
@@ -455,9 +454,12 @@ and define_pat env pat v =
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | OptP pat1 ->
-    if v = V.Null
-    then trap pat.at "value %s does not match pattern" (V.string_of_val v)
-    else define_pat env pat1 v  (* TBR: different representation? *)
+    (match v with
+    | V.Opt v1 -> define_pat env pat1 v1
+    | V.Null ->
+      trap pat.at "value %s does not match pattern" (V.string_of_val v)
+    | _ -> assert false
+    )
   | AnnotP (pat1, _typ) -> define_pat env pat1 v
 
 and define_pats env pats vs =
@@ -494,9 +496,11 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | OptP pat1 ->
-    if v = V.Null
-    then None
-    else match_pat pat1 v (* TBR: use a different representation? *)
+    (match v with
+    | V.Opt v1 -> match_pat pat1 v1
+    | V.Null -> None
+    | _ -> assert false
+    )
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v
