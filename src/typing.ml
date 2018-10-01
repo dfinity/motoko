@@ -517,6 +517,8 @@ and infer_exp' env exp : T.typ =
   | RetE exp1 ->
     if not env.pre then begin
       match env.rets with
+      | Some T.Pre ->
+        error exp.at "cannot infer return type"
       | Some t ->
         check_exp env t exp1
       | None ->

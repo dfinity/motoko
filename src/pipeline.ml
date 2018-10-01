@@ -10,13 +10,12 @@ type env = stat_env * dyn_env
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-type loc_error = Source.region * string * string
-type 'a phase_result = ('a, loc_error) result
+type error = Source.region * string * string
 
 let error at category msg =
   Error (at, category, msg)
 
-let print_error at category msg =
+let print_error (at, category, msg) =
   eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
 
 let print_ce =
@@ -56,21 +55,21 @@ let print_val _senv v t =
 
 (* Parsing *)
 
-type parse_result = Syntax.prog
+type parse_result = (Syntax.prog, error) result
 
 let dump_prog flag prog =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange.prog prog)
     else ()
 
-let parse_with mode lexer parser name : parse_result phase_result =
+let parse_with mode lexer parser name : parse_result =
   try
     (*phase "Parsing" name;*)
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    Ok (let prog = parser (Lexer.token mode) lexer in
-        dump_prog Flags.dump_parse prog;
-        prog)
+    let prog = parser (Lexer.token mode) lexer in
+    dump_prog Flags.dump_parse prog;
+    Ok prog
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
@@ -103,9 +102,9 @@ let parse_files filenames =
 
 (* Checking *)
 
-type check_result = Syntax.prog * Type.typ * Typing.scope
+type check_result = (Syntax.prog * Type.typ * Typing.scope, error) result
 
-let check_prog infer senv name prog : (Type.typ * Typing.scope) phase_result =
+let check_prog infer senv name prog : (Type.typ * Typing.scope, error) result =
   try
     phase "Checking" name;
     let t, ((ve, te, ce) as scope) = infer senv prog in
@@ -127,7 +126,7 @@ let await_lowering prog name =
     end
   else prog
 
-let check_with parse infer senv name : check_result phase_result =
+let check_with parse infer senv name : check_result =
   match parse name with
   | Error e -> Error e
   | Ok prog ->
@@ -149,7 +148,7 @@ let check_files senv = function
 (* Interpretation *)
 
 type interpret_result =
-  Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope
+  (Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope) option
 
 let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
   try
@@ -160,7 +159,7 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    print_error (Interpret.get_last_region ()) "fatal" (Printexc.to_string exn);
+    print_error (Interpret.get_last_region (), "fatal", Printexc.to_string exn);
     eprintf "\nLast environment:\n%!";
     eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
     eprintf "\n";
@@ -168,9 +167,11 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     eprintf "%!";
     None
 
-let interpret_with check (senv, denv) name : interpret_result option =
+let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
-  | Error _ -> None
+  | Error e ->
+    print_error e;
+    None
   | Ok (prog, t, sscope) ->
     match interpret_prog denv name prog with
     | None -> None
@@ -188,32 +189,29 @@ let interpret_files env = function
 
 let prelude_name = "prelude"
 
+let prelude_error phase (at, _, msg) =
+  print_error (at, "fatal", phase ^ " prelude failed: " ^ msg);
+  exit 1
+
 let check_prelude () : Syntax.prog * stat_env =
-  try
-    let lexer = Lexing.from_string Prelude.prelude in
-    let parser = Parser.parse_prog in
-    let prog = match parse_with Lexer.Privileged lexer parser prelude_name with
-      | Error _ -> raise Not_found
-      | Ok prog -> prog in
-    let sscope = match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
-      | Error _ -> raise Not_found
-      | Ok (_t, sscope) -> sscope in
-    let senv = Typing.adjoin Typing.empty_env sscope in
-    prog, senv
-  with Not_found ->
-    print_error Source.no_region "fatal" "initializing prelude failed";
-    exit 1
+  let lexer = Lexing.from_string Prelude.prelude in
+  let parser = Parser.parse_prog in
+  match parse_with Lexer.Privileged lexer parser prelude_name with
+  | Error e -> prelude_error "parsing" e
+  | Ok prog ->
+    match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
+    | Error e -> prelude_error "checking" e
+    | Ok (_t, sscope) ->
+      let senv = Typing.adjoin Typing.empty_env sscope in
+      prog, senv
 
 let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
-  try
-    let _v, dscope = Lib.Option.value
-      (interpret_prog Interpret.empty_env prelude_name prelude) in
+  match interpret_prog Interpret.empty_env prelude_name prelude with
+  | None -> prelude_error "initializing" (Source.no_region, "", "crashed")
+  | Some (_v, dscope) ->
     Interpret.adjoin Interpret.empty_env dscope
-  with Not_found ->
-    print_error Source.no_region "fatal" "initializing prelude failed";
-    exit 1
 
 let initial_dyn_env = run_prelude ()
 let initial_env = (initial_stat_env, initial_dyn_env)
@@ -221,7 +219,7 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 
 (* Running *)
 
-type run_result = env
+type run_result = env option
 
 let output_dscope (senv, _) t v sscope dscope =
   if !Flags.trace then print_dyn_ve senv dscope
@@ -232,7 +230,7 @@ let output_scope (senv, _) t v sscope dscope =
 
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
-let run_with interpret output ((senv, denv) as env) name : run_result option =
+let run_with interpret output ((senv, denv) as env) name : run_result =
   let result = interpret env name in
   let env' =
     match result with
@@ -268,13 +266,13 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = Wasm.Ast.module_
+type compile_result = (Wasm.Ast.module_, error) result
 
 let compile_prog mode name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
   Compile.compile mode [prog]
 
-let compile_with check mode name : compile_result phase_result =
+let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error e -> Error e
   | Ok (prog, _t, _scope) ->

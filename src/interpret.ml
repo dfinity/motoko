@@ -131,12 +131,11 @@ let extended_prim s at =
       | _ -> assert false
       )
   | "@scheduler_queue" ->
-     fun v k -> let (call,f)  = V.as_func v in
-                (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
-                Scheduler.queue (fun () -> f  V.unit (fun v -> (try V.as_unit v with _ ->
-                                                                  failwith ("unexpected value: " ^ V.string_of_val v));
-                                                                ())); 
-                k (V.unit)
+    fun v k ->
+      let (call,f) = V.as_func v in
+      (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
+      Scheduler.queue (fun () -> f V.unit V.as_unit);
+      k V.unit
 (*
     fun v k ->
       let call, f  = V.as_func v in
