@@ -39,6 +39,8 @@ let argspec = Arg.align
   "--dfinity",
     Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
       " compile for dfinity";
+  "--map", Arg.Set Flags.source_map, " output source map";
+  "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 ]
 
 

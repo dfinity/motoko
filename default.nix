@@ -1,5 +1,4 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
-  test ? true,
   test-dsh ? false,
 }:
 
@@ -11,10 +10,10 @@ let sourceByRegex = src: regexes: builtins.filterSource (path: type:
       builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes) relPath != null))
     src; in
 
-let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
-	{inherit (nixpkgs) stdenv  fetchFromGitHub ocaml;
-         inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
-	}; in
+let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
+  inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
+  inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
+}; in
 
 # Include dsh
 let dev_in_nix = (import ./nix/dev-in-nix) { v8 = true; }; in
@@ -25,23 +24,23 @@ let dsh = dev_in_nix.hypervisor; in
 let menhir_nix = nixpkgs.fetchurl {
   url = "https://raw.githubusercontent.com/NixOS/nixpkgs/92a047a6c4d46a222e9c323ea85882d0a7a13af8/pkgs/development/ocaml-modules/menhir/generic.nix";
   sha256 = "ef5f134c307f579a5c37754c939cba016f4cc9beba9652fe04e8c7ba87874466";
-  }; in
+}; in
 # and use them with with the version we want
 let menhir = (import menhir_nix) {
   inherit (nixpkgs) stdenv fetchurl ocaml;
   inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
   version = "20180703";
   sha256 = "16wv5m7ky27qb8krlycw79dqgzfnpm6rkppc9f26gyw15riicpxb";
-  }; in
+}; in
 
 let commonBuildInputs = [
-      nixpkgs.ocaml
-      menhir
-      nixpkgs.ocamlPackages.findlib
-      nixpkgs.ocamlPackages.ocamlbuild
-      ocaml_wasm
-      nixpkgs.ocamlPackages.zarith
-  ]; in
+  nixpkgs.ocaml
+  menhir
+  nixpkgs.ocamlPackages.findlib
+  nixpkgs.ocamlPackages.ocamlbuild
+  ocaml_wasm
+  nixpkgs.ocamlPackages.zarith
+]; in
 
 rec {
 

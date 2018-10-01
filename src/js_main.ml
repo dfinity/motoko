@@ -39,7 +39,8 @@ let js_check source =
       val code = Js.null
     end
 
-let js_compile_with mode_string convert source =
+let js_compile_with mode_string source source_map convert =
+  Flags.source_map := source_map;
   let mode =
     match Js.to_string mode_string with
     | "dfinity" -> Pipeline.DfinityMode
@@ -58,17 +59,17 @@ let js_compile_with mode_string convert source =
       val code = Js.null
     end
 
-let js_compile_wat mode =
-  js_compile_with mode
+let js_compile_wat mode s source_map =
+  js_compile_with mode s source_map
     (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)))
 
-let js_compile_wasm mode =
-  js_compile_with mode (fun m -> Js.bytestring (Wasm.Encode.encode m))
+let js_compile_wasm mode s source_map =
+  js_compile_with mode s source_map (fun m -> Js.bytestring (Wasm.Encode.encode m))
 
 let () =
   Js.export "ActorScript"
     (object%js
       method check s = js_check s
-      method compileWat mode s = js_compile_wat mode s
-      method compileWasm mode s = js_compile_wasm mode s
+      method compileWat mode s source_map = js_compile_wat mode s source_map
+      method compileWasm mode s source_map = js_compile_wasm mode s source_map
     end);

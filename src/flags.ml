@@ -4,5 +4,5 @@ let print_depth = ref 2
 let dump_parse = ref false
 let await_lowering = ref false
 let dump_lowering = ref false
-
-
+let source_map = ref false
+let prelude = ref true
