@@ -98,7 +98,7 @@ val lookup_field : string -> field list -> typ
 (* Normalization and Classification *)
 
 val normalize : con_env -> typ -> typ
-val structural : con_env -> typ -> typ
+val promote : con_env -> typ -> typ
 
 exception Unavoidable of con
 val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)

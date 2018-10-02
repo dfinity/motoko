@@ -1,6 +1,6 @@
 $ dsh reset
 {
-    "stateRoot": "0x5d52ee16b5c922b81668a6060ed483ea693ff05e"
+    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
 }
 
 $ dsh new -a _out/the-answer.wasm

@@ -204,6 +204,7 @@ and value =
   | Char of unicode
   | Text of string
   | Tup of value list
+  | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
   | Func of class_ option * func
@@ -238,6 +239,7 @@ let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
+let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
@@ -271,7 +273,7 @@ let obj_of_array a =
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = Nat (Nat.of_int !i) in incr i; k' v
+        let v = Opt (Nat (Nat.of_int !i)) in incr i; k' v
       in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
@@ -281,7 +283,7 @@ let obj_of_array a =
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = a.(!i) in incr i; k' v
+        let v = Opt (a.(!i)) in incr i; k' v
       in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
@@ -307,6 +309,7 @@ let rec compare x1 x2 =
   match x1, x2 with
   | Nat n1, Nat n2 -> Nat.compare n1 n2
   | Int n1, Int n2 -> Int.compare n1 n2
+  | Opt v1, Opt v2 -> compare v1 v2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
   | Obj (c1, fs1), Obj (c2, fs2) ->
@@ -353,6 +356,8 @@ let rec string_of_val_nullary d = function
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val' d) vs))
       (if List.length vs = 1 then "," else "")
+  | Opt v ->
+    sprintf "%s?" (string_of_val_nullary d v)
   | Obj (_, ve) ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->

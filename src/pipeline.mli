@@ -2,41 +2,40 @@ type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-type loc_error = Source.region * string * string
-type 'a phase_result = ('a, loc_error) result
+type error = Source.region * string * string
 
 val initial_stat_env : stat_env
 val initial_dyn_env  : dyn_env
 val initial_env      : env
 
-type parse_result = Syntax.prog
-val parse_file   : string -> Syntax.prog phase_result
-val parse_files  : string list -> Syntax.prog phase_result
-val parse_string : string -> string -> parse_result phase_result
-val parse_lexer  : Lexing.lexbuf -> string -> parse_result phase_result
+type parse_result = (Syntax.prog, error) result
+val parse_file   : string -> parse_result
+val parse_files  : string list -> parse_result
+val parse_string : string -> string -> parse_result
+val parse_lexer  : Lexing.lexbuf -> string -> parse_result
 
-type check_result = Syntax.prog * Type.typ * Typing.scope
-val check_file   : stat_env -> string -> check_result phase_result
-val check_files  : stat_env -> string list -> check_result phase_result
-val check_string : stat_env -> string -> string -> check_result phase_result
-val check_lexer  : stat_env -> Lexing.lexbuf -> string -> check_result phase_result
+type check_result = (Syntax.prog * Type.typ * Typing.scope, error) result
+val check_file   : stat_env -> string -> check_result
+val check_files  : stat_env -> string list -> check_result
+val check_string : stat_env -> string -> string -> check_result
+val check_lexer  : stat_env -> Lexing.lexbuf -> string -> check_result
 
 type interpret_result =
-  Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope
-val interpret_file   : env -> string -> interpret_result option
-val interpret_files  : env -> string list -> interpret_result option
-val interpret_string : env -> string -> string -> interpret_result option
-val interpret_lexer  : env -> Lexing.lexbuf -> string -> interpret_result option
+  (Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope) option
+val interpret_file   : env -> string -> interpret_result
+val interpret_files  : env -> string list -> interpret_result
+val interpret_string : env -> string -> string -> interpret_result
+val interpret_lexer  : env -> Lexing.lexbuf -> string -> interpret_result
 
-type run_result = env
-val run_file   : env -> string -> run_result option
-val run_files  : env -> string list -> run_result option
-val run_string : env -> string -> string -> run_result option
-val run_lexer  : env -> Lexing.lexbuf -> string -> run_result option
+type run_result = env option
+val run_file   : env -> string -> run_result
+val run_files  : env -> string list -> run_result
+val run_string : env -> string -> string -> run_result
+val run_lexer  : env -> Lexing.lexbuf -> string -> run_result
 val run_stdin  : env -> unit
 
 type compile_mode = WasmMode | DfinityMode
-type compile_result = Wasm.Ast.module_
-val compile_file   : compile_mode -> string -> compile_result phase_result
-val compile_files  : compile_mode -> string list -> compile_result phase_result
-val compile_string : compile_mode -> string -> string -> compile_result phase_result
+type compile_result = (Wasm.Ast.module_, error) result
+val compile_file   : compile_mode -> string -> compile_result
+val compile_files  : compile_mode -> string list -> compile_result
+val compile_string : compile_mode -> string -> string -> compile_result

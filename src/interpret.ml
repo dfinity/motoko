@@ -131,12 +131,11 @@ let extended_prim s at =
       | _ -> assert false
       )
   | "@scheduler_queue" ->
-     fun v k -> let (call,f)  = V.as_func v in
-                (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
-                Scheduler.queue (fun () -> f  V.unit (fun v -> (try V.as_unit v with _ ->
-                                                                  failwith ("unexpected value: " ^ V.string_of_val v));
-                                                                ())); 
-                k (V.unit)
+    fun v k ->
+      let (call,f) = V.as_func v in
+      (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
+      Scheduler.queue (fun () -> f V.unit V.as_unit);
+      k V.unit
 (*
     fun v k ->
       let call, f  = V.as_func v in
@@ -218,8 +217,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | TupE exps ->
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
-    (* TBR: use a different representation? *)
-    interpret_exp env exp1 k
+    interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
@@ -313,13 +311,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let rec k_continue = fun v ->
         V.as_unit v;
         next V.unit (fun v' ->
-          if v' = V.Null then k V.unit else
-          match match_pat pat v' with
-          | None ->
-            trap pat.at "value %s does not match pattern" (V.string_of_val v')
-          | Some ve ->
-            interpret_exp (adjoin_vals env ve) exp2 k_continue
-        )
+          match v' with
+          | V.Opt v1 -> (match match_pat pat v1 with
+             | None ->
+               trap pat.at "value %s does not match pattern" (V.string_of_val v')
+             | Some ve ->
+               interpret_exp (adjoin_vals env ve) exp2 k_continue)
+          | V.Null -> k V.unit
+          | _ -> assert false
+	)
       in k_continue V.unit
     )
   | LabelE (id, _typ, exp1) ->
@@ -456,9 +456,12 @@ and define_pat env pat v =
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | OptP pat1 ->
-    if v = V.Null
-    then trap pat.at "value %s does not match pattern" (V.string_of_val v)
-    else define_pat env pat1 v  (* TBR: different representation? *)
+    (match v with
+    | V.Opt v1 -> define_pat env pat1 v1
+    | V.Null ->
+      trap pat.at "value %s does not match pattern" (V.string_of_val v)
+    | _ -> assert false
+    )
   | AnnotP (pat1, _typ) -> define_pat env pat1 v
 
 and define_pats env pats vs =
@@ -495,9 +498,11 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | OptP pat1 ->
-    if v = V.Null
-    then None
-    else match_pat pat1 v (* TBR: use a different representation? *)
+    (match v with
+    | V.Opt v1 -> match_pat pat1 v1
+    | V.Null -> None
+    | _ -> assert false
+    )
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v

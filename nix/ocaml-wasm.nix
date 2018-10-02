@@ -7,6 +7,10 @@ if !stdenv.lib.versionAtLeast ocaml.version "4.02"
 then throw "wasm is not available for OCaml ${ocaml.version}"
 else
 
+if !builtins.pathExists ../vendor/wasm-spec/interpreter
+then throw "submodule in vendor/wasm-spec missing. Run git submodule update --init"
+else
+
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
   version = "1.0";

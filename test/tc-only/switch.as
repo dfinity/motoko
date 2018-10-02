@@ -39,10 +39,10 @@ let x6 = switch oo {
 };
 assert (x6 == 1);
 
-let no : Nat? = 0;
+let no : Nat? = 0?;
 let x7 = switch no {
   case null 0;
-  case 0 1;
+  case (0?) 1;
   case (n?) n;
 };
 assert (x7 == 1);

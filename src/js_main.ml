@@ -1,18 +1,20 @@
 open Source
 
 let position_of_pos pos = object%js
-  val line = pos.line
+  (* The LSP spec requires zero-based positions *)
+  val line = if pos.line > 0 then pos.line - 1 else 0
   val character = pos.column
   end
 
 let range_of_region at = object%js
   val start = position_of_pos at.left
-  val endd = position_of_pos at.right
+  val _end = position_of_pos at.right
   end
 
 let diagnostics_of_error (at, category, msg) = object%js
   val range = range_of_region at
-  val source = Js.string category
+  val severity = 1 (* 1 means error in the LSP spec *)
+  val source = Js.string "actorscript"
   val message = Js.string msg
   end
 
