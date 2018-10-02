@@ -1,1 +1,4 @@
-switch.as:65.3-65.14: warning, the cases in this switch do not cover all possible values
+switch.as:42.17-42.18: type error, literal of type
+  Nat
+does not have expected type
+  Nat?

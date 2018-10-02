@@ -1,0 +1,4 @@
+objects3.as:3.11-3.12: type error, expression of type
+  Q = {this : var Q?; x : Nat}
+cannot produce expected type
+  Q?

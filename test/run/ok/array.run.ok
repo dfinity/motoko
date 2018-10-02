@@ -1,4 +1,27 @@
 -- Checking array.as:
 -- Interpreting array.as:
--- Finished array.as:
+array.as:37.10-37.11: fatal error, File "interpret.ml", line 502, characters 11-17: Assertion failed
+
+Last environment:
+a = [1, 2, 42]
+abs = func
+b = [2, 6, 22]
+emptyit = {next = func}
+i = _
+ignore = func
+it = {next = func}
+it2 = _
+it_again = _
+oa = [1, 2, 42]
+ob = [2, 6, 22]
+opt_eq = func
+print = func
+printInt = func
+range = class
+revrange = class
+x = 0
+y = 0
+
+Raised at file "nat.ml", line 524, characters 55-59
+-- Aborted array.as:
 

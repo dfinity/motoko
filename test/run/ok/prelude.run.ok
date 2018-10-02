@@ -1,4 +1,24 @@
 -- Checking prelude.as:
 -- Interpreting prelude.as:
--- Finished prelude.as:
+prelude.as:10.15-10.16: fatal error, Invalid_argument("Value.as_nat")
+
+Last environment:
+abs = func
+i = 0
+ignore = func
+j = 0?
+print = func
+printInt = func
+range = class
+revrange = class
+
+Raised at file "value.ml", line 228, characters 22-55
+Called from file "operator.ml", line 88, characters 37-48
+Called from file "interpret.ml", line 214, characters 10-37
+Called from file "interpret.ml", line 77, characters 8-23
+Re-raised at file "interpret.ml", line 74, characters 19-35
+Called from file "interpret.ml", line 81, characters 36-44
+Called from file "interpret.ml", line 690, characters 2-18
+Called from file "pipeline.ml", line 156, characters 20-54
+-- Aborted prelude.as:
 
