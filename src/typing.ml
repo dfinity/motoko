@@ -336,7 +336,7 @@ and infer_exp' env exp : T.typ =
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_binop t op) then
-        error exp.at "operator not defined for operand types\n  %sand\n  %s"
+        error exp.at "operator not defined for operand types\n  %s and\n  %s"
           (T.string_of_typ_expand env.cons t1)
           (T.string_of_typ_expand env.cons t2)
     end;
@@ -347,7 +347,7 @@ and infer_exp' env exp : T.typ =
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
       if not (Operator.has_relop t op) then
-        error exp.at "operator not defined for operand types\n  %sand\n  %s"
+        error exp.at "operator not defined for operand types\n  %s and\n  %s"
           (T.string_of_typ_expand env.cons t1)
           (T.string_of_typ_expand env.cons t2)
     end;
