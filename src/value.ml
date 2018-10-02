@@ -273,7 +273,7 @@ let obj_of_array a =
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = Nat (Nat.of_int !i) in incr i; k' v
+        let v = Opt (Nat (Nat.of_int !i)) in incr i; k' v
       in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
@@ -283,7 +283,7 @@ let obj_of_array a =
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = a.(!i) in incr i; k' v
+        let v = Opt (a.(!i)) in incr i; k' v
       in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in

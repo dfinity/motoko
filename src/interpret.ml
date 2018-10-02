@@ -311,13 +311,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let rec k_continue = fun v ->
         V.as_unit v;
         next V.unit (fun v' ->
-          if v' = V.Null then k V.unit else
-          match match_pat pat v' with
-          | None ->
-            trap pat.at "value %s does not match pattern" (V.string_of_val v')
-          | Some ve ->
-            interpret_exp (adjoin_vals env ve) exp2 k_continue
-        )
+          match v' with
+          | V.Opt v1 -> (match match_pat pat v1 with
+             | None ->
+               trap pat.at "value %s does not match pattern" (V.string_of_val v')
+             | Some ve ->
+               interpret_exp (adjoin_vals env ve) exp2 k_continue)
+          | V.Null -> k V.unit
+          | _ -> assert false
+	)
       in k_continue V.unit
     )
   | LabelE (id, _typ, exp1) ->
