@@ -95,6 +95,13 @@ stats: $(addsuffix .diff,$(GENERATED_OUT))
 	else echo -e "Failed tests:$$failed"; exit 1; \
 	fi
 
+diffs: $(addsuffix .diff,$(GENERATED_OUT))
+	@for test in $(GENERATED); do \
+	  if [ -s $(OUTDIR)/$$test.diff ]; then \
+	    cat $(OUTDIR)/$$test.diff; \
+	  fi; \
+	done
+
 # refresh all
 current: $(addsuffix .refresh, $(GENERATED))
 accept: current

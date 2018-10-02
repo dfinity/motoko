@@ -2,6 +2,8 @@ NAME = asc
 BUILD = byte
 MAIN = main
 
+ASC = `pwd`/$(NAME)
+
 OPAM_PACKAGES = wasm num
 JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 
@@ -34,10 +36,23 @@ sanity:
 clean:
 	rm -f *~ .*~
 	$(OCAMLBUILD) -clean
+	$(MAKE) -C ../test clean
 
 test: $(NAME)
-	$(MAKE) -C ../test ASC=../src/$(NAME) all
-	$(MAKE) -C ../samples ASC=../src/$(NAME) all
+	$(MAKE) -C ../test ASC=$(ASC) all
+	$(MAKE) -C ../samples ASC=$(ASC) all
+
+test-dfn: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) all-dfn
+
+diffs: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) diffs
+
+diffs-dfn: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) diffs-dfn
 
 accept: $(NAME)
-	$(MAKE) -C ../test ASC=../src/$(NAME) accept
+	$(MAKE) -C ../test ASC=$(ASC) accept
+
+accept-dfn: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) accept-dfn

@@ -108,7 +108,7 @@ let check_prog infer senv name prog : (Type.typ * Typing.scope, error) result =
   try
     phase "Checking" name;
     let t, ((ve, te, ce) as scope) = infer senv prog in
-    if !Flags.trace then begin
+    if !Flags.trace && !Flags.verbose then begin
       print_ce ce;
       print_stat_ve ve
     end;
