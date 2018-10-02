@@ -1,4 +1,0 @@
-type-inclusion.as:38.27-38.28: type error, expression of type
-  Nat
-cannot produce expected type
-  Int?

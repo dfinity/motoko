@@ -1,4 +1,0 @@
-iter-null.as:1.25-1.26: type error, literal of type
-  Nat
-does not have expected type
-  Nat?
