@@ -217,7 +217,7 @@ let compile_false =   [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_zero =    [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_unit =    [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 0l))) ]
 let compile_const i = [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 i))) ]
-(* A hack! This needs to be disjoint from all other values *)
+(* This needs to be disjoint from all pointers *)
 let compile_null =  [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int))) ]
 
 
@@ -318,6 +318,13 @@ module Var = struct
     | None   -> [ nr Unreachable ]
 
 end (* Var *)
+
+module Opt = struct
+
+let inject env e = Tuple.lit env [e]
+let project = Heap.load_field 0l
+
+end (* Opt *)
 
 module Func = struct
 
@@ -644,7 +651,9 @@ module Array = struct
               [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
               store_ptr @
               (* Return stuff *)
-              mk_code (Func.load_closure 2l) [ nr (GetLocal (nr i)) ]
+              Opt.inject (E.inc_depth env) (
+                mk_code (Func.load_closure 2l) [ nr (GetLocal (nr i)) ]
+              )
             )) ]
        ) in
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
@@ -938,8 +947,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e @ [ nr Return ]
-  | OptE e -> compile_exp env e (* Subtype! *)
-
+  | OptE e ->
+     Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
@@ -1002,7 +1011,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
        [ nr (If ([],
           [],
-          alloc_code @ [ nr (GetLocal (nr oi)) ] @ code2 @ code3 @
+          alloc_code @ [ nr (GetLocal (nr oi)) ] @ Opt.project @ code2 @ code3 @
           [ nr Drop ; nr (Br (nr 1l)) ]
        ))]
      ))] @
@@ -1059,7 +1068,22 @@ and compile_pat env fail_depth pat : E.t * Wasm.Ast.instr list * Wasm.Ast.instr 
   *)
   | WildP -> (env, [], [ nr Drop ])
   | AnnotP (p, _) -> compile_pat env fail_depth p
-  | OptP p -> compile_pat env fail_depth p
+  | OptP p ->
+      let (env1, alloc_code1, code1) = compile_pat (E.inc_depth env) fail_depth p in
+      let i = E.add_anon_local env I32Type in
+      let code =
+        [ nr (SetLocal (nr i)) ] @
+        [ nr (GetLocal (nr i)) ] @
+        compile_null @
+        [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+        [ nr (If ([],
+                  compile_fail (E.inc_depth env) fail_depth,
+                  [ nr (GetLocal (nr i)) ] @
+                  Opt.project @
+                  code1
+          )) ] in
+      let env2 = E.reset_depth env1 env in
+      (env2, alloc_code1, code)
   | LitP l ->
       let code =
         compile_lit_pat env fail_depth None !l @
