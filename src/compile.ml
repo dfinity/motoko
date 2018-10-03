@@ -352,7 +352,7 @@ module Func = struct
        }
 
   (* Expect the function closure and the argument on the stack *)
-  let call env =
+  let call env at =
    (* Pop the argument *)
    let i = E.add_anon_local env I32Type in
    [ nr (SetLocal (nr i)) ] @
@@ -369,7 +369,7 @@ module Func = struct
    [ nr (GetLocal (nr fi)) ] @
    Heap.load_field 0l @
    (* All done: Call! *)
-   [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+   [ nra (CallIndirect (nr E.unary_fun_ty_i)) at ]
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -927,7 +927,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp (E.inc_depth env) e2 in
      let code3 = compile_exp (E.inc_depth env) e3 in
-     code1 @ [ nr (If ([I32Type], code2, code3)) ]
+     code1 @ [ nra (If ([I32Type], code2, code3)) exp.at ]
   | IsE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -968,7 +968,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
-     Func.call env
+     Func.call env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -1009,7 +1009,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        [ nr (GetLocal (nr i)) ] @
        Object.load_idx env1 (nr__ "next") @
        compile_unit @
-       Func.call env1 @
+       Func.call env1 Source.no_region @
        let oi = E.add_anon_local env I32Type in
        [ nr (SetLocal (nr oi)) ] @
 

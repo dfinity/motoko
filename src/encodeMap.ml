@@ -36,6 +36,7 @@ let encode m =
 
   (* source map *)
   let map = ref [] in
+  let segs = ref 0 in
   let prev_ol = ref 0 in
   let prev_oc = ref 0 in
   let prev_il = ref 0 in
@@ -56,7 +57,7 @@ let encode m =
     Vlq.Base64.encode buf4 (ic - !prev_ic);  (* input column *)
     map := !map @ [Buffer.contents buf1; Buffer.contents buf2; Buffer.contents buf3; Buffer.contents buf4] @ [","];
 
-    prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic
+    prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
   in
 
   let module E = struct
@@ -533,5 +534,5 @@ let encode m =
   in E.module_ m;
 
   Printf.printf "output length: %s\n" (string_of_int (pos s));
-  Printf.printf "source map: %s" (String.concat "" !(map));
+  Printf.printf "source map (%d segments): %s" !segs (String.concat "" !(map));
   to_string s
