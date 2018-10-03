@@ -31,6 +31,17 @@ let js_compile_with dfinity_mode convert source =
       val code = Js.null
     end
 
+let js_check_string source =
+  match Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source) "js-input" with
+  | Ok (prog, t, sscope) -> object%js
+      val diagnostics = Js.array (Array.of_list [ ])
+      val code = Js.null
+    end
+  | Error e -> object%js
+      val diagnostics = Js.array (Array.of_list [ diagnostics_of_error e ])
+      val code = Js.null
+    end
+
 let js_compile_wat dfinity_mode =
   js_compile_with dfinity_mode (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)))
 let js_compile_wasm dfinity_mode =
@@ -39,6 +50,7 @@ let js_compile_wasm dfinity_mode =
 let () =
   Js.export "ActorScript"
     (object%js
+      method checkString s = js_check_string s
       method compileWat dfinity_mode s = js_compile_wat dfinity_mode s
       method compileWasm dfinity_mode s = js_compile_wasm dfinity_mode s
     end);
