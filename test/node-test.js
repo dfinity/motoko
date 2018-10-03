@@ -1,8 +1,8 @@
 var assert = require('assert');
 var m = require('asc.js');
 
-var empty_wasm_plain = m.ActorScript.compileWasm(false,'');
-var empty_wasm_dfinity = m.ActorScript.compileWasm(true, '');
+var empty_wasm_plain = m.ActorScript.compileWasm('wasm','');
+var empty_wasm_dfinity = m.ActorScript.compileWasm('dfinity', '');
 
 assert.equal(typeof(empty_wasm_plain), 'object');
 assert.equal(empty_wasm_plain.code.substr(0,4), '\0asm');
@@ -24,7 +24,7 @@ WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code,'ascii'))
 
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
 
-var bad_result = m.ActorScript.compileWasm(true,'1+');
+var bad_result = m.ActorScript.compileWasm('dfinity','1+');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
