@@ -50,8 +50,10 @@ let exit_on_none = function
 
 let exit_on_failure = function
   | Ok x -> x
-  | Error (at, category, msg) ->
-    eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg;
+  | Error errs ->
+    List.iter (fun (at, category, msg) ->
+      eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
+    ) errs;
     exit 1
 
 let process_files names : unit =

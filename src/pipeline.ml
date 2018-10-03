@@ -15,6 +15,9 @@ type error = Source.region * string * string
 let error at category msg =
   Error (at, category, msg)
 
+let errors category errs =
+  Error (List.map (fun (at, msg) -> (at, category, msg)) errs)
+
 let print_error (at, category, msg) =
   eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
 
@@ -102,9 +105,10 @@ let parse_files filenames =
 
 (* Checking *)
 
-type check_result = (Syntax.prog * Type.typ * Typing.scope, error) result
+type check_result = (Syntax.prog * Type.typ * Typing.scope, error list) result
 
-let check_prog infer senv name prog : (Type.typ * Typing.scope, error) result =
+let check_prog infer senv name prog
+  : (Type.typ * Typing.scope, error list) result =
   try
     phase "Checking" name;
     let t, ((ve, te, ce) as scope) = infer senv prog in
@@ -113,8 +117,8 @@ let check_prog infer senv name prog : (Type.typ * Typing.scope, error) result =
       print_stat_ve ve
     end;
     Ok (t, scope)
-  with Typing.Error (at, msg) ->
-    error at "type" msg
+  with Typing.Error errs ->
+    errors "type" errs
 
 let await_lowering prog name =
   if !Flags.await_lowering then
@@ -128,10 +132,10 @@ let await_lowering prog name =
 
 let check_with parse infer senv name : check_result =
   match parse name with
-  | Error e -> Error e
+  | Error e -> Error [e]
   | Ok prog ->
     match check_prog infer senv name prog with
-    | Error e -> Error e
+    | Error es -> Error es
     | Ok (t, scope) ->
        let prog' = await_lowering prog name in
        Ok (prog', t, scope)
@@ -169,8 +173,8 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
 
 let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
-  | Error e ->
-    print_error e;
+  | Error es ->
+    List.iter print_error es;
     None
   | Ok (prog, t, sscope) ->
     match interpret_prog denv name prog with
@@ -200,7 +204,7 @@ let check_prelude () : Syntax.prog * stat_env =
   | Error e -> prelude_error "parsing" e
   | Ok prog ->
     match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
-    | Error e -> prelude_error "checking" e
+    | Error es -> prelude_error "checking" (List.hd es)
     | Ok (_t, sscope) ->
       let senv = Typing.adjoin Typing.empty_env sscope in
       prog, senv
@@ -266,7 +270,7 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (Wasm.Ast.module_, error) result
+type compile_result = (Wasm.Ast.module_, error list) result
 
 let compile_prog mode name prog : Wasm.Ast.module_ =
   phase "Compiling" name;
@@ -274,7 +278,7 @@ let compile_prog mode name prog : Wasm.Ast.module_ =
 
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
-  | Error e -> Error e
+  | Error es -> Error es
   | Ok (prog, _t, _scope) ->
     let open Source in
     let open Syntax in

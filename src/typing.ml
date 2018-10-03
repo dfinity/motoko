@@ -4,17 +4,31 @@ open Source
 module T = Type
 module A = Await
 
+
 (* Error Handling *)
 
-exception Error of Source.region * string
+type error = Source.region * string
+exception Error of error list
 
 let error at fmt =
-  Printf.ksprintf (fun s -> raise (Error (at, s))) fmt
+  Printf.ksprintf (fun s -> raise (Error [at, s])) fmt
 
 let warn at fmt =
   Printf.ksprintf (fun s ->
     Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
+
+let recover_with x f y =
+  try f y, [] with Error es -> x, es
+
+let return_with x es =
+  if es = [] then x else raise (Error es)
+
+let recover f y =
+  snd (recover_with () f y)
+
+let return es =
+  return_with () es
 
 
 (* Contexts *)
@@ -642,7 +656,7 @@ and infer_cases env t_pat t cases : T.typ =
   | [] -> t
   | {it = {pat; exp}; at; _}::cases' ->
     let ve = check_pat env t_pat pat in
-    let t' = infer_exp (adjoin_vals env ve) exp in
+    let t', errs1 = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
     let t'' = T.lub env.cons t t' in
     if
       t'' = T.Any &&
@@ -652,15 +666,17 @@ and infer_cases env t_pat t cases : T.typ =
         (T.string_of_typ t'')
         (T.string_of_typ_expand env.cons t)
         (T.string_of_typ_expand env.cons t');
-    infer_cases env t_pat t'' cases'
+    let t, errs2 = recover_with T.Non (infer_cases env t_pat t'') cases' in
+    return_with t (errs1 @ errs2)
 
 and check_cases env t_pat t cases =
   match cases with
   | [] -> ()
   | {it = {pat; exp}; _}::cases' ->
     let ve = check_pat env t_pat pat in
-    check_exp (adjoin_vals env ve) t exp;
-    check_cases env t_pat t cases'
+    let errs1 = recover (check_exp (adjoin_vals env ve) t) exp in
+    let errs2 = recover (check_cases env t_pat t) cases' in
+    return (errs1 @ errs2)
 
 
 (* Patterns *)
@@ -946,8 +962,10 @@ and infer_block_exps env ce_inner decs : T.typ =
   | [] -> T.unit
   | [dec] -> infer_dec env ce_inner dec
   | dec::decs' ->
-    if not env.pre then check_dec env ce_inner T.unit dec;
-    infer_block_exps env ce_inner decs'
+    let errs1 =
+      if env.pre then [] else recover (check_dec env ce_inner T.unit) dec in
+    let t, errs2 = recover_with T.Non (infer_block_exps env ce_inner) decs' in
+    return_with t (errs1 @ errs2)
 
 and infer_dec env ce_inner dec : T.typ =
   let t = 
@@ -1007,8 +1025,9 @@ and check_block_exps env ce_inner t decs at =
   | [dec] ->
     check_dec env ce_inner t dec
   | dec::decs' ->
-    check_dec env ce_inner T.unit dec;
-    check_block_exps env ce_inner t decs' at
+    let errs1 = recover (check_dec env ce_inner T.unit) dec in
+    let errs2 = recover (check_block_exps env ce_inner t decs') at in
+    return (errs1 @ errs2)
 
 and check_dec env ce_inner t dec =
   begin

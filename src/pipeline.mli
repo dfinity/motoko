@@ -14,7 +14,7 @@ val parse_files  : string list -> parse_result
 val parse_string : string -> string -> parse_result
 val parse_lexer  : Lexing.lexbuf -> string -> parse_result
 
-type check_result = (Syntax.prog * Type.typ * Typing.scope, error) result
+type check_result = (Syntax.prog * Type.typ * Typing.scope, error list) result
 val check_file   : stat_env -> string -> check_result
 val check_files  : stat_env -> string list -> check_result
 val check_string : stat_env -> string -> string -> check_result
@@ -35,7 +35,7 @@ val run_lexer  : env -> Lexing.lexbuf -> string -> run_result
 val run_stdin  : env -> unit
 
 type compile_mode = WasmMode | DfinityMode
-type compile_result = (Wasm.Ast.module_, error) result
+type compile_result = (Wasm.Ast.module_, error list) result
 val compile_file   : compile_mode -> string -> compile_result
 val compile_files  : compile_mode -> string list -> compile_result
 val compile_string : compile_mode -> string -> string -> compile_result
