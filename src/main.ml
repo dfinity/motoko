@@ -72,8 +72,10 @@ let process_files names : unit =
     ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
   | Compile ->
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
-    (* TBR: output to file *)
-    Wasm.Print.module_ stdout 80 module_
+    let oc = open_out "test.wasm" in
+    output_string oc (EncodeMap.encode module_);
+    close_out oc
+    (* Wasm.Print.module_ stdout 80 module_ *)
 
 let () =
   Printexc.record_backtrace true;
