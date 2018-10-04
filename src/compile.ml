@@ -899,7 +899,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 @
-     [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
+     [ nra (If ([I32Type], compile_unit, [nr Unreachable])) exp.at ]
   | NotE e ->
      compile_exp env e @
      [ nr (If ([I32Type], compile_false, compile_true)) ]
