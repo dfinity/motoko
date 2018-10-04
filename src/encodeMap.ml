@@ -36,12 +36,17 @@ let encode m =
 
   (* source map *)
   let map = ref [] in
-  let filename = ref "" in
+  let sources = ref [] in
   let segs = ref 0 in
   let prev_ol = ref 0 in
   let prev_oc = ref 0 in
   let prev_il = ref 0 in
   let prev_ic = ref 0 in
+
+  let rec add_source x lst = match lst with
+    | [] -> sources := !sources @ [ x ]; (List.length !sources) - 1
+    | h :: t -> if x = h then 0 else 1 + (add_source x t)
+  in
 
   let add_to_map file il ic ol oc =
     Printf.printf "%d:%d -> %d:%d\n" il ic ol oc;
@@ -52,13 +57,12 @@ let encode m =
     let buf2 = Buffer.create 100 in
     let buf3 = Buffer.create 100 in
     let buf4 = Buffer.create 100 in
-    Vlq.Base64.encode buf1 (oc - !prev_oc);  (* output column *)
-    Vlq.Base64.encode buf2 0;                (* sources index *)
-    Vlq.Base64.encode buf3 (il - !prev_il);  (* input row *)
-    Vlq.Base64.encode buf4 (ic - !prev_ic);  (* input column *)
+    Vlq.Base64.encode buf1 (oc - !prev_oc);             (* output column *)
+    Vlq.Base64.encode buf2 (add_source file !sources);  (* sources index *)
+    Vlq.Base64.encode buf3 (il - !prev_il);             (* input row *)
+    Vlq.Base64.encode buf4 (ic - !prev_ic);             (* input column *)
     map := !map @ [Buffer.contents buf1; Buffer.contents buf2; Buffer.contents buf3; Buffer.contents buf4] @ [","];
 
-    if !filename = "" then filename := file;
     prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
   in
 
@@ -547,7 +551,7 @@ let encode m =
   let n = (String.length mappings) - 1 in
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
-    ("sources", `List [ `String !filename ]);
+    ("sources", `List ( List.map (fun x -> `String x) !sources ) );
     (* ("names", `List []); *)
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
