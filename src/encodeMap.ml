@@ -36,13 +36,14 @@ let encode m =
 
   (* source map *)
   let map = ref [] in
+  let filename = ref "" in
   let segs = ref 0 in
   let prev_ol = ref 0 in
   let prev_oc = ref 0 in
   let prev_il = ref 0 in
   let prev_ic = ref 0 in
 
-  let add_to_map il ic ol oc =
+  let add_to_map file il ic ol oc =
     Printf.printf "%d:%d -> %d:%d\n" il ic ol oc;
 
     let il = il - 1 in
@@ -57,6 +58,7 @@ let encode m =
     Vlq.Base64.encode buf4 (ic - !prev_ic);  (* input column *)
     map := !map @ [Buffer.contents buf1; Buffer.contents buf2; Buffer.contents buf3; Buffer.contents buf4] @ [","];
 
+    if !filename = "" then filename := file;
     prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
   in
 
@@ -166,7 +168,7 @@ let encode m =
     let var x = vu32 x.it
 
     let rec instr e =
-      if e.at <> no_region then add_to_map e.at.left.line e.at.left.column 0 (pos s);
+      if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
 
       match e.it with
       | Unreachable -> op 0x00
@@ -545,7 +547,7 @@ let encode m =
   let n = (String.length mappings) - 1 in
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
-    (* ("sources", `List []); *)
+    ("sources", `List [ `String !filename ]);
     (* ("names", `List []); *)
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
