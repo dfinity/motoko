@@ -15,6 +15,11 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 }; in
 
+let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
+  inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
+  inherit (nixpkgs.ocamlPackages) findlib;
+}; in
+
 # Include dsh
 let dev_in_nix = (import ./nix/dev-in-nix) { v8 = true; }; in
 let dsh = dev_in_nix.hypervisor; in
@@ -38,8 +43,11 @@ let commonBuildInputs = [
   menhir
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.ocamlbuild
+  nixpkgs.ocamlPackages.num
   ocaml_wasm
+  ocaml_vlq
   nixpkgs.ocamlPackages.zarith
+  nixpkgs.ocamlPackages.yojson
 ]; in
 
 rec {
