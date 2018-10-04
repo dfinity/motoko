@@ -41,6 +41,18 @@ let js_compile_with mode_string convert source =
       val code = Js.null
     end
 
+let js_check_string source =
+  match Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source) "js-input" with
+  | Ok (prog, t, sscope) -> object%js
+      val diagnostics = Js.array (Array.of_list [ ])
+      val code = Js.null
+    end
+  | Error ee -> object%js
+      val diagnostics =
+        Js.array (Array.of_list (List.map diagnostics_of_error ee))
+      val code = Js.null
+    end
+
 let js_compile_wat mode =
   js_compile_with mode
     (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)))
@@ -51,6 +63,7 @@ let js_compile_wasm mode =
 let () =
   Js.export "ActorScript"
     (object%js
+      method checkString s = js_check_string s
       method compileWat mode s = js_compile_wat mode s
       method compileWasm mode s = js_compile_wasm mode s
     end);

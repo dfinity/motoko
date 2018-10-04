@@ -47,3 +47,29 @@ assert.deepStrictEqual(bad_result, {
   ],
   "code": null
 });
+
+assert.deepStrictEqual(m.ActorScript.checkString('1'), {
+  "diagnostics": [],
+  "code": null
+});
+
+assert.deepStrictEqual(m.ActorScript.checkString('1+'), {
+  "diagnostics": [
+    {
+      "range": {
+        "start": {
+          "line": 0,
+          "character": 2
+        },
+        "end": {
+          "line": 0,
+          "character": 2
+        }
+      },
+      "severity": 1,
+      "source": "actorscript",
+      "message": "unexpected token"
+    }
+  ],
+  "code": null
+});
