@@ -308,9 +308,7 @@ let rec span env = function
   | Prim (Nat | Int | Float | Text) -> None
   | Prim Word8 -> Some 0x100
   | Prim Word16 -> Some 0x10000
-  | Prim Word32 -> Some 0x100000000
-  | Prim Word64 -> None  (* for all practical purpuses *)
-  | Prim Char -> Some 0x100000000
+  | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Class | Any -> None
   | Opt _ -> Some 2

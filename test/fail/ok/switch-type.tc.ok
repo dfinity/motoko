@@ -1,0 +1,4 @@
+switch-type.as:1.29-1.36: type error, pattern of type
+  Nat
+cannot consume expected type
+  Int
