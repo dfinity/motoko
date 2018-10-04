@@ -533,6 +533,25 @@ let encode m =
   end
   in E.module_ m;
 
+  (* {
+    "version": 3,
+    "sources": [
+      "fac.as"
+    ],
+    "names": [],
+    "mappings": "..."
+  } *)
+  let mappings = String.concat "" !map in
+  let n = (String.length mappings) - 1 in
+  let json : Yojson.Basic.json = `Assoc [
+    ("version", `Int 3);
+    (* ("sources", `List []); *)
+    (* ("names", `List []); *)
+    ("mappings", `String (String.sub mappings 0 n) )
+  ] in
+
+  let map_to_json = Yojson.Basic.pretty_to_string json in
+
   Printf.printf "output length: %s\n" (string_of_int (pos s));
-  Printf.printf "source map (%d segments): %s" !segs (String.concat "" !(map));
+  Printf.printf "source map (%d segments): %s\n" !segs map_to_json;
   to_string s
