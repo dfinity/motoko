@@ -136,7 +136,7 @@ let is_triv (exp:exp)  =
     eff exp = T.Triv
               
 let answerT = Type.unit
-let contT typ = T.Func(T.Call, [], typ, answerT)
+let contT typ = T.Func(T.Call T.Local, [], typ, answerT)
 
 (* primitives *)
 let exp_of_id name typ =
@@ -173,7 +173,7 @@ let id_ret = ""
 let  (-->) k e =
   match k.it with
   | VarE v ->
-     let note = {note_typ = T.Func(T.Call, [], typ k, typ e);
+     let note = {note_typ = T.Func(T.Call T.Local, [], typ k, typ e);
                  note_eff = T.Triv} in
      {it=DecE({it=FuncD("" @@ no_region, (* no recursion *)
                         [],
@@ -219,21 +219,21 @@ let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
 *)                         
 
 let prim_make_async typ =
-  primE "@make_async" (T.Func(T.Call, [], T.unit,T.Async typ))
+  primE "@make_async" (T.Func(T.Call T.Local, [], T.unit,T.Async typ))
 let prim_set_async typ =
-  primE "@set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
+  primE "@set_async" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; typ], T.unit))
 let prim_get_async typ = 
-  primE "@get_async" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
+  primE "@get_async" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
 let prim_scheduler_queue  =
-  primE "@scheduler_queue" (T.Func(T.Call, [], T.Func(T.Call, [], T.unit, T.unit), T.unit))
+  primE "@scheduler_queue" (T.Func(T.Call T.Local, [], T.Func(T.Call T.Local, [], T.unit, T.unit), T.unit))
 let prim_sheduler_yield = 
-  primE "@scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
+  primE "@scheduler_yield" (T.Func(T.Call T.Local, [], T.unit, T.unit))
 let prim_await typ = 
-  primE "@await" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
+  primE "@await" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
 let prim_actor_field_unit typ = 
-  primE "@actor_field_unit" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
+  primE "@actor_field_unit" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))
 let prim_actor_field_async typ = 
-  primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))        
+  primE "@actor_field_async" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))        
 
 let actor_field typ =
   match typ with
@@ -698,7 +698,7 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
- let next_typ = (T.Func(T.Call, [], T.unit, T.Opt (typ pat))) in
+ let next_typ = (T.Func(T.Call T.Local, [], T.unit, T.Opt (typ pat))) in
  let v1dotnext = dotE v1 "next" next_typ -@- unitE in
  let loop = fresh_id (contT T.unit) in 
  let v2 = fresh_id T.unit in                    

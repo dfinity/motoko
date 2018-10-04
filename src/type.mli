@@ -1,8 +1,9 @@
 (* Representation *)
 
 type con = Con.t
-type obj_sort = Object | Actor
-type func_sort = Call | Construct
+type sharing = Local | Sharable
+type obj_sort = Object of sharing | Actor
+type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
 type prim =
@@ -32,6 +33,7 @@ and typ =
   | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
+  | Shared                                    (* sharable *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)

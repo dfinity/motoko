@@ -59,7 +59,7 @@ let assign_op lhs rhs_f at =
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
 %token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
-%token FUNC TYPE ACTOR CLASS PRIVATE NEW
+%token FUNC TYPE ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
@@ -139,15 +139,17 @@ seplist1(X, SEP) :
   | VAR { Var @@ at $sloc }
 
 %inline obj_sort :
-  | NEW { Type.Object @@ at $sloc }
+  | NEW { Type.Object Type.Local @@ at $sloc }
+  | SHARED { Type.Object Type.Sharable @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object @@ no_region }
+  | (* empty *) { Type.Object Type.Local @@ no_region }
   | s=obj_sort { s }
 
 %inline func_sort_opt :
-  | (* empty *) { Type.Call @@ no_region }
+  | (* empty *) { Type.Call Type.Local @@ no_region }
+  (*| SHARED { Type.Call Type.Sharable @@ at $sloc }*)
   | CLASS { Type.Construct @@ at $sloc }
 
 
@@ -190,7 +192,7 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_pre ARROW t2=typ 
+  | s=func_sort_opt tps=typ_params_opt t1=typ_pre ARROW t2=typ
     { FuncT(s, tps, t1, t2) @@ at $sloc }
 
 typ_item :
@@ -208,7 +210,8 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
-    { let t = FuncT(Type.Call @@ no_region, tps, t1, t2) @@ span x.at t2.at in
+    { let t = FuncT(Type.Call Type.Local @@ no_region, tps, t1, t2)
+        @@ span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :

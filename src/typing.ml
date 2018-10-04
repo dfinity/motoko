@@ -110,12 +110,10 @@ let rec is_shared_typ ce t =
   | T.Func _ as t' -> is_async_typ ce t'
   | T.Async _ as t' -> is_async_typ ce t'
   | T.Like t -> is_shared_typ ce t
-  | T.Obj (T.Object, fs) ->
-    (* TBR: this isn't stable with subtyping *)
-    List.for_all (fun {T.name; typ} -> is_shared_typ ce typ) fs
-  | T.Obj (T.Actor, fs) -> true
+  | T.Obj (s, fs) -> s = T.Actor || s = T.Object T.Sharable
   | T.Mut _ -> false
-  | T.Class -> true
+  | T.Class -> false
+  | T.Shared -> true
   | T.Any -> false (* TBR *)
   | T.Non -> true
   | T.Pre -> assert false
@@ -162,6 +160,7 @@ let rec check_typ env typ : T.typ =
     )
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
+  | PrimT "Shared" -> T.Shared
   | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
@@ -193,7 +192,7 @@ let rec check_typ env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (is_async_typ env.cons t) then
+  if s <> T.Object T.Local && not (is_async_typ env.cons t) then
     error typ.at "actor field %s has non-async type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
@@ -1195,7 +1194,8 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (T.Call, tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it
+      (T.Func (T.Call T.Local, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, typbinds, sort, pat, fields) ->

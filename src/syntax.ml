@@ -12,6 +12,7 @@ type id = string Source.phrase
 
 (* Types *)
 
+type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
 type func_sort = Type.func_sort Source.phrase
 
