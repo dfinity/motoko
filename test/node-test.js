@@ -48,12 +48,12 @@ assert.deepStrictEqual(bad_result, {
   "code": null
 });
 
-assert.deepStrictEqual(m.ActorScript.checkString('1'), {
+assert.deepStrictEqual(m.ActorScript.check('1'), {
   "diagnostics": [],
   "code": null
 });
 
-assert.deepStrictEqual(m.ActorScript.checkString('1+'), {
+assert.deepStrictEqual(m.ActorScript.check('1+'), {
   "diagnostics": [
     {
       "range": {
