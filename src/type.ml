@@ -298,6 +298,26 @@ let lookup_field name' tfs =
   | None -> invalid "lookup_field"
 
 
+(* Span *)
+
+let rec span env = function
+  | Var _ | Pre -> assert false
+  | Con _ as t | Like t -> span env (promote env t)
+  | Prim Null -> Some 1
+  | Prim Bool -> Some 2
+  | Prim (Nat | Int | Float | Text) -> None
+  | Prim Word8 -> Some 0x100
+  | Prim Word16 -> Some 0x10000
+  | Prim Word32 -> Some 0x100000000
+  | Prim Word64 -> None  (* for all practical purpuses *)
+  | Prim Char -> Some 0x100000000
+  | Obj _ | Tup _ | Async _ -> Some 1
+  | Array _ | Func _ | Class | Any -> None
+  | Opt _ -> Some 2
+  | Mut t -> span env t
+  | Non -> Some 0
+
+
 (* Avoiding local constructors *)
 
 exception Unavoidable of con
@@ -622,7 +642,7 @@ let rec string_of_typ_expand env t =
     | Abs _ -> s
     | Def _ ->
       match normalize env t with
-      | Prim _ -> s
+      | Prim _ | Any | Non | Class -> s
       | t' -> s ^ " = " ^ string_of_typ_expand env t'
     )
   | _ -> s

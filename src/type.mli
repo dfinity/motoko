@@ -94,6 +94,8 @@ val as_async_sub : con_env -> typ -> typ
 
 val lookup_field : string -> field list -> typ
 
+val span : con_env -> typ -> int option
+
 
 (* Normalization and Classification *)
 

@@ -1,6 +1,7 @@
 NAME = asc
 BUILD = byte
 MAIN = main
+JS_MAIN = js_main
 
 ASC = `pwd`/$(NAME)
 
@@ -20,13 +21,13 @@ all: $(NAME) test
 $(NAME): $(MAIN).$(BUILD)
 	mv $< $@
 
-$(NAME).js: js_main.byte
+$(NAME).js: $(JS_MAIN).byte
 	js_of_ocaml +nat.js $< -o $@
 
 $(MAIN).$(BUILD): sanity
 	$(OCAMLBUILD) $@
 
-js_main.byte: js_main.ml
+$(JS_MAIN).byte: $(JS_MAIN).ml sanity
 	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
 
 

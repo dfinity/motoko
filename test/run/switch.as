@@ -61,9 +61,30 @@ let x9 = switch 4 {
 };
 assert (x9 == 1);
 
+let x10 = switch true {
+  case true 3;
+  case false 4;
+};
+assert (x10 == 3);
+
+let x11 = switch null {
+  case null 5;
+};
+assert (x11 == 5);
+
+let x12 = switch (null : Opt<Int>) {
+  case null 6;
+};
+assert (x12 == 6);
+
 func f() {
   switch 0 {};
   switch 0 { case _ {} };
   switch 0 { case 0 {}; case _ {} };
   switch 0 { case 0 {}; case _ {}; };
+  switch (return) {};
+  switch (0, return) { case _ {} };
+  switch (0, return) { case (0, _) {} };
 };
+
+func g(_ : None) {};

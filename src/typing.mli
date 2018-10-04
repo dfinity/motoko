@@ -23,8 +23,8 @@ val adjoin : env -> scope -> env
 val adjoin_vals : env -> val_env -> env
 val adjoin_typs : env -> typ_env -> con_env -> env
 
-
-exception Error of Source.region * string
+type error = Source.region * string
+exception Error of error list
 
 val check_prog : env -> Syntax.prog -> scope (* raise Error *)
 val infer_prog : env -> Syntax.prog -> typ * scope (* raise Error *)

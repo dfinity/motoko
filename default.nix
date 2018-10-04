@@ -66,8 +66,7 @@ rec {
       $out/bin/asc --version
       make -C samples ASC=$out/bin/asc all
       make -C test/run VERBOSE=1 ASC=$out/bin/asc all
-      make -C test/tc-fail VERBOSE=1 ASC=$out/bin/asc all
-      make -C test/tc-only VERBOSE=1 ASC=$out/bin/asc all
+      make -C test/fail VERBOSE=1 ASC=$out/bin/asc all
     '' +
       (if test-dsh then ''
       make -C test/run-dfinity VERBOSE=1 ASC=$out/bin/asc all

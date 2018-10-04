@@ -14,10 +14,10 @@ type desc =
 
 type ctxt =
   | InOpt of ctxt
-  | InTup of ctxt * desc list * desc list * pat list
-  | InAlt1 of ctxt * Source.region * pat
+  | InTup of ctxt * desc list * desc list * pat list * Type.typ list
+  | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
-  | InCase of Source.region * case list
+  | InCase of Source.region * case list * Type.typ
 
 type sets =
   { mutable cases : AtSet.t;
@@ -50,70 +50,82 @@ let value_of_lit = function
   | PreLit _ -> assert false
 
 
-let rec match_pat ctxt desc pat sets =
-	match pat.it with
-	| WildP | VarP _ ->
-	  succeed ctxt desc sets
-	| LitP lit ->
-	  match_lit ctxt desc (value_of_lit !lit) sets
-	| SignP (op, lit) ->
-	  let f = Operator.unop pat.note.note_typ op in
-	  match_lit ctxt desc (f (value_of_lit !lit)) sets
-	| TupP pats ->
-    let descs =
-      match desc with
-      | Tup descs -> descs
-      | Any -> List.map (fun _ -> Any) pats
+let skip_pat pat sets =
+  sets.alts <- AtSet.add pat.at sets.alts;
+  true
+
+let rec match_pat ce ctxt desc pat t sets =
+  Type.span ce t = Some 0 && skip_pat pat sets ||
+  match pat.it with
+  | WildP | VarP _ ->
+    succeed ce ctxt desc sets
+  | LitP lit ->
+    match_lit ce ctxt desc (value_of_lit !lit) t sets
+  | SignP (op, lit) ->
+    let f = Operator.unop pat.note.note_typ op in
+    match_lit ce ctxt desc (f (value_of_lit !lit)) t sets
+  | TupP pats ->
+    let descs, ts =
+      match desc, Type.promote ce t with
+      | Tup descs, Type.Tup ts -> descs, ts
+      | Any, Type.Tup ts -> List.map (fun _ -> Any) pats, ts
       | _ -> assert false
-    in match_tup ctxt [] descs pats sets
+    in match_tup ce ctxt [] descs pats ts sets
 	| OptP pat1 ->
-    match_pat (InOpt ctxt) desc pat1 sets
+    match_pat ce (InOpt ctxt) desc pat1 t sets
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
-    match_pat (InAlt1 (ctxt, pat1.at, pat2)) desc pat1 sets
+    match_pat ce (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
   | AnnotP (pat1, _) ->
-    match_pat ctxt desc pat1 sets
+    match_pat ce ctxt desc pat1 t sets
 
-and match_lit ctxt desc v sets =
+and match_lit ce ctxt desc v t sets =
   let desc_succ = Val v in
   let desc_fail vs = NotVal (ValSet.add v vs) in
   match desc with
   | Any ->
-    succeed ctxt desc_succ sets && fail ctxt (desc_fail ValSet.empty) sets
+    if Type.span ce t = Some 1 then
+      succeed ce ctxt desc_succ sets
+    else
+      succeed ce ctxt desc_succ sets &&
+      fail ce ctxt (desc_fail ValSet.empty) sets
   | Val v' ->
     if v = v'
-    then succeed ctxt desc sets
-    else fail ctxt desc sets
+    then succeed ce ctxt desc sets
+    else fail ce ctxt desc sets
   | NotVal vs ->
-    if ValSet.mem v vs
-    then fail ctxt desc sets
-    else succeed ctxt desc_succ sets && fail ctxt (desc_fail vs) sets
+    if ValSet.mem v vs then
+      fail ce ctxt desc sets
+    else if Type.span ce t = Some (ValSet.cardinal vs + 1) then
+      succeed ce ctxt desc_succ sets
+    else
+      succeed ce ctxt desc_succ sets && fail ce ctxt (desc_fail vs) sets
   | _ ->
     assert false
 
-and match_tup ctxt descs_r descs pats sets =
-  match descs, pats with
-  | [], [] ->
-    succeed ctxt (Tup (List.rev descs_r)) sets
-  | desc::descs', pat::pats' ->
-    match_pat (InTup (ctxt, descs_r, descs', pats')) desc pat sets
+and match_tup ce ctxt descs_r descs pats ts sets =
+  match descs, pats, ts with
+  | [], [], [] ->
+    succeed ce ctxt (Tup (List.rev descs_r)) sets
+  | desc::descs', pat::pats', t::ts' ->
+    match_pat ce (InTup (ctxt, descs_r, descs', pats', ts')) desc pat t sets
   | _ ->
     assert false
     
 
-and succeed ctxt desc sets : bool =
+and succeed ce ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
-    succeed ctxt' desc sets
-  | InTup (ctxt', descs_r, descs, pats) ->
-    match_tup ctxt' (desc::descs_r) descs pats sets
-  | InAlt1 (ctxt', at1, pat2) ->
+    succeed ce ctxt' desc sets
+  | InTup (ctxt', descs_r, descs, pats, ts) ->
+    match_tup ce ctxt' (desc::descs_r) descs pats ts sets
+  | InAlt1 (ctxt', at1, _pat2, _t) ->
     sets.reached_alts <- AtSet.add at1 sets.reached_alts;
-    succeed ctxt' desc sets
+    succeed ce ctxt' desc sets
   | InAlt2 (ctxt', at2) ->
     sets.reached_alts <- AtSet.add at2 sets.reached_alts;
-    succeed ctxt' desc sets
-  | InCase (at, cases) ->
+    succeed ce ctxt' desc sets
+  | InCase (at, cases, _t) ->
     sets.reached_cases <- AtSet.add at sets.reached_cases;
     skip cases sets
 
@@ -125,38 +137,41 @@ and skip cases sets : bool =
     sets.cases <- AtSet.add case.at sets.cases;
     skip cases' sets
 
-and fail ctxt desc sets : bool =
+and fail ce ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
-    fail ctxt' desc sets
-  | InTup (ctxt', descs', descs, pats) ->
-    fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
-  | InAlt1 (ctxt', at1, pat2) ->
-    match_pat (InAlt2 (ctxt', pat2.at)) desc pat2 sets
+    fail ce ctxt' desc sets
+  | InTup (ctxt', descs', descs, pats, _ts) ->
+    fail ce ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
+  | InAlt1 (ctxt', at1, pat2, t) ->
+    match_pat ce (InAlt2 (ctxt', pat2.at)) desc pat2 t sets
   | InAlt2 (ctxt', at2) ->
-    fail ctxt' desc sets
-  | InCase (at, []) ->
-    false
-  | InCase (at, case::cases) ->
-    match_pat (InCase (case.at, cases)) desc case.it.pat sets
+    fail ce ctxt' desc sets
+  | InCase (at, [], t) ->
+    Type.span ce t = Some 0
+  | InCase (at, case::cases, t) ->
+    Type.span ce t = Some 0 && skip (case::cases) sets ||
+    match_pat ce (InCase (case.at, cases, t)) desc case.it.pat t sets
 
 
 let warn at fmt =
 	Printf.ksprintf (fun s ->
-    Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
+    if at <> Source.no_region then
+      Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
-let check_cases cases : bool =
+let check_cases ce cases t : bool =
 	let sets = make_sets () in
-  let exhaustive = fail (InCase (Source.no_region, cases)) Any sets in
+  let exhaustive = fail ce (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
   let unreached_alts = AtSet.diff sets.alts sets.reached_alts in
-  AtSet.iter (fun at -> warn at "this case is unreachable") unreached_cases;
-  AtSet.iter (fun at -> warn at "this pattern alternative is unreachable")
+  AtSet.iter (fun at -> warn at "this case is never reached") unreached_cases;
+  AtSet.iter (fun at -> warn at "this pattern is never matched")
     unreached_alts;
   exhaustive
 
 let (@?) it at = {it; at; note = empty_typ_note}
 
-let check_pat pat : bool =
-	check_cases [{pat; exp = TupE [] @? pat.at} @@ pat.at]
+let check_pat ce pat t : bool =
+	check_cases ce
+	  [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
