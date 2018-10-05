@@ -49,8 +49,6 @@ let encode m =
   in
 
   let add_to_map file il ic ol oc =
-    Printf.printf "%d:%d -> %d:%d\n" il ic ol oc;
-
     let il = il - 1 in
     if ol <> !prev_ol then map := !map @ [";"];
     let buf1 = Buffer.create 100 in
@@ -556,8 +554,4 @@ let encode m =
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 
-  let map_to_json = Yojson.Basic.pretty_to_string json in
-
-  Printf.printf "output length: %s\n" (string_of_int (pos s));
-  Printf.printf "source map (%d segments): %s\n" !segs map_to_json;
-  to_string s
+  (Yojson.Basic.pretty_to_string json, to_string s)

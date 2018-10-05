@@ -21,6 +21,7 @@ let set_mode m () =
   mode := m
 
 let compile_mode = ref Pipeline.WasmMode
+let out_file = ref ""
 
 let argspec = Arg.align
 [
@@ -34,6 +35,7 @@ let argspec = Arg.align
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
+  "-o", Arg.Set_string out_file, " output file";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
   "--dfinity",
@@ -72,10 +74,18 @@ let process_files names : unit =
     ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
   | Compile ->
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
-    let oc = open_out "test.wasm" in
-    output_string oc (EncodeMap.encode module_);
-    close_out oc
-    (* Wasm.Print.module_ stdout 80 module_ *)
+    if !out_file = "" then begin
+      eprintf "asc: no output file specified"; exit 1
+    end;
+    let oc = open_out !out_file in
+    let (source_map, wasm) = EncodeMap.encode module_ in
+    output_string oc wasm; close_out oc;
+
+    if !Flags.source_map then begin
+      let source_map_file = !out_file ^ ".map" in
+      let oc_ = open_out source_map_file in
+      output_string oc_ source_map; close_out oc_
+    end
 
 let () =
   Printexc.record_backtrace true;
