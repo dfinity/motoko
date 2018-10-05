@@ -75,7 +75,9 @@ let process_files names : unit =
   | Compile ->
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     if !out_file = "" then begin
-      eprintf "asc: no output file specified"; exit 1
+      match names with
+      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
+      | ns -> eprintf "asc: no output file specified"; exit 1
     end;
     let oc = open_out !out_file in
     let (source_map, wasm) = EncodeMap.encode module_ in
