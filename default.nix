@@ -5,6 +5,12 @@
 
 let stdenv = nixpkgs.stdenv; in
 
+let sourceByRegex = src: regexes: builtins.filterSource (path: type:
+      let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
+      (type == "directory" ||
+      builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes) relPath != null))
+    src; in
+
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
 	{inherit (nixpkgs) stdenv  fetchFromGitHub ocaml;
          inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
@@ -40,9 +46,20 @@ let commonBuildInputs = [
 rec {
 
   native = stdenv.mkDerivation {
-    name = "native";
+    name = "asc";
 
-    src = nixpkgs.lib.cleanSource ./.;
+    src = sourceByRegex ./. [
+      ".*/Makefile.*"
+      "src/.*.ml"
+      "src/.*.mli"
+      "src/.*.mly"
+      "src/.*.mll"
+      "src/_tags"
+      "test/node-test.js"
+      "test/.*/.*.as"
+      "test/.*/ok/.*"
+      "vendor/.*"
+      ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
@@ -74,7 +91,7 @@ rec {
   };
 
   js = native.overrideAttrs (oldAttrs: {
-    name = "js";
+    name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
