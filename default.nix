@@ -58,6 +58,7 @@ rec {
       "test/node-test.js"
       "test/.*/.*.as"
       "test/.*/ok/.*"
+      "test/.*.sh"
       "vendor/.*"
       ];
 
