@@ -45,7 +45,8 @@ assert.deepStrictEqual(bad_result, {
       "message": "unexpected token"
     }
   ],
-  "code": null
+  "code": null,
+  "map": null
 });
 
 assert.deepStrictEqual(m.ActorScript.check('1'), {

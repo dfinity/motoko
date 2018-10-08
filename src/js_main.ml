@@ -48,23 +48,27 @@ let js_compile_with mode_string source source_map convert =
   in
   match Pipeline.compile_string mode (Js.to_string source) "js-input" with
   | Ok module_ ->
+    let (code, map) = convert module_ in
     object%js
       val diagnostics = Js.array [||]
-      val code = Js.some (convert module_)
+      val code = Js.some code
+      val map = Js.some map
     end
   | Error es ->
     object%js
       val diagnostics =
         Js.array (Array.of_list (List.map diagnostics_of_error es))
       val code = Js.null
+      val map = Js.null
     end
 
 let js_compile_wat mode s source_map =
   js_compile_with mode s source_map
-    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)))
+    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
 
 let js_compile_wasm mode s source_map =
-  js_compile_with mode s source_map (fun m -> Js.bytestring (Wasm.Encode.encode m))
+  js_compile_with mode s source_map
+    (fun m -> let (map, wasm) = EncodeMap.encode m in Js.bytestring wasm, Js.string map)
 
 let () =
   Js.export "ActorScript"

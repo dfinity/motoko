@@ -554,4 +554,4 @@ let encode m =
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 
-  (Yojson.Basic.pretty_to_string json, to_string s)
+  (Yojson.Basic.to_string json, to_string s)
