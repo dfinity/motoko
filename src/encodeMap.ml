@@ -46,12 +46,15 @@ let encode m =
   let prev_ic = ref 0 in
 
   let rec add_source x lst = match lst with
-    | [] -> sources := !sources @ [ x ]; sourcesContent := !sourcesContent @ [ ]; (List.length !sources) - 1
+    | [] ->
+      sources := !sources @ [ x ];
+      sourcesContent := !sourcesContent @ [ "" ];
+      (List.length !sources) - 1
     | h :: t -> if x = h then 0 else 1 + (add_source x t)
   in
 
   if !Flags.prelude then begin
-    prev_if := add_source "prelude" !sources;
+    sources := [ "prelude" ];
     sourcesContent := !sourcesContent @ [ Prelude.prelude ]
   end;
 
@@ -558,7 +561,7 @@ let encode m =
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
     ("sources", `List ( List.map (fun x -> `String x) !sources ) );
-    ("sourcesContent", `List ( List.map (fun x -> `String x) !sourcesContent ) );
+    ("sourcesContent", `List ( List.map (fun x -> if x = "" then `Null else `String x) !sourcesContent ) );
     (* ("names", `List []); *)
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
