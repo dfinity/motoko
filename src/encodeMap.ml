@@ -557,7 +557,7 @@ let encode m =
     "mappings": "..."
   } *)
   let mappings = String.concat "" !map in
-  let n = (String.length mappings) - 1 in
+  let n = max 0 ((String.length mappings) - 1) in
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
     ("sources", `List ( List.map (fun x -> `String x) !sources ) );

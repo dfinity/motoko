@@ -87,7 +87,9 @@ let process_files names : unit =
       let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
-    end
+    end;
+    (* TODO: Remove later *)
+    Wasm.Print.module_ stdout 80 module_
 
 let () =
   Printexc.record_backtrace true;
