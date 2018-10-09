@@ -38,6 +38,7 @@ let encode m =
   let map = ref [] in
   let sources = ref [] in
   let segs = ref 0 in
+  let prev_if = ref 0 in
   let prev_ol = ref 0 in
   let prev_oc = ref 0 in
   let prev_il = ref 0 in
@@ -50,18 +51,19 @@ let encode m =
 
   let add_to_map file il ic ol oc =
     let il = il - 1 in
+    let if_ = add_source file !sources in
     if ol <> !prev_ol then map := !map @ [";"];
     let buf1 = Buffer.create 100 in
     let buf2 = Buffer.create 100 in
     let buf3 = Buffer.create 100 in
     let buf4 = Buffer.create 100 in
     Vlq.Base64.encode buf1 (oc - !prev_oc);             (* output column *)
-    Vlq.Base64.encode buf2 (add_source file !sources);  (* sources index *)
+    Vlq.Base64.encode buf2 (if_ - !prev_if);            (* sources index *)
     Vlq.Base64.encode buf3 (il - !prev_il);             (* input row *)
     Vlq.Base64.encode buf4 (ic - !prev_ic);             (* input column *)
     map := !map @ [Buffer.contents buf1; Buffer.contents buf2; Buffer.contents buf3; Buffer.contents buf4] @ [","];
 
-    prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
+    prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
   in
 
   let module E = struct
