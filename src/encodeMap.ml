@@ -37,6 +37,7 @@ let encode m =
   (* source map *)
   let map = ref [] in
   let sources = ref [] in
+  let sourcesContent = ref [] in
   let segs = ref 0 in
   let prev_if = ref 0 in
   let prev_ol = ref 0 in
@@ -45,9 +46,14 @@ let encode m =
   let prev_ic = ref 0 in
 
   let rec add_source x lst = match lst with
-    | [] -> sources := !sources @ [ x ]; (List.length !sources) - 1
+    | [] -> sources := !sources @ [ x ]; sourcesContent := !sourcesContent @ [ ]; (List.length !sources) - 1
     | h :: t -> if x = h then 0 else 1 + (add_source x t)
   in
+
+  if !Flags.prelude then begin
+    prev_if := add_source "prelude" !sources;
+    sourcesContent := !sourcesContent @ [ Prelude.prelude ]
+  end;
 
   let add_to_map file il ic ol oc =
     let il = il - 1 in
@@ -552,6 +558,7 @@ let encode m =
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
     ("sources", `List ( List.map (fun x -> `String x) !sources ) );
+    ("sourcesContent", `List ( List.map (fun x -> `String x) !sourcesContent ) );
     (* ("names", `List []); *)
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
