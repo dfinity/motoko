@@ -49,7 +49,7 @@ let encode m =
     | [] ->
       sources := !sources @ [ x ];
       sourcesContent := !sourcesContent @ [ "" ];
-      (List.length !sources) - 1
+      0
     | h :: t -> if x = h then 0 else 1 + (add_source x t)
   in
 
