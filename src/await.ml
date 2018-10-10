@@ -2,6 +2,16 @@ open Syntax
 open Source
 module T = Type
 
+(* TODO: 
+- complete cases (ForE, ObjE, ClassD)
+- abstract await and async into prelude functions
+- avoid admin. reductions, perhaps by optimizing c_* in tail positions
+- elaborate async<T> to object, here or later
+- is async<T> shareable or not?
+- consider introducing async function type, removing AsyncE and then allocating async<T> values on caller side, not callee side.
+- consider using labels for (any) additional continuation arguments.
+*)
+             
 
 (* a simple effect analysis to annote expressions as Triv(ial) (await-free) or Await (containing unprotected awaits) *)
 
@@ -705,7 +715,7 @@ and c_exp' context exp =
   (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add id.it (Cont k) context in
-    k --> ((c_exp context' exp1) -@- k)
+    k --> ((c_exp context' exp1) -@- k) (* TODO optimize me *)
   | BreakE (id, exp1) ->
     begin
       match LabelEnv.find_opt id.it context with
@@ -767,8 +777,7 @@ and c_dec context dec =
      begin
      match eff exp with
      | T.Triv -> k --> (k -@- (t_exp context exp))
-     | T.Await ->
-       k -->  ((c_exp context exp) -@- k)
+     | T.Await -> c_exp context exp 
      end                                       
   | TypD _ ->
      let k = fresh_cont T.unit in
