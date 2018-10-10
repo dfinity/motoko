@@ -227,7 +227,7 @@ let prim_scheduler_queue  =
 let prim_sheduler_yield = 
   primE "@scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
 let prim_await typ = 
-  primE "@await" (T.Func(T.Call, [], contT typ, T.unit))
+  primE "@await" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
 
 (* TBD:             
 let prim_promise_make typ =
