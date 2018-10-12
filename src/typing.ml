@@ -95,43 +95,6 @@ let disjoint_union at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2 with T.Env.Clash k -> error at fmt k
 
 
-(* Type Analysis *)
-
-(* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
-let rec is_shared_typ ce t =
-  match T.promote ce t with
-  | T.Var _
-  | T.Con _ -> false
-  | T.Prim p -> true
-  | T.Array t -> is_shared_typ ce t
-  | T.Opt t -> is_shared_typ ce t
-  | T.Tup ts -> List.for_all (is_shared_typ ce) ts 
-    (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
-  | T.Func _ as t' -> is_async_typ ce t'
-  | T.Async _ as t' -> is_async_typ ce t'
-  | T.Like t -> is_shared_typ ce t
-  | T.Obj (s, fs) -> s = T.Actor || s = T.Object T.Sharable
-  | T.Mut _ -> false
-  | T.Class -> false
-  | T.Shared -> true
-  | T.Any -> false (* TBR *)
-  | T.Non -> true
-  | T.Pre -> assert false
-
-(* Type of an actor field *)
-and is_async_typ ce t =
-  match T.promote ce t with
-  | T.Func (_s, tbs, t1, t2) ->
-    let ts, ce' = T.open_binds ce tbs in
-    is_shared_typ ce' (T.open_ ts t1) &&
-    (match T.normalize ce' (T.open_ ts t2) with
-    | T.Tup [] | T.Async _ -> true
-    | _ -> false
-    )
-  | T.Async t -> is_shared_typ ce t
-  | _ -> false
-
-
 (* Types *)
 
 let check_ids ids = ignore
@@ -176,6 +139,17 @@ let rec check_typ env typ : T.typ =
     let env' = adjoin_typs env te ce in
     let t1 = check_typ env' typ1 in
     let t2 = check_typ env' typ2 in
+    if sort.it = T.Call T.Sharable then begin
+      if not (T.sub env'.cons t1 T.Shared) then
+        error typ1.at "shared function has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand env'.cons t1);
+      if not (T.sub env'.cons t2 T.Shared) then
+        error typ1.at "shared function has non-shared result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2);
+      if not (T.is_async (T.promote env'.cons t2)) then
+        error typ1.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
+    end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, T.close_binds cs tbs, T.close cs t1, T.close cs t2)
   | OptT typ ->
@@ -192,8 +166,11 @@ let rec check_typ env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if s <> T.Object T.Local && not (is_async_typ env.cons t) then
-    error typ.at "actor field %s has non-async type\n  %s"
+  if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
+    error typ.at "actor field %s has non-function type\n  %s"
+      id.it (T.string_of_typ_expand env.cons t);
+  if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
+    error typ.at "shared objext or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
@@ -910,8 +887,11 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
       t
   in
   if not env.pre then begin
-    if s = T.Actor && priv.it = Public && not (is_async_typ env.cons t) then
-      error field.at "public actor field %s has non-async type\n  %s"
+    if s = T.Actor && priv.it = Public && not (T.is_func (T.promote env.cons t)) then
+      error field.at "public actor field %s has non-function type\n  %s"
+        id.it (T.string_of_typ_expand env.cons t);
+    if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
+      error field.at "public shared object or actor field %s has non-shared type\n  %s"
         id.it (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in

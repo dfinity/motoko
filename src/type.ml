@@ -418,19 +418,29 @@ let rec rel_typ env rel eq t1 t2 =
     true
   | Prim p1, Prim p2 when rel != eq ->
     p1 = Nat && p2 = Int
+  | Prim p1, Shared when rel != eq ->
+    true
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields env rel eq tfs1 tfs2
+  | Obj (s, _), Shared when rel != eq ->
+    s != Object Local
   | Array t1', Array t2' ->
     rel_typ env rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
     rel_typ env rel eq (array_obj t1') t2
+  | Array t, Shared when rel != eq ->
+    rel_typ env rel eq t Shared
   | Opt t1', Opt t2' ->
     rel_typ env rel eq t1' t2'
+  | Opt t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ env rel eq ts1 ts2
+  | Tup ts1, Shared ->
+    rel_list rel_typ env rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
     (s1 = s2 || rel != eq && s1 = Construct) &&
     (match rel_binds env rel eq tbs1 tbs2 with
@@ -441,18 +451,20 @@ let rec rel_typ env rel eq t1 t2 =
     )
   | Func (Construct, _, _, _), Class when rel != eq ->
     true
+  | Func (s1, _, _, _), Shared when rel != eq ->
+    s1 = Call Sharable
   | Class, Class ->
     true
   | Shared, Shared ->
     true
-  | Obj (s, _), Shared when rel != eq ->
-    s != Object Local
-  | Array t, Shared when rel != eq ->
-    rel_typ env rel eq t Shared
   | Async t1', Async t2' ->
     rel_typ env rel eq t1' t2'
+  | Async t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Like t1', Like t2' ->
     rel_typ env rel eq t1' t2'
+  | Like t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Mut t1', Mut t2' ->
     eq_typ env rel eq t1' t2'
   | _, _ -> false
