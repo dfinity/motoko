@@ -6,7 +6,6 @@ let version = 1l
 (* Errors *)
 
 module Code = Wasm.Error.Make ()
-exception Code = Code.Error
 
 
 (* Encoding stream *)
@@ -548,21 +547,12 @@ let encode m =
   end
   in E.module_ m;
 
-  (* {
-    "version": 3,
-    "sources": [
-      "fac.as"
-    ],
-    "names": [],
-    "mappings": "..."
-  } *)
   let mappings = String.concat "" !map in
   let n = max 0 ((String.length mappings) - 1) in
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);
     ("sources", `List ( List.map (fun x -> `String x) !sources ) );
     ("sourcesContent", `List ( List.map (fun x -> if x = "" then `Null else `String x) !sourcesContent ) );
-    (* ("names", `List []); *)
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 

@@ -39,7 +39,7 @@ let js_check source =
       val code = Js.null
     end
 
-let js_compile_with mode_string source source_map convert =
+let js_compile_with mode_string source_map source convert =
   Flags.source_map := source_map;
   let mode =
     match Js.to_string mode_string with
@@ -62,18 +62,18 @@ let js_compile_with mode_string source source_map convert =
       val map = Js.null
     end
 
-let js_compile_wat mode s source_map =
-  js_compile_with mode s source_map
+let js_compile_wat mode source_map s =
+  js_compile_with mode source_map s
     (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
 
-let js_compile_wasm mode s source_map =
-  js_compile_with mode s source_map
+let js_compile_wasm mode source_map s =
+  js_compile_with mode source_map s
     (fun m -> let (map, wasm) = EncodeMap.encode m in Js.bytestring wasm, Js.string map)
 
 let () =
   Js.export "ActorScript"
     (object%js
       method check s = js_check s
-      method compileWat mode s source_map = js_compile_wat mode s source_map
-      method compileWasm mode s source_map = js_compile_wasm mode s source_map
+      method compileWat mode source_map s = js_compile_wat mode source_map s
+      method compileWasm mode source_map s = js_compile_wasm mode source_map s
     end);
