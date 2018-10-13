@@ -17,8 +17,8 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
 	}; in
 
 # Include dsh
-let dev_in_nix = (import ./nix/dev-in-nix) { v8 = true; }; in
-let dsh = dev_in_nix.hypervisor; in
+let dev = (import ./nix/dev) { v8 = true; }; in
+let dsh = dev.hypervisor; in
 
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
@@ -65,7 +65,7 @@ rec {
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs ++
-      (if test-dsh then [ dev_in_nix.hypervisor ] else []);
+      (if test-dsh then [ dsh ] else []);
 
     buildPhase = ''
       make -C src BUILD=native asc
@@ -117,5 +117,5 @@ rec {
   });
 
   wasm = ocaml_wasm;
-  dsh = dev_in_nix.hypervisor;
+  inherit dsh;
 }

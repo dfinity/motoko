@@ -4,9 +4,9 @@ pipeline {
         stage ('git submodule') {
             steps {
                 sh 'git submodule update --init --recursive'
-                sh 'git clone --recursive git@github.com:dfinity-lab/dev-in-nix nix/dev-in-nix'
-                sh 'git -C nix/dev-in-nix checkout 3bf560b328cf6308e02970055827c4f515058272'
-                sh 'git -C nix/dev-in-nix submodule update --init --recursive'
+                sh 'git clone --recursive git@github.com:dfinity-lab/dev nix/dev'
+                sh 'git -C nix/dev checkout 3582a30d2687b94f0028396ecb33166a9815117b'
+                sh 'git -C nix/dev submodule update --init --recursive'
             }
         }
 
