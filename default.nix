@@ -17,8 +17,13 @@ let ocaml_wasm = (import ./nix/ocaml-wasm.nix)
 	}; in
 
 # Include dsh
-let dev = (import ./nix/dev) { v8 = true; }; in
-let dsh = dev.hypervisor; in
+let dsh =
+  if test-dsh
+  then
+    if !builtins.pathExists ./nix/dev/default.nix
+    then throw "\"test-dsh = true\" requires a checkout of dev in ./nix"
+    else ((import ./nix/dev) { v8 = true; }).hypervisor
+  else null; in
 
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
