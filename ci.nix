@@ -1,1 +1,1 @@
-builtins.removeAttrs (import ./default.nix {}) [ "dsh" ]
+(import ./default.nix {})
