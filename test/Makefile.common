@@ -10,7 +10,7 @@ OUTDIR = _out
 
 TESTS = $(basename $(wildcard *.as))
 
-SHELL = /bin/bash
+SHELL ?= /bin/bash
 
 GENERATED = $(sort $(foreach suffix,$(SUFFIXES), $(addsuffix $(suffix), $(TESTS))))
 
