@@ -5,7 +5,7 @@ JS_MAIN = js_main
 
 ASC = `pwd`/$(NAME)
 
-OPAM_PACKAGES = wasm num
+OPAM_PACKAGES = wasm num vlq yojson
 JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 
 MENHIR = menhir

@@ -39,7 +39,8 @@ let js_check source =
       val code = Js.null
     end
 
-let js_compile_with mode_string convert source =
+let js_compile_with mode_string source_map source convert =
+  Flags.source_map := source_map;
   let mode =
     match Js.to_string mode_string with
     | "dfinity" -> Pipeline.DfinityMode
@@ -47,28 +48,32 @@ let js_compile_with mode_string convert source =
   in
   match Pipeline.compile_string mode (Js.to_string source) "js-input" with
   | Ok module_ ->
+    let (code, map) = convert module_ in
     object%js
       val diagnostics = Js.array [||]
-      val code = Js.some (convert module_)
+      val code = Js.some code
+      val map = Js.some map
     end
   | Error es ->
     object%js
       val diagnostics =
         Js.array (Array.of_list (List.map diagnostics_of_error es))
       val code = Js.null
+      val map = Js.null
     end
 
-let js_compile_wat mode =
-  js_compile_with mode
-    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)))
+let js_compile_wat mode source_map s =
+  js_compile_with mode source_map s
+    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
 
-let js_compile_wasm mode =
-  js_compile_with mode (fun m -> Js.bytestring (Wasm.Encode.encode m))
+let js_compile_wasm mode source_map s =
+  js_compile_with mode source_map s
+    (fun m -> let (map, wasm) = EncodeMap.encode m in Js.bytestring wasm, Js.string map)
 
 let () =
   Js.export "ActorScript"
     (object%js
       method check s = js_check s
-      method compileWat mode s = js_compile_wat mode s
-      method compileWasm mode s = js_compile_wasm mode s
+      method compileWat mode source_map s = js_compile_wat mode source_map s
+      method compileWasm mode source_map s = js_compile_wasm mode source_map s
     end);
