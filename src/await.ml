@@ -870,7 +870,8 @@ and c_dec context dec =
                 (v -->
                   (k -@- define_idE id Var v)))
      end                                       
-  | FuncD (id,typbinds, pat, typ, exp) ->
+  | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
+  | ClassD (id, _ (*typbinds*), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let k = fresh_cont func_typ in
@@ -882,9 +883,7 @@ and c_dec context dec =
                            note_eff = T.Triv}})
             (letE u (define_idE id Const v)
                    (k -@- v))
-  | ClassD (id, typbinds, sort, pat, fields) ->
-    (* TBR *)
-    failwith "NYI: hopefully similar to FuncD"
+
 
 and c_decs context k decs =
   match decs with

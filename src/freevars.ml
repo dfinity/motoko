@@ -18,7 +18,7 @@ type fb = S.t * S.t
 
 (* Operations: *)
 
-(* This adds a set of free variabls to a combine set *)
+(* This adds a set of free variables to a combined set *)
 let (+++) ((f,b) : fb)  x = (S.union f x, b)
 (* This takes the union of two combined sets *)
 let (++++) (f1, b1) (f2,b2) = (S.union f1 f2, S.union b1 b2)

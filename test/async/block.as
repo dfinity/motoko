@@ -33,3 +33,20 @@ let e = async {
    printInt (f);
 };
 
+let f = async {
+   class point(x:Int,y:Int) {
+     get_x():Int = x;
+     get_y():Int = y;
+     move(dx:Int,dy:Int): point {
+       point (get_x()+dx, get_y()+dy);
+     };        
+   };
+   let p = point(666,666);
+   printInt (p.get_x());
+   printInt (p.get_y());
+   let (a,b) = await (async ("a6","b6"));
+   assert( p is point);
+   let q = p.move(1,-1);   
+   printInt (q.get_x());
+   printInt (q.get_y());
+};
