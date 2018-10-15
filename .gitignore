@@ -1,7 +1,7 @@
 .database
 /result*
 
-nix/dev-in-nix
+nix/dev
 
 **/*~
 **/_build
