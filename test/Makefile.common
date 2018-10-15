@@ -74,7 +74,7 @@ $(OKDIR)/%.ok:
 
 $(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
 	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* > $@ || true
-	@if [[ $(VERBOSE) -ne 0 ]]; then cat $@; fi
+	@if [ $(VERBOSE) -ne 0 ]; then cat $@; fi
 
 
 $(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
