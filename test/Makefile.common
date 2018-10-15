@@ -2,6 +2,7 @@
 
 ASC ?= ../../src/asc
 WASM ?= wasm
+SOURCE_MAP_PP ?= node ../source-map-pp/source-map-pp.js
 ASC_FLAGS ?=
 VERBOSE ?= 0
 
@@ -35,31 +36,24 @@ $(OUTDIR)/%.run: %.as $(ASC) $(OUTDIR)/%.tc
 	  $(ASC) $(ASC_FLAGS) -r -v $< > $@ 2>&1 || true; \
 	fi
 
-$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(ASC) $(OUTDIR)/%.tc
+$(OUTDIR)/%.wasm $(OUTDIR)/%.wasm.stderr: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
-	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
+	then > $(OUTDIR)/$*.wasm; > $(OUTDIR)/$*.wasm.stderr; \
 	else \
           echo "[comp]  $*"; \
-	  $(ASC) $(ASC_FLAGS) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
-	fi
-
-$(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
-	@if [ -s $< ]; \
-	then \
-	 echo "[exec]  $*";\
-	 $(WASM) $< > $@ 2>&1 || true; \
-	else > $@; \
-	fi
-
-$(OUTDIR)/%.wasm: $(OUTDIR)/%.wat
-	@if [ -s $< ]; \
-	then \
-	 echo "[wasm]  $*";\
-	 $(WASM) -d $< -o $@ || true; \
-	else > $@; \
+	  $(ASC) $(ASC_FLAGS) --map -c $< 2> $(OUTDIR)/$*.wasm.stderr || true; \
+	  mv $*.wasm $*.wasm.map $(OUTDIR)/ || true; \
 	fi
 
 $(OUTDIR)/%.wasm-run: $(OUTDIR)/%.wasm
+	@if [ -s $< ]; \
+	then \
+	 echo "[exec]  $*";\
+	 $(WASM) $< 2>&1 | $(SOURCE_MAP_PP) > $@|| true; \
+	 else > $@; \
+	fi
+
+$(OUTDIR)/%.dsh-run: $(OUTDIR)/%.wasm
 	@if [ -s $< ]; \
 	then \
 	 echo "[dsh]   $*";\
