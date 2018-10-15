@@ -7,6 +7,15 @@ open Syntax
 
 (* Helper functions to produce annotated terms *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let (@@) x at =
+  let left = { Wasm.Source.file = at.left.file;
+    Wasm.Source.line = at.left.line;
+    Wasm.Source.column = at.left.column } in
+  let right = { Wasm.Source.file = at.right.file;
+    Wasm.Source.line = at.right.line;
+    Wasm.Source.column = at.right.column } in
+  let at = { Wasm.Source.left = left; Wasm.Source.right = right } in
+  { Wasm.Source.it = x; Wasm.Source.at = at }
 let nr_ x = { it = x; at = no_region; note = () }
 let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
 
@@ -343,7 +352,7 @@ module Func = struct
        }
 
   (* Expect the function closure and the argument on the stack *)
-  let call env =
+  let call env at =
    (* Pop the argument *)
    let i = E.add_anon_local env I32Type in
    [ nr (SetLocal (nr i)) ] @
@@ -360,19 +369,19 @@ module Func = struct
    [ nr (GetLocal (nr fi)) ] @
    Heap.load_field 0l @
    (* All done: Call! *)
-   [ nr (CallIndirect (nr E.unary_fun_ty_i)) ]
+   [ CallIndirect (nr E.unary_fun_ty_i) @@ at ]
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
 
-  let compile_func env captured mk_pat mk_body : func =
+  let compile_func env captured mk_pat mk_body at : func =
     unary_of_body env (fun env1 ->
       (* Allocate locals for the captured variables *)
       let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
       (* Load the environment *)
       let load_capture i v =
-          [ nr (GetLocal (E.unary_closure_local env2)) ] @
+          [ GetLocal (E.unary_closure_local env2) @@ at ] @
           Heap.load_field (Wasm.I32.of_int_u (1+i)) @
           Var.set_loc env2 v in
       let closure_code = List.concat (List.mapi load_capture captured) in
@@ -384,43 +393,43 @@ module Func = struct
 
       closure_code @
       alloc_args_code @
-      [ nr (GetLocal (E.unary_param_local env3)) ] @
+      [ GetLocal (E.unary_param_local env3) @@ at ] @
       destruct_args_code @
       body_code)
 
   (* Compile a function declaration *)
-  let dec pre_env last name captured mk_pat mk_body =
+  let dec pre_env last name captured mk_pat mk_body at =
       let li = E.add_anon_local pre_env I32Type in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
       let alloc_code =
         (* Allocate a heap object for the function *)
         Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) @
-        [ nr (SetLocal (nr li)) ] @
+        [ SetLocal (li @@ at) @@ at ] @
 
         (* Allocate an extra indirection for the variable *)
-        Tuple.lit pre_env1 [ [nr (GetLocal (nr li))] ] @
-        [ nr (SetLocal (nr vi)) ]
+        Tuple.lit pre_env1 [ [GetLocal (li @@ at) @@ at ] ] @
+        [ SetLocal (vi @@ at) @@ at ]
       in
 
       ( pre_env1, alloc_code, fun env ->
 
 	(* All functions are unary for now (arguments passed as heap-allocated tuples)
            with the closure itself passed as a first argument *)
-        let f = compile_func env captured mk_pat mk_body in
+        let f = compile_func env captured mk_pat mk_body at in
         let fi = E.add_fun env f in
 
         (* Store the function number: *)
-        [ nr (GetLocal (nr li));
-          nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ] @ (* Store function number *)
+        [ GetLocal (li @@ at) @@ at;
+          Wasm.Ast.Const (Wasm.Values.I32 fi @@ at) @@ at ] @ (* Store function number *)
         Heap.store_field 0l @
         (* Store all captured values *)
         let store_capture i v =
-          [ nr (GetLocal (nr li)) ] @
+          [ GetLocal (li @@ at) @@ at ] @
           Var.get_loc env v @
           Heap.store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
-        if last then [ nr (GetLocal (nr li)) ] else [])
+        if last then [ GetLocal (li @@ at) @@ at ] else [])
 
 end (* Func *)
 
@@ -890,7 +899,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 @
-     [ nr (If ([I32Type], compile_unit, [nr Unreachable])) ]
+     [ If ([I32Type], compile_unit, [nr Unreachable]) @@ exp.at ]
   | NotE e ->
      compile_exp env e @
      [ nr (If ([I32Type], compile_false, compile_true)) ]
@@ -918,7 +927,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp (E.inc_depth env) e2 in
      let code3 = compile_exp (E.inc_depth env) e3 in
-     code1 @ [ nr (If ([I32Type], code2, code3)) ]
+     code1 @ [ If ([I32Type], code2, code3) @@ exp.at ]
   | IsE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -946,7 +955,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr Drop;  nr (Br (nr 1l)) ], [])) ])) ] @
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
-  | RetE e -> compile_exp env e @ [ nr Return ]
+  | RetE e -> compile_exp env e @ [ Return @@ exp.at ]
   | OptE e ->
      Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
@@ -959,7 +968,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
-     Func.call env
+     Func.call env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -986,7 +995,6 @@ and compile_exp (env : E.t) exp = match exp.it with
           ] in
       let code2 = go env cs in
       code1 @ [ nr (SetLocal (nr i)) ] @ code2
-
   | ForE (p, e1, e2) ->
      let code1 = compile_exp env e1 in
      let (env1, alloc_code, code2) = compile_mono_pat (E.inc_depth env) p in
@@ -1001,7 +1009,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        [ nr (GetLocal (nr i)) ] @
        Object.load_idx env1 (nr__ "next") @
        compile_unit @
-       Func.call env1 @
+       Func.call env1 Source.no_region @
        let oi = E.add_anon_local env I32Type in
        [ nr (SetLocal (nr oi)) ] @
 
@@ -1016,7 +1024,6 @@ and compile_exp (env : E.t) exp = match exp.it with
        ))]
      ))] @
      compile_unit
-
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
 
 
@@ -1201,7 +1208,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 = compile_exp env1 e in
-      Func.dec pre_env last name captured mk_pat mk_body
+      Func.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, typ_params, s, p, efs) ->
@@ -1214,7 +1221,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
            to the closure, which happens to be the class function. *)
         let mk_class = Func.load_the_closure in
         Object.lit env1 None (Some mk_class) fs' in
-      Func.dec pre_env last name captured mk_pat mk_body
+      Func.dec pre_env last name captured mk_pat mk_body dec.at
 
 and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env decs)
 

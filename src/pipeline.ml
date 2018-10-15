@@ -284,7 +284,7 @@ let compile_with check mode name : compile_result =
     let open Syntax in
     let (@?) it at = {it; at; note = empty_typ_note} in
     let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
-    let prog' = (prelude.it @ [block]) @@ prog.at in
+    let prog' = ((if !Flags.prelude then prelude.it else []) @ [block]) @@ prog.at in
     let module_ = compile_prog mode name prog' in
     Ok module_
 
