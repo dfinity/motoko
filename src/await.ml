@@ -89,6 +89,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
      effect_exp exp1
   | DefineE (_, _, exp1) ->
      effect_exp exp1
+  | NewObjE _ ->
+     T.Triv
     
 and effect_cases cases =
   match cases with
@@ -228,6 +230,18 @@ let prim_sheduler_yield =
   primE "@scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
 let prim_await typ = 
   primE "@await" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
+let prim_actor_field_unit typ = 
+  primE "@actor_field_unit" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
+let prim_actor_field_async typ = 
+  primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))        
+
+let actor_field typ =
+  match typ with
+  | T.Func (_, _, _, T.Tup []) ->
+     prim_actor_field_unit typ
+  | T.Func (_, _, _, T.Async _) ->
+     prim_actor_field_async typ
+  | _ -> assert false
 
 (* TBD:             
 let prim_promise_make typ =
@@ -258,6 +272,15 @@ let decE dec =
   
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
+let varD x exp = { exp with it = VarD (x,exp) }                   
+let textE s =
+  {
+    it = LitE (ref (TextLit s));
+    at = no_region;
+    note = {note_typ = T.Prim T.Text;
+            note_eff = T.Triv;}
+  }
+    
 let letE x exp1 exp2 = 
   { it = BlockE [letD x exp1;
                  {exp2 with it = ExpD exp2}];
@@ -286,7 +309,7 @@ let ifE exp1 exp2 exp3 typ =
             note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
            }           
   }
-let expD exp = ExpD exp @@ no_region                                  
+let expD exp =  {exp with it = ExpD exp}
 let tupE exps =
    let effs = List.map effect_exp exps in
    let eff = List.fold_left max_eff Type.Triv effs in
@@ -296,7 +319,7 @@ let tupE exps =
             note_eff = eff}
    }
 
-let declare_idE x  typ exp1 =
+let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
     note = exp1.note;
@@ -309,6 +332,12 @@ let define_idE x mut exp1 =
              note_eff =T.Triv}
   }
 
+let newObjE  typ sort ids =
+  { it = NewObjE (sort, ids);
+    at = no_region;
+    note = { note_typ = typ;
+             note_eff = T.Triv}
+  }
 
             
 (* Lambda and continuation application *)
@@ -319,7 +348,7 @@ let ( -@- ) exp1 exp2 =
      {it = CallE(exp1, [], exp2);
       at = no_region;
       note = {note_typ = t;
-              note_eff = Type.Triv}
+              note_eff = max_eff (eff exp1) (eff exp2)}
      }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
@@ -437,6 +466,8 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
+  | NewObjE (sort, ids) -> exp' 
+
            
 
 and t_block context decs : dec list= 
@@ -635,7 +666,32 @@ and c_loop_some context k e1 e2 =
                         (c_exp context e1) -@-
                         (v1 --> e2))
              (loop -@- unitE)
-               
+             
+(* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object, 
+   and continue as c_exp *)             
+and c_obj context exp sort id fields =
+  let rec c_fields fields decs ids =
+    match fields with
+      | [] ->
+         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev ids)) :: decs in
+         {exp with it = BlockE (List.rev decs)}
+      | {it = {id; mut; priv; exp}; at; note}::fields ->
+         let exp = if sort.it = T.Actor && priv.it = Public
+                   then actor_field (typ exp) -@- tupE([textE id.it;exp])
+                   else exp
+         in
+         let ids =
+           match priv.it with
+           | Public -> id::ids
+           | Private -> ids                
+         in
+         match mut.it with 
+         | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
+         | Var -> c_fields fields (varD id exp::decs) ids
+  in
+  c_exp context (c_fields fields [] [])
+        
+
 and c_exp context exp =
   c_exp' context exp
 and c_exp' context exp =
@@ -661,9 +717,7 @@ and c_exp' context exp =
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1 
   | ObjE (sort, id, fields) ->
-    failwith "NYI"      
-(*    let fields' = c_fields context fields in                    
-    ObjE (sort, id, fields') *)
+    c_obj context exp sort id fields 
   | DotE (exp1, id) ->
     unary context k (fun v1 -> e (DotE (v1, id))) exp1 
   | AssignE (exp1, exp2) ->
@@ -766,7 +820,9 @@ and c_exp' context exp =
   | DeclareE (id, typ, exp1) ->
      unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->
-    unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1                                    
+     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
+  | NewObjE _ -> exp
+                                                                                                                    
 and c_block context k decs  = 
    k --> declare_decs decs (c_decs context k decs)
 

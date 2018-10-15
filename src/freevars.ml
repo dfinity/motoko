@@ -69,6 +69,7 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> (id i) ++ exp e
+  | NewObjE (_,ids)    -> unions id ids                                        
 
 and exps es : f = unions exp es
 

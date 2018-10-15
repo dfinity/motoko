@@ -39,8 +39,9 @@ let rec exp e = match e.it with
   | DecE d              -> "DecE"    $$ [dec d]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | DeclareE (i, t, e1)  -> "DeclareE"   $$ [id i; exp e1]
-  | DefineE(i, m, e1)   -> "DefineE"   $$ [id i; mut m; exp e1]
+  | DeclareE (i, t, e1) -> "DeclareE"   $$ [id i; exp e1]
+  | DefineE (i, m, e1)  -> "DefineE"   $$ [id i; mut m; exp e1]
+  | NewObjE (s, ids)    -> "NewObjE" $$ (obj_sort s :: List.map id ids)
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"

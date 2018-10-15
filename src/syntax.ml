@@ -153,6 +153,7 @@ and exp' =
   | DecE of dec                                (* declaration *)
   | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
   | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
+  | NewObjE of obj_sort * id list                   (* make an object, preserving mutable identity (internal) *)                          
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)

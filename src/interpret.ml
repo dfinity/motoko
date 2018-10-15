@@ -84,6 +84,8 @@ end
 
 (* Async auxiliary functions *)
 
+  
+
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
 
@@ -110,6 +112,35 @@ let await async k at =
   );
   Scheduler.yield ()
 
+let actor_msg id f v (k : V.value V.cont) =
+  if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
+  Scheduler.queue (fun () ->
+    if !Flags.trace then trace "<- message %s%s" id (string_of_arg v);
+    incr trace_depth;
+    f v k
+  )
+                  
+let actor_field_unit id v =
+    let _, f = V.as_func v in
+    V.Func (None, fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
+
+let actor_field_async id v =
+    let _, f = V.as_func v in
+    V.Func (None, fun v k ->
+      let async = make_async () in
+      actor_msg id f v (fun v_async ->
+        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
+      );
+      k (V.Async async)
+    )
+
+let actor_field id t v : V.value =
+  match t with
+  | T.Func (_, _, _, T.Tup []) ->
+     actor_field_unit id.it v
+  | T.Func (_, _, _, T.Async _) ->
+     actor_field_async id.it v
+  | _ -> assert false
 
 let extended_prim s at =
   match s with
@@ -133,15 +164,8 @@ let extended_prim s at =
   | "@scheduler_queue" ->
     fun v k ->
       let (call,f) = V.as_func v in
-      (* Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ())); *)
       Scheduler.queue (fun () -> f V.unit V.as_unit);
       k V.unit
-(*
-    fun v k ->
-      let call, f  = V.as_func v in
-      Scheduler.queue (fun () -> f  V.unit (fun v -> V.as_unit v; ()));
-      k V.unit
- *)
   | "@scheduler_yield" ->
     fun v k ->
       V.as_unit v;
@@ -155,6 +179,24 @@ let extended_prim s at =
         await (V.as_async async) (fun v -> f v k) at
       | _ -> assert false
       )
+  | "@actor_field_unit" ->
+     fun v k ->
+      begin
+        match V.as_tup v with
+        | [v1;v2] -> 
+           let id = V.as_text v1 in                           
+           k (actor_field_unit id v2)
+        | _ -> assert false
+      end
+  | "@actor_field_async" ->
+      fun v k ->
+        begin
+          match V.as_tup v with
+         | [v1;v2] -> 
+            let id = V.as_text v1 in                           
+            k (actor_field_async id v2)
+         | _ -> assert false
+        end
   | _ -> Prelude.prim s
 
                        
@@ -394,7 +436,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       in
       define_id env id v';
       k V.unit
-    )
+      )
+  | NewObjE (sort,ids) ->
+     let ve = List.fold_left
+                (fun ve id -> V.Env.disjoint_add id.it
+                                (Lib.Promise.value (find id.it env.vals)) ve)
+                V.Env.empty ids
+     in
+     k (V.Obj (None, ve))
+     
 
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
@@ -556,33 +606,6 @@ and interpret_fields env s co fields ve (k : V.value V.cont) =
       define_id env id v'';
       interpret_fields env s co fields' ve k
     )
-
-
-and actor_field id t v : V.value =
-  match t with
-  | T.Func (_, _, _, T.Tup []) ->
-    let _, f = V.as_func v in
-    V.Func (None, fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
-  | T.Func (_, _, _, T.Async _) ->
-    let _, f = V.as_func v in
-    V.Func (None, fun v k ->
-      let async = make_async () in
-      actor_msg id f v (fun v_async ->
-        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
-      );
-      k (V.Async async)
-    )
-  | _ -> assert false
-
-
-and actor_msg id f v (k : V.value V.cont) =
-  if !Flags.trace then trace "-> message %s%s" id.it (string_of_arg v);
-  Scheduler.queue (fun () ->
-    if !Flags.trace then trace "<- message %s%s" id.it (string_of_arg v);
-    incr trace_depth;
-    f v k
-  )
-
 
 (* Blocks and Declarations *)
 

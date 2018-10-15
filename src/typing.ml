@@ -593,12 +593,9 @@ and infer_exp' env exp : T.typ =
        | None -> error id.at "unbound variable %s" id.it
     end;
     T.unit
-
-                
-                
-     
-    
-
+  | NewObjE (sort, ids) ->
+    T.Obj(sort.it, List.map (fun id -> {T.name = id.it; T.typ = T.Env.find id.it env.vals}) ids)
+       
 and check_exp env t exp =
   assert (not env.pre);
   assert (exp.note.note_typ = T.Pre);
