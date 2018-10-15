@@ -1,7 +1,7 @@
 -- Checking await.as:
 -- Await Lowering await.as:
 -- Interpreting await.as:
-abcdege-whileg-label.cnt: printInt(0)
+abcdegholye-whileg-label.abcnt: printInt(0)
  i: printInt(0)
 
 cnt: printInt(1)

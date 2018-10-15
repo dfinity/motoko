@@ -49,7 +49,7 @@ let g = async {
     label lp
     while (true) {
 	if (i < 15) {
-     	    print ".";
+    	    print ".";
      	    let _ = await f(i);
      	    i += 1;
 	    continue lp; 
@@ -59,5 +59,12 @@ let g = async {
     print "g-exit";
 };
 
+print "holy";
 
+func p():async (Text,Text) { ("fst","snd"); };
+let h = async {
+   let (a,b) = ("a","b"); /* await p(a,b);*/
+   print a;
+   print b;
+};
 
