@@ -23,9 +23,10 @@ Commands
    Analogous:
 
    - `make _out/test.tc`
-   - `make _out/test.wat`
-   - `make _out/test.wat.stderr`
-   - `make _out/test.wat-run`
+   - `make _out/test.wasm`
+   - `make _out/test.wasm.stderr`
+   - `make _out/test.wasm-run`
+   - `make _out/test.dsh-run`
 
 * `make test.run.diff`
 

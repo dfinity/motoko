@@ -1,0 +1,22 @@
+$ dsh reset
+{
+    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
+}
+
+$ dsh new -a _out/fac.wasm
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (fac)",
+    "type": "actorref"
+}
+
+$ dsh run fac start
+120{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (fac)",
+    "type": "actorref"
+}
+
+Leaked 1 instances of wasm::Engine, made 1, freed 0!

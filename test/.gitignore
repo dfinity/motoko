@@ -4,6 +4,7 @@ _out
 *.wat
 *.wat.stderr
 *.wasm
+*.wasm-run
 *.run
 *.wat-run
 *.tc

@@ -1,0 +1,5 @@
+-- Checking assertFalse.as:
+-- Interpreting assertFalse.as:
+assertFalse.as:1.1-1.14: execution error, assertion failure
+-- Aborted assertFalse.as:
+
