@@ -7,7 +7,7 @@ open Syntax
 
 (* Helper functions to produce annotated terms *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
-let nra x at =
+let (@@) x at =
   let left = { Wasm.Source.file = at.left.file;
     Wasm.Source.line = at.left.line;
     Wasm.Source.column = at.left.column } in
@@ -369,7 +369,7 @@ module Func = struct
    [ nr (GetLocal (nr fi)) ] @
    Heap.load_field 0l @
    (* All done: Call! *)
-   [ nra (CallIndirect (nr E.unary_fun_ty_i)) at ]
+   [ CallIndirect (nr E.unary_fun_ty_i) @@ at ]
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -381,7 +381,7 @@ module Func = struct
       let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
       (* Load the environment *)
       let load_capture i v =
-          [ nra (GetLocal (E.unary_closure_local env2)) at ] @
+          [ GetLocal (E.unary_closure_local env2) @@ at ] @
           Heap.load_field (Wasm.I32.of_int_u (1+i)) @
           Var.set_loc env2 v in
       let closure_code = List.concat (List.mapi load_capture captured) in
@@ -393,7 +393,7 @@ module Func = struct
 
       closure_code @
       alloc_args_code @
-      [ nra (GetLocal (E.unary_param_local env3)) at ] @
+      [ GetLocal (E.unary_param_local env3) @@ at ] @
       destruct_args_code @
       body_code)
 
@@ -405,11 +405,11 @@ module Func = struct
       let alloc_code =
         (* Allocate a heap object for the function *)
         Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) @
-        [ nra (SetLocal (nra li at)) at ] @
+        [ SetLocal (li @@ at) @@ at ] @
 
         (* Allocate an extra indirection for the variable *)
-        Tuple.lit pre_env1 [ [nra (GetLocal (nra li at)) at ] ] @
-        [ nra (SetLocal (nra vi at)) at ]
+        Tuple.lit pre_env1 [ [GetLocal (li @@ at) @@ at ] ] @
+        [ SetLocal (vi @@ at) @@ at ]
       in
 
       ( pre_env1, alloc_code, fun env ->
@@ -420,16 +420,16 @@ module Func = struct
         let fi = E.add_fun env f in
 
         (* Store the function number: *)
-        [ nra (GetLocal (nra li at)) at;
-          nra (Wasm.Ast.Const (nra (Wasm.Values.I32 fi) at)) at ] @ (* Store function number *)
+        [ GetLocal (li @@ at) @@ at;
+          Wasm.Ast.Const (Wasm.Values.I32 fi @@ at) @@ at ] @ (* Store function number *)
         Heap.store_field 0l @
         (* Store all captured values *)
         let store_capture i v =
-          [ nra (GetLocal (nra li at)) at ] @
+          [ GetLocal (li @@ at) @@ at ] @
           Var.get_loc env v @
           Heap.store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
-        if last then [ nra (GetLocal (nra li at)) at ] else [])
+        if last then [ GetLocal (li @@ at) @@ at ] else [])
 
 end (* Func *)
 
@@ -899,7 +899,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 @
-     [ nra (If ([I32Type], compile_unit, [nr Unreachable])) exp.at ]
+     [ If ([I32Type], compile_unit, [nr Unreachable]) @@ exp.at ]
   | NotE e ->
      compile_exp env e @
      [ nr (If ([I32Type], compile_false, compile_true)) ]
@@ -927,7 +927,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp (E.inc_depth env) e2 in
      let code3 = compile_exp (E.inc_depth env) e3 in
-     code1 @ [ nra (If ([I32Type], code2, code3)) exp.at ]
+     code1 @ [ If ([I32Type], code2, code3) @@ exp.at ]
   | IsE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -955,7 +955,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      [ nr (Loop ([], code1 @ [ nr (If ([], code2 @ [ nr Drop;  nr (Br (nr 1l)) ], [])) ])) ] @
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
-  | RetE e -> compile_exp env e @ [ nra Return exp.at ]
+  | RetE e -> compile_exp env e @ [ Return @@ exp.at ]
   | OptE e ->
      Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
