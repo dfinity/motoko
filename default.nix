@@ -4,6 +4,8 @@
 
 let stdenv = nixpkgs.stdenv; in
 
+
+# Filter the source to avoid pulling in build artifacts in a dirty tree 
 let sourceByRegex = src: regexes: builtins.filterSource (path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
       (type == "directory" ||
@@ -20,7 +22,7 @@ let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
-# Include dsh
+# Include dsh (if requested)
 let dsh =
   if test-dsh
   then
@@ -28,6 +30,10 @@ let dsh =
     then throw "\"test-dsh = true\" requires a checkout of dev in ./nix"
     else ((import ./nix/dev) { v8 = true; }).hypervisor
   else null; in
+
+# Include source-map-pp
+let source-map-pp =
+    ((import ./test/source-map-pp) { pkgs = nixpkgs; }).package; in
 
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
@@ -55,6 +61,10 @@ let commonBuildInputs = [
   nixpkgs.ocamlPackages.yojson
 ]; in
 
+let testBuildInputs = [
+  source-map-pp
+]; in
+
 rec {
 
   native = stdenv.mkDerivation {
@@ -77,6 +87,7 @@ rec {
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs ++
+      testBuildInputs ++
       (if test-dsh then [ dsh ] else []);
 
     buildPhase = ''

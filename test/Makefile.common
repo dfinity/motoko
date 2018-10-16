@@ -2,7 +2,7 @@
 
 ASC ?= ../../src/asc
 WASM ?= wasm
-SOURCE_MAP_PP ?= node ../source-map-pp/source-map-pp.js
+SOURCE_MAP_PP ?= source-map-pp
 ASC_FLAGS ?=
 VERBOSE ?= 0
 
