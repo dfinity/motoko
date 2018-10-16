@@ -309,6 +309,35 @@ let ifE exp1 exp2 exp3 typ =
             note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
            }           
   }
+let dotE exp1 id typ =
+  { it = DotE (exp1,{it=id;at=no_region;note=()});
+    at = no_region;
+    note = {note_typ = typ;
+            note_eff = eff exp1}
+  }
+let switch_optE exp1 exp2 pat exp3 typ =
+  { it = SwitchE (exp1,
+                  [{it = {pat = {it = LitP (ref NullLit); 
+                                 at = no_region;
+                                 note = {note_typ = exp1.note.note_typ;
+                                         note_eff = T.Triv}};
+                          exp = exp2};
+                    at = no_region;
+                    note = ()};
+                   {it = {pat = {it = OptP pat; 
+                                 at = no_region;
+                                 note = {note_typ = exp1.note.note_typ;
+                                         note_eff = T.Triv}};
+                          exp = exp3};
+                    at = no_region;
+                    note = ()}]
+           );
+    at = no_region;
+    note = {note_typ = typ;
+            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+           }
+  }
+    
 let expD exp =  {exp with it = ExpD exp}
 let tupE exps =
    let effs = List.map effect_exp exps in
@@ -666,6 +695,30 @@ and c_loop_some context k e1 e2 =
                         (c_exp context e1) -@-
                         (v1 --> e2))
              (loop -@- unitE)
+
+and c_for context k pat e1 e2 =
+ let v1 = fresh_id (typ e1) in
+ let next_typ = (T.Func(T.Call, [], T.unit, T.Opt (typ pat))) in
+ let v1dotnext = dotE v1 "next" next_typ -@- unitE in
+ let loop = fresh_id (contT T.unit) in 
+ let v2 = fresh_id T.unit in                    
+ let e2 = match eff e2 with
+    | T.Triv -> loop -@- t_exp context e2
+    | T.Await -> (c_exp context e2) -@- loop in
+ let body =
+   letE loop (v2 -->
+                (switch_optE (v1dotnext)
+                   (k -@- unitE)
+                   pat e2
+                   T.unit))
+     (loop -@- unitE)                                          
+ in
+ match eff e1 with
+ | T.Triv ->
+    k -->  (letE v1 (t_exp context e1)
+              body)
+ | T.Await ->
+    k -->  ((c_exp context e1) -@- (v1 --> body))
              
 (* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object, 
    and continue as c_exp *)             
@@ -765,8 +818,7 @@ and c_exp' context exp =
   | LoopE (exp1, Some exp2) ->
     c_loop_some context k exp1 exp2                 
   | ForE (pat, exp1, exp2) ->
-    failwith "NYI" 
-  (*    ForE (pat, c_exp context exp1, c_exp context exp2) *)
+    c_for context k pat exp1 exp2
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add id.it (Cont k) context in
     k --> ((c_exp context' exp1) -@- k) (* TODO optimize me *)
