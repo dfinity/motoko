@@ -132,6 +132,8 @@ You do not have to use nix:
   - `{x : T; var y : U; z : V}`
   - `actor {f : T -> (); g : U -> async T}`
 
+    The fields of an actor are all of function type with a return type of `async t` or `()`.
+
 * Array types: Java-like, but elements can be mutable or immutable
   - `T[]`
   - `var T[]`
@@ -180,6 +182,12 @@ You do not have to use nix:
 * Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
   - `actor {f() {}; private var x = 4; g() : async Int {return y}}`
+
+     Actor literals have restrictions. In particular, every public field
+     * must be a syntactic function with
+     * a return type of `async t` or `()` and
+     * a body of the form `async  …`.
+
   - `[3, 4]`
   - `o.x`
   - `a[i]`
