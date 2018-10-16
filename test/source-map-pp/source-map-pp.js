@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 var fs = require('fs');
 var re = /^(.*\.wasm):0x([0-9a-f]+):(.*)$/;
 

@@ -1,0 +1,11 @@
+{
+  "name": "source-map-pp",
+  "version": "v0.0.1",
+  "bin": {
+    "source-map-pp": "source-map-pp.js"
+  },
+  "dependencies" : {
+    "split" : "latest",
+    "source-map" : "latest"
+  }
+}
