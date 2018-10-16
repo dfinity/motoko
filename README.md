@@ -50,11 +50,10 @@ You do not have to use nix:
    ```
  * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
    `make install` therein.
- * Make sure `wasm` (a binary found in `vendor/wasm-spec/interpreter`) is in
-   the path to run the `run` tests.
- * Make sure `dsh` (a binary from the `hs-hypervisor` package) is in the path
-   to run the `run-dfinity` tests.
-
+ * Make the the following tools are in your path:
+   - `wasm`, a binary found in `vendor/wasm-spec/interpreter`
+   - `source-map-pp`, a script found in `test/source-map-pp`
+   - `dsh`, a binary from the `hs-hypervisor` package (only for `test/run-dfinity`)
 
 ## Introduction
 
