@@ -2,6 +2,7 @@
 
 ASC ?= ../../src/asc
 WASM ?= wasm
+WASM2WAT ?= wasm2wat
 ASC_FLAGS ?=
 VERBOSE ?= 0
 
@@ -10,7 +11,7 @@ OUTDIR = _out
 
 TESTS = $(basename $(wildcard *.as))
 
-SHELL ?= /bin/bash
+SHELL := bash
 
 GENERATED = $(sort $(foreach suffix,$(SUFFIXES), $(addsuffix $(suffix), $(TESTS))))
 
@@ -42,6 +43,13 @@ $(OUTDIR)/%.wasm $(OUTDIR)/%.wasm.stderr: %.as $(ASC) $(OUTDIR)/%.tc
           echo "[comp]  $*"; \
 	  $(ASC) $(ASC_FLAGS) --map -c $< 2> $(OUTDIR)/$*.wasm.stderr || true; \
 	  mv $*.wasm $*.wasm.map $(OUTDIR)/ || true; \
+	fi
+
+$(OUTDIR)/%.wat: $(OUTDIR)/%.wasm
+	@if [ -s $< ]; \
+	then \
+	 $(WASM2WAT) --no-check --generate-names $< > $@ 2>&1 || true; \
+	 else > $@; \
 	fi
 
 $(OUTDIR)/%.wasm-run: $(OUTDIR)/%.wasm
