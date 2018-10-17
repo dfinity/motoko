@@ -1020,16 +1020,14 @@ and compile_exp (env : E.t) exp = match exp.it with
   | TupE [] -> compile_unit
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
-  | ObjE (_(* { it = Type.Object; _} *), name, fs) ->
+  | ObjE ({ it = Type.Object; _}, name, fs) ->
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
      Object.lit env (Some name) None fs'
-  (*
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
     let captured = Freevars.exp exp in
     if Freevars.S.is_empty captured
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange.exp exp) [ nr Unreachable ]
-  *)
   | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_exp env e2 @
@@ -1339,10 +1337,8 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
-(*
 and actor_lit env name fs =
   [ nr Unreachable ]
-*)
 
 let compile mode (progs : Syntax.prog list) : module_ =
   let env = E.mk_global mode in
