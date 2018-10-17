@@ -150,6 +150,11 @@ module E = struct
       | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
+  let _is_known_function env var =
+    match NameEnv.find_opt var env.local_vars_env with
+      | Some (Func _) -> true
+      | _ -> false
+
   let lookup_prim env var =
     match NameEnv.find_opt var env.primitives_env with
       | Some i -> Some (nr i)
@@ -331,29 +336,27 @@ module Var = struct
   (* When accessing a variable that is a static closure, then we need to create a
      heap-allocated thing on the fly. *)
   let static_fun_pointer env fi =
-      (* Allocate a heap object for the function *)
-      let li = E.add_anon_local env I32Type in
-      Heap.alloc (Wasm.I32.of_int_u 1) @
-      [ nr (SetLocal (nr li)) ] @
-
-      (* Store the function number: *)
+    Tuple.lit env [
       let ti = E.fun_to_tableid env fi in
-      [ nr (GetLocal (nr li));
-        nr (Wasm.Ast.Const (nr (Wasm.Values.I32 ti))) ] @ (* Store function number *)
-      Heap.store_field 0l @
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 ti))) ]
+    ]
 
-      [ nr (GetLocal (nr li)) ]
+  let get_val env var = match E.lookup_var env var with
+    | Some (Local i) -> [ nr (GetLocal (nr i)) ] @ load_ptr
+    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] @ load_ptr *)
+    | Some (Func fi) -> static_fun_pointer env fi
+    | None   -> [ nr Unreachable ]
 
   let get_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (GetLocal (nr i)) ]
     (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
-    | Some (Func fi) -> static_fun_pointer env fi
+    | Some (Func _) -> raise (Invalid_argument "No heap location for function")
     | None   -> [ nr Unreachable ]
 
   let set_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (SetLocal (nr i)) ]
     (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
-    | Some (Func _) -> raise (Invalid_argument "Cannot write to static function location")
+    | Some (Func _) -> raise (Invalid_argument "No heap location for function")
     | None   -> [ nr Unreachable ]
 
 end (* Var *)
@@ -449,7 +452,7 @@ module Func = struct
       let fi = E.add_fun pre_env f in
       let pre_env1 = E.add_local_fun pre_env name.it fi in
       ( pre_env1, [], fun env ->
-        if last then [ nr (Unreachable) ] else Var.static_fun_pointer env fi )
+        if last then Var.static_fun_pointer env fi else [])
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env last name captured mk_pat mk_body at =
@@ -490,7 +493,7 @@ module Func = struct
     (* This could be smarter: It is ok to capture closed functions,
        but then we would have to move the call to compile_func in dec_closed
        above into the continuation. *)
-    if false (* captured = [] *)
+    if captured = []
     then dec_closed pre_env last name mk_pat mk_body at
     else dec_closure pre_env last name captured mk_pat mk_body at
 
@@ -942,9 +945,11 @@ Local variables (which maybe mutable, or have delayed initialisation)
 are also points, but points to such values, and need to be read first.  *)
 and compile_exp (env : E.t) exp = match exp.it with
   (* We can reuse the code in compile_lexp here *)
-  | VarE _ | IdxE _ | DotE _ ->
+  | IdxE _ | DotE _ ->
      compile_lexp env exp @
      load_ptr
+  | VarE var ->
+     Var.get_val env var.it
   | AssignE (e1,e2) ->
      compile_lexp env e1 @
      compile_exp env e2 @

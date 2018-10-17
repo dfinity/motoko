@@ -42,7 +42,8 @@ $(OUTDIR)/%.wasm $(OUTDIR)/%.wasm.stderr: %.as $(ASC) $(OUTDIR)/%.tc
 	else \
           echo "[comp]  $*"; \
 	  $(ASC) $(ASC_FLAGS) --map -c $< 2> $(OUTDIR)/$*.wasm.stderr || true; \
-	  mv $*.wasm $*.wasm.map $(OUTDIR)/ || true; \
+	  if [ -e $*.wasm ]; then mv $*.wasm $(OUTDIR); else > $(OUTDIR)/$*.wasm; fi; \
+	  if [ -e $*.wasm.map ]; then mv $*.wasm.map $(OUTDIR); else > $(OUTDIR)/$*.wasm.map; fi; \
 	fi
 
 $(OUTDIR)/%.wat: $(OUTDIR)/%.wasm
