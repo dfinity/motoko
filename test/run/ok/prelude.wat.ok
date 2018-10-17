@@ -220,13 +220,7 @@
     (local $l0 i32)
     unreachable)
   (func $f10 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
-    get_local $p0
-    i32.load offset=4
-    set_local $l1
-    get_local $p0
-    i32.load offset=8
-    set_local $l2
+    (local $l0 i32)
     get_local $p1
     set_local $l0
     block $B0 (result i32)
@@ -238,127 +232,8 @@
     else
       unreachable
     end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    if $I2 (result i32)
-      i32.const 2147483647
-    else
-      get_local $l1
-      get_local $l1
-      i32.load
-      i32.const 1
-      i32.sub
-      i32.store
-      i32.const 0
-      drop
-      get_global $g0
-      get_global $g0
-      i32.const 4
-      i32.add
-      set_global $g0
-      set_local $l3
-      get_local $l3
-      get_local $l1
-      i32.load
-      i32.store
-      get_local $l3
-    end)
+    i32.const 0)
   (func $f11 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l1
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l2
-    get_local $p1
-    set_local $l0
-    block $B0 (result i32)
-      get_local $l0
-      tee_local $l0
-      get_local $l0
-      i32.load
-      set_local $l0
-      get_local $l1
-      get_local $l0
-      i32.store
-      tee_local $l0
-      get_local $l0
-      i32.load offset=4
-      set_local $l0
-      get_local $l2
-      get_local $l0
-      i32.store
-      drop
-      i32.const 1
-    end
-    if $I1
-    else
-      unreachable
-    end
-    get_global $g0
-    get_global $g0
-    i32.const 32
-    i32.add
-    set_global $g0
-    set_local $l3
-    get_local $l3
-    i32.const 28
-    i32.add
-    set_local $l4
-    get_local $l3
-    i32.const 24
-    i32.add
-    set_local $l5
-    get_local $l3
-    get_local $p0
-    i32.store
-    get_local $l3
-    get_local $l1
-    i32.load
-    i32.const 1
-    i32.add
-    i32.store offset=28
-    get_local $l3
-    get_global $g0
-    get_global $g0
-    i32.const 12
-    i32.add
-    set_global $g0
-    set_local $l6
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l8
-    get_local $l8
-    get_local $l6
-    i32.store
-    get_local $l8
-    set_local $l7
-    get_local $l6
-    i32.const 10
-    i32.store
-    get_local $l6
-    get_local $l4
-    i32.store offset=4
-    get_local $l6
-    get_local $l2
-    i32.store offset=8
-    get_local $l6
-    i32.store offset=24
-    get_local $l3)
-  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32)
     get_local $p0
     i32.load offset=4
@@ -426,7 +301,7 @@
       i32.store
       get_local $l4
     end)
-  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
@@ -505,7 +380,7 @@
     get_local $l8
     set_local $l7
     get_local $l6
-    i32.const 12
+    i32.const 11
     i32.store
     get_local $l6
     get_local $l4
@@ -516,8 +391,14 @@
     get_local $l6
     i32.store offset=24
     get_local $l3)
-  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32)
+  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
+    get_local $p0
+    i32.load offset=4
+    set_local $l1
+    get_local $p0
+    i32.load offset=8
+    set_local $l2
     get_local $p1
     set_local $l0
     block $B0 (result i32)
@@ -529,9 +410,128 @@
     else
       unreachable
     end
-    i32.const 0)
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    if $I2 (result i32)
+      i32.const 2147483647
+    else
+      get_local $l1
+      get_local $l1
+      i32.load
+      i32.const 1
+      i32.sub
+      i32.store
+      i32.const 0
+      drop
+      get_global $g0
+      get_global $g0
+      i32.const 4
+      i32.add
+      set_global $g0
+      set_local $l3
+      get_local $l3
+      get_local $l1
+      i32.load
+      i32.store
+      get_local $l3
+    end)
+  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      tee_local $l0
+      get_local $l0
+      i32.load
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      tee_local $l0
+      get_local $l0
+      i32.load offset=4
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      drop
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 32
+    i32.add
+    set_global $g0
+    set_local $l3
+    get_local $l3
+    i32.const 28
+    i32.add
+    set_local $l4
+    get_local $l3
+    i32.const 24
+    i32.add
+    set_local $l5
+    get_local $l3
+    get_local $p0
+    i32.store
+    get_local $l3
+    get_local $l1
+    i32.load
+    i32.const 1
+    i32.add
+    i32.store offset=28
+    get_local $l3
+    get_global $g0
+    get_global $g0
+    i32.const 12
+    i32.add
+    set_global $g0
+    set_local $l6
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l8
+    get_local $l8
+    get_local $l6
+    i32.store
+    get_local $l8
+    set_local $l7
+    get_local $l6
+    i32.const 13
+    i32.store
+    get_local $l6
+    get_local $l4
+    i32.store offset=4
+    get_local $l6
+    get_local $l2
+    i32.store offset=8
+    get_local $l6
+    i32.store offset=24
+    get_local $l3)
   (func $f15 (type $t0)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32) (local $l15 i32) (local $l16 i32) (local $l17 i32) (local $l18 i32) (local $l19 i32) (local $l20 i32) (local $l21 i32) (local $l22 i32) (local $l23 i32) (local $l24 i32) (local $l25 i32) (local $l26 i32) (local $l27 i32) (local $l28 i32) (local $l29 i32) (local $l30 i32) (local $l31 i32) (local $l32 i32) (local $l33 i32) (local $l34 i32) (local $l35 i32) (local $l36 i32) (local $l37 i32) (local $l38 i32) (local $l39 i32) (local $l40 i32) (local $l41 i32) (local $l42 i32) (local $l43 i32) (local $l44 i32) (local $l45 i32) (local $l46 i32) (local $l47 i32) (local $l48 i32) (local $l49 i32) (local $l50 i32) (local $l51 i32) (local $l52 i32) (local $l53 i32) (local $l54 i32) (local $l55 i32) (local $l56 i32) (local $l57 i32) (local $l58 i32) (local $l59 i32) (local $l60 i32) (local $l61 i32) (local $l62 i32) (local $l63 i32) (local $l64 i32) (local $l65 i32) (local $l66 i32) (local $l67 i32) (local $l68 i32) (local $l69 i32) (local $l70 i32) (local $l71 i32) (local $l72 i32) (local $l73 i32) (local $l74 i32) (local $l75 i32) (local $l76 i32) (local $l77 i32) (local $l78 i32) (local $l79 i32) (local $l80 i32) (local $l81 i32) (local $l82 i32) (local $l83 i32) (local $l84 i32) (local $l85 i32) (local $l86 i32) (local $l87 i32) (local $l88 i32) (local $l89 i32) (local $l90 i32) (local $l91 i32) (local $l92 i32) (local $l93 i32) (local $l94 i32) (local $l95 i32) (local $l96 i32) (local $l97 i32) (local $l98 i32) (local $l99 i32) (local $l100 i32) (local $l101 i32) (local $l102 i32) (local $l103 i32) (local $l104 i32) (local $l105 i32) (local $l106 i32) (local $l107 i32) (local $l108 i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32) (local $l15 i32) (local $l16 i32) (local $l17 i32) (local $l18 i32) (local $l19 i32) (local $l20 i32) (local $l21 i32) (local $l22 i32) (local $l23 i32) (local $l24 i32) (local $l25 i32) (local $l26 i32) (local $l27 i32) (local $l28 i32) (local $l29 i32) (local $l30 i32) (local $l31 i32) (local $l32 i32) (local $l33 i32) (local $l34 i32) (local $l35 i32) (local $l36 i32) (local $l37 i32) (local $l38 i32) (local $l39 i32) (local $l40 i32) (local $l41 i32) (local $l42 i32) (local $l43 i32) (local $l44 i32) (local $l45 i32) (local $l46 i32) (local $l47 i32) (local $l48 i32) (local $l49 i32) (local $l50 i32) (local $l51 i32) (local $l52 i32) (local $l53 i32) (local $l54 i32) (local $l55 i32) (local $l56 i32) (local $l57 i32) (local $l58 i32) (local $l59 i32) (local $l60 i32) (local $l61 i32) (local $l62 i32) (local $l63 i32) (local $l64 i32) (local $l65 i32) (local $l66 i32) (local $l67 i32) (local $l68 i32) (local $l69 i32) (local $l70 i32) (local $l71 i32) (local $l72 i32) (local $l73 i32) (local $l74 i32) (local $l75 i32) (local $l76 i32) (local $l77 i32) (local $l78 i32) (local $l79 i32) (local $l80 i32) (local $l81 i32) (local $l82 i32) (local $l83 i32) (local $l84 i32) (local $l85 i32) (local $l86 i32) (local $l87 i32)
     get_global $g0
     get_global $g0
     i32.const 4
@@ -582,58 +582,7 @@
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l10
-    get_local $l10
-    get_local $l8
-    i32.store
-    get_local $l10
     set_local $l9
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l11
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l13
-    get_local $l13
-    get_local $l11
-    i32.store
-    get_local $l13
-    set_local $l12
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l14
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l16
-    get_local $l16
-    get_local $l14
-    i32.store
-    get_local $l16
-    set_local $l15
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l17
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l18
     get_local $l1
     set_local $l0
     block $B0 (result i32)
@@ -648,21 +597,12 @@
     else
       unreachable
     end
-    get_local $l8
-    i32.const 14
-    i32.store
-    get_local $l11
-    i32.const 13
-    i32.store
-    get_local $l14
-    i32.const 11
-    i32.store
     get_local $l3
     set_local $l0
     block $B2 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l17
+      get_local $l8
       get_local $l0
       i32.store
       i32.const 1
@@ -676,7 +616,7 @@
     block $B4 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l18
+      get_local $l9
       get_local $l0
       i32.store
       i32.const 1
@@ -690,48 +630,38 @@
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l19
-    get_local $l9
-    i32.load
+    set_local $l10
     i32.const 3
-    set_local $l107
-    set_local $l108
-    get_local $l108
-    get_local $l107
-    get_local $l108
-    i32.load
-    call_indirect (type $t1)
+    set_local $l87
+    i32.const 2147483647
+    get_local $l87
+    call $f10
     drop
-    get_local $l9
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l104
+    set_local $l84
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l106
-    get_local $l106
-    get_local $l104
+    set_local $l86
+    get_local $l86
+    get_local $l84
     i32.store
-    get_local $l106
-    set_local $l105
-    get_local $l104
+    get_local $l86
+    set_local $l85
+    get_local $l84
     i32.const 1
     i32.store
-    get_local $l104
-    set_local $l102
-    set_local $l103
-    get_local $l103
-    get_local $l102
-    get_local $l103
-    i32.load
-    call_indirect (type $t1)
+    get_local $l84
+    set_local $l83
+    i32.const 2147483647
+    get_local $l83
+    call $f10
     drop
     get_local $l7
     i32.load
@@ -740,11 +670,11 @@
     i32.const 0
     get_local $l0
     i32.sub
-    set_local $l100
-    set_local $l101
-    get_local $l101
-    get_local $l100
-    get_local $l101
+    set_local $l81
+    set_local $l82
+    get_local $l82
+    get_local $l81
+    get_local $l82
     i32.load
     call_indirect (type $t1)
     i32.const 3
@@ -755,50 +685,45 @@
       unreachable
     end
     drop
-    get_local $l19
+    get_local $l10
     i32.const 0
     i32.store
-    get_local $l19
+    get_local $l10
     i32.const 0
     i32.store
     i32.const 0
     drop
-    get_local $l12
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l94
-    get_local $l94
+    set_local $l75
+    get_local $l75
     i32.const 0
     i32.store
-    get_local $l94
+    get_local $l75
     i32.const 100
     i32.store offset=4
-    get_local $l94
-    set_local $l92
-    set_local $l93
-    get_local $l93
-    get_local $l92
-    get_local $l93
-    i32.load
-    call_indirect (type $t1)
-    set_local $l96
+    get_local $l75
+    set_local $l74
+    i32.const 2147483647
+    get_local $l74
+    call $f12
+    set_local $l77
     loop $L7
-      get_local $l96
+      get_local $l77
       i32.load offset=24
       i32.const 0
-      set_local $l98
-      set_local $l99
-      get_local $l99
-      get_local $l98
-      get_local $l99
+      set_local $l79
+      set_local $l80
+      get_local $l80
+      get_local $l79
+      get_local $l80
       i32.load
       call_indirect (type $t1)
-      set_local $l97
-      get_local $l97
+      set_local $l78
+      get_local $l78
       i32.const 2147483647
       i32.eq
       if $I8
@@ -808,14 +733,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l95
-        get_local $l97
+        set_local $l76
+        get_local $l78
         i32.load
         set_local $l0
         block $B9 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l95
+          get_local $l76
           get_local $l0
           i32.store
           i32.const 1
@@ -824,9 +749,9 @@
         else
           unreachable
         end
-        get_local $l95
+        get_local $l76
         i32.load
-        get_local $l19
+        get_local $l10
         i32.load
         i32.eq
         if $I11 (result i32)
@@ -835,8 +760,8 @@
           unreachable
         end
         drop
-        get_local $l19
-        get_local $l19
+        get_local $l10
+        get_local $l10
         i32.load
         i32.const 1
         i32.add
@@ -848,7 +773,7 @@
     end
     i32.const 0
     drop
-    get_local $l19
+    get_local $l10
     i32.load
     i32.const 101
     i32.eq
@@ -858,47 +783,42 @@
       unreachable
     end
     drop
-    get_local $l19
+    get_local $l10
     i32.const 3
     i32.store
     i32.const 0
     drop
-    get_local $l12
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l86
-    get_local $l86
+    set_local $l68
+    get_local $l68
     i32.const 3
     i32.store
-    get_local $l86
+    get_local $l68
     i32.const 10
     i32.store offset=4
-    get_local $l86
-    set_local $l84
-    set_local $l85
-    get_local $l85
-    get_local $l84
-    get_local $l85
-    i32.load
-    call_indirect (type $t1)
-    set_local $l88
+    get_local $l68
+    set_local $l67
+    i32.const 2147483647
+    get_local $l67
+    call $f12
+    set_local $l70
     loop $L13
-      get_local $l88
+      get_local $l70
       i32.load offset=24
       i32.const 0
-      set_local $l90
-      set_local $l91
-      get_local $l91
-      get_local $l90
-      get_local $l91
+      set_local $l72
+      set_local $l73
+      get_local $l73
+      get_local $l72
+      get_local $l73
       i32.load
       call_indirect (type $t1)
-      set_local $l89
-      get_local $l89
+      set_local $l71
+      get_local $l71
       i32.const 2147483647
       i32.eq
       if $I14
@@ -908,14 +828,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l87
-        get_local $l89
+        set_local $l69
+        get_local $l71
         i32.load
         set_local $l0
         block $B15 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l87
+          get_local $l69
           get_local $l0
           i32.store
           i32.const 1
@@ -924,9 +844,9 @@
         else
           unreachable
         end
-        get_local $l87
+        get_local $l69
         i32.load
-        get_local $l19
+        get_local $l10
         i32.load
         i32.eq
         if $I17 (result i32)
@@ -935,8 +855,8 @@
           unreachable
         end
         drop
-        get_local $l19
-        get_local $l19
+        get_local $l10
+        get_local $l10
         i32.load
         i32.const 1
         i32.add
@@ -948,7 +868,7 @@
     end
     i32.const 0
     drop
-    get_local $l19
+    get_local $l10
     i32.load
     i32.const 11
     i32.eq
@@ -958,42 +878,37 @@
       unreachable
     end
     drop
-    get_local $l12
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l78
-    get_local $l78
+    set_local $l61
+    get_local $l61
     i32.const 3
     i32.store
-    get_local $l78
+    get_local $l61
     i32.const 3
     i32.store offset=4
-    get_local $l78
-    set_local $l76
-    set_local $l77
-    get_local $l77
-    get_local $l76
-    get_local $l77
-    i32.load
-    call_indirect (type $t1)
-    set_local $l80
+    get_local $l61
+    set_local $l60
+    i32.const 2147483647
+    get_local $l60
+    call $f12
+    set_local $l63
     loop $L19
-      get_local $l80
+      get_local $l63
       i32.load offset=24
       i32.const 0
-      set_local $l82
-      set_local $l83
-      get_local $l83
-      get_local $l82
-      get_local $l83
+      set_local $l65
+      set_local $l66
+      get_local $l66
+      get_local $l65
+      get_local $l66
       i32.load
       call_indirect (type $t1)
-      set_local $l81
-      get_local $l81
+      set_local $l64
+      get_local $l64
       i32.const 2147483647
       i32.eq
       if $I20
@@ -1003,14 +918,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l79
-        get_local $l81
+        set_local $l62
+        get_local $l64
         i32.load
         set_local $l0
         block $B21 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l79
+          get_local $l62
           get_local $l0
           i32.store
           i32.const 1
@@ -1019,7 +934,7 @@
         else
           unreachable
         end
-        get_local $l79
+        get_local $l62
         i32.load
         i32.const 3
         i32.eq
@@ -1034,42 +949,37 @@
     end
     i32.const 0
     drop
-    get_local $l12
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l70
-    get_local $l70
+    set_local $l54
+    get_local $l54
     i32.const 0
     i32.store
-    get_local $l70
+    get_local $l54
     i32.const 0
     i32.store offset=4
-    get_local $l70
-    set_local $l68
-    set_local $l69
-    get_local $l69
-    get_local $l68
-    get_local $l69
-    i32.load
-    call_indirect (type $t1)
-    set_local $l72
+    get_local $l54
+    set_local $l53
+    i32.const 2147483647
+    get_local $l53
+    call $f12
+    set_local $l56
     loop $L24
-      get_local $l72
+      get_local $l56
       i32.load offset=24
       i32.const 0
-      set_local $l74
-      set_local $l75
-      get_local $l75
-      get_local $l74
-      get_local $l75
+      set_local $l58
+      set_local $l59
+      get_local $l59
+      get_local $l58
+      get_local $l59
       i32.load
       call_indirect (type $t1)
-      set_local $l73
-      get_local $l73
+      set_local $l57
+      get_local $l57
       i32.const 2147483647
       i32.eq
       if $I25
@@ -1079,14 +989,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l71
-        get_local $l73
+        set_local $l55
+        get_local $l57
         i32.load
         set_local $l0
         block $B26 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l71
+          get_local $l55
           get_local $l0
           i32.store
           i32.const 1
@@ -1095,7 +1005,7 @@
         else
           unreachable
         end
-        get_local $l71
+        get_local $l55
         i32.load
         i32.const 0
         i32.eq
@@ -1110,42 +1020,37 @@
     end
     i32.const 0
     drop
-    get_local $l12
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l62
-    get_local $l62
+    set_local $l47
+    get_local $l47
     i32.const 3
     i32.store
-    get_local $l62
+    get_local $l47
     i32.const 2
     i32.store offset=4
-    get_local $l62
-    set_local $l60
-    set_local $l61
-    get_local $l61
-    get_local $l60
-    get_local $l61
-    i32.load
-    call_indirect (type $t1)
-    set_local $l64
+    get_local $l47
+    set_local $l46
+    i32.const 2147483647
+    get_local $l46
+    call $f12
+    set_local $l49
     loop $L29
-      get_local $l64
+      get_local $l49
       i32.load offset=24
       i32.const 0
-      set_local $l66
-      set_local $l67
-      get_local $l67
-      get_local $l66
-      get_local $l67
+      set_local $l51
+      set_local $l52
+      get_local $l52
+      get_local $l51
+      get_local $l52
       i32.load
       call_indirect (type $t1)
-      set_local $l65
-      get_local $l65
+      set_local $l50
+      get_local $l50
       i32.const 2147483647
       i32.eq
       if $I30
@@ -1155,14 +1060,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l63
-        get_local $l65
+        set_local $l48
+        get_local $l50
         i32.load
         set_local $l0
         block $B31 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l63
+          get_local $l48
           get_local $l0
           i32.store
           i32.const 1
@@ -1183,47 +1088,42 @@
     end
     i32.const 0
     drop
-    get_local $l19
+    get_local $l10
     i32.const 30
     i32.store
     i32.const 0
     drop
-    get_local $l15
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l54
-    get_local $l54
+    set_local $l40
+    get_local $l40
     i32.const 30
     i32.store
-    get_local $l54
+    get_local $l40
     i32.const 2
     i32.store offset=4
-    get_local $l54
-    set_local $l52
-    set_local $l53
-    get_local $l53
-    get_local $l52
-    get_local $l53
-    i32.load
-    call_indirect (type $t1)
-    set_local $l56
+    get_local $l40
+    set_local $l39
+    i32.const 2147483647
+    get_local $l39
+    call $f14
+    set_local $l42
     loop $L34
-      get_local $l56
+      get_local $l42
       i32.load offset=24
       i32.const 0
-      set_local $l58
-      set_local $l59
-      get_local $l59
-      get_local $l58
-      get_local $l59
+      set_local $l44
+      set_local $l45
+      get_local $l45
+      get_local $l44
+      get_local $l45
       i32.load
       call_indirect (type $t1)
-      set_local $l57
-      get_local $l57
+      set_local $l43
+      get_local $l43
       i32.const 2147483647
       i32.eq
       if $I35
@@ -1233,14 +1133,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l55
-        get_local $l57
+        set_local $l41
+        get_local $l43
         i32.load
         set_local $l0
         block $B36 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l55
+          get_local $l41
           get_local $l0
           i32.store
           i32.const 1
@@ -1249,9 +1149,9 @@
         else
           unreachable
         end
-        get_local $l55
+        get_local $l41
         i32.load
-        get_local $l19
+        get_local $l10
         i32.load
         i32.eq
         if $I38 (result i32)
@@ -1260,8 +1160,8 @@
           unreachable
         end
         drop
-        get_local $l19
-        get_local $l19
+        get_local $l10
+        get_local $l10
         i32.load
         i32.const 1
         i32.sub
@@ -1273,7 +1173,7 @@
     end
     i32.const 0
     drop
-    get_local $l19
+    get_local $l10
     i32.load
     i32.const 1
     i32.eq
@@ -1283,47 +1183,42 @@
       unreachable
     end
     drop
-    get_local $l19
+    get_local $l10
     i32.const 11
     i32.store
     i32.const 0
     drop
-    get_local $l15
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l46
-    get_local $l46
+    set_local $l33
+    get_local $l33
     i32.const 10
     i32.store
-    get_local $l46
+    get_local $l33
     i32.const 0
     i32.store offset=4
-    get_local $l46
-    set_local $l44
-    set_local $l45
-    get_local $l45
-    get_local $l44
-    get_local $l45
-    i32.load
-    call_indirect (type $t1)
-    set_local $l48
+    get_local $l33
+    set_local $l32
+    i32.const 2147483647
+    get_local $l32
+    call $f14
+    set_local $l35
     loop $L40
-      get_local $l48
+      get_local $l35
       i32.load offset=24
       i32.const 0
-      set_local $l50
-      set_local $l51
-      get_local $l51
-      get_local $l50
-      get_local $l51
+      set_local $l37
+      set_local $l38
+      get_local $l38
+      get_local $l37
+      get_local $l38
       i32.load
       call_indirect (type $t1)
-      set_local $l49
-      get_local $l49
+      set_local $l36
+      get_local $l36
       i32.const 2147483647
       i32.eq
       if $I41
@@ -1333,14 +1228,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l47
-        get_local $l49
+        set_local $l34
+        get_local $l36
         i32.load
         set_local $l0
         block $B42 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l47
+          get_local $l34
           get_local $l0
           i32.store
           i32.const 1
@@ -1349,9 +1244,9 @@
         else
           unreachable
         end
-        get_local $l47
+        get_local $l34
         i32.load
-        get_local $l19
+        get_local $l10
         i32.load
         i32.const 1
         i32.sub
@@ -1362,8 +1257,8 @@
           unreachable
         end
         drop
-        get_local $l19
-        get_local $l19
+        get_local $l10
+        get_local $l10
         i32.load
         i32.const 1
         i32.sub
@@ -1375,7 +1270,7 @@
     end
     i32.const 0
     drop
-    get_local $l19
+    get_local $l10
     i32.load
     i32.const 0
     i32.eq
@@ -1385,42 +1280,37 @@
       unreachable
     end
     drop
-    get_local $l15
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l38
-    get_local $l38
+    set_local $l26
+    get_local $l26
     i32.const 3
     i32.store
-    get_local $l38
+    get_local $l26
     i32.const 3
     i32.store offset=4
-    get_local $l38
-    set_local $l36
-    set_local $l37
-    get_local $l37
-    get_local $l36
-    get_local $l37
-    i32.load
-    call_indirect (type $t1)
-    set_local $l40
+    get_local $l26
+    set_local $l25
+    i32.const 2147483647
+    get_local $l25
+    call $f14
+    set_local $l28
     loop $L46
-      get_local $l40
+      get_local $l28
       i32.load offset=24
       i32.const 0
-      set_local $l42
-      set_local $l43
-      get_local $l43
-      get_local $l42
-      get_local $l43
+      set_local $l30
+      set_local $l31
+      get_local $l31
+      get_local $l30
+      get_local $l31
       i32.load
       call_indirect (type $t1)
-      set_local $l41
-      get_local $l41
+      set_local $l29
+      get_local $l29
       i32.const 2147483647
       i32.eq
       if $I47
@@ -1430,14 +1320,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l39
-        get_local $l41
+        set_local $l27
+        get_local $l29
         i32.load
         set_local $l0
         block $B48 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l39
+          get_local $l27
           get_local $l0
           i32.store
           i32.const 1
@@ -1446,7 +1336,7 @@
         else
           unreachable
         end
-        get_local $l39
+        get_local $l27
         i32.load
         i32.const 3
         i32.eq
@@ -1461,42 +1351,37 @@
     end
     i32.const 0
     drop
-    get_local $l15
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l30
-    get_local $l30
+    set_local $l19
+    get_local $l19
     i32.const 0
     i32.store
-    get_local $l30
+    get_local $l19
     i32.const 0
     i32.store offset=4
-    get_local $l30
-    set_local $l28
-    set_local $l29
-    get_local $l29
-    get_local $l28
-    get_local $l29
-    i32.load
-    call_indirect (type $t1)
-    set_local $l32
+    get_local $l19
+    set_local $l18
+    i32.const 2147483647
+    get_local $l18
+    call $f14
+    set_local $l21
     loop $L51
-      get_local $l32
+      get_local $l21
       i32.load offset=24
       i32.const 0
-      set_local $l34
-      set_local $l35
-      get_local $l35
-      get_local $l34
-      get_local $l35
+      set_local $l23
+      set_local $l24
+      get_local $l24
+      get_local $l23
+      get_local $l24
       i32.load
       call_indirect (type $t1)
-      set_local $l33
-      get_local $l33
+      set_local $l22
+      get_local $l22
       i32.const 2147483647
       i32.eq
       if $I52
@@ -1506,14 +1391,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l31
-        get_local $l33
+        set_local $l20
+        get_local $l22
         i32.load
         set_local $l0
         block $B53 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l31
+          get_local $l20
           get_local $l0
           i32.store
           i32.const 1
@@ -1522,7 +1407,7 @@
         else
           unreachable
         end
-        get_local $l31
+        get_local $l20
         i32.load
         i32.const 0
         i32.eq
@@ -1537,42 +1422,37 @@
     end
     i32.const 0
     drop
-    get_local $l15
-    i32.load
     get_global $g0
     get_global $g0
     i32.const 8
     i32.add
     set_global $g0
-    set_local $l22
-    get_local $l22
+    set_local $l12
+    get_local $l12
     i32.const 1
     i32.store
-    get_local $l22
+    get_local $l12
     i32.const 2
     i32.store offset=4
-    get_local $l22
-    set_local $l20
-    set_local $l21
-    get_local $l21
-    get_local $l20
-    get_local $l21
-    i32.load
-    call_indirect (type $t1)
-    set_local $l24
+    get_local $l12
+    set_local $l11
+    i32.const 2147483647
+    get_local $l11
+    call $f14
+    set_local $l14
     loop $L56
-      get_local $l24
+      get_local $l14
       i32.load offset=24
       i32.const 0
-      set_local $l26
-      set_local $l27
-      get_local $l27
-      get_local $l26
-      get_local $l27
+      set_local $l16
+      set_local $l17
+      get_local $l17
+      get_local $l16
+      get_local $l17
       i32.load
       call_indirect (type $t1)
-      set_local $l25
-      get_local $l25
+      set_local $l15
+      get_local $l15
       i32.const 2147483647
       i32.eq
       if $I57
@@ -1582,14 +1462,14 @@
         i32.const 4
         i32.add
         set_global $g0
-        set_local $l23
-        get_local $l25
+        set_local $l13
+        get_local $l15
         i32.load
         set_local $l0
         block $B58 (result i32)
           get_local $l0
           set_local $l0
-          get_local $l23
+          get_local $l13
           get_local $l0
           i32.store
           i32.const 1

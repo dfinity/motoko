@@ -349,8 +349,7 @@ module Var = struct
 
   let get_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (GetLocal (nr i)) ]
-    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
-    | Some (Func _) -> raise (Invalid_argument "No heap location for function")
+    | Some (Func fi) -> Tuple.lit env [ static_fun_pointer env fi ]
     | None   -> [ nr Unreachable ]
 
   let set_loc env var = match E.lookup_var env var with
