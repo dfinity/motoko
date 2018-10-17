@@ -142,8 +142,29 @@ let actor_field id t v : V.value =
      actor_field_async id.it v
   | _ -> assert false
 
+let async f k at =
+    let async = make_async () in
+    let k' = fun v1 -> set_async async v1 in
+    if !Flags.trace then trace "-> async %s" (string_of_region at);
+    Scheduler.queue (fun () ->
+      if !Flags.trace then trace "<- async %s" (string_of_region at);
+      incr trace_depth;
+      f (fun v ->
+         if !Flags.trace then trace "<= %s" (V.string_of_val v);
+         decr trace_depth;
+         k' v)
+    );
+    k (V.Async async)
+  
 let extended_prim s at =
   match s with
+  | "@async" ->
+     fun v k ->
+     let (call,f) = V.as_func v in
+     let async = make_async() in
+     let k' = V.Func (None, fun v k -> set_async async v; k V.unit) in
+     Scheduler.queue (fun () -> f k' V.as_unit);                                   
+     k (V.Async async)
   | "@make_async" ->
     fun v k -> V.as_unit v; k (V.Async (make_async ()))
   | "@set_async" ->
@@ -370,7 +391,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
   | RetE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.rets)
+     interpret_exp env exp1 (Lib.Option.value env.rets)
+(*                   
   | AsyncE exp1 ->
     assert(not(!Flags.await_lowering)); 
     let async = make_async () in
@@ -387,6 +409,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     );
     k (V.Async async)
+ *)
+  | AsyncE exp1 ->
+    assert(not(!Flags.await_lowering)); 
+    async
+      (fun k' -> let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
+                 in interpret_exp env' exp1 k')
+      k
+      exp.at
+(*
   | AwaitE exp1 ->
     assert(not(!Flags.await_lowering));
     interpret_exp env exp1 (fun v1 ->
@@ -402,6 +433,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       );
       Scheduler.yield ()
     ) 
+ *)
+  | AwaitE exp1 ->
+    assert(not(!Flags.await_lowering));
+    interpret_exp env exp1 (fun v1 ->
+      await (V.as_async v1) k exp.at) 
   | AssertE exp1 ->
     interpret_exp env exp1 (fun  v ->
       if V.as_bool v

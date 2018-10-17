@@ -137,7 +137,11 @@ let is_triv (exp:exp)  =
               
 let answerT = Type.unit
 let contT typ = T.Func(T.Call, [], typ, answerT)
+let cpsT typ = T.Func(T.Call, [], contT typ, answerT)
 
+(* used for dummy syntactic type instantiation *)                   
+let bogusT = {it = PrimT "bogus"; at = no_region; note = ()} 
+                     
 (* primitives *)
 let exp_of_id name typ =
   {it = VarE (name@@no_region);
@@ -219,7 +223,7 @@ let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
 *)                         
 
 let prim_make_async typ =
-  primE "@make_async" (T.Func(T.Call, [], T.unit,T.Async typ))
+  primE "@make_async" (T.Func(T.Call, [], T.unit, T.Async typ))
 let prim_set_async typ =
   primE "@set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
 let prim_get_async typ = 
@@ -233,8 +237,15 @@ let prim_await typ =
 let prim_actor_field_unit typ = 
   primE "@actor_field_unit" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
 let prim_actor_field_async typ = 
-  primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))        
+  primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
 
+let prelude_new_async = exp_of_id "new_async" (T.Func(T.Call,[{T.var="t";T.bound=T.Any}], (* TBR: require shareable T *)
+                                               cpsT (T.Var("t",0)),
+                                               T.Async (T.Var ("t",0))))
+
+(* TBR: require shareable typ? *)                                  
+let prim_async typ = primE "@async" (T.Func(T.Call,[], cpsT typ, T.Async typ))                                
+                          
 let actor_field typ =
   match typ with
   | T.Func (_, _, _, T.Tup []) ->
@@ -384,6 +395,21 @@ let ( -@- ) exp1 exp2 =
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
               (Type.string_of_typ typ1)
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
+
+let callE exp1 typs exp2 =
+    match exp1.note.note_typ with
+  | Type.Func(_, ts, _, t) when List.length ts = List.length typs->
+     {it = CallE(exp1, typs, exp2);
+      at = no_region;
+      note = {note_typ = t;
+              note_eff = max_eff (eff exp1) (eff exp2)}
+     }
+  | typ1 -> failwith
+           (Printf.sprintf "callE: \n func: %s \n : %s arg: \n %s"
+              (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
+              (Type.string_of_typ typ1)
+              (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
+
                            
 (* Label environments *)
 
@@ -469,6 +495,7 @@ and t_exp' context exp' =
       | Some Label -> RetE (t_exp context exp1)
       | None -> failwith "t_exp: Impossible"
     end
+(*      
   | AsyncE exp1 ->
      let async = fresh_id (T.Async (typ exp1)) in
      let typ1 = typ exp1 in
@@ -482,6 +509,15 @@ and t_exp' context exp' =
          (letE u1 (prim_scheduler_queue -@- (u2 --> ((c_exp context' exp1) -@- k')))
             async)))
        .it
+ *)
+  | AsyncE exp1 ->
+     (* add the implicit return label *)
+     let k_ret = fresh_cont (typ exp1) in
+     let context' = LabelEnv.add id_ret (Cont k_ret) LabelEnv.empty in
+     (* CallE(prelude_new_async,[bogusT],
+           k_ret --> ((c_exp context' exp1) -@- k_ret)) *)
+     (prim_async (typ exp1) -@- (k_ret --> ((c_exp context' exp1) -@- k_ret)))
+     .it                            
   | AwaitE _ -> failwith "Impossible: await" (* an await never has effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
@@ -838,6 +874,7 @@ and c_exp' context exp =
       | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
+(*      
   | AsyncE exp1 ->
      let async = fresh_id (T.Async (typ exp1)) in
      let typ1 = typ exp1 in
@@ -846,10 +883,22 @@ and c_exp' context exp =
      let u1 = fresh_id T.unit in
      let u2 = fresh_id T.unit in
      let context' = LabelEnv.add id_ret (Cont k') context in
+     (* TBR: should these lets be within k --> ?*)
      (letE async (prim_make_async typ1 -@- tupE [])
          (letE k' (v1 --> (prim_set_async typ1 -@- (tupE [async;v1])))
                   (letE u1 (prim_scheduler_queue -@- (u2 --> ((c_exp context' exp1) -@- k')))
-                   k -->  (k -@- async))))
+                     k -->  (k -@- async))))
+ *)
+  | AsyncE exp1 ->       
+     (* add the implicit return label *)
+     let k_ret = fresh_cont (typ exp1) in
+     let context' = LabelEnv.add id_ret (Cont k_ret) LabelEnv.empty in
+(*     
+     k --> (k -@- callE prelude_new_async [bogusT]
+                    (k_ret --> ((c_exp context' exp1) -@- k_ret)))
+*)
+     k --> (k -@-
+            (prim_async (typ exp1) -@- (k_ret --> ((c_exp context' exp1) -@- k_ret))))
   | AwaitE exp1 ->
      begin
        match eff exp1 with
