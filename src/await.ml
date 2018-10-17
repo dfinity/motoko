@@ -100,11 +100,6 @@ and effect_cases cases =
     let e = effect_exp exp in
     max_eff e (effect_cases cases')
 
-(*  TBD  
-and effect_block es =
-  List.fold_left max_eff T.Triv es
- *)
-            
 and effect_field_exps efs =
   List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
                  
@@ -139,10 +134,7 @@ let answerT = Type.unit
 let contT typ = T.Func(T.Call, [], typ, answerT)
 let cpsT typ = T.Func(T.Call, [], contT typ, answerT)
 
-(* used for dummy syntactic type instantiation *)                   
-let bogusT = {it = PrimT "bogus"; at = no_region; note = ()} 
-                     
-(* primitives *)
+(* identifiers *)
 let exp_of_id name typ =
   {it = VarE (name@@no_region);
    at = no_region;
@@ -157,7 +149,6 @@ let primE name typ =
    note = {note_typ = typ;
            note_eff = T.Triv}
   } 
-
     
 let id_stamp = ref 0
 
@@ -205,47 +196,14 @@ let idE id typ =
   }
    
 
-(*                  
-let prim_make_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
-                                  T.unit,
-                                  T.Async (T.Var ("t",0))))
-let prim_set_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
-                                  T.Tup [T.Async (T.Var ("t",0)); T.Var("t",0)],
-                                  T.unit))
-let prim_get_async = fresh_id (T.Func([{T.var="t";T.bound=T.Any}],
-                                  T.Tup [T.Async (T.Var ("t",0)); contT (T.Var("t",0))],
-                                  T.unit))
-let prim_scheduler_queue = fresh_id (T.Func([],
-                                  T.Func([],T.unit,T.unit),
-                                  T.unit))
-let prim_sheduler_yield = fresh_id (T.Func([], T.unit, T.unit))
-
-*)                         
-
-let prim_make_async typ =
-  primE "@make_async" (T.Func(T.Call, [], T.unit, T.Async typ))
-let prim_set_async typ =
-  primE "@set_async" (T.Func(T.Call, [], T.Tup [T.Async typ; typ], T.unit))
-let prim_get_async typ = 
-  primE "@get_async" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
-let prim_scheduler_queue  =
-  primE "@scheduler_queue" (T.Func(T.Call, [], T.Func(T.Call, [], T.unit, T.unit), T.unit))
-let prim_sheduler_yield = 
-  primE "@scheduler_yield" (T.Func(T.Call, [], T.unit, T.unit))
-let prim_await typ = 
+(* TBR: require shareable typ? *)                                  
+let prim_async typ = primE "@async" (T.Func(T.Call,[], cpsT typ, T.Async typ))              let prim_await typ = 
   primE "@await" (T.Func(T.Call, [], T.Tup [T.Async typ; contT typ], T.unit))
 let prim_actor_field_unit typ = 
   primE "@actor_field_unit" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
 let prim_actor_field_async typ = 
   primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
-
-let prelude_new_async = exp_of_id "new_async" (T.Func(T.Call,[{T.var="t";T.bound=T.Any}], (* TBR: require shareable T *)
-                                               cpsT (T.Var("t",0)),
-                                               T.Async (T.Var ("t",0))))
-
-(* TBR: require shareable typ? *)                                  
-let prim_async typ = primE "@async" (T.Func(T.Call,[], cpsT typ, T.Async typ))                                
-                          
+        
 let actor_field typ =
   match typ with
   | T.Func (_, _, _, T.Tup []) ->
@@ -253,33 +211,6 @@ let actor_field typ =
   | T.Func (_, _, _, T.Async _) ->
      prim_actor_field_async typ
   | _ -> assert false
-
-(* TBD:             
-let prim_promise_make typ =
-  prim_of_id "promise_make" (T.Func(T.Call, [], T.unit, typ))             
-let prim_promise_fullfill typ =
-  prim_of_id "promise_fullfill" (T.Func(T.Call, [], T.Tup [typ; typ], T.unit))
-
- *)
-
-(* TBD:
-let decE dec =
-  let note =
-      match dec.it with
-      | LetD (_,exp) ->
-        exp.note
-      | ExpD exp ->
-        exp.note 
-      | VarD (id,exp) ->
-        {note_typ = T.Mut (typ exp);
-         note_eff = eff exp}
-      | _ -> failwith "NYI"
-   in
-   { it = DecE dec;
-     at = no_region;
-     note = note;
-   }
- *)
   
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
@@ -395,22 +326,7 @@ let ( -@- ) exp1 exp2 =
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
               (Type.string_of_typ typ1)
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
-
-let callE exp1 typs exp2 =
-    match exp1.note.note_typ with
-  | Type.Func(_, ts, _, t) when List.length ts = List.length typs->
-     {it = CallE(exp1, typs, exp2);
-      at = no_region;
-      note = {note_typ = t;
-              note_eff = max_eff (eff exp1) (eff exp2)}
-     }
-  | typ1 -> failwith
-           (Printf.sprintf "callE: \n func: %s \n : %s arg: \n %s"
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
-              (Type.string_of_typ typ1)
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
-
-                           
+                          
 (* Label environments *)
 
 module LabelEnv = Env.Make(String)
@@ -495,27 +411,10 @@ and t_exp' context exp' =
       | Some Label -> RetE (t_exp context exp1)
       | None -> failwith "t_exp: Impossible"
     end
-(*      
-  | AsyncE exp1 ->
-     let async = fresh_id (T.Async (typ exp1)) in
-     let typ1 = typ exp1 in
-     let v1 = fresh_id (typ exp1) in
-     let k' = fresh_cont (typ exp1) in
-     let u1 = fresh_id T.unit in
-     let u2 = fresh_id T.unit in
-     let context' = LabelEnv.add id_ret (Cont k') LabelEnv.empty in
-     (letE async (prim_make_async typ1 -@- tupE [])
-      (letE k' (v1 --> (prim_set_async typ1 -@- (tupE [async;v1])))
-         (letE u1 (prim_scheduler_queue -@- (u2 --> ((c_exp context' exp1) -@- k')))
-            async)))
-       .it
- *)
   | AsyncE exp1 ->
      (* add the implicit return label *)
      let k_ret = fresh_cont (typ exp1) in
      let context' = LabelEnv.add id_ret (Cont k_ret) LabelEnv.empty in
-     (* CallE(prelude_new_async,[bogusT],
-           k_ret --> ((c_exp context' exp1) -@- k_ret)) *)
      (prim_async (typ exp1) -@- (k_ret --> ((c_exp context' exp1) -@- k_ret)))
      .it                            
   | AwaitE _ -> failwith "Impossible: await" (* an await never has effect T.Triv *)
@@ -532,8 +431,6 @@ and t_exp' context exp' =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | NewObjE (sort, ids) -> exp' 
-
-           
 
 and t_block context decs : dec list= 
   List.map (t_dec context) decs
@@ -819,7 +716,6 @@ and c_exp' context exp =
     binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2 
   | BlockE decs ->
     c_block context k decs
-    (* BlockE (c_decs context decs) *)
   | NotE exp1 ->
     unary context k (fun v1 -> e (NotE v1)) exp1 
   | AndE (exp1, exp2) ->
@@ -874,29 +770,10 @@ and c_exp' context exp =
       | Some Label -> failwith "c_exp: Impossible"
       | None -> failwith "c_exp: Impossible"
     end
-(*      
-  | AsyncE exp1 ->
-     let async = fresh_id (T.Async (typ exp1)) in
-     let typ1 = typ exp1 in
-     let v1 = fresh_id (typ exp1) in
-     let k' = fresh_cont (typ exp1) in
-     let u1 = fresh_id T.unit in
-     let u2 = fresh_id T.unit in
-     let context' = LabelEnv.add id_ret (Cont k') context in
-     (* TBR: should these lets be within k --> ?*)
-     (letE async (prim_make_async typ1 -@- tupE [])
-         (letE k' (v1 --> (prim_set_async typ1 -@- (tupE [async;v1])))
-                  (letE u1 (prim_scheduler_queue -@- (u2 --> ((c_exp context' exp1) -@- k')))
-                     k -->  (k -@- async))))
- *)
   | AsyncE exp1 ->       
      (* add the implicit return label *)
      let k_ret = fresh_cont (typ exp1) in
      let context' = LabelEnv.add id_ret (Cont k_ret) LabelEnv.empty in
-(*     
-     k --> (k -@- callE prelude_new_async [bogusT]
-                    (k_ret --> ((c_exp context' exp1) -@- k_ret)))
-*)
      k --> (k -@-
             (prim_async (typ exp1) -@- (k_ret --> ((c_exp context' exp1) -@- k_ret))))
   | AwaitE exp1 ->
@@ -972,7 +849,7 @@ and c_dec context dec =
                   (k -@- define_idE id Var v)))
      end                                       
   | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
-  | ClassD (id, _ (*typbinds*), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
+  | ClassD (id, _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let k = fresh_cont func_typ in
