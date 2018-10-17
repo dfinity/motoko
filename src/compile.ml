@@ -95,12 +95,18 @@ module E = struct
   let test_show_i32fun_ty_i = 3l
   let data_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let data_externalize_fun_ty_i = 4l
+  let module_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  let module_new_fun_ty_i = 5l
+  let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  let actor_new_fun_ty_i = 6l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
       test_print_fun_ty;
       test_show_i32fun_ty;
       data_externalize_fun_ty;
+      module_new_fun_ty;
+      actor_new_fun_ty;
       ]
 
   (* Indices of local variables *)
@@ -622,8 +628,7 @@ module Text = struct
 
   let len_field = 0l
 
-  let lit env s =
-    let bytes = List.map Int32.of_int (Wasm.Utf8.decode s) in
+  let lit env bytes =
     let n = Int32.of_int (List.length bytes) in
 
     let i = E.add_anon_local env I32Type in
@@ -644,6 +649,13 @@ module Text = struct
     in
     List.concat (List.mapi init_elem bytes) @
     compile_self
+
+  let lit_utf8 env s =
+    lit env (List.map Int32.of_int (Wasm.Utf8.decode s))
+
+  let lit_binary env s =
+    lit env (List.map Int32.of_int (List.map Char.code (Lib.String.explode s)))
+
 end (* String *)
 
 module Array = struct
@@ -803,6 +815,8 @@ module Dfinity = struct
   let test_print_i env = 0l
   let test_show_i32_i env = 1l
   let data_externalize_i env = 2l
+  let module_new_i env = 3l
+  let actor_new_i env = 4l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -831,7 +845,21 @@ module Dfinity = struct
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr E.data_externalize_fun_ty_i))
     }) in
-    assert (Int32.to_int i == Int32.to_int (data_externalize_i env))
+    assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "module";
+      item_name = explode "new";
+      idesc = nr (FuncImport (nr E.module_new_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (module_new_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "actor";
+      item_name = explode "new";
+      idesc = nr (FuncImport (nr E.actor_new_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (actor_new_i env))
 
   let printInt_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
@@ -894,7 +922,7 @@ let compile_lit env lit = match lit with
     (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
-  | TextLit t     -> Text.lit env t
+  | TextLit t     -> Text.lit_utf8 env t
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
@@ -1337,8 +1365,64 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
-and actor_lit env name fs =
-  [ nr Unreachable ]
+and actor_lit outer_env name fs =
+  if fs <> [] then todo "non-empty actor" (Arrange.id name) [ nr Unreachable ] else
+
+  let wasm =
+    let env = E.mk_global (E.mode outer_env) in
+
+    if E.mode env = DfinityMode then Dfinity.system_imports env;
+    Array.common_funcs env;
+
+    (* Compile stuff here *)
+
+    let imports = E.get_imports env in
+    let ni = List.length imports in
+    let ni' = Int32.of_int ni in
+
+    let funcs = E.get_funcs env in
+    let nf = List.length funcs in
+    let nf' = Int32.of_int nf in
+
+    let table_sz = Int32.add nf' ni' in
+
+    let m = nr { empty_module with
+      types = E.get_types env;
+      funcs = funcs;
+      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
+      elems = [ nr {
+        index = nr 0l;
+        offset = nr (compile_const ni');
+        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
+      start = None;
+      globals = Heap.globals;
+      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+      imports = imports;
+      exports = E.get_exports env;
+    } in
+    let (_map, wasm) = EncodeMap.encode m in
+    wasm in
+
+  (* This should really be putting the data into memory directly *)
+  Text.lit_binary outer_env wasm @
+
+  let i = E.add_anon_local outer_env I32Type in
+  [ nr (SetLocal (nr i)) ] @
+
+  (* Calculate the offset *)
+  [ nr (GetLocal (nr i)) ] @
+  compile_const (Int32.mul Heap.word_size Text.header_size) @
+  [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+  (* Calculate the length *)
+  [ nr (GetLocal (nr i)) ] @
+  Heap.load_field (Text.len_field) @
+
+  (* Externalize *)
+  [ nr (Call (nr (Dfinity.data_externalize_i outer_env))) ] @
+
+  (* Create actor *)
+  [ nr (Call (nr (Dfinity.module_new_i outer_env))) ] @
+  [ nr (Call (nr (Dfinity.actor_new_i outer_env))) ]
 
 let compile mode (progs : Syntax.prog list) : module_ =
   let env = E.mk_global mode in
