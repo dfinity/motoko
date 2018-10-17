@@ -443,6 +443,7 @@ let rec rel_typ env rel eq t1 t2 =
   | Tup ts1, Shared ->
     rel_list rel_typ env rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
+    (* TODO: not all classes should be sharable *)
     (s1 = s2 || rel != eq && s1 = Construct) &&
     (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
@@ -453,6 +454,7 @@ let rec rel_typ env rel eq t1 t2 =
   | Func (Construct, _, _, _), Class when rel != eq ->
     true
   | Func (s1, _, _, _), Shared when rel != eq ->
+    (* TODO: not all classes should be sharable *)
     s1 <> Call Local
   | Class, Class ->
     true
@@ -603,7 +605,6 @@ let rec string_of_typ_nullary vs = function
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_typ' vs t =
-  (* TODO: print array shared *)
   match t with
   | Array (Mut t) ->
     sprintf "var %s[]" (string_of_typ_nullary vs t)
