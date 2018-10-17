@@ -1,5 +1,5 @@
 -- Checking counter.as:
-type Counter <: actor {dec : () -> (); read : () -> async Int}
+type Counter <: actor {dec : shared () -> (); read : shared () -> async Int}
 let Counter : class Int -> Counter
 let c : Counter
 let show : (Text, Int) -> ()

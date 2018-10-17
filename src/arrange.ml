@@ -148,8 +148,8 @@ and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | FuncD (i, tp, p, t, e) ->
-    "FuncD" $$ [id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+  | FuncD (s, i, tp, p, t, e) ->
+    "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, tp, s, p, efs) ->

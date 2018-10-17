@@ -621,7 +621,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
-  | FuncD (id, _, _, _, _)
+  | FuncD (_, id, _, _, _, _)
   | ClassD (id, _, _, _, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
@@ -648,7 +648,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | FuncD (id, _typbinds, pat, _typ, exp) ->
+  | FuncD (_sort, id, _typbinds, pat, _typ, exp) ->
     let f = interpret_func env id pat
       (fun env' -> interpret_exp env' exp) in
     let v = V.Func (None, f) in

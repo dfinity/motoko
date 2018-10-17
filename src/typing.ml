@@ -146,7 +146,8 @@ let rec check_typ env typ : T.typ =
       if not (T.sub env'.cons t2 T.Shared) then
         error typ1.at "shared function has non-shared result type\n  %s"
           (T.string_of_typ_expand env'.cons t2);
-      if not (T.is_async (T.promote env'.cons t2)) then
+      let t2' = T.promote env'.cons t2 in
+      if not (T.is_unit t2' || T.is_async t2') then
         error typ1.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons t2)
     end;
@@ -875,11 +876,23 @@ and infer_exp_fields env s id t fields : T.field list * T.field list * val_env =
     List.fold_left (infer_exp_field env' s) ([], [], T.Env.empty) fields in
   List.sort compare tfs, List.sort compare tfs_inner, ve
 
+and is_func_exp exp =
+  match exp.it with
+  | DecE dec -> is_func_dec dec
+  | AnnotE (exp, _) -> is_func_exp exp
+  | _ -> Printf.printf "[1]%!"; false
+
+and is_func_dec dec =
+  match dec.it with
+  | FuncD _ -> true
+  | _ -> Printf.printf "[2]%!"; false
+
 and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field list * val_env =
   let {id; exp; mut; priv} = field.it in
   let t =
     match T.Env.find id.it env.vals with
-    | T.Pre -> infer_mut mut (infer_exp (adjoin_vals env ve) exp)
+    | T.Pre ->
+      infer_mut mut (infer_exp (adjoin_vals env ve) exp)
     | t ->
       (* When checking object in analysis mode *)
       if not env.pre then
@@ -887,9 +900,8 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
       t
   in
   if not env.pre then begin
-    if s = T.Actor && priv.it = Public && not (T.is_func (T.promote env.cons t)) then
-      error field.at "public actor field %s has non-function type\n  %s"
-        id.it (T.string_of_typ_expand env.cons t);
+    if s = T.Actor && priv.it = Public && not (is_func_exp exp) then
+      error field.at "public actor field is not a function";
     if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
       error field.at "public shared object or actor field %s has non-shared type\n  %s"
         id.it (T.string_of_typ_expand env.cons t)
@@ -951,7 +963,7 @@ and infer_dec env ce_inner dec : T.typ =
   | LetD (_, exp) | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (id, typbinds, pat, typ, exp) ->
+  | FuncD (sort, id, typbinds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let _cs, _ts, te, ce = check_typ_binds env typbinds in
@@ -1142,7 +1154,7 @@ and gather_dec_valdecs ve dec : val_env =
     ve
   | LetD (pat, _) ->
     gather_pat ve pat
-  | VarD (id, _) | FuncD (id, _, _, _, _) | ClassD (id, _, _, _, _) ->
+  | VarD (id, _) | FuncD (_, id, _, _, _, _) | ClassD (id, _, _, _, _) ->
     if T.Env.mem id.it ve then
       error dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
@@ -1168,14 +1180,26 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (id, typbinds, pat, typ, _) ->
+  | FuncD (sort, id, typbinds, pat, typ, _) ->
     let cs, ts, te, ce = check_typ_binds env typbinds in
     let env' = adjoin_typs env te ce in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
+    if not env.pre && sort.it = T.Sharable then begin
+      if not (T.sub env'.cons t1 T.Shared) then
+        error pat.at "shared function has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand env'.cons t1);
+      if not (T.sub env'.cons t2 T.Shared) then
+        error typ.at "shared function has non-shared result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2);
+      let t2' = T.promote env'.cons t2 in
+      if not (T.is_unit t2' || T.is_async t2') then
+        error typ.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
+    end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
-      (T.Func (T.Call T.Local, tbs, T.close cs t1, T.close cs t2))
+      (T.Func (T.Call sort.it, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, typbinds, sort, pat, fields) ->

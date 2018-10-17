@@ -1,7 +1,7 @@
 -- Checking bank.as:
-type Account <: actor {getBalance : () -> async Int; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
-type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
-type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+type Account <: actor {getBalance : shared () -> async Int; isCompatible : shared (like Account) -> async Bool; join : shared Account -> (); split : shared Int -> async Account}
+type Bank <: actor {getIssuer : shared () -> async Issuer; getReserve : shared () -> async Account}
+type Issuer <: actor {hasIssued : shared (like Account) -> async Bool}
 let Account : class Int -> Account
 let Bank : class Int -> Bank
 let Issuer : class () -> Issuer

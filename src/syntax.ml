@@ -176,7 +176,7 @@ and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)
   | VarD of id * exp                                   (* mutable *)
-  | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
+  | FuncD of sharing * id * typ_bind list * pat * typ * exp (* function *)
   | TypD of id * typ_bind list * typ                   (* type *)
   | ClassD of id * typ_bind list * obj_sort * pat * exp_field list (* class *)
 

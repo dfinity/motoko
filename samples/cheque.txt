@@ -1,8 +1,8 @@
 -- Checking cheque.as:
-type Account <: actor {credit : Int -> (); deposit : Cheque -> (); getBalance : () -> async Int; invoice : (Int, Account) -> async Cheque; isCompatible : (like Account) -> async Bool; join : Account -> (); split : Int -> async Account}
-type Bank <: actor {getIssuer : () -> async Issuer; getReserve : () -> async Account}
-type Cheque <: actor {deposit : () -> ()}
-type Issuer <: actor {hasIssued : (like Account) -> async Bool}
+type Account <: actor {credit : shared Int -> (); deposit : shared Cheque -> (); getBalance : shared () -> async Int; invoice : shared (Int, Account) -> async Cheque; isCompatible : shared (like Account) -> async Bool; join : shared Account -> (); split : shared Int -> async Account}
+type Bank <: actor {getIssuer : shared () -> async Issuer; getReserve : shared () -> async Account}
+type Cheque <: actor {deposit : shared () -> ()}
+type Issuer <: actor {hasIssued : shared (like Account) -> async Bool}
 let Account : class Int -> Account
 let Bank : class Int -> Bank
 let Cheque : class (Int, Account) -> Cheque

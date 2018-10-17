@@ -372,6 +372,7 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 let rel_list p env rel eq xs1 xs2 =
   try List.for_all2 (p env rel eq) xs1 xs2 with Invalid_argument _ -> false
 
+let str = ref (fun _ -> failwith "")
 let rec rel_typ env rel eq t1 t2 =
 (*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
   t1 == t2 || S.mem (t1, t2) !rel || begin
@@ -452,8 +453,10 @@ let rec rel_typ env rel eq t1 t2 =
   | Func (Construct, _, _, _), Class when rel != eq ->
     true
   | Func (s1, _, _, _), Shared when rel != eq ->
-    s1 = Call Sharable
+    s1 <> Call Local
   | Class, Class ->
+    true
+  | Class, Shared ->
     true
   | Shared, Shared ->
     true
@@ -648,7 +651,7 @@ and string_of_binds vs vs' = function
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
 let string_of_typ = string_of_typ' []
-
+let _ = str := string_of_typ
 
 let strings_of_kind k =
   let op, tbs, t =

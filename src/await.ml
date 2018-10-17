@@ -119,7 +119,7 @@ and infer_effect_dec dec =
     effect_exp e
   | TypD (v, tps, t) ->
     T.Triv
-  | FuncD (v, tps, p, t, e) ->
+  | FuncD (s, v, tps, p, t, e) ->
     T.Triv
   | ClassD (a, v, tps, p, efs) ->
     T.Triv
@@ -175,7 +175,7 @@ let  (-->) k e =
   | VarE v ->
      let note = {note_typ = T.Func(T.Call T.Local, [], typ k, typ e);
                  note_eff = T.Triv} in
-     {it=DecE({it=FuncD("" @@ no_region, (* no recursion *)
+     {it=DecE({it=FuncD(T.Local @@ no_region, "" @@ no_region, (* no recursion *)
                         [],
                         {it=VarP v;at=no_region;note=k.note},
                         PrimT "Any"@@no_region, (* bogus,  but we shouln't use it anymore *)
@@ -510,9 +510,9 @@ and t_dec' context dec' =
   | TypD _ -> dec'
   | LetD (pat,exp) -> LetD (pat,t_exp context exp)
   | VarD (id,exp) -> VarD (id,t_exp context exp)
-  | FuncD (id,typbinds, pat, typ, exp) ->
+  | FuncD (sh, id, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
-    FuncD (id, typbinds, pat, typ,t_exp context' exp)
+    FuncD (sh, id, typbinds, pat, typ,t_exp context' exp)
   | ClassD (id, typbinds, sort, pat, fields) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in     
     let fields' = t_fields context' fields in             
@@ -922,7 +922,7 @@ and c_dec context dec =
                 (v -->
                   (k -@- define_idE id Var v)))
      end                                       
-  | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
+  | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
   | ClassD (id, _ (*typbinds*), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
@@ -959,7 +959,7 @@ and declare_dec dec exp : exp =
   | TypD _ -> exp
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
-  | FuncD (id, _, _, _, _)
+  | FuncD (_, id, _, _, _, _)
   | ClassD (id, _, _, _, _) -> declare_id id (typ_dec dec) exp
 
 and declare_decs decs exp : exp =

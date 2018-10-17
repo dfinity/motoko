@@ -100,7 +100,7 @@ and dec d = match d.it with
   | ExpD e -> (exp e, S.empty)
   | LetD (p, e) -> pat p +++ exp e
   | VarD (i, e) -> (S.empty, S.singleton i.it) +++ exp e
-  | FuncD (i, tp, p, t, e) ->
+  | FuncD (s, i, tp, p, t, e) ->
     (S.empty, S.singleton i.it) +++ (exp e /// pat p)
   | TypD (i, tp, t) -> (S.empty, S.empty)
   | ClassD (i, tp, s, p, efs) ->

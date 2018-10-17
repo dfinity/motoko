@@ -1203,7 +1203,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         store_ptr @
         if last then [ nr (GetLocal (nr i)) ] @ load_ptr else [])
 
-  | FuncD (name, _, p, _rt, e) ->
+  | FuncD (_, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
