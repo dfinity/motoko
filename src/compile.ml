@@ -35,6 +35,13 @@ and that the order should not matter in a significant way.
 
 type mode = WasmMode | DfinityMode
 
+(* Names can be referring to one of these things *)
+type varloc =
+  | Local of int32  (* A Wasm Local in the current function *)
+  (* | Global of int32 (* A Wasm Global in the current module *) *)
+  | Func of int32 (* A Wasm Function in the current module. This is the function id, not the table id *)
+
+
 module E = struct
 
   (* Utilities, internal to E *)
@@ -64,8 +71,8 @@ module E = struct
     depth : int32;
     (* A mapping from jump label to their depth *)
     ld : int32 NameEnv.t;
-    (* Mapping ActorScript varables to WebAssembly locals *)
-    local_vars_env : int32 NameEnv.t;
+    (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
+    local_vars_env : varloc NameEnv.t;
     (* Mapping primitives to WebAssembly locals *)
     primitives_env : int32 NameEnv.t;
     (* Field labels to index *)
@@ -140,7 +147,7 @@ module E = struct
 
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
-      | Some i -> Some (nr i)
+      | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
   let lookup_prim env var =
@@ -154,7 +161,10 @@ module E = struct
 
   let add_local (env : t) name =
       let i = add_anon_local env I32Type in
-      ({ env with local_vars_env = NameEnv.add name i env.local_vars_env }, i)
+      ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
+
+  let add_local_fun (env : t) name fi =
+      { env with local_vars_env = NameEnv.add name (Func fi) env.local_vars_env }
 
   let get_locals (env : t) = !(env.locals)
 
@@ -165,11 +175,11 @@ module E = struct
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
-  let add_fun (env : t) f =
-    let i = reg env.funcs f in
-    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
-    Int32.add i n
+  let add_fun (env : t) f = reg env.funcs f
 
+  let fun_to_tableid (env : t) fi = 
+    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
+    Int32.add fi n
 
   let add_prim (env : t) name i =
     { env with primitives_env = NameEnv.add name i env.primitives_env }
@@ -318,12 +328,32 @@ end (* Tuple *)
 
 module Var = struct
 
+  (* When accessing a variable that is a static closure, then we need to create a
+     heap-allocated thing on the fly. *)
+  let static_fun_pointer env fi =
+      (* Allocate a heap object for the function *)
+      let li = E.add_anon_local env I32Type in
+      Heap.alloc (Wasm.I32.of_int_u 1) @
+      [ nr (SetLocal (nr li)) ] @
+
+      (* Store the function number: *)
+      let ti = E.fun_to_tableid env fi in
+      [ nr (GetLocal (nr li));
+        nr (Wasm.Ast.Const (nr (Wasm.Values.I32 ti))) ] @ (* Store function number *)
+      Heap.store_field 0l @
+
+      [ nr (GetLocal (nr li)) ]
+
   let get_loc env var = match E.lookup_var env var with
-    | Some i -> [ nr (GetLocal i) ]
+    | Some (Local i) -> [ nr (GetLocal (nr i)) ]
+    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
+    | Some (Func fi) -> static_fun_pointer env fi
     | None   -> [ nr Unreachable ]
 
   let set_loc env var = match E.lookup_var env var with
-    | Some i -> [ nr (SetLocal i) ]
+    | Some (Local i) -> [ nr (SetLocal (nr i)) ]
+    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
+    | Some (Func _) -> raise (Invalid_argument "Cannot write to static function location")
     | None   -> [ nr Unreachable ]
 
 end (* Var *)
@@ -351,8 +381,23 @@ module Func = struct
          body = code
        }
 
+  (* The argument on the stack *)
+  let call_direct env fi at =
+   (* Pop the argument *)
+   let i = E.add_anon_local env I32Type in
+   [ nr (SetLocal (nr i)) ] @
+
+   (* First arg: The (unused) closure pointer *)
+   compile_null @
+
+   (* Second arg: The argument *)
+   [ nr (GetLocal (nr i)) ] @
+
+   (* All done: Call! *)
+   [ Call (nr fi) @@ at ]
+
   (* Expect the function closure and the argument on the stack *)
-  let call env at =
+  let call_indirect env at =
    (* Pop the argument *)
    let i = E.add_anon_local env I32Type in
    [ nr (SetLocal (nr i)) ] @
@@ -397,8 +442,17 @@ module Func = struct
       destruct_args_code @
       body_code)
 
-  (* Compile a function declaration *)
-  let dec pre_env last name captured mk_pat mk_body at =
+
+  (* Compile a closed function declaration (has no free variables) *)
+  let dec_closed pre_env last name mk_pat mk_body at =
+      let f = compile_func pre_env [] mk_pat mk_body at in
+      let fi = E.add_fun pre_env f in
+      let pre_env1 = E.add_local_fun pre_env name.it fi in
+      ( pre_env1, [], fun env ->
+        if last then [ nr (Unreachable) ] else Var.static_fun_pointer env fi )
+
+  (* Compile a closure declaration (has free variables) *)
+  let dec_closure pre_env last name captured mk_pat mk_body at =
       let li = E.add_anon_local pre_env I32Type in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
@@ -418,10 +472,11 @@ module Func = struct
            with the closure itself passed as a first argument *)
         let f = compile_func env captured mk_pat mk_body at in
         let fi = E.add_fun env f in
+        let ti = E.fun_to_tableid env fi in
 
         (* Store the function number: *)
         [ GetLocal (li @@ at) @@ at;
-          Wasm.Ast.Const (Wasm.Values.I32 fi @@ at) @@ at ] @ (* Store function number *)
+          Wasm.Ast.Const (Wasm.Values.I32 ti @@ at) @@ at ] @ (* Store function number *)
         Heap.store_field 0l @
         (* Store all captured values *)
         let store_capture i v =
@@ -430,6 +485,14 @@ module Func = struct
           Heap.store_field (Wasm.I32.of_int_u (1+i)) in
         List.concat (List.mapi store_capture captured) @
         if last then [ GetLocal (li @@ at) @@ at ] else [])
+
+  let dec pre_env last name captured mk_pat mk_body at =
+    (* This could be smarter: It is ok to capture closed functions,
+       but then we would have to move the call to compile_func in dec_closed
+       above into the continuation. *)
+    if false (* captured = [] *)
+    then dec_closed pre_env last name mk_pat mk_body at
+    else dec_closure pre_env last name captured mk_pat mk_body at
 
 end (* Func *)
 
@@ -453,8 +516,9 @@ module Prim = struct
      a closure for the function *)
   let allocate env n mk_fun =
     let fi = E.add_fun env (mk_fun env) in
+    let ti = E.fun_to_tableid env fi in
     let i = E.add_anon_local env I32Type in
-    let code = Tuple.lit env [ compile_const fi ] @
+    let code = Tuple.lit env [ compile_const ti ] @
                [ nr (SetLocal (nr i)) ] in
     let env1 = E.add_prim env n i in
     (env1, code)
@@ -585,17 +649,13 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = match E.mode env with
-    | WasmMode -> i
-    | DfinityMode -> Int32.add i 3l
-
-  let array_get_funid       env = fun_id env 0l
-  let array_set_funid       env = fun_id env 1l
-  let array_len_funid       env = fun_id env 2l
-  let array_keys_funid      env = fun_id env 3l
-  let array_keys_next_funid env = fun_id env 4l
-  let array_vals_funid      env = fun_id env 5l
-  let array_vals_next_funid env = fun_id env 6l
+  let array_get_funid       = 0l
+  let array_set_funid       = 1l
+  let array_len_funid       = 2l
+  let array_keys_funid      = 3l
+  let array_keys_next_funid = 4l
+  let array_vals_funid      = 5l
+  let array_vals_next_funid = 6l
 
   let len_field = Int32.add Object.header_size 5l
 
@@ -671,10 +731,12 @@ module Array = struct
             Tuple.lit env1 [ compile_zero ] @
             [ nr (SetLocal (nr i)) ] @
 
+            let ti = E.fun_to_tableid env next_funid in
+
             (* next function *)
             let ni = E.add_anon_local env1 I32Type in
             Tuple.lit env1 [
-              compile_const next_funid;
+              compile_const ti;
               [ nr (GetLocal (nr i)) ];
               get_array_object ] @
             [ nr (SetLocal (nr ni)) ] @
@@ -688,7 +750,7 @@ module Array = struct
               (* Return old value *)
               get_i
             ) in
-    let keys_fun env = mk_iterator (array_keys_next_funid env) in
+    let keys_fun env = mk_iterator array_keys_next_funid in
 
     let vals_next_fun = mk_next_fun (fun get_array get_i ->
               (* Lookup old value *)
@@ -697,44 +759,37 @@ module Array = struct
               idx @
               load_ptr
             ) in
-    let vals_fun env = mk_iterator (array_vals_next_funid env) in
+    let vals_fun env = mk_iterator array_vals_next_funid in
 
     let i = E.add_fun env get_fun in
-    assert (Int32.to_int i == Int32.to_int (array_get_funid env));
+    assert (Int32.to_int i == Int32.to_int array_get_funid);
 
     let i = E.add_fun env set_fun in
-    assert (Int32.to_int i == Int32.to_int (array_set_funid env));
+    assert (Int32.to_int i == Int32.to_int array_set_funid);
 
     let i = E.add_fun env len_fun in
-    assert (Int32.to_int i == Int32.to_int (array_len_funid env));
+    assert (Int32.to_int i == Int32.to_int array_len_funid);
 
     let i = E.add_fun env (keys_fun env) in
-    assert (Int32.to_int i == Int32.to_int (array_keys_funid env));
+    assert (Int32.to_int i == Int32.to_int array_keys_funid);
 
     let i = E.add_fun env keys_next_fun in
-    assert (Int32.to_int i == Int32.to_int (array_keys_next_funid env));
+    assert (Int32.to_int i == Int32.to_int array_keys_next_funid);
 
     let i = E.add_fun env (vals_fun env) in
-    assert (Int32.to_int i == Int32.to_int (array_vals_funid env));
+    assert (Int32.to_int i == Int32.to_int array_vals_funid);
 
     let i = E.add_fun env vals_next_fun in
-    assert (Int32.to_int i == Int32.to_int (array_vals_next_funid env))
+    assert (Int32.to_int i == Int32.to_int array_vals_next_funid)
 
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tuple.lit_rec env
      (List.map (fun i _ -> i) Object.default_header @
+      List.map (fun funid compile_self ->
+        Tuple.lit env [ compile_const (E.fun_to_tableid env funid); compile_self]
+      ) [ array_get_funid; array_set_funid; array_len_funid; array_keys_funid; array_vals_funid ] @
       [ (fun compile_self ->
-        Tuple.lit env [ compile_const (array_get_funid env); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_set_funid env); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_len_funid env); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_keys_funid env); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_vals_funid env); compile_self])
-      ; (fun compile_self ->
         compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
 
@@ -806,10 +861,10 @@ module Dfinity = struct
     [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ]));
       "print",    (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ])) ]
 
-  let export_start_fun env i =
+  let export_start_fun env ti =
     E.add_export env (nr {
       name = explode "start";
-      edesc = nr (FuncExport (nr i))
+      edesc = nr (FuncExport (nr ti))
     });
     (* these export seems to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
@@ -961,14 +1016,24 @@ and compile_exp (env : E.t) exp = match exp.it with
   | TupE [] -> compile_unit
   | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
-  | ObjE (_, name, fs) ->
-     (* TODO: This treats actors like any old object *)
+  | ObjE (_(* { it = Type.Object; _} *), name, fs) ->
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
      Object.lit env (Some name) None fs'
+  (*
+  | ObjE ({ it = Type.Actor; _}, name, fs) ->
+    let captured = Freevars.exp exp in
+    if Freevars.S.is_empty captured
+    then actor_lit env name fs
+    else todo "non-closed actor" (Arrange.exp exp) [ nr Unreachable ]
+  *)
+  | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
+     let fi = Lib.Option.value (isDirectCall env e1) in
+     compile_exp env e2 @
+     Func.call_direct env fi exp.at
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
-     Func.call env exp.at
+     Func.call_indirect env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -1009,7 +1074,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        [ nr (GetLocal (nr i)) ] @
        Object.load_idx env1 (nr__ "next") @
        compile_unit @
-       Func.call env1 Source.no_region @
+       Func.call_indirect env1 Source.no_region @
        let oi = E.add_anon_local env I32Type in
        [ nr (SetLocal (nr oi)) ] @
 
@@ -1025,6 +1090,15 @@ and compile_exp (env : E.t) exp = match exp.it with
      ))] @
      compile_unit
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
+
+
+and isDirectCall env e = match e.it with
+  | VarE var ->
+    begin match E.lookup_var env var.it with
+    | Some (Func fi) -> Some fi
+    | _ -> None
+    end
+  | _ -> None
 
 
 (*
@@ -1261,6 +1335,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code1 @ code2 @ code3
      }
 
+(*
+and actor_lit env name fs =
+  [ nr Unreachable ]
+*)
+
 let compile mode (progs : Syntax.prog list) : module_ =
   let env = E.mk_global mode in
 
@@ -1268,8 +1347,9 @@ let compile mode (progs : Syntax.prog list) : module_ =
   Array.common_funcs env;
 
   let start_fun = compile_start_func env progs in
-  let i = E.add_fun env start_fun in
-  if E.mode env = DfinityMode then Dfinity.export_start_fun env i;
+  let start_fi = E.add_fun env start_fun in
+  let start_ti = E.fun_to_tableid env start_fi in
+  if E.mode env = DfinityMode then Dfinity.export_start_fun env start_ti;
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -1289,7 +1369,7 @@ let compile mode (progs : Syntax.prog list) : module_ =
       index = nr 0l;
       offset = nr (compile_const ni');
       init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-    start = if E.mode env = DfinityMode then None else Some (nr i);
+    start = if E.mode env = DfinityMode then None else Some (nr start_ti);
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     imports = imports;
