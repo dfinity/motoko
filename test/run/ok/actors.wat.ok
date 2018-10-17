@@ -4,6 +4,8 @@
   (type $t2 (func (param i32)))
   (type $t3 (func (param i32) (result i32)))
   (type $t4 (func (param i32 i32) (result i32)))
+  (type $t5 (func (param i32) (result i32)))
+  (type $t6 (func (param i32) (result i32)))
   (func $f0 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32)
     get_local $p0

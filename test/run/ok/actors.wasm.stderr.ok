@@ -94,3 +94,4 @@ compile_exp: (AsyncE
     )
   )
 )
+non-empty actor: self
