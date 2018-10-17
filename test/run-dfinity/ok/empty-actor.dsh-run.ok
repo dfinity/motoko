@@ -1,0 +1,34 @@
+$ dsh reset
+{
+    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
+}
+
+$ dsh new -a _out/empty-actor.wasm
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (empty-actor)",
+    "type": "actorref"
+}
+
+$ dsh run empty-actor start
+dsh: user error (Uncaught RuntimeError: unreachable
+Leaked 10 instances of wasm::vec<byte_t>, made 44, freed 34!
+Leaked 1 instances of wasm::Engine, made 1, freed 0!
+Leaked 1 instances of wasm::Store, made 1, freed 0!
+Leaked 7 instances of wasm::ValType, made 243, freed 236!
+Leaked 5 instances of wasm::vec<ValType>, made 170, freed 165!
+Leaked 4 instances of wasm::FuncType, made 104, freed 100!
+Leaked 1 instances of wasm::TableType, made 6, freed 5!
+Leaked 1 instances of wasm::MemoryType, made 6, freed 5!
+Leaked 3 instances of wasm::ImportType, made 15, freed 12!
+Leaked 1 instances of wasm::vec<ImportType>, made 5, freed 4!
+Leaked 3 instances of wasm::ExportType, made 9, freed 6!
+Leaked 1 instances of wasm::vec<ExportType>, made 3, freed 2!
+Leaked 1 instances of wasm::Trap, made 1, freed 0!
+Leaked 1 instances of wasm::Module, made 6, freed 5!
+Leaked 1 instances of wasm::Instance, made 1, freed 0!
+Leaked 2 instances of wasm::Func, made 5, freed 3!
+Leaked 2 instances of wasm::Table, made 2, freed 0!
+Leaked 2 instances of wasm::Memory, made 2, freed 0!
+Leaked 2 instances of wasm::vec<Extern>, made 3, freed 1!
