@@ -35,31 +35,24 @@ $(OUTDIR)/%.run: %.as $(ASC) $(OUTDIR)/%.tc
 	  $(ASC) $(ASC_FLAGS) -r -v $< > $@ 2>&1 || true; \
 	fi
 
-$(OUTDIR)/%.wat $(OUTDIR)/%.wat.stderr: %.as $(ASC) $(OUTDIR)/%.tc
+$(OUTDIR)/%.wasm $(OUTDIR)/%.wasm.stderr: %.as $(ASC) $(OUTDIR)/%.tc
 	@if [ -s _out/$*.tc ]; \
-	then > $(OUTDIR)/$*.wat; > $(OUTDIR)/$*.wat.stderr; \
+	then > $(OUTDIR)/$*.wasm; > $(OUTDIR)/$*.wasm.stderr; \
 	else \
           echo "[comp]  $*"; \
-	  $(ASC) $(ASC_FLAGS) -c $< > $(OUTDIR)/$*.wat 2> $(OUTDIR)/$*.wat.stderr || true; \
+	  $(ASC) $(ASC_FLAGS) --map -c $< 2> $(OUTDIR)/$*.wasm.stderr || true; \
+	  mv $*.wasm $*.wasm.map $(OUTDIR)/ || true; \
 	fi
 
-$(OUTDIR)/%.wat-run: $(OUTDIR)/%.wat
+$(OUTDIR)/%.wasm-run: $(OUTDIR)/%.wasm
 	@if [ -s $< ]; \
 	then \
 	 echo "[exec]  $*";\
 	 $(WASM) $< > $@ 2>&1 || true; \
-	else > $@; \
+	 else > $@; \
 	fi
 
-$(OUTDIR)/%.wasm: $(OUTDIR)/%.wat
-	@if [ -s $< ]; \
-	then \
-	 echo "[wasm]  $*";\
-	 $(WASM) -d $< -o $@ || true; \
-	else > $@; \
-	fi
-
-$(OUTDIR)/%.wasm-run: $(OUTDIR)/%.wasm
+$(OUTDIR)/%.dsh-run: $(OUTDIR)/%.wasm
 	@if [ -s $< ]; \
 	then \
 	 echo "[dsh]   $*";\

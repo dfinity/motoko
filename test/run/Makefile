@@ -1,3 +1,3 @@
-SUFFIXES = .tc .run .wat.stderr .wat-run
+SUFFIXES = .tc .run .wasm .wasm.stderr .wasm-run
 
 include ../Makefile.common
