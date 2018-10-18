@@ -6,6 +6,8 @@
   (type $t4 (func (param i32 i32) (result i32)))
   (type $t5 (func (param i32) (result i32)))
   (type $t6 (func (param i32) (result i32)))
+  (type $t7 (func (param i32 i32) (result i32)))
+  (type $t8 (func (param i32 i32)))
   (func $f0 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32)
     get_local $p0
@@ -222,6 +224,68 @@
     (local $l0 i32)
     unreachable)
   (func $f10 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_local $l5
+    i32.const 7
+    i32.store
+    get_local $l5
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l2
+    i32.load
+    get_local $l1
+    i32.load
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
+    i32.load
+    call_indirect (type $t1))
+  (func $f11 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32)
     get_local $p1
     set_local $l0
@@ -235,7 +299,7 @@
       unreachable
     end
     i32.const 0)
-  (func $f11 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32)
     get_local $p0
     i32.load offset=4
@@ -303,7 +367,7 @@
       i32.store
       get_local $l4
     end)
-  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
@@ -382,7 +446,7 @@
     get_local $l8
     set_local $l7
     get_local $l6
-    i32.const 11
+    i32.const 12
     i32.store
     get_local $l6
     get_local $l4
@@ -393,7 +457,7 @@
     get_local $l6
     i32.store offset=24
     get_local $l3)
-  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
     get_local $p0
     i32.load offset=4
@@ -440,7 +504,7 @@
       i32.store
       get_local $l3
     end)
-  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f15 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
@@ -521,7 +585,7 @@
     get_local $l8
     set_local $l7
     get_local $l6
-    i32.const 13
+    i32.const 14
     i32.store
     get_local $l6
     get_local $l4
@@ -532,7 +596,131 @@
     get_local $l6
     i32.store offset=24
     get_local $l3)
-  (func $f15 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f16 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_local $l5
+    i32.const 8
+    i32.store
+    get_local $l5
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l2
+    i32.load
+    get_local $l1
+    i32.load
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
+    i32.load
+    call_indirect (type $t1))
+  (func $f17 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_local $l5
+    i32.const 9
+    i32.store
+    get_local $l5
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l2
+    i32.load
+    get_local $l1
+    i32.load
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
+    i32.load
+    call_indirect (type $t1))
+  (func $f18 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32)
     get_global $g0
     get_global $g0
@@ -555,7 +743,7 @@
       unreachable
     end
     unreachable)
-  (func $f16 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f19 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
     get_local $p1
     set_local $l0
@@ -589,12 +777,12 @@
     set_global $g0
     set_local $l3
     get_local $l3
-    i32.const 15
+    i32.const 18
     i32.store
     get_local $l3
     i32.store offset=32
     get_local $l1)
-  (func $f17 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f20 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
     get_global $g0
     get_global $g0
@@ -647,7 +835,7 @@
       unreachable
     end
     unreachable)
-  (func $f18 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f21 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32)
     get_local $p0
     i32.load offset=4
@@ -664,7 +852,7 @@
       unreachable
     end
     unreachable)
-  (func $f19 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f22 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
     get_local $p0
     i32.load offset=4
@@ -693,7 +881,7 @@
       unreachable
     end
     unreachable)
-  (func $f20 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f23 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
     get_local $p0
     i32.load offset=4
@@ -758,7 +946,7 @@
     get_local $l5
     i32.load
     call_indirect (type $t1))
-  (func $f21 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f24 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32)
     get_local $p0
     i32.load offset=4
@@ -791,7 +979,7 @@
     i32.add
     i32.store
     i32.const 0)
-  (func $f22 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f25 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32)
     get_global $g0
     get_global $g0
@@ -814,7 +1002,7 @@
       unreachable
     end
     unreachable)
-  (func $f23 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f26 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32) (local $l15 i32) (local $l16 i32) (local $l17 i32) (local $l18 i32) (local $l19 i32) (local $l20 i32) (local $l21 i32) (local $l22 i32)
     get_local $p0
     i32.load offset=4
@@ -895,7 +1083,7 @@
     get_local $l12
     set_local $l11
     get_local $l10
-    i32.const 18
+    i32.const 21
     i32.store
     get_local $l10
     get_local $l4
@@ -921,7 +1109,7 @@
     get_local $l15
     set_local $l14
     get_local $l13
-    i32.const 19
+    i32.const 22
     i32.store
     get_local $l13
     get_local $l1
@@ -950,7 +1138,7 @@
     get_local $l18
     set_local $l17
     get_local $l16
-    i32.const 20
+    i32.const 23
     i32.store
     get_local $l16
     get_local $l4
@@ -976,7 +1164,7 @@
     get_local $l21
     set_local $l20
     get_local $l19
-    i32.const 21
+    i32.const 24
     i32.store
     get_local $l19
     get_local $l4
@@ -991,12 +1179,12 @@
     set_global $g0
     set_local $l22
     get_local $l22
-    i32.const 22
+    i32.const 25
     i32.store
     get_local $l22
     i32.store offset=56
     get_local $l3)
-  (func $f24 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f27 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32)
     get_local $p0
     i32.load offset=4
@@ -1013,7 +1201,7 @@
       unreachable
     end
     unreachable)
-  (func $f25 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f28 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32)
     get_local $p0
     i32.load offset=4
@@ -1030,7 +1218,7 @@
       unreachable
     end
     unreachable)
-  (func $f26 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f29 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32) (local $l15 i32) (local $l16 i32) (local $l17 i32) (local $l18 i32)
     get_local $p0
     i32.load offset=4
@@ -1127,7 +1315,7 @@
     get_local $l15
     set_local $l14
     get_local $l13
-    i32.const 24
+    i32.const 27
     i32.store
     get_local $l13
     get_local $l5
@@ -1153,7 +1341,7 @@
     get_local $l18
     set_local $l17
     get_local $l16
-    i32.const 25
+    i32.const 28
     i32.store
     get_local $l16
     get_local $l6
@@ -1161,30 +1349,31 @@
     get_local $l16
     i32.store offset=72
     get_local $l4)
-  (func $f27 (type $t0)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32) (local $l15 i32) (local $l16 i32) (local $l17 i32) (local $l18 i32)
+  (func $f30 (type $t0)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
-    i32.const 4
+    i32.const 12
     i32.add
     set_global $g0
-    set_local $l2
-    get_local $l2
-    i32.const 7
-    i32.store
-    get_local $l2
     set_local $l1
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l4
-    get_local $l4
-    i32.const 8
-    i32.store
-    get_local $l4
     set_local $l3
+    get_local $l3
+    get_local $l1
+    i32.store
+    get_local $l3
+    set_local $l2
+    get_global $g0
+    get_global $g0
+    i32.const 8
+    i32.add
+    set_global $g0
+    set_local $l4
     get_global $g0
     get_global $g0
     i32.const 4
@@ -1192,150 +1381,45 @@
     set_global $g0
     set_local $l6
     get_local $l6
-    i32.const 9
+    get_local $l4
     i32.store
     get_local $l6
     set_local $l5
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l7
+    get_local $l1
+    i32.const 29
+    i32.store
+    get_local $l1
+    get_local $l5
+    i32.store offset=4
+    get_local $l1
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l8
+    get_local $l8
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l9
-    get_local $l1
-    set_local $l0
-    block $B0 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l7
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I1
-    else
-      unreachable
-    end
-    get_local $l3
-    set_local $l0
-    block $B2 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l8
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I3
-    else
-      unreachable
-    end
-    get_local $l5
-    set_local $l0
-    block $B4 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l9
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I5
-    else
-      unreachable
-    end
-    get_global $g0
-    get_global $g0
-    i32.const 12
-    i32.add
-    set_global $g0
-    set_local $l10
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l12
-    get_local $l12
-    get_local $l10
+    set_local $l7
+    get_local $l7
+    i32.const 19
     i32.store
-    get_local $l12
-    set_local $l11
-    get_global $g0
-    get_global $g0
-    i32.const 8
-    i32.add
-    set_global $g0
-    set_local $l13
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l15
-    get_local $l15
-    get_local $l13
+    get_local $l7
     i32.store
-    get_local $l15
-    set_local $l14
-    get_local $l10
+    get_local $l8
+    i32.store offset=8
+    get_local $l4
     i32.const 26
     i32.store
-    get_local $l10
-    get_local $l14
-    i32.store offset=4
-    get_local $l10
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l18
-    get_local $l18
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l17
-    get_local $l17
-    i32.const 16
-    i32.store
-    get_local $l17
-    i32.store
-    get_local $l18
-    i32.store offset=8
-    get_local $l13
-    i32.const 23
-    i32.store
-    get_local $l13
-    get_local $l14
-    i32.store offset=4
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l16
-    get_local $l16
-    i32.const 17
-    i32.store
-    get_local $l16
-    drop)
-  (table $T0 28 28 anyfunc)
-  (memory $M0 1024)
+    get_local $l4
+    get_local $l5
+    i32.store offset=4)
+  (table $T0 31 31 anyfunc)
+  (memory $M0 10240)
   (global $g0 (mut i32) (i32.const 0))
-  (start 27)
-  (elem (i32.const 0) $f0 $f1 $f2 $f3 $f4 $f5 $f6 $f7 $f8 $f9 $f10 $f11 $f12 $f13 $f14 $f15 $f16 $f17 $f18 $f19 $f20 $f21 $f22 $f23 $f24 $f25 $f26 $f27))
+  (start 30)
+  (elem (i32.const 0) $f0 $f1 $f2 $f3 $f4 $f5 $f6 $f7 $f8 $f9 $f10 $f11 $f12 $f13 $f14 $f15 $f16 $f17 $f18 $f19 $f20 $f21 $f22 $f23 $f24 $f25 $f26 $f27 $f28 $f29 $f30))

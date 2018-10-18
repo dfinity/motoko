@@ -1,1 +1,7 @@
-non-empty actor: self
+private actor field: x
+Could not find x
+Could not find x
+Could not find x
+Could not find x
+Could not find self
+Could not find x

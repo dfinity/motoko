@@ -6,6 +6,8 @@
   (type $t4 (func (param i32 i32) (result i32)))
   (type $t5 (func (param i32) (result i32)))
   (type $t6 (func (param i32) (result i32)))
+  (type $t7 (func (param i32 i32) (result i32)))
+  (type $t8 (func (param i32 i32)))
   (func $f0 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32)
     get_local $p0
@@ -222,6 +224,68 @@
     (local $l0 i32)
     unreachable)
   (func $f10 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_local $l5
+    i32.const 7
+    i32.store
+    get_local $l5
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l2
+    i32.load
+    get_local $l1
+    i32.load
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
+    i32.load
+    call_indirect (type $t1))
+  (func $f11 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32)
     get_local $p1
     set_local $l0
@@ -235,7 +299,7 @@
       unreachable
     end
     i32.const 0)
-  (func $f11 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32)
     get_local $p0
     i32.load offset=4
@@ -303,7 +367,7 @@
       i32.store
       get_local $l4
     end)
-  (func $f12 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
@@ -382,7 +446,7 @@
     get_local $l8
     set_local $l7
     get_local $l6
-    i32.const 11
+    i32.const 12
     i32.store
     get_local $l6
     get_local $l4
@@ -393,7 +457,7 @@
     get_local $l6
     i32.store offset=24
     get_local $l3)
-  (func $f13 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32)
     get_local $p0
     i32.load offset=4
@@ -440,7 +504,7 @@
       i32.store
       get_local $l3
     end)
-  (func $f14 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+  (func $f15 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32)
     get_global $g0
     get_global $g0
@@ -521,7 +585,7 @@
     get_local $l8
     set_local $l7
     get_local $l6
-    i32.const 13
+    i32.const 14
     i32.store
     get_local $l6
     get_local $l4
@@ -532,368 +596,22 @@
     get_local $l6
     i32.store offset=24
     get_local $l3)
-  (func $f15 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l1
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l2
-    get_local $p1
-    set_local $l0
-    block $B0 (result i32)
-      get_local $l0
-      tee_local $l0
-      get_local $l0
-      i32.load
-      set_local $l0
-      get_local $l1
-      get_local $l0
-      i32.store
-      tee_local $l0
-      get_local $l0
-      i32.load offset=4
-      set_local $l0
-      get_local $l2
-      get_local $l0
-      i32.store
-      drop
-      i32.const 1
-    end
-    if $I1
-    else
-      unreachable
-    end
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l3
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l4
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l5
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l6
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l7
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l8
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l9
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l10
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l11
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l12
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l13
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l14
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.eq
-    set_local $l0
-    block $B2 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l3
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I3
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.eq
-    set_local $l0
-    block $B4 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l4
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I5
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    unreachable
-    set_local $l0
-    block $B6 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l5
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I7
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    unreachable
-    set_local $l0
-    block $B8 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l6
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I9
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B10 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l7
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I11
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B12 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l8
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I13
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B14 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l9
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I15
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B16 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l10
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I17
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B18 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l11
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I19
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B20 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l12
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I21
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    set_local $l0
-    block $B22 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l13
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I23
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    tee_local $l0
-    get_local $l0
-    set_local $l0
-    block $B24 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l14
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I25
-    else
-      unreachable
-    end)
   (func $f16 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l1
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l2
     get_local $p1
     set_local $l0
     block $B0 (result i32)
       get_local $l0
-      tee_local $l0
-      get_local $l0
-      i32.load
       set_local $l0
       get_local $l1
       get_local $l0
       i32.store
-      tee_local $l0
-      get_local $l0
-      i32.load offset=4
-      set_local $l0
-      get_local $l2
-      get_local $l0
-      i32.store
-      drop
       i32.const 1
     end
     if $I1
@@ -905,35 +623,22 @@
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l3
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l4
+    set_local $l2
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l5
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l6
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.eq
+    get_local $l5
+    i32.const 8
+    i32.store
+    get_local $l5
     set_local $l0
     block $B2 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l3
+      get_local $l2
       get_local $l0
       i32.store
       i32.const 1
@@ -942,95 +647,33 @@
     else
       unreachable
     end
-    get_local $l1
-    i32.load
     get_local $l2
     i32.load
-    i32.eq
-    set_local $l0
-    block $B4 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l4
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I5
-    else
-      unreachable
-    end
     get_local $l1
     i32.load
-    get_local $l2
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
     i32.load
-    unreachable
-    set_local $l0
-    block $B6 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l5
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I7
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    unreachable
-    tee_local $l0
-    get_local $l0
-    set_local $l0
-    block $B8 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l6
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I9
-    else
-      unreachable
-    end)
+    call_indirect (type $t1))
   (func $f17 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32)
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l1
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l2
     get_local $p1
     set_local $l0
     block $B0 (result i32)
       get_local $l0
-      tee_local $l0
-      get_local $l0
-      i32.load
       set_local $l0
       get_local $l1
       get_local $l0
       i32.store
-      tee_local $l0
-      get_local $l0
-      i32.load offset=4
-      set_local $l0
-      get_local $l2
-      get_local $l0
-      i32.store
-      drop
       i32.const 1
     end
     if $I1
@@ -1042,83 +685,22 @@
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l3
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l4
+    set_local $l2
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l5
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l6
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l7
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l8
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l9
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l10
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l11
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l12
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l13
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l14
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.eq
+    get_local $l5
+    i32.const 9
+    i32.store
+    get_local $l5
     set_local $l0
     block $B2 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l3
+      get_local $l2
       get_local $l0
       i32.store
       i32.const 1
@@ -1127,206 +709,17 @@
     else
       unreachable
     end
-    get_local $l1
-    i32.load
     get_local $l2
     i32.load
-    i32.eq
-    set_local $l0
-    block $B4 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l4
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I5
-    else
-      unreachable
-    end
     get_local $l1
     i32.load
-    get_local $l2
+    set_local $l3
+    set_local $l4
+    get_local $l4
+    get_local $l3
+    get_local $l4
     i32.load
-    unreachable
-    set_local $l0
-    block $B6 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l5
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I7
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    unreachable
-    set_local $l0
-    block $B8 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l6
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I9
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B10 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l7
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I11
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B12 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l8
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I13
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B14 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l9
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I15
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B16 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l10
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I17
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B18 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l11
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I19
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B20 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l12
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I21
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    set_local $l0
-    block $B22 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l13
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I23
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    tee_local $l0
-    get_local $l0
-    set_local $l0
-    block $B24 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l14
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I25
-    else
-      unreachable
-    end)
+    call_indirect (type $t1))
   (func $f18 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
     (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
     get_global $g0
@@ -1657,7 +1050,7 @@
       unreachable
     end)
   (func $f19 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32)
     get_global $g0
     get_global $g0
     i32.const 4
@@ -1719,54 +1112,6 @@
     i32.add
     set_global $g0
     set_local $l6
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l7
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l8
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l9
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l10
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l11
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l12
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l13
-    get_global $g0
-    get_global $g0
-    i32.const 4
-    i32.add
-    set_global $g0
-    set_local $l14
     get_local $l1
     i32.load
     get_local $l2
@@ -1826,6 +1171,8 @@
     get_local $l2
     i32.load
     unreachable
+    tee_local $l0
+    get_local $l0
     set_local $l0
     block $B8 (result i32)
       get_local $l0
@@ -1836,152 +1183,6 @@
       i32.const 1
     end
     if $I9
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B10 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l7
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I11
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.lt_s
-    set_local $l0
-    block $B12 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l8
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I13
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B14 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l9
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I15
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.le_s
-    set_local $l0
-    block $B16 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l10
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I17
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B18 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l11
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I19
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.gt_s
-    set_local $l0
-    block $B20 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l12
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I21
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    set_local $l0
-    block $B22 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l13
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I23
-    else
-      unreachable
-    end
-    get_local $l1
-    i32.load
-    get_local $l2
-    i32.load
-    i32.ge_s
-    tee_local $l0
-    get_local $l0
-    set_local $l0
-    block $B24 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l14
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I25
     else
       unreachable
     end)
@@ -3630,41 +2831,69 @@
     else
       unreachable
     end)
-  (func $f25 (type $t0)
-    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32)
+  (func $f25 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l2
-    get_local $l2
-    i32.const 7
-    i32.store
-    get_local $l2
     set_local $l1
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l4
-    get_local $l4
-    i32.const 8
-    i32.store
-    get_local $l4
+    set_local $l2
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      tee_local $l0
+      get_local $l0
+      i32.load
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      tee_local $l0
+      get_local $l0
+      i32.load offset=4
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      drop
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
     set_local $l3
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
-    set_local $l6
-    get_local $l6
-    i32.const 9
-    i32.store
-    get_local $l6
+    set_local $l4
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
     set_local $l5
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l6
     get_global $g0
     get_global $g0
     i32.const 4
@@ -3683,26 +2912,46 @@
     i32.add
     set_global $g0
     set_local $l9
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l10
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l11
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l12
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l13
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l14
     get_local $l1
-    set_local $l0
-    block $B0 (result i32)
-      get_local $l0
-      set_local $l0
-      get_local $l7
-      get_local $l0
-      i32.store
-      i32.const 1
-    end
-    if $I1
-    else
-      unreachable
-    end
-    get_local $l3
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
     set_local $l0
     block $B2 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l8
+      get_local $l3
       get_local $l0
       i32.store
       i32.const 1
@@ -3711,12 +2960,16 @@
     else
       unreachable
     end
-    get_local $l5
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
     set_local $l0
     block $B4 (result i32)
       get_local $l0
       set_local $l0
-      get_local $l9
+      get_local $l4
       get_local $l0
       i32.store
       i32.const 1
@@ -3725,19 +2978,850 @@
     else
       unreachable
     end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B6 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l5
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I7
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B8 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l6
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I9
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B10 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l7
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I11
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B12 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l8
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I13
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B14 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l9
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I15
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B16 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l10
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I17
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B18 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l11
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I19
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B20 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l12
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I21
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    set_local $l0
+    block $B22 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l13
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I23
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    tee_local $l0
+    get_local $l0
+    set_local $l0
+    block $B24 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l14
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I25
+    else
+      unreachable
+    end)
+  (func $f26 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      tee_local $l0
+      get_local $l0
+      i32.load
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      tee_local $l0
+      get_local $l0
+      i32.load offset=4
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      drop
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l3
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l4
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l6
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l7
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l8
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l9
     get_global $g0
     get_global $g0
     i32.const 4
     i32.add
     set_global $g0
     set_local $l10
-    get_local $l10
-    i32.const 24
-    i32.store
-    get_local $l10
-    drop)
-  (table $T0 26 26 anyfunc)
-  (memory $M0 1024)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l11
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l12
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l13
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l14
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l3
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
+    set_local $l0
+    block $B4 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l4
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I5
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B6 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l5
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I7
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B8 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l6
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I9
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B10 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l7
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I11
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B12 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l8
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I13
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B14 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l9
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I15
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B16 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l10
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I17
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B18 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l11
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I19
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B20 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l12
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I21
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    set_local $l0
+    block $B22 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l13
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I23
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    tee_local $l0
+    get_local $l0
+    set_local $l0
+    block $B24 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l14
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I25
+    else
+      unreachable
+    end)
+  (func $f27 (type $t1) (param $p0 i32) (param $p1 i32) (result i32)
+    (local $l0 i32) (local $l1 i32) (local $l2 i32) (local $l3 i32) (local $l4 i32) (local $l5 i32) (local $l6 i32) (local $l7 i32) (local $l8 i32) (local $l9 i32) (local $l10 i32) (local $l11 i32) (local $l12 i32) (local $l13 i32) (local $l14 i32)
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l1
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l2
+    get_local $p1
+    set_local $l0
+    block $B0 (result i32)
+      get_local $l0
+      tee_local $l0
+      get_local $l0
+      i32.load
+      set_local $l0
+      get_local $l1
+      get_local $l0
+      i32.store
+      tee_local $l0
+      get_local $l0
+      i32.load offset=4
+      set_local $l0
+      get_local $l2
+      get_local $l0
+      i32.store
+      drop
+      i32.const 1
+    end
+    if $I1
+    else
+      unreachable
+    end
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l3
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l4
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l5
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l6
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l7
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l8
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l9
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l10
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l11
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l12
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l13
+    get_global $g0
+    get_global $g0
+    i32.const 4
+    i32.add
+    set_global $g0
+    set_local $l14
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
+    set_local $l0
+    block $B2 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l3
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I3
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.eq
+    set_local $l0
+    block $B4 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l4
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I5
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B6 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l5
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I7
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    unreachable
+    set_local $l0
+    block $B8 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l6
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I9
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B10 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l7
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I11
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.lt_s
+    set_local $l0
+    block $B12 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l8
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I13
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B14 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l9
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I15
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.le_s
+    set_local $l0
+    block $B16 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l10
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I17
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B18 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l11
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I19
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.gt_s
+    set_local $l0
+    block $B20 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l12
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I21
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    set_local $l0
+    block $B22 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l13
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I23
+    else
+      unreachable
+    end
+    get_local $l1
+    i32.load
+    get_local $l2
+    i32.load
+    i32.ge_s
+    tee_local $l0
+    get_local $l0
+    set_local $l0
+    block $B24 (result i32)
+      get_local $l0
+      set_local $l0
+      get_local $l14
+      get_local $l0
+      i32.store
+      i32.const 1
+    end
+    if $I25
+    else
+      unreachable
+    end)
+  (func $f28 (type $t0)
+    (local $l0 i32))
+  (table $T0 29 29 anyfunc)
+  (memory $M0 10240)
   (global $g0 (mut i32) (i32.const 0))
-  (start 25)
-  (elem (i32.const 0) $f0 $f1 $f2 $f3 $f4 $f5 $f6 $f7 $f8 $f9 $f10 $f11 $f12 $f13 $f14 $f15 $f16 $f17 $f18 $f19 $f20 $f21 $f22 $f23 $f24 $f25))
+  (start 28)
+  (elem (i32.const 0) $f0 $f1 $f2 $f3 $f4 $f5 $f6 $f7 $f8 $f9 $f10 $f11 $f12 $f13 $f14 $f15 $f16 $f17 $f18 $f19 $f20 $f21 $f22 $f23 $f24 $f25 $f26 $f27 $f28))

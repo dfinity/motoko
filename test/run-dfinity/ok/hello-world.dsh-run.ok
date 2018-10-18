@@ -12,12 +12,6 @@ $ dsh new -a _out/hello-world.wasm
 }
 
 $ dsh run hello-world start
-Hello World!
-{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (hello-world)",
-    "type": "actorref"
-}
-
-Leaked 1 instances of wasm::Engine, made 1, freed 0!
+dsh: BAD TAKE
+CallStack (from HasCallStack):
+  error, called at src/Hero/Hero.hs:112:30 in dhc-0.1.0-8ODwqNNLE94FgxyNqL1y1X:Hero.Hero

@@ -12,11 +12,6 @@ $ dsh new -a _out/fac.wasm
 }
 
 $ dsh run fac start
-120{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (fac)",
-    "type": "actorref"
-}
-
-Leaked 1 instances of wasm::Engine, made 1, freed 0!
+dsh: IntMap.!: key 0 is not an element of the map
+CallStack (from HasCallStack):
+  error, called at libraries/containers/Data/IntMap/Internal.hs:598:17 in containers-0.5.11.0:Data.IntMap.Internal

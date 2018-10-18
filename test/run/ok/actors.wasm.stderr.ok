@@ -1,63 +1,37 @@
 compile_binop: DivOp
 compile_exp: (AsyncE (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
-non-closed actor: (ObjE
-  Actor
-  self
-  (tic_msg_async
-    (DecE
-      (FuncD
-        tic_msg_async
-        (AnnotP (VarP n) (VarT Int))
-        (AsyncT (TupT))
-        (AsyncE
-          (BlockE
-            (ExpD
-              (IfE
-                (RelE (VarE n) GtOp (LitE (NatLit 0)))
-                (CallE
-                  (VarE ignore)
-                  (CallE
-                    (DotE (VarE self) tac_msg_async)
-                    (BinE (VarE n) SubOp (LitE (IntLit 1)))
-                  )
-                )
-                (TupE)
-              )
-            )
+compile_exp: (AsyncE
+  (BlockE
+    (ExpD
+      (IfE
+        (RelE (VarE n) GtOp (LitE (NatLit 0)))
+        (CallE
+          (VarE ignore)
+          (CallE
+            (DotE (VarE self) tac_msg_async)
+            (BinE (VarE n) SubOp (LitE (IntLit 1)))
           )
         )
+        (TupE)
       )
     )
-    Const
-    Public
   )
-  (tac_msg_async
-    (DecE
-      (FuncD
-        tac_msg_async
-        (AnnotP (VarP n) (VarT Int))
-        (AsyncT (TupT))
-        (AsyncE
-          (BlockE
-            (ExpD
-              (IfE
-                (RelE (VarE n) GtOp (LitE (NatLit 0)))
-                (CallE
-                  (VarE ignore)
-                  (CallE
-                    (DotE (VarE self) tic_msg_async)
-                    (BinE (VarE n) SubOp (LitE (IntLit 1)))
-                  )
-                )
-                (TupE)
-              )
-            )
+)
+compile_exp: (AsyncE
+  (BlockE
+    (ExpD
+      (IfE
+        (RelE (VarE n) GtOp (LitE (NatLit 0)))
+        (CallE
+          (VarE ignore)
+          (CallE
+            (DotE (VarE self) tic_msg_async)
+            (BinE (VarE n) SubOp (LitE (IntLit 1)))
           )
         )
+        (TupE)
       )
     )
-    Const
-    Public
   )
 )
 compile_exp: (AsyncE
@@ -94,4 +68,5 @@ compile_exp: (AsyncE
     )
   )
 )
-non-empty actor: self
+Could not find self
+Could not find self

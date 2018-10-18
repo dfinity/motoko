@@ -272,20 +272,12 @@ let run_files env = function
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (Wasm.Ast.module_, error list) result
 
-let compile_prog mode name prog : Wasm.Ast.module_ =
-  phase "Compiling" name;
-  Compile.compile mode [prog]
-
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error es -> Error es
   | Ok (prog, _t, _scope) ->
-    let open Source in
-    let open Syntax in
-    let (@?) it at = {it; at; note = empty_typ_note} in
-    let block = ExpD (BlockE prog.it @? prog.at) @? prog.at in
-    let prog' = ((if !Flags.prelude then prelude.it else []) @ [block]) @@ prog.at in
-    let module_ = compile_prog mode name prog' in
+    phase "Compiling" name;
+    let module_ = Compile.compile mode prelude [prog] in
     Ok module_
 
 let compile_string mode s =
