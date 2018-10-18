@@ -69,14 +69,14 @@ $(OUTDIR)/%.dsh-run: $(OUTDIR)/%.wasm
 	else > $@; \
 	fi
 
-$(OKDIR)/%.ok:
-	@echo "$@ missing"
-	@echo "Please run 'make accept' or 'make $*.refresh'"
-	@exit 1
-
-$(OUTDIR)/%.diff: $(OKDIR)/%.ok $(OUTDIR)/%
-	@diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* > $@ || true
-	@if [ $(VERBOSE) -ne 0 ]; then cat $@; fi
+$(OUTDIR)/%.diff: $(OUTDIR)/%
+	@if [ -s $(OKDIR)/$*.ok ];\
+	then \
+	 diff -u $(OKDIR)/$*.ok $(OUTDIR)/$* > $@ || true; \
+	else \
+	 diff -u /dev/null $(OUTDIR)/$* > $@ || true; \
+	fi; \
+	if [ $(VERBOSE) -ne 0 ]; then cat $@; fi
 
 
 $(addsuffix .refresh, $(TESTS)) : %.refresh: $(addsuffix .refresh, $(addprefix %, $(SUFFIXES)))
