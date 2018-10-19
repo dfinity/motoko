@@ -50,6 +50,17 @@ module E = struct
       ref := !ref @ [ x ];
       i
 
+  let reg_promise (ref : 'a Lib.Promise.t list ref) (x : 'a) : int32 =
+      let i = Wasm.I32.of_int_u (List.length !ref) in
+      ref := !ref @ [ Lib.Promise.make_fulfilled x ];
+      i
+
+  let reserve_promise (ref : 'a Lib.Promise.t list ref) : (int32 * ('a -> unit)) =
+      let p = Lib.Promise.make () in
+      let i = Wasm.I32.of_int_u (List.length !ref) in
+      ref := !ref @ [ p ];
+      (i, Lib.Promise.fulfill p)
+
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type t = {
@@ -60,7 +71,7 @@ module E = struct
     (* Expors defined *)
     exports : export list ref;
     (* Function defined in this module *)
-    funcs : func list ref;
+    funcs : func Lib.Promise.t list ref;
     (* Types registered in this module *)
     func_types : func_type Wasm.Source.phrase list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
@@ -185,9 +196,14 @@ module E = struct
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
   let add_fun (env : t) f =
-    let i = reg env.funcs f in
+    let i = reg_promise env.funcs f in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     Int32.add i n
+
+  let reserve_fun (env : t) =
+    let (i, fill) = reserve_promise env.funcs in
+    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
+    (Int32.add i n, fill)
 
 
   let add_prim (env : t) name i =
@@ -195,7 +211,7 @@ module E = struct
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
-  let get_funcs (env : t) = !(env.funcs)
+  let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
 
   (* Currently unused, until we add functions to the table *)
   let _add_type (env : t) ty = reg env.func_types ty
@@ -376,6 +392,10 @@ module Func = struct
   let load_closure i = load_the_closure @ Heap.load_field i
   let load_argument  = [ nr (GetLocal (nr 1l)) ]
 
+  let static_function_id fi =
+    (* should be different from any pointer *)
+    Int32.add (Int32.mul fi Heap.word_size) 1l
+
   let unary_of_body env mk_body =
     (* Fresh set of locals *)
     (* Reserve two locals for closure and argument *)
@@ -450,8 +470,10 @@ module Func = struct
 
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
-      let f = compile_func pre_env [] mk_pat mk_body at in
-      let fi = E.add_fun pre_env f in
+      let (fi, fill) = E.reserve_fun pre_env in
+      let mk_body' env = mk_body env (compile_const (static_function_id fi)) in
+      let f = compile_func pre_env [] mk_pat mk_body' at in
+      fill f;
       let pre_env1 = E.add_local_fun pre_env name.it fi in
       ( pre_env1, [], fun env ->
         if last then Var.static_fun_pointer env fi else [])
@@ -475,7 +497,8 @@ module Func = struct
 
 	(* All functions are unary for now (arguments passed as heap-allocated tuples)
            with the closure itself passed as a first argument *)
-        let f = compile_func env captured mk_pat mk_body at in
+        let mk_body' env = mk_body env load_the_closure in
+        let f = compile_func env captured mk_pat mk_body' at in
         let fi = E.add_fun env f in
 
         (* Store the function number: *)
@@ -994,11 +1017,32 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code3 = compile_exp (E.inc_depth env) e3 in
      code1 @ [ If ([I32Type], code2, code3) @@ exp.at ]
   | IsE (e1, e2) ->
+     (* There are two cases: Either the class is a pointer to
+        the object on the RHS, or it is -- mangled -- the
+        function id stored therein *)
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
+     let i = E.add_anon_local env I32Type in
+     let j = E.add_anon_local env I32Type in
      code1 @ Heap.load_field Object.class_position @
+     [ nr (SetLocal (nr i)) ] @
      code2 @
-     [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
+     [ nr (SetLocal (nr j)) ] @
+     (* Equal? *)
+     [ nr (GetLocal (nr i)) ] @
+     [ nr (GetLocal (nr j)) ] @
+     [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+     [ nr (If ([I32Type], compile_true,
+       (* Static function id? *)
+       [ nr (GetLocal (nr i)) ] @
+       [ nr (GetLocal (nr j)) ] @
+       Heap.load_field 0l @ (* get the function id *)
+       compile_const Heap.word_size @ (* mangle *)
+       [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
+       compile_const 1l @ (* mangle *)
+       [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+       [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ]
+      )) ]
   | BlockE decs ->
      compile_decs env decs
   | DecE dec ->
@@ -1285,20 +1329,21 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       (* Get captured variables *)
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
-      let mk_body env1 = compile_exp env1 e in
+      let mk_body env1 _ = compile_exp env1 e in
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, typ_params, s, p, efs) ->
       let captured = Freevars.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 p in
-      let mk_body env1 =
+      let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
         let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) efs in
-        (* this is run within the function. The first argument is a pointer
-           to the closure, which happens to be the class function. *)
-        let mk_class = Func.load_the_closure in
-        Object.lit env1 None (Some mk_class) fs' in
+        (* this is run within the function. The class id is the function
+	identifier, as provided by Func.dec:
+	For closures it is the pointer to the closure.
+	For functions it is the function id (shifted to never class with pointers) *) 
+        Object.lit env1 None (Some compile_fun_identifier) fs' in
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
 and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env decs)
