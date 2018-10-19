@@ -1141,6 +1141,7 @@ and compile_exp (env : E.t) exp = match exp.it with
 
 
 and isDirectCall env e = match e.it with
+  | AnnotE (e, _) -> isDirectCall env e
   | VarE var ->
     begin match E.lookup_var env var.it with
     | Some (Func fi) -> Some fi
