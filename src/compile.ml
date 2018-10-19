@@ -1586,30 +1586,7 @@ and actor_lit outer_env name fs =
     let env2 = compile_actor_fields env1 fs in
     (* Compile stuff here *)
 
-    let imports = E.get_imports env2 in
-    let ni = List.length imports in
-    let ni' = Int32.of_int ni in
-
-    let funcs = E.get_funcs env2 in
-    let nf = List.length funcs in
-    let nf' = Int32.of_int nf in
-
-    let table_sz = Int32.add nf' ni' in
-
-    let m = nr { empty_module with
-      types = E.get_types env2;
-      funcs = funcs;
-      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
-      elems = [ nr {
-        index = nr 0l;
-        offset = nr (compile_const ni');
-        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = None;
-      globals = Heap.globals;
-      memories = [nr {mtype = MemoryType {min = 10240l; max = None}} ];
-      imports = imports;
-      exports = E.get_exports env2;
-    } in
+    let m = conclude_module env2 None in
     let (_map, wasm) = EncodeMap.encode m in
     wasm in
 
@@ -1622,16 +1599,7 @@ and actor_lit outer_env name fs =
   (* Create an object around it *)
   compile_actorref_wrapper outer_env (List.map (fun (f : Syntax.exp_field) -> f.it.id) fs)
 
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : module_ =
-  let env = E.mk_global mode prelude in
-
-  if E.mode env = DfinityMode then Dfinity.system_imports env;
-  Array.common_funcs env;
-  if E.mode env = DfinityMode then Dfinity.system_funs env;
-
-  let start_fun = compile_start_func env (prelude :: progs) in
-  let start_fi = E.add_fun env start_fun in
-  if E.mode env = DfinityMode then Dfinity.export_start_fun env start_fi;
+and conclude_module env start_fi_o =
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -1651,9 +1619,26 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : module_ =
       index = nr 0l;
       offset = nr (compile_const ni');
       init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-    start = if E.mode env = DfinityMode then None else Some (nr start_fi);
+    start = start_fi_o;
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 10240l; max = None}} ];
     imports = imports;
     exports = E.get_exports env;
   }
+
+let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : module_ =
+  let env = E.mk_global mode prelude in
+
+  if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Array.common_funcs env;
+  if E.mode env = DfinityMode then Dfinity.system_funs env;
+
+  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fi = E.add_fun env start_fun in
+  let start_fi_o =
+    if E.mode env = DfinityMode
+    then (Dfinity.export_start_fun env start_fi; None)
+    else Some (nr start_fi) in
+
+  conclude_module env start_fi_o
+
