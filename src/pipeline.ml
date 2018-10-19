@@ -270,7 +270,7 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (Wasm.Ast.module_, error list) result
+type compile_result = (Wasm.Ast.module_ * string, error list) result
 
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with

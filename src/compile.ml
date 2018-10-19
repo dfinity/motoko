@@ -68,7 +68,7 @@ module E = struct
 
     (* Imports defined *)
     imports : import list ref;
-    (* Expors defined *)
+    (* Exports defined *)
     exports : export list ref;
     (* Function defined in this module *)
     funcs : func Lib.Promise.t list ref;
@@ -90,7 +90,9 @@ module E = struct
     (* (This is for the prototypical simple tuple-implementations for objects *)
     field_env : int32 NameEnv.t ref;
     (* The prelude. We need to re-use this when compiling actors *)
-    prelude : prog
+    prelude : prog;
+    (* Exports that need a custom type for the hypervisor *)
+    actor_messages : int32 list ref;
   }
 
   let mode (e : t) = e.mode
@@ -150,6 +152,7 @@ module E = struct
     exports = ref [];
     funcs = ref [];
     func_types = ref default_fun_tys;
+    actor_messages = ref [];
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
     local_vars_env = NameEnv.empty;
@@ -214,6 +217,8 @@ module E = struct
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
+  let add_actor_message (env : t) e = let _ = reg env.actor_messages e in ()
+
   let add_fun (env : t) f =
     let i = reg_promise env.funcs f in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
@@ -229,6 +234,7 @@ module E = struct
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
+  let get_actor_messages (env : t) = !(env.actor_messages)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
 
   (* Currently unused, until we add functions to the table *)
@@ -1513,6 +1519,7 @@ and compile_actor_field pre_env f =
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
   });
+  E.add_actor_message pre_env fi;
   let pre_env1 = E.add_local_fun pre_env name.it fi in
   ( pre_env1, fun _ -> ())
 
@@ -1586,9 +1593,9 @@ and actor_lit outer_env name fs =
     let env2 = compile_actor_fields env1 fs in
     (* Compile stuff here *)
 
-    let m = conclude_module env2 None in
+    let (m, custom_sections) = conclude_module env2 None in
     let (_map, wasm) = EncodeMap.encode m in
-    wasm in
+    wasm ^ custom_sections in
 
   compile_databuf_of_bytes outer_env wasm @
 
@@ -1611,7 +1618,7 @@ and conclude_module env start_fi_o =
 
   let table_sz = Int32.add nf' ni' in
 
-  nr { empty_module with
+  let m = nr { empty_module with
     types = E.get_types env;
     funcs = funcs;
     tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
@@ -1624,9 +1631,15 @@ and conclude_module env start_fi_o =
     memories = [nr {mtype = MemoryType {min = 10240l; max = None}} ];
     imports = imports;
     exports = E.get_exports env;
-  }
+  } in
 
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : module_ =
+  (* Calculate the custom sections *)
+  let actor_messages = E.get_actor_messages env in
+  let custom_sections = CustomSections.encode actor_messages in
+  (m, custom_sections)
+
+
+let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ * string) =
   let env = E.mk_global mode prelude in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
