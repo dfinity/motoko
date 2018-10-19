@@ -1,3 +1,10 @@
+compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
+compile_exp: (AsyncE
+  (BlockE
+    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
+    (ExpD (CallE (DotE (VarE trx) join) (VarE receiver)))
+  )
+)
 compile_exp: (AsyncE
   (BlockE
     (LetD (VarP reserve) (AwaitE (CallE (DotE (VarE b) getReserve) (TupE))))
@@ -23,12 +30,6 @@ compile_exp: (AsyncE
     (ExpD (TupE (VarE a1) (VarE a2)))
   )
 )
-compile_exp: (AsyncE
-  (BlockE
-    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
-    (ExpD (CallE (DotE (VarE trx) join) (VarE receiver)))
-  )
-)
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE balance)))))
 compile_exp: (AsyncE
   (BlockE
@@ -36,7 +37,6 @@ compile_exp: (AsyncE
     (ExpD (RetE (CallE (VarE Account) (VarE amount))))
   )
 )
-compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE issuer)))))
 compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE reserve)))))

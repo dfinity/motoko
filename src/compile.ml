@@ -35,6 +35,13 @@ and that the order should not matter in a significant way.
 
 type mode = WasmMode | DfinityMode
 
+(* Names can be referring to one of these things *)
+type varloc =
+  | Local of int32  (* A Wasm Local in the current function *)
+  (* | Global of int32 (* A Wasm Global in the current module *) *)
+  | Func of int32 (* A Wasm Function in the current module. This is the function id, not the table id *)
+
+
 module E = struct
 
   (* Utilities, internal to E *)
@@ -64,8 +71,8 @@ module E = struct
     depth : int32;
     (* A mapping from jump label to their depth *)
     ld : int32 NameEnv.t;
-    (* Mapping ActorScript varables to WebAssembly locals *)
-    local_vars_env : int32 NameEnv.t;
+    (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
+    local_vars_env : varloc NameEnv.t;
     (* Mapping primitives to WebAssembly locals *)
     primitives_env : int32 NameEnv.t;
     (* Field labels to index *)
@@ -130,22 +137,31 @@ module E = struct
 
   (* Resetting the environment for a new function *)
   let mk_fun_env env n_param =
+    (* We keep all local vars that are bound to known functions or globals *)
+    let is_non_local = function
+      | Local _ -> false
+      | Func _ -> true in
     { env with
       locals = ref [I32Type]; (* the first tmp local *)
       n_param = n_param;
-      local_vars_env = NameEnv.empty;
+      local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
       depth = 0l;
       ld = NameEnv.empty;
       }
 
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
-      | Some i -> Some (nr i)
+      | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
+
+  let _is_known_function env var =
+    match NameEnv.find_opt var env.local_vars_env with
+      | Some (Func _) -> true
+      | _ -> false
 
   let lookup_prim env var =
     match NameEnv.find_opt var env.primitives_env with
-      | Some i -> Some (nr i)
+      | Some i -> Some i
       | None   -> Printf.eprintf "Could not find primitive %s\n" var; None
 
   let add_anon_local (env : t) ty =
@@ -154,7 +170,10 @@ module E = struct
 
   let add_local (env : t) name =
       let i = add_anon_local env I32Type in
-      ({ env with local_vars_env = NameEnv.add name i env.local_vars_env }, i)
+      ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
+
+  let add_local_fun (env : t) name fi =
+      { env with local_vars_env = NameEnv.add name (Func fi) env.local_vars_env }
 
   let get_locals (env : t) = !(env.locals)
 
@@ -318,12 +337,28 @@ end (* Tuple *)
 
 module Var = struct
 
+  (* When accessing a variable that is a static closure, then we need to create a
+     heap-allocated thing on the fly. *)
+  let static_fun_pointer env fi =
+    Tuple.lit env [
+      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ]
+    ]
+
+  let get_val env var = match E.lookup_var env var with
+    | Some (Local i) -> [ nr (GetLocal (nr i)) ] @ load_ptr
+    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] @ load_ptr *)
+    | Some (Func fi) -> static_fun_pointer env fi
+    | None   -> [ nr Unreachable ]
+
   let get_loc env var = match E.lookup_var env var with
-    | Some i -> [ nr (GetLocal i) ]
+    | Some (Local i) -> [ nr (GetLocal (nr i)) ]
+    | Some (Func fi) -> Tuple.lit env [ static_fun_pointer env fi ]
     | None   -> [ nr Unreachable ]
 
   let set_loc env var = match E.lookup_var env var with
-    | Some i -> [ nr (SetLocal i) ]
+    | Some (Local i) -> [ nr (SetLocal (nr i)) ]
+    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
+    | Some (Func _) -> raise (Invalid_argument "No heap location for function")
     | None   -> [ nr Unreachable ]
 
 end (* Var *)
@@ -351,8 +386,23 @@ module Func = struct
          body = code
        }
 
+  (* The argument on the stack *)
+  let call_direct env fi at =
+   (* Pop the argument *)
+   let i = E.add_anon_local env I32Type in
+   [ nr (SetLocal (nr i)) ] @
+
+   (* First arg: The (unused) closure pointer *)
+   compile_null @
+
+   (* Second arg: The argument *)
+   [ nr (GetLocal (nr i)) ] @
+
+   (* All done: Call! *)
+   [ Call (nr fi) @@ at ]
+
   (* Expect the function closure and the argument on the stack *)
-  let call env at =
+  let call_indirect env at =
    (* Pop the argument *)
    let i = E.add_anon_local env I32Type in
    [ nr (SetLocal (nr i)) ] @
@@ -397,8 +447,17 @@ module Func = struct
       destruct_args_code @
       body_code)
 
-  (* Compile a function declaration *)
-  let dec pre_env last name captured mk_pat mk_body at =
+
+  (* Compile a closed function declaration (has no free variables) *)
+  let dec_closed pre_env last name mk_pat mk_body at =
+      let f = compile_func pre_env [] mk_pat mk_body at in
+      let fi = E.add_fun pre_env f in
+      let pre_env1 = E.add_local_fun pre_env name.it fi in
+      ( pre_env1, [], fun env ->
+        if last then Var.static_fun_pointer env fi else [])
+
+  (* Compile a closure declaration (has free variables) *)
+  let dec_closure pre_env last name captured mk_pat mk_body at =
       let li = E.add_anon_local pre_env I32Type in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
@@ -431,6 +490,14 @@ module Func = struct
         List.concat (List.mapi store_capture captured) @
         if last then [ GetLocal (li @@ at) @@ at ] else [])
 
+  let dec pre_env last name captured mk_pat mk_body at =
+    (* This could be smarter: It is ok to capture closed functions,
+       but then we would have to move the call to compile_func in dec_closed
+       above into the continuation. *)
+    if captured = []
+    then dec_closed pre_env last name mk_pat mk_body at
+    else dec_closure pre_env last name captured mk_pat mk_body at
+
 end (* Func *)
 
 (* Primitive functions *)
@@ -448,26 +515,21 @@ module Prim = struct
         ))
       ])
 
-
-  (* Until we have a notion of static function reference, we need to allocate
-     a closure for the function *)
-  let allocate env n mk_fun =
+  let register env n mk_fun =
     let fi = E.add_fun env (mk_fun env) in
-    let i = E.add_anon_local env I32Type in
-    let code = Tuple.lit env [ compile_const fi ] @
-               [ nr (SetLocal (nr i)) ] in
-    let env1 = E.add_prim env n i in
-    (env1, code)
+    let env1 = E.add_prim env n fi in
+    env1
 
   let rec declare env = function
-      | [] -> (env,[])
-      | (n,f) :: xs -> let (env1, code1) = allocate env n f in
-                       let (env2, code2) = declare env1 xs
-                       in (env2, code1 @ code2)
+      | [] -> env
+      | (n,f) :: xs -> let env1 = register env n f in
+                       let env2 = declare env1 xs
+                       in env2
 
   let lit env p =
     begin match E.lookup_prim env p with
-    | Some i -> [ nr (GetLocal i) ]
+    (* This could be optimized if surrounded by a let or call *)
+    | Some fi -> Var.static_fun_pointer env fi
     | None   -> [ nr Unreachable ]
     end
 
@@ -585,9 +647,10 @@ module Array = struct
   let element_size = 4l
 
   (* Indices of known global functions *)
-  let fun_id env i = match E.mode env with
-    | WasmMode -> i
-    | DfinityMode -> Int32.add i 3l
+  let fun_id env i =
+    let ni = List.length (E.get_imports env) in
+    let ni' = Int32.of_int ni in
+    Int32.add i ni'
 
   let array_get_funid       env = fun_id env 0l
   let array_set_funid       env = fun_id env 1l
@@ -806,10 +869,10 @@ module Dfinity = struct
     [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ]));
       "print",    (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ])) ]
 
-  let export_start_fun env i =
+  let export_start_fun env fi =
     E.add_export env (nr {
       name = explode "start";
-      edesc = nr (FuncExport (nr i))
+      edesc = nr (FuncExport (nr fi))
     });
     (* these export seems to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
@@ -887,9 +950,11 @@ Local variables (which maybe mutable, or have delayed initialisation)
 are also points, but points to such values, and need to be read first.  *)
 and compile_exp (env : E.t) exp = match exp.it with
   (* We can reuse the code in compile_lexp here *)
-  | VarE _ | IdxE _ | DotE _ ->
+  | IdxE _ | DotE _ ->
      compile_lexp env exp @
      load_ptr
+  | VarE var ->
+     Var.get_val env var.it
   | AssignE (e1,e2) ->
      compile_lexp env e1 @
      compile_exp env e2 @
@@ -965,10 +1030,14 @@ and compile_exp (env : E.t) exp = match exp.it with
      (* TODO: This treats actors like any old object *)
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
      Object.lit env (Some name) None fs'
+  | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
+     let fi = Lib.Option.value (isDirectCall env e1) in
+     compile_exp env e2 @
+     Func.call_direct env fi exp.at
   | CallE (e1, _, e2) ->
      compile_exp env e1 @
      compile_exp env e2 @
-     Func.call env exp.at
+     Func.call_indirect env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let i = E.add_anon_local env I32Type in
@@ -1009,7 +1078,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        [ nr (GetLocal (nr i)) ] @
        Object.load_idx env1 (nr__ "next") @
        compile_unit @
-       Func.call env1 Source.no_region @
+       Func.call_indirect env1 Source.no_region @
        let oi = E.add_anon_local env I32Type in
        [ nr (SetLocal (nr oi)) ] @
 
@@ -1025,6 +1094,15 @@ and compile_exp (env : E.t) exp = match exp.it with
      ))] @
      compile_unit
   | _ -> todo "compile_exp" (Arrange.exp exp) [ nr Unreachable ]
+
+
+and isDirectCall env e = match e.it with
+  | VarE var ->
+    begin match E.lookup_var env var.it with
+    | Some (Func fi) -> Some fi
+    | _ -> None
+    end
+  | _ -> None
 
 
 (*
@@ -1241,8 +1319,8 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
-  let (env2, code1) = Prim.declare env1 Prim.default_prims in
-  let (env3, code2) = Prim.declare env2
+  let env2 = Prim.declare env1 Prim.default_prims in
+  let env3 = Prim.declare env2
     ( match E.mode env2 with
       | WasmMode ->    Dfinity.stub_prims
       | DfinityMode -> Dfinity.prims ) in
@@ -1254,11 +1332,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
         let (env2, code2) = go env1 progs in
         (env2, code1 @ [ nr Drop ] @ code2) in
 
-  let (env3, code3) = go env3 progs in
+  let (env4, code) = go env3 progs in
 
   nr { ftype = nr E.start_fun_ty_i;
-       locals = E.get_locals env3;
-       body = code1 @ code2 @ code3
+       locals = E.get_locals env4;
+       body = code
      }
 
 let compile mode (progs : Syntax.prog list) : module_ =
@@ -1268,8 +1346,8 @@ let compile mode (progs : Syntax.prog list) : module_ =
   Array.common_funcs env;
 
   let start_fun = compile_start_func env progs in
-  let i = E.add_fun env start_fun in
-  if E.mode env = DfinityMode then Dfinity.export_start_fun env i;
+  let start_fi = E.add_fun env start_fun in
+  if E.mode env = DfinityMode then Dfinity.export_start_fun env start_fi;
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -1289,7 +1367,7 @@ let compile mode (progs : Syntax.prog list) : module_ =
       index = nr 0l;
       offset = nr (compile_const ni');
       init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-    start = if E.mode env = DfinityMode then None else Some (nr i);
+    start = if E.mode env = DfinityMode then None else Some (nr start_fi);
     globals = Heap.globals;
     memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
     imports = imports;
