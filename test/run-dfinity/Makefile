@@ -1,4 +1,8 @@
-SUFFIXES = .tc .run .wasm .wasm.stderr .wat .dsh-run
-ASC_FLAGS = --dfinity
+all:
+	../run.sh -d *.as
 
-include ../Makefile.common
+accept:
+	../run.sh -d -a *.as
+
+clean:
+	rm -rf _out

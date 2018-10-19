@@ -35,6 +35,17 @@ func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
 func print (x : Text) { ((prim "print") : Text -> ()) x };
 |}
 
+(*
+type cont<T> = T -> () ;
+type cps<T> = cont<T> -> ();
+
+func new_async<T>(e:cps<T>) : async T  = {
+  let async_ = ((prim "@make_async") : () -> async T)();
+  func k(t:T):() =  ((prim "@set_async" ) : (async T,T)->() ) (async_,t);
+  ((prim "@scheduler_queue") : cont<()> -> () ) (func () : () = e k);
+  async_
+};
+*)
 
 (* Primitives *)
 
@@ -47,4 +58,4 @@ let prim = function
     fun v k ->
       Printf.printf "printInt(%s)\n%!" (Int.to_string (as_int v));
       k unit
-  | _ -> raise (Invalid_argument "Value.prim")
+  | s -> raise (Invalid_argument ("Value.prim: " ^ s))

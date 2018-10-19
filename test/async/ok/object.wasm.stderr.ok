@@ -1,0 +1,2289 @@
+compile_exp: (DeclareE
+  o
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $182)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $186)
+                  (PrimT Any)
+                  (DeclareE
+                    a
+                    (DeclareE
+                      b
+                      (DeclareE
+                        get_a
+                        (DeclareE
+                          get_b
+                          (DeclareE
+                            get_ab
+                            (DeclareE
+                              this
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $213)
+                                    (PrimT Any)
+                                    (BlockE
+                                      (LetD (VarP $214) (LitE (TextLit fe)))
+                                      (ExpD
+                                        (CallE
+                                          (VarE $213)
+                                          (BlockE
+                                            (LetD (VarP $215) (VarE $214))
+                                            (ExpD (DefineE a Const (VarE $215)))
+                                            (ExpD (VarE $214))
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $187)
+                                    (PrimT Any)
+                                    (CallE
+                                      (DecE
+                                        (FuncD
+                                          
+                                          (VarP $210)
+                                          (PrimT Any)
+                                          (BlockE
+                                            (LetD
+                                              (VarP $211)
+                                              (LitE (TextLit fb))
+                                            )
+                                            (ExpD
+                                              (CallE
+                                                (VarE $210)
+                                                (BlockE
+                                                  (LetD (VarP $212) (VarE $211))
+                                                  (ExpD
+                                                    (DefineE
+                                                      b
+                                                      Const
+                                                      (VarE $212)
+                                                    )
+                                                  )
+                                                  (ExpD (VarE $211))
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                      (DecE
+                                        (FuncD
+                                          
+                                          (VarP $188)
+                                          (PrimT Any)
+                                          (CallE
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $204)
+                                                (PrimT Any)
+                                                (CallE
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $207)
+                                                      (PrimT Any)
+                                                      (CallE
+                                                        (PrimE @await)
+                                                        (TupE
+                                                          (CallE
+                                                            (PrimE @async)
+                                                            (DecE
+                                                              (FuncD
+                                                                
+                                                                (VarP $208)
+                                                                (PrimT Any)
+                                                                (CallE
+                                                                  (DecE
+                                                                    (FuncD
+                                                                      
+                                                                      (VarP
+                                                                        $209
+                                                                      )
+                                                                      (PrimT
+                                                                        Any
+                                                                      )
+                                                                      (CallE
+                                                                        (VarE
+                                                                          $209
+                                                                        )
+                                                                        (DecE
+                                                                          (FuncD
+                                                                            get_a
+                                                                            (TupP
+                                                                            )
+                                                                            (VarT
+                                                                              Text
+                                                                            )
+                                                                            (BlockE
+                                                                              (ExpD
+                                                                                (VarE
+                                                                                  a
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                  (VarE $208)
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                          (VarE $207)
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $205)
+                                                      (PrimT Any)
+                                                      (CallE
+                                                        (VarE $204)
+                                                        (BlockE
+                                                          (LetD
+                                                            (VarP $206)
+                                                            (VarE $205)
+                                                          )
+                                                          (ExpD
+                                                            (DefineE
+                                                              get_a
+                                                              Const
+                                                              (VarE $206)
+                                                            )
+                                                          )
+                                                          (ExpD (VarE $205))
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $189)
+                                                (PrimT Any)
+                                                (CallE
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $198)
+                                                      (PrimT Any)
+                                                      (CallE
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $201)
+                                                            (PrimT Any)
+                                                            (CallE
+                                                              (PrimE @await)
+                                                              (TupE
+                                                                (CallE
+                                                                  (PrimE @async)
+                                                                  (DecE
+                                                                    (FuncD
+                                                                      
+                                                                      (VarP
+                                                                        $202
+                                                                      )
+                                                                      (PrimT
+                                                                        Any
+                                                                      )
+                                                                      (CallE
+                                                                        (DecE
+                                                                          (FuncD
+                                                                            
+                                                                            (VarP
+                                                                              $203
+                                                                            )
+                                                                            (PrimT
+                                                                              Any
+                                                                            )
+                                                                            (CallE
+                                                                              (VarE
+                                                                                $203
+                                                                              )
+                                                                              (DecE
+                                                                                (FuncD
+                                                                                  get_b
+                                                                                  (TupP
+                                                                                  )
+                                                                                  (VarT
+                                                                                    Text
+                                                                                  )
+                                                                                  (BlockE
+                                                                                    (ExpD
+                                                                                      (VarE
+                                                                                        b
+                                                                                      )
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                        (VarE
+                                                                          $202
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                                (VarE $201)
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $199)
+                                                            (PrimT Any)
+                                                            (CallE
+                                                              (VarE $198)
+                                                              (BlockE
+                                                                (LetD
+                                                                  (VarP $200)
+                                                                  (VarE $199)
+                                                                )
+                                                                (ExpD
+                                                                  (DefineE
+                                                                    get_b
+                                                                    Const
+                                                                    (VarE $200)
+                                                                  )
+                                                                )
+                                                                (ExpD
+                                                                  (VarE $199)
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $190)
+                                                      (PrimT Any)
+                                                      (CallE
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $195)
+                                                            (PrimT Any)
+                                                            (BlockE
+                                                              (LetD
+                                                                (VarP $196)
+                                                                (DecE
+                                                                  (FuncD
+                                                                    get_ab
+                                                                    (TupP)
+                                                                    (TupT
+                                                                      (VarT
+                                                                        Text
+                                                                      )
+                                                                      (VarT
+                                                                        Text
+                                                                      )
+                                                                    )
+                                                                    (BlockE
+                                                                      (ExpD
+                                                                        (TupE
+                                                                          (CallE
+                                                                            (DotE
+                                                                              (VarE
+                                                                                this
+                                                                              )
+                                                                              get_a
+                                                                            )
+                                                                            (TupE
+                                                                            )
+                                                                          )
+                                                                          (CallE
+                                                                            (DotE
+                                                                              (VarE
+                                                                                this
+                                                                              )
+                                                                              get_b
+                                                                            )
+                                                                            (TupE
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                              (ExpD
+                                                                (CallE
+                                                                  (VarE $195)
+                                                                  (BlockE
+                                                                    (LetD
+                                                                      (VarP
+                                                                        $197
+                                                                      )
+                                                                      (VarE
+                                                                        $196
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (DefineE
+                                                                        get_ab
+                                                                        Const
+                                                                        (VarE
+                                                                          $197
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (VarE
+                                                                        $196
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $191)
+                                                            (PrimT Any)
+                                                            (CallE
+                                                              (DecE
+                                                                (FuncD
+                                                                  
+                                                                  (VarP $192)
+                                                                  (PrimT Any)
+                                                                  (BlockE
+                                                                    (LetD
+                                                                      (VarP
+                                                                        $193
+                                                                      )
+                                                                      (NewObjE
+                                                                        Object
+                                                                        get_a
+                                                                        get_b
+                                                                        get_ab
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (CallE
+                                                                        (VarE
+                                                                          $192
+                                                                        )
+                                                                        (BlockE
+                                                                          (LetD
+                                                                            (VarP
+                                                                              $194
+                                                                            )
+                                                                            (VarE
+                                                                              $193
+                                                                            )
+                                                                          )
+                                                                          (ExpD
+                                                                            (DefineE
+                                                                              this
+                                                                              Const
+                                                                              (VarE
+                                                                                $194
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                          (ExpD
+                                                                            (VarE
+                                                                              $193
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                              (VarE $186)
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $183)
+                  (PrimT Any)
+                  (CallE
+                    (VarE $182)
+                    (BlockE
+                      (LetD (VarP $184) (VarE $183))
+                      (ExpD (DefineE o Const (VarE $184)))
+                      (ExpD (VarE $183))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $171)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $178)
+                  (PrimT Any)
+                  (BlockE
+                    (LetD (VarP $179) (CallE (DotE (VarE o) get_ab) (TupE)))
+                    (ExpD
+                      (CallE
+                        (VarE $178)
+                        (BlockE
+                          (LetD (TupP (VarP $180) (VarP $181)) (VarE $179))
+                          (ExpD (DefineE a Const (VarE $180)))
+                          (ExpD (DefineE b Const (VarE $181)))
+                          (ExpD (VarE $179))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $172)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $177)
+                        (PrimT Any)
+                        (CallE (VarE $177) (CallE (VarE print) (VarE a)))
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $173)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $176)
+                              (PrimT Any)
+                              (CallE (VarE $176) (CallE (VarE print) (VarE b)))
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $174)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $175)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $175)
+                                      (CallE (VarE print) (LitE (TextLit 
+)))
+                                    )
+                                  )
+                                )
+                                (VarE $170)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  o
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $138)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $142)
+                  (PrimT Any)
+                  (DeclareE
+                    a
+                    (DeclareE
+                      b
+                      (DeclareE
+                        get_a
+                        (DeclareE
+                          get_b
+                          (DeclareE
+                            get_ab
+                            (DeclareE
+                              this
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $166)
+                                    (PrimT Any)
+                                    (BlockE
+                                      (LetD (VarP $167) (LitE (TextLit ea)))
+                                      (ExpD
+                                        (CallE
+                                          (VarE $166)
+                                          (BlockE
+                                            (LetD (VarP $168) (VarE $167))
+                                            (ExpD (DefineE a Const (VarE $168)))
+                                            (ExpD (VarE $167))
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $143)
+                                    (PrimT Any)
+                                    (CallE
+                                      (DecE
+                                        (FuncD
+                                          
+                                          (VarP $160)
+                                          (PrimT Any)
+                                          (CallE
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $163)
+                                                (PrimT Any)
+                                                (CallE
+                                                  (PrimE @await)
+                                                  (TupE
+                                                    (CallE
+                                                      (PrimE @async)
+                                                      (DecE
+                                                        (FuncD
+                                                          
+                                                          (VarP $164)
+                                                          (PrimT Any)
+                                                          (CallE
+                                                            (DecE
+                                                              (FuncD
+                                                                
+                                                                (VarP $165)
+                                                                (PrimT Any)
+                                                                (CallE
+                                                                  (VarE $165)
+                                                                  (LitE
+                                                                    (TextLit eb)
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                            (VarE $164)
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                    (VarE $163)
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $161)
+                                                (PrimT Any)
+                                                (CallE
+                                                  (VarE $160)
+                                                  (BlockE
+                                                    (LetD
+                                                      (VarP $162)
+                                                      (VarE $161)
+                                                    )
+                                                    (ExpD
+                                                      (DefineE
+                                                        b
+                                                        Const
+                                                        (VarE $162)
+                                                      )
+                                                    )
+                                                    (ExpD (VarE $161))
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                      (DecE
+                                        (FuncD
+                                          
+                                          (VarP $144)
+                                          (PrimT Any)
+                                          (CallE
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $157)
+                                                (PrimT Any)
+                                                (BlockE
+                                                  (LetD
+                                                    (VarP $158)
+                                                    (DecE
+                                                      (FuncD
+                                                        get_a
+                                                        (TupP)
+                                                        (VarT Text)
+                                                        (BlockE (ExpD (VarE a)))
+                                                      )
+                                                    )
+                                                  )
+                                                  (ExpD
+                                                    (CallE
+                                                      (VarE $157)
+                                                      (BlockE
+                                                        (LetD
+                                                          (VarP $159)
+                                                          (VarE $158)
+                                                        )
+                                                        (ExpD
+                                                          (DefineE
+                                                            get_a
+                                                            Const
+                                                            (VarE $159)
+                                                          )
+                                                        )
+                                                        (ExpD (VarE $158))
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (DecE
+                                              (FuncD
+                                                
+                                                (VarP $145)
+                                                (PrimT Any)
+                                                (CallE
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $154)
+                                                      (PrimT Any)
+                                                      (BlockE
+                                                        (LetD
+                                                          (VarP $155)
+                                                          (DecE
+                                                            (FuncD
+                                                              get_b
+                                                              (TupP)
+                                                              (VarT Text)
+                                                              (BlockE
+                                                                (ExpD (VarE b))
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (ExpD
+                                                          (CallE
+                                                            (VarE $154)
+                                                            (BlockE
+                                                              (LetD
+                                                                (VarP $156)
+                                                                (VarE $155)
+                                                              )
+                                                              (ExpD
+                                                                (DefineE
+                                                                  get_b
+                                                                  Const
+                                                                  (VarE $156)
+                                                                )
+                                                              )
+                                                              (ExpD (VarE $155))
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (DecE
+                                                    (FuncD
+                                                      
+                                                      (VarP $146)
+                                                      (PrimT Any)
+                                                      (CallE
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $151)
+                                                            (PrimT Any)
+                                                            (BlockE
+                                                              (LetD
+                                                                (VarP $152)
+                                                                (DecE
+                                                                  (FuncD
+                                                                    get_ab
+                                                                    (TupP)
+                                                                    (TupT
+                                                                      (VarT
+                                                                        Text
+                                                                      )
+                                                                      (VarT
+                                                                        Text
+                                                                      )
+                                                                    )
+                                                                    (BlockE
+                                                                      (ExpD
+                                                                        (TupE
+                                                                          (CallE
+                                                                            (DotE
+                                                                              (VarE
+                                                                                this
+                                                                              )
+                                                                              get_a
+                                                                            )
+                                                                            (TupE
+                                                                            )
+                                                                          )
+                                                                          (CallE
+                                                                            (DotE
+                                                                              (VarE
+                                                                                this
+                                                                              )
+                                                                              get_b
+                                                                            )
+                                                                            (TupE
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                              (ExpD
+                                                                (CallE
+                                                                  (VarE $151)
+                                                                  (BlockE
+                                                                    (LetD
+                                                                      (VarP
+                                                                        $153
+                                                                      )
+                                                                      (VarE
+                                                                        $152
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (DefineE
+                                                                        get_ab
+                                                                        Const
+                                                                        (VarE
+                                                                          $153
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (VarE
+                                                                        $152
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (DecE
+                                                          (FuncD
+                                                            
+                                                            (VarP $147)
+                                                            (PrimT Any)
+                                                            (CallE
+                                                              (DecE
+                                                                (FuncD
+                                                                  
+                                                                  (VarP $148)
+                                                                  (PrimT Any)
+                                                                  (BlockE
+                                                                    (LetD
+                                                                      (VarP
+                                                                        $149
+                                                                      )
+                                                                      (NewObjE
+                                                                        Object
+                                                                        get_a
+                                                                        get_b
+                                                                        get_ab
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (CallE
+                                                                        (VarE
+                                                                          $148
+                                                                        )
+                                                                        (BlockE
+                                                                          (LetD
+                                                                            (VarP
+                                                                              $150
+                                                                            )
+                                                                            (VarE
+                                                                              $149
+                                                                            )
+                                                                          )
+                                                                          (ExpD
+                                                                            (DefineE
+                                                                              this
+                                                                              Const
+                                                                              (VarE
+                                                                                $150
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                          (ExpD
+                                                                            (VarE
+                                                                              $149
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                              (VarE $142)
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $139)
+                  (PrimT Any)
+                  (CallE
+                    (VarE $138)
+                    (BlockE
+                      (LetD (VarP $140) (VarE $139))
+                      (ExpD (DefineE o Const (VarE $140)))
+                      (ExpD (VarE $139))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $127)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $134)
+                  (PrimT Any)
+                  (BlockE
+                    (LetD (VarP $135) (CallE (DotE (VarE o) get_ab) (TupE)))
+                    (ExpD
+                      (CallE
+                        (VarE $134)
+                        (BlockE
+                          (LetD (TupP (VarP $136) (VarP $137)) (VarE $135))
+                          (ExpD (DefineE a Const (VarE $136)))
+                          (ExpD (DefineE b Const (VarE $137)))
+                          (ExpD (VarE $135))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $128)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $133)
+                        (PrimT Any)
+                        (CallE (VarE $133) (CallE (VarE print) (VarE a)))
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $129)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $132)
+                              (PrimT Any)
+                              (CallE (VarE $132) (CallE (VarE print) (VarE b)))
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $130)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $131)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $131)
+                                      (CallE (VarE print) (LitE (TextLit 
+)))
+                                    )
+                                  )
+                                )
+                                (VarE $126)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  o
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $98)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $102)
+                  (PrimT Any)
+                  (DeclareE
+                    a
+                    (DeclareE
+                      b
+                      (DeclareE
+                        get_a
+                        (DeclareE
+                          get_b
+                          (DeclareE
+                            anon-object-36.12
+                            (CallE
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $122)
+                                  (PrimT Any)
+                                  (BlockE
+                                    (LetD (VarP $123) (LitE (TextLit da)))
+                                    (ExpD
+                                      (CallE
+                                        (VarE $122)
+                                        (BlockE
+                                          (LetD (VarP $124) (VarE $123))
+                                          (ExpD (DefineE a Const (VarE $124)))
+                                          (ExpD (VarE $123))
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $103)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $116)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $119)
+                                              (PrimT Any)
+                                              (CallE
+                                                (PrimE @await)
+                                                (TupE
+                                                  (CallE
+                                                    (PrimE @async)
+                                                    (DecE
+                                                      (FuncD
+                                                        
+                                                        (VarP $120)
+                                                        (PrimT Any)
+                                                        (CallE
+                                                          (DecE
+                                                            (FuncD
+                                                              
+                                                              (VarP $121)
+                                                              (PrimT Any)
+                                                              (CallE
+                                                                (VarE $121)
+                                                                (LitE
+                                                                  (TextLit db)
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                          (VarE $120)
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (VarE $119)
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $117)
+                                              (PrimT Any)
+                                              (CallE
+                                                (VarE $116)
+                                                (BlockE
+                                                  (LetD (VarP $118) (VarE $117))
+                                                  (ExpD
+                                                    (DefineE
+                                                      b
+                                                      Const
+                                                      (VarE $118)
+                                                    )
+                                                  )
+                                                  (ExpD (VarE $117))
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $104)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $113)
+                                              (PrimT Any)
+                                              (BlockE
+                                                (LetD
+                                                  (VarP $114)
+                                                  (DecE
+                                                    (FuncD
+                                                      get_a
+                                                      (TupP)
+                                                      (VarT Text)
+                                                      (BlockE (ExpD (VarE a)))
+                                                    )
+                                                  )
+                                                )
+                                                (ExpD
+                                                  (CallE
+                                                    (VarE $113)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $115)
+                                                        (VarE $114)
+                                                      )
+                                                      (ExpD
+                                                        (DefineE
+                                                          get_a
+                                                          Const
+                                                          (VarE $115)
+                                                        )
+                                                      )
+                                                      (ExpD (VarE $114))
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $105)
+                                              (PrimT Any)
+                                              (CallE
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $110)
+                                                    (PrimT Any)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $111)
+                                                        (DecE
+                                                          (FuncD
+                                                            get_b
+                                                            (TupP)
+                                                            (VarT Text)
+                                                            (BlockE
+                                                              (ExpD (VarE b))
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (ExpD
+                                                        (CallE
+                                                          (VarE $110)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $112)
+                                                              (VarE $111)
+                                                            )
+                                                            (ExpD
+                                                              (DefineE
+                                                                get_b
+                                                                Const
+                                                                (VarE $112)
+                                                              )
+                                                            )
+                                                            (ExpD (VarE $111))
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $106)
+                                                    (PrimT Any)
+                                                    (CallE
+                                                      (DecE
+                                                        (FuncD
+                                                          
+                                                          (VarP $107)
+                                                          (PrimT Any)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $108)
+                                                              (NewObjE
+                                                                Object
+                                                                get_a
+                                                                get_b
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (CallE
+                                                                (VarE $107)
+                                                                (BlockE
+                                                                  (LetD
+                                                                    (VarP $109)
+                                                                    (VarE $108)
+                                                                  )
+                                                                  (ExpD
+                                                                    (DefineE
+                                                                      anon-object-36.12
+                                                                      Const
+                                                                      (VarE
+                                                                        $109
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                  (ExpD
+                                                                    (VarE $108)
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (VarE $102)
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $99)
+                  (PrimT Any)
+                  (CallE
+                    (VarE $98)
+                    (BlockE
+                      (LetD (VarP $100) (VarE $99))
+                      (ExpD (DefineE o Const (VarE $100)))
+                      (ExpD (VarE $99))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $87)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $94)
+                  (PrimT Any)
+                  (BlockE
+                    (LetD
+                      (VarP $95)
+                      (TupE
+                        (CallE (DotE (VarE o) get_a) (TupE))
+                        (CallE (DotE (VarE o) get_b) (TupE))
+                      )
+                    )
+                    (ExpD
+                      (CallE
+                        (VarE $94)
+                        (BlockE
+                          (LetD (TupP (VarP $96) (VarP $97)) (VarE $95))
+                          (ExpD (DefineE a Const (VarE $96)))
+                          (ExpD (DefineE b Const (VarE $97)))
+                          (ExpD (VarE $95))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $88)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $93)
+                        (PrimT Any)
+                        (CallE (VarE $93) (CallE (VarE print) (VarE a)))
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $89)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $92)
+                              (PrimT Any)
+                              (CallE (VarE $92) (CallE (VarE print) (VarE b)))
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $90)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $91)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $91)
+                                      (CallE (VarE print) (LitE (TextLit 
+)))
+                                    )
+                                  )
+                                )
+                                (VarE $86)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  o
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $55)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $59)
+                  (PrimT Any)
+                  (DeclareE
+                    a
+                    (DeclareE
+                      b
+                      (DeclareE
+                        get_a
+                        (DeclareE
+                          get_b
+                          (DeclareE
+                            anon-object-25.12
+                            (CallE
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $79)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $82)
+                                        (PrimT Any)
+                                        (CallE
+                                          (PrimE @await)
+                                          (TupE
+                                            (CallE
+                                              (PrimE @async)
+                                              (DecE
+                                                (FuncD
+                                                  
+                                                  (VarP $83)
+                                                  (PrimT Any)
+                                                  (CallE
+                                                    (DecE
+                                                      (FuncD
+                                                        
+                                                        (VarP $84)
+                                                        (PrimT Any)
+                                                        (CallE
+                                                          (VarE $84)
+                                                          (LitE (TextLit ca))
+                                                        )
+                                                      )
+                                                    )
+                                                    (VarE $83)
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (VarE $82)
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $80)
+                                        (PrimT Any)
+                                        (CallE
+                                          (VarE $79)
+                                          (BlockE
+                                            (LetD (VarP $81) (VarE $80))
+                                            (ExpD (DefineE a Const (VarE $81)))
+                                            (ExpD (VarE $80))
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $60)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $73)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $76)
+                                              (PrimT Any)
+                                              (CallE
+                                                (PrimE @await)
+                                                (TupE
+                                                  (CallE
+                                                    (PrimE @async)
+                                                    (DecE
+                                                      (FuncD
+                                                        
+                                                        (VarP $77)
+                                                        (PrimT Any)
+                                                        (CallE
+                                                          (DecE
+                                                            (FuncD
+                                                              
+                                                              (VarP $78)
+                                                              (PrimT Any)
+                                                              (CallE
+                                                                (VarE $78)
+                                                                (LitE
+                                                                  (TextLit cb)
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                          (VarE $77)
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (VarE $76)
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $74)
+                                              (PrimT Any)
+                                              (CallE
+                                                (VarE $73)
+                                                (BlockE
+                                                  (LetD (VarP $75) (VarE $74))
+                                                  (ExpD
+                                                    (DefineE b Const (VarE $75))
+                                                  )
+                                                  (ExpD (VarE $74))
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $61)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $70)
+                                              (PrimT Any)
+                                              (BlockE
+                                                (LetD
+                                                  (VarP $71)
+                                                  (DecE
+                                                    (FuncD
+                                                      get_a
+                                                      (TupP)
+                                                      (VarT Text)
+                                                      (BlockE (ExpD (VarE a)))
+                                                    )
+                                                  )
+                                                )
+                                                (ExpD
+                                                  (CallE
+                                                    (VarE $70)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $72)
+                                                        (VarE $71)
+                                                      )
+                                                      (ExpD
+                                                        (DefineE
+                                                          get_a
+                                                          Const
+                                                          (VarE $72)
+                                                        )
+                                                      )
+                                                      (ExpD (VarE $71))
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $62)
+                                              (PrimT Any)
+                                              (CallE
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $67)
+                                                    (PrimT Any)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $68)
+                                                        (DecE
+                                                          (FuncD
+                                                            get_b
+                                                            (TupP)
+                                                            (VarT Text)
+                                                            (BlockE
+                                                              (ExpD (VarE b))
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (ExpD
+                                                        (CallE
+                                                          (VarE $67)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $69)
+                                                              (VarE $68)
+                                                            )
+                                                            (ExpD
+                                                              (DefineE
+                                                                get_b
+                                                                Const
+                                                                (VarE $69)
+                                                              )
+                                                            )
+                                                            (ExpD (VarE $68))
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $63)
+                                                    (PrimT Any)
+                                                    (CallE
+                                                      (DecE
+                                                        (FuncD
+                                                          
+                                                          (VarP $64)
+                                                          (PrimT Any)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $65)
+                                                              (NewObjE
+                                                                Object
+                                                                get_a
+                                                                get_b
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (CallE
+                                                                (VarE $64)
+                                                                (BlockE
+                                                                  (LetD
+                                                                    (VarP $66)
+                                                                    (VarE $65)
+                                                                  )
+                                                                  (ExpD
+                                                                    (DefineE
+                                                                      anon-object-25.12
+                                                                      Const
+                                                                      (VarE $66)
+                                                                    )
+                                                                  )
+                                                                  (ExpD
+                                                                    (VarE $65)
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (VarE $59)
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $56)
+                  (PrimT Any)
+                  (CallE
+                    (VarE $55)
+                    (BlockE
+                      (LetD (VarP $57) (VarE $56))
+                      (ExpD (DefineE o Const (VarE $57)))
+                      (ExpD (VarE $56))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $44)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $51)
+                  (PrimT Any)
+                  (BlockE
+                    (LetD
+                      (VarP $52)
+                      (TupE
+                        (CallE (DotE (VarE o) get_a) (TupE))
+                        (CallE (DotE (VarE o) get_b) (TupE))
+                      )
+                    )
+                    (ExpD
+                      (CallE
+                        (VarE $51)
+                        (BlockE
+                          (LetD (TupP (VarP $53) (VarP $54)) (VarE $52))
+                          (ExpD (DefineE a Const (VarE $53)))
+                          (ExpD (DefineE b Const (VarE $54)))
+                          (ExpD (VarE $52))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $45)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $50)
+                        (PrimT Any)
+                        (CallE (VarE $50) (CallE (VarE print) (VarE a)))
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $46)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $49)
+                              (PrimT Any)
+                              (CallE (VarE $49) (CallE (VarE print) (VarE b)))
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $47)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $48)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $48)
+                                      (CallE (VarE print) (LitE (TextLit 
+)))
+                                    )
+                                  )
+                                )
+                                (VarE $43)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  o
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $15)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $19)
+                  (PrimT Any)
+                  (DeclareE
+                    a
+                    (DeclareE
+                      b
+                      (DeclareE
+                        get_a
+                        (DeclareE
+                          get_b
+                          (DeclareE
+                            anon-object-14.12
+                            (CallE
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $36)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $39)
+                                        (PrimT Any)
+                                        (CallE
+                                          (PrimE @await)
+                                          (TupE
+                                            (CallE
+                                              (PrimE @async)
+                                              (DecE
+                                                (FuncD
+                                                  
+                                                  (VarP $40)
+                                                  (PrimT Any)
+                                                  (CallE
+                                                    (DecE
+                                                      (FuncD
+                                                        
+                                                        (VarP $41)
+                                                        (PrimT Any)
+                                                        (CallE
+                                                          (VarE $41)
+                                                          (LitE (TextLit ba))
+                                                        )
+                                                      )
+                                                    )
+                                                    (VarE $40)
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (VarE $39)
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $37)
+                                        (PrimT Any)
+                                        (CallE
+                                          (VarE $36)
+                                          (BlockE
+                                            (LetD (VarP $38) (VarE $37))
+                                            (ExpD (DefineE a Const (VarE $38)))
+                                            (ExpD (VarE $37))
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $20)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $33)
+                                        (PrimT Any)
+                                        (BlockE
+                                          (LetD (VarP $34) (LitE (TextLit bb)))
+                                          (ExpD
+                                            (CallE
+                                              (VarE $33)
+                                              (BlockE
+                                                (LetD (VarP $35) (VarE $34))
+                                                (ExpD
+                                                  (DefineE b Const (VarE $35))
+                                                )
+                                                (ExpD (VarE $34))
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $21)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $30)
+                                              (PrimT Any)
+                                              (BlockE
+                                                (LetD
+                                                  (VarP $31)
+                                                  (DecE
+                                                    (FuncD
+                                                      get_a
+                                                      (TupP)
+                                                      (VarT Text)
+                                                      (BlockE (ExpD (VarE a)))
+                                                    )
+                                                  )
+                                                )
+                                                (ExpD
+                                                  (CallE
+                                                    (VarE $30)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $32)
+                                                        (VarE $31)
+                                                      )
+                                                      (ExpD
+                                                        (DefineE
+                                                          get_a
+                                                          Const
+                                                          (VarE $32)
+                                                        )
+                                                      )
+                                                      (ExpD (VarE $31))
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $22)
+                                              (PrimT Any)
+                                              (CallE
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $27)
+                                                    (PrimT Any)
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $28)
+                                                        (DecE
+                                                          (FuncD
+                                                            get_b
+                                                            (TupP)
+                                                            (VarT Text)
+                                                            (BlockE
+                                                              (ExpD (VarE b))
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (ExpD
+                                                        (CallE
+                                                          (VarE $27)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $29)
+                                                              (VarE $28)
+                                                            )
+                                                            (ExpD
+                                                              (DefineE
+                                                                get_b
+                                                                Const
+                                                                (VarE $29)
+                                                              )
+                                                            )
+                                                            (ExpD (VarE $28))
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (DecE
+                                                  (FuncD
+                                                    
+                                                    (VarP $23)
+                                                    (PrimT Any)
+                                                    (CallE
+                                                      (DecE
+                                                        (FuncD
+                                                          
+                                                          (VarP $24)
+                                                          (PrimT Any)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $25)
+                                                              (NewObjE
+                                                                Object
+                                                                get_a
+                                                                get_b
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (CallE
+                                                                (VarE $24)
+                                                                (BlockE
+                                                                  (LetD
+                                                                    (VarP $26)
+                                                                    (VarE $25)
+                                                                  )
+                                                                  (ExpD
+                                                                    (DefineE
+                                                                      anon-object-14.12
+                                                                      Const
+                                                                      (VarE $26)
+                                                                    )
+                                                                  )
+                                                                  (ExpD
+                                                                    (VarE $25)
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                      (VarE $19)
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $16)
+                  (PrimT Any)
+                  (CallE
+                    (VarE $15)
+                    (BlockE
+                      (LetD (VarP $17) (VarE $16))
+                      (ExpD (DefineE o Const (VarE $17)))
+                      (ExpD (VarE $16))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $4)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $11)
+                  (PrimT Any)
+                  (BlockE
+                    (LetD
+                      (VarP $12)
+                      (TupE
+                        (CallE (DotE (VarE o) get_a) (TupE))
+                        (CallE (DotE (VarE o) get_b) (TupE))
+                      )
+                    )
+                    (ExpD
+                      (CallE
+                        (VarE $11)
+                        (BlockE
+                          (LetD (TupP (VarP $13) (VarP $14)) (VarE $12))
+                          (ExpD (DefineE a Const (VarE $13)))
+                          (ExpD (DefineE b Const (VarE $14)))
+                          (ExpD (VarE $12))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $5)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $10)
+                        (PrimT Any)
+                        (CallE (VarE $10) (CallE (VarE print) (VarE a)))
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $6)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $9)
+                              (PrimT Any)
+                              (CallE (VarE $9) (CallE (VarE print) (VarE b)))
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $7)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $8)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $8)
+                                      (CallE (VarE print) (LitE (TextLit 
+)))
+                                    )
+                                  )
+                                )
+                                (VarE $3)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+Could not find primitive @async
