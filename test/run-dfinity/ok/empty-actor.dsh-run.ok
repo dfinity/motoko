@@ -19,3 +19,4 @@ $ dsh run empty-actor start
     "type": "actorref"
 }
 
+Leaked 1 instances of wasm::Engine, made 1, freed 0!

@@ -1,1 +1,1 @@
-_out/bank-example.wasm:0x80c: runtime trap: unreachable executed
+_out/bank-example.wasm:0x7df: runtime trap: unreachable executed
