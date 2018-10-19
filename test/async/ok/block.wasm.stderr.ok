@@ -1,0 +1,607 @@
+compile_exp: (DeclareE
+  f
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $64)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $66)
+                  (PrimT Any)
+                  (CallE
+                    (PrimE @await)
+                    (TupE
+                      (CallE
+                        (PrimE @async)
+                        (DecE
+                          (FuncD
+                            
+                            (VarP $67)
+                            (PrimT Any)
+                            (CallE
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $68)
+                                  (PrimT Any)
+                                  (CallE (VarE $68) (LitE (NatLit 5)))
+                                )
+                              )
+                              (VarE $67)
+                            )
+                          )
+                        )
+                      )
+                      (VarE $66)
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $65)
+                  (PrimT Any)
+                  (CallE (VarE $64) (DefineE f Var (VarE $65)))
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $50)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $63)
+                  (PrimT Any)
+                  (CallE (VarE $63) (CallE (VarE printInt) (VarE f)))
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $51)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $56)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $60)
+                              (PrimT Any)
+                              (CallE
+                                (PrimE @await)
+                                (TupE
+                                  (CallE
+                                    (PrimE @async)
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $61)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $62)
+                                              (PrimT Any)
+                                              (CallE
+                                                (VarE $62)
+                                                (TupE
+                                                  (LitE (TextLit a5))
+                                                  (LitE (TextLit b5))
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (VarE $61)
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (VarE $60)
+                                )
+                              )
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $57)
+                              (PrimT Any)
+                              (CallE
+                                (VarE $56)
+                                (BlockE
+                                  (LetD (TupP (VarP $58) (VarP $59)) (VarE $57))
+                                  (ExpD (DefineE a Const (VarE $58)))
+                                  (ExpD (DefineE b Const (VarE $59)))
+                                  (ExpD (VarE $57))
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $52)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $55)
+                              (PrimT Any)
+                              (CallE
+                                (VarE $55)
+                                (AssignE
+                                  (VarE f)
+                                  (BinE (VarE f) AddOp (LitE (NatLit 1)))
+                                )
+                              )
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $53)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $54)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $54)
+                                      (CallE (VarE printInt) (VarE f))
+                                    )
+                                  )
+                                )
+                                (VarE $49)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  f
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $47)
+            (PrimT Any)
+            (CallE (VarE $47) (DefineE f Var (LitE (NatLit 1))))
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $33)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $46)
+                  (PrimT Any)
+                  (CallE (VarE $46) (CallE (VarE printInt) (VarE f)))
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $34)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $39)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $43)
+                              (PrimT Any)
+                              (CallE
+                                (PrimE @await)
+                                (TupE
+                                  (CallE
+                                    (PrimE @async)
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $44)
+                                        (PrimT Any)
+                                        (CallE
+                                          (DecE
+                                            (FuncD
+                                              
+                                              (VarP $45)
+                                              (PrimT Any)
+                                              (CallE
+                                                (VarE $45)
+                                                (TupE
+                                                  (LitE (TextLit a4))
+                                                  (LitE (TextLit b4))
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (VarE $44)
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (VarE $43)
+                                )
+                              )
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $40)
+                              (PrimT Any)
+                              (CallE
+                                (VarE $39)
+                                (BlockE
+                                  (LetD (TupP (VarP $41) (VarP $42)) (VarE $40))
+                                  (ExpD (DefineE a Const (VarE $41)))
+                                  (ExpD (DefineE b Const (VarE $42)))
+                                  (ExpD (VarE $40))
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $35)
+                        (PrimT Any)
+                        (CallE
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $38)
+                              (PrimT Any)
+                              (CallE
+                                (VarE $38)
+                                (AssignE
+                                  (VarE f)
+                                  (BinE (VarE f) AddOp (LitE (NatLit 2)))
+                                )
+                              )
+                            )
+                          )
+                          (DecE
+                            (FuncD
+                              
+                              (VarP $36)
+                              (PrimT Any)
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    
+                                    (VarP $37)
+                                    (PrimT Any)
+                                    (CallE
+                                      (VarE $37)
+                                      (CallE (VarE printInt) (VarE f))
+                                    )
+                                  )
+                                )
+                                (VarE $32)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  f
+  (DeclareE
+    a
+    (DeclareE
+      b
+      (CallE
+        (DecE
+          (FuncD
+            
+            (VarP $28)
+            (PrimT Any)
+            (BlockE
+              (LetD
+                (VarP $29)
+                (DecE
+                  (FuncD
+                    f
+                    (TupP
+                      (AnnotP (VarP a) (VarT Text))
+                      (AnnotP (VarP b) (VarT Text))
+                    )
+                    (TupT)
+                    (BlockE
+                      (ExpD (CallE (VarE print) (VarE a)))
+                      (ExpD (CallE (VarE print) (VarE b)))
+                    )
+                  )
+                )
+              )
+              (ExpD
+                (BlockE
+                  (LetD (VarP $30) (DefineE f Const (VarE $29)))
+                  (ExpD (CallE (VarE $28) (VarE $29)))
+                )
+              )
+            )
+          )
+        )
+        (DecE
+          (FuncD
+            
+            (VarP $17)
+            (PrimT Any)
+            (CallE
+              (DecE
+                (FuncD
+                  
+                  (VarP $21)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $25)
+                        (PrimT Any)
+                        (CallE
+                          (PrimE @await)
+                          (TupE
+                            (CallE
+                              (PrimE @async)
+                              (DecE
+                                (FuncD
+                                  
+                                  (VarP $26)
+                                  (PrimT Any)
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        
+                                        (VarP $27)
+                                        (PrimT Any)
+                                        (CallE
+                                          (VarE $27)
+                                          (TupE
+                                            (LitE (TextLit a3))
+                                            (LitE (TextLit b3))
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (VarE $26)
+                                  )
+                                )
+                              )
+                            )
+                            (VarE $25)
+                          )
+                        )
+                      )
+                    )
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $22)
+                        (PrimT Any)
+                        (CallE
+                          (VarE $21)
+                          (BlockE
+                            (LetD (TupP (VarP $23) (VarP $24)) (VarE $22))
+                            (ExpD (DefineE a Const (VarE $23)))
+                            (ExpD (DefineE b Const (VarE $24)))
+                            (ExpD (VarE $22))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (DecE
+                (FuncD
+                  
+                  (VarP $18)
+                  (PrimT Any)
+                  (CallE
+                    (DecE
+                      (FuncD
+                        
+                        (VarP $19)
+                        (PrimT Any)
+                        (BlockE
+                          (LetD
+                            (VarP $20)
+                            (CallE (VarE f) (TupE (VarE a) (VarE b)))
+                          )
+                          (ExpD
+                            (CallE
+                              (VarE $19)
+                              (BlockE (LetD WildP (VarE $20)) (ExpD (VarE $20)))
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (VarE $16)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+compile_exp: (DeclareE
+  a
+  (DeclareE
+    b
+    (CallE
+      (DecE
+        (FuncD
+          
+          (VarP $8)
+          (PrimT Any)
+          (CallE
+            (DecE
+              (FuncD
+                
+                (VarP $12)
+                (PrimT Any)
+                (CallE
+                  (PrimE @await)
+                  (TupE
+                    (CallE
+                      (PrimE @async)
+                      (DecE
+                        (FuncD
+                          
+                          (VarP $13)
+                          (PrimT Any)
+                          (CallE
+                            (DecE
+                              (FuncD
+                                
+                                (VarP $14)
+                                (PrimT Any)
+                                (CallE
+                                  (VarE $14)
+                                  (TupE (LitE (TextLit a2)) (LitE (TextLit b2)))
+                                )
+                              )
+                            )
+                            (VarE $13)
+                          )
+                        )
+                      )
+                    )
+                    (VarE $12)
+                  )
+                )
+              )
+            )
+            (DecE
+              (FuncD
+                
+                (VarP $9)
+                (PrimT Any)
+                (CallE
+                  (VarE $8)
+                  (BlockE
+                    (LetD (TupP (VarP $10) (VarP $11)) (VarE $9))
+                    (ExpD (DefineE a Const (VarE $10)))
+                    (ExpD (DefineE b Const (VarE $11)))
+                    (ExpD (VarE $9))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (DecE
+        (FuncD
+          
+          (VarP $4)
+          (PrimT Any)
+          (CallE
+            (DecE
+              (FuncD
+                
+                (VarP $7)
+                (PrimT Any)
+                (CallE (VarE $7) (CallE (VarE print) (VarE a)))
+              )
+            )
+            (DecE
+              (FuncD
+                
+                (VarP $5)
+                (PrimT Any)
+                (CallE
+                  (DecE
+                    (FuncD
+                      
+                      (VarP $6)
+                      (PrimT Any)
+                      (CallE (VarE $6) (CallE (VarE print) (VarE b)))
+                    )
+                  )
+                  (VarE $3)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+Could not find primitive @async
+Could not find primitive @async
