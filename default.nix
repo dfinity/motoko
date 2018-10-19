@@ -26,7 +26,7 @@ let dsh =
   then
     if !builtins.pathExists ./nix/dev/default.nix
     then throw "\"test-dsh = true\" requires a checkout of dev in ./nix"
-    else ((import ./nix/dev) { v8 = true; }).hypervisor
+    else ((import ./nix/dev) { v8 = true; }).dsh
   else null; in
 
 # We need a newer version of menhir.
