@@ -28,6 +28,7 @@ test()
     -> async bank.as:7.32-7.51
     <= async _
 <- async bank.as:7.32-7.51
+  <= {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 <- await bank.as:57.17-57.40({balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message split(10)
   => await bank.as:58.12-58.35
@@ -38,6 +39,7 @@ test()
 <- async bank.as:23.39-26.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+  <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 <- await bank.as:58.12-58.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message split(10)
   => await bank.as:59.12-59.35
@@ -48,6 +50,7 @@ test()
 <- async bank.as:23.39-26.4
   Account(10)
     <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+  <= {balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 <- await bank.as:59.12-59.35({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   show("reserve", {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
@@ -69,6 +72,7 @@ test()
 <- async bank.as:23.39-26.4
   Account(5)
     <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
+  <= {balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}
 <- await bank.as:47.13-47.39({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   -> message join({balance = 10; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
   <= ()
@@ -84,6 +88,7 @@ test()
     <= ()
   show("a2", {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
     <= ()
+  <= ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 -- Finished bank.as:
 let Account : class Int -> Account = class
 let Bank : class Int -> Bank = class

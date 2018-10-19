@@ -84,8 +84,6 @@ end
 
 (* Async auxiliary functions *)
 
-  
-
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
 
@@ -99,18 +97,32 @@ let set_async async v =
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
-let await async k at =
+let async at (f: (V.value V.cont) -> unit) (k:V.value V.cont) =
+    let async = make_async () in
+    let k' = fun v1 -> set_async async v1 in
+    if !Flags.trace then trace "-> async %s" (string_of_region at);
+    Scheduler.queue (fun () ->
+      if !Flags.trace then trace "<- async %s" (string_of_region at);
+      incr trace_depth;
+      f (fun v ->
+         if !Flags.trace then trace "<= %s" (V.string_of_val v);
+         decr trace_depth;
+         k' v)
+    );
+    k (V.Async async)
+
+let await at async k =
   if !Flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-  Scheduler.queue (fun () ->
-      if !Flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg v);
-      incr trace_depth;
-      k v
+      Scheduler.queue (fun () ->
+          if !Flags.trace then
+            trace "<- await %s%s" (string_of_region at) (string_of_arg v);
+          incr trace_depth;
+          k v
+        )
     )
-  );
-  Scheduler.yield ()
+(*;  Scheduler.yield () *)
 
 let actor_msg id f v (k : V.value V.cont) =
   if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
@@ -142,41 +154,23 @@ let actor_field id t v : V.value =
      actor_field_async id.it v
   | _ -> assert false
 
+  
 let extended_prim s at =
   match s with
-  | "@make_async" ->
-    fun v k -> V.as_unit v; k (V.Async (make_async ()))
-  | "@set_async" ->
-    fun v k ->
-      (match V.as_tup v with
-      | [async; v] ->
-        set_async (V.as_async async) v;
-        k (V.unit)
-      | _ -> assert false
-      )
-  | "@get_async" ->
-    fun v k ->
-      (match V.as_tup v with
-      | [async; v] ->
-        get_async (V.as_async async) k
-      | _ -> assert false
-      )
-  | "@scheduler_queue" ->
-    fun v k ->
-      let (call,f) = V.as_func v in
-      Scheduler.queue (fun () -> f V.unit V.as_unit);
-      k V.unit
-  | "@scheduler_yield" ->
-    fun v k ->
-      V.as_unit v;
-      Scheduler.yield (); (* TBR - this feels wrong *)
-      k V.unit
+  | "@async" ->
+     fun v k ->
+     let (call,f) = V.as_func v in
+     async at
+       (fun k' ->
+         let k' = V.Func(None,fun v _ -> k' v) in
+         f k' V.as_unit)
+       k
   | "@await" ->
      fun v k ->
       (match V.as_tup v with
        | [async; w] ->
         let (_,f) = V.as_func w in
-        await (V.as_async async) (fun v -> f v k) at
+        await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
       )
   | "@actor_field_unit" ->
@@ -370,38 +364,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
   | RetE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.rets)
+     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
     assert(not(!Flags.await_lowering)); 
-    let async = make_async () in
-    let k' = fun v1 -> set_async async v1 in
-    let env' = {env with labs = V.Env.empty; rets = Some k'; async = true} in
-    if !Flags.trace then trace "-> async %s" (string_of_region exp.at);
-    Scheduler.queue (fun () ->
-      if !Flags.trace then trace "<- async %s" (string_of_region exp.at);
-      incr trace_depth;
-      interpret_exp env' exp1 (fun v ->
-        if !Flags.trace then trace "<= %s" (V.string_of_val v);
-        decr trace_depth;
-        k' v
-      )
-    );
-    k (V.Async async)
+    async
+      exp.at
+      (fun k' -> let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
+                 in interpret_exp env' exp1 k')
+      k
+
   | AwaitE exp1 ->
     assert(not(!Flags.await_lowering));
-    interpret_exp env exp1 (fun v1 ->
-      if !Flags.trace then trace "=> await %s" (string_of_region exp.at);
-      decr trace_depth;
-      get_async (V.as_async v1) (fun v ->
-        Scheduler.queue (fun () ->
-          if !Flags.trace then
-            trace "<- await %s%s" (string_of_region exp.at) (string_of_arg v);
-          incr trace_depth;
-          k v
-        )
-      );
-      Scheduler.yield ()
-    ) 
+    interpret_exp env exp1
+      (fun v1 -> await exp.at (V.as_async v1) k) 
   | AssertE exp1 ->
     interpret_exp env exp1 (fun  v ->
       if V.as_bool v
