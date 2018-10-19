@@ -471,11 +471,11 @@ module Func = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env in
-      let mk_body' env = mk_body env (compile_const (static_function_id fi)) in
-      let f = compile_func pre_env [] mk_pat mk_body' at in
-      fill f;
       let pre_env1 = E.add_local_fun pre_env name.it fi in
       ( pre_env1, [], fun env ->
+        let mk_body' env = mk_body env (compile_const (static_function_id fi)) in
+        let f = compile_func env [] mk_pat mk_body' at in
+        fill f;
         if last then Var.static_fun_pointer env fi else [])
 
   (* Compile a closure declaration (has free variables) *)
