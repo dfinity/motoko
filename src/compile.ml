@@ -1475,7 +1475,7 @@ and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env tr
 
 and compile_decs_block env keep_last decs : (E.t * Wasm.Ast.instr list) =
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, [], fun _ -> compile_unit) (* empty declaration list? *)
+    | []          -> (pre_env, [], fun _ -> if keep_last then compile_unit else []) (* empty declaration list? *)
     | [dec]       -> compile_dec keep_last pre_env dec
     | (dec::decs) ->
         let (pre_env1, alloc_code1, mk_code1) = compile_dec false pre_env dec    in
