@@ -64,11 +64,11 @@ let js_compile_with mode_string source_map source convert =
 
 let js_compile_wat mode s =
   js_compile_with mode false s
-    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
+    (fun (m,_) -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
 
 let js_compile_wasm mode source_map s =
   js_compile_with mode source_map s
-    (fun m -> let (map, wasm) = EncodeMap.encode m in Js.bytestring wasm, Js.string map)
+    (fun (m, custom_section) -> let (map, wasm) = EncodeMap.encode m in Js.bytestring (wasm ^ custom_section), Js.string map)
 
 let () =
   Js.export "ActorScript"
