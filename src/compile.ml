@@ -68,7 +68,7 @@ module E = struct
 
     (* Imports defined *)
     imports : import list ref;
-    (* Expors defined *)
+    (* Exports defined *)
     exports : export list ref;
     (* Function defined in this module *)
     funcs : func Lib.Promise.t list ref;
@@ -1347,12 +1347,12 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         Object.lit env1 None (Some compile_fun_identifier) fs' in
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
-and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env decs)
+and compile_decs env decs : Wasm.Ast.instr list = snd (compile_decs_block env true decs)
 
-and compile_decs_block env decs : (E.t * Wasm.Ast.instr list) =
+and compile_decs_block env keep_last decs : (E.t * Wasm.Ast.instr list) =
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, [], fun _ -> compile_unit) (* empty declaration list? *)
-    | [dec]       -> compile_dec true pre_env dec
+    | []          -> (pre_env, [], fun _ -> if keep_last then compile_unit else []) (* empty declaration list? *)
+    | [dec]       -> compile_dec keep_last pre_env dec
     | (dec::decs) ->
         let (pre_env1, alloc_code1, mk_code1) = compile_dec false pre_env dec    in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
@@ -1374,9 +1374,9 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   let rec go env = function
     | []          -> (env, [])
     | (prog::progs) ->
-        let (env1, code1) = compile_decs_block env prog.it in
+        let (env1, code1) = compile_decs_block env false prog.it in
         let (env2, code2) = go env1 progs in
-        (env2, code1 @ [ nr Drop ] @ code2) in
+        (env2, code1 @ code2) in
 
   let (env4, code) = go env3 progs in
 
