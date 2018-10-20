@@ -17,7 +17,8 @@ let to_string s =
   Bytes.to_string bs
 
 
-let encode (actor_messages : int32 list): string =
+(* List of messages and number of arguments *)
+let encode (offset : int32) (dfinity_types : (int32 * int32) list): string =
   let s = stream () in
 
   let u8 i = put s (Char.chr (i land 0xff)) in
@@ -58,19 +59,24 @@ let encode (actor_messages : int32 list): string =
 
   section 0 (fun _ ->
     string "types";
-    vu32 1l;
-    vu32 0x60l; (* function type op code *)
-    vu32 2l; (* two args *)
-    vu32 0x7fl; vu32 0x7fl; (* both int32 *)
-    vu32 0l;
+    vu32 (Int32.of_int (List.length dfinity_types));
+    (* We could deduplicate the types here *)
+    List.iter (fun (fi, nargs) ->
+      vu32 0x60l; (* function type op code *)
+      vu32 nargs; (* two args *)
+      for _ = 1 to Int32.to_int nargs do
+        vu32 0x7fl; (* all args int32 *)
+      done;
+      vu32 0l;
+    ) dfinity_types
   );
   section 0 (fun _ ->
     string "typeMap";
-    vu32 (Int32.of_int (List.length actor_messages));
-    List.iter (fun fi ->
-      vu32 fi;
-      vu32 0l;
-    ) actor_messages
+    vu32 (Int32.of_int (List.length dfinity_types));
+    List.iteri (fun i (fi, _) ->
+      vu32 (Int32.sub fi offset);
+      vu32 (Int32.of_int i);
+    ) dfinity_types
   );
   to_string s
 

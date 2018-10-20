@@ -92,7 +92,7 @@ module E = struct
     (* The prelude. We need to re-use this when compiling actors *)
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
-    actor_messages : int32 list ref;
+    dfinity_types : (int32 * int32) list ref;
   }
 
   let mode (e : t) = e.mode
@@ -103,24 +103,28 @@ module E = struct
   (* First argument is a pointer to the closure *)
   let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
   let unary_fun_ty_i = 1l
+  (* Actor message type *)
+  let actor_message_ty = nr (FuncType ([I32Type],[]))
+  let actor_message_ty_i = 2l
   (* Type of the system API *)
   let test_print_fun_ty = nr (FuncType ([I32Type],[]))
-  let test_print_fun_ty_i = 2l
+  let test_print_fun_ty_i = 3l
   let test_show_i32fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let test_show_i32fun_ty_i = 3l
+  let test_show_i32fun_ty_i = 4l
   let data_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let data_externalize_fun_ty_i = 4l
+  let data_externalize_fun_ty_i = 5l
   let module_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let module_new_fun_ty_i = 5l
+  let module_new_fun_ty_i = 6l
   let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let actor_new_fun_ty_i = 6l
+  let actor_new_fun_ty_i = 7l
   let actor_export_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let actor_export_fun_ty_i = 7l
+  let actor_export_fun_ty_i = 8l
   let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
-  let func_internalize_fun_ty_i = 8l
+  let func_internalize_fun_ty_i = 9l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
+      actor_message_ty;
       test_print_fun_ty;
       test_show_i32fun_ty;
       data_externalize_fun_ty;
@@ -134,6 +138,7 @@ module E = struct
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
   let unary_param_local env : var = nr 1l   (* second param *)
+  let message_param_local env : var = nr 0l
 
 
   let init_field_env =
@@ -152,7 +157,7 @@ module E = struct
     exports = ref [];
     funcs = ref [];
     func_types = ref default_fun_tys;
-    actor_messages = ref [];
+    dfinity_types = ref [];
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
     local_vars_env = NameEnv.empty;
@@ -217,7 +222,7 @@ module E = struct
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
-  let add_actor_message (env : t) e = let _ = reg env.actor_messages e in ()
+  let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
 
   let add_fun (env : t) f =
     let i = reg_promise env.funcs f in
@@ -234,7 +239,7 @@ module E = struct
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
-  let get_actor_messages (env : t) = !(env.actor_messages)
+  let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
 
   (* Currently unused, until we add functions to the table *)
@@ -431,6 +436,16 @@ module Func = struct
          body = code
        }
 
+  let message_of_body env mk_body =
+    (* Fresh set of locals *)
+    (* Reserve one local, argument only argument *)
+    let env1 = E.mk_fun_env env 1l in
+    let code = mk_body env1 in
+    nr { ftype = nr E.actor_message_ty_i;
+         locals = E.get_locals env1;
+         body = code
+       }
+
   (* The argument on the stack *)
   let call_direct env fi at =
    (* Pop the argument *)
@@ -492,6 +507,21 @@ module Func = struct
       destruct_args_code @
       body_code)
 
+
+  (* Message take no closure *)
+  let compile_message env mk_pat mk_body at : func =
+    message_of_body env (fun env1 ->
+      (* Destruct the argument *)
+      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
+
+      (* Compile the body *)
+      let body_code = mk_body env2 in
+
+      alloc_args_code @
+      [ GetLocal (E.message_param_local env2) @@ at ] @
+      destruct_args_code @
+      body_code @
+      [ nr Drop ])
 
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
@@ -861,6 +891,8 @@ end (* Array *)
 module Dfinity = struct
 
   (* We use the first table slot for calls to funcrefs *)
+  (* This does not clash with slots for our functions as long as there
+     is at least one imported function (which we do not add to the table) *)
   let tmp_table_slot = 0l
 
   (* function ids for imported stuff *)
@@ -935,14 +967,13 @@ module Dfinity = struct
   let system_funs env =
     let f = Func.unary_of_body env (fun env1 ->
       compile_const tmp_table_slot @ (* slot number *)
-      Func.load_closure 0l @ (* the funcref *)
+      Func.load_closure 1l @ (* the funcref *)
       [ nr (Call (nr (func_internalize_i env))) ] @
 
-      compile_null @ (* We do not pass closures on messages (TODO: Adjust calling convention *)
       Func.load_argument @ (* Needs to be serialized somehow, can only pass i32 now *)
       compile_const tmp_table_slot @
-      [ nr Drop; nr Drop; nr Drop ] @ compile_null
-      (* [ nr (CallIndirect (nr E.unary_fun_ty_i)) ] *)
+      [ nr (CallIndirect (nr E.actor_message_ty_i)) ] @
+      compile_unit
       ) in
     let fi = E.add_fun env f in
     assert (Int32.to_int fi == Int32.to_int (funcref_wrapper_i env))
@@ -978,11 +1009,7 @@ module Dfinity = struct
     [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ]));
       "print",    (fun env -> Func.unary_of_body env (fun _ -> [ nr Unreachable ])) ]
 
-  let export_start_fun env fi =
-    E.add_export env (nr {
-      name = explode "start";
-      edesc = nr (FuncExport (nr fi))
-    });
+  let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
       name = explode "mem";
@@ -992,6 +1019,12 @@ module Dfinity = struct
       name = explode "table";
       edesc = nr (TableExport (nr 0l))
     })
+
+  let export_start_fun env fi =
+    E.add_export env (nr {
+      name = explode "start";
+      edesc = nr (FuncExport (nr fi))
+    });
 
 end (* Dfinity *)
 
@@ -1513,13 +1546,13 @@ and compile_actor_field pre_env f =
 
   let mk_pat inner_env = compile_mono_pat inner_env pat in
   let mk_body inner_env = compile_exp inner_env exp in
-  let f = Func.compile_func pre_env [] mk_pat mk_body f.at in
+  let f = Func.compile_message pre_env mk_pat mk_body f.at in
   let fi = E.add_fun pre_env f in
+  E.add_dfinity_type pre_env (fi, 1l);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
   });
-  E.add_actor_message pre_env fi;
   let pre_env1 = E.add_local_fun pre_env name.it fi in
   ( pre_env1, fun _ -> ())
 
@@ -1590,8 +1623,9 @@ and actor_lit outer_env name fs =
 
     if prelude_code <> []
     then Printf.eprintf "prelude_code not empty. This is not supported without a start function:\n%s" (Wasm.Sexpr.to_string 80 (Wasm.Sexpr.Node ("", (List.map Wasm.Arrange.instr prelude_code))));
-    let env2 = compile_actor_fields env1 fs in
+
     (* Compile stuff here *)
+    let env2 = compile_actor_fields env1 fs in
 
     let (m, custom_sections) = conclude_module env2 None in
     let (_map, wasm) = EncodeMap.encode m in
@@ -1607,6 +1641,8 @@ and actor_lit outer_env name fs =
   compile_actorref_wrapper outer_env (List.map (fun (f : Syntax.exp_field) -> f.it.id) fs)
 
 and conclude_module env start_fi_o =
+
+  Dfinity.default_exports env;
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -1634,8 +1670,8 @@ and conclude_module env start_fi_o =
   } in
 
   (* Calculate the custom sections *)
-  let actor_messages = E.get_actor_messages env in
-  let custom_sections = CustomSections.encode actor_messages in
+  let dfinity_types = E.get_dfinity_types env in
+  let custom_sections = CustomSections.encode ni' dfinity_types in
   (m, custom_sections)
 
 
