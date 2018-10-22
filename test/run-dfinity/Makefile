@@ -1,8 +1,8 @@
 all:
-	../run.sh -d *.as
+	bash ../run.sh -d *.as
 
 accept:
-	../run.sh -d -a *.as
+	bash ../run.sh -d -a *.as
 
 clean:
 	rm -rf _out
