@@ -30,20 +30,19 @@ while getopts "ad" o; do
     esac
 done
 
-
-
 shift $((OPTIND-1))
 
 failures=no
 
-function compare_files {
-	dir=$0
-	file=$1
-	diff -N $0 $1 > /dev/null;
-}
-
 for file in "$@";
 do
+  if ! [ -r $file ]
+  then
+    echo "File $file does not exist."
+    failures=yes
+    continue
+  fi
+
   # We run all commands in the directory of the .as file,
   # so that no paths leak into the output
   pushd $(dirname $file) >/dev/null
