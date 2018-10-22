@@ -35,12 +35,21 @@ and that the order should not matter in a significant way.
 
 type mode = WasmMode | DfinityMode
 
-(* Names can be referring to one of these things *)
-type varloc =
-  | Local of int32  (* A Wasm Local in the current function *)
-  (* | Global of int32 (* A Wasm Global in the current module *) *)
-  | Func of int32 (* A Wasm Function in the current module. This is the function id, not the table id *)
+(* Names can be referring to one of these things: *)
+(* Most names are stored in heap locations stored in Locals.
+   But some are special (static funcions, static messages of the current actor).
+   These have no location (yet), but we need to generate one on demand.
+ *)
 
+type 'env deferred_loc =
+  { allocate : 'env -> instr list
+  ; is_direct_call : int32 option
+    (* a little backdoor. could be expanded into a general 'call' field *)
+  }
+
+type 'env varloc =
+  | Local of int32  (* A Wasm Local in the current function *)
+  | Deferred of 'env deferred_loc
 
 module E = struct
 
@@ -83,7 +92,7 @@ module E = struct
     (* A mapping from jump label to their depth *)
     ld : int32 NameEnv.t;
     (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
-    local_vars_env : varloc NameEnv.t;
+    local_vars_env : t varloc NameEnv.t;
     (* Mapping primitives to WebAssembly locals *)
     primitives_env : int32 NameEnv.t;
     (* Field labels to index *)
@@ -117,10 +126,12 @@ module E = struct
   let module_new_fun_ty_i = 6l
   let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
   let actor_new_fun_ty_i = 7l
+  let actor_self_fun_ty = nr (FuncType ([],[I32Type]))
+  let actor_self_fun_ty_i = 8l
   let actor_export_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let actor_export_fun_ty_i = 8l
+  let actor_export_fun_ty_i = 9l
   let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
-  let func_internalize_fun_ty_i = 9l
+  let func_internalize_fun_ty_i = 10l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
@@ -130,6 +141,7 @@ module E = struct
       data_externalize_fun_ty;
       module_new_fun_ty;
       actor_new_fun_ty;
+      actor_self_fun_ty;
       actor_export_fun_ty;
       func_internalize_fun_ty;
       ]
@@ -139,7 +151,6 @@ module E = struct
   let unary_closure_local env : var = nr 0l (* first param *)
   let unary_param_local env : var = nr 1l   (* second param *)
   let message_param_local env : var = nr 0l
-
 
   let init_field_env =
     NameEnv.add "get" 0l (
@@ -174,7 +185,8 @@ module E = struct
     (* We keep all local vars that are bound to known functions or globals *)
     let is_non_local = function
       | Local _ -> false
-      | Func _ -> true in
+      | Deferred _ -> true
+    in
     { env with
       locals = ref [I32Type]; (* the first tmp local *)
       n_param = n_param;
@@ -187,11 +199,6 @@ module E = struct
     match NameEnv.find_opt var env.local_vars_env with
       | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
-
-  let _is_known_function env var =
-    match NameEnv.find_opt var env.local_vars_env with
-      | Some (Func _) -> true
-      | _ -> false
 
   let lookup_prim env var =
     match NameEnv.find_opt var env.primitives_env with
@@ -206,8 +213,8 @@ module E = struct
       let i = add_anon_local env I32Type in
       ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
 
-  let add_local_fun (env : t) name fi =
-      { env with local_vars_env = NameEnv.add name (Func fi) env.local_vars_env }
+  let add_local_deferred (env : t) name d =
+      { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
 
   let get_locals (env : t) = !(env.locals)
 
@@ -383,28 +390,26 @@ end (* Tuple *)
 
 module Var = struct
 
-  (* When accessing a variable that is a static closure, then we need to create a
+  (* When accessing a variable that is a static function, then we need to create a
      heap-allocated thing on the fly. *)
-  let static_fun_pointer env fi =
+  let static_fun_pointer fi env =
     Tuple.lit env [
-      [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 fi))) ]
+      compile_const fi
     ]
 
   let get_val env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (GetLocal (nr i)) ] @ load_ptr
-    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] @ load_ptr *)
-    | Some (Func fi) -> static_fun_pointer env fi
+    | Some (Deferred d) -> d.allocate env
     | None   -> [ nr Unreachable ]
 
   let get_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (GetLocal (nr i)) ]
-    | Some (Func fi) -> Tuple.lit env [ static_fun_pointer env fi ]
-    | None   -> [ nr Unreachable ]
+    (* We have to do some boxing here *)
+    | _ -> Tuple.lit env [ get_val env var ]
 
   let set_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (SetLocal (nr i)) ]
-    (* | Some (Global i) -> [ nr (SetGlobal (nr i)) ] *)
-    | Some (Func _) -> raise (Invalid_argument "No heap location for function")
+    | Some (Deferred _) -> raise (Invalid_argument "Cannot set heap location for a deferred thing")
     | None   -> [ nr Unreachable ]
 
 end (* Var *)
@@ -526,12 +531,13 @@ module Func = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env in
-      let pre_env1 = E.add_local_fun pre_env name.it fi in
+      let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
+      let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, [], fun env ->
         let mk_body' env = mk_body env (compile_const (static_function_id fi)) in
         let f = compile_func env [] mk_pat mk_body' at in
         fill f;
-        if last then Var.static_fun_pointer env fi else [])
+        if last then d.allocate env else [])
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env last name captured mk_pat mk_body at =
@@ -607,7 +613,7 @@ module Prim = struct
   let lit env p =
     begin match E.lookup_prim env p with
     (* This could be optimized if surrounded by a let or call *)
-    | Some fi -> Var.static_fun_pointer env fi
+    | Some fi -> Var.static_fun_pointer fi env
     | None   -> [ nr Unreachable ]
     end
 
@@ -901,11 +907,13 @@ module Dfinity = struct
   let data_externalize_i env = 2l
   let module_new_i env = 3l
   let actor_new_i env = 4l
-  let actor_export_i env = 5l
-  let func_internalize_i env = 6l
+  let actor_self_i env = 5l
+  let actor_export_i env = 6l
+  let func_internalize_i env = 7l
 
   (* function ids for predefined functions (after array functions) *)
-  let funcref_wrapper_i env = 14l
+  let funcref_wrapper_i env = 15l
+  let self_message_wrapper_i env = 16l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -952,6 +960,13 @@ module Dfinity = struct
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
+      item_name = explode "self";
+      idesc = nr (FuncImport (nr E.actor_self_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (actor_self_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "actor";
       item_name = explode "export";
       idesc = nr (FuncImport (nr E.actor_export_fun_ty_i))
     }) in
@@ -976,8 +991,52 @@ module Dfinity = struct
       compile_unit
       ) in
     let fi = E.add_fun env f in
-    assert (Int32.to_int fi == Int32.to_int (funcref_wrapper_i env))
+    assert (Int32.to_int fi == Int32.to_int (funcref_wrapper_i env));
 
+    let f = Func.unary_of_body env (fun env1 ->
+      compile_const tmp_table_slot @ (* slot number *)
+
+      (* Create a funcref for the message *)
+      [ nr (Call (nr (actor_self_i env))) ] @
+      Func.load_closure 1l @ (* the databuf with the message name *)
+      [ nr (Call (nr (actor_export_i env))) ] @
+
+      (* Internalize *)
+      [ nr (Call (nr (func_internalize_i env))) ] @
+
+      Func.load_argument @ (* Needs to be serialized somehow, can only pass i32 now *)
+
+      compile_const tmp_table_slot @
+      [ nr (CallIndirect (nr E.actor_message_ty_i)) ] @
+      compile_unit
+      ) in
+    let fi = E.add_fun env f in
+    assert (Int32.to_int fi == Int32.to_int (self_message_wrapper_i env))
+
+  let compile_databuf_of_bytes env (bytes : string) =
+    (* This should really be putting the data into memory directly *)
+    Text.lit_binary env bytes @
+
+    let i = E.add_anon_local env I32Type in
+    [ nr (SetLocal (nr i)) ] @
+
+    (* Calculate the offset *)
+    [ nr (GetLocal (nr i)) ] @
+    compile_const (Int32.mul Heap.word_size Text.header_size) @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+    (* Calculate the length *)
+    [ nr (GetLocal (nr i)) ] @
+    Heap.load_field (Text.len_field) @
+
+    (* Externalize *)
+    [ nr (Call (nr (data_externalize_i env))) ]
+
+
+  let static_self_message_pointer name env =
+    Tuple.lit env [
+      compile_const (self_message_wrapper_i env);
+      compile_databuf_of_bytes env name.it
+    ]
 
   let printInt_fun env = Func.unary_of_body env (fun env1 ->
       Func.load_argument @
@@ -1268,7 +1327,7 @@ and isDirectCall env e = match e.it with
   | AnnotE (e, _) -> isDirectCall env e
   | VarE var ->
     begin match E.lookup_var env var.it with
-    | Some (Func fi) -> Some fi
+    | Some (Deferred d) -> d.is_direct_call
     | _ -> None
     end
   | _ -> None
@@ -1541,24 +1600,25 @@ and compile_actor_field pre_env f =
     in find_func f.it.exp in
 
   (* Which name to use? f.it.id or name? Can they differ? *)
-
-  (* We should reserve the function here, not just compile it in the pre_env... *)
-
-  let mk_pat inner_env = compile_mono_pat inner_env pat in
-  let mk_body inner_env = compile_exp inner_env exp in
-  let f = Func.compile_message pre_env mk_pat mk_body f.at in
-  let fi = E.add_fun pre_env f in
+  let (fi, fill) = E.reserve_fun pre_env in
   E.add_dfinity_type pre_env (fi, 1l);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
   });
-  let pre_env1 = E.add_local_fun pre_env name.it fi in
-  ( pre_env1, fun _ -> ())
+  let d = { allocate = Dfinity.static_self_message_pointer name; is_direct_call = None } in
+  let pre_env1 = E.add_local_deferred pre_env name.it d in
+
+  ( pre_env1, fun env ->
+    let mk_pat inner_env = compile_mono_pat inner_env pat in
+    let mk_body inner_env = compile_exp inner_env exp in
+    let f = Func.compile_message env mk_pat mk_body f.at in
+    fill f;
+  )
 
 
 and compile_actor_fields env fs =
-  (* We need to tie the know about the enrivonment *)
+  (* We need to tie the knot about the enrivonment *)
   let rec go env = function
     | []          -> (env, fun _ -> ())
     | (f::fs) ->
@@ -1586,29 +1646,11 @@ and compile_actorref_wrapper env fields =
       Tuple.lit env
         [ compile_const (Dfinity.funcref_wrapper_i env)
         ; [ nr (GetLocal (nr actorref_i)) ] @
-          compile_databuf_of_bytes env (name.it) @
+          Dfinity.compile_databuf_of_bytes env (name.it) @
           [ nr (Call (nr (Dfinity.actor_export_i env))) ]
         ] in
     (name, code) in
   Object.lit env None None (List.map wrap_field fields)
-
-and compile_databuf_of_bytes env (bytes : string) =
-  (* This should really be putting the data into memory directly *)
-  Text.lit_binary env bytes @
-
-  let i = E.add_anon_local env I32Type in
-  [ nr (SetLocal (nr i)) ] @
-
-  (* Calculate the offset *)
-  [ nr (GetLocal (nr i)) ] @
-  compile_const (Int32.mul Heap.word_size Text.header_size) @
-  [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
-  (* Calculate the length *)
-  [ nr (GetLocal (nr i)) ] @
-  Heap.load_field (Text.len_field) @
-
-  (* Externalize *)
-  [ nr (Call (nr (Dfinity.data_externalize_i env))) ]
 
 
 and actor_lit outer_env name fs =
@@ -1631,7 +1673,7 @@ and actor_lit outer_env name fs =
     let (_map, wasm) = EncodeMap.encode m in
     wasm ^ custom_sections in
 
-  compile_databuf_of_bytes outer_env wasm @
+  Dfinity.compile_databuf_of_bytes outer_env wasm @
 
   (* Create actorref *)
   [ nr (Call (nr (Dfinity.module_new_i outer_env))) ] @

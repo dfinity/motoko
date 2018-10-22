@@ -1,1 +1,1 @@
-_out/async-calls.wasm:0x4048: invalid module: type mismatch: operator requires [i32 i32] but stack has [i32]
+_out/async-calls.wasm:0x4100: invalid module: type mismatch: operator requires [i32 i32] but stack has [i32]

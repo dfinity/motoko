@@ -1,1 +1,1 @@
-_out/is.wasm:0x3d0a: invalid module: type mismatch: operator requires [i32 i32] but stack has [i32]
+_out/is.wasm:0x3d30: invalid module: type mismatch: operator requires [i32 i32] but stack has [i32]

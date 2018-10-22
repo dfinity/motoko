@@ -1,0 +1,23 @@
+$ dsh reset
+{
+    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
+}
+
+$ dsh new -a _out/hello-world-async.wasm
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (hello-world-async)",
+    "type": "actorref"
+}
+
+$ dsh run hello-world-async start
+Hello World!
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (hello-world-async)",
+    "type": "actorref"
+}
+
+Leaked 1 instances of wasm::Engine, made 1, freed 0!
