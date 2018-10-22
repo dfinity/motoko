@@ -1,5 +1,6 @@
 open Printf
 
+module A = Awaitopt   (* Await *)    
 type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
@@ -124,7 +125,7 @@ let await_lowering prog name =
   if !Flags.await_lowering then
     begin
       phase "Await Lowering" name;
-      let prog' = Await.t_prog prog in
+      let prog' = A.t_prog prog in
       dump_prog Flags.dump_lowering prog';
       prog'
     end
