@@ -102,6 +102,10 @@ module E = struct
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
     dfinity_types : (int32 * int32) list ref;
+    (* Where does static memory end and dynamic memory begin? *)
+    end_of_static_memory : int32 ref;
+    (* Static memory defined so far *)
+    static_memory : (int32 * string) list ref;
   }
 
   let mode (e : t) = e.mode
@@ -178,6 +182,8 @@ module E = struct
     ld = NameEnv.empty;
     field_env = ref init_field_env;
     prelude;
+    end_of_static_memory = ref 0l;
+    static_memory = ref [];
   }
 
   (* Resetting the environment for a new function *)
@@ -285,6 +291,16 @@ module E = struct
         i
 
   let get_prelude (env : t) = env.prelude
+
+  let add_static_bytes (env : t) data : int32 =
+    let ptr = !(env.end_of_static_memory) in
+    env.end_of_static_memory := Int32.add ptr (Int32.of_int (String.length data));
+    env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
+    ptr
+
+  let get_end_of_static_memory env : int32 = !(env.end_of_static_memory)
+
+  let get_static_memory env = !(env.static_memory)
 end
 
 (* General code generation functions:
@@ -333,10 +349,6 @@ module Heap = struct
      Memory addresses are 32 bit (I32Type).
      *)
   let word_size = 4l
-
-  let globals = [ nr
-      { gtype = GlobalType (I32Type, Mutable);
-        value = nr compile_zero } ]
 
   let heap_ptr : var = nr 0l
 
@@ -703,33 +715,24 @@ module Text = struct
 
   let len_field = 0l
 
-  let lit env bytes =
-    let n = Int32.of_int (List.length bytes) in
+  let bytes_of_int32 (i : int32) : string =
+    let b = Buffer.create 4 in
+    let i1 = Int32.to_int i land 0xff in
+    let i2 = (Int32.to_int i lsr 8) land 0xff in
+    let i3 = (Int32.to_int i lsr 16) land 0xff in
+    let i4 = (Int32.to_int i lsr 24) land 0xff in
+    Buffer.add_char b (Char.chr i1);
+    Buffer.add_char b (Char.chr i2);
+    Buffer.add_char b (Char.chr i3);
+    Buffer.add_char b (Char.chr i4);
+    Buffer.contents b
 
-    let i = E.add_anon_local env I32Type in
-    Heap.alloc_bytes (Int32.add (Int32.mul header_size Heap.word_size) n) @
-    [ nr (SetLocal (nr i)) ] @
-
-    let compile_self = [ nr (GetLocal (nr i)) ] in
-
-    compile_self @
-    compile_const n @
-    Heap.store_field len_field @
-
-    let init_elem i n : Wasm.Ast.instr list =
-      compile_self @
-      compile_const n @
-      let offset = Int32.add (Int32.mul header_size Heap.word_size) (Int32.of_int i) in
-      [ nr (Store {ty = I32Type; align = 0; offset = offset; sz = Some Wasm.Memory.Pack8}) ]
-    in
-    List.concat (List.mapi init_elem bytes) @
-    compile_self
-
-  let lit_utf8 env s =
-    lit env (List.map Int32.of_int (Wasm.Utf8.decode s))
-
-  let lit_binary env s =
-    lit env (List.map Int32.of_int (List.map Char.code (Lib.String.explode s)))
+  let lit env s =
+    let len = Int32.of_int (String.length s) in
+    let len_bytes = bytes_of_int32 len in
+    let data = len_bytes ^ s in
+    let ptr = E.add_static_bytes env data in
+    compile_const ptr
 
 end (* String *)
 
@@ -1014,8 +1017,7 @@ module Dfinity = struct
     assert (Int32.to_int fi == Int32.to_int (self_message_wrapper_i env))
 
   let compile_databuf_of_bytes env (bytes : string) =
-    (* This should really be putting the data into memory directly *)
-    Text.lit_binary env bytes @
+    Text.lit env bytes @
 
     let i = E.add_anon_local env I32Type in
     [ nr (SetLocal (nr i)) ] @
@@ -1101,7 +1103,7 @@ let compile_lit env lit = match lit with
     (try [ nr (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n)))) ]
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); [ nr Unreachable ])
   | NullLit       -> compile_null
-  | TextLit t     -> Text.lit_utf8 env t
+  | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) [ nr Unreachable ]
 
 let compile_unop env op = match op with
@@ -1696,7 +1698,18 @@ and conclude_module env start_fi_o =
 
   let table_sz = Int32.add nf' ni' in
 
-  let m = nr { empty_module with
+  let globals = [ nr
+      { gtype = GlobalType (I32Type, Mutable);
+        value = nr (compile_const (E.get_end_of_static_memory env))
+      } ] in
+
+  let data = List.map (fun (offset, init) -> nr {
+    index = nr 0l;
+    offset = nr (compile_const offset);
+    init;
+    }) (E.get_static_memory env) in
+
+  let m = nr {
     types = E.get_types env;
     funcs = funcs;
     tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
@@ -1705,10 +1718,11 @@ and conclude_module env start_fi_o =
       offset = nr (compile_const ni');
       init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
     start = start_fi_o;
-    globals = Heap.globals;
-    memories = [nr {mtype = MemoryType {min = 10240l; max = None}} ];
-    imports = imports;
+    globals = globals;
+    memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+    imports;
     exports = E.get_exports env;
+    data
   } in
 
   (* Calculate the custom sections *)
@@ -1732,4 +1746,3 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ *
     else Some (nr start_fi) in
 
   conclude_module env start_fi_o
-
