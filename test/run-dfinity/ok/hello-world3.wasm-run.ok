@@ -1,0 +1,1 @@
+_out/hello-world3.wasm:0x43a0: invalid module: type mismatch: operator requires [i32 i32] but stack has [i32]

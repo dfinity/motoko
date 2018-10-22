@@ -1,0 +1,23 @@
+$ dsh reset
+{
+    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
+}
+
+$ dsh new -a _out/hello-world3.wasm
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (hello-world3)",
+    "type": "actorref"
+}
+
+$ dsh run hello-world3 start
+Hello World!
+{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (hello-world3)",
+    "type": "actorref"
+}
+
+Leaked 1 instances of wasm::Engine, made 1, freed 0!
