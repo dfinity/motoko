@@ -1059,7 +1059,8 @@ module Dfinity = struct
     (* Externalize *)
     [ nr (Call (nr (data_externalize_i env))) ]
 
-  let compile_static_print env s =
+  (* For debugging *)
+  let _compile_static_print env s =
       compile_databuf_of_bytes env s @
       [ nr (Call (nr (test_print_i env))) ]
 
@@ -1724,8 +1725,10 @@ and compile_start_func env (progs : Syntax.prog list) : func =
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
   let ptr = E.reserve_static_memory pre_env in
   let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
-  ( pre_env1, fun env -> ()
-    (* todo *)
+  ( pre_env1, fun env ->
+    compile_const ptr @
+    compile_exp env f.it.exp @
+    store_ptr
   )
 
 and compile_public_actor_field pre_env (f : Syntax.exp_field) =
@@ -1751,6 +1754,7 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
     let mk_body inner_env = compile_exp inner_env exp in
     let f = Message.compile env mk_pat mk_body f.at in
     fill f;
+    []
   )
 
 and compile_actor_field pre_env (f : Syntax.exp_field) =
@@ -1758,18 +1762,16 @@ and compile_actor_field pre_env (f : Syntax.exp_field) =
   then compile_private_actor_field pre_env f
   else compile_public_actor_field pre_env f
 
-
 and compile_actor_fields env fs =
   (* We need to tie the knot about the enrivonment *)
   let rec go env = function
-    | []          -> (env, fun _ -> ())
+    | []          -> (env, fun _ -> [])
     | (f::fs) ->
-        let (env1, act1) = compile_actor_field env f in
-        let (env2, act2) = go env1 fs in
-        (env2, fun env -> act1 env; act2 env) in
-  let (env1, act) = go env fs in
-  act env1;
-  env1
+        let (env1, mk_code1) = compile_actor_field env f in
+        let (env2, mk_code2) = go env1 fs in
+        (env2, fun env -> mk_code1 env @ mk_code2 env) in
+  let (env1, mk_code2) = go env fs in
+  (env1, mk_code2 env1)
 
 (* This function wraps an actor ref as an object, with all fields
    prepared to be callable as normal function.
@@ -1809,21 +1811,18 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then OrthogonalPersistence.register env start_fi;
 
-    let (env1, prelude_code) = compile_prelude env in
-
-    if prelude_code <> []
-    then Printf.eprintf "prelude_code not empty. This is not supported without a start function:\n%s" (Wasm.Sexpr.to_string 80 (Wasm.Sexpr.Node ("", (List.map Wasm.Arrange.instr prelude_code))));
-
+    let env1 = E.mk_fun_env env 0l in
     (* Compile stuff here *)
-    let env2 = compile_actor_fields env1 fs in
+    let (env2, prelude_code) = compile_prelude env1 in
+    let (env3, init_code )  = compile_actor_fields env2 fs in
 
     let start_fun = nr { ftype = nr E.start_fun_ty_i;
-         locals = [];
-         body = []
-    } in 
+         locals = E.get_locals env3;
+         body = prelude_code @ init_code
+    } in
     fill_start_fun start_fun;
 
-    let (m, custom_sections) = conclude_module env2 None in
+    let (m, custom_sections) = conclude_module env3 None in
     let (_map, wasm) = EncodeMap.encode m in
     wasm ^ custom_sections in
 

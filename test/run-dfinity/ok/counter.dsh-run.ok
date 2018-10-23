@@ -12,7 +12,7 @@ $ dsh new -a _out/counter.wasm
 }
 
 $ dsh run counter start
-1233{
+2344{
     "modId": "#inject/0",
     "storage": [],
     "id": "#inject/1 (counter)",

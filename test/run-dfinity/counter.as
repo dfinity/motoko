@@ -1,5 +1,5 @@
 let a = actor {
-  private var c = 0;
+  private var c = 1;
   inc() {
     c += 1;
     printInt(c)
