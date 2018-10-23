@@ -1122,12 +1122,12 @@ end (* Dfinity *)
 module OrthogonalPersistence = struct
   (* This module implements the code that fakes orthogonal persistence *)
 
-  let restore_mem_i env = 20l
-  let save_mem_i env = 21l
+  let restore_mem_i env = 19l
+  let save_mem_i env = 20l
   let mem_global = 0l
 
   (* Strategy:
-     * There is a persistent global databuf called `memstore`
+     * There is a persistent global databuf called `datastore`
      * Two helper functions are installed in each actor: restore_mem and save_mem.
        (The don’t actually have names, just numbers, of course).
      * Upon each message entry, call restore_mem. At the end, call save_mem.
@@ -1142,44 +1142,49 @@ module OrthogonalPersistence = struct
     This does not persist references yet.
   *)
 
-  let register env start_funid =
-    E.add_export env (nr {
-      name = Dfinity.explode "memstore";
+  let register pre_env =
+    let (fi, fill_restore_mem) = E.reserve_fun pre_env in
+    assert (Int32.to_int fi == Int32.to_int (restore_mem_i pre_env));
+
+    let (fi, fill_save_mem) = E.reserve_fun pre_env in
+    assert (Int32.to_int fi == Int32.to_int (save_mem_i pre_env));
+
+    E.add_export pre_env (nr {
+      name = Dfinity.explode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
     });
 
-    let fi = E.add_fun env (Func.nullary_of_body env (fun env1 ->
-      [ nr (GetGlobal (nr mem_global)) ] @
-      [ nr (Call (nr (Dfinity.data_length_i env1))) ] @
-      compile_const 0l @
-      [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
-      [ nr (If ([],
-        (* First run, call the start function *)
-        [ nr (Call (nr start_funid)) ],
+    (fun env start_funid ->
+      fill_restore_mem (Func.nullary_of_body env (fun env1 ->
+         [ nr (GetGlobal (nr mem_global)) ] @
+         [ nr (Call (nr (Dfinity.data_length_i env1))) ] @
+         compile_const 0l @
+         [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+         [ nr (If ([],
+           (* First run, call the start function *)
+           [ nr (Call (nr start_funid)) ],
 
-        (* Subsequent run *)
-        (* Store length in global *)
-        [ nr (GetGlobal (nr mem_global));
-          nr (Call (nr (Dfinity.data_length_i env1)));
-          nr (SetGlobal Heap.heap_ptr) ] @
+           (* Subsequent run *)
+           (* Store length in global *)
+           [ nr (GetGlobal (nr mem_global));
+             nr (Call (nr (Dfinity.data_length_i env1)));
+             nr (SetGlobal Heap.heap_ptr) ] @
 
-        (* Load memory *)
-        compile_zero @
-        [ nr (GetGlobal Heap.heap_ptr) ] @
-        [ nr (GetGlobal (nr mem_global)) ] @
-        compile_zero @
-        [ nr (Call (nr (Dfinity.data_internalize_i env1))) ]
-      )) ]
-    )) in
-    assert (Int32.to_int fi == Int32.to_int (restore_mem_i env));
-
-    let fi = E.add_fun env (Func.nullary_of_body env (fun env1 ->
-      compile_zero @
-      [ nr (GetGlobal Heap.heap_ptr) ] @
-      [ nr (Call (nr (Dfinity.data_externalize_i env))) ] @
-      [ nr (SetGlobal (nr mem_global)) ]
-    )) in
-    assert (Int32.to_int fi == Int32.to_int (save_mem_i env))
+           (* Load memory *)
+           compile_zero @
+           [ nr (GetGlobal Heap.heap_ptr) ] @
+           [ nr (GetGlobal (nr mem_global)) ] @
+           compile_zero @
+           [ nr (Call (nr (Dfinity.data_internalize_i env1))) ]
+         )) ]
+      ));
+      fill_save_mem (Func.nullary_of_body env (fun env1 ->
+         compile_zero @
+         [ nr (GetGlobal Heap.heap_ptr) ] @
+         [ nr (Call (nr (Dfinity.data_externalize_i env))) ] @
+         [ nr (SetGlobal (nr mem_global)) ]
+      ))
+    )
 
 
 end (* OrthogonalPersistence *)
@@ -1805,11 +1810,10 @@ and actor_lit outer_env name fs =
     Array.common_funcs env;
     if E.mode env = DfinityMode then Dfinity.system_funs env;
 
-    (* The placement of this is a bit brittle with all the hard-coded
-       function ids, and screams for a refactoring. *)
-    let (start_fi, fill_start_fun) = E.reserve_fun env in
-
-    if E.mode env = DfinityMode then OrthogonalPersistence.register env start_fi;
+    let finish_op_register =
+      if E.mode env = DfinityMode
+      then OrthogonalPersistence.register env
+      else fun _ _ -> () in
 
     let env1 = E.mk_fun_env env 0l in
     (* Compile stuff here *)
@@ -1820,7 +1824,9 @@ and actor_lit outer_env name fs =
          locals = E.get_locals env3;
          body = prelude_code @ init_code
     } in
-    fill_start_fun start_fun;
+    let start_fi = E.add_fun env3 start_fun in
+
+    finish_op_register env3 start_fi;
 
     let (m, custom_sections) = conclude_module env3 None in
     let (_map, wasm) = EncodeMap.encode m in

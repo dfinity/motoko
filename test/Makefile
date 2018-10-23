@@ -10,7 +10,7 @@ accept:
 
 
 all-dfn: all
-	$(MAKE) -C run-dfinity
+	$(MAKE) -C run-dfinity all
 
 accept-dfn: accept
 	$(MAKE) -C run-dfinity accept
