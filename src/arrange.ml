@@ -41,9 +41,9 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE"   $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE"   $$ [id i; mut m; exp e1]
-  | NewObjE (s, labids)    -> "NewObjE" $$ (obj_sort s ::
-                                              List.fold_left (fun flds (l,i) ->
-                                                  (lab l)::(id i):: flds) [] labids)
+  | NewObjE (s, nameids)    -> "NewObjE" $$ (obj_sort s ::
+                                              List.fold_left (fun flds (n,i) ->
+                                                  (name n)::(id i):: flds) [] nameids)
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
@@ -126,7 +126,7 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and exp_field (ef : exp_field)
-  = ef.it.lab.it $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
+  = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
 
 
 and typ t = match t.it with
@@ -142,7 +142,7 @@ and typ t = match t.it with
 
 and id i = Atom i.it
 
-and lab l = Atom l.it                
+and name n = Atom (string_of_name n.it)
 
 and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
@@ -152,7 +152,7 @@ and dec d = match d.it with
     "FuncD" $$ [id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
-  | ClassD (i, l, tp, s, p, efs) ->
-    "ClassD" $$ id i :: lab l :: List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
+  | ClassD (i, j, tp, s, p, efs) ->
+    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       

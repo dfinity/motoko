@@ -594,7 +594,8 @@ and infer_exp' env exp : T.typ =
     end;
     T.unit
   | NewObjE (sort, labids) ->
-    T.Obj(sort.it, List.map (fun (lab,id) -> {T.name = lab.it; T.typ = T.Env.find id.it env.vals}) labids)
+     T.Obj(sort.it, List.map (fun (name,id) ->
+                        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)
        
 and check_exp env t exp =
   assert (not env.pre);
@@ -900,7 +901,7 @@ and infer_exp_fields env s id t fields : T.field list * T.field list * val_env =
   List.sort compare tfs, List.sort compare tfs_inner, ve
 
 and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field list * val_env =
-  let {id; lab; exp; mut; priv} = field.it in
+  let {id; name; exp; mut; priv} = field.it in
   let t =
     match T.Env.find id.it env.vals with
     | T.Pre -> infer_mut mut (infer_exp (adjoin_vals env ve) exp)
@@ -913,12 +914,12 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
   if not env.pre then begin
     if s = T.Actor && priv.it = Public && not (is_async_typ env.cons t) then
       error field.at "public actor field %s has non-async type\n  %s"
-        lab.it (T.string_of_typ_expand env.cons t)
+        (string_of_name name.it) (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in
-  let tfs_inner' = {T.name = lab.it; typ = t} :: tfs_inner in
+  let tfs_inner' = {T.name = string_of_name name.it; typ = t} :: tfs_inner in
   let tfs' =
-    if priv.it = Private then tfs else {T.name = lab.it; typ = t} :: tfs
+    if priv.it = Private then tfs else {T.name = string_of_name name.it; typ = t} :: tfs
   in tfs', tfs_inner', ve'
 
 
@@ -984,13 +985,13 @@ and infer_dec env ce_inner dec : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp
     end;
     t
-  | ClassD (id, lab, typbinds, sort, pat, fields) ->
+  | ClassD (id, tid, typbinds, sort, pat, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let _cs, _ts, te, ce = check_typ_binds env typbinds in
       let env' = adjoin_typs env te ce in
-      let c = T.Env.find lab.it env.typs in
-      let env' = (*env'*) add_typ env' id.it c (Con.Env.find c ce_inner) in
+      let c = T.Env.find tid.it env.typs in
+      let env' = (*env'*) add_typ env' tid.it c (Con.Env.find c ce_inner) in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
         {env' with labs = T.Env.empty; rets = None; async = false} in

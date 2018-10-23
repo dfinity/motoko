@@ -653,24 +653,24 @@ and c_for context k pat e1 e2 =
 (* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object, 
    and continue as c_exp *)             
 and c_obj context exp sort id fields =
-  let rec c_fields fields decs ids =
+  let rec c_fields fields decs nameids =
     match fields with
       | [] ->
-         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev ids)) :: decs in
+         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) :: decs in
          {exp with it = BlockE (List.rev decs)}
-      | {it = {id; lab; mut; priv; exp}; at; note}::fields ->
+      | {it = {id; name; mut; priv; exp}; at; note}::fields ->
          let exp = if sort.it = T.Actor && priv.it = Public
-                   then actor_field (typ exp) -@- tupE([textE lab.it;exp])
+                   then actor_field (typ exp) -@- tupE([textE (string_of_name name.it);exp])
                    else exp
          in
-         let ids =
+         let nameids =
            match priv.it with
-           | Public -> (lab,id)::ids
-           | Private -> ids                
+           | Public -> (name,id)::nameids
+           | Private -> nameids                
          in
          match mut.it with 
-         | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
-         | Var -> c_fields fields (varD id exp::decs) ids
+         | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) nameids
+         | Var -> c_fields fields (varD id exp::decs) nameids
   in
   c_exp context (c_fields fields [] [])
         

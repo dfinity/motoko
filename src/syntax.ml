@@ -9,8 +9,10 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 type id = string Source.phrase
 
-(* Labels (not alpha-convertible) *)
-type lab = id                 
+(* Names (not alpha-convertible), used for field and class names *)
+type name = name' Source.phrase
+and name' = Name of string                
+let string_of_name (Name s ) = s              
 
 (* Types *)
 
@@ -155,7 +157,7 @@ and exp' =
   | DecE of dec                                (* declaration *)
   | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
   | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
-  | NewObjE of obj_sort * (lab*id) list                   (* make an object, preserving mutable identity (internal) *)                          
+  | NewObjE of obj_sort * (name*id) list       (* make an object, preserving mutable identity (internal) *)                          
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)
@@ -164,7 +166,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {lab:lab; id : id; exp : exp; mut : mut; priv : priv}
+and exp_field' = {name: name; id : id; exp : exp; mut : mut; priv : priv}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -179,10 +181,11 @@ and dec' =
   | VarD of id * exp                                   (* mutable *)
   | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
   | TypD of id * typ_bind list * typ                   (* type *)
-  | ClassD of id * lab * typ_bind list * obj_sort * pat * exp_field list (* class *)
+  | ClassD of id (* term id*) * id (*type id*) * typ_bind list * obj_sort * pat * exp_field list (* class *)
 
 
 (* Program *)
 
 type prog = prog' Source.phrase
 and prog' = dec list
+

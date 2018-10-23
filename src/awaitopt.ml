@@ -680,20 +680,20 @@ and c_for context k pat e1 e2 =
 (* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object, 
    and continue as c_exp *)             
 and c_obj context exp sort id fields =
-  let rec c_fields fields decs labids =
+  let rec c_fields fields decs nameids =
     match fields with
       | [] ->
-         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev labids)) :: decs in
+         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) :: decs in
          {exp with it = BlockE (List.rev decs)}
-      | {it = {id; lab; mut; priv; exp}; at; note}::fields ->
+      | {it = {id; name; mut; priv; exp}; at; note}::fields ->
          let exp = if sort.it = T.Actor && priv.it = Public
                    then actor_field (typ exp) -*- tupE([textE id.it;exp])
                    else exp
          in
          let ids =
            match priv.it with
-           | Public -> (lab,id)::labids
-           | Private -> labids                
+           | Public -> (name,id)::nameids
+           | Private -> nameids                
          in
          match mut.it with 
          | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
@@ -873,7 +873,7 @@ and c_dec context dec (k:kont) =
              (fun v -> k -@- define_idE id Var v))
      end                                       
   | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
-  | ClassD (id, _ (* lab *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
+  | ClassD (id, _ (* name *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let v = fresh_id func_typ in 

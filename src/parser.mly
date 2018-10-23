@@ -415,14 +415,14 @@ case :
 
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {lab = x; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
+    { {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {lab = x; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
+      {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt x=id fd=func_dec
     { let d = fd x in
       let e = DecE(d) @? d.at in
-      {lab = x; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
+      {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 
 (* Patterns *)
@@ -490,8 +490,8 @@ dec_nonexp :
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
-    { let id as lab = xf "class" $sloc in
-      ClassD(id, lab, tps, s, p, efs) @? at $sloc }
+    { let id as tid = xf "class" $sloc in
+      ClassD(id, tid, tps, s, p, efs) @? at $sloc }
 
 dec :
   | d=dec_nonexp
