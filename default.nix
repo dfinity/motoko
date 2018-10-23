@@ -53,6 +53,7 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  nixpkgs.bash
 ]; in
 
 rec {
