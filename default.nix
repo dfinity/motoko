@@ -76,8 +76,8 @@ rec {
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = commonBuildInputs ++
-      (if test-dsh then [ dsh ] else []);
+    buildInputs = commonBuildInputs;
+
 
     buildPhase = ''
       make -C src BUILD=native asc
@@ -88,11 +88,17 @@ rec {
       cp src/asc $out/bin
     '';
 
+    installCheckInputs =
+      commonBuildInputs ++
+      [ nixpkgs.bash ] ++
+      (if test-dsh then [ dsh ] else []);
+
     # The binary does not work until we use wrapProgram, which runs in
     # the install phase. Therefore, we use the installCheck phase to
     # run the test suite
     doInstallCheck = true;
     installCheckPhase = ''
+      patchShebangs test
       $out/bin/asc --version
       make -C samples ASC=$out/bin/asc all
       make -C test/run VERBOSE=1 ASC=$out/bin/asc all
