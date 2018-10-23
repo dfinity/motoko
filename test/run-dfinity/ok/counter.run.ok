@@ -1,0 +1,8 @@
+-- Checking counter.as:
+-- Interpreting counter.as:
+printInt(1)
+printInt(2)
+printInt(3)
+printInt(3)
+-- Finished counter.as:
+

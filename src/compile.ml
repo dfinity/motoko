@@ -120,30 +120,39 @@ module E = struct
   (* Actor message type *)
   let actor_message_ty = nr (FuncType ([I32Type],[]))
   let actor_message_ty_i = 2l
+  let nullary_fun_ty = nr (FuncType ([],[]))
+  let nullary_fun_ty_i = 3l
   (* Type of the system API *)
   let test_print_fun_ty = nr (FuncType ([I32Type],[]))
-  let test_print_fun_ty_i = 3l
+  let test_print_fun_ty_i = 4l
   let test_show_i32fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let test_show_i32fun_ty_i = 4l
+  let test_show_i32fun_ty_i = 5l
   let data_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let data_externalize_fun_ty_i = 5l
+  let data_externalize_fun_ty_i = 6l
+  let data_internalize_fun_ty = nr (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
+  let data_internalize_fun_ty_i = 7l
+  let data_length_ty = nr (FuncType ([I32Type],[I32Type]))
+  let data_length_fun_ty_i = 8l
   let module_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let module_new_fun_ty_i = 6l
+  let module_new_fun_ty_i = 9l
   let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let actor_new_fun_ty_i = 7l
+  let actor_new_fun_ty_i = 10l
   let actor_self_fun_ty = nr (FuncType ([],[I32Type]))
-  let actor_self_fun_ty_i = 8l
+  let actor_self_fun_ty_i = 11l
   let actor_export_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let actor_export_fun_ty_i = 9l
+  let actor_export_fun_ty_i = 12l
   let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
-  let func_internalize_fun_ty_i = 10l
+  let func_internalize_fun_ty_i = 13l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
       actor_message_ty;
+      nullary_fun_ty;
       test_print_fun_ty;
       test_show_i32fun_ty;
       data_externalize_fun_ty;
+      data_internalize_fun_ty;
+      data_length_ty;
       module_new_fun_ty;
       actor_new_fun_ty;
       actor_self_fun_ty;
@@ -360,7 +369,7 @@ module Heap = struct
      *)
   let word_size = 4l
 
-  let heap_ptr : var = nr 0l
+  let heap_ptr : var = nr 1l
 
   let alloc_bytes (n : int32) : instr list =
     (* expect the size (in words), returns the pointer *)
@@ -470,12 +479,12 @@ module Func = struct
          body = code
        }
 
-  let message_of_body env mk_body =
+  let nullary_of_body env mk_body =
     (* Fresh set of locals *)
-    (* Reserve one local, argument only argument *)
-    let env1 = E.mk_fun_env env 1l in
+    (* Reserve one local, no arguments *)
+    let env1 = E.mk_fun_env env 0l in
     let code = mk_body env1 in
-    nr { ftype = nr E.actor_message_ty_i;
+    nr { ftype = nr E.nullary_fun_ty_i;
          locals = E.get_locals env1;
          body = code
        }
@@ -540,22 +549,6 @@ module Func = struct
       [ GetLocal (E.unary_param_local env3) @@ at ] @
       destruct_args_code @
       body_code)
-
-
-  (* Message take no closure *)
-  let compile_message env mk_pat mk_body at : func =
-    message_of_body env (fun env1 ->
-      (* Destruct the argument *)
-      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
-
-      (* Compile the body *)
-      let body_code = mk_body env2 in
-
-      alloc_args_code @
-      [ GetLocal (E.message_param_local env2) @@ at ] @
-      destruct_args_code @
-      body_code @
-      [ nr Drop ])
 
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
@@ -925,15 +918,17 @@ module Dfinity = struct
   let test_print_i env = 0l
   let test_show_i32_i env = 1l
   let data_externalize_i env = 2l
-  let module_new_i env = 3l
-  let actor_new_i env = 4l
-  let actor_self_i env = 5l
-  let actor_export_i env = 6l
-  let func_internalize_i env = 7l
+  let data_internalize_i env = 3l
+  let data_length_i env = 4l
+  let module_new_i env = 5l
+  let actor_new_i env = 6l
+  let actor_self_i env = 7l
+  let actor_export_i env = 8l
+  let func_internalize_i env = 9l
 
   (* function ids for predefined functions (after array functions) *)
-  let funcref_wrapper_i env = 15l
-  let self_message_wrapper_i env = 16l
+  let funcref_wrapper_i env = 17l
+  let self_message_wrapper_i env = 18l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -963,6 +958,20 @@ module Dfinity = struct
       idesc = nr (FuncImport (nr E.data_externalize_fun_ty_i))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "data";
+      item_name = explode "internalize";
+      idesc = nr (FuncImport (nr E.data_internalize_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "data";
+      item_name = explode "length";
+      idesc = nr (FuncImport (nr E.data_length_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "module";
@@ -1050,6 +1059,9 @@ module Dfinity = struct
     (* Externalize *)
     [ nr (Call (nr (data_externalize_i env))) ]
 
+  let compile_static_print env s =
+      compile_databuf_of_bytes env s @
+      [ nr (Call (nr (test_print_i env))) ]
 
   let static_self_message_pointer name env =
     Tuple.lit env [
@@ -1106,6 +1118,108 @@ module Dfinity = struct
 
 end (* Dfinity *)
 
+module OrthogonalPersistence = struct
+  (* This module implements the code that fakes orthogonal persistence *)
+
+  let restore_mem_i env = 20l
+  let save_mem_i env = 21l
+  let mem_global = 0l
+
+  (* Strategy:
+     * There is a persistent global databuf called `memstore`
+     * Two helper functions are installed in each actor: restore_mem and save_mem.
+       (The don’t actually have names, just numbers, of course).
+     * Upon each message entry, call restore_mem. At the end, call save_mem.
+     * restore_mem checks if memstore is defined.
+       - If it is 0, then this is the first message ever received.
+         Run the actor’s start function (e.g. to initialize globals).
+       - If it is not 0, then load the databuf into memory, and set
+         the global with the end-of-memory pointer to the length.
+     * save_mem simply copies the whole memory (up to the end-of-memory pointer)
+       to a new databuf and stores that in memstore.
+
+    This does not persist references yet.
+  *)
+
+  let register env start_funid =
+    E.add_export env (nr {
+      name = Dfinity.explode "memstore";
+      edesc = nr (GlobalExport (nr mem_global))
+    });
+
+    let fi = E.add_fun env (Func.nullary_of_body env (fun env1 ->
+      [ nr (GetGlobal (nr mem_global)) ] @
+      [ nr (Call (nr (Dfinity.data_length_i env1))) ] @
+      compile_const 0l @
+      [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
+      [ nr (If ([],
+        (* First run, call the start function *)
+        [ nr (Call (nr start_funid)) ],
+
+        (* Subsequent run *)
+        (* Store length in global *)
+        [ nr (GetGlobal (nr mem_global));
+          nr (Call (nr (Dfinity.data_length_i env1)));
+          nr (SetGlobal Heap.heap_ptr) ] @
+
+        (* Load memory *)
+        compile_zero @
+        [ nr (GetGlobal Heap.heap_ptr) ] @
+        [ nr (GetGlobal (nr mem_global)) ] @
+        compile_zero @
+        [ nr (Call (nr (Dfinity.data_internalize_i env1))) ]
+      )) ]
+    )) in
+    assert (Int32.to_int fi == Int32.to_int (restore_mem_i env));
+
+    let fi = E.add_fun env (Func.nullary_of_body env (fun env1 ->
+      compile_zero @
+      [ nr (GetGlobal Heap.heap_ptr) ] @
+      [ nr (Call (nr (Dfinity.data_externalize_i env))) ] @
+      [ nr (SetGlobal (nr mem_global)) ]
+    )) in
+    assert (Int32.to_int fi == Int32.to_int (save_mem_i env))
+
+
+end (* OrthogonalPersistence *)
+
+module Message = struct
+  (* This module could be part of Func, if not for the reference to
+     the module OrthogonalPersistence *)
+
+  let message_of_body env mk_body =
+    (* Fresh set of locals *)
+    (* Reserve one local, only one argument *)
+    let env1 = E.mk_fun_env env 1l in
+    let code = mk_body env1 in
+    nr { ftype = nr E.actor_message_ty_i;
+         locals = E.get_locals env1;
+         body = code
+       }
+
+
+  (* Message take no closure *)
+  let compile env mk_pat mk_body at : func =
+    message_of_body env (fun env1 ->
+      (* Set up memory *)
+      [ nr (Call (nr (OrthogonalPersistence.restore_mem_i env))) ] @
+
+      (* Destruct the argument *)
+      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
+
+      (* Compile the body *)
+      let body_code = mk_body env2 in
+
+      alloc_args_code @
+      [ GetLocal (E.message_param_local env2) @@ at ] @
+      destruct_args_code @
+      body_code @
+      [ nr Drop ] @
+
+      (* Save memory *)
+      [ nr (Call (nr (OrthogonalPersistence.save_mem_i env))) ]
+      )
+end (* Message *)
 
 (* The actual compiler code that looks at the AST *)
 
@@ -1635,7 +1749,7 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
   ( pre_env1, fun env ->
     let mk_pat inner_env = compile_mono_pat inner_env pat in
     let mk_body inner_env = compile_exp inner_env exp in
-    let f = Func.compile_message env mk_pat mk_body f.at in
+    let f = Message.compile env mk_pat mk_body f.at in
     fill f;
   )
 
@@ -1689,6 +1803,12 @@ and actor_lit outer_env name fs =
     Array.common_funcs env;
     if E.mode env = DfinityMode then Dfinity.system_funs env;
 
+    (* The placement of this is a bit brittle with all the hard-coded
+       function ids, and screams for a refactoring. *)
+    let (start_fi, fill_start_fun) = E.reserve_fun env in
+
+    if E.mode env = DfinityMode then OrthogonalPersistence.register env start_fi;
+
     let (env1, prelude_code) = compile_prelude env in
 
     if prelude_code <> []
@@ -1696,6 +1816,12 @@ and actor_lit outer_env name fs =
 
     (* Compile stuff here *)
     let env2 = compile_actor_fields env1 fs in
+
+    let start_fun = nr { ftype = nr E.start_fun_ty_i;
+         locals = [];
+         body = []
+    } in 
+    fill_start_fun start_fun;
 
     let (m, custom_sections) = conclude_module env2 None in
     let (_map, wasm) = EncodeMap.encode m in
@@ -1724,10 +1850,19 @@ and conclude_module env start_fi_o =
 
   let table_sz = Int32.add nf' ni' in
 
-  let globals = [ nr
-      { gtype = GlobalType (I32Type, Mutable);
+  (* We want to put all persistent globals first:
+     The index in the persist annotation refers to the index in the
+     list of *exported* globals, not all globals (at least with v8) *)
+  let globals = [
+      (* persistent databuf for memory *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr compile_zero
+      };
+      (* End-of-heap pointer *)
+      nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (compile_const (E.get_end_of_static_memory env))
-      } ] in
+      }
+      ] in
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
@@ -1753,7 +1888,8 @@ and conclude_module env start_fi_o =
 
   (* Calculate the custom sections *)
   let dfinity_types = E.get_dfinity_types env in
-  let custom_sections = CustomSections.encode ni' dfinity_types in
+  let custom_sections =
+    CustomSections.encode ni' dfinity_types [ OrthogonalPersistence.mem_global ] in
   (m, custom_sections)
 
 

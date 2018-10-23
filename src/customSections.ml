@@ -18,7 +18,11 @@ let to_string s =
 
 
 (* List of messages and number of arguments *)
-let encode (offset : int32) (dfinity_types : (int32 * int32) list): string =
+let encode
+    (offset : int32)
+    (dfinity_types : (int32 * int32) list)
+    (persistent_databufs : int32 list)
+    : string =
   let s = stream () in
 
   let u8 i = put s (Char.chr (i land 0xff)) in
@@ -77,6 +81,15 @@ let encode (offset : int32) (dfinity_types : (int32 * int32) list): string =
       vu32 (Int32.sub fi offset);
       vu32 (Int32.of_int i);
     ) dfinity_types
+  );
+  section 0 (fun _ ->
+    string "persist";
+    vu32 (Int32.of_int (List.length persistent_databufs));
+    List.iter (fun i ->
+      vu32 0x03l; (* a global *)
+      vu32 i; (* the index *)
+      vu32 0x6cl; (* a databuf *)
+    ) persistent_databufs
   );
   to_string s
 
