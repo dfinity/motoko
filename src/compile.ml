@@ -48,7 +48,8 @@ type 'env deferred_loc =
   }
 
 type 'env varloc =
-  | Local of int32  (* A Wasm Local in the current function *)
+  | Local of int32   (* A Wasm Local in the current function *)
+  | Static of int32  (* A static memory location in the current module *)
   | Deferred of 'env deferred_loc
 
 module E = struct
@@ -191,6 +192,7 @@ module E = struct
     (* We keep all local vars that are bound to known functions or globals *)
     let is_non_local = function
       | Local _ -> false
+      | Static _ -> true
       | Deferred _ -> true
     in
     { env with
@@ -218,6 +220,9 @@ module E = struct
   let add_local (env : t) name =
       let i = add_anon_local env I32Type in
       ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
+
+  let add_local_static (env : t) name ptr =
+      { env with local_vars_env = NameEnv.add name (Static ptr) env.local_vars_env }
 
   let add_local_deferred (env : t) name d =
       { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
@@ -291,6 +296,11 @@ module E = struct
         i
 
   let get_prelude (env : t) = env.prelude
+
+  let reserve_static_memory (env : t) : int32 =
+    let ptr = !(env.end_of_static_memory) in
+    env.end_of_static_memory := Int32.add ptr 4l;
+    ptr
 
   let add_static_bytes (env : t) data : int32 =
     let ptr = !(env.end_of_static_memory) in
@@ -410,17 +420,24 @@ module Var = struct
     ]
 
   let get_val env var = match E.lookup_var env var with
-    | Some (Local i) -> [ nr (GetLocal (nr i)) ] @ load_ptr
+    | Some (Local i)  -> [ nr (GetLocal (nr i)) ] @ load_ptr
+    | Some (Static i) -> compile_const i @ load_ptr
     | Some (Deferred d) -> d.allocate env
     | None   -> [ nr Unreachable ]
 
   let get_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (GetLocal (nr i)) ]
+    | Some (Static i) -> compile_const i
     (* We have to do some boxing here *)
     | _ -> Tuple.lit env [ get_val env var ]
 
   let set_loc env var = match E.lookup_var env var with
     | Some (Local i) -> [ nr (SetLocal (nr i)) ]
+    | Some (Static i) ->
+      [ nr (SetLocal (E.tmp_local env)) ] @
+      compile_const i @
+      [ nr (GetLocal (E.tmp_local env)) ] @
+      store_ptr
     | Some (Deferred _) -> raise (Invalid_argument "Cannot set heap location for a deferred thing")
     | None   -> [ nr Unreachable ]
 
@@ -1590,10 +1607,14 @@ and compile_start_func env (progs : Syntax.prog list) : func =
        body = code
      }
 
-and compile_actor_field pre_env f =
-  if f.it.priv.it = Private
-  then todo "private actor field" (Arrange.id f.it.id) (pre_env, fun _ -> ()) else
+and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
+  let ptr = E.reserve_static_memory pre_env in
+  let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
+  ( pre_env1, fun env -> ()
+    (* todo *)
+  )
 
+and compile_public_actor_field pre_env (f : Syntax.exp_field) =
   let (name, _, pat, _rt, exp) =
     let rec find_func exp = match exp.it with
     | AnnotE (exp, _) -> find_func exp
@@ -1617,6 +1638,11 @@ and compile_actor_field pre_env f =
     let f = Func.compile_message env mk_pat mk_body f.at in
     fill f;
   )
+
+and compile_actor_field pre_env (f : Syntax.exp_field) =
+  if f.it.priv.it = Private
+  then compile_private_actor_field pre_env f
+  else compile_public_actor_field pre_env f
 
 
 and compile_actor_fields env fs =
