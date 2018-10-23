@@ -874,9 +874,9 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
      Array.idx
-  | DotE (e, f) ->
+  | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e @
-     Object.idx env f
+     Object.idx env {id with it = n}
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
 (* compile_exp returns an *value*.

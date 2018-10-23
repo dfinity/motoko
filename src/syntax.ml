@@ -132,7 +132,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ObjE of obj_sort * id * exp_field list     (* object *)
-  | DotE of exp * id                           (* object projection *)
+  | DotE of exp * name                         (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of exp list                         (* array *)
   | IdxE of exp * exp                          (* array indexing *)

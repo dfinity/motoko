@@ -315,7 +315,7 @@ exp_post :
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
-    { DotE(e, x) @? at $sloc }
+    { DotE(e, {x with it = Name x.it}) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
 
