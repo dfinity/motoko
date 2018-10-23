@@ -96,6 +96,7 @@ rec {
     installCheckPhase = ''
       $out/bin/asc --version
       make -C samples ASC=$out/bin/asc all
+      ./test/run.sh foobar
       make -C test/run VERBOSE=1 ASC=$out/bin/asc all
       make -C test/fail VERBOSE=1 ASC=$out/bin/asc all
     '' +
