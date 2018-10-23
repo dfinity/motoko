@@ -55,6 +55,8 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dsh-run}
+
   # First run all the steps, and remember what to diff
   diff_files=
 
@@ -75,18 +77,22 @@ do
     # Compile
     echo -n " [wasm]"
     $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as 2> $out/$base.wasm.stderr
-    mv $base.wasm $base.wasm.map $out
     diff_files="$diff_files $base.wasm.stderr"
-
-    if [ $DFINITY = 'yes' ];
+    if [ -e $base.wasm ]
     then
-      echo -n " [dsh]"
-      $DSH_WRAPPER $out/$base.wasm > $out/$base.dsh-run 2>&1
-      diff_files="$diff_files $base.dsh-run"
-    else
-      echo -n " [wasm-run]"
-      $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
-      diff_files="$diff_files $base.wasm-run"
+      mv $base.wasm $base.wasm.map $out
+
+      if [ $DFINITY = 'yes' ];
+      then
+        echo -n " [dsh]"
+        $DSH_WRAPPER $out/$base.wasm > $out/$base.dsh-run 2>&1
+        diff_files="$diff_files $base.dsh-run"
+      else
+        echo -n " [wasm-run]"
+        $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
+        sed -i -e 's,wasm:0x[a-f0-9]\+:,wasm:0x___:,' $out/$base.wasm-run
+        diff_files="$diff_files $base.wasm-run"
+      fi
     fi
   fi
   echo ""
