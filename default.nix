@@ -53,7 +53,6 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
-  nixpkgs.bash
 ]; in
 
 rec {
@@ -89,6 +88,11 @@ rec {
       cp src/asc $out/bin
     '';
 
+    installCheckInputs =
+      commonBuildInputs ++
+      [ nixpkgs.bash ] ++
+      (if test-dsh then [ dsh ] else []);
+
     # The binary does not work until we use wrapProgram, which runs in
     # the install phase. Therefore, we use the installCheck phase to
     # run the test suite
@@ -96,7 +100,7 @@ rec {
     installCheckPhase = ''
       $out/bin/asc --version
       make -C samples ASC=$out/bin/asc all
-      ./test/run.sh foobar
+      ./test/run.sh foobar || true
       make -C test/run VERBOSE=1 ASC=$out/bin/asc all
       make -C test/fail VERBOSE=1 ASC=$out/bin/asc all
     '' +
