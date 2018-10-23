@@ -69,7 +69,7 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> (id i) ++ exp e
-  | NewObjE (_,ids)    -> unions id ids                                        
+  | NewObjE (_,ids)    -> unions id (List.map (fun (lab,id) -> id) ids)                                        
 
 and exps es : f = unions exp es
 
@@ -103,7 +103,7 @@ and dec d = match d.it with
   | FuncD (i, tp, p, t, e) ->
     (S.empty, S.singleton i.it) +++ (exp e /// pat p)
   | TypD (i, tp, t) -> (S.empty, S.empty)
-  | ClassD (i, tp, s, p, efs) ->
+  | ClassD (i, l, tp, s, p, efs) ->
     (S.empty, S.singleton i.it) +++ (close (exp_fields efs) /// pat p)
 
 (* The variables captured by a function. May include the function itself! *)

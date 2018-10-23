@@ -113,7 +113,7 @@ and infer_effect_dec dec =
     T.Triv
   | FuncD (v, tps, p, t, e) ->
     T.Triv
-  | ClassD (a, v, tps, p, efs) ->
+  | ClassD (v, l, tps, s, p, efs) ->
     T.Triv
 
 (* sugar *)                      
@@ -443,10 +443,10 @@ and t_dec' context dec' =
   | FuncD (id,typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncD (id, typbinds, pat, typ,t_exp context' exp)
-  | ClassD (id, typbinds, sort, pat, fields) ->
+  | ClassD (id, lab, typbinds, sort, pat, fields) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in     
     let fields' = t_fields context' fields in             
-    ClassD (id, typbinds, sort, pat, fields')
+    ClassD (id, lab, typbinds, sort, pat, fields')
 and t_decs context decs = List.map (t_dec context) decs           
 and t_fields context fields = 
   List.map (fun (field:exp_field) ->
@@ -658,14 +658,14 @@ and c_obj context exp sort id fields =
       | [] ->
          let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev ids)) :: decs in
          {exp with it = BlockE (List.rev decs)}
-      | {it = {id; mut; priv; exp}; at; note}::fields ->
+      | {it = {id; lab; mut; priv; exp}; at; note}::fields ->
          let exp = if sort.it = T.Actor && priv.it = Public
-                   then actor_field (typ exp) -@- tupE([textE id.it;exp])
+                   then actor_field (typ exp) -@- tupE([textE lab.it;exp])
                    else exp
          in
          let ids =
            match priv.it with
-           | Public -> id::ids
+           | Public -> (lab,id)::ids
            | Private -> ids                
          in
          match mut.it with 
@@ -846,7 +846,7 @@ and c_dec context dec =
                   (k -@- define_idE id Var v)))
      end                                       
   | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
-  | ClassD (id, _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
+  | ClassD (id, _ (* lab *),  _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let k = fresh_cont func_typ in
@@ -883,7 +883,7 @@ and declare_dec dec exp : exp =
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
   | FuncD (id, _, _, _, _)
-  | ClassD (id, _, _, _, _) -> declare_id id (typ_dec dec) exp
+  | ClassD (id, _, _, _, _, _) -> declare_id id (typ_dec dec) exp
 
 and declare_decs decs exp : exp =
   match decs with

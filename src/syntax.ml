@@ -9,6 +9,8 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 type id = string Source.phrase
 
+(* Labels (not alpha-convertible) *)
+type lab = id                 
 
 (* Types *)
 
@@ -153,7 +155,7 @@ and exp' =
   | DecE of dec                                (* declaration *)
   | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
   | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
-  | NewObjE of obj_sort * id list                   (* make an object, preserving mutable identity (internal) *)                          
+  | NewObjE of obj_sort * (lab*id) list                   (* make an object, preserving mutable identity (internal) *)                          
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)
@@ -162,7 +164,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {id : id; exp : exp; mut : mut; priv : priv}
+and exp_field' = {lab:lab; id : id; exp : exp; mut : mut; priv : priv}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -177,7 +179,7 @@ and dec' =
   | VarD of id * exp                                   (* mutable *)
   | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
   | TypD of id * typ_bind list * typ                   (* type *)
-  | ClassD of id * typ_bind list * obj_sort * pat * exp_field list (* class *)
+  | ClassD of id * lab * typ_bind list * obj_sort * pat * exp_field list (* class *)
 
 
 (* Program *)

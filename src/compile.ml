@@ -1211,7 +1211,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
-  | ClassD (name, typ_params, s, p, efs) ->
+  | ClassD (name, _, typ_params, s, p, efs) ->
       let captured = Freevars.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 =
