@@ -8,7 +8,7 @@ compile_exp: (AsyncE
         (CallE
           (VarE ignore)
           (CallE
-            (DotE (VarE self) tac_msg_async)
+            (DotE (VarE self) tic_msg_async)
             (BinE (VarE n) SubOp (LitE (IntLit 1)))
           )
         )
@@ -25,7 +25,7 @@ compile_exp: (AsyncE
         (CallE
           (VarE ignore)
           (CallE
-            (DotE (VarE self) tic_msg_async)
+            (DotE (VarE self) tac_msg_async)
             (BinE (VarE n) SubOp (LitE (IntLit 1)))
           )
         )

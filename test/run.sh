@@ -90,6 +90,7 @@ do
       else
         echo -n " [wasm-run]"
         $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
+        sed -i -e 's,wasm:0x[a-f0-9]\+:,wasm:0x___:,' $out/$base.wasm-run
         diff_files="$diff_files $base.wasm-run"
       fi
     fi
