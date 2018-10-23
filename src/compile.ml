@@ -133,16 +133,22 @@ module E = struct
   let data_internalize_fun_ty_i = 7l
   let data_length_ty = nr (FuncType ([I32Type],[I32Type]))
   let data_length_fun_ty_i = 8l
+  let elem_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
+  let elem_externalize_fun_ty_i = 9l
+  let elem_internalize_fun_ty = nr (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
+  let elem_internalize_fun_ty_i = 10l
+  let elem_length_ty = nr (FuncType ([I32Type],[I32Type]))
+  let elem_length_fun_ty_i = 11l
   let module_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let module_new_fun_ty_i = 9l
+  let module_new_fun_ty_i = 12l
   let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let actor_new_fun_ty_i = 10l
+  let actor_new_fun_ty_i = 13l
   let actor_self_fun_ty = nr (FuncType ([],[I32Type]))
-  let actor_self_fun_ty_i = 11l
+  let actor_self_fun_ty_i = 14l
   let actor_export_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let actor_export_fun_ty_i = 12l
+  let actor_export_fun_ty_i = 15l
   let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
-  let func_internalize_fun_ty_i = 13l
+  let func_internalize_fun_ty_i = 16l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
@@ -153,6 +159,9 @@ module E = struct
       data_externalize_fun_ty;
       data_internalize_fun_ty;
       data_length_ty;
+      elem_externalize_fun_ty;
+      elem_internalize_fun_ty;
+      elem_length_ty;
       module_new_fun_ty;
       actor_new_fun_ty;
       actor_self_fun_ty;
@@ -176,7 +185,7 @@ module E = struct
     )))))
 
   (* The initial global environment *)
-  let mk_global mode prelude : t = {
+  let mk_global mode prelude dyn_mem : t = {
     mode;
     imports = ref [];
     exports = ref [];
@@ -192,7 +201,7 @@ module E = struct
     ld = NameEnv.empty;
     field_env = ref init_field_env;
     prelude;
-    end_of_static_memory = ref 0l;
+    end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
   }
 
@@ -306,9 +315,9 @@ module E = struct
 
   let get_prelude (env : t) = env.prelude
 
-  let reserve_static_memory (env : t) : int32 =
+  let reserve_static_memory (env : t) size : int32 =
     let ptr = !(env.end_of_static_memory) in
-    env.end_of_static_memory := Int32.add ptr 4l;
+    env.end_of_static_memory := Int32.add ptr size;
     ptr
 
   let add_static_bytes (env : t) data : int32 =
@@ -369,7 +378,7 @@ module Heap = struct
      *)
   let word_size = 4l
 
-  let heap_ptr : var = nr 1l
+  let heap_ptr : var = nr 2l
 
   let alloc_bytes (n : int32) : instr list =
     (* expect the size (in words), returns the pointer *)
@@ -389,6 +398,48 @@ module Heap = struct
     [ nr (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None}) ]
 
 end (* Heap *)
+
+module ElemHeap = struct
+  let ref_counter : var = nr 3l
+
+  let max_references = 1024l
+  let ref_location = 0l
+
+  let begin_dyn_space : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
+
+  (* Assumes a reference on the stack, and replaces it with an index into the
+     reference table *)
+  let remember_reference env : instr list =
+    let i = E.add_anon_local env I32Type in
+    [ nr (SetLocal (nr i)) ] @
+
+    (* Return index *)
+    [ nr (GetGlobal ref_counter) ] @
+
+    (* Store reference *)
+    [ nr (GetGlobal ref_counter) ] @
+    compile_const Heap.word_size @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
+    compile_const ref_location @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+    [ nr (GetLocal (nr i)) ] @
+    store_ptr @
+
+    (* Bump counter *)
+    [ nr (GetGlobal ref_counter) ] @
+    compile_const 1l @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+    [ nr (SetGlobal ref_counter) ]
+
+  (* Assumes a index into the table on the stack, and replaces it with the reference *)
+  let recall_reference env : instr list =
+    compile_const Heap.word_size @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ] @
+    compile_const ref_location @
+    [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+    load_ptr
+
+end (* ElemHeap *)
 
 module Tuple = struct
   (* A tuple is a heap object with a statically known number of elements.
@@ -920,15 +971,18 @@ module Dfinity = struct
   let data_externalize_i env = 2l
   let data_internalize_i env = 3l
   let data_length_i env = 4l
-  let module_new_i env = 5l
-  let actor_new_i env = 6l
-  let actor_self_i env = 7l
-  let actor_export_i env = 8l
-  let func_internalize_i env = 9l
+  let elem_externalize_i env = 5l
+  let elem_internalize_i env = 6l
+  let elem_length_i env = 7l
+  let module_new_i env = 8l
+  let actor_new_i env = 9l
+  let actor_self_i env = 10l
+  let actor_export_i env = 11l
+  let func_internalize_i env = 12l
 
   (* function ids for predefined functions (after array functions) *)
-  let funcref_wrapper_i env = 17l
-  let self_message_wrapper_i env = 18l
+  let funcref_wrapper_i env = 20l
+  let self_message_wrapper_i env = 21l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -974,6 +1028,27 @@ module Dfinity = struct
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
     let i = E.add_import env (nr {
+      module_name = explode "elem";
+      item_name = explode "externalize";
+      idesc = nr (FuncImport (nr E.elem_externalize_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "elem";
+      item_name = explode "internalize";
+      idesc = nr (FuncImport (nr E.elem_internalize_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "elem";
+      item_name = explode "length";
+      idesc = nr (FuncImport (nr E.elem_length_fun_ty_i))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (elem_length_i env));
+
+    let i = E.add_import env (nr {
       module_name = explode "module";
       item_name = explode "new";
       idesc = nr (FuncImport (nr E.module_new_fun_ty_i))
@@ -1011,7 +1086,8 @@ module Dfinity = struct
   let system_funs env =
     let f = Func.unary_of_body env (fun env1 ->
       compile_const tmp_table_slot @ (* slot number *)
-      Func.load_closure 1l @ (* the funcref *)
+      Func.load_closure 1l @ (* the funcref table id *)
+      ElemHeap.recall_reference env @
       [ nr (Call (nr (func_internalize_i env))) ] @
 
       Func.load_argument @ (* Needs to be serialized somehow, can only pass i32 now *)
@@ -1122,9 +1198,10 @@ end (* Dfinity *)
 module OrthogonalPersistence = struct
   (* This module implements the code that fakes orthogonal persistence *)
 
-  let restore_mem_i env = 19l
-  let save_mem_i env = 20l
+  let restore_mem_i env = 22l
+  let save_mem_i env = 23l
   let mem_global = 0l
+  let elem_global = 1l
 
   (* Strategy:
      * There is a persistent global databuf called `datastore`
@@ -1136,8 +1213,8 @@ module OrthogonalPersistence = struct
          Run the actor’s start function (e.g. to initialize globals).
        - If it is not 0, then load the databuf into memory, and set
          the global with the end-of-memory pointer to the length.
-     * save_mem simply copies the whole memory (up to the end-of-memory pointer)
-       to a new databuf and stores that in memstore.
+     * save_mem simply copies the whole dynamic memory (up to the end-of-memory
+       pointer) to a new databuf and stores that in memstore.
 
     This does not persist references yet.
   *)
@@ -1153,11 +1230,19 @@ module OrthogonalPersistence = struct
       name = Dfinity.explode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
     });
+    E.add_export pre_env (nr {
+      name = Dfinity.explode "elemstore";
+      edesc = nr (GlobalExport (nr elem_global))
+    });
 
     (fun env start_funid ->
       fill_restore_mem (Func.nullary_of_body env (fun env1 ->
+         let i = E.add_anon_local env1 I32Type in
          [ nr (GetGlobal (nr mem_global)) ] @
          [ nr (Call (nr (Dfinity.data_length_i env1))) ] @
+         [ nr (SetLocal (nr i)) ] @
+
+         [ nr (GetLocal (nr i)) ] @
          compile_const 0l @
          [ nr (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ] @
          [ nr (If ([],
@@ -1165,24 +1250,46 @@ module OrthogonalPersistence = struct
            [ nr (Call (nr start_funid)) ],
 
            (* Subsequent run *)
-           (* Store length in global *)
-           [ nr (GetGlobal (nr mem_global));
-             nr (Call (nr (Dfinity.data_length_i env1)));
-             nr (SetGlobal Heap.heap_ptr) ] @
+           (* Set heap pointer based on databuf length *)
+           [ nr (GetLocal (nr i)) ] @
+           compile_const ElemHeap.begin_dyn_space @
+           [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ] @
+           [ nr (SetGlobal Heap.heap_ptr) ] @
 
            (* Load memory *)
-           compile_zero @
-           [ nr (GetGlobal Heap.heap_ptr) ] @
+           compile_const ElemHeap.begin_dyn_space @
+           [ nr (GetLocal (nr i)) ] @
            [ nr (GetGlobal (nr mem_global)) ] @
            compile_zero @
-           [ nr (Call (nr (Dfinity.data_internalize_i env1))) ]
+           [ nr (Call (nr (Dfinity.data_internalize_i env1))) ] @
+
+           (* Load reference counter *)
+           [ nr (GetGlobal (nr elem_global)) ] @
+           [ nr (Call (nr (Dfinity.elem_length_i env1))) ] @
+           [ nr (SetGlobal ElemHeap.ref_counter) ] @
+
+           (* Load references *)
+           compile_const ElemHeap.ref_location @
+           [ nr (GetGlobal ElemHeap.ref_counter) ] @
+           [ nr (GetGlobal (nr elem_global)) ] @
+           compile_zero @
+           [ nr (Call (nr (Dfinity.elem_internalize_i env1))) ]
          )) ]
       ));
       fill_save_mem (Func.nullary_of_body env (fun env1 ->
-         compile_zero @
+         (* Store memory *)
+         compile_const ElemHeap.begin_dyn_space @
          [ nr (GetGlobal Heap.heap_ptr) ] @
+         compile_const ElemHeap.begin_dyn_space @
+         [ nr (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ] @
          [ nr (Call (nr (Dfinity.data_externalize_i env))) ] @
-         [ nr (SetGlobal (nr mem_global)) ]
+         [ nr (SetGlobal (nr mem_global)) ] @
+
+         (* Store references *)
+         compile_const ElemHeap.ref_location @
+         [ nr (GetGlobal ElemHeap.ref_counter) ] @
+         [ nr (Call (nr (Dfinity.elem_externalize_i env))) ] @
+         [ nr (SetGlobal (nr elem_global)) ]
       ))
     )
 
@@ -1698,7 +1805,7 @@ prelude. So this function compiles the prelude, just to find out the bound names
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env)) 0l in
+  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
 
@@ -1728,7 +1835,7 @@ and compile_start_func env (progs : Syntax.prog list) : func =
      }
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
-  let ptr = E.reserve_static_memory pre_env in
+  let ptr = E.reserve_static_memory pre_env Heap.word_size in
   let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
   ( pre_env1, fun env ->
     compile_const ptr @
@@ -1785,7 +1892,7 @@ and compile_actor_fields env fs =
    TODO: Needs more type information
  *)
 and compile_actorref_wrapper env fields =
-  (* The actor ref is on the stack *)
+  (* The actor ref (not a table index) is on the stack *)
   let actorref_i = E.add_anon_local env I32Type in
   [ nr (SetLocal (nr actorref_i)) ] @
 
@@ -1796,7 +1903,8 @@ and compile_actorref_wrapper env fields =
         [ compile_const (Dfinity.funcref_wrapper_i env)
         ; [ nr (GetLocal (nr actorref_i)) ] @
           Dfinity.compile_databuf_of_bytes env (name.it) @
-          [ nr (Call (nr (Dfinity.actor_export_i env))) ]
+          [ nr (Call (nr (Dfinity.actor_export_i env))) ] @
+          ElemHeap.remember_reference env
         ] in
     (name, code) in
   Object.lit env None None (List.map wrap_field fields)
@@ -1804,7 +1912,7 @@ and compile_actorref_wrapper env fields =
 
 and actor_lit outer_env name fs =
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     Array.common_funcs env;
@@ -1839,7 +1947,9 @@ and actor_lit outer_env name fs =
   [ nr (Call (nr (Dfinity.actor_new_i outer_env))) ] @
 
   (* Create an object around it *)
-  compile_actorref_wrapper outer_env (List.map (fun (f : Syntax.exp_field) -> f.it.id) fs)
+  compile_actorref_wrapper outer_env
+    (List.map (fun (f : Syntax.exp_field) -> f.it.id)
+    (List.filter (fun (f : Syntax.exp_field) -> f.it.priv.it <> Private) fs))
 
 and conclude_module env start_fi_o =
 
@@ -1863,9 +1973,17 @@ and conclude_module env start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr compile_zero
       };
+      (* persistent elembuf for memory *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr compile_zero
+      };
       (* End-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (compile_const (E.get_end_of_static_memory env))
+      };
+      (* reference pointer *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr compile_zero
       }
       ] in
 
@@ -1894,12 +2012,14 @@ and conclude_module env start_fi_o =
   (* Calculate the custom sections *)
   let dfinity_types = E.get_dfinity_types env in
   let custom_sections =
-    CustomSections.encode ni' dfinity_types [ OrthogonalPersistence.mem_global ] in
+    CustomSections.encode ni' dfinity_types
+      [ (OrthogonalPersistence.mem_global, false)
+      ; (OrthogonalPersistence.elem_global, true) ] in
   (m, custom_sections)
 
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ * string) =
-  let env = E.mk_global mode prelude in
+  let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;

@@ -21,7 +21,7 @@ let to_string s =
 let encode
     (offset : int32)
     (dfinity_types : (int32 * int32) list)
-    (persistent_databufs : int32 list)
+    (persistent_globals : (int32 * bool) list)
     : string =
   let s = stream () in
 
@@ -84,12 +84,14 @@ let encode
   );
   section 0 (fun _ ->
     string "persist";
-    vu32 (Int32.of_int (List.length persistent_databufs));
-    List.iter (fun i ->
+    vu32 (Int32.of_int (List.length persistent_globals));
+    List.iter (fun (i, elem) ->
       vu32 0x03l; (* a global *)
       vu32 i; (* the index *)
-      vu32 0x6cl; (* a databuf *)
-    ) persistent_databufs
+      if elem
+      then vu32 0x6bl (* a databuf *)
+      else vu32 0x6cl; (* a databuf *)
+    ) persistent_globals
   );
   to_string s
 
