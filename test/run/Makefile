@@ -1,4 +1,6 @@
 all:
+	ls -l ../run.sh
+	head ../run.sh
 	../run.sh *.as
 
 accept:
