@@ -1,355 +1,95 @@
 Could not find primitive @async
 Could not find primitive @async
 compile_exp: (DeclareE
-  i
-  (CallE
-    (DecE
-      (FuncD
-        
-        (VarP $67)
-        (PrimT Any)
-        (CallE (VarE $67) (DefineE i Var (LitE (NatLit 10))))
-      )
-    )
-    (DecE
-      (FuncD
-        
-        (VarP $41)
-        (PrimT Any)
-        (CallE
-          (DecE
+  i@1
+  (BlockE
+    (LetD (VarP $18) (DefineE i@1 Var (LitE (NatLit 10))))
+    (ExpD
+      (BlockE
+        (LetD (VarP $19) (CallE (VarE print) (LitE (TextLit g-label))))
+        (ExpD
+          (BlockE
             (FuncD
-              
-              (VarP $66)
+              $20
+              (VarP $21)
               (PrimT Any)
-              (CallE (VarE $66) (CallE (VarE print) (LitE (TextLit g-label))))
+              (CallE (VarE $17) (CallE (VarE print) (LitE (TextLit g-exit))))
             )
-          )
-          (DecE
-            (FuncD
-              
-              (VarP $42)
-              (PrimT Any)
-              (CallE
-                (DecE
-                  (FuncD
-                    
-                    (VarP $46)
-                    (PrimT Any)
-                    (CallE
-                      (DecE
-                        (FuncD
-                          
-                          (VarP $47)
-                          (PrimT Any)
+            (ExpD
+              (BlockE
+                (FuncD
+                  $22
+                  (VarP $23)
+                  (PrimT Any)
+                  (IfE
+                    (LitE (BoolLit true))
+                    (BlockE
+                      (FuncD
+                        $24
+                        (VarP $25)
+                        (PrimT Any)
+                        (CallE (VarE $22) (RetE (CallE (VarE $20) (TupE))))
+                      )
+                      (ExpD
+                        (IfE
+                          (RelE (VarE i@1) LtOp (LitE (NatLit 15)))
                           (BlockE
                             (LetD
-                              (VarP $48)
-                              (DecE
+                              (VarP $26)
+                              (CallE (VarE print) (LitE (TextLit .)))
+                            )
+                            (ExpD
+                              (BlockE
                                 (FuncD
-                                  
-                                  (VarP $49)
+                                  $27
+                                  (VarP $28)
                                   (PrimT Any)
-                                  (IfE
-                                    (LitE (BoolLit true))
-                                    (CallE
-                                      (DecE
-                                        (FuncD
-                                          
-                                          (VarP $50)
-                                          (PrimT Any)
-                                          (CallE
-                                            (DecE
-                                              (FuncD
-                                                
-                                                (VarP $51)
-                                                (PrimT Any)
-                                                (CallE
-                                                  (DecE
-                                                    (FuncD
-                                                      
-                                                      (VarP $55)
-                                                      (PrimT Any)
-                                                      (IfE
-                                                        (RelE
-                                                          (VarE i)
-                                                          LtOp
-                                                          (LitE (NatLit 15))
-                                                        )
-                                                        (CallE
-                                                          (DecE
-                                                            (FuncD
-                                                              
-                                                              (VarP $56)
-                                                              (PrimT Any)
-                                                              (CallE
-                                                                (DecE
-                                                                  (FuncD
-                                                                    
-                                                                    (VarP $65)
-                                                                    (PrimT Any)
-                                                                    (CallE
-                                                                      (VarE $65)
-                                                                      (CallE
-                                                                        (VarE
-                                                                          print
-                                                                        )
-                                                                        (LitE
-                                                                          (TextLit
-                                                                            .
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                )
-                                                                (DecE
-                                                                  (FuncD
-                                                                    
-                                                                    (VarP $57)
-                                                                    (PrimT Any)
-                                                                    (CallE
-                                                                      (DecE
-                                                                        (FuncD
-                                                                          
-                                                                          (VarP
-                                                                            $62
-                                                                          )
-                                                                          (PrimT
-                                                                            Any
-                                                                          )
-                                                                          (CallE
-                                                                            (DecE
-                                                                              (FuncD
-                                                                                
-                                                                                (VarP
-                                                                                  $64
-                                                                                )
-                                                                                (PrimT
-                                                                                  Any
-                                                                                )
-                                                                                (CallE
-                                                                                  (PrimE
-                                                                                    @await
-                                                                                  )
-                                                                                  (TupE
-                                                                                    (CallE
-                                                                                      (VarE
-                                                                                        f
-                                                                                      )
-                                                                                      (VarE
-                                                                                        i
-                                                                                      )
-                                                                                    )
-                                                                                    (VarE
-                                                                                      $64
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                            (DecE
-                                                                              (FuncD
-                                                                                
-                                                                                (VarP
-                                                                                  $63
-                                                                                )
-                                                                                (PrimT
-                                                                                  Any
-                                                                                )
-                                                                                (CallE
-                                                                                  (VarE
-                                                                                    $62
-                                                                                  )
-                                                                                  (BlockE
-                                                                                    (LetD
-                                                                                      WildP
-                                                                                      (VarE
-                                                                                        $63
-                                                                                      )
-                                                                                    )
-                                                                                    (ExpD
-                                                                                      (VarE
-                                                                                        $63
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                      (DecE
-                                                                        (FuncD
-                                                                          
-                                                                          (VarP
-                                                                            $58
-                                                                          )
-                                                                          (PrimT
-                                                                            Any
-                                                                          )
-                                                                          (CallE
-                                                                            (DecE
-                                                                              (FuncD
-                                                                                
-                                                                                (VarP
-                                                                                  $61
-                                                                                )
-                                                                                (PrimT
-                                                                                  Any
-                                                                                )
-                                                                                (CallE
-                                                                                  (VarE
-                                                                                    $61
-                                                                                  )
-                                                                                  (AssignE
-                                                                                    (VarE
-                                                                                      i
-                                                                                    )
-                                                                                    (BinE
-                                                                                      (VarE
-                                                                                        i
-                                                                                      )
-                                                                                      AddOp
-                                                                                      (LitE
-                                                                                        (NatLit
-                                                                                          1
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                            (DecE
-                                                                              (FuncD
-                                                                                
-                                                                                (VarP
-                                                                                  $59
-                                                                                )
-                                                                                (PrimT
-                                                                                  Any
-                                                                                )
-                                                                                (CallE
-                                                                                  (DecE
-                                                                                    (FuncD
-                                                                                      
-                                                                                      (VarP
-                                                                                        $60
-                                                                                      )
-                                                                                      (PrimT
-                                                                                        Any
-                                                                                      )
-                                                                                      (CallE
-                                                                                        (VarE
-                                                                                          $60
-                                                                                        )
-                                                                                        (RetE
-                                                                                          (CallE
-                                                                                            (VarE
-                                                                                              $50
-                                                                                            )
-                                                                                            (TupE
-                                                                                            )
-                                                                                          )
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                  (VarE
-                                                                                    $56
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                )
-                                                              )
-                                                            )
-                                                          )
-                                                          (VarE $55)
-                                                        )
-                                                        (CallE
-                                                          (VarE $55)
-                                                          (BlockE)
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                  (DecE
-                                                    (FuncD
-                                                      
-                                                      (VarP $52)
-                                                      (PrimT Any)
-                                                      (CallE
-                                                        (DecE
-                                                          (FuncD
-                                                            
-                                                            (VarP $53)
-                                                            (PrimT Any)
-                                                            (CallE
-                                                              (VarE $53)
-                                                              (RetE
-                                                                (CallE
-                                                                  (VarE $46)
-                                                                  (TupE)
-                                                                )
-                                                              )
-                                                            )
-                                                          )
-                                                        )
-                                                        (VarE $51)
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
+                                  (BlockE
+                                    (LetD (VarP $29) (VarE $28))
+                                    (LetD WildP (VarE $29))
+                                    (ExpD
+                                      (BlockE
+                                        (LetD
+                                          (VarP $30)
+                                          (AssignE
+                                            (VarE i@1)
+                                            (BinE
+                                              (VarE i@1)
+                                              AddOp
+                                              (LitE (NatLit 1))
                                             )
-                                            (VarE $50)
+                                          )
+                                        )
+                                        (ExpD
+                                          (CallE
+                                            (VarE $24)
+                                            (RetE (CallE (VarE $22) (TupE)))
                                           )
                                         )
                                       )
-                                      (VarE $48)
                                     )
-                                    (CallE (VarE $47) (TupE))
+                                  )
+                                )
+                                (ExpD
+                                  (CallE
+                                    (PrimE @await)
+                                    (TupE
+                                      (CallE (VarE f) (VarE i@1))
+                                      (VarE $27)
+                                    )
                                   )
                                 )
                               )
                             )
-                            (ExpD (CallE (VarE $48) (TupE)))
                           )
+                          (CallE (VarE $24) (BlockE))
                         )
                       )
-                      (VarE $46)
                     )
+                    (CallE (VarE $20) (TupE))
                   )
                 )
-                (DecE
-                  (FuncD
-                    
-                    (VarP $43)
-                    (PrimT Any)
-                    (CallE
-                      (DecE
-                        (FuncD
-                          
-                          (VarP $44)
-                          (PrimT Any)
-                          (CallE
-                            (VarE $44)
-                            (CallE (VarE print) (LitE (TextLit g-exit)))
-                          )
-                        )
-                      )
-                      (VarE $40)
-                    )
-                  )
-                )
+                (ExpD (CallE (VarE $22) (TupE)))
               )
             )
           )
@@ -360,160 +100,58 @@ compile_exp: (DeclareE
 )
 Could not find primitive @async
 compile_exp: (DeclareE
-  i
-  (CallE
-    (DecE
-      (FuncD
-        
-        (VarP $38)
-        (PrimT Any)
-        (CallE (VarE $38) (DefineE i Var (LitE (NatLit 5))))
-      )
-    )
-    (DecE
-      (FuncD
-        
-        (VarP $23)
-        (PrimT Any)
-        (CallE
-          (DecE
+  i@0
+  (BlockE
+    (LetD (VarP $9) (DefineE i@0 Var (LitE (NatLit 5))))
+    (ExpD
+      (BlockE
+        (LetD (VarP $10) (CallE (VarE print) (LitE (TextLit e-while))))
+        (ExpD
+          (BlockE
             (FuncD
-              
-              (VarP $37)
+              $11
+              (VarP $12)
               (PrimT Any)
-              (CallE (VarE $37) (CallE (VarE print) (LitE (TextLit e-while))))
-            )
-          )
-          (DecE
-            (FuncD
-              
-              (VarP $24)
-              (PrimT Any)
-              (CallE
-                (DecE
+              (IfE
+                (RelE (VarE i@0) LtOp (LitE (NatLit 10)))
+                (BlockE
                   (FuncD
-                    
-                    (VarP $28)
+                    $13
+                    (VarP $14)
                     (PrimT Any)
                     (BlockE
-                      (LetD
-                        (VarP $29)
-                        (DecE
-                          (FuncD
-                            
-                            (VarP $30)
-                            (PrimT Any)
-                            (IfE
-                              (RelE (VarE i) LtOp (LitE (NatLit 10)))
-                              (CallE
-                                (DecE
-                                  (FuncD
-                                    
-                                    (VarP $31)
-                                    (PrimT Any)
-                                    (CallE
-                                      (DecE
-                                        (FuncD
-                                          
-                                          (VarP $34)
-                                          (PrimT Any)
-                                          (CallE
-                                            (DecE
-                                              (FuncD
-                                                
-                                                (VarP $36)
-                                                (PrimT Any)
-                                                (CallE
-                                                  (PrimE @await)
-                                                  (TupE
-                                                    (CallE (VarE f) (VarE i))
-                                                    (VarE $36)
-                                                  )
-                                                )
-                                              )
-                                            )
-                                            (DecE
-                                              (FuncD
-                                                
-                                                (VarP $35)
-                                                (PrimT Any)
-                                                (CallE
-                                                  (VarE $34)
-                                                  (BlockE
-                                                    (LetD WildP (VarE $35))
-                                                    (ExpD (VarE $35))
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                      )
-                                      (DecE
-                                        (FuncD
-                                          
-                                          (VarP $32)
-                                          (PrimT Any)
-                                          (CallE
-                                            (DecE
-                                              (FuncD
-                                                
-                                                (VarP $33)
-                                                (PrimT Any)
-                                                (CallE
-                                                  (VarE $33)
-                                                  (AssignE
-                                                    (VarE i)
-                                                    (BinE
-                                                      (VarE i)
-                                                      AddOp
-                                                      (LitE (NatLit 1))
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                            (VarE $31)
-                                          )
-                                        )
-                                      )
-                                    )
-                                  )
-                                )
-                                (VarE $29)
-                              )
-                              (CallE (VarE $28) (TupE))
-                            )
+                      (LetD (VarP $15) (VarE $14))
+                      (LetD WildP (VarE $15))
+                      (ExpD
+                        (CallE
+                          (VarE $11)
+                          (AssignE
+                            (VarE i@0)
+                            (BinE (VarE i@0) AddOp (LitE (NatLit 1)))
                           )
                         )
                       )
-                      (ExpD (CallE (VarE $29) (TupE)))
+                    )
+                  )
+                  (ExpD
+                    (CallE
+                      (PrimE @await)
+                      (TupE (CallE (VarE f) (VarE i@0)) (VarE $13))
                     )
                   )
                 )
-                (DecE
-                  (FuncD
-                    
-                    (VarP $25)
-                    (PrimT Any)
+                (BlockE
+                  (LetD (VarP $16) (TupE))
+                  (ExpD
                     (CallE
-                      (DecE
-                        (FuncD
-                          
-                          (VarP $26)
-                          (PrimT Any)
-                          (CallE
-                            (VarE $26)
-                            (CallE (VarE print) (LitE (TextLit e-exit)))
-                          )
-                        )
-                      )
-                      (VarE $22)
+                      (VarE $8)
+                      (CallE (VarE print) (LitE (TextLit e-exit)))
                     )
                   )
                 )
               )
             )
+            (ExpD (CallE (VarE $11) (TupE)))
           )
         )
       )
