@@ -17,7 +17,7 @@ type Text = prim "Text";
 
 type Iter<T_> = {next : () -> T_?};
 
-let abs : Int -> Nat = prim "abs";
+func abs (x : Int) : Nat { ((prim "abs") : Int -> Nat) x };
 
 func ignore (_ : Any) {};
 
@@ -31,9 +31,8 @@ class revrange(x : Nat, y : Nat) {
   next() : Nat? { if (i <= y) null else {i -= 1; i?} };
 };
 
-let printInt : Int -> () = prim "printInt";
-let print : Text -> () = prim "print";
-
+func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
+func print (x : Text) { ((prim "print") : Text -> ()) x };
 |}
 
 (*

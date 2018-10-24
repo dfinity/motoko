@@ -1,3 +1,8 @@
-SUFFIXES = .tc
+all:
+	../run.sh *.as
 
-include ../Makefile.common
+accept:
+	../run.sh -a *.as
+
+clean:
+	rm -rf _out

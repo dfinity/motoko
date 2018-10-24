@@ -4,6 +4,8 @@ The ActorScript test suite
 Commands
 --------
 
+Run these either in the top level directory, or in one of the subdirectories.
+
 * `make`
 
    Runs all tests, fails if any fail.
@@ -16,31 +18,19 @@ Commands
 
    Cleans
 
-* `make _out/test.run` (within a subdirectory
+You can also run individual tests, for example:
 
-   Runs `asc -r` on `test.as`, and writes the output to `_out/test.run`
+    ./run.sh run/fac.as
 
-   Analogous:
+to run and
 
-   - `make _out/test.tc`
-   - `make _out/test.wasm`
-   - `make _out/test.wasm.stderr`
-   - `make _out/test.wasm-run`
-   - `make _out/test.dsh-run`
+    ./run.sh -a run/fac.as
 
-* `make test.run.diff`
-
-   Writes the difference between `_out/test.run` and `ok/test.run.ok` to
-   `_out/test.run.diff`
-
-* `make test.run.refresh`
-
-   Copies `_out/test.run` to `ok/test.run.ok`.
-
+to accept.
 
 Adding a new test
 -----------------
 
 1. Create `foo.as`
-2. Run `make accept` (or, more targeted, `make foo.refresh`)
+2. Run `make accept` (or, more targeted, `../run.sh -a foo.as`)
 3. Add `foo.as` and `ok/foo.*.ok` to git.

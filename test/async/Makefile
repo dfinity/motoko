@@ -1,4 +1,8 @@
-SUFFIXES = .tc .run 
-ASC_FLAGS ?= -a 
+all:
+	ASC_FLAGS=-a ../run.sh *.as
 
-include ../Makefile.common
+accept:
+	ASC_FLAGS=-a ../run.sh -a *.as
+
+clean:
+	rm -rf _out
