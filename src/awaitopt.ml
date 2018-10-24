@@ -117,36 +117,43 @@ and infer_effect_dec dec =
   | ClassD (v, l, tps, s, p, efs) ->
     T.Triv
 
-(* sugar *)                      
-let typ e = e.note.note_typ                   
 
-let eff e = e.note.note_eff
+let typ phrase = phrase.note.note_typ                   
 
-let typ_dec dec = dec.note.note_typ
-                          
+let eff phrase = phrase.note.note_eff
+
+let rec typ_decs decs =
+  match decs with
+     | [] -> T.unit
+     | [dec] -> typ dec
+     | _::decs -> typ_decs decs 
+                 
+
 (* the translation *)
-let is_triv (exp:exp)  =
-    eff exp = T.Triv
+let is_triv phrase  =
+    eff phrase = T.Triv
               
 let answerT = Type.unit
 let contT typ = T.Func(T.Call, [], typ, answerT)
 let cpsT typ = T.Func(T.Call, [], contT typ, answerT)
 
+                 
+(* sugar *)                     
+
 (* identifiers *)
+
 let exp_of_id name typ =
   {it = VarE (name@@no_region);
    at = no_region;
    note = {note_typ = typ;
            note_eff = T.Triv}
-  } 
-                
-(* primitives *)
-let primE name typ =
-  {it = PrimE name;
-   at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
-  } 
+  }
+
+let id_of_exp x =
+  match x.it with
+  | VarE x -> x
+  | _ -> failwith "Impossible: id_of_exp"
+    
     
 let id_stamp = ref 0
 
@@ -157,18 +164,13 @@ let fresh_id typ =
    k)
 
 
-let id_of_exp x =
-  match x.it with
-  | VarE x -> x
-  | _ -> failwith "Impossible: id_of_exp"
-
-let idE id typ =
-  {it = VarE id;
+(* primitives *)
+let primE name typ =
+  {it = PrimE name;
    at = no_region;
    note = {note_typ = typ;
            note_eff = T.Triv}
-  }
-   
+  } 
 
 (* TBR: require shareable typ? *)                                  
 let prim_async typ = primE "@async" (T.Func(T.Call,[], cpsT typ, T.Async typ))
@@ -178,6 +180,7 @@ let prim_actor_field_unit typ =
   primE "@actor_field_unit" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
 let prim_actor_field_async typ = 
   primE "@actor_field_async" (T.Func(T.Call, [], T.Tup [T.Prim T.Text; typ], typ))
+
         
 let actor_field typ =
   match typ with
@@ -187,12 +190,33 @@ let actor_field typ =
      prim_actor_field_async typ
   | _ -> assert false
   
+(* smart(ish) constructors *)
+    
+let idE id typ =
+  {it = VarE id;
+   at = no_region;
+   note = {note_typ = typ;
+           note_eff = T.Triv}
+  }
+
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
+let decE exp = {exp with it = DecE exp}
+
+let blockE decs = 
+    let es = List.map eff decs in
+    let typ = typ_decs decs in
+    let e =  List.fold_left max_eff Type.Triv es in
+    { it = BlockE decs;
+      at = no_region;
+      note = {note_typ = typ;
+              note_eff = e}
+    }
+                       
 let varD x exp = { exp with it = VarD (x,exp) }                   
+
 let textE s =
-  {
-    it = LitE (ref (TextLit s));
+  { it = LitE (ref (TextLit s));
     at = no_region;
     note = {note_typ = T.Prim T.Text;
             note_eff = T.Triv;}
@@ -219,12 +243,13 @@ let boolE b =
     note = {note_typ = T.bool;
             note_eff = T.Triv}
   }
+
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = {note_typ = typ;
             note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
-           }           
+           }
   }
 let dotE exp1 id typ =
   { it = DotE (exp1,{it=id;at=no_region;note=()});
@@ -294,17 +319,13 @@ let  (-->) k e =
   | VarE v ->
      let note = {note_typ = T.Func(T.Call, [], typ k, typ e);
                  note_eff = T.Triv} in
-     {it=DecE({it=FuncD("" @@ no_region, (* no recursion *)
+     decE ({it=FuncD("" @@ no_region, (* no recursion *)
                         [],
                         {it=VarP v;at=no_region;note=k.note},
                         PrimT "Any"@@no_region, (* bogus,  but we shouln't use it anymore *)
                         e);
-               at = no_region;
-               note;}
-            );
-     at = e.at;
-     note;
-    }
+            at = no_region;
+            note;})
   | _ -> failwith "Impossible: -->"
             
 (* Lambda application *)
@@ -349,7 +370,6 @@ let letcont k scope =
 
 (* the empty identifier names the implicit return label *)
 let id_ret = "" 
-    
 
 let ( -@- ) k exp2 =
   match k with
@@ -362,8 +382,7 @@ let ( -@- ) k exp2 =
         let u = fresh_id typ in
         letE u exp2
           (k  u)
-     (* k exp2 *)                         
-           
+          
 (* Label environments *)
 
 module LabelEnv = Env.Make(String)
@@ -374,7 +393,6 @@ type label_sort = Cont of kont | Label
 
 
 (* Trivial translation of pure terms (eff = T.Triv) *)                                  
-
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp.it }
@@ -488,7 +506,9 @@ and t_dec' context dec' =
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in     
     let fields' = t_fields context' fields in             
     ClassD (id, lab, typbinds, sort, pat, fields')
+
 and t_decs context decs = List.map (t_dec context) decs           
+
 and t_fields context fields = 
   List.map (fun (field:exp_field) ->
       { field with it = { field.it with exp = t_exp context field.it.exp }})
@@ -683,8 +703,9 @@ and c_obj context exp sort id fields =
   let rec c_fields fields decs nameids =
     match fields with
       | [] ->
-         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) :: decs in
-         {exp with it = BlockE (List.rev decs)}
+         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids))::
+                    decs in
+         blockE (List.rev decs)
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
          let exp = if sort.it = T.Actor && priv.it = Public
                    then actor_field (typ exp) -*- tupE([textE id.it;exp])
@@ -779,7 +800,7 @@ and c_exp' context exp k =
      letcont k
        (fun k ->
          let context' = LabelEnv.add id.it (Cont (ContVar k)) context in
-         (c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *))
+         c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
   | BreakE (id, exp1) ->
     begin
       match LabelEnv.find_opt id.it context with
@@ -834,33 +855,29 @@ and c_dec context dec (k:kont) =
   | ExpD exp ->
      begin
      match eff exp with
-     | T.Triv -> (k -@- (t_exp context exp))
+     | T.Triv -> k -@- (t_exp context exp)
      | T.Await -> c_exp context exp k 
      end                                       
   | TypD _ ->
      k -@- unitE
   | LetD (pat,exp) ->
-     (* TODO: push k into block? *)
      let patenv,pat' = rename_pat pat in
-     let dec' v = {dec with it = LetD(pat',v)} in
-     (* TBR should we worry about duplicating v? *)
-     let block v =
-       { it = BlockE ((dec' v::define_pat patenv pat)@[{v with it = ExpD v}]);
-         at = no_region;
-         note = {note_typ = typ exp;
-                 note_eff = eff exp}
-       }
+     let block exp =
+       let v = fresh_id (typ exp) in
+       let dec_w = letD v exp in
+       let dec_pat' = {dec with it = LetD(pat',v)} in
+       blockE ((dec_w::
+                  dec_pat'::
+                    define_pat patenv pat)
+               @[expD (k -@- v)])
      in
      begin
      match eff exp with
      | T.Triv ->
-        let v = fresh_id (typ exp) in
-        letE v (t_exp context exp) (* FIX ME *)
-          (k -@- block v)
+        block (t_exp context exp) 
      | T.Await ->
-        let v = fresh_id (typ exp) in
         c_exp context exp (meta (typ exp)
-                             (fun w -> k -@- letE v w (block v))) (* FIX ME *)
+                             (fun v -> block v)) 
      end                                       
   | VarD (id,exp) ->
      begin
@@ -874,16 +891,12 @@ and c_dec context dec (k:kont) =
      end                                       
   | FuncD  (id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
   | ClassD (id, _ (* name *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
-     (* todo: use a block not lets as in LetD *)
-    let func_typ = typ_dec dec in
+    let func_typ = typ dec in
     let v = fresh_id func_typ in 
     let u = fresh_id T.unit in
-    letE v ({it = DecE (t_dec context dec);
-             at = no_region;
-             note = {note_typ = func_typ;
-                     note_eff = T.Triv}})
-      (letE u (define_idE id Const v)
-         (k -@- v))
+    blockE [letD v (decE (t_dec context dec));
+            letD u (define_idE id Const v);
+            expD (k -@- v)]
 
 
 and c_decs context decs k =
@@ -894,11 +907,6 @@ and c_decs context decs k =
   | (dec::decs) ->
      c_dec context dec (meta (typ dec) (fun v-> c_decs context decs k))
   
-(* and c_fields context fields = 
-  List.map (fun (field:exp_field) ->
-      { field with it = { field.it with exp = c_exp context field.it.exp }})
-    fields *)
-           
 (* Blocks and Declarations *)
 
 and declare_dec dec exp : exp =     
@@ -908,7 +916,7 @@ and declare_dec dec exp : exp =
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
   | FuncD (id, _, _, _, _)
-  | ClassD (id, _, _, _, _, _) -> declare_id id (typ_dec dec) exp
+  | ClassD (id, _, _, _, _, _) -> declare_id id (typ dec) exp
 
 and declare_decs decs exp : exp =
   match decs with
@@ -954,8 +962,9 @@ and rename_pat' pat =
      let (patenv,pat1) = rename_pat pat1 in
      (patenv, OptP pat1) 
   | AltP (pat1,pat2) ->
-    (* TBR this assumes pat1 and pat2 bind no variables; add an assert to check?*)
-    (PatEnv.empty,pat.it) 
+     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
+     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
+     (PatEnv.empty,pat.it) 
   | AnnotP (pat1, _typ) ->
      let (patenv,pat1) = rename_pat pat1 in
      (patenv, AnnotP( pat1, _typ))
@@ -975,11 +984,14 @@ and define_pat patenv pat : dec list =
     []
   | VarP id ->
      [ let d = define_idE id Const (PatEnv.find id.it patenv) in
-       {d with it = ExpD d}  
+       expD d  
      ]
   | TupP pats -> define_pats patenv pats  
   | OptP pat1 -> define_pat patenv pat1
-  | AltP _ -> []
+  | AltP (pat1, pat2) ->
+     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
+     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));                
+          []
   | AnnotP (pat1, _typ) -> define_pat patenv pat1 
 
 and define_pats patenv (pats : pat list) : dec list =
