@@ -4,7 +4,6 @@ module T = Type
 module R = Rename             
 
 (* TODO: 
-- avoid admin. reductions, perhaps by optimizing c_* in tail positions
 - is async<T> shareable or not?
 - consider introducing async function type, removing AsyncE and then allocating async<T> values on caller side, not callee side.
 - consider using labels for (any) additional continuation arguments.
@@ -312,20 +311,28 @@ let newObjE  typ sort ids =
 
 let fresh_cont typ = fresh_id (contT typ)
 
-(* Lambda abstraction *)
-                          
-let  (-->) k e =
-  match k.it with
-  | VarE v ->
-     let note = {note_typ = T.Func(T.Call, [], typ k, typ e);
+(* mono-morphic function def *)
+let funcD f x e =
+  match f.it,x.it with
+  | VarE _, VarE _ ->
+     let note = {note_typ = T.Func(T.Call, [], typ x, typ e);
                  note_eff = T.Triv} in
-     decE ({it=FuncD("" @@ no_region, (* no recursion *)
-                        [],
-                        {it=VarP v;at=no_region;note=k.note},
-                        PrimT "Any"@@no_region, (* bogus,  but we shouln't use it anymore *)
-                        e);
+     {it=FuncD((id_of_exp f),
+               [],
+               {it=VarP (id_of_exp x);at=no_region;note=x.note},
+               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               e);
             at = no_region;
-            note;})
+            note;}
+  | _ -> failwith "Impossible: funcD"
+                              
+(* Lambda abstraction *)
+
+let  (-->) x e =
+  match x.it with
+  | VarE _ ->
+     let f = exp_of_id "" (T.Func(T.Call, [], typ x, typ e)) in
+     decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
             
 (* Lambda application *)
@@ -365,10 +372,10 @@ let letcont k scope =
     | MetaCont (typ, cont) ->
        let k' = fresh_cont typ in
        let v = fresh_id typ in
-       letE k' (v --> cont v) (* at this point, I'm really worried about variable capture *)
-       (scope k')                          
+       blockE [funcD k' v (cont v); (* at this point, I'm really worried about variable capture *)
+               expD (scope k')]                          
 
-(* the empty identifier names the implicit return label *)
+(* The empty identifier names the implicit return label *)
 let id_ret = "" 
 
 let ( -@- ) k exp2 =
@@ -620,21 +627,21 @@ and c_while context k e1 e2 =
  in
  match eff e1 with
  | T.Triv ->
-    letE loop (v2 -->
-                 ifE (t_exp context e1)
+    blockE [funcD loop v2 
+                 (ifE (t_exp context e1)
                    e2
                    (k -@- unitE)
-                   answerT)
-    (loop -*- unitE)
+                   answerT);
+            expD (loop -*- unitE)]
  | T.Await ->
-    letE loop (v2 -->
-                 c_exp context e1 (meta (T.bool)
+    blockE [funcD loop v2 
+                 (c_exp context e1 (meta (T.bool)
                                      (fun v1 -> 
                                        ifE v1
                                          e2
                                          (k -@- unitE)
-                                         answerT)))
-    (loop -*- unitE)
+                                         answerT)));
+            expD (loop -*- unitE)]
 
 and c_loop_none context k e1 =
  let loop = fresh_id (contT T.unit) in
@@ -643,10 +650,10 @@ and c_loop_none context k e1 =
     failwith "Impossible: c_loop_none"
  | T.Await ->
     let v1 = fresh_id T.unit in                      
-    letE loop (v1 -->
-                c_exp context e1 (ContVar loop))
-    (loop -*- unitE)
-
+    blockE [funcD loop v1 
+                (c_exp context e1 (ContVar loop));
+            expD(loop -*- unitE)]
+      
 and c_loop_some context k e1 e2 =
  let loop = fresh_id (contT T.unit) in
  let u = fresh_id T.unit in
@@ -666,12 +673,13 @@ and c_loop_some context k e1 e2 =
  in
  match eff e1 with
  | T.Triv ->
-     letE loop (u --> letE v1 (t_exp context e1) e2)
-     (loop -*- unitE)
+    blockE [funcD loop u
+              (letE v1 (t_exp context e1) e2);
+            expD (loop -*- unitE)]
  | T.Await ->
-     letE loop (u -->
-                  c_exp context e1 (meta (typ e1) (fun v1 -> e2)))
-     (loop -*- unitE)
+     blockE [funcD loop u
+               (c_exp context e1 (meta (typ e1) (fun v1 -> e2)));
+            expD (loop -*- unitE)]
 
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
@@ -683,12 +691,13 @@ and c_for context k pat e1 e2 =
     | T.Triv -> loop -*- t_exp context e2
     | T.Await -> c_exp context e2 (ContVar loop) in
  let body v1 =
-   letE loop (v2 -->
-                (switch_optE (dotnext v1)
-                   (k -@- unitE)
-                   pat e2
-                   T.unit))
-     (loop -*- unitE)                                          
+   blockE
+     [funcD loop v2 
+        (switch_optE (dotnext v1)
+           (k -@- unitE)
+           pat e2
+           T.unit);
+      expD (loop -*- unitE)]                                          
  in
  match eff e1 with
  | T.Triv ->
