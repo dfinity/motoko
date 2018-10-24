@@ -1772,7 +1772,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
         (* this is run within the function. The class id is the function
 	identifier, as provided by Func.dec:
 	For closures it is the pointer to the closure.
-	For functions it is the function id (shifted to never class with pointers) *) 
+	For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 None (Some compile_fun_identifier) fs' in
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
