@@ -320,21 +320,23 @@ let compile_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 (* This needs to be disjoint from all pointers *)
 let compile_null =    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int)))
 
+(* Locals *)
+
+let set_tmp env = G.i_ (SetLocal (E.tmp_local env))
+let get_tmp env = G.i_ (GetLocal (E.tmp_local env))
+
+let new_local env =
+  let i = E.add_anon_local env I32Type in
+  ( G.i_ (SetLocal (nr i))
+  , G.i_ (GetLocal (nr i))
+  )
+
 (* Stack utilities *)
 
-let dup env : G.t = (* duplicate top element *)
-  G.i_ (TeeLocal (E.tmp_local env)) ^^
-  G.i_ (GetLocal (E.tmp_local env))
-
-let _swap env : G.t = (* swaps top elements *)
-  let i = E.add_anon_local env I32Type in
-  G.i_ (SetLocal (E.tmp_local env)) ^^
-  G.i_ (SetLocal (nr i)) ^^
-  G.i_ (GetLocal (E.tmp_local env)) ^^
-  G.i_ (GetLocal (nr i))
+(* duplicate top element *)
+let dup env : G.t = set_tmp env ^^ get_tmp env ^^ get_tmp env
 
 (* Heap and allocations *)
-
 
 let load_ptr : G.t =
   G.i_ (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
@@ -384,8 +386,8 @@ module ElemHeap = struct
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
   let remember_reference env : G.t =
-    let i = E.add_anon_local env I32Type in
-    G.i_ (SetLocal (nr i)) ^^
+    let (set_i, get_i) = new_local env in
+    set_i ^^
 
     (* Return index *)
     G.i_ (GetGlobal ref_counter) ^^
@@ -396,7 +398,7 @@ module ElemHeap = struct
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
     compile_const ref_location ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (GetLocal (nr i)) ^^
+    get_i ^^
     store_ptr ^^
 
     (* Bump counter *)
@@ -425,11 +427,11 @@ module Tuple = struct
   let lit_rec env element_instructions : G.t =
     let n = List.length element_instructions in
 
-    let i = E.add_anon_local env I32Type in
+    let (set_i, get_i) = new_local env in
     Heap.alloc (Wasm.I32.of_int_u n) ^^
-    G.i_ (SetLocal (nr i)) ^^
+    set_i ^^
 
-    let compile_self = G.i_ (GetLocal (nr i)) in
+    let compile_self = get_i in
 
     let init_elem idx instrs : G.t =
       compile_self ^^
@@ -468,9 +470,9 @@ module Var = struct
   let set_loc env var = match E.lookup_var env var with
     | Some (Local i) -> G.i_ (SetLocal (nr i))
     | Some (Static i) ->
-      G.i_ (SetLocal (E.tmp_local env)) ^^
+      set_tmp env ^^
       compile_const i ^^
-      G.i_ (GetLocal (E.tmp_local env)) ^^
+      get_tmp env ^^
       store_ptr
     | Some (Deferred _) -> raise (Invalid_argument "Cannot set heap location for a deferred thing")
     | None   -> G.i_ Unreachable
@@ -517,14 +519,14 @@ module Func = struct
   (* The argument on the stack *)
   let call_direct env fi at =
    (* Pop the argument *)
-   let i = E.add_anon_local env I32Type in
-   G.i_ (SetLocal (nr i)) ^^
+   let (set_i, get_i) = new_local env in
+   set_i ^^
 
    (* First arg: The (unused) closure pointer *)
    compile_null ^^
 
    (* Second arg: The argument *)
-   G.i_ (GetLocal (nr i)) ^^
+   get_i ^^
 
    (* All done: Call! *)
    G.i (Call (nr fi) @@ at)
@@ -532,19 +534,19 @@ module Func = struct
   (* Expect the function closure and the argument on the stack *)
   let call_indirect env at =
    (* Pop the argument *)
-   let i = E.add_anon_local env I32Type in
-   G.i_ (SetLocal (nr i)) ^^
+   let (set_i, get_i) = new_local env in
+   set_i ^^
 
    (* Pop the closure pointer *)
-   let fi = E.add_anon_local env I32Type in
-   G.i_ (SetLocal (nr fi)) ^^
+   let (set_fi, get_fi) = new_local env in
+   set_fi ^^
 
    (* First arg: The closure pointer *)
-   G.i_ (GetLocal (nr fi)) ^^
+   get_fi ^^
    (* Second arg: The argument *)
-   G.i_ (GetLocal (nr i)) ^^
+   get_i ^^
    (* And now get the table index *)
-   G.i_ (GetLocal (nr fi)) ^^
+   get_fi ^^
    Heap.load_field 0l ^^
    (* All done: Call! *)
    G.i (CallIndirect (nr E.unary_fun_ty_i) @@ at)
@@ -588,16 +590,16 @@ module Func = struct
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env last name captured mk_pat mk_body at =
-      let li = E.add_anon_local pre_env I32Type in
+      let (set_li, get_li) = new_local pre_env in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
       let alloc_code =
         (* Allocate a heap object for the function *)
         Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) ^^
-        G.i ( SetLocal (li @@ at) @@ at ) ^^
+        set_li ^^
 
         (* Allocate an extra indirection for the variable *)
-        Tuple.lit pre_env1 [ G.i (GetLocal (li @@ at) @@ at ) ] ^^
+        Tuple.lit pre_env1 [ get_li ] ^^
         G.i ( SetLocal (vi @@ at) @@ at )
       in
 
@@ -610,16 +612,16 @@ module Func = struct
         let fi = E.add_fun env f in
 
         (* Store the function number: *)
-        G.i (GetLocal (li @@ at) @@ at) ^^
+        get_li ^^
         G.i (Wasm.Ast.Const (Wasm.Values.I32 fi @@ at) @@ at) ^^ (* Store function number *)
         Heap.store_field 0l ^^
         (* Store all captured values *)
         let store_capture i v =
-          G.i (GetLocal (li @@ at) @@ at) ^^
+          get_li ^^
           Var.get_loc env v ^^
           Heap.store_field (Wasm.I32.of_int_u (1+i)) in
         G.concat_mapi store_capture captured ^^
-        if last then G.i (GetLocal (li @@ at) @@ at) else G.nop)
+        if last then get_li  else G.nop)
 
   let dec pre_env last name captured mk_pat mk_body at =
     (* This could be smarter: It is ok to capture closed functions,
@@ -635,16 +637,16 @@ end (* Func *)
 module Prim = struct
 
   let prim_abs env =
-    let i = E.add_anon_local env I32Type in
-    G.i_ (SetLocal (nr i)) ^^
-    G.i_ (GetLocal (nr i)) ^^
+    let (set_i, get_i) = new_local env in
+    set_i ^^
+    get_i ^^
     compile_zero ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
     G.if_ [I32Type]
       ( compile_zero ^^
-        G.i_ (GetLocal (nr i)) ^^
+        get_i ^^
         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
-      ( G.i_ (GetLocal (nr i)) )
+      ( get_i )
 
 end (* Prim *)
 
@@ -669,9 +671,9 @@ module Object = struct
              Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs))) in
 
      (* Allocate memory *)
-     let ri = E.add_anon_local env I32Type in
+     let (set_ri, get_ri) = new_local env in
      Heap.alloc n ^^
-     G.i_ (SetLocal (nr ri)) ^^
+     set_ri ^^
 
      (* Bind the fields in the envrionment *)
      (* We could omit that if we extend E.local_vars_env to also have an offset,
@@ -679,7 +681,7 @@ module Object = struct
      let mk_field_ptr (env, code) (id, mk_is) =
        let (env', fi) = E.add_local env id.it in
        let offset = Wasm.I32.mul 4l (field_position env id) in
-       let code' = G.i_ (GetLocal (nr ri)) ^^
+       let code' = get_ri ^^
                    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 offset))) ^^
                    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                    G.i_ (SetLocal (nr fi)) in
@@ -690,13 +692,13 @@ module Object = struct
      (* An extra indirection for the 'this' pointer, if present *)
      let (env2, this_code) = match this_name_opt with
       | Some name -> let (env2, ti) = E.add_local env1 name.it in
-                     (env2, Tuple.lit env1 [ G.i_ (GetLocal (nr ri)) ] ^^
+                     (env2, Tuple.lit env1 [ get_ri ] ^^
                             G.i_ (SetLocal (nr ti)))
       | None -> (env1, G.nop) in
      this_code ^^
 
      (* Write the class field *)
-     G.i_ (GetLocal (nr ri)) ^^
+     get_ri ^^
      (match class_option with
        | Some class_instrs -> class_instrs
        | None -> compile_const 1l ) ^^
@@ -705,14 +707,14 @@ module Object = struct
      (* Write all the fields *)
      let init_field (id, mk_is) : G.t =
         let i = field_position env id in
-        G.i_ (GetLocal (nr ri)) ^^
+        get_ri ^^
 	mk_is env2 ^^
         Heap.store_field i
      in
      G.concat_map init_field fs ^^
 
      (* Return the pointer to the object *)
-     G.i_ (GetLocal (nr ri))
+     get_ri
 
   let idx env f =
      let i = field_position env f in
@@ -807,14 +809,14 @@ module Array = struct
        ) in
 
     let mk_next_fun mk_code = Func.unary_of_body env (fun env1 ->
-            let i = E.add_anon_local env1 I32Type in
+            let (set_i, get_i) = new_local env1 in
             (* Get pointer to counter from closure *)
             Func.load_closure 1l ^^
             (* Read pointer *)
             load_ptr ^^
-            G.i_ (SetLocal (nr i)) ^^
+            set_i ^^
 
-            G.i_ (GetLocal (nr i)) ^^
+            get_i ^^
             (* Get pointer to array from closure *)
             Func.load_closure 2l ^^
             (* Get length *)
@@ -827,32 +829,32 @@ module Array = struct
               ( (* Get point to counter from closure *)
                 Func.load_closure 1l ^^
                 (* Store increased counter *)
-                G.i_ (GetLocal (nr i)) ^^
+                get_i ^^
                 compile_const 1l ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 store_ptr ^^
                 (* Return stuff *)
                 Opt.inject env (
-                  mk_code (Func.load_closure 2l) (G.i_ (GetLocal (nr i)))
+                  mk_code (Func.load_closure 2l) (get_i)
                 )
               )
        ) in
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* counter *)
-            let i = E.add_anon_local env1 I32Type in
+            let (set_i, get_i) = new_local env1 in
             Tuple.lit env1 [ compile_zero ] ^^
-            G.i_ (SetLocal (nr i)) ^^
+            set_i ^^
 
             (* next function *)
-            let ni = E.add_anon_local env1 I32Type in
+            let (set_ni, get_ni) = new_local env1 in
             Tuple.lit env1 [
               compile_const next_funid;
-              G.i_ (GetLocal (nr i));
+              get_i;
               get_array_object ] ^^
-            G.i_ (SetLocal (nr ni)) ^^
+            set_ni ^^
 
             Object.lit env1 None None
-              [ (nr_ "next", fun _ -> G.i_ (GetLocal (nr ni))) ]
+              [ (nr_ "next", fun _ -> get_ni) ]
        ) in
 
 
@@ -1075,15 +1077,15 @@ module Dfinity = struct
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^
 
-    let i = E.add_anon_local env I32Type in
-    G.i_ (SetLocal (nr i)) ^^
+    let (set_i, get_i) = new_local env in
+    set_i ^^
 
     (* Calculate the offset *)
-    G.i_ (GetLocal (nr i)) ^^
+    get_i ^^
     compile_const (Int32.mul Heap.word_size Text.header_size) ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     (* Calculate the length *)
-    G.i_ (GetLocal (nr i)) ^^
+    get_i ^^
     Heap.load_field (Text.len_field) ^^
 
     (* Externalize *)
@@ -1112,14 +1114,14 @@ module Dfinity = struct
   let prim_print env =
     if E.mode env = DfinityMode
     then
-      let i = E.add_anon_local env I32Type in
-      G.i_ (SetLocal (nr i)) ^^
+      let (set_i, get_i) = new_local env in
+      set_i ^^
       (* Calculate the offset *)
-      G.i_ (GetLocal (nr i)) ^^
+      get_i ^^
       compile_const (Int32.mul Heap.word_size Text.header_size) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       (* Calculate the length *)
-      G.i_ (GetLocal (nr i)) ^^
+      get_i ^^
       Heap.load_field (Text.len_field) ^^
       (* Externalize *)
       G.i_ (Call (nr (data_externalize_i env))) ^^
@@ -1190,12 +1192,12 @@ module OrthogonalPersistence = struct
 
     (fun env start_funid ->
       fill_restore_mem (Func.nullary_of_body env (fun env1 ->
-         let i = E.add_anon_local env1 I32Type in
+         let (set_i, get_i) = new_local env1 in
          G.i_ (GetGlobal (nr mem_global)) ^^
          G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
-         G.i_ (SetLocal (nr i)) ^^
+         set_i ^^
 
-         G.i_ (GetLocal (nr i)) ^^
+         get_i ^^
          compile_const 0l ^^
          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
          G.if_[]
@@ -1204,14 +1206,14 @@ module OrthogonalPersistence = struct
 
            (* Subsequent run *)
            ( (* Set heap pointer based on databuf length *)
-             G.i_ (GetLocal (nr i)) ^^
+             get_i ^^
              compile_const ElemHeap.begin_dyn_space ^^
              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
              G.i_ (SetGlobal Heap.heap_ptr) ^^
 
              (* Load memory *)
              compile_const ElemHeap.begin_dyn_space ^^
-             G.i_ (GetLocal (nr i)) ^^
+             get_i ^^
              G.i_ (GetGlobal (nr mem_global)) ^^
              compile_zero ^^
              G.i_ (Call (nr (Dfinity.data_internalize_i env1))) ^^
@@ -1305,9 +1307,9 @@ let compile_lit env lit = match lit with
 
 let compile_unop env op = match op with
   | NegOp ->
-      G.i_ (SetLocal (E.tmp_local env)) ^^
+      set_tmp env ^^
       compile_zero ^^
-      G.i_ (GetLocal (E.tmp_local env)) ^^
+      get_tmp env ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
@@ -1408,21 +1410,21 @@ and compile_exp (env : E.t) exp = match exp.it with
         function id stored therein *)
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     let i = E.add_anon_local env I32Type in
-     let j = E.add_anon_local env I32Type in
+     let (set_i, get_i) = new_local env in
+     let (set_j, get_j) = new_local env in
      code1 ^^ Heap.load_field Object.class_position ^^
-     G.i_ (SetLocal (nr i)) ^^
+     set_i ^^
      code2 ^^
-     G.i_ (SetLocal (nr j)) ^^
+     set_j ^^
      (* Equal? *)
-     G.i_ (GetLocal (nr i)) ^^
-     G.i_ (GetLocal (nr j)) ^^
+     get_i ^^
+     get_j ^^
      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
      G.if_ [I32Type]
        compile_true
        (* Static function id? *)
-       ( G.i_ (GetLocal (nr i)) ^^
-         G.i_ (GetLocal (nr j)) ^^
+       ( get_i ^^
+         get_j ^^
          Heap.load_field 0l ^^ (* get the function id *)
          compile_const Heap.word_size ^^ (* mangle *)
          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
@@ -1479,7 +1481,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      Func.call_indirect env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
-    let i = E.add_anon_local env I32Type in
+    let (set_i, get_i) = new_local env in
 
     let rec go env cs = match cs with
       | [] -> G.i_ Unreachable
@@ -1492,7 +1494,7 @@ and compile_exp (env : E.t) exp = match exp.it with
           alloc_code ^^
           G.block_ [I32Type]
             ( G.remember_depth fail_depth (
-              G.i_ (GetLocal (nr i)) ^^
+              get_i ^^
               code ^^
               compile_true
             )) ^^
@@ -1501,32 +1503,32 @@ and compile_exp (env : E.t) exp = match exp.it with
               (go env1 cs)
           in
       let code2 = go env cs in
-      code1 ^^ G.i_ (SetLocal (nr i)) ^^ code2
+      code1 ^^ set_i ^^ code2
   | ForE (p, e1, e2) ->
      let code1 = compile_exp env e1 in
      let (env1, alloc_code, code2) = compile_mono_pat env p in
      let code3 = compile_exp env1 e2 in
 
-     let i = E.add_anon_local env I32Type in
+     let (set_i, get_i) = new_local env in
      (* Store the iterator *)
      code1 ^^
-     G.i_ (SetLocal (nr i)) ^^
+     set_i ^^
 
      G.loop_ []
-       ( G.i_ (GetLocal (nr i)) ^^
+       ( get_i ^^
          Object.load_idx env1 (nr__ "next") ^^
          compile_unit ^^
          Func.call_indirect env1 Source.no_region ^^
-         let oi = E.add_anon_local env I32Type in
-         G.i_ (SetLocal (nr oi)) ^^
+         let (set_oi, get_oi) = new_local env in
+         set_oi ^^
 
          (* Check for null *)
-         G.i_ (GetLocal (nr oi)) ^^
+         get_oi ^^
          compile_null ^^
          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
          G.if_ []
            G.nop
-           ( alloc_code ^^ G.i_ (GetLocal (nr oi)) ^^ Opt.project ^^
+           ( alloc_code ^^ get_oi ^^ Opt.project ^^
              code2 ^^ code3 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))
            )
      ) ^^
@@ -1594,15 +1596,15 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
   | AnnotP (p, _) -> compile_pat env fail_depth p
   | OptP p ->
       let (env1, alloc_code1, code1) = compile_pat env fail_depth p in
-      let i = E.add_anon_local env I32Type in
+      let (set_i, get_i) = new_local env in
       let code =
-        G.i_ (SetLocal (nr i)) ^^
-        G.i_ (GetLocal (nr i)) ^^
+        set_i ^^
+        get_i ^^
         compile_null ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
         G.if_ []
           ( compile_fail env fail_depth )
-          ( G.i_ (GetLocal (nr i)) ^^
+          ( get_i ^^
             Opt.project ^^
             code1
           ) in
@@ -1627,9 +1629,9 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
       let (env1,i) = E.add_local env name.it; in
       let alloc_code = Heap.alloc 1l ^^ G.i_ (SetLocal (nr i)) in
       let code =
-        G.i_ (SetLocal (E.tmp_local env)) ^^
+        set_tmp env ^^
         G.i_ (GetLocal (nr i)) ^^
-        G.i_ (GetLocal (E.tmp_local env)) ^^
+        get_tmp env ^^
         store_ptr in
       (env1, alloc_code, code)
   | TupP ps ->
@@ -1652,12 +1654,12 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
       let (env3, alloc_code2, code2) = compile_pat env2' fail_depth2 p2 in
       let env4 = env3 in
 
-      let i = E.add_anon_local env I32Type in
+      let (set_i, get_i) = new_local env in
       let code =
-        G.i_ (SetLocal (nr i)) ^^
+        set_i ^^
         G.block_[I32Type]
           ( G.remember_depth fail_depth1 (
-            G.i_ (GetLocal (nr i)) ^^
+            get_i ^^
             code1 ^^
             compile_true
           )) ^^
@@ -1665,7 +1667,7 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
           G.nop
           (G.block_ [I32Type]
             ( G.remember_depth fail_depth2 (
-              G.i_ (GetLocal (nr i)) ^^
+              get_i ^^
               code2 ^^
               compile_true
             )) ^^
@@ -1682,10 +1684,10 @@ and compile_mono_pat env pat =
   let fail_depth = G.new_depth_label () in
   let (env1, alloc_code, code) = compile_pat env fail_depth pat in
   let wrapped_code =
-    G.i_ (SetLocal (E.tmp_local env)) ^^
+    set_tmp env ^^
     G.block_ [I32Type]
       ( G.remember_depth fail_depth (
-        G.i_ (GetLocal (E.tmp_local env)) ^^
+        get_tmp env ^^
         code ^^
         compile_true
       )) ^^
@@ -1846,15 +1848,15 @@ and compile_actor_fields env fs =
  *)
 and compile_actorref_wrapper env fields =
   (* The actor ref (not a table index) is on the stack *)
-  let actorref_i = E.add_anon_local env I32Type in
-  G.i_ (SetLocal (nr actorref_i)) ^^
+  let (set_actorref_i, get_actorref_i) = new_local env in
+  set_actorref_i ^^
 
   let wrap_field name =
     (* Create a closure object that calls the funcref *)
     let code env =
       Tuple.lit env
         [ compile_const (Dfinity.funcref_wrapper_i env)
-        ; G.i_ (GetLocal (nr actorref_i)) ^^
+        ; get_actorref_i ^^
           Dfinity.compile_databuf_of_bytes env (name.it) ^^
           G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
           ElemHeap.remember_reference env
