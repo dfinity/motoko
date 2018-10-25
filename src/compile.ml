@@ -1384,9 +1384,9 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e1 @ (* offset to array *)
      compile_exp env e2 @ (* idx *)
      Array.idx
-  | DotE (e, f) ->
+  | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e @
-     Object.idx env f
+     Object.idx env {id with it = n}
   | _ -> todo "compile_lexp" (Arrange.exp exp) [ nr Unreachable ]
 
 (* compile_exp returns an *value*.
@@ -1763,7 +1763,7 @@ and compile_dec last pre_env dec : E.t * Wasm.Ast.instr list * (E.t -> Wasm.Ast.
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
-  | ClassD (name, typ_params, s, p, efs) ->
+  | ClassD (name, _, typ_params, s, p, efs) ->
       let captured = Freevars.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 compile_fun_identifier =

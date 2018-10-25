@@ -258,10 +258,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
     interpret_obj env sort id fields k
-  | DotE (exp1, id) ->
+  | DotE (exp1, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      k (find id.it fs)
+      k (find n fs)
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
@@ -414,7 +414,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
   | NewObjE (sort,ids) ->
      let ve = List.fold_left
-                (fun ve id -> V.Env.disjoint_add id.it
+                (fun ve (name,id) -> V.Env.disjoint_add (string_of_name name.it)
                                 (Lib.Promise.value (find id.it env.vals)) ve)
                 V.Env.empty ids
      in
@@ -553,20 +553,25 @@ and interpret_obj env sort id fields (k : V.value V.cont) =
     k v
   )
 
-
+and declare_field (id,name) =
+  let p = Lib.Promise.make () in
+  V.Env.singleton id.it p,
+  V.Env.singleton (string_of_name name.it) p
+  
+                   
 and declare_exp_fields fields private_ve public_ve : val_env * val_env =
   match fields with
   | [] -> private_ve, public_ve
-  | {it = {id; mut; priv; _}; _}::fields' ->
-    let ve = declare_id id in
+  | {it = {id; name; mut; priv; _}; _}::fields' ->
+    let private_ve', public_ve' = declare_field (id,name) in
     declare_exp_fields fields'
-      (V.Env.adjoin private_ve ve) (V.Env.adjoin public_ve ve)
+      (V.Env.adjoin private_ve private_ve') (V.Env.adjoin public_ve public_ve')
 
 
 and interpret_fields env s co fields ve (k : V.value V.cont) =
   match fields with
   | [] -> k (V.Obj (co, V.Env.map Lib.Promise.value ve))
-  | {it = {id; mut; priv; exp}; _}::fields' ->
+  | {it = {id; name; mut; priv; exp}; _}::fields' ->
     interpret_exp env exp (fun v ->
       let v' =
         if s = T.Actor && priv.it = Public
@@ -597,7 +602,7 @@ and declare_dec dec : val_env =
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
   | FuncD (id, _, _, _, _)
-  | ClassD (id, _, _, _, _) -> declare_id id
+  | ClassD (id, _, _, _, _, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -629,7 +634,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let v = V.Func (None, f) in
     define_id env id v;
     k v
-  | ClassD (id, _typbinds, sort, pat, fields) ->
+  | ClassD (id, _,  _typbinds, sort, pat, fields) ->
     let c = V.new_class () in
     let f = interpret_func env id pat
       (fun env' k' ->

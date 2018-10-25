@@ -386,15 +386,15 @@ and infer_exp' env exp : T.typ =
     )
   | ObjE (sort, id, fields) ->
     fst (infer_obj env sort.it id fields)
-  | DotE (exp1, id) ->
+  | DotE (exp1, {it = Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let _, tfs = T.as_obj_sub id.it env.cons t1 in
-      match List.find_opt (fun {T.name; _} -> name = id.it) tfs with
+      let _, tfs = T.as_obj_sub n env.cons t1 in
+      match List.find_opt (fun {T.name; _} -> name = n) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error exp1.at "field name %s does not exist in type\n  %s"
-          id.it (T.string_of_typ_expand env.cons t1)
+          n (T.string_of_typ_expand env.cons t1)
     with Invalid_argument _ ->
       error exp1.at "expected object type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
@@ -593,8 +593,9 @@ and infer_exp' env exp : T.typ =
        | None -> error id.at "unbound variable %s" id.it
     end;
     T.unit
-  | NewObjE (sort, ids) ->
-    T.Obj(sort.it, List.map (fun id -> {T.name = id.it; T.typ = T.Env.find id.it env.vals}) ids)
+  | NewObjE (sort, labids) ->
+     T.Obj(sort.it, List.map (fun (name,id) ->
+                        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)
        
 and check_exp env t exp =
   assert (not env.pre);
@@ -900,7 +901,7 @@ and infer_exp_fields env s id t fields : T.field list * T.field list * val_env =
   List.sort compare tfs, List.sort compare tfs_inner, ve
 
 and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field list * val_env =
-  let {id; exp; mut; priv} = field.it in
+  let {id; name; exp; mut; priv} = field.it in
   let t =
     match T.Env.find id.it env.vals with
     | T.Pre -> infer_mut mut (infer_exp (adjoin_vals env ve) exp)
@@ -913,12 +914,12 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
   if not env.pre then begin
     if s = T.Actor && priv.it = Public && not (is_async_typ env.cons t) then
       error field.at "public actor field %s has non-async type\n  %s"
-        id.it (T.string_of_typ_expand env.cons t)
+        (string_of_name name.it) (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in
-  let tfs_inner' = {T.name = id.it; typ = t} :: tfs_inner in
+  let tfs_inner' = {T.name = string_of_name name.it; typ = t} :: tfs_inner in
   let tfs' =
-    if priv.it = Private then tfs else {T.name = id.it; typ = t} :: tfs
+    if priv.it = Private then tfs else {T.name = string_of_name name.it; typ = t} :: tfs
   in tfs', tfs_inner', ve'
 
 
@@ -984,13 +985,13 @@ and infer_dec env ce_inner dec : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp
     end;
     t
-  | ClassD (id, typbinds, sort, pat, fields) ->
+  | ClassD (id, tid, typbinds, sort, pat, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let _cs, _ts, te, ce = check_typ_binds env typbinds in
       let env' = adjoin_typs env te ce in
-      let c = T.Env.find id.it env.typs in
-      let env' = (*env'*) add_typ env' id.it c (Con.Env.find c ce_inner) in
+      let c = T.Env.find tid.it env.typs in
+      let env' = (*env'*) add_typ env' tid.it c (Con.Env.find c ce_inner) in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
         {env' with labs = T.Env.empty; rets = None; async = false} in
@@ -1104,7 +1105,7 @@ and gather_block_typdecs decs : scope =
 and gather_dec_typdecs (ve, te, ce) dec : scope =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> ve, te, ce
-  | TypD (id, binds, _) | ClassD (id, binds, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _) ->
     if T.Env.mem id.it te then
       error dec.at "duplicate definition for type %s in block" id.it;
     let cs =
@@ -1114,9 +1115,9 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let ve' =
       match dec.it with
-      | ClassD _ ->
+      | ClassD (conid, _, _ , _, _, _) ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add id.it (T.Func (T.Construct, pre_tbs, T.Pre, t2)) ve
+        T.Env.add conid.it (T.Func (T.Construct, pre_tbs, T.Pre, t2)) ve
       | _ -> ve
     in ve', T.Env.add id.it c te, Con.Env.add c pre_k ce
 
@@ -1142,7 +1143,7 @@ and infer_dec_typdecs env dec : con_env * con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     Con.Env.singleton c (T.Def (tbs, T.close cs t)), Con.Env.empty
-  | ClassD (id, binds, sort, pat, fields) ->
+  | ClassD (conid, id, binds, sort, pat, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
@@ -1163,7 +1164,7 @@ and gather_dec_valdecs ve dec : val_env =
     ve
   | LetD (pat, _) ->
     gather_pat ve pat
-  | VarD (id, _) | FuncD (id, _, _, _, _) | ClassD (id, _, _, _, _) ->
+  | VarD (id, _) | FuncD (id, _, _, _, _) | ClassD (id,_ , _, _, _, _) ->
     if T.Env.mem id.it ve then
       error dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
@@ -1198,14 +1199,14 @@ and infer_dec_valdecs env dec : val_env =
     T.Env.singleton id.it (T.Func (T.Call, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
-  | ClassD (id, typbinds, sort, pat, fields) ->
+  | ClassD (conid, id, typbinds, sort, pat, fields) ->
     let cs, ts, te, ce = check_typ_binds env typbinds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (T.Construct, tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton conid.it (T.Func (T.Construct, tbs, T.close cs t1, T.close cs t2))
 
 
 (* Programs *)
