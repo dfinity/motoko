@@ -312,13 +312,13 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_true =    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 1l)))
-let compile_false =   G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)))
-let compile_zero =    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)))
-let compile_unit =    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 0l)))
 let compile_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
+let compile_true =    compile_const 1l
+let compile_false =   compile_const 0l
+let compile_zero =    compile_const 0l
+let compile_unit =    compile_const 0l
 (* This needs to be disjoint from all pointers *)
-let compile_null =    G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 Int32.max_int)))
+let compile_null =    compile_const Int32.max_int
 
 (* Locals *)
 
@@ -613,7 +613,7 @@ module Func = struct
 
         (* Store the function number: *)
         get_li ^^
-        G.i (Wasm.Ast.Const (Wasm.Values.I32 fi @@ at) @@ at) ^^ (* Store function number *)
+        compile_const fi ^^ (* Store function number *)
         Heap.store_field 0l ^^
         (* Store all captured values *)
         let store_capture i v =
@@ -682,7 +682,7 @@ module Object = struct
        let (env', fi) = E.add_local env id.it in
        let offset = Wasm.I32.mul 4l (field_position env id) in
        let code' = get_ri ^^
-                   G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 offset))) ^^
+                   compile_const offset ^^
                    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                    G.i_ (SetLocal (nr fi)) in
        (env', code ^^ code') in
@@ -718,7 +718,7 @@ module Object = struct
 
   let idx env f =
      let i = field_position env f in
-     G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 (Wasm.I32.mul 4l i)))) ^^
+     compile_const (Wasm.I32.mul 4l i) ^^
      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
 
   let load_idx env f =
@@ -1296,10 +1296,10 @@ let compile_lit env lit = match lit with
   | BoolLit false -> compile_false
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      ->
-    (try G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n))))
+    (try compile_const (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
   | NatLit n      ->
-    (try G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 (Big_int.int32_of_big_int n))))
+    (try compile_const (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
   | NullLit       -> compile_null
   | TextLit t     -> Text.lit env t
