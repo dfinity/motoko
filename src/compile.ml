@@ -95,8 +95,6 @@ module E = struct
     ld : G.depth NameEnv.t;
     (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
     local_vars_env : t varloc NameEnv.t;
-    (* Mapping primitives to WebAssembly locals *)
-    primitives_env : int32 NameEnv.t;
     (* Field labels to index *)
     (* (This is for the prototypical simple tuple-implementations for objects *)
     field_env : int32 NameEnv.t ref;
@@ -196,7 +194,6 @@ module E = struct
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
     local_vars_env = NameEnv.empty;
-    primitives_env = NameEnv.empty;
     n_param = 0l;
     ld = NameEnv.empty;
     field_env = ref init_field_env;
@@ -224,11 +221,6 @@ module E = struct
     match NameEnv.find_opt var env.local_vars_env with
       | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
-
-  let lookup_prim env var =
-    match NameEnv.find_opt var env.primitives_env with
-      | Some i -> Some i
-      | None   -> Printf.eprintf "Could not find primitive %s\n" var; None
 
   let add_anon_local (env : t) ty =
       let i = reg env.locals ty in
@@ -268,9 +260,6 @@ module E = struct
     let (i, fill) = reserve_promise env.funcs in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     (Int32.add i n, fill)
-
-  let add_prim (env : t) name i =
-    { env with primitives_env = NameEnv.add name i env.primitives_env }
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
@@ -645,36 +634,17 @@ end (* Func *)
 (* Primitive functions *)
 module Prim = struct
 
-  let abs_fun env = Func.unary_of_body env (fun env1 ->
-      Func.load_argument ^^
-      compile_zero ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
-      G.if_ [I32Type]
-        (compile_zero ^^
-         Func.load_argument ^^
-         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
-        Func.load_argument
-    )
-
-  let register env n mk_fun =
-    let fi = E.add_fun env (mk_fun env) in
-    let env1 = E.add_prim env n fi in
-    env1
-
-  let rec declare env = function
-      | [] -> env
-      | (n,f) :: xs -> let env1 = register env n f in
-                       let env2 = declare env1 xs
-                       in env2
-
-  let lit env p =
-    begin match E.lookup_prim env p with
-    (* This could be optimized if surrounded by a let or call *)
-    | Some fi -> Var.static_fun_pointer fi env
-    | None   -> G.i_ Unreachable
-    end
-
-  let default_prims = [ "abs", abs_fun ]
+  let prim_abs env =
+    let i = E.add_anon_local env I32Type in
+    G.i_ (SetLocal (nr i)) ^^
+    G.i_ (GetLocal (nr i)) ^^
+    compile_zero ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
+    G.if_ [I32Type]
+      ( compile_zero ^^
+        G.i_ (GetLocal (nr i)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
+      ( G.i_ (GetLocal (nr i)) )
 
 end (* Prim *)
 
@@ -1130,35 +1100,34 @@ module Dfinity = struct
       compile_databuf_of_bytes env name.it
     ]
 
-  let printInt_fun env = Func.unary_of_body env (fun env1 ->
-      Func.load_argument ^^
+  let prim_printInt env =
+    if E.mode env = DfinityMode
+    then
       G.i_ (Call (nr (test_show_i32_i env))) ^^
       G.i_ (Call (nr (test_print_i env))) ^^
       compile_unit
-      )
+    else
+      G.i_ Unreachable
 
-  let print_fun env = Func.unary_of_body env (fun env1 ->
+  let prim_print env =
+    if E.mode env = DfinityMode
+    then
+      let i = E.add_anon_local env I32Type in
+      G.i_ (SetLocal (nr i)) ^^
       (* Calculate the offset *)
-      Func.load_argument ^^
+      G.i_ (GetLocal (nr i)) ^^
       compile_const (Int32.mul Heap.word_size Text.header_size) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       (* Calculate the length *)
-      Func.load_argument ^^
+      G.i_ (GetLocal (nr i)) ^^
       Heap.load_field (Text.len_field) ^^
       (* Externalize *)
       G.i_ (Call (nr (data_externalize_i env))) ^^
       (* Call print *)
       G.i_ (Call (nr (test_print_i env))) ^^
       compile_unit
-      )
-
-  let prims : (string * (E.t -> func)) list =
-    [ "printInt", printInt_fun;
-      "print",    print_fun ]
-
-  let stub_prims : (string * (E.t -> func)) list =
-    [ "printInt", (fun env -> Func.unary_of_body env (fun _ -> G.i_ Unreachable));
-      "print",    (fun env -> Func.unary_of_body env (fun _ -> G.i_ Unreachable)) ]
+    else
+      G.i_ Unreachable
 
   let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
@@ -1384,6 +1353,16 @@ and compile_exp (env : E.t) exp = match exp.it with
   | IdxE _ | DotE _ ->
      compile_lexp env exp ^^
      load_ptr
+  (* We only allow prims of certain shapes, as they occur in the prelude *)
+  | CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, e) ->
+    begin
+     compile_exp env e ^^
+     match p with
+      | "abs" -> Prim.prim_abs env
+      | "printInt" -> Dfinity.prim_printInt env
+      | "print" -> Dfinity.prim_print env
+      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable) 
+    end
   | VarE var ->
      Var.get_val env var.it
   | AssignE (e1,e2) ->
@@ -1399,7 +1378,6 @@ and compile_exp (env : E.t) exp = match exp.it with
   | NotE e ->
      compile_exp env e ^^
      G.if_ [I32Type] compile_false compile_true
-  | PrimE p -> Prim.lit env p
   | UnE (op, e1) ->
      compile_exp env e1 ^^
      compile_unop env op
@@ -1776,13 +1754,8 @@ and compile_decs_block env keep_last decs : (E.t * G.t) =
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let env1 = Prim.declare env Prim.default_prims in
-  let env2 = Prim.declare env1
-    ( match E.mode env1 with
-      | WasmMode ->    Dfinity.stub_prims
-      | DfinityMode -> Dfinity.prims ) in
-  let (env3, code) = compile_decs_block env2 false (E.get_prelude env).it in
-  (env3, code)
+  let (env1, code) = compile_decs_block env false (E.get_prelude env).it in
+  (env1, code)
 
 (* Is this a hack? When determining whether an actor is closed,
 we should disregard the prelude, because every actor is compiled with the
@@ -1799,11 +1772,6 @@ and compile_start_func env (progs : Syntax.prog list) : func =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
-  let env2 = Prim.declare env1 Prim.default_prims in
-  let env3 = Prim.declare env2
-    ( match E.mode env2 with
-      | WasmMode ->    Dfinity.stub_prims
-      | DfinityMode -> Dfinity.prims ) in
 
   let rec go env = function
     | []          -> (env, G.nop)
@@ -1812,10 +1780,10 @@ and compile_start_func env (progs : Syntax.prog list) : func =
         let (env2, code2) = go env1 progs in
         (env2, code1 ^^ code2) in
 
-  let (env4, code) = go env3 progs in
+  let (env2, code) = go env1 progs in
 
   nr { ftype = nr E.start_fun_ty_i;
-       locals = E.get_locals env4;
+       locals = E.get_locals env2;
        body = G.to_instr_list code
      }
 
