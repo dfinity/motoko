@@ -232,5 +232,5 @@ struct
   let fulfill p x = if !p = None then p := Some x else failwith "fulfill"
   let is_fulfilled p = !p <> None
   let value_opt p = !p
-  let value p = Option.value !p
+  let value p = match !p with None -> failwith "Promise.value" | Some x -> x
 end

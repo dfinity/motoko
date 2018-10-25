@@ -45,14 +45,18 @@ let loop_ (ty : stack_type) (body : t) : t =
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
 
-let with_currrent_depth (k : depth -> t) : t =
-  let p = Lib.Promise.make () in
-  k p
+let new_depth_label () : depth =  Lib.Promise.make ()
+
+let remember_depth depth (is : t) : t =
+  fun d rest -> Lib.Promise.fulfill depth d; is d rest
+
+let with_current_depth (k : depth -> t) : t =
+  let depth = new_depth_label () in
+  remember_depth depth (k depth)
 
 let branch_to_ (p : depth) : t =
   fun d rest ->
     nr (Br (nr Int32.(sub d (Lib.Promise.value p)))) :: rest
-
 
 (* map and concat *)
 let concat_map f xs = List.fold_right (^^) (List.map f xs) nop

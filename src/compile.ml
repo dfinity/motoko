@@ -47,7 +47,7 @@ type mode = WasmMode | DfinityMode
 type 'env deferred_loc =
   { allocate : 'env -> G.t
   ; is_direct_call : int32 option
-    (* a little backdoor. could be expanded into a general 'call' field *)
+    (* a little backdoor. coul be expanded into a general 'call' field *)
   }
 
 type 'env varloc =
@@ -91,10 +91,8 @@ module E = struct
     n_param : int32;
     (* Types of locals *)
     locals : value_type list ref;
-    (* Current block nesting depth *)
-    depth : int32;
     (* A mapping from jump label to their depth *)
-    ld : int32 NameEnv.t;
+    ld : G.depth NameEnv.t;
     (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
     local_vars_env : t varloc NameEnv.t;
     (* Mapping primitives to WebAssembly locals *)
@@ -200,7 +198,6 @@ module E = struct
     local_vars_env = NameEnv.empty;
     primitives_env = NameEnv.empty;
     n_param = 0l;
-    depth = 0l;
     ld = NameEnv.empty;
     field_env = ref init_field_env;
     prelude;
@@ -220,7 +217,6 @@ module E = struct
       locals = ref [I32Type]; (* the first tmp local *)
       n_param = n_param;
       local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
-      depth = 0l;
       ld = NameEnv.empty;
       }
 
@@ -286,25 +282,12 @@ module E = struct
 
   let get_types (env : t) = !(env.func_types)
 
-  let current_depth (env : t) = env.depth
+  let add_label (env : t) name (d : G.depth) =
+      { env with ld = NameEnv.add name.it d env.ld }
 
-  let inc_depth (env : t) =
-      let label_depths' = Wasm.I32.add env.depth 1l in
-      {env with depth = label_depths'}
-
-  (* This is a bit ugly, and maybe can be avoided if the last component returned
-     by compile_pat takes its own env argument, like compile_dec *)
-  let reset_depth (env1 : t) (env2 : t) =
-      { env1 with depth = env2.depth }
-
-  let depth_to (env) i = Wasm.I32.sub env.depth i
-
-  let add_label (env : t) name =
-      { env with ld = NameEnv.add name.it (env.depth) env.ld }
-
-  let get_label_depth (env : t) name =
+  let get_label_depth (env : t) name : G.depth  =
     match NameEnv.find_opt name.it env.ld with
-      | Some i -> Wasm.I32.sub env.depth i
+      | Some d -> d
       | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
 
   let field_to_index (env : t) name : int32 =
@@ -879,7 +862,7 @@ module Array = struct
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 store_ptr ^^
                 (* Return stuff *)
-                Opt.inject (E.inc_depth env) (
+                Opt.inject env (
                   mk_code (Func.load_closure 2l) (G.i_ (GetLocal (nr i)))
                 )
               )
@@ -1430,16 +1413,16 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_relop op
   | OrE (e1, e2) ->
      let code1 = compile_exp env e1 in
-     let code2 = compile_exp (E.inc_depth env) e2 in
+     let code2 = compile_exp env e2 in
      code1 ^^ G.if_ [I32Type] compile_true code2
   | AndE (e1, e2) ->
      let code1 = compile_exp env e1 in
-     let code2 = compile_exp (E.inc_depth env) e2 in
+     let code2 = compile_exp env e2 in
      code1 ^^ G.if_ [I32Type] code2 compile_false
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
-     let code2 = compile_exp (E.inc_depth env) e2 in
-     let code3 = compile_exp (E.inc_depth env) e3 in
+     let code2 = compile_exp env e2 in
+     let code3 = compile_exp env e3 in
      code1 ^^ G.if_ [I32Type] code2 code3
   | IsE (e1, e2) ->
      (* There are two cases: Either the class is a pointer to
@@ -1474,20 +1457,23 @@ and compile_exp (env : E.t) exp = match exp.it with
   | DecE dec ->
      compile_decs env [dec]
   | LabelE (name, _ty, e) ->
-      let env1 = E.add_label (E.inc_depth env) name in
-      let code = compile_exp env1 e in
-      G.block_ [I32Type] code
+      G.block_ [I32Type] (G.with_current_depth (fun depth ->
+        let env1 = E.add_label env name depth in
+        compile_exp env1 e 
+      ))
   | BreakE (name, _ty) ->
-      let i = E.get_label_depth env name in
-      compile_unit ^^ G.i_ (Br (nr i))
+      let d = E.get_label_depth env name in
+      compile_unit ^^ G.branch_to_ d
   | LoopE (e, None) ->
-     let code = compile_exp (E.inc_depth env) e in
-     G.loop_ [] (code ^^ G.i_ (Br (nr 0l))) ^^
+     G.loop_ [] (
+       let code = compile_exp env e in
+       code ^^ G.i_ (Br (nr 0l))
+     ) ^^
      G.i_ Unreachable
   | WhileE (e1, e2) ->
-     let code1 = compile_exp (E.inc_depth env) e1 in
-     let code2 = compile_exp (E.inc_depth (E.inc_depth env)) e2 in
-     G.loop_ [] (code1 ^^ G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l)))  G.nop) ^^
+     let code1 = compile_exp env e1 in
+     let code2 = compile_exp env e2 in
+     G.loop_ [] (code1 ^^ G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop) ^^
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e ^^ G.i (Return @@ exp.at)
@@ -1522,18 +1508,17 @@ and compile_exp (env : E.t) exp = match exp.it with
       | (c::cs) ->
           let pat = c.it.pat in
           let e = c.it.exp in
-          let env1 = E.inc_depth env in
-          let (env2, alloc_code, code) = compile_pat env1 (E.current_depth env1) pat in
+          let env1 = env in
+          let fail_depth = G.new_depth_label () in
+          let (env2, alloc_code, code) = compile_pat env1 fail_depth pat in
           alloc_code ^^
           G.block_ [I32Type]
-            ( G.i_ (GetLocal (nr i)) ^^
+            ( G.remember_depth fail_depth (
+              G.i_ (GetLocal (nr i)) ^^
               code ^^
               compile_true
-            ) ^^
+            )) ^^
           G.if_ [I32Type]
-              (* This is a bit of a hack: We increase the depth in compile_pat
-                 for the Block. We ought to decrease it, and then increase it
-                 again for the If.. but the result is the same *)
               (compile_exp env2 e)
               (go env1 cs)
           in
@@ -1541,7 +1526,7 @@ and compile_exp (env : E.t) exp = match exp.it with
       code1 ^^ G.i_ (SetLocal (nr i)) ^^ code2
   | ForE (p, e1, e2) ->
      let code1 = compile_exp env e1 in
-     let (env1, alloc_code, code2) = compile_mono_pat (E.inc_depth env) p in
+     let (env1, alloc_code, code2) = compile_mono_pat env p in
      let code3 = compile_exp env1 e2 in
 
      let i = E.add_anon_local env I32Type in
@@ -1630,7 +1615,7 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
   | WildP -> (env, G.nop, G.i_ Drop)
   | AnnotP (p, _) -> compile_pat env fail_depth p
   | OptP p ->
-      let (env1, alloc_code1, code1) = compile_pat (E.inc_depth env) fail_depth p in
+      let (env1, alloc_code1, code1) = compile_pat env fail_depth p in
       let i = E.add_anon_local env I32Type in
       let code =
         G.i_ (SetLocal (nr i)) ^^
@@ -1638,26 +1623,26 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
         compile_null ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
         G.if_ []
-          ( compile_fail (E.inc_depth env) fail_depth )
+          ( compile_fail env fail_depth )
           ( G.i_ (GetLocal (nr i)) ^^
             Opt.project ^^
             code1
           ) in
-      let env2 = E.reset_depth env1 env in
+      let env2 = env1 in
       (env2, alloc_code1, code)
   | LitP l ->
       let code =
         compile_lit_pat env fail_depth None !l ^^
         G.if_ []
           G.nop
-          (compile_fail (E.inc_depth env) fail_depth)
+          (compile_fail env fail_depth)
       in (env, G.nop, code)
   | SignP (op, l) ->
       let code =
         compile_lit_pat env fail_depth (Some op) !l ^^
         G.if_ []
           G.nop
-          (compile_fail (E.inc_depth env) fail_depth)
+          (compile_fail env fail_depth)
       in (env, G.nop, code)
 
   | VarP name ->
@@ -1681,46 +1666,51 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
       go 0 ps env
 
   | AltP (p1, p2) ->
-      let env1 = E.inc_depth env in
-      let (env2, alloc_code1, code1) = compile_pat env1 (E.current_depth env1) p1 in
-      let env2' = E.inc_depth env2 in
-      let (env3, alloc_code2, code2) = compile_pat env2' (E.current_depth env2') p2 in
-      let env4 = E.reset_depth env3 env in
+      let env1 = env in
+      let fail_depth1 = G.new_depth_label () in
+      let (env2, alloc_code1, code1) = compile_pat env1 fail_depth1 p1 in
+      let env2' = env2 in
+      let fail_depth2 = G.new_depth_label () in
+      let (env3, alloc_code2, code2) = compile_pat env2' fail_depth2 p2 in
+      let env4 = env3 in
 
       let i = E.add_anon_local env I32Type in
       let code =
         G.i_ (SetLocal (nr i)) ^^
         G.block_[I32Type]
-          ( G.i_ (GetLocal (nr i)) ^^
+          ( G.remember_depth fail_depth1 (
+            G.i_ (GetLocal (nr i)) ^^
             code1 ^^
             compile_true
-          ) ^^
+          )) ^^
         G.if_ []
           G.nop
           (G.block_ [I32Type]
-            ( G.i_ (GetLocal (nr i)) ^^
+            ( G.remember_depth fail_depth2 (
+              G.i_ (GetLocal (nr i)) ^^
               code2 ^^
               compile_true
-            ) ^^
+            )) ^^
             (G.if_[] G.nop (compile_fail env3 fail_depth))
           )
         in
       (env4, alloc_code1 ^^ alloc_code2,  code)
 
 and compile_fail env fail_depth =
-  let t = E.depth_to env fail_depth in
-  compile_false ^^ G.i_ (Br (nr t))
+  compile_false ^^ G.branch_to_ fail_depth
 
 (* Used for mono patterns (let, function arguments) *)
 and compile_mono_pat env pat =
-  let (env1, alloc_code, code) = compile_pat (E.inc_depth env) (E.current_depth env) pat in
+  let fail_depth = G.new_depth_label () in
+  let (env1, alloc_code, code) = compile_pat env fail_depth pat in
   let wrapped_code =
     G.i_ (SetLocal (E.tmp_local env)) ^^
     G.block_ [I32Type]
-      ( G.i_ (GetLocal (E.tmp_local env)) ^^
+      ( G.remember_depth fail_depth (
+        G.i_ (GetLocal (E.tmp_local env)) ^^
         code ^^
         compile_true
-      ) ^^
+      )) ^^
     G.if_ [] G.nop (G.i_ Unreachable) in
   (env1, alloc_code, wrapped_code)
 
