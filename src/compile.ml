@@ -1891,7 +1891,7 @@ and actor_lit outer_env name fs =
 
     finish_op_register env3 start_fi;
 
-    let (m, custom_sections) = conclude_module env3 None in
+    let (m, custom_sections) = conclude_module env3 None true in
     let (_map, wasm) = EncodeMap.encode m in
     wasm ^ custom_sections in
 
@@ -1906,7 +1906,7 @@ and actor_lit outer_env name fs =
     (List.map (fun (f : Syntax.exp_field) -> f.it.id)
     (List.filter (fun (f : Syntax.exp_field) -> f.it.priv.it <> Private) fs))
 
-and conclude_module env start_fi_o =
+and conclude_module env start_fi_o with_orthogonal_persistence =
 
   Dfinity.default_exports env;
 
@@ -1968,8 +1968,10 @@ and conclude_module env start_fi_o =
   let dfinity_types = E.get_dfinity_types env in
   let custom_sections =
     CustomSections.encode ni' dfinity_types
-      [ (OrthogonalPersistence.mem_global, false)
-      ; (OrthogonalPersistence.elem_global, true) ] in
+      (if with_orthogonal_persistence then
+        [ (OrthogonalPersistence.mem_global, false)
+        ; (OrthogonalPersistence.elem_global, true) ]
+      else []) in
   (m, custom_sections)
 
 
@@ -1987,4 +1989,4 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ *
     then (Dfinity.export_start_fun env start_fi; None)
     else Some (nr start_fi) in
 
-  conclude_module env start_fi_o
+  conclude_module env start_fi_o false
