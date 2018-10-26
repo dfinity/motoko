@@ -20,13 +20,16 @@ let to_instr_list (is : t) : instr list =
   is 0l []
 
 (* The concatenation operator *)
-let (^^) (is1 : t) (is2 : t) : t = fun d rest -> is1 d (is2 d rest)
-
 let nop : t = fun _ rest -> rest
+let (^^) (is1 : t) (is2 : t) : t = fun d rest -> is1 d (is2 d rest)
 
 (* Singletons *)
 let i (instr : instr) : t = fun _ rest -> instr :: rest
 let i_ (instr : instr') = i (instr @@ Wasm.Source.no_region)
+
+(* map and concat *)
+let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
+let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
 
 (* Depths-managing combinators *)
 
@@ -58,7 +61,7 @@ let branch_to_ (p : depth) : t =
   fun d rest ->
     nr (Br (nr Int32.(sub d (Lib.Promise.value p)))) :: rest
 
-(* map and concat *)
-let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
-let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
+(* Convenience combinations *)
 
+let labeled_block_ (ty : stack_type) depth (body : t) : t =
+  block_ ty (remember_depth depth body)

@@ -1492,12 +1492,11 @@ and compile_exp (env : E.t) exp = match exp.it with
           let fail_depth = G.new_depth_label () in
           let (env2, alloc_code, code) = compile_pat env1 fail_depth pat in
           alloc_code ^^
-          G.block_ [I32Type]
-            ( G.remember_depth fail_depth (
-              get_i ^^
+          G.labeled_block_ [I32Type] fail_depth
+            ( get_i ^^
               code ^^
               compile_true
-            )) ^^
+            ) ^^
           G.if_ [I32Type]
               (compile_exp env2 e)
               (go env1 cs)
@@ -1657,20 +1656,18 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
       let (set_i, get_i) = new_local env in
       let code =
         set_i ^^
-        G.block_[I32Type]
-          ( G.remember_depth fail_depth1 (
-            get_i ^^
+        G.labeled_block_ [I32Type] fail_depth1
+          ( get_i ^^
             code1 ^^
             compile_true
-          )) ^^
+          ) ^^
         G.if_ []
           G.nop
-          (G.block_ [I32Type]
-            ( G.remember_depth fail_depth2 (
-              get_i ^^
+          ( G.labeled_block_ [I32Type] fail_depth2
+            ( get_i ^^
               code2 ^^
               compile_true
-            )) ^^
+            ) ^^
             (G.if_[] G.nop (compile_fail env3 fail_depth))
           )
         in
@@ -1685,12 +1682,11 @@ and compile_mono_pat env pat =
   let (env1, alloc_code, code) = compile_pat env fail_depth pat in
   let wrapped_code =
     set_tmp env ^^
-    G.block_ [I32Type]
-      ( G.remember_depth fail_depth (
-        get_tmp env ^^
+    G.labeled_block_ [I32Type] fail_depth
+      ( get_tmp env ^^
         code ^^
         compile_true
-      )) ^^
+      ) ^^
     G.if_ [] G.nop (G.i_ Unreachable) in
   (env1, alloc_code, wrapped_code)
 
