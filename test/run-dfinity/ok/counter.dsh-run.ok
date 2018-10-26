@@ -11,12 +11,5 @@ $ dsh new -a _out/counter.wasm
     "type": "actorref"
 }
 
-$ dsh run counter start
-2344{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (counter)",
-    "type": "actorref"
-}
-
-Leaked 1 instances of wasm::Engine, made 1, freed 0!
+$ dsh run -q counter start
+2344

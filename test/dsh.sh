@@ -15,9 +15,13 @@ function dsh_ () {
   echo "\$ dsh $@"
 
   # hide the segmentation fault message
-  { dsh $@; } 2>&1 | sed -e 's,.*egmentation.*,Segmentation Fault,'
+  { dsh $@; } 2>&1 \
+    | sed -e 's,.*egmentation.*,Segmentation Fault,' \
+    | grep -v '^Leaked'
 }
 
 dsh_ reset
 dsh_ new -a $1
-dsh_ run $name start
+dsh_ run -q $name start
+# not stable across v8 vs. hero!
+# dsh_ root

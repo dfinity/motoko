@@ -11,12 +11,5 @@ $ dsh new -a _out/the-answer.wasm
     "type": "actorref"
 }
 
-$ dsh run the-answer start
-42{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (the-answer)",
-    "type": "actorref"
-}
-
-Leaked 1 instances of wasm::Engine, made 1, freed 0!
+$ dsh run -q the-answer start
+42
