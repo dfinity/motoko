@@ -622,7 +622,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@36
   (DeclareE
@@ -976,7 +976,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@27
   (DeclareE
@@ -1263,7 +1263,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@18
   (DeclareE
@@ -1591,7 +1591,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@9
   (DeclareE
@@ -1878,7 +1878,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@0
   (DeclareE
@@ -2006,4 +2006,4 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)

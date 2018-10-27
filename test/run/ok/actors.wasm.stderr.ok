@@ -8,40 +8,6 @@ compile_exp: (AsyncE
         (CallE
           (VarE ignore)
           (CallE
-            (DotE (VarE self) tic_msg_async)
-            (BinE (VarE n) SubOp (LitE (IntLit 1)))
-          )
-        )
-        (TupE)
-      )
-    )
-  )
-)
-compile_exp: (AsyncE
-  (BlockE
-    (ExpD
-      (IfE
-        (RelE (VarE n) GtOp (LitE (NatLit 0)))
-        (CallE
-          (VarE ignore)
-          (CallE
-            (DotE (VarE self) tac_msg_async)
-            (BinE (VarE n) SubOp (LitE (IntLit 1)))
-          )
-        )
-        (TupE)
-      )
-    )
-  )
-)
-compile_exp: (AsyncE
-  (BlockE
-    (ExpD
-      (IfE
-        (RelE (VarE n) GtOp (LitE (NatLit 0)))
-        (CallE
-          (VarE ignore)
-          (CallE
             (DotE (VarE this) tac_async)
             (BinE (VarE n) SubOp (LitE (IntLit 1)))
           )
@@ -68,5 +34,3 @@ compile_exp: (AsyncE
     )
   )
 )
-Could not find self
-Could not find self

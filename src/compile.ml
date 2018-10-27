@@ -85,6 +85,8 @@ module E = struct
     exports : export list ref;
     (* Function defined in this module *)
     funcs : func Lib.Promise.t list ref;
+    (* Functio numer and fill function for built-in functions *)
+    built_in_funcs : ((func -> unit) * int32) NameEnv.t;
     (* Types registered in this module *)
     func_types : func_type Wasm.Source.phrase list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
@@ -189,6 +191,7 @@ module E = struct
     imports = ref [];
     exports = ref [];
     funcs = ref [];
+    built_in_funcs = NameEnv.empty;
     func_types = ref default_fun_tys;
     dfinity_types = ref [];
     (* Actually unused outside mk_fun_env: *)
@@ -260,6 +263,25 @@ module E = struct
     let (i, fill) = reserve_promise env.funcs in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     (Int32.add i n, fill)
+
+  let declare_built_in_fun (env : t) name : t =
+    let (fi, fill) = reserve_fun env in
+    { env with
+      built_in_funcs = NameEnv.add name (fill, fi) env.built_in_funcs
+    }
+
+  let declare_built_in_funs (env : t) names : t =
+    List.fold_left declare_built_in_fun env names
+
+  let define_built_in (env : t) name f : unit =
+    match NameEnv.find_opt name env.built_in_funcs with
+    | None -> raise (Invalid_argument ("define_built_in: Undeclared built-in " ^ name))
+    | Some (fill, _) -> fill f
+
+  let built_in (env : t) name : int32 =
+    match NameEnv.find_opt name env.built_in_funcs with
+    | None -> raise (Invalid_argument ("built_in: Undeclared built-in " ^ name))
+    | Some (_, fi) -> fi
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
@@ -756,23 +778,7 @@ end (* String *)
 module Array = struct
   let header_size = Int32.add Object.header_size 6l
   let element_size = 4l
-
-  (* Indices of known global functions *)
-  let fun_id env i =
-    let ni = List.length (E.get_imports env) in
-    let ni' = Int32.of_int ni in
-    Int32.add i ni'
-
-  let array_get_funid       env = fun_id env 0l
-  let array_set_funid       env = fun_id env 1l
-  let array_len_funid       env = fun_id env 2l
-  let array_keys_funid      env = fun_id env 3l
-  let array_keys_next_funid env = fun_id env 4l
-  let array_vals_funid      env = fun_id env 5l
-  let array_vals_next_funid env = fun_id env 6l
-
   let len_field = Int32.add Object.header_size 5l
-
 
   (* Expects on the stack the pointer to the array and the index
      of the element, and returns the point to the element. *)
@@ -789,26 +795,29 @@ module Array = struct
     let get_first_arg =    Func.load_argument ^^ Heap.load_field 0l in
     let get_second_arg =   Func.load_argument ^^ Heap.load_field 1l in
 
-    let get_fun = Func.unary_of_body env (fun env1 ->
+    E.define_built_in env "array_get"
+      (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
             idx ^^
             load_ptr
-       ) in
-    let set_fun = Func.unary_of_body env (fun env1 ->
+       ));
+    E.define_built_in env "array_set"
+      (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             idx ^^
             get_second_arg ^^ (* the value *)
             store_ptr ^^
             compile_unit
-       ) in
-    let len_fun = Func.unary_of_body env (fun env1 ->
+       ));
+    E.define_built_in env "array_len"
+      (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             Heap.load_field len_field
-       ) in
+      ));
 
-    let mk_next_fun mk_code = Func.unary_of_body env (fun env1 ->
+    let mk_next_fun mk_code : func = Func.unary_of_body env (fun env1 ->
             let (set_i, get_i) = new_local env1 in
             (* Get pointer to counter from closure *)
             Func.load_closure 1l ^^
@@ -857,57 +866,39 @@ module Array = struct
               [ (nr_ "next", fun _ -> get_ni) ]
        ) in
 
-
-    let keys_next_fun = mk_next_fun (fun get_array get_i ->
+    E.define_built_in env "array_keys_next"
+      (mk_next_fun (fun get_array get_i ->
               (* Return old value *)
               get_i
-            ) in
-    let keys_fun env = mk_iterator (array_keys_next_funid env) in
+       ));
+    E.define_built_in env "array_keys"
+      (mk_iterator (E.built_in env "array_keys_next"));
 
-    let vals_next_fun = mk_next_fun (fun get_array get_i ->
+    E.define_built_in env "array_vals_next"
+      (mk_next_fun (fun get_array get_i ->
               (* Lookup old value *)
               get_array ^^
               get_i ^^
               idx ^^
               load_ptr
-            ) in
-    let vals_fun env = mk_iterator (array_vals_next_funid env) in
-
-    let i = E.add_fun env get_fun in
-    assert (Int32.to_int i == Int32.to_int (array_get_funid env));
-
-    let i = E.add_fun env set_fun in
-    assert (Int32.to_int i == Int32.to_int (array_set_funid env));
-
-    let i = E.add_fun env len_fun in
-    assert (Int32.to_int i == Int32.to_int (array_len_funid env));
-
-    let i = E.add_fun env (keys_fun env) in
-    assert (Int32.to_int i == Int32.to_int (array_keys_funid env));
-
-    let i = E.add_fun env keys_next_fun in
-    assert (Int32.to_int i == Int32.to_int (array_keys_next_funid env));
-
-    let i = E.add_fun env (vals_fun env) in
-    assert (Int32.to_int i == Int32.to_int (array_vals_funid env));
-
-    let i = E.add_fun env vals_next_fun in
-    assert (Int32.to_int i == Int32.to_int (array_vals_next_funid env))
+      ));
+    E.define_built_in env "array_vals"
+      (mk_iterator (E.built_in env "array_vals_next"))
 
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tuple.lit_rec env
      (List.map (fun i _ -> i) Object.default_header @
       [ (fun compile_self ->
-        Tuple.lit env [ compile_const (array_get_funid env); compile_self])
+        Tuple.lit env [ compile_const (E.built_in env "array_get"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_set_funid env); compile_self])
+        Tuple.lit env [ compile_const (E.built_in env "array_set"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_len_funid env); compile_self])
+        Tuple.lit env [ compile_const (E.built_in env "array_len"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_keys_funid env); compile_self])
+        Tuple.lit env [ compile_const (E.built_in env "array_keys"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (array_vals_funid env); compile_self])
+        Tuple.lit env [ compile_const (E.built_in env "array_vals"); compile_self])
       ; (fun compile_self ->
         compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
@@ -935,10 +926,6 @@ module Dfinity = struct
   let actor_self_i env = 10l
   let actor_export_i env = 11l
   let func_internalize_i env = 12l
-
-  (* function ids for predefined functions (after array functions) *)
-  let funcref_wrapper_i env = 20l
-  let self_message_wrapper_i env = 21l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -1040,7 +1027,7 @@ module Dfinity = struct
     assert (Int32.to_int i == Int32.to_int (func_internalize_i env))
 
   let system_funs env =
-    let f = Func.unary_of_body env (fun env1 ->
+    E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
       compile_const tmp_table_slot ^^ (* slot number *)
       Func.load_closure 1l ^^ (* the funcref table id *)
       ElemHeap.recall_reference env ^^
@@ -1050,11 +1037,9 @@ module Dfinity = struct
       compile_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
       compile_unit
-      ) in
-    let fi = E.add_fun env f in
-    assert (Int32.to_int fi == Int32.to_int (funcref_wrapper_i env));
+    ));
 
-    let f = Func.unary_of_body env (fun env1 ->
+    E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
       compile_const tmp_table_slot ^^ (* slot number *)
 
       (* Create a funcref for the message *)
@@ -1070,9 +1055,7 @@ module Dfinity = struct
       compile_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
       compile_unit
-      ) in
-    let fi = E.add_fun env f in
-    assert (Int32.to_int fi == Int32.to_int (self_message_wrapper_i env))
+    ))
 
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^
@@ -1098,7 +1081,7 @@ module Dfinity = struct
 
   let static_self_message_pointer name env =
     Tuple.lit env [
-      compile_const (self_message_wrapper_i env);
+      compile_const (E.built_in env "self_message_wrapper");
       compile_databuf_of_bytes env name.it
     ]
 
@@ -1153,8 +1136,6 @@ end (* Dfinity *)
 module OrthogonalPersistence = struct
   (* This module implements the code that fakes orthogonal persistence *)
 
-  let restore_mem_i env = 22l
-  let save_mem_i env = 23l
   let mem_global = 0l
   let elem_global = 1l
 
@@ -1174,79 +1155,71 @@ module OrthogonalPersistence = struct
     This does not persist references yet.
   *)
 
-  let register pre_env =
-    let (fi, fill_restore_mem) = E.reserve_fun pre_env in
-    assert (Int32.to_int fi == Int32.to_int (restore_mem_i pre_env));
-
-    let (fi, fill_save_mem) = E.reserve_fun pre_env in
-    assert (Int32.to_int fi == Int32.to_int (save_mem_i pre_env));
-
-    E.add_export pre_env (nr {
+  let register env start_funid =
+    E.add_export env (nr {
       name = Dfinity.explode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
     });
-    E.add_export pre_env (nr {
+    E.add_export env (nr {
       name = Dfinity.explode "elemstore";
       edesc = nr (GlobalExport (nr elem_global))
     });
 
-    (fun env start_funid ->
-      fill_restore_mem (Func.nullary_of_body env (fun env1 ->
-         let (set_i, get_i) = new_local env1 in
-         G.i_ (GetGlobal (nr mem_global)) ^^
-         G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
-         set_i ^^
+    E.define_built_in env "restore_mem" (Func.nullary_of_body env (fun env1 ->
+       let (set_i, get_i) = new_local env1 in
+       G.i_ (GetGlobal (nr mem_global)) ^^
+       G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
+       set_i ^^
 
-         get_i ^^
-         compile_const 0l ^^
-         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-         G.if_[]
-           (* First run, call the start function *)
-           ( G.i_ (Call (nr start_funid)) )
+       get_i ^^
+       compile_const 0l ^^
+       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+       G.if_[]
+         (* First run, call the start function *)
+         ( G.i_ (Call (nr start_funid)) )
 
-           (* Subsequent run *)
-           ( (* Set heap pointer based on databuf length *)
-             get_i ^^
-             compile_const ElemHeap.begin_dyn_space ^^
-             G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-             G.i_ (SetGlobal Heap.heap_ptr) ^^
+         (* Subsequent run *)
+         ( (* Set heap pointer based on databuf length *)
+           get_i ^^
+           compile_const ElemHeap.begin_dyn_space ^^
+           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+           G.i_ (SetGlobal Heap.heap_ptr) ^^
 
-             (* Load memory *)
-             compile_const ElemHeap.begin_dyn_space ^^
-             get_i ^^
-             G.i_ (GetGlobal (nr mem_global)) ^^
-             compile_zero ^^
-             G.i_ (Call (nr (Dfinity.data_internalize_i env1))) ^^
+           (* Load memory *)
+           compile_const ElemHeap.begin_dyn_space ^^
+           get_i ^^
+           G.i_ (GetGlobal (nr mem_global)) ^^
+           compile_zero ^^
+           G.i_ (Call (nr (Dfinity.data_internalize_i env1))) ^^
 
-             (* Load reference counter *)
-             G.i_ (GetGlobal (nr elem_global)) ^^
-             G.i_ (Call (nr (Dfinity.elem_length_i env1))) ^^
-             G.i_ (SetGlobal ElemHeap.ref_counter) ^^
+           (* Load reference counter *)
+           G.i_ (GetGlobal (nr elem_global)) ^^
+           G.i_ (Call (nr (Dfinity.elem_length_i env1))) ^^
+           G.i_ (SetGlobal ElemHeap.ref_counter) ^^
 
-             (* Load references *)
-             compile_const ElemHeap.ref_location ^^
-             G.i_ (GetGlobal ElemHeap.ref_counter) ^^
-             G.i_ (GetGlobal (nr elem_global)) ^^
-             compile_zero ^^
-             G.i_ (Call (nr (Dfinity.elem_internalize_i env1)))
-          )
-      ));
-      fill_save_mem (Func.nullary_of_body env (fun env1 ->
-         (* Store memory *)
-         compile_const ElemHeap.begin_dyn_space ^^
-         G.i_ (GetGlobal Heap.heap_ptr) ^^
-         compile_const ElemHeap.begin_dyn_space ^^
-         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-         G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
-         G.i_ (SetGlobal (nr mem_global)) ^^
+           (* Load references *)
+           compile_const ElemHeap.ref_location ^^
+           G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+           G.i_ (GetGlobal (nr elem_global)) ^^
+           compile_zero ^^
+           G.i_ (Call (nr (Dfinity.elem_internalize_i env1)))
+        )
+    ));
+    E.define_built_in env "save_mem" (Func.nullary_of_body env (fun env1 ->
+       (* Store memory *)
+       compile_const ElemHeap.begin_dyn_space ^^
+       G.i_ (GetGlobal Heap.heap_ptr) ^^
+       compile_const ElemHeap.begin_dyn_space ^^
+       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+       G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
+       G.i_ (SetGlobal (nr mem_global)) ^^
 
-         (* Store references *)
-         compile_const ElemHeap.ref_location ^^
-         G.i_ (GetGlobal ElemHeap.ref_counter) ^^
-         G.i_ (Call (nr (Dfinity.elem_externalize_i env))) ^^
-         G.i_ (SetGlobal (nr elem_global))
-      ))
-    )
+       (* Store references *)
+       compile_const ElemHeap.ref_location ^^
+       G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+       G.i_ (Call (nr (Dfinity.elem_externalize_i env))) ^^
+       G.i_ (SetGlobal (nr elem_global))
+    ))
 
 
 end (* OrthogonalPersistence *)
@@ -1270,7 +1243,7 @@ module Message = struct
   let compile env mk_pat mk_body at : func =
     message_of_body env (fun env1 ->
       (* Set up memory *)
-      G.i_ (Call (nr (OrthogonalPersistence.restore_mem_i env))) ^^
+      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
 
       (* Destruct the argument *)
       let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
@@ -1285,7 +1258,7 @@ module Message = struct
       G.i_ Drop ^^
 
       (* Save memory *)
-      G.i_ (Call (nr (OrthogonalPersistence.save_mem_i env)))
+      G.i_ (Call (nr (E.built_in env "save_mem")))
       )
 end (* Message *)
 
@@ -1851,7 +1824,7 @@ and compile_actorref_wrapper env fields =
     (* Create a closure object that calls the funcref *)
     let code env =
       Tuple.lit env
-        [ compile_const (Dfinity.funcref_wrapper_i env)
+        [ compile_const (E.built_in env "funcref_wrapper")
         ; get_actorref_i ^^
           Dfinity.compile_databuf_of_bytes env (name.it) ^^
           G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
@@ -1862,32 +1835,33 @@ and compile_actorref_wrapper env fields =
 
 
 and actor_lit outer_env name fs =
+  if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
+
   let wasm =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
-    Array.common_funcs env;
-    if E.mode env = DfinityMode then Dfinity.system_funs env;
+    let env1 = declare_built_in_funs env in
+    let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem" ] in
 
-    let finish_op_register =
-      if E.mode env = DfinityMode
-      then OrthogonalPersistence.register env
-      else fun _ _ -> () in
 
-    let env1 = E.mk_fun_env env 0l in
+    Array.common_funcs env2;
+    if E.mode env2 = DfinityMode then Dfinity.system_funs env2;
+
+    let env3 = E.mk_fun_env env2 0l in
     (* Compile stuff here *)
-    let (env2, prelude_code) = compile_prelude env1 in
-    let (env3, init_code )  = compile_actor_fields env2 fs in
+    let (env4, prelude_code) = compile_prelude env3 in
+    let (env5, init_code )  = compile_actor_fields env4 fs in
 
     let start_fun = nr { ftype = nr E.start_fun_ty_i;
-         locals = E.get_locals env3;
+         locals = E.get_locals env5;
          body = G.to_instr_list (prelude_code ^^ init_code)
     } in
-    let start_fi = E.add_fun env3 start_fun in
+    let start_fi = E.add_fun env5 start_fun in
 
-    finish_op_register env3 start_fi;
+    OrthogonalPersistence.register env5 start_fi;
 
-    let (m, custom_sections) = conclude_module env3 None true in
+    let (m, custom_sections) = conclude_module env5 None true in
     let (_map, wasm) = EncodeMap.encode m in
     wasm ^ custom_sections in
 
@@ -1901,6 +1875,15 @@ and actor_lit outer_env name fs =
   compile_actorref_wrapper outer_env
     (List.map (fun (f : Syntax.exp_field) -> f.it.id)
     (List.filter (fun (f : Syntax.exp_field) -> f.it.priv.it <> Private) fs))
+
+and declare_built_in_funs env =
+  E.declare_built_in_funs env
+    ([ "array_get"; "array_set"; "array_len";
+       "array_keys_next"; "array_keys";
+       "array_vals_next"; "array_vals" ] @
+    (if E.mode env = DfinityMode
+    then [ "funcref_wrapper"; "self_message_wrapper" ]
+    else []))
 
 and conclude_module env start_fi_o with_orthogonal_persistence =
 
@@ -1970,19 +1953,19 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
       else []) in
   (m, custom_sections)
 
-
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ * string) =
   let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
-
   if E.mode env = DfinityMode then Dfinity.system_imports env;
-  Array.common_funcs env;
-  if E.mode env = DfinityMode then Dfinity.system_funs env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
-  let start_fi = E.add_fun env start_fun in
+  let env1 = declare_built_in_funs env in
+  Array.common_funcs env1;
+  if E.mode env1 = DfinityMode then Dfinity.system_funs env1;
+
+  let start_fun = compile_start_func env1 (prelude :: progs) in
+  let start_fi = E.add_fun env1 start_fun in
   let start_fi_o =
-    if E.mode env = DfinityMode
-    then (Dfinity.export_start_fun env start_fi; None)
+    if E.mode env1 = DfinityMode
+    then (Dfinity.export_start_fun env1 start_fi; None)
     else Some (nr start_fi) in
 
-  conclude_module env start_fi_o false
+  conclude_module env1 start_fi_o false
