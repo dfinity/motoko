@@ -68,10 +68,6 @@ rec {
       "src/.*.mll"
       "src/_tags"
       "test/node-test.js"
-      "test/.*/.*.as"
-      "test/.*/ok/.*"
-      "test/.*.sh"
-      "vendor/.*"
       ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
