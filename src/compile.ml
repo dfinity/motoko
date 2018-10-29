@@ -1673,17 +1673,18 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
         store_ptr) in
       (env1, alloc_code, code)
   | TupP ps ->
-      (* TODO: Use a temporary instead of dup *)
+      let (set_i, get_i) = new_local env in
       let rec go i ps env = match ps with
-        | [] -> (env, G.nop, CannotFail (G.i_ Drop))
+        | [] -> (env, G.nop, CannotFail G.nop)
         | (p::ps) ->
           let (env1, alloc_code1, code1) = compile_pat env p in
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 ^^ alloc_code2,
-            CannotFail (dup env ^^ Heap.load_field (Wasm.I32.of_int_u i)) ^^^
+            CannotFail (get_i ^^ Heap.load_field (Wasm.I32.of_int_u i)) ^^^
             code1 ^^^ code2) in
-      go 0 ps env
+      let (env1, alloc_code, code) = go 0 ps env in
+      (env1, alloc_code, CannotFail set_i ^^^ code)
 
   | AltP (p1, p2) ->
       let (env1, alloc_code1, code1) = compile_pat env p1 in
