@@ -1273,6 +1273,60 @@ module Message = struct
       )
 end (* Message *)
 
+module PatCode = struct
+  (* Pattern failure code on demand.
+
+  Patterns in general can fail, so we want a block around them with a jump-label
+  for the fail case. But many patterns cannot fail, in particular not function
+  arguments that are simple variables. In these cases, we do not want to create
+  the block and the (unused) jump label. So we first generate the code, either as plain code
+  (cannot fail) or as code with hole for the jump label (can fail).
+  *)
+
+  type patternCode =
+    | CannotFail of G.t
+    | CanFail of (G.depth -> G.t)
+
+  let (^^^) : patternCode -> patternCode -> patternCode = function
+    | CannotFail is1 ->
+      begin function
+      | CannotFail is2 -> CannotFail (is1 ^^ is2)
+      | CanFail is2 -> CanFail (fun k -> is1 ^^ is2 k)
+      end
+    | CanFail is1 ->
+      begin function
+      | CannotFail is2 -> CanFail (fun k ->  is1 k ^^ is2)
+      | CanFail is2 -> CanFail (fun k -> is1 k ^^ is2 k)
+      end
+
+  let with_fail_depth (depth : G.depth) : patternCode -> G.t = function
+    | CannotFail is -> is
+    | CanFail is -> is depth
+
+  let orElse : patternCode -> patternCode -> patternCode = function
+    | CannotFail is1 -> fun _ -> CannotFail is1
+    | CanFail is1 -> function
+      | CanFail is2 -> CanFail (fun fail_depth ->
+          let inner_fail = G.new_depth_label () in
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail ^^ compile_true) ^^
+          G.if_ [] compile_true (is2 fail_depth)
+        )
+      | CannotFail is2 -> CannotFail (
+          let inner_fail = G.new_depth_label () in
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail ^^ compile_true) ^^
+          G.if_ [] compile_true is2
+        )
+
+  let orTrap : patternCode -> G.t = function
+    | CannotFail is -> is
+    | CanFail is ->
+        let fail_depth = G.new_depth_label () in
+        G.labeled_block_ [I32Type] fail_depth (is fail_depth ^^ compile_true) ^^
+        G.if_ [] G.nop (G.i_ Unreachable)
+
+end (* PatCode *)
+open PatCode
+
 (* The actual compiler code that looks at the AST *)
 
 let compile_lit env lit = match lit with
@@ -1474,11 +1528,11 @@ and compile_exp (env : E.t) exp = match exp.it with
           let e = c.it.exp in
           let env1 = env in
           let fail_depth = G.new_depth_label () in
-          let (env2, alloc_code, code) = compile_pat env1 fail_depth pat in
+          let (env2, alloc_code, code) = compile_pat env1 pat in
           alloc_code ^^
           G.labeled_block_ [I32Type] fail_depth
             ( get_i ^^
-              code ^^
+              with_fail_depth fail_depth code ^^
               compile_true
             ) ^^
           G.if_ [I32Type]
@@ -1556,6 +1610,7 @@ while the third phase is a function that expects the final environment. This
 enabled mutual recursion.
 *)
 
+
 and compile_lit_pat env fail_depth opo l = match opo, l with
   | None, (NatLit _ | IntLit _ | NullLit) ->
     compile_lit env l ^^
@@ -1566,7 +1621,7 @@ and compile_lit_pat env fail_depth opo l = match opo, l with
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
 
-and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
+and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
   (* It returns:
      - the extended environment
      - the code to allocate memory
@@ -1575,12 +1630,12 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
-  | WildP -> (env, G.nop, G.i_ Drop)
-  | AnnotP (p, _) -> compile_pat env fail_depth p
+  | WildP -> (env, G.nop, CannotFail (G.i_ Drop))
+  | AnnotP (p, _) -> compile_pat env p
   | OptP p ->
-      let (env1, alloc_code1, code1) = compile_pat env fail_depth p in
+      let (env1, alloc_code1, code1) = compile_pat env p in
       let (set_i, get_i) = new_local env in
-      let code =
+      let code = CanFail (fun fail_depth ->
         set_i ^^
         get_i ^^
         compile_null ^^
@@ -1589,89 +1644,65 @@ and compile_pat env fail_depth pat : E.t * G.t * G.t = match pat.it with
           ( compile_fail env fail_depth )
           ( get_i ^^
             Opt.project ^^
-            code1
-          ) in
+            with_fail_depth fail_depth code1
+          )) in
       let env2 = env1 in
       (env2, alloc_code1, code)
   | LitP l ->
-      let code =
+      let code = CanFail (fun fail_depth ->
         compile_lit_pat env fail_depth None !l ^^
         G.if_ []
           G.nop
-          (compile_fail env fail_depth)
+          (compile_fail env fail_depth))
       in (env, G.nop, code)
   | SignP (op, l) ->
-      let code =
+      let code = CanFail (fun fail_depth ->
         compile_lit_pat env fail_depth (Some op) !l ^^
         G.if_ []
           G.nop
-          (compile_fail env fail_depth)
+          (compile_fail env fail_depth))
       in (env, G.nop, code)
 
   | VarP name ->
       let (env1,i) = E.add_local env name.it; in
       let alloc_code = Heap.alloc 1l ^^ G.i_ (SetLocal (nr i)) in
-      let code =
+      let code = CannotFail (
         set_tmp env ^^
         G.i_ (GetLocal (nr i)) ^^
         get_tmp env ^^
-        store_ptr in
+        store_ptr) in
       (env1, alloc_code, code)
   | TupP ps ->
+      (* TODO: Use a temporary instead of dup *)
       let rec go i ps env = match ps with
-        | [] -> (env, G.nop, G.i_ Drop)
+        | [] -> (env, G.nop, CannotFail (G.i_ Drop))
         | (p::ps) ->
-          let (env1, alloc_code1, code1) = compile_pat env fail_depth p in
+          let (env1, alloc_code1, code1) = compile_pat env p in
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 ^^ alloc_code2,
-            dup env ^^ Heap.load_field (Wasm.I32.of_int_u i) ^^ code1 ^^ code2) in
+            CannotFail (dup env ^^ Heap.load_field (Wasm.I32.of_int_u i)) ^^^
+            code1 ^^^ code2) in
       go 0 ps env
 
   | AltP (p1, p2) ->
-      let env1 = env in
-      let fail_depth1 = G.new_depth_label () in
-      let (env2, alloc_code1, code1) = compile_pat env1 fail_depth1 p1 in
-      let env2' = env2 in
-      let fail_depth2 = G.new_depth_label () in
-      let (env3, alloc_code2, code2) = compile_pat env2' fail_depth2 p2 in
-      let env4 = env3 in
+      let (env1, alloc_code1, code1) = compile_pat env p1 in
+      let (env2, alloc_code2, code2) = compile_pat env1 p2 in
 
       let (set_i, get_i) = new_local env in
       let code =
-        set_i ^^
-        G.labeled_block_ [I32Type] fail_depth1
-          ( get_i ^^
-            code1 ^^
-            compile_true
-          ) ^^
-        G.if_ []
-          G.nop
-          ( G.labeled_block_ [I32Type] fail_depth2
-            ( get_i ^^
-              code2 ^^
-              compile_true
-            ) ^^
-            (G.if_[] G.nop (compile_fail env3 fail_depth))
-          )
-        in
-      (env4, alloc_code1 ^^ alloc_code2,  code)
+        CannotFail set_i ^^^
+        orElse (CannotFail get_i ^^^ code1)
+               (CannotFail get_i ^^^ code2) in
+      (env2, alloc_code1 ^^ alloc_code2,  code)
 
 and compile_fail env fail_depth =
   compile_false ^^ G.branch_to_ fail_depth
 
 (* Used for mono patterns (let, function arguments) *)
 and compile_mono_pat env pat =
-  let fail_depth = G.new_depth_label () in
-  let (env1, alloc_code, code) = compile_pat env fail_depth pat in
-  let wrapped_code =
-    set_tmp env ^^
-    G.labeled_block_ [I32Type] fail_depth
-      ( get_tmp env ^^
-        code ^^
-        compile_true
-      ) ^^
-    G.if_ [] G.nop (G.i_ Unreachable) in
+  let (env1, alloc_code, code) = compile_pat env pat in
+  let wrapped_code = set_tmp env ^^ orTrap (CannotFail (get_tmp env) ^^^ code) in
   (env1, alloc_code, wrapped_code)
 
 and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
