@@ -25,7 +25,8 @@ let encode
     (offset : int32) (* Number of imports, to offset the numbers in dfinity_types *)
     (dfinity_types : (int32 * int32) list) (* List of messages and number of arguments *)
     (persistent_globals : (int32 * persistSort) list)
-    (function_names : (int32 * string) list) 
+    (function_names : (int32 * string) list)
+    (locals_names : (int32 * (int32 * string) list) list)
     : string =
   let s = stream () in
 
@@ -65,49 +66,52 @@ let encode
 
 (* End of code copy *)
 
+  let vec xs f =
+    vu32 (Int32.of_int (List.length xs));
+    List.iteri f xs in
+
+  let assoc_list : 'a . (int32 * 'a) list -> ('a -> unit) -> unit =
+    fun xs f ->
+    vec (List.sort (fun (i1,_) (i2,_) -> compare i1 i2) xs)
+        (fun _ (li, x) -> vu32 li; f x) in
+
   section 0 (fun _ ->
     string "types";
-    vu32 (Int32.of_int (List.length dfinity_types));
     (* We could deduplicate the types here *)
-    List.iter (fun (fi, nargs) ->
+    vec dfinity_types (fun _ (_, nargs) ->
       vu32 0x60l; (* function type op code *)
       vu32 nargs; (* two args *)
       for _ = 1 to Int32.to_int nargs do
         vu32 0x7fl; (* all args int32 *)
       done;
       vu32 0l;
-    ) dfinity_types
+    )
   );
   section 0 (fun _ ->
     string "typeMap";
-    vu32 (Int32.of_int (List.length dfinity_types));
-    List.iteri (fun i (fi, _) ->
+    vec dfinity_types (fun i (fi, _) ->
       vu32 (Int32.sub fi offset);
       vu32 (Int32.of_int i);
-    ) dfinity_types
+    )
   );
   section 0 (fun _ ->
     string "persist";
-    vu32 (Int32.of_int (List.length persistent_globals));
-    List.iter (fun (i, sort) ->
+    vec persistent_globals (fun _ (i, sort) ->
       vu32 0x03l; (* a global *)
       vu32 i; (* the index *)
       match sort with
       | DataBuf -> vu32 0x6cl
       | ElemBuf -> vu32 0x6bl;
-    ) persistent_globals
+    )
   );
   section 0 (fun _ ->
     string "name";
     (* function names section *)
-    section 1 (fun _ ->
-      (* TODO: sort *)
-      vu32 (Int32.of_int (List.length function_names));
-      List.iter (fun (fi, name) ->
-        vu32 fi;
-        string name;
-      ) function_names
-    )
+    section 1 (fun _ -> assoc_list function_names string);
+    (* locals names section *)
+    section 2 (fun _ ->
+      assoc_list locals_names (fun locals -> assoc_list locals string)
+    );
   );
   to_string s
 

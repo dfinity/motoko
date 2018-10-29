@@ -29,13 +29,13 @@ do
   mkdir compare-out/$base.old
   old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
-  wasm2wat compare-out/$base.old/$base.wasm -o compare-out/$base.old/$base.wat 2>/dev/null
+  wasm2wat compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
   new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
-  wasm2wat compare-out/$base.new/$base.wasm -o compare-out/$base.new/$base.wat 2>/dev/null
+  wasm2wat compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 
   diff -r -N -u compare-out/$base.old compare-out/$base.new
 

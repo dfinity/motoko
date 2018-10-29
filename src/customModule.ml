@@ -13,7 +13,9 @@ type extended_module = {
   (* index of persisted global, and its type *)
   persist : (int32 * CustomSections.persistSort) list;
   (* Function names *)
-  function_names : (int32 * string) list
+  function_names : (int32 * string) list;
+  (* Names of locals *)
+  locals_names : (int32 * (int32 * string) list) list;
   }
 
 let encode m =
@@ -23,4 +25,5 @@ let encode m =
     m.types
     m.persist
     m.function_names
+    m.locals_names
   in (map, wasm ^ custom_sections)

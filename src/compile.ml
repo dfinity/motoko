@@ -65,11 +65,6 @@ module E = struct
       ref := !ref @ [ x ];
       i
 
-  let reg_promise (ref : 'a Lib.Promise.t list ref) (x : 'a) : int32 =
-      let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ Lib.Promise.make_fulfilled x ];
-      i
-
   let reserve_promise (ref : 'a Lib.Promise.t list ref) : (int32 * ('a -> unit)) =
       let p = Lib.Promise.make () in
       let i = Wasm.I32.of_int_u (List.length !ref) in
@@ -78,6 +73,8 @@ module E = struct
 
   (* The environment type *)
   module NameEnv = Env.Make(String)
+  type local_names = (int32 * string) list
+  type func_with_names = func * local_names
   type t = {
     mode : mode;
 
@@ -88,14 +85,16 @@ module E = struct
     (* Function defined in this module *)
     funcs : func Lib.Promise.t list ref;
     func_names : (int32 * string) list ref;
-    (* Functio numer and fill function for built-in functions *)
-    built_in_funcs : ((func -> unit) * int32) NameEnv.t;
+    func_locals : (int32 * local_names) list ref;
+    (* Function number and fill function for built-in functions *)
+    built_in_funcs : ((func_with_names -> unit) * int32) NameEnv.t;
     (* Types registered in this module *)
     func_types : func_type Wasm.Source.phrase list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
     n_param : int32;
     (* Types of locals *)
     locals : value_type list ref;
+    local_names : (int32 * string) list ref;
     (* A mapping from jump label to their depth *)
     ld : G.depth NameEnv.t;
     (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
@@ -195,11 +194,13 @@ module E = struct
     exports = ref [];
     funcs = ref [];
     func_names = ref [];
+    func_locals = ref [];
     built_in_funcs = NameEnv.empty;
     func_types = ref default_fun_tys;
     dfinity_types = ref [];
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
+    local_names = ref [];
     local_vars_env = NameEnv.empty;
     n_param = 0l;
     ld = NameEnv.empty;
@@ -219,6 +220,7 @@ module E = struct
     in
     { env with
       locals = ref [I32Type]; (* the first tmp local *)
+      local_names = ref [ n_param , "tmp" ];
       n_param = n_param;
       local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
       ld = NameEnv.empty;
@@ -233,8 +235,12 @@ module E = struct
       let i = reg env.locals ty in
       Wasm.I32.add env.n_param i
 
+  let add_local_name (env : t) li name =
+      let _ = reg env.local_names (li, name) in ()
+
   let add_local (env : t) name =
       let i = add_anon_local env I32Type in
+      add_local_name env i name;
       ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
 
   let add_local_static (env : t) name ptr =
@@ -243,7 +249,9 @@ module E = struct
   let add_local_deferred (env : t) name d =
       { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
 
+
   let get_locals (env : t) = !(env.locals)
+  let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
 
   let in_scope_set (env : t) =
     let l = env.local_vars_env in
@@ -258,15 +266,19 @@ module E = struct
 
   let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
 
-  let add_fun (env : t) f =
-    let i = reg_promise env.funcs f in
-    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
-    Int32.add i n
-
   let reserve_fun (env : t) =
-    let (i, fill) = reserve_promise env.funcs in
+    let (j, fill) = reserve_promise env.funcs in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
-    (Int32.add i n, fill)
+    let fi = Int32.add j n in
+    let fill_ (f, local_names) =
+      fill f;
+      let _ = reg env.func_locals (fi, local_names) in () in
+    (fi, fill_)
+
+  let add_fun (env : t) (f, local_names) =
+    let (fi, fill) = reserve_fun env in
+    fill (f, local_names);
+    fi
 
   let add_fun_name (env : t) fi name =
     let _ = reg env.func_names (fi, name) in ()
@@ -296,6 +308,8 @@ module E = struct
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
   let get_func_names (env : t) = !(env.func_names)
+
+  let get_func_local_names (env : t) = !(env.func_locals)
 
   (* Currently unused, until we add functions to the table *)
   let _add_type (env : t) ty = reg env.func_types ty
@@ -356,8 +370,9 @@ let compile_null =    compile_const Int32.max_int
 let set_tmp env = G.i_ (SetLocal (E.tmp_local env))
 let get_tmp env = G.i_ (GetLocal (E.tmp_local env))
 
-let new_local env =
+let new_local env name =
   let i = E.add_anon_local env I32Type in
+  E.add_local_name env i name;
   ( G.i_ (SetLocal (nr i))
   , G.i_ (GetLocal (nr i))
   )
@@ -417,7 +432,7 @@ module ElemHeap = struct
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
   let remember_reference env : G.t =
-    let (set_i, get_i) = new_local env in
+    let (set_i, get_i) = new_local env "ref" in
     set_i ^^
 
     (* Return index *)
@@ -458,7 +473,7 @@ module Tuple = struct
   let lit_rec env element_instructions : G.t =
     let n = List.length element_instructions in
 
-    let (set_i, get_i) = new_local env in
+    let (set_i, get_i) = new_local env "tup" in
     Heap.alloc (Wasm.I32.of_int_u n) ^^
     set_i ^^
 
@@ -531,26 +546,30 @@ module Func = struct
     (* Fresh set of locals *)
     (* Reserve two locals for closure and argument *)
     let env1 = E.mk_fun_env env 2l in
+    E.add_local_name env1 0l "clos";
+    E.add_local_name env1 1l "param";
     let code = mk_body env1 in
-    nr { ftype = nr E.unary_fun_ty_i;
+    (nr { ftype = nr E.unary_fun_ty_i;
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
+    , E.get_local_names env1)
 
   let nullary_of_body env mk_body =
     (* Fresh set of locals *)
     (* Reserve one local, no arguments *)
     let env1 = E.mk_fun_env env 0l in
     let code = mk_body env1 in
-    nr { ftype = nr E.nullary_fun_ty_i;
+    (nr { ftype = nr E.nullary_fun_ty_i;
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
+    , E.get_local_names env1)
 
   (* The argument on the stack *)
   let call_direct env fi at =
    (* Pop the argument *)
-   let (set_i, get_i) = new_local env in
+   let (set_i, get_i) = new_local env "param" in
    set_i ^^
 
    (* First arg: The (unused) closure pointer *)
@@ -565,11 +584,11 @@ module Func = struct
   (* Expect the function closure and the argument on the stack *)
   let call_indirect env at =
    (* Pop the argument *)
-   let (set_i, get_i) = new_local env in
+   let (set_i, get_i) = new_local env "call_arg" in
    set_i ^^
 
    (* Pop the closure pointer *)
-   let (set_fi, get_fi) = new_local env in
+   let (set_fi, get_fi) = new_local env "callee" in
    set_fi ^^
 
    (* First arg: The closure pointer *)
@@ -586,7 +605,7 @@ module Func = struct
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
 
-  let compile_func env captured mk_pat mk_body at : func =
+  let compile_func env captured mk_pat mk_body at =
     unary_of_body env (fun env1 ->
       (* Allocate locals for the captured variables *)
       let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
@@ -622,7 +641,7 @@ module Func = struct
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env last name captured mk_pat mk_body at =
-      let (set_li, get_li) = new_local pre_env in
+      let (set_li, get_li) = new_local pre_env "clos_ind" in
       let (pre_env1, vi) = E.add_local pre_env name.it in
 
       let alloc_code =
@@ -670,7 +689,7 @@ end (* Func *)
 module Prim = struct
 
   let prim_abs env =
-    let (set_i, get_i) = new_local env in
+    let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
     compile_zero ^^
@@ -704,7 +723,7 @@ module Object = struct
              Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs))) in
 
      (* Allocate memory *)
-     let (set_ri, get_ri) = new_local env in
+     let (set_ri, get_ri) = new_local env "obj" in
      Heap.alloc n ^^
      set_ri ^^
 
@@ -828,8 +847,8 @@ module Array = struct
             Heap.load_field len_field
       ));
 
-    let mk_next_fun mk_code : func = Func.unary_of_body env (fun env1 ->
-            let (set_i, get_i) = new_local env1 in
+    let mk_next_fun mk_code : E.func_with_names = Func.unary_of_body env (fun env1 ->
+            let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
             Func.load_closure 1l ^^
             (* Read pointer *)
@@ -861,12 +880,12 @@ module Array = struct
        ) in
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* counter *)
-            let (set_i, get_i) = new_local env1 in
+            let (set_i, get_i) = new_local env1 "n" in
             Tuple.lit env1 [ compile_zero ] ^^
             set_i ^^
 
             (* next function *)
-            let (set_ni, get_ni) = new_local env1 in
+            let (set_ni, get_ni) = new_local env1 "next" in
             Tuple.lit env1 [
               compile_const next_funid;
               get_i;
@@ -1071,7 +1090,7 @@ module Dfinity = struct
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^
 
-    let (set_i, get_i) = new_local env in
+    let (set_i, get_i) = new_local env "string_lit" in
     set_i ^^
 
     (* Calculate the offset *)
@@ -1108,7 +1127,7 @@ module Dfinity = struct
   let prim_print env =
     if E.mode env = DfinityMode
     then
-      let (set_i, get_i) = new_local env in
+      let (set_i, get_i) = new_local env "string_lit" in
       set_i ^^
       (* Calculate the offset *)
       get_i ^^
@@ -1177,7 +1196,7 @@ module OrthogonalPersistence = struct
     });
 
     E.define_built_in env "restore_mem" (Func.nullary_of_body env (fun env1 ->
-       let (set_i, get_i) = new_local env1 in
+       let (set_i, get_i) = new_local env1 "len" in
        G.i_ (GetGlobal (nr mem_global)) ^^
        G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
        set_i ^^
@@ -1243,15 +1262,17 @@ module Message = struct
     (* Fresh set of locals *)
     (* Reserve one local, only one argument *)
     let env1 = E.mk_fun_env env 1l in
+    E.add_local_name env1 0l "arg";
     let code = mk_body env1 in
-    nr { ftype = nr E.actor_message_ty_i;
+    ( nr { ftype = nr E.actor_message_ty_i;
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
+    , E.get_local_names env1 )
 
 
   (* Message take no closure *)
-  let compile env mk_pat mk_body at : func =
+  let compile env mk_pat mk_body at : E.func_with_names =
     message_of_body env (fun env1 ->
       (* Set up memory *)
       G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
@@ -1447,8 +1468,8 @@ and compile_exp (env : E.t) exp = match exp.it with
         function id stored therein *)
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     let (set_i, get_i) = new_local env in
-     let (set_j, get_j) = new_local env in
+     let (set_i, get_i) = new_local env "is_lhs" in
+     let (set_j, get_j) = new_local env "is_rhs" in
      code1 ^^ Heap.load_field Object.class_position ^^
      set_i ^^
      code2 ^^
@@ -1518,8 +1539,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      Func.call_indirect env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
-    let (set_i, get_i) = new_local env in
-    let (set_j, get_j) = new_local env in
+    let (set_i, get_i) = new_local env "switch_in" in
+    let (set_j, get_j) = new_local env "switch_out" in
 
     let rec go env cs = match cs with
       | [] -> CanFail (fun k -> k)
@@ -1539,7 +1560,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let (env1, alloc_code, code2) = compile_mono_pat env p in
      let code3 = compile_exp env1 e2 in
 
-     let (set_i, get_i) = new_local env in
+     let (set_i, get_i) = new_local env "iter" in
      (* Store the iterator *)
      code1 ^^
      set_i ^^
@@ -1549,7 +1570,7 @@ and compile_exp (env : E.t) exp = match exp.it with
          Object.load_idx env1 (nr__ "next") ^^
          compile_unit ^^
          Func.call_indirect env1 Source.no_region ^^
-         let (set_oi, get_oi) = new_local env in
+         let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
          (* Check for null *)
@@ -1627,7 +1648,7 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
   | AnnotP (p, _) -> compile_pat env p
   | OptP p ->
       let (env1, alloc_code1, code1) = compile_pat env p in
-      let (set_i, get_i) = new_local env in
+      let (set_i, get_i) = new_local env "opt_scrut" in
       let code = CanFail (fun fail_code ->
         set_i ^^
         get_i ^^
@@ -1661,7 +1682,7 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
         store_ptr) in
       (env1, alloc_code, code)
   | TupP ps ->
-      let (set_i, get_i) = new_local env in
+      let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i ps env = match ps with
         | [] -> (env, G.nop, CannotFail G.nop)
         | (p::ps) ->
@@ -1678,7 +1699,7 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
       let (env1, alloc_code1, code1) = compile_pat env p1 in
       let (env2, alloc_code2, code2) = compile_pat env1 p2 in
 
-      let (set_i, get_i) = new_local env in
+      let (set_i, get_i) = new_local env "alt_scrut" in
       let code =
         CannotFail set_i ^^^
         orElse (CannotFail get_i ^^^ code1)
@@ -1767,7 +1788,7 @@ and find_prelude_names env =
   E.in_scope_set env2
 
 
-and compile_start_func env (progs : Syntax.prog list) : func =
+and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
   (* Fresh set of locals *)
   let env1 = E.mk_fun_env env 0l in
   (* Allocate the primitive functions *)
@@ -1781,10 +1802,11 @@ and compile_start_func env (progs : Syntax.prog list) : func =
 
   let (env2, code) = go env1 progs in
 
-  nr { ftype = nr E.start_fun_ty_i;
+  ( nr { ftype = nr E.start_fun_ty_i;
        locals = E.get_locals env2;
        body = G.to_instr_list code
      }
+  , E.get_local_names env2 )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
   let ptr = E.reserve_static_memory pre_env Heap.word_size in
@@ -1846,7 +1868,7 @@ and compile_actor_fields env fs =
  *)
 and compile_actorref_wrapper env fields =
   (* The actor ref (not a table index) is on the stack *)
-  let (set_actorref_i, get_actorref_i) = new_local env in
+  let (set_actorref_i, get_actorref_i) = new_local env "actorref" in
   set_actorref_i ^^
 
   let wrap_field name =
@@ -1882,10 +1904,11 @@ and actor_lit outer_env name fs =
     let (env4, prelude_code) = compile_prelude env3 in
     let (env5, init_code )  = compile_actor_fields env4 fs in
 
-    let start_fun = nr { ftype = nr E.start_fun_ty_i;
-         locals = E.get_locals env5;
-         body = G.to_instr_list (prelude_code ^^ init_code)
-    } in
+    let start_fun =
+      ( nr { ftype = nr E.start_fun_ty_i;
+             locals = E.get_locals env5;
+             body = G.to_instr_list (prelude_code ^^ init_code) }
+      , E.get_local_names env5) in
     let start_fi = E.add_fun env5 start_fun in
     E.add_fun_name env start_fi "start";
 
@@ -1978,6 +2001,7 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ]
       else [];
     function_names = E.get_func_names env;
+    locals_names = E.get_func_local_names env;
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
