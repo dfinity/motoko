@@ -1,3 +1,5 @@
+(* Some data type to represent custom sectoins *)
+
 type persistSort = DataBuf | ElemBuf
 
 (* Some Code copied from encodeMap.ml *)
@@ -19,11 +21,11 @@ let to_string s =
   Bytes.to_string bs
 
 
-(* List of messages and number of arguments *)
 let encode
-    (offset : int32)
-    (dfinity_types : (int32 * int32) list)
+    (offset : int32) (* Number of imports, to offset the numbers in dfinity_types *)
+    (dfinity_types : (int32 * int32) list) (* List of messages and number of arguments *)
     (persistent_globals : (int32 * persistSort) list)
+    (function_names : (int32 * string) list) 
     : string =
   let s = stream () in
 
@@ -94,6 +96,18 @@ let encode
       | DataBuf -> vu32 0x6cl
       | ElemBuf -> vu32 0x6bl;
     ) persistent_globals
+  );
+  section 0 (fun _ ->
+    string "name";
+    (* function names section *)
+    section 1 (fun _ ->
+      (* TODO: sort *)
+      vu32 (Int32.of_int (List.length function_names));
+      List.iter (fun (fi, name) ->
+        vu32 fi;
+        string name;
+      ) function_names
+    )
   );
   to_string s
 

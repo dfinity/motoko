@@ -87,6 +87,7 @@ module E = struct
     exports : export list ref;
     (* Function defined in this module *)
     funcs : func Lib.Promise.t list ref;
+    func_names : (int32 * string) list ref;
     (* Functio numer and fill function for built-in functions *)
     built_in_funcs : ((func -> unit) * int32) NameEnv.t;
     (* Types registered in this module *)
@@ -193,6 +194,7 @@ module E = struct
     imports = ref [];
     exports = ref [];
     funcs = ref [];
+    func_names = ref [];
     built_in_funcs = NameEnv.empty;
     func_types = ref default_fun_tys;
     dfinity_types = ref [];
@@ -266,8 +268,12 @@ module E = struct
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     (Int32.add i n, fill)
 
+  let add_fun_name (env : t) fi name =
+    let _ = reg env.func_names (fi, name) in ()
+
   let declare_built_in_fun (env : t) name : t =
     let (fi, fill) = reserve_fun env in
+    add_fun_name env fi name;
     { env with
       built_in_funcs = NameEnv.add name (fill, fi) env.built_in_funcs
     }
@@ -289,6 +295,7 @@ module E = struct
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
+  let get_func_names (env : t) = !(env.func_names)
 
   (* Currently unused, until we add functions to the table *)
   let _add_type (env : t) ty = reg env.func_types ty
@@ -604,6 +611,7 @@ module Func = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env in
+      E.add_fun_name pre_env fi name.it;
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
@@ -634,6 +642,7 @@ module Func = struct
         let mk_body' env = mk_body env load_the_closure in
         let f = compile_func env captured mk_pat mk_body' at in
         let fi = E.add_fun env f in
+        E.add_fun_name env fi name.it;
 
         (* Store the function number: *)
         get_li ^^
@@ -1779,6 +1788,7 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
 
   (* Which name to use? f.it.id or name? Can they differ? *)
   let (fi, fill) = E.reserve_fun pre_env in
+  E.add_fun_name pre_env fi name.it;
   E.add_dfinity_type pre_env (fi, 1l);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
@@ -1860,6 +1870,7 @@ and actor_lit outer_env name fs =
          body = G.to_instr_list (prelude_code ^^ init_code)
     } in
     let start_fi = E.add_fun env5 start_fun in
+    E.add_fun_name env start_fi "start";
 
     OrthogonalPersistence.register env5 start_fi;
 
@@ -1948,7 +1959,8 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
     persist = if with_orthogonal_persistence
       then [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ]
-      else []
+      else [];
+    function_names = E.get_func_names env;
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
@@ -1961,6 +1973,7 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
 
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
+  E.add_fun_name env1 start_fi "start";
   let start_fi_o =
     if E.mode env1 = DfinityMode
     then (Dfinity.export_start_fun env1 start_fi; None)
