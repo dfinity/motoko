@@ -73,15 +73,15 @@ let process_files names : unit =
   | Check ->
     ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
   | Compile ->
-    let (module_, custom_sections) = exit_on_failure Pipeline.(compile_files !compile_mode names) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     if !out_file = "" then begin
       match names with
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
     let oc = open_out !out_file in
-    let (source_map, wasm) = EncodeMap.encode module_ in
-    output_string oc (wasm ^ custom_sections); close_out oc;
+    let (source_map, wasm) = CustomModule.encode module_ in
+    output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin
       let source_map_file = !out_file ^ ".map" in

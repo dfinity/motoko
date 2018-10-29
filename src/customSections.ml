@@ -1,3 +1,5 @@
+type persistSort = DataBuf | ElemBuf
+
 (* Some Code copied from encodeMap.ml *)
 type stream =
 {
@@ -21,7 +23,7 @@ let to_string s =
 let encode
     (offset : int32)
     (dfinity_types : (int32 * int32) list)
-    (persistent_globals : (int32 * bool) list)
+    (persistent_globals : (int32 * persistSort) list)
     : string =
   let s = stream () in
 
@@ -85,12 +87,12 @@ let encode
   section 0 (fun _ ->
     string "persist";
     vu32 (Int32.of_int (List.length persistent_globals));
-    List.iter (fun (i, elem) ->
+    List.iter (fun (i, sort) ->
       vu32 0x03l; (* a global *)
       vu32 i; (* the index *)
-      if elem
-      then vu32 0x6bl (* a databuf *)
-      else vu32 0x6cl; (* a databuf *)
+      match sort with
+      | DataBuf -> vu32 0x6cl
+      | ElemBuf -> vu32 0x6bl;
     ) persistent_globals
   );
   to_string s

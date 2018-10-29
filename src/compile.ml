@@ -4,6 +4,8 @@ open Wasm.Types
 open Source
 open Syntax
 
+open CustomModule
+
 module G = InstrList
 let (^^) = G.(^^) (* is this how we do that? *)
 
@@ -1861,9 +1863,9 @@ and actor_lit outer_env name fs =
 
     OrthogonalPersistence.register env5 start_fi;
 
-    let (m, custom_sections) = conclude_module env5 None true in
-    let (_map, wasm) = EncodeMap.encode m in
-    wasm ^ custom_sections in
+    let m = conclude_module env5 None true in
+    let (_map, wasm) = CustomModule.encode m in
+    wasm in
 
   Dfinity.compile_databuf_of_bytes outer_env wasm ^^
 
@@ -1927,33 +1929,29 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
     init;
     }) (E.get_static_memory env) in
 
-  let m = nr {
-    types = E.get_types env;
-    funcs = funcs;
-    tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
-    elems = [ nr {
-      index = nr 0l;
-      offset = nr (G.to_instr_list (compile_const ni'));
-      init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-    start = start_fi_o;
-    globals = globals;
-    memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
-    imports;
-    exports = E.get_exports env;
-    data
-  } in
+  { module_ = nr {
+      types = E.get_types env;
+      funcs = funcs;
+      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
+      elems = [ nr {
+        index = nr 0l;
+        offset = nr (G.to_instr_list (compile_const ni'));
+        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
+      start = start_fi_o;
+      globals = globals;
+      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+      imports;
+      exports = E.get_exports env;
+      data
+    };
+    types = E.get_dfinity_types env;
+    persist = if with_orthogonal_persistence
+      then [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
+           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ]
+      else []
+  }
 
-  (* Calculate the custom sections *)
-  let dfinity_types = E.get_dfinity_types env in
-  let custom_sections =
-    CustomSections.encode ni' dfinity_types
-      (if with_orthogonal_persistence then
-        [ (OrthogonalPersistence.mem_global, false)
-        ; (OrthogonalPersistence.elem_global, true) ]
-      else []) in
-  (m, custom_sections)
-
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : (module_ * string) =
+let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
   let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
