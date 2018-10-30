@@ -1,5 +1,4 @@
 # copied from https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/development/ocaml-modules/wasm/default.nix
-# and updated to use the git submodule
 
 { stdenv, fetchFromGitHub, ocaml, findlib, ocamlbuild }:
 
@@ -7,15 +6,22 @@ if !stdenv.lib.versionAtLeast ocaml.version "4.02"
 then throw "wasm is not available for OCaml ${ocaml.version}"
 else
 
-if !builtins.pathExists ../vendor/wasm-spec/interpreter
-then throw "submodule in vendor/wasm-spec missing. Run git submodule update --init"
-else
+# Lets use fetch from git, this way nix has to cache less
+# if !builtins.pathExists ../vendor/wasm-spec/interpreter
+# then throw "submodule in vendor/wasm-spec missing. Run git submodule update --init"
+# else
 
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
   version = "1.0";
 
-  src = ../vendor/wasm-spec;
+  #src = ../vendor/wasm-spec;
+  src = fetchFromGitHub {
+    owner = "WebAssembly";
+    repo = "spec";
+    rev = "639bb02f851d9468bdae533457d40731156ef12a";
+    sha256 = "0vqkz428bkwpm0jdy717sfxvp9mh0ai9n849f3wq0vbiw0k6vzmk";
+  };
 
   buildInputs = [ ocaml findlib ocamlbuild ];
 

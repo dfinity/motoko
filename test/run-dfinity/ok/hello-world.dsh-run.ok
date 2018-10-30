@@ -11,13 +11,6 @@ $ dsh new -a _out/hello-world.wasm
     "type": "actorref"
 }
 
-$ dsh run hello-world start
+$ dsh run -q hello-world start
 Hello World!
-{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (hello-world)",
-    "type": "actorref"
-}
 
-Leaked 1 instances of wasm::Engine, made 1, freed 0!

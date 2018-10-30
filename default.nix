@@ -68,16 +68,11 @@ rec {
       "src/.*.mll"
       "src/_tags"
       "test/node-test.js"
-      "test/.*/.*.as"
-      "test/.*/ok/.*"
-      "test/.*.sh"
-      "vendor/.*"
       ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs;
-
 
     buildPhase = ''
       make -C src BUILD=native asc
@@ -87,27 +82,42 @@ rec {
       mkdir -p $out/bin
       cp src/asc $out/bin
     '';
+  };
 
-    installCheckInputs =
-      commonBuildInputs ++
-      [ nixpkgs.bash ] ++
+  native_test = stdenv.mkDerivation {
+    name = "native.test";
+
+    src = sourceByRegex ./. [
+      "test/.*Makefile.*"
+      "test/node-test.js"
+      "test/.*/.*.as"
+      "test/.*/ok/.*"
+      "test/.*.sh"
+      "samples/.*"
+      ];
+
+    buildInputs =
+      [ native
+        ocaml_wasm
+        nixpkgs.bash ] ++
       (if test-dsh then [ dsh ] else []);
 
-    # The binary does not work until we use wrapProgram, which runs in
-    # the install phase. Therefore, we use the installCheck phase to
-    # run the test suite
-    doInstallCheck = true;
-    installCheckPhase = ''
-      patchShebangs test
-      $out/bin/asc --version
-      make -C samples ASC=$out/bin/asc all
-      make -C test/run VERBOSE=1 ASC=$out/bin/asc all
-      make -C test/fail VERBOSE=1 ASC=$out/bin/asc all
+    buildPhase = ''
+      patchShebangs .
+      asc --version
+      make -C samples ASC=asc all
+      make -C test/run VERBOSE=1 ASC=asc all
+      make -C test/fail VERBOSE=1 ASC=asc all
     '' +
       (if test-dsh then ''
-      make -C test/run-dfinity VERBOSE=1 ASC=$out/bin/asc all
+      make -C test/run-dfinity VERBOSE=1 ASC=asc all
       '' else "");
+
+    installPhase = ''
+      mkdir -p $out
+    '';
   };
+
 
   js = native.overrideAttrs (oldAttrs: {
     name = "asc.js";

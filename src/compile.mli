@@ -1,3 +1,3 @@
 type mode = WasmMode | DfinityMode
 
-val compile : mode -> Syntax.prog list -> Wasm.Ast.module_
+val compile : mode -> Syntax.prog -> Syntax.prog list -> CustomModule.extended_module

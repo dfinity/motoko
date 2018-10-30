@@ -11,12 +11,5 @@ $ dsh new -a _out/fac.wasm
     "type": "actorref"
 }
 
-$ dsh run fac start
-120{
-    "modId": "#inject/0",
-    "storage": [],
-    "id": "#inject/1 (fac)",
-    "type": "actorref"
-}
-
-Leaked 1 instances of wasm::Engine, made 1, freed 0!
+$ dsh run -q fac start
+120

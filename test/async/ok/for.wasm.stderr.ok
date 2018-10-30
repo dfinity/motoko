@@ -436,4 +436,4 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)

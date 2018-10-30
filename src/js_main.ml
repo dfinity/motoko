@@ -62,18 +62,13 @@ let js_compile_with mode_string source_map source convert =
       val map = Js.null
     end
 
-let js_compile_wat mode s =
-  js_compile_with mode false s
-    (fun m -> Js.string (Wasm.Sexpr.to_string 80 (Wasm.Arrange.module_ m)), Js.null)
-
 let js_compile_wasm mode source_map s =
   js_compile_with mode source_map s
-    (fun m -> let (map, wasm) = EncodeMap.encode m in Js.bytestring wasm, Js.string map)
+    (fun m -> let (map, wasm) = CustomModule.encode m in Js.bytestring wasm, Js.string map)
 
 let () =
   Js.export "ActorScript"
     (object%js
       method check s = js_check s
-      method compileWat mode s = js_compile_wat mode s
       method compileWasm mode source_map s = js_compile_wasm mode source_map s
     end);

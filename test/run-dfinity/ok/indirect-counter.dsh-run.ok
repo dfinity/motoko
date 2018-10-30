@@ -3,13 +3,13 @@ $ dsh reset
     "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
 }
 
-$ dsh new -a _out/the-answer.wasm
+$ dsh new -a _out/indirect-counter.wasm
 {
     "modId": "#inject/0",
     "storage": [],
-    "id": "#inject/1 (the-answer)",
+    "id": "#inject/1 (indirect-counter)",
     "type": "actorref"
 }
 
-$ dsh run -q the-answer start
-42
+$ dsh run -q indirect-counter start
+2344

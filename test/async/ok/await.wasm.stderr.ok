@@ -1,5 +1,5 @@
-Could not find primitive @async
-Could not find primitive @async
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   i@1
   (BlockE
@@ -98,7 +98,7 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
+compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   i@0
   (BlockE
@@ -158,14 +158,14 @@ compile_exp: (DeclareE
     )
   )
 )
-Could not find primitive @async
-Could not find primitive @await
-Could not find primitive @async
-Could not find primitive @await
-Could not find primitive @await
-Could not find primitive @async
-Could not find primitive @await
-Could not find primitive @async
-Could not find primitive @await
-Could not find primitive @async
-Could not find primitive @async
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @await)
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @await)
+compile_exp: (PrimE @await)
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @await)
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @await)
+compile_exp: (PrimE @async)
+compile_exp: (PrimE @async)
