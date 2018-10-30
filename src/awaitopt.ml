@@ -7,6 +7,7 @@ module R = Rename
 - is async<T> shareable or not?
 - consider introducing async function type, removing AsyncE and then allocating async<T> values on caller side, not callee side.
 - consider using labels for (any) additional continuation arguments.
+- Our compilation of loops won't be stack efficient unless the compiler optimizes (self) tail calls - alternatively we could rejig the translation to compile loops as tail recursive functions that enter a loop, not just plain tail recursive functions.
 *)
              
 
