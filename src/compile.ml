@@ -152,6 +152,8 @@ module E = struct
   let actor_export_fun_ty_i = 15l
   let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
   let func_internalize_fun_ty_i = 16l
+  let box_fun_ty = nr (FuncType ([I32Type],[I32Type]))
+  let box_fun_ty_i = 17l
   let default_fun_tys = [
       start_fun_ty;
       unary_fun_ty;
@@ -170,6 +172,7 @@ module E = struct
       actor_self_fun_ty;
       actor_export_fun_ty;
       func_internalize_fun_ty;
+      box_fun_ty;
       ]
 
   (* Indices of local variables *)
@@ -357,13 +360,13 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
-let compile_true =    compile_const 1l
-let compile_false =   compile_const 0l
-let compile_zero =    compile_const 0l
-let compile_unit =    compile_const 0l
+let compile_unboxed_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
+let compile_unboxed_true =    compile_unboxed_const 1l
+let compile_unboxed_false =   compile_unboxed_const 0l
+let compile_unboxed_zero =    compile_unboxed_const 0l
+let compile_unit =    compile_unboxed_const 0l
 (* This needs to be disjoint from all pointers *)
-let compile_null =    compile_const Int32.max_int
+let compile_null =    compile_unboxed_const Int32.max_int
 
 (* Locals *)
 
@@ -406,7 +409,7 @@ module Heap = struct
     (* expect the size (in words), returns the pointer *)
     G.i_ (GetGlobal heap_ptr) ^^
     G.i_ (GetGlobal heap_ptr) ^^
-    compile_const n  ^^
+    compile_unboxed_const n  ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     G.i_ (SetGlobal heap_ptr)
 
@@ -440,24 +443,24 @@ module ElemHeap = struct
 
     (* Store reference *)
     G.i_ (GetGlobal ref_counter) ^^
-    compile_const Heap.word_size ^^
+    compile_unboxed_const Heap.word_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-    compile_const ref_location ^^
+    compile_unboxed_const ref_location ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     get_i ^^
     store_ptr ^^
 
     (* Bump counter *)
     G.i_ (GetGlobal ref_counter) ^^
-    compile_const 1l ^^
+    compile_unboxed_const 1l ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     G.i_ (SetGlobal ref_counter)
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
   let recall_reference env : G.t =
-    compile_const Heap.word_size ^^
+    compile_unboxed_const Heap.word_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-    compile_const ref_location ^^
+    compile_unboxed_const ref_location ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     load_ptr
 
@@ -492,24 +495,76 @@ module Tuple = struct
 
 end (* Tuple *)
 
+module BoxedInt = struct
+  (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
+     This way, we know that everything inside a polymorphic data structure
+     (e.g. a tuple) is a pointer. This makes message
+     serialization/deserialization, and later for GC, easier.
+     Eventually, we can look into storing small numbers using a tagged format.
+  *)
+
+  (* We include booleans here, i.e. they are also presented as boxed.
+     Horribly inefficient, I know.
+  *)
+  let unbox = Heap.load_field 0l
+  let box env = G.i_ (Call (nr (E.built_in env "box_int")))
+
+  let lit env n = compile_unboxed_const n ^^ box env
+
+  let lit_false env = lit env 0l
+  let lit_true env = lit env 1l
+
+  let lift_unboxed_unary env op_is =
+    (* unbox argument *)
+    unbox ^^
+    (* apply operator *)
+    op_is ^^
+    (* box result *)
+    box env
+
+  let lift_unboxed_binary env op_is =
+    let (set_i, get_i) = new_local env "n" in
+    (* unbox both arguments *)
+    set_i ^^
+    unbox ^^
+    get_i ^^ unbox ^^
+    (* apply operator *)
+    op_is ^^
+    (* box result *)
+    box env
+
+  let common_funcs env =
+    E.define_built_in env "box_int" (
+      let env1 = E.mk_fun_env env 1l in
+      E.add_local_name env1 0l "n";
+      let code = Tuple.lit env1 [ G.i_ (GetLocal (nr 0l)) ] in
+      (nr { ftype = nr E.box_fun_ty_i;
+           locals = E.get_locals env1;
+           body = G.to_instr_list code
+         }
+      , E.get_local_names env1)
+    )
+
+end (* BoxedInt *)
+
 module Var = struct
 
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated thing on the fly. *)
   let static_fun_pointer fi env =
     Tuple.lit env [
-      compile_const fi
+      compile_unboxed_const fi
     ]
 
   let get_val env var = match E.lookup_var env var with
     | Some (Local i)  -> G.i_ (GetLocal (nr i)) ^^ load_ptr
-    | Some (Static i) -> compile_const i ^^ load_ptr
+    | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
     | Some (Deferred d) -> d.allocate env
     | None   -> G.i_ Unreachable
 
   let get_loc env var = match E.lookup_var env var with
     | Some (Local i) -> G.i_ (GetLocal (nr i))
-    | Some (Static i) -> compile_const i
+    | Some (Static i) -> compile_unboxed_const i
     (* We have to do some boxing here *)
     | _ -> Tuple.lit env [ get_val env var ]
 
@@ -517,7 +572,7 @@ module Var = struct
     | Some (Local i) -> G.i_ (SetLocal (nr i))
     | Some (Static i) ->
       set_tmp env ^^
-      compile_const i ^^
+      compile_unboxed_const i ^^
       get_tmp env ^^
       store_ptr
     | Some (Deferred _) -> raise (Invalid_argument "Cannot set heap location for a deferred thing")
@@ -634,7 +689,7 @@ module Func = struct
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
-        let mk_body' env = mk_body env (compile_const (static_function_id fi)) in
+        let mk_body' env = mk_body env (compile_unboxed_const (static_function_id fi)) in
         let f = compile_func env [] mk_pat mk_body' at in
         fill f;
         if last then d.allocate env else G.nop)
@@ -665,7 +720,7 @@ module Func = struct
 
         (* Store the function number: *)
         get_li ^^
-        compile_const fi ^^ (* Store function number *)
+        compile_unboxed_const fi ^^ (* Store function number *)
         Heap.store_field 0l ^^
         (* Store all captured values *)
         let store_capture i v =
@@ -692,12 +747,16 @@ module Prim = struct
     let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
-    compile_zero ^^
+    BoxedInt.unbox ^^
+    compile_unboxed_zero ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
     G.if_ [I32Type]
-      ( compile_zero ^^
+      ( compile_unboxed_zero ^^
         get_i ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
+        BoxedInt.unbox ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+        BoxedInt.box env
+      )
       ( get_i )
 
 end (* Prim *)
@@ -708,7 +767,7 @@ module Object = struct
 
   let class_position = 0l
 
-  let default_header = [ compile_const 1l ]
+  let default_header = [ compile_unboxed_const 1l ]
 
   (* Takes the header into account *)
   let field_position env f =
@@ -734,7 +793,7 @@ module Object = struct
        let (env', fi) = E.add_local env id.it in
        let offset = Wasm.I32.mul 4l (field_position env id) in
        let code' = get_ri ^^
-                   compile_const offset ^^
+                   compile_unboxed_const offset ^^
                    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                    G.i_ (SetLocal (nr fi)) in
        (env', code ^^ code') in
@@ -753,7 +812,7 @@ module Object = struct
      get_ri ^^
      (match class_option with
        | Some class_instrs -> class_instrs
-       | None -> compile_const 1l ) ^^
+       | None -> compile_unboxed_const 1l ) ^^
      Heap.store_field class_position ^^
 
      (* Write all the fields *)
@@ -769,8 +828,9 @@ module Object = struct
      get_ri
 
   let idx env f =
+     (* Expects the pointer to the object on the stack *)
      let i = field_position env f in
-     compile_const (Wasm.I32.mul 4l i) ^^
+     compile_unboxed_const (Wasm.I32.mul 4l i) ^^
      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
 
   let load_idx env f =
@@ -801,7 +861,7 @@ module Text = struct
     let len_bytes = bytes_of_int32 len in
     let data = len_bytes ^ s in
     let ptr = E.add_static_bytes env data in
-    compile_const ptr
+    compile_unboxed_const ptr
 
 end (* String *)
 
@@ -811,11 +871,11 @@ module Array = struct
   let len_field = Int32.add Object.header_size 5l
 
   (* Expects on the stack the pointer to the array and the index
-     of the element, and returns the point to the element. *)
+     of the element (unboxed), and returns the pointer to the element. *)
   let idx =
-    compile_const header_size ^^
+    compile_unboxed_const header_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    compile_const element_size ^^
+    compile_unboxed_const element_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
 
@@ -829,6 +889,7 @@ module Array = struct
       (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
+            BoxedInt.unbox ^^
             idx ^^
             load_ptr
        ));
@@ -836,6 +897,7 @@ module Array = struct
       (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
+            BoxedInt.unbox ^^
             idx ^^
             get_second_arg ^^ (* the value *)
             store_ptr ^^
@@ -844,7 +906,8 @@ module Array = struct
     E.define_built_in env "array_len"
       (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
-            Heap.load_field len_field
+            Heap.load_field len_field ^^
+            BoxedInt.box env1
       ));
 
     let mk_next_fun mk_code : E.func_with_names = Func.unary_of_body env (fun env1 ->
@@ -869,25 +932,25 @@ module Array = struct
                 Func.load_closure 1l ^^
                 (* Store increased counter *)
                 get_i ^^
-                compile_const 1l ^^
+                compile_unboxed_const 1l ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 store_ptr ^^
                 (* Return stuff *)
-                Opt.inject env (
-                  mk_code (Func.load_closure 2l) (get_i)
+                Opt.inject env1 (
+                  mk_code env (Func.load_closure 2l) get_i
                 )
               )
        ) in
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* counter *)
             let (set_i, get_i) = new_local env1 "n" in
-            Tuple.lit env1 [ compile_zero ] ^^
+            Tuple.lit env1 [ compile_unboxed_zero ] ^^
             set_i ^^
 
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Tuple.lit env1 [
-              compile_const next_funid;
+              compile_unboxed_const next_funid;
               get_i;
               get_array_object ] ^^
             set_ni ^^
@@ -897,16 +960,14 @@ module Array = struct
        ) in
 
     E.define_built_in env "array_keys_next"
-      (mk_next_fun (fun get_array get_i ->
-              (* Return old value *)
-              get_i
+      (mk_next_fun (fun env1 get_array get_i ->
+              get_i ^^ BoxedInt.box env1
        ));
     E.define_built_in env "array_keys"
       (mk_iterator (E.built_in env "array_keys_next"));
 
     E.define_built_in env "array_vals_next"
-      (mk_next_fun (fun get_array get_i ->
-              (* Lookup old value *)
+      (mk_next_fun (fun env1 get_array get_i ->
               get_array ^^
               get_i ^^
               idx ^^
@@ -920,17 +981,17 @@ module Array = struct
     Tuple.lit_rec env
      (List.map (fun i _ -> i) Object.default_header @
       [ (fun compile_self ->
-        Tuple.lit env [ compile_const (E.built_in env "array_get"); compile_self])
+        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_get"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (E.built_in env "array_set"); compile_self])
+        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_set"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (E.built_in env "array_len"); compile_self])
+        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_len"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (E.built_in env "array_keys"); compile_self])
+        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_keys"); compile_self])
       ; (fun compile_self ->
-        Tuple.lit env [ compile_const (E.built_in env "array_vals"); compile_self])
+        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_vals"); compile_self])
       ; (fun compile_self ->
-        compile_const (Wasm.I32.of_int_u (List.length element_instructions)))
+        compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions)))
       ] @ List.map (fun is _ -> is) element_instructions)
 
 end (* Array *)
@@ -1058,19 +1119,19 @@ module Dfinity = struct
 
   let system_funs env =
     E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
-      compile_const tmp_table_slot ^^ (* slot number *)
+      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
       Func.load_closure 1l ^^ (* the funcref table id *)
       ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (func_internalize_i env))) ^^
 
       Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
-      compile_const tmp_table_slot ^^
+      compile_unboxed_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
       compile_unit
     ));
 
     E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
-      compile_const tmp_table_slot ^^ (* slot number *)
+      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
 
       (* Create a funcref for the message *)
       G.i_ (Call (nr (actor_self_i env))) ^^
@@ -1082,7 +1143,7 @@ module Dfinity = struct
 
       Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
 
-      compile_const tmp_table_slot ^^
+      compile_unboxed_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
       compile_unit
     ))
@@ -1095,7 +1156,7 @@ module Dfinity = struct
 
     (* Calculate the offset *)
     get_i ^^
-    compile_const (Int32.mul Heap.word_size Text.header_size) ^^
+    compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     (* Calculate the length *)
     get_i ^^
@@ -1111,13 +1172,14 @@ module Dfinity = struct
 
   let static_self_message_pointer name env =
     Tuple.lit env [
-      compile_const (E.built_in env "self_message_wrapper");
+      compile_unboxed_const (E.built_in env "self_message_wrapper");
       compile_databuf_of_bytes env name.it
     ]
 
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
+      BoxedInt.unbox ^^
       G.i_ (Call (nr (test_show_i32_i env))) ^^
       G.i_ (Call (nr (test_print_i env))) ^^
       compile_unit
@@ -1131,7 +1193,7 @@ module Dfinity = struct
       set_i ^^
       (* Calculate the offset *)
       get_i ^^
-      compile_const (Int32.mul Heap.word_size Text.header_size) ^^
+      compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       (* Calculate the length *)
       get_i ^^
@@ -1202,7 +1264,7 @@ module OrthogonalPersistence = struct
        set_i ^^
 
        get_i ^^
-       compile_const 0l ^^
+       compile_unboxed_const 0l ^^
        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
        G.if_[]
          (* First run, call the start function *)
@@ -1211,15 +1273,15 @@ module OrthogonalPersistence = struct
          (* Subsequent run *)
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
-           compile_const ElemHeap.begin_dyn_space ^^
+           compile_unboxed_const ElemHeap.begin_dyn_space ^^
            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
            G.i_ (SetGlobal Heap.heap_ptr) ^^
 
            (* Load memory *)
-           compile_const ElemHeap.begin_dyn_space ^^
+           compile_unboxed_const ElemHeap.begin_dyn_space ^^
            get_i ^^
            G.i_ (GetGlobal (nr mem_global)) ^^
-           compile_zero ^^
+           compile_unboxed_zero ^^
            G.i_ (Call (nr (Dfinity.data_internalize_i env1))) ^^
 
            (* Load reference counter *)
@@ -1228,24 +1290,24 @@ module OrthogonalPersistence = struct
            G.i_ (SetGlobal ElemHeap.ref_counter) ^^
 
            (* Load references *)
-           compile_const ElemHeap.ref_location ^^
+           compile_unboxed_const ElemHeap.ref_location ^^
            G.i_ (GetGlobal ElemHeap.ref_counter) ^^
            G.i_ (GetGlobal (nr elem_global)) ^^
-           compile_zero ^^
+           compile_unboxed_zero ^^
            G.i_ (Call (nr (Dfinity.elem_internalize_i env1)))
         )
     ));
     E.define_built_in env "save_mem" (Func.nullary_of_body env (fun env1 ->
        (* Store memory *)
-       compile_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.begin_dyn_space ^^
        G.i_ (GetGlobal Heap.heap_ptr) ^^
-       compile_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.begin_dyn_space ^^
        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
        G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
        G.i_ (SetGlobal (nr mem_global)) ^^
 
        (* Store references *)
-       compile_const ElemHeap.ref_location ^^
+       compile_unboxed_const ElemHeap.ref_location ^^
        G.i_ (GetGlobal ElemHeap.ref_counter) ^^
        G.i_ (Call (nr (Dfinity.elem_externalize_i env))) ^^
        G.i_ (SetGlobal (nr elem_global))
@@ -1329,14 +1391,14 @@ module PatCode = struct
     | CanFail is1 -> function
       | CanFail is2 -> CanFail (fun fail_code ->
           let inner_fail = G.new_depth_label () in
-          let inner_fail_code = compile_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_true) ^^
+          let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
           G.if_ [] G.nop (is2 fail_code)
         )
       | CannotFail is2 -> CannotFail (
           let inner_fail = G.new_depth_label () in
-          let inner_fail_code = compile_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_true) ^^
+          let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
           G.if_ [] G.nop is2
         )
 
@@ -1350,41 +1412,41 @@ open PatCode
 (* The actual compiler code that looks at the AST *)
 
 let compile_lit env lit = match lit with
-  | BoolLit true ->  compile_true
-  | BoolLit false -> compile_false
+  | BoolLit false -> BoxedInt.lit_false env
+  | BoolLit true ->  BoxedInt.lit_true env
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      ->
-    (try compile_const (Big_int.int32_of_big_int n)
+    (try BoxedInt.lit env (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
   | NatLit n      ->
-    (try compile_const (Big_int.int32_of_big_int n)
+    (try BoxedInt.lit env (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
   | NullLit       -> compile_null
   | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) G.i_ Unreachable
 
 let compile_unop env op = match op with
-  | NegOp ->
+  | NegOp -> BoxedInt.lift_unboxed_unary env (
       set_tmp env ^^
-      compile_zero ^^
+      compile_unboxed_zero ^^
       get_tmp env ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
 
-let compile_binop op = match op with
+let compile_binop env op = BoxedInt.lift_unboxed_binary env (match op with
   | AddOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
   | SubOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
   | MulOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul))
-  | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
+  | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable)
 
-let compile_relop op = match op with
+let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | GeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeS))
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS))
   | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-  | _ -> todo "compile_relop" (Arrange.relop op) G.i_ Unreachable
+  | _ -> todo "compile_relop" (Arrange.relop op) G.i_ Unreachable)
 
 
 (* compile_lexp is used for expressions on the left of an
@@ -1396,6 +1458,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
   | IdxE (e1,e2) ->
      compile_exp env e1 ^^ (* offset to array *)
      compile_exp env e2 ^^ (* idx *)
+     BoxedInt.unbox ^^
      Array.idx
   | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e ^^
@@ -1434,34 +1497,39 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 ^^
+     BoxedInt.unbox ^^
      G.if_ [I32Type] compile_unit (G.i (Unreachable @@ exp.at))
   | NotE e ->
      compile_exp env e ^^
-     G.if_ [I32Type] compile_false compile_true
+     BoxedInt.unbox ^^
+     G.if_ [I32Type] (BoxedInt.lit_false env) (BoxedInt.lit_true env)
   | UnE (op, e1) ->
      compile_exp env e1 ^^
      compile_unop env op
   | BinE (e1, op, e2) ->
      compile_exp env e1 ^^
      compile_exp env e2 ^^
-     compile_binop op
+     compile_binop env op
   | RelE (e1, op, e2) ->
      compile_exp env e1 ^^
      compile_exp env e2 ^^
-     compile_relop op
+     compile_relop env op
   | OrE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     code1 ^^ G.if_ [I32Type] compile_true code2
+     code1 ^^ BoxedInt.unbox ^^
+     G.if_ [I32Type] (BoxedInt.lit_true env) code2
   | AndE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     code1 ^^ G.if_ [I32Type] code2 compile_false
+     code1 ^^ BoxedInt.unbox ^^
+     G.if_ [I32Type] code2 (BoxedInt.lit_false env)
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
      let code3 = compile_exp env e3 in
-     code1 ^^ G.if_ [I32Type] code2 code3
+     code1 ^^ BoxedInt.unbox ^^
+     G.if_ [I32Type] code2 code3
   | IsE (e1, e2) ->
      (* There are two cases: Either the class is a pointer to
         the object on the RHS, or it is -- mangled -- the
@@ -1479,14 +1547,14 @@ and compile_exp (env : E.t) exp = match exp.it with
      get_j ^^
      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
      G.if_ [I32Type]
-       compile_true
+       (BoxedInt.lit_true env)
        (* Static function id? *)
        ( get_i ^^
          get_j ^^
          Heap.load_field 0l ^^ (* get the function id *)
-         compile_const Heap.word_size ^^ (* mangle *)
+         compile_unboxed_const Heap.word_size ^^ (* mangle *)
          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-         compile_const 1l ^^ (* mangle *)
+         compile_unboxed_const 1l ^^ (* mangle *)
          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
        )
@@ -1511,7 +1579,10 @@ and compile_exp (env : E.t) exp = match exp.it with
   | WhileE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     G.loop_ [] (code1 ^^ G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop) ^^
+     G.loop_ [] (
+       code1 ^^ BoxedInt.unbox ^^
+       G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop
+     ) ^^
      compile_unit
   | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e ^^ G.i (Return @@ exp.at)
@@ -1626,12 +1697,19 @@ enabled mutual recursion.
 
 
 and compile_lit_pat env opo l = match opo, l with
-  | None, (NatLit _ | IntLit _ | NullLit | BoolLit _) ->
+  | None, NullLit ->
     compile_lit env l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+  | None, (NatLit _ | IntLit _ | BoolLit _) ->
+    BoxedInt.unbox ^^
+    compile_lit env l ^^
+    BoxedInt.unbox ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | Some uo, (NatLit _ | IntLit _) ->
+    BoxedInt.unbox ^^
     compile_lit env l ^^
     compile_unop env uo ^^
+    BoxedInt.unbox ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
 
@@ -1784,8 +1862,9 @@ prelude. So this function compiles the prelude, just to find out the bound names
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l in
-  let (env2, _) = compile_prelude env1 in
-  E.in_scope_set env2
+  let env2 = declare_built_in_funs env1 in
+  let (env3, _) = compile_prelude env2 in
+  E.in_scope_set env3
 
 
 and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
@@ -1812,7 +1891,7 @@ and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
   let ptr = E.reserve_static_memory pre_env Heap.word_size in
   let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
   ( pre_env1, fun env ->
-    compile_const ptr ^^
+    compile_unboxed_const ptr ^^
     compile_exp env f.it.exp ^^
     store_ptr
   )
@@ -1875,7 +1954,7 @@ and compile_actorref_wrapper env fields =
     (* Create a closure object that calls the funcref *)
     let code env =
       Tuple.lit env
-        [ compile_const (E.built_in env "funcref_wrapper")
+        [ compile_unboxed_const (E.built_in env "funcref_wrapper")
         ; get_actorref_i ^^
           Dfinity.compile_databuf_of_bytes env (name.it) ^^
           G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
@@ -1895,7 +1974,7 @@ and actor_lit outer_env name fs =
     let env1 = declare_built_in_funs env in
     let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem" ] in
 
-
+    BoxedInt.common_funcs env2;
     Array.common_funcs env2;
     if E.mode env2 = DfinityMode then Dfinity.system_funs env2;
 
@@ -1910,7 +1989,7 @@ and actor_lit outer_env name fs =
              body = G.to_instr_list (prelude_code ^^ init_code) }
       , E.get_local_names env5) in
     let start_fi = E.add_fun env5 start_fun in
-    E.add_fun_name env start_fi "start";
+    E.add_fun_name env5 start_fi "start";
 
     OrthogonalPersistence.register env5 start_fi;
 
@@ -1931,7 +2010,8 @@ and actor_lit outer_env name fs =
 
 and declare_built_in_funs env =
   E.declare_built_in_funs env
-    ([ "array_get"; "array_set"; "array_len";
+    ([ "box_int";
+       "array_get"; "array_set"; "array_len";
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
@@ -1958,25 +2038,25 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
   let globals = [
       (* persistent databuf for memory *)
       nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_zero)
+        value = nr (G.to_instr_list compile_unboxed_zero)
       };
       (* persistent elembuf for memory *)
       nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_zero)
+        value = nr (G.to_instr_list compile_unboxed_zero)
       };
       (* End-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list (compile_const (E.get_end_of_static_memory env)))
+        value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
       };
       (* reference pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_zero)
+        value = nr (G.to_instr_list compile_unboxed_zero)
       }
       ] in
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
-    offset = nr (G.to_instr_list (compile_const offset));
+    offset = nr (G.to_instr_list (compile_unboxed_const offset));
     init;
     }) (E.get_static_memory env) in
 
@@ -1986,7 +2066,7 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
       elems = [ nr {
         index = nr 0l;
-        offset = nr (G.to_instr_list (compile_const ni'));
+        offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
       start = start_fi_o;
       globals = globals;
@@ -2009,6 +2089,7 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   let env1 = declare_built_in_funs env in
+  BoxedInt.common_funcs env1;
   Array.common_funcs env1;
   if E.mode env1 = DfinityMode then Dfinity.system_funs env1;
 

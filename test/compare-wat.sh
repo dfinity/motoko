@@ -21,7 +21,13 @@ nix-build -E '((import ./..) {}).native' \
 
 mkdir -p compare-out/
 
-for file in */*.as
+if [[ $# -eq 0 ]] ; then
+    args="*/*.as"
+else
+    args="$@"
+fi
+
+for file in $args
 do
   base=$(basename $file .as)
 
