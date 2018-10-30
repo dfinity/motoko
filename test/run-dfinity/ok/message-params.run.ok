@@ -1,0 +1,18 @@
+-- Checking message-params.as:
+-- Interpreting message-params.as:
+printInt(1)
+
+printInt(3)
+
+printInt(6)
+
+printInt(10)
+
+printInt(21)
+
+printInt(21)
+
+printInt(21)
+
+-- Finished message-params.as:
+
