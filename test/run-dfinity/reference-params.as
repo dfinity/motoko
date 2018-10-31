@@ -19,5 +19,4 @@ let c = actor {
     f();
   };
 };
-//c.say_hi(a.hello);
-
+c.say_hi(a.hello);

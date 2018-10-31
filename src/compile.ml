@@ -623,23 +623,36 @@ module Func = struct
 
   (* Expect the function closure and the argument on the stack *)
   let call_indirect env at =
-   (* Pop the argument *)
-   let (set_i, get_i) = new_local env "call_arg" in
-   set_i ^^
+    (* Pop the argument *)
+    let (set_i, get_i) = new_local env "call_arg" in
+    set_i ^^
 
-   (* Pop the closure pointer *)
-   let (set_fi, get_fi) = new_local env "callee" in
-   set_fi ^^
+    (* Pop the closure pointer *)
+    let (set_fi, get_fi) = new_local env "callee" in
+    set_fi ^^
 
-   (* First arg: The closure pointer *)
-   get_fi ^^
-   (* Second arg: The argument *)
-   get_i ^^
-   (* And now get the table index *)
-   get_fi ^^
-   Heap.load_field funptr_field ^^
-   (* All done: Call! *)
-   G.i (CallIndirect (nr (ty env)) @@ at)
+    get_fi ^^
+    Tagged.branch env [I32Type] (
+      [ Tagged.Closure,
+        (* First arg: The closure pointer *)
+        (* already on the stack *)
+        (* Second arg: The argument *)
+        get_i ^^
+        (* And now get the table index *)
+        get_fi ^^
+        Heap.load_field funptr_field ^^
+        (* All done: Call! *)
+        G.i (CallIndirect (nr (ty env)) @@ at)
+      ] @ (
+      if E.mode env = DfinityMode
+      then [ Tagged.Reference, (* a funcref! *)
+             Heap.load_field 1l ^^
+             get_i ^^
+             G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
+             compile_unit
+           ]
+      else [])
+    )
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -1700,19 +1713,21 @@ module Message = struct
 
   let system_funs env =
 
-    E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
+    Func.define_built_in env "call_funcref" ["funcref_idx";"arg"] [] (fun env1 ->
+      let get_funcref_idx = G.i_ (GetLocal (nr 0l)) in
+      let get_arg = G.i_ (GetLocal (nr 1l)) in
+
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-      Func.load_closure 0l ^^ (* the funcref table id *)
+      get_funcref_idx ^^ (* the funcref table id *)
       ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
-      Func.load_argument ^^
+      get_arg ^^
       G.i_ (Call (nr (E.built_in env "serialize"))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (message_ty env1))) ^^
-      compile_unit
-    ));
+      G.i_ (CallIndirect (nr (message_ty env1)))
+    );
 
     E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
@@ -2410,10 +2425,9 @@ and actor_fake_object_idx env name =
     ElemHeap.recall_reference env ^^
     set_i ^^
 
-    (* Create a closure object that calls the funcref *)
-    Tagged.obj env Tagged.Closure
-      [ compile_unboxed_const (E.built_in env "funcref_wrapper")
-      ; get_i ^^
+    (* Export the methods and put it in a Reference object *)
+    Tagged.obj env Tagged.Reference
+      [ get_i ^^
         Dfinity.compile_databuf_of_bytes env (name.it) ^^
         G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
         ElemHeap.remember_reference env
@@ -2426,7 +2440,7 @@ and declare_built_in_funs env =
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
-    then [ "funcref_wrapper"; "self_message_wrapper"
+    then [ "call_funcref"; "self_message_wrapper"
          ; "serialize"; "deserialize"; "memcpy"; "deep_copy"
          ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
     else []))
