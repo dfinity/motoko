@@ -1605,7 +1605,13 @@ module Serialization = struct
       G.i_ (GetGlobal ElemHeap.ref_counter) ^^
       set_tbl_end ^^
 
-      (* Create elembuf *)
+      (* Reset the counters, to free some space *)
+      get_start ^^
+      G.i_ (SetGlobal Heap.heap_ptr) ^^
+      get_tbl_start ^^
+      G.i_ (SetGlobal ElemHeap.ref_counter) ^^
+
+      (* Finalloy, create elembuf *)
       compile_unboxed_const ElemHeap.ref_location ^^
       get_tbl_start ^^
       compile_unboxed_const Heap.word_size ^^ (* mangle *)
