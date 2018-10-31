@@ -508,6 +508,7 @@ module Tagged = struct
     | Int
     | MutBox (* used for local variables *)
     | Closure
+    | Some (* For opt *)
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -517,6 +518,7 @@ module Tagged = struct
     | Int -> 4l
     | MutBox -> 5l
     | Closure -> 6l
+    | Some -> 7l
 
   (* The tag *)
   let header_size = 1l
@@ -662,8 +664,12 @@ end (* Var *)
 
 module Opt = struct
 
-let inject env e = Heap.obj env [e]
-let project = Heap.load_field 0l
+let inject env e =
+  Heap.obj env
+    [ compile_unboxed_const (Tagged.int_of_tag Tagged.Some)
+    ; e]
+
+let project = Heap.load_field Tagged.header_size
 
 end (* Opt *)
 
