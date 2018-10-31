@@ -3,19 +3,21 @@ $ dsh reset
     "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
 }
 
-$ dsh new -a _out/message-params.wasm
+$ dsh new -a _out/data-params.wasm
 {
     "modId": "#inject/0",
     "storage": [],
-    "id": "#inject/1 (message-params)",
+    "id": "#inject/1 (data-params)",
     "type": "actorref"
 }
 
-$ dsh run -q message-params start
+$ dsh run -q data-params start
 1
 3
 6
 10
 21
-21
+45
+91
+91
 

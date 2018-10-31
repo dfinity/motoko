@@ -1,0 +1,20 @@
+-- Checking data-params.as:
+-- Interpreting data-params.as:
+printInt(1)
+
+printInt(3)
+
+printInt(6)
+
+printInt(10)
+
+printInt(21)
+
+printInt(45)
+
+printInt(91)
+
+printInt(91)
+
+-- Finished data-params.as:
+
