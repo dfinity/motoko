@@ -266,11 +266,6 @@ module E = struct
 
   let get_types (env : t) = !(env.func_types)
 
-  (* Common type *)
-  let start_fun_ty env = func_type env (FuncType ([],[]))
-  (* Actor message type *)
-  let nullary_fun_ty env = func_type env (FuncType ([],[]))
-
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
 
@@ -503,57 +498,6 @@ module Tagged = struct
     Heap.obj env (compile_unboxed_const (int_of_tag tag) :: element_instructions)
 end
 
-module BoxedInt = struct
-  (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
-     This way, we know that everything inside a polymorphic data structure
-     (e.g. a tuple) is a pointer. This makes message
-     serialization/deserialization, and later for GC, easier.
-     Eventually, we can look into storing small numbers using a tagged format.
-  *)
-
-  (* We include booleans here, i.e. they are also presented as boxed.
-     Horribly inefficient, I know.
-  *)
-  let unbox = Heap.load_field (Int32.add Tagged.header_size 0l)
-  let box env = G.i_ (Call (nr (E.built_in env "box_int")))
-
-  let lit env n = compile_unboxed_const n ^^ box env
-
-  let lit_false env = lit env 0l
-  let lit_true env = lit env 1l
-
-  let lift_unboxed_unary env op_is =
-    (* unbox argument *)
-    unbox ^^
-    (* apply operator *)
-    op_is ^^
-    (* box result *)
-    box env
-
-  let lift_unboxed_binary env op_is =
-    let (set_i, get_i) = new_local env "n" in
-    (* unbox both arguments *)
-    set_i ^^
-    unbox ^^
-    get_i ^^ unbox ^^
-    (* apply operator *)
-    op_is ^^
-    (* box result *)
-    box env
-
-  let common_funcs env =
-    E.define_built_in env "box_int" (
-      let env1 = E.mk_fun_env env 1l in
-      E.add_local_name env1 0l "n";
-      let code = Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ] in
-      (nr { ftype = nr (E.func_type env (FuncType ([I32Type],[I32Type])));
-            locals = E.get_locals env1;
-            body = G.to_instr_list code
-          }
-      , E.get_local_names env1)
-    )
-
-end (* BoxedInt *)
 
 module Var = struct
 
@@ -633,29 +577,21 @@ module Func = struct
     (* should be different from any pointer *)
     Int32.add (Int32.mul fi Heap.word_size) 1l
 
-  let unary_of_body env mk_body =
-    (* Fresh set of locals *)
-    (* Reserve two locals for closure and argument *)
-    let env1 = E.mk_fun_env env 2l in
-    E.add_local_name env1 0l "clos";
-    E.add_local_name env1 1l "param";
-    let code = mk_body env1 in
-    (nr { ftype = nr (ty env1);
-         locals = E.get_locals env1;
-         body = G.to_instr_list code
-       }
+  let of_body env params retty mk_body =
+    let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) in
+    List.iteri (fun i n -> E.add_local_name env1 (Int32.of_int i) n) params;
+    let ty = FuncType (List.map (fun _ -> I32Type) params, retty) in
+    (nr { ftype = nr (E.func_type env ty);
+          locals = E.get_locals env1;
+          body = G.to_instr_list (mk_body env1)
+        }
     , E.get_local_names env1)
 
-  let nullary_of_body env mk_body =
-    (* Fresh set of locals *)
-    (* Reserve one local, no arguments *)
-    let env1 = E.mk_fun_env env 0l in
-    let code = mk_body env1 in
-    (nr { ftype = nr (E.nullary_fun_ty env1);
-         locals = E.get_locals env1;
-         body = G.to_instr_list code
-       }
-    , E.get_local_names env1)
+  let unary_of_body env mk_body =
+    of_body env ["clos"; "param"] [I32Type] mk_body
+
+  let define_built_in env name params retty mk_body =
+    E.define_built_in env name (of_body env params retty mk_body)
 
   (* The argument on the stack *)
   let call_direct env fi at =
@@ -794,6 +730,51 @@ module Func = struct
     else dec_closure pre_env last name captured mk_pat mk_body at
 
 end (* Func *)
+
+module BoxedInt = struct
+  (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
+     This way, we know that everything inside a polymorphic data structure
+     (e.g. a tuple) is a pointer. This makes message
+     serialization/deserialization, and later for GC, easier.
+     Eventually, we can look into storing small numbers using a tagged format.
+  *)
+
+  (* We include booleans here, i.e. they are also presented as boxed.
+     Horribly inefficient, I know.
+  *)
+  let unbox = Heap.load_field (Int32.add Tagged.header_size 0l)
+  let box env = G.i_ (Call (nr (E.built_in env "box_int")))
+
+  let lit env n = compile_unboxed_const n ^^ box env
+
+  let lit_false env = lit env 0l
+  let lit_true env = lit env 1l
+
+  let lift_unboxed_unary env op_is =
+    (* unbox argument *)
+    unbox ^^
+    (* apply operator *)
+    op_is ^^
+    (* box result *)
+    box env
+
+  let lift_unboxed_binary env op_is =
+    let (set_i, get_i) = new_local env "n" in
+    (* unbox both arguments *)
+    set_i ^^
+    unbox ^^
+    get_i ^^ unbox ^^
+    (* apply operator *)
+    op_is ^^
+    (* box result *)
+    box env
+
+  let common_funcs env =
+    Func.define_built_in env "box_int" ["n"] [I32Type] (fun env1 ->
+      Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ]
+    )
+
+end (* BoxedInt *)
 
 (* Primitive functions *)
 module Prim = struct
@@ -1280,7 +1261,7 @@ module OrthogonalPersistence = struct
       edesc = nr (GlobalExport (nr elem_global))
     });
 
-    E.define_built_in env "restore_mem" (Func.nullary_of_body env (fun env1 ->
+    Func.define_built_in env "restore_mem" [] [] (fun env1 ->
        let (set_i, get_i) = new_local env1 "len" in
        G.i_ (GetGlobal (nr mem_global)) ^^
        G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
@@ -1319,8 +1300,8 @@ module OrthogonalPersistence = struct
            compile_unboxed_zero ^^
            G.i_ (Call (nr (Dfinity.elem_internalize_i env1)))
         )
-    ));
-    E.define_built_in env "save_mem" (Func.nullary_of_body env (fun env1 ->
+    );
+    Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
        compile_unboxed_const ElemHeap.begin_dyn_space ^^
        G.i_ (GetGlobal Heap.heap_ptr) ^^
@@ -1334,7 +1315,7 @@ module OrthogonalPersistence = struct
        G.i_ (GetGlobal ElemHeap.ref_counter) ^^
        G.i_ (Call (nr (Dfinity.elem_externalize_i env))) ^^
        G.i_ (SetGlobal (nr elem_global))
-    ))
+    )
 
 
 end (* OrthogonalPersistence *)
@@ -1382,22 +1363,12 @@ module Message = struct
       compile_unit
     ))
 
-  let message_of_body env mk_body =
-    (* Fresh set of locals *)
-    (* Reserve one local, only one argument *)
-    let env1 = E.mk_fun_env env 1l in
-    E.add_local_name env1 0l "arg";
-    let code = mk_body env1 in
-    ( nr { ftype = nr (message_ty env);
-         locals = E.get_locals env1;
-         body = G.to_instr_list code
-       }
-    , E.get_local_names env1 )
+  let of_body env mk_body =
+    (* Messages take no closure, return nothing*)
+    Func.of_body env ["arg"] [] mk_body
 
-
-  (* Message take no closure *)
   let compile env mk_pat mk_body at : E.func_with_names =
-    message_of_body env (fun env1 ->
+    of_body env (fun env1 ->
       (* Set up memory *)
       G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
 
@@ -1961,24 +1932,15 @@ and find_prelude_names env =
 
 
 and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
-  (* Fresh set of locals *)
-  let env1 = E.mk_fun_env env 0l in
-  (* Allocate the primitive functions *)
-
-  let rec go env = function
-    | []          -> (env, G.nop)
-    | (prog::progs) ->
-        let (env1, code1) = compile_decs_block env false prog.it in
-        let (env2, code2) = go env1 progs in
-        (env2, code1 ^^ code2) in
-
-  let (env2, code) = go env1 progs in
-
-  ( nr { ftype = nr (E.start_fun_ty env2);
-         locals = E.get_locals env2;
-         body = G.to_instr_list code
-       }
-  , E.get_local_names env2 )
+  Func.of_body env [] [] (fun env1 ->
+    let rec go env = function
+      | [] -> G.nop
+      | (prog::progs) ->
+          let (env1, code1) = compile_decs_block env false prog.it in
+          let code2 = go env1 progs in
+          code1 ^^ code2 in
+    go env1 progs
+    )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
   let ptr = E.reserve_static_memory pre_env Heap.word_size in
@@ -2048,22 +2010,17 @@ and actor_lit outer_env name fs =
     Array.common_funcs env2;
     if E.mode env2 = DfinityMode then Message.system_funs env2;
 
-    let env3 = E.mk_fun_env env2 0l in
-    (* Compile stuff here *)
-    let (env4, prelude_code) = compile_prelude env3 in
-    let (env5, init_code )  = compile_actor_fields env4 fs in
+    let start_fun = Func.of_body env2 [] [] (fun env3 ->
+      (* Compile stuff here *)
+      let (env4, prelude_code) = compile_prelude env3 in
+      let (env5, init_code )  = compile_actor_fields env4 fs in
+      prelude_code ^^ init_code) in
+    let start_fi = E.add_fun env2 start_fun in
+    E.add_fun_name env2 start_fi "start";
 
-    let start_fun =
-      ( nr { ftype = nr (E.start_fun_ty env5);
-             locals = E.get_locals env5;
-             body = G.to_instr_list (prelude_code ^^ init_code) }
-      , E.get_local_names env5) in
-    let start_fi = E.add_fun env5 start_fun in
-    E.add_fun_name env5 start_fi "start";
+    OrthogonalPersistence.register env2 start_fi;
 
-    OrthogonalPersistence.register env5 start_fi;
-
-    let m = conclude_module env5 None true in
+    let m = conclude_module env2 None true in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
