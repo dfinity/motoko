@@ -181,15 +181,6 @@ module E = struct
   let unary_param_local env : var = nr 1l   (* second param *)
   let message_param_local env : var = nr 0l
 
-  let init_field_env =
-    NameEnv.add "get" 0l (
-    NameEnv.add "set" 1l (
-    NameEnv.add "len" 2l (
-    NameEnv.add "keys" 3l (
-    NameEnv.add "vals" 4l (
-    NameEnv.empty
-    )))))
-
   (* The initial global environment *)
   let mk_global mode prelude dyn_mem : t = {
     mode;
@@ -207,7 +198,7 @@ module E = struct
     local_vars_env = NameEnv.empty;
     n_param = 0l;
     ld = NameEnv.empty;
-    field_env = ref init_field_env;
+    field_env = ref NameEnv.empty;
     prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
@@ -490,9 +481,26 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let _load tag =
+  let load =
     Heap.load_field tag_field
 
+  (* Branches based on the tag of the object pointed to,
+     leaving the object on the stack afterwards. *)
+  let branch env (cases : (tag * G.t) list) : G.t =
+    let (set_i, get_i) = new_local env "tagged" in
+
+    let rec go = function
+      | [] ->
+        G.i_ Unreachable
+      | ((tag, code) :: cases) ->
+        get_i ^^
+        load ^^
+        compile_unboxed_const (int_of_tag tag) ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ [I32Type] (get_i ^^ code) (go cases)
+    in
+    set_i ^^
+    go cases
 end
 
 module Tuple = struct
@@ -796,8 +804,6 @@ module Object = struct
 
   let class_position = Int32.add Tagged.header_size 0l
 
-  let default_header = [ compile_unboxed_const 1l ]
-
   (* Takes the header into account *)
   let field_position env f =
      let fi = E.field_to_index env f in
@@ -899,9 +905,9 @@ module Text = struct
 end (* String *)
 
 module Array = struct
-  let header_size = Int32.add Object.header_size 6l
+  let header_size = Int32.add Tagged.header_size 1l
   let element_size = 4l
-  let len_field = Int32.add Object.header_size 5l
+  let len_field = Int32.add Tagged.header_size 0l
 
   (* Expects on the stack the pointer to the array and the index
      of the element (unboxed), and returns the pointer to the element. *)
@@ -1011,22 +1017,23 @@ module Array = struct
 
   (* Compile an array literal. *)
   let lit env element_instructions =
-    Tuple.lit_rec env
-     ([ fun _ -> compile_unboxed_const (Tagged.int_of_tag Tagged.Array) ] @
-      List.map (fun i _ -> i) Object.default_header @
-      [ (fun compile_self ->
-        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_get"); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_set"); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_len"); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_keys"); compile_self])
-      ; (fun compile_self ->
-        Tuple.lit env [ compile_unboxed_const (E.built_in env "array_vals"); compile_self])
-      ; (fun compile_self ->
-        compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions)))
-      ] @ List.map (fun is _ -> is) element_instructions)
+    Tuple.lit env
+     ([ compile_unboxed_const (Tagged.int_of_tag Tagged.Array)
+      ; compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
+      ] @ element_instructions)
+
+  let fake_object_idx_option env built_in_name =
+    let (set_i, get_i) = new_local env "array" in
+    set_i ^^
+    Tuple.lit env [ compile_unboxed_const (E.built_in env built_in_name) ; get_i ]
+
+  let fake_object_idx env = function
+      | "get" -> Some (fake_object_idx_option env "array_get")
+      | "set" -> Some (fake_object_idx_option env "array_set")
+      | "len" -> Some (fake_object_idx_option env "array_len")
+      | "keys" -> Some (fake_object_idx_option env "array_keys")
+      | "vals" -> Some (fake_object_idx_option env "array_vals")
+      | _ -> None
 
 end (* Array *)
 
@@ -1496,6 +1503,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      Array.idx
   | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e ^^
+     (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env {id with it = n}
   | _ -> todo "compile_lexp" (Arrange.exp exp) G.i_ Unreachable
 
@@ -1507,9 +1515,18 @@ Local variables (which maybe mutable, or have delayed initialisation)
 are also points, but points to such values, and need to be read first.  *)
 and compile_exp (env : E.t) exp = match exp.it with
   (* We can reuse the code in compile_lexp here *)
-  | IdxE _ | DotE _ ->
+  | IdxE _  ->
      compile_lexp env exp ^^
      load_ptr
+  | DotE (e, ({it = Name n;_} as id)) ->
+     compile_exp env e ^^
+     (* Only real objects have mutable fields, no need to branch on the tag *)
+     Tagged.branch env
+      ( [ Tagged.Object, Object.idx env {id with it = n} ^^ load_ptr ] @
+        match  Array.fake_object_idx env n with
+          | None -> []
+          | Some code -> [ Tagged.Array, code ]
+      )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   | CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, e) ->
     begin
@@ -1572,26 +1589,34 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code2 = compile_exp env e2 in
      let (set_i, get_i) = new_local env "is_lhs" in
      let (set_j, get_j) = new_local env "is_rhs" in
-     code1 ^^ Heap.load_field Object.class_position ^^
-     set_i ^^
-     code2 ^^
-     set_j ^^
-     (* Equal? *)
-     get_i ^^
-     get_j ^^
-     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-     G.if_ [I32Type]
-       (BoxedInt.lit_true env)
-       (* Static function id? *)
-       ( get_i ^^
-         get_j ^^
-         Heap.load_field 0l ^^ (* get the function id *)
-         compile_unboxed_const Heap.word_size ^^ (* mangle *)
-         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-         compile_unboxed_const 1l ^^ (* mangle *)
-         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-       )
+     code1 ^^
+     Tagged.branch env
+      [ Tagged.Array,
+        G.i_ Drop ^^
+        code2 (* for the side effect *) ^^ G.i_ Drop ^^
+        BoxedInt.lit_false env
+      ; Tagged.Object,
+        Heap.load_field Object.class_position ^^
+        set_i ^^
+        code2 ^^
+        set_j ^^
+        (* Equal? *)
+        get_i ^^
+        get_j ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ [I32Type]
+          (BoxedInt.lit_true env)
+          (* Static function id? *)
+          ( get_i ^^
+            get_j ^^
+            Heap.load_field 0l ^^ (* get the function id *)
+            compile_unboxed_const Heap.word_size ^^ (* mangle *)
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+            compile_unboxed_const 1l ^^ (* mangle *)
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+          )
+        ]
   | BlockE decs ->
      compile_decs env decs
   | DecE dec ->

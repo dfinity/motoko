@@ -8,6 +8,16 @@ assert(G<Int>() is G);
 assert(A() is A);
 assert(H<Int>() is H);
 
+assert(not ([] is C));
+assert(not ([] is G));
+assert(not ([] is A));
+assert(not ([] is H));
+
+assert(not ([1] is C));
+assert(not ([1] is G));
+assert(not ([1] is A));
+assert(not ([1] is H));
+
 assert(not ({} is C));
 assert(not ({} is G));
 assert(not ({} is A));
