@@ -488,12 +488,14 @@ module Tagged = struct
     | Object
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
+    | Int
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
     | Object -> 1l
     | Array -> 2l
     | Reference -> 3l
+    | Int -> 4l
 
   (* The tag *)
   let header_size = 1l
@@ -537,7 +539,7 @@ module BoxedInt = struct
   (* We include booleans here, i.e. they are also presented as boxed.
      Horribly inefficient, I know.
   *)
-  let unbox = Heap.load_field 0l
+  let unbox = Heap.load_field (Int32.add Tagged.header_size 0l)
   let box env = G.i_ (Call (nr (E.built_in env "box_int")))
 
   let lit env n = compile_unboxed_const n ^^ box env
@@ -568,7 +570,8 @@ module BoxedInt = struct
     E.define_built_in env "box_int" (
       let env1 = E.mk_fun_env env 1l in
       E.add_local_name env1 0l "n";
-      let code = Heap.obj env1 [ G.i_ (GetLocal (nr 0l)) ] in
+      let code = Heap.obj env1 [ compile_unboxed_const (Tagged.int_of_tag Tagged.Int)
+                               ; G.i_ (GetLocal (nr 0l)) ] in
       (nr { ftype = nr E.box_fun_ty_i;
            locals = E.get_locals env1;
            body = G.to_instr_list code
