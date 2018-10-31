@@ -1016,11 +1016,15 @@ module Array = struct
       ));
 
     let mk_next_fun mk_code : E.func_with_names = Func.unary_of_body env (fun env1 ->
+            let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
             Func.load_closure 0l ^^
             (* Read pointer *)
-            load_ptr ^^
+            Var.load ^^
+            set_boxed_i ^^
+            get_boxed_i ^^
+            BoxedInt.unbox ^^
             set_i ^^
 
             get_i ^^
@@ -1039,25 +1043,25 @@ module Array = struct
                 get_i ^^
                 compile_unboxed_const 1l ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                store_ptr ^^
+                BoxedInt.box env1 ^^
+                Var.store ^^
                 (* Return stuff *)
                 Opt.inject env1 (
-                  mk_code env (Func.load_closure 1l) get_i
+                  mk_code env (Func.load_closure 1l) get_boxed_i get_i
                 )
               )
        ) in
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
-            (* counter *)
-            let (set_i, get_i) = new_local env1 "n" in
-            Heap.obj env1 [ compile_unboxed_zero ] ^^
-            set_i ^^
-
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Heap.obj env1 [
               compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
               compile_unboxed_const next_funid;
-              get_i;
+              (* a mutable box with a number *)
+              Heap.obj env1
+                [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
+                ; BoxedInt.lit env1 0l
+                ];
               get_array_object ] ^^
             set_ni ^^
 
@@ -1066,14 +1070,14 @@ module Array = struct
        ) in
 
     E.define_built_in env "array_keys_next"
-      (mk_next_fun (fun env1 get_array get_i ->
-              get_i ^^ BoxedInt.box env1
+      (mk_next_fun (fun env1 get_array get_boxed_i get_i ->
+              get_boxed_i
        ));
     E.define_built_in env "array_keys"
       (mk_iterator (E.built_in env "array_keys_next"));
 
     E.define_built_in env "array_vals_next"
-      (mk_next_fun (fun env1 get_array get_i ->
+      (mk_next_fun (fun env1 get_array get_boxed_i get_i ->
               get_array ^^
               get_i ^^
               idx ^^
