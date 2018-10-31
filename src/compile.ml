@@ -1592,32 +1592,30 @@ and compile_exp (env : E.t) exp = match exp.it with
      let (set_i, get_i) = new_local env "is_lhs" in
      let (set_j, get_j) = new_local env "is_rhs" in
      code1 ^^
+     set_i ^^
+     code2 ^^
+     set_j ^^
+
+     get_i ^^
      Tagged.branch env
       [ Tagged.Array,
-        G.i_ Drop ^^
-        code2 (* for the side effect *) ^^ G.i_ Drop ^^
-        BoxedInt.lit_false env
+        G.i_ Drop ^^ BoxedInt.lit_false env
       ; Tagged.Reference,
         (* TODO: Implement IsE for actor references? *)
-        G.i_ Drop ^^
-        code2 (* for the side effect *) ^^ G.i_ Drop ^^
-        BoxedInt.lit_false env
+        G.i_ Drop ^^ BoxedInt.lit_false env
       ; Tagged.Object,
         (* There are two cases: Either the class is a pointer to
            the object on the RHS, or it is -- mangled -- the
            function id stored therein *)
         Heap.load_field Object.class_position ^^
-        set_i ^^
-        code2 ^^
-        set_j ^^
         (* Equal? *)
-        get_i ^^
         get_j ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
         G.if_ [I32Type]
           (BoxedInt.lit_true env)
           (* Static function id? *)
           ( get_i ^^
+            Heap.load_field Object.class_position ^^
             get_j ^^
             Heap.load_field 0l ^^ (* get the function id *)
             compile_unboxed_const Heap.word_size ^^ (* mangle *)
