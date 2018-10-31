@@ -413,6 +413,27 @@ module Heap = struct
   let store_field (i : int32) : G.t =
     G.i_ (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
+  (* Create a heap object with instructions that fill in each word *)
+  let obj_rec env element_instructions : G.t =
+    let n = List.length element_instructions in
+
+    let (set_i, get_i) = new_local env "heap_object" in
+    alloc (Wasm.I32.of_int_u n) ^^
+    set_i ^^
+
+    let compile_self = get_i in
+
+    let init_elem idx instrs : G.t =
+      compile_self ^^
+      instrs compile_self ^^
+      store_field (Wasm.I32.of_int_u idx)
+    in
+    G.concat_mapi init_elem element_instructions ^^
+
+    compile_self
+
+  let obj env eis = obj_rec env (List.map (fun x _ -> x) eis)
+
 end (* Heap *)
 
 module ElemHeap = struct
@@ -465,7 +486,7 @@ module Tagged = struct
 
   type tag =
     | Object
-    | Array
+    | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
 
   (* Lets leave out zero to trap earlier on invalid memory *)
@@ -504,35 +525,6 @@ module Tagged = struct
     set_i ^^
     go cases
 end
-
-module Tuple = struct
-  (* A tuple is a heap object with a statically known number of elements.
-     This is also used as the primitive representation of objects etc. *)
-
-  (* The argument is a list of functions that receive a function that
-     puts the pointer to the array itself on to the stack, for recursive
-     structures *)
-  let lit_rec env element_instructions : G.t =
-    let n = List.length element_instructions in
-
-    let (set_i, get_i) = new_local env "tup" in
-    Heap.alloc (Wasm.I32.of_int_u n) ^^
-    set_i ^^
-
-    let compile_self = get_i in
-
-    let init_elem idx instrs : G.t =
-      compile_self ^^
-      instrs compile_self ^^
-      Heap.store_field (Wasm.I32.of_int_u idx)
-    in
-    G.concat_mapi init_elem element_instructions ^^
-
-    compile_self
-
-  let lit env eis = lit_rec env (List.map (fun x _ -> x) eis)
-
-end (* Tuple *)
 
 module BoxedInt = struct
   (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
@@ -576,7 +568,7 @@ module BoxedInt = struct
     E.define_built_in env "box_int" (
       let env1 = E.mk_fun_env env 1l in
       E.add_local_name env1 0l "n";
-      let code = Tuple.lit env1 [ G.i_ (GetLocal (nr 0l)) ] in
+      let code = Heap.obj env1 [ G.i_ (GetLocal (nr 0l)) ] in
       (nr { ftype = nr E.box_fun_ty_i;
            locals = E.get_locals env1;
            body = G.to_instr_list code
@@ -591,7 +583,7 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated thing on the fly. *)
   let static_fun_pointer fi env =
-    Tuple.lit env [
+    Heap.obj env [
       compile_unboxed_const fi
     ]
 
@@ -605,7 +597,7 @@ module Var = struct
     | Some (Local i) -> G.i_ (GetLocal (nr i))
     | Some (Static i) -> compile_unboxed_const i
     (* We have to do some boxing here *)
-    | _ -> Tuple.lit env [ get_val env var ]
+    | _ -> Heap.obj env [ get_val env var ]
 
   let set_loc env var = match E.lookup_var env var with
     | Some (Local i) -> G.i_ (SetLocal (nr i))
@@ -621,7 +613,7 @@ end (* Var *)
 
 module Opt = struct
 
-let inject env e = Tuple.lit env [e]
+let inject env e = Heap.obj env [e]
 let project = Heap.load_field 0l
 
 end (* Opt *)
@@ -744,7 +736,7 @@ module Func = struct
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
-        Tuple.lit pre_env1 [ get_li ] ^^
+        Heap.obj pre_env1 [ get_li ] ^^
         G.i ( SetLocal (vi @@ at) @@ at )
       in
 
@@ -844,7 +836,7 @@ module Object = struct
      (* An extra indirection for the 'this' pointer, if present *)
      let (env2, this_code) = match this_name_opt with
       | Some name -> let (env2, ti) = E.add_local env1 name.it in
-                     (env2, Tuple.lit env1 [ get_ri ] ^^
+                     (env2, Heap.obj env1 [ get_ri ] ^^
                             G.i_ (SetLocal (nr ti)))
       | None -> (env1, G.nop) in
      this_code ^^
@@ -911,6 +903,9 @@ module Array = struct
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
+  (* Calculates a static offset *)
+  let field_of_idx n = Int32.add header_size n
+
   (* Expects on the stack the pointer to the array and the index
      of the element (unboxed), and returns the pointer to the element. *)
   let idx =
@@ -923,8 +918,8 @@ module Array = struct
   let common_funcs env =
     let get_array_object = Func.load_closure 1l in
     let get_single_arg =   Func.load_argument in
-    let get_first_arg =    Func.load_argument ^^ Heap.load_field 0l in
-    let get_second_arg =   Func.load_argument ^^ Heap.load_field 1l in
+    let get_first_arg =    Func.load_argument ^^ Heap.load_field (field_of_idx 0l) in
+    let get_second_arg =   Func.load_argument ^^ Heap.load_field (field_of_idx 1l) in
 
     E.define_built_in env "array_get"
       (Func.unary_of_body env (fun env1 ->
@@ -985,12 +980,12 @@ module Array = struct
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* counter *)
             let (set_i, get_i) = new_local env1 "n" in
-            Tuple.lit env1 [ compile_unboxed_zero ] ^^
+            Heap.obj env1 [ compile_unboxed_zero ] ^^
             set_i ^^
 
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
-            Tuple.lit env1 [
+            Heap.obj env1 [
               compile_unboxed_const next_funid;
               get_i;
               get_array_object ] ^^
@@ -1019,7 +1014,7 @@ module Array = struct
 
   (* Compile an array literal. *)
   let lit env element_instructions =
-    Tuple.lit env
+    Heap.obj env
      ([ compile_unboxed_const (Tagged.int_of_tag Tagged.Array)
       ; compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
       ] @ element_instructions)
@@ -1027,7 +1022,7 @@ module Array = struct
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Tuple.lit env [ compile_unboxed_const (E.built_in env built_in_name) ; get_i ]
+    Heap.obj env [ compile_unboxed_const (E.built_in env built_in_name) ; get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -1214,7 +1209,7 @@ module Dfinity = struct
       G.i_ (Call (nr (test_print_i env)))
 
   let static_self_message_pointer name env =
-    Tuple.lit env [
+    Heap.obj env [
       compile_unboxed_const (E.built_in env "self_message_wrapper");
       compile_databuf_of_bytes env name.it
     ]
@@ -1656,7 +1651,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | OptE e ->
      Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
-  | TupE es -> Tuple.lit env (List.map (compile_exp env) es)
+  | TupE es -> Array.lit env (List.map (compile_exp env) es)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object; _}, name, fs) ->
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
@@ -1835,8 +1830,9 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 ^^ alloc_code2,
-            CannotFail (get_i ^^ Heap.load_field (Wasm.I32.of_int_u i)) ^^^
-            code1 ^^^ code2) in
+            CannotFail (get_i ^^ Heap.load_field (Array.field_of_idx (Int32.of_int i))) ^^^
+            code1 ^^^
+            code2) in
       let (env1, alloc_code, code) = go 0 ps env in
       (env1, alloc_code, CannotFail set_i ^^^ code)
 
@@ -2050,7 +2046,7 @@ and actor_lit outer_env name fs =
     ElemHeap.remember_reference outer_env in
 
   (* Wrap it in a tagged heap object *)
-  Tuple.lit outer_env
+  Heap.obj outer_env
     [ compile_unboxed_const (Tagged.int_of_tag Tagged.Reference)
     ; code ]
 
@@ -2062,7 +2058,7 @@ and actor_fake_object_idx env name =
     set_i ^^
 
     (* Create a closure object that calls the funcref *)
-    Tuple.lit env
+    Heap.obj env
       [ compile_unboxed_const (E.built_in env "funcref_wrapper")
       ; get_i ^^
         Dfinity.compile_databuf_of_bytes env (name.it) ^^
