@@ -431,7 +431,7 @@ module Heap = struct
     G.i_ (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
-  let obj_rec env element_instructions : G.t =
+  let obj env element_instructions : G.t =
     let n = List.length element_instructions in
 
     let (set_i, get_i) = new_local env "heap_object" in
@@ -442,14 +442,12 @@ module Heap = struct
 
     let init_elem idx instrs : G.t =
       compile_self ^^
-      instrs compile_self ^^
+      instrs ^^
       store_field (Wasm.I32.of_int_u idx)
     in
     G.concat_mapi init_elem element_instructions ^^
 
     compile_self
-
-  let obj env eis = obj_rec env (List.map (fun x _ -> x) eis)
 
 end (* Heap *)
 
@@ -551,6 +549,9 @@ module Tagged = struct
     in
     set_i ^^
     go cases
+
+  let obj env tag element_instructions : G.t =
+    Heap.obj env (compile_unboxed_const (int_of_tag tag) :: element_instructions)
 end
 
 module BoxedInt = struct
@@ -595,8 +596,7 @@ module BoxedInt = struct
     E.define_built_in env "box_int" (
       let env1 = E.mk_fun_env env 1l in
       E.add_local_name env1 0l "n";
-      let code = Heap.obj env1 [ compile_unboxed_const (Tagged.int_of_tag Tagged.Int)
-                               ; G.i_ (GetLocal (nr 0l)) ] in
+      let code = Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ] in
       (nr { ftype = nr E.box_fun_ty_i;
            locals = E.get_locals env1;
            body = G.to_instr_list code
@@ -611,10 +611,7 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Heap.obj env
-      [ compile_unboxed_const (Tagged.int_of_tag Tagged.Closure)
-      ; compile_unboxed_const fi
-      ]
+    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi ]
 
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
@@ -666,11 +663,7 @@ end (* Var *)
 
 module Opt = struct
 
-let inject env e =
-  Heap.obj env
-    [ compile_unboxed_const (Tagged.int_of_tag Tagged.Some)
-    ; e]
-
+let inject env e = Tagged.obj env Tagged.Some [e]
 let project = Heap.load_field Tagged.header_size
 
 end (* Opt *)
@@ -793,8 +786,7 @@ module Func = struct
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
-        Heap.obj pre_env1 [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
-                          ; get_li ] ^^
+        Tagged.obj pre_env1 Tagged.MutBox [ get_li ] ^^
         G.i ( SetLocal (vi @@ at) @@ at )
       in
 
@@ -910,9 +902,7 @@ module Object = struct
      (* An extra indirection for the 'this' pointer, if present *)
      let (env2, this_code) = match this_name_opt with
       | Some name -> let (env2, ti) = Var.add_local env1 name.it in
-                     (env2, Heap.obj env1
-                              [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
-                              ; get_ri ] ^^
+                     (env2, Tagged.obj env1 Tagged.MutBox [ get_ri ] ^^
                             G.i_ (SetLocal (nr ti)))
       | None -> (env1, G.nop) in
      this_code ^^
@@ -1062,15 +1052,11 @@ module Array = struct
     let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
-            Heap.obj env1 [
-              compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
-              compile_unboxed_const next_funid;
-              (* a mutable box with a number *)
-              Heap.obj env1
-                [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
-                ; BoxedInt.lit env1 0l
-                ];
-              get_array_object ] ^^
+            Tagged.obj env1 Tagged.Closure
+              [ compile_unboxed_const next_funid
+              ; Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
+              ; get_array_object
+              ] ^^
             set_ni ^^
 
             Object.lit env1 None None
@@ -1096,18 +1082,16 @@ module Array = struct
 
   (* Compile an array literal. *)
   let lit env element_instructions =
-    Heap.obj env
-     ([ compile_unboxed_const (Tagged.int_of_tag Tagged.Array)
-      ; compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
+    Tagged.obj env Tagged.Array
+     ([ compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
       ] @ element_instructions)
 
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Heap.obj env [
-      compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
-      compile_unboxed_const (E.built_in env built_in_name) ;
-      get_i ]
+    Tagged.obj env Tagged.Closure
+      [ compile_unboxed_const (E.built_in env built_in_name)
+      ; get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -1294,11 +1278,10 @@ module Dfinity = struct
       G.i_ (Call (nr (test_print_i env)))
 
   let static_self_message_pointer name env =
-    Heap.obj env [
-      compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
-      compile_unboxed_const (E.built_in env "self_message_wrapper");
-      compile_databuf_of_bytes env name.it
-    ]
+    Tagged.obj env Tagged.Closure
+      [ compile_unboxed_const (E.built_in env "self_message_wrapper")
+      ; compile_databuf_of_bytes env name.it
+      ]
 
   let prim_printInt env =
     if E.mode env = DfinityMode
@@ -1901,9 +1884,7 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
   | VarP name ->
       let (env1,i) = Var.add_local env name.it; in
       let alloc_code =
-        Heap.obj env1
-          [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
-          ; compile_unboxed_const 0l ] ^^
+        Tagged.obj env1 Tagged.MutBox [ compile_unboxed_const 0l ] ^^
         G.i_ (SetLocal (nr i)) in
 
       let code = CannotFail (
@@ -1963,9 +1944,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       let (pre_env1, i) = E.add_local_with_offset pre_env name.it 1l in
 
       let alloc_code =
-        Heap.obj pre_env
-          [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
-          ; compile_unboxed_const 0l ] ^^
+        Tagged.obj pre_env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
         G.i_ (SetLocal (nr i)) in
 
       ( pre_env1, alloc_code, fun env ->
@@ -2142,9 +2121,7 @@ and actor_lit outer_env name fs =
     ElemHeap.remember_reference outer_env in
 
   (* Wrap it in a tagged heap object *)
-  Heap.obj outer_env
-    [ compile_unboxed_const (Tagged.int_of_tag Tagged.Reference)
-    ; code ]
+  Tagged.obj outer_env Tagged.Reference [ code ]
 
 and actor_fake_object_idx env name =
     let (set_i, get_i) = new_local env "ref" in
@@ -2154,9 +2131,8 @@ and actor_fake_object_idx env name =
     set_i ^^
 
     (* Create a closure object that calls the funcref *)
-    Heap.obj env
-      [ compile_unboxed_const (Tagged.int_of_tag Tagged.Closure)
-      ; compile_unboxed_const (E.built_in env "funcref_wrapper")
+    Tagged.obj env Tagged.Closure
+      [ compile_unboxed_const (E.built_in env "funcref_wrapper")
       ; get_i ^^
         Dfinity.compile_databuf_of_bytes env (name.it) ^^
         G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
