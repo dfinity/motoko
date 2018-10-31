@@ -646,7 +646,6 @@ module Func = struct
       ] @ (
       if E.mode env = DfinityMode
       then [ Tagged.Reference, (* a funcref! *)
-             Heap.load_field 1l ^^
              get_i ^^
              G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
              compile_unit
@@ -1205,10 +1204,8 @@ module Dfinity = struct
       _compile_static_print env "\n"
 
   let static_self_message_pointer name env =
-    Tagged.obj env Tagged.Closure
-      [ compile_unboxed_const (E.built_in env "self_message_wrapper")
-      ; compile_databuf_of_bytes env name.it
-      ]
+    compile_databuf_of_bytes env name.it ^^
+    G.i_ (Call (nr (E.built_in env "export_self_message")))
 
   let prim_printInt env =
     if E.mode env = DfinityMode
@@ -1711,14 +1708,15 @@ module Message = struct
   let message_ty env = E.func_type env (FuncType ([I32Type],[]))
 
 
-  let system_funs env =
+  let system_funs mod_env =
 
-    Func.define_built_in env "call_funcref" ["funcref_idx";"arg"] [] (fun env1 ->
-      let get_funcref_idx = G.i_ (GetLocal (nr 0l)) in
+    Func.define_built_in mod_env "call_funcref" ["ref";"arg"] [] (fun env ->
+      let get_ref = G.i_ (GetLocal (nr 0l)) in
       let get_arg = G.i_ (GetLocal (nr 1l)) in
 
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-      get_funcref_idx ^^ (* the funcref table id *)
+      get_ref ^^ (* the boxed funcref table id *)
+      Heap.load_field 1l ^^
       ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
@@ -1726,26 +1724,20 @@ module Message = struct
       G.i_ (Call (nr (E.built_in env "serialize"))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (message_ty env1)))
+      G.i_ (CallIndirect (nr (message_ty env)))
     );
 
-    E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
-      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
+    Func.define_built_in mod_env "export_self_message" ["name"] [I32Type] (fun env ->
+      let get_name = G.i_ (GetLocal (nr 0l)) in
 
-      (* Create a funcref for the message *)
-      G.i_ (Call (nr (Dfinity.actor_self_i env))) ^^
-      Func.load_closure 0l ^^ (* the databuf with the message name *)
-      G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
-
-      (* Internalize *)
-      G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
-
-      Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
-
-      compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (message_ty env1))) ^^
-      compile_unit
-    ))
+      Tagged.obj env Tagged.Reference [
+        (* Create a funcref for the message *)
+        G.i_ (Call (nr (Dfinity.actor_self_i env))) ^^
+        get_name ^^ (* the databuf with the message name *)
+        G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
+        ElemHeap.remember_reference env
+      ]
+    )
 
   let compile env mk_pat mk_body at : E.func_with_names =
     (* Messages take no closure, return nothing*)
@@ -2440,7 +2432,7 @@ and declare_built_in_funs env =
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
-    then [ "call_funcref"; "self_message_wrapper"
+    then [ "call_funcref"; "export_self_message"
          ; "serialize"; "deserialize"; "memcpy"; "deep_copy"
          ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
     else []))
