@@ -830,8 +830,7 @@ module Func = struct
 
         (* Store the tag *)
         get_li ^^
-        compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ^^
-        Heap.store_field Tagged.tag_field ^^
+        Tagged.store Tagged.Closure ^^
 
         (* Store the function number: *)
         get_li ^^
