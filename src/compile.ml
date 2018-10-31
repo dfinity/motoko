@@ -266,28 +266,10 @@ module E = struct
 
   let get_types (env : t) = !(env.func_types)
 
+  (* Common type *)
   let start_fun_ty env = func_type env (FuncType ([],[]))
-
-  (* First argument is a pointer to the closure *)
-  let unary_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
   (* Actor message type *)
-  let actor_message_ty env = func_type env (FuncType ([I32Type],[]))
   let nullary_fun_ty env = func_type env (FuncType ([],[]))
-  (* Type of the system API *)
-  let test_print_fun_ty env = func_type env (FuncType ([I32Type],[]))
-  let test_show_i32fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
-  let data_externalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
-  let data_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
-  let data_length_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
-  let elem_externalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
-  let elem_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
-  let elem_length_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
-  let module_new_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
-  let actor_new_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
-  let actor_self_fun_ty env = func_type env (FuncType ([],[I32Type]))
-  let actor_export_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
-  let func_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[]))
-  let box_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
 
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
@@ -564,10 +546,10 @@ module BoxedInt = struct
       let env1 = E.mk_fun_env env 1l in
       E.add_local_name env1 0l "n";
       let code = Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ] in
-      (nr { ftype = nr (E.box_fun_ty env1);
-           locals = E.get_locals env1;
-           body = G.to_instr_list code
-         }
+      (nr { ftype = nr (E.func_type env (FuncType ([I32Type],[I32Type])));
+            locals = E.get_locals env1;
+            body = G.to_instr_list code
+          }
       , E.get_local_names env1)
     )
 
@@ -644,6 +626,8 @@ module Func = struct
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
   let load_argument  = G.i_ (GetLocal (nr 1l))
 
+  (* First argument is a pointer to the closure *)
+  let ty env = E.func_type env (FuncType ([I32Type; I32Type],[I32Type]))
 
   let static_function_id fi =
     (* should be different from any pointer *)
@@ -656,7 +640,7 @@ module Func = struct
     E.add_local_name env1 0l "clos";
     E.add_local_name env1 1l "param";
     let code = mk_body env1 in
-    (nr { ftype = nr (E.unary_fun_ty env1);
+    (nr { ftype = nr (ty env1);
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
@@ -706,7 +690,7 @@ module Func = struct
    get_fi ^^
    Heap.load_field funptr_field ^^
    (* All done: Call! *)
-   G.i (CallIndirect (nr (E.unary_fun_ty env)) @@ at)
+   G.i (CallIndirect (nr (ty env)) @@ at)
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -1072,11 +1056,6 @@ end (* Array *)
 
 module Dfinity = struct
 
-  (* We use the first table slot for calls to funcrefs *)
-  (* This does not clash with slots for our functions as long as there
-     is at least one imported function (which we do not add to the table) *)
-  let tmp_table_slot = 0l
-
   (* function ids for imported stuff *)
   let test_print_i env = 0l
   let test_show_i32_i env = 1l
@@ -1103,126 +1082,94 @@ module Dfinity = struct
     let i = E.add_import env (nr {
       module_name = explode "test";
       item_name = explode "print";
-      idesc = nr (FuncImport (nr (E.test_print_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_print_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "test";
       item_name = explode "show_i32";
-      idesc = nr (FuncImport (nr (E.test_show_i32fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "externalize";
-      idesc = nr (FuncImport (nr (E.data_externalize_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.data_internalize_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "length";
-      idesc = nr (FuncImport (nr (E.data_length_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "externalize";
-      idesc = nr (FuncImport (nr (E.elem_externalize_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.elem_internalize_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "length";
-      idesc = nr (FuncImport (nr (E.elem_length_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_length_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "module";
       item_name = explode "new";
-      idesc = nr (FuncImport (nr (E.module_new_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (module_new_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "new";
-      idesc = nr (FuncImport (nr (E.actor_new_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_new_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "self";
-      idesc = nr (FuncImport (nr (E.actor_self_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_self_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "export";
-      idesc = nr (FuncImport (nr (E.actor_export_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_export_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "func";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.func_internalize_fun_ty env)))
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_internalize_i env))
 
-  let system_funs env =
-    E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
-      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-      Func.load_closure 0l ^^ (* the funcref table id *)
-      ElemHeap.recall_reference env ^^
-      G.i_ (Call (nr (func_internalize_i env))) ^^
-
-      Func.load_argument ^^
-      (* TODO G.i_ (Call (nr (E.built_in env "serialize"))) ^^ *)
-
-      compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (E.actor_message_ty env1))) ^^
-      compile_unit
-    ));
-
-    E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
-      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-
-      (* Create a funcref for the message *)
-      G.i_ (Call (nr (actor_self_i env))) ^^
-      Func.load_closure 0l ^^ (* the databuf with the message name *)
-      G.i_ (Call (nr (actor_export_i env))) ^^
-
-      (* Internalize *)
-      G.i_ (Call (nr (func_internalize_i env))) ^^
-
-      Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
-
-      compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (E.actor_message_ty env1))) ^^
-      compile_unit
-    ))
 
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^
@@ -1393,8 +1340,47 @@ module OrthogonalPersistence = struct
 end (* OrthogonalPersistence *)
 
 module Message = struct
-  (* This module could be part of Func, if not for the reference to
-     the module OrthogonalPersistence *)
+  (* We use the first table slot for calls to funcrefs *)
+  (* This does not clash with slots for our functions as long as there
+     is at least one imported function (which we do not add to the table) *)
+  let tmp_table_slot = 0l
+
+  (* The type of messages *)
+  let message_ty env = E.func_type env (FuncType ([I32Type],[]))
+
+
+  let system_funs env =
+    E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
+      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
+      Func.load_closure 0l ^^ (* the funcref table id *)
+      ElemHeap.recall_reference env ^^
+      G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
+
+      Func.load_argument ^^
+      (* TODO G.i_ (Call (nr (E.built_in env "serialize"))) ^^ *)
+
+      compile_unboxed_const tmp_table_slot ^^
+      G.i_ (CallIndirect (nr (message_ty env1))) ^^
+      compile_unit
+    ));
+
+    E.define_built_in env "self_message_wrapper" (Func.unary_of_body env (fun env1 ->
+      compile_unboxed_const tmp_table_slot ^^ (* slot number *)
+
+      (* Create a funcref for the message *)
+      G.i_ (Call (nr (Dfinity.actor_self_i env))) ^^
+      Func.load_closure 0l ^^ (* the databuf with the message name *)
+      G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
+
+      (* Internalize *)
+      G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
+
+      Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
+
+      compile_unboxed_const tmp_table_slot ^^
+      G.i_ (CallIndirect (nr (message_ty env1))) ^^
+      compile_unit
+    ))
 
   let message_of_body env mk_body =
     (* Fresh set of locals *)
@@ -1402,7 +1388,7 @@ module Message = struct
     let env1 = E.mk_fun_env env 1l in
     E.add_local_name env1 0l "arg";
     let code = mk_body env1 in
-    ( nr { ftype = nr (E.actor_message_ty env);
+    ( nr { ftype = nr (message_ty env);
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
@@ -2060,7 +2046,7 @@ and actor_lit outer_env name fs =
 
     BoxedInt.common_funcs env2;
     Array.common_funcs env2;
-    if E.mode env2 = DfinityMode then Dfinity.system_funs env2;
+    if E.mode env2 = DfinityMode then Message.system_funs env2;
 
     let env3 = E.mk_fun_env env2 0l in
     (* Compile stuff here *)
@@ -2191,7 +2177,7 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let env1 = declare_built_in_funs env in
   BoxedInt.common_funcs env1;
   Array.common_funcs env1;
-  if E.mode env1 = DfinityMode then Dfinity.system_funs env1;
+  if E.mode env1 = DfinityMode then Message.system_funs env1;
 
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
