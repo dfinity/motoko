@@ -12,4 +12,6 @@ $ dsh new -a _out/reference-params.wasm
 }
 
 $ dsh run -q reference-params start
-dsh: user error (Uncaught RuntimeError: unreachable
+Hello World!
+Hello World!
+

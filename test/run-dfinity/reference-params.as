@@ -6,7 +6,7 @@ let a = actor {
 a.hello();
 
 // test passing an actor to an actor
-let b = actor {
+let b = actor this {
   say_hi(a : actor { hello : () -> () } ) {
     a.hello();
   };
@@ -19,5 +19,5 @@ let c = actor {
     f();
   };
 };
-c.say_hi(a.hello);
+//c.say_hi(a.hello);
 
