@@ -507,6 +507,7 @@ module Tagged = struct
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
     | Int
     | MutBox (* used for local variables *)
+    | Closure
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -515,6 +516,7 @@ module Tagged = struct
     | Reference -> 3l
     | Int -> 4l
     | MutBox -> 5l
+    | Closure -> 6l
 
   (* The tag *)
   let header_size = 1l
@@ -606,7 +608,8 @@ module Var = struct
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
     Heap.obj env
-      [ compile_unboxed_const fi
+      [ compile_unboxed_const (Tagged.int_of_tag Tagged.Closure)
+      ; compile_unboxed_const fi
       ]
 
   (* Local variables may in general be mutable (or at least late-defined).
@@ -666,9 +669,13 @@ end (* Opt *)
 
 module Func = struct
 
+  let funptr_field = Tagged.header_size
+  let first_captured = Int32.add Tagged.header_size 1l
+
   let load_the_closure = G.i_ (GetLocal (nr 0l))
-  let load_closure i = load_the_closure ^^ Heap.load_field i
+  let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
   let load_argument  = G.i_ (GetLocal (nr 1l))
+
 
   let static_function_id fi =
     (* should be different from any pointer *)
@@ -729,7 +736,7 @@ module Func = struct
    get_i ^^
    (* And now get the table index *)
    get_fi ^^
-   Heap.load_field 0l ^^
+   Heap.load_field funptr_field ^^
    (* All done: Call! *)
    G.i (CallIndirect (nr E.unary_fun_ty_i) @@ at)
 
@@ -774,7 +781,7 @@ module Func = struct
 
       let alloc_code =
         (* Allocate a heap object for the function *)
-        Heap.alloc (Wasm.I32.of_int_u (1 + List.length captured)) ^^
+        Heap.alloc (Int32.add first_captured (Wasm.I32.of_int_u (List.length captured))) ^^
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
@@ -794,14 +801,14 @@ module Func = struct
                 let store_env =
                   get_li ^^
                   store_this ^^
-                  Heap.store_field (Wasm.I32.of_int_u (1+i)) ^^
+                  Heap.store_field (Int32.add first_captured (Wasm.I32.of_int_u i)) ^^
                   store_rest in
                 let restore_env env1 get_env =
                   let (env2, code) = restore_this env1 in
                   let (env3, code_rest) = restore_rest env2 get_env in
                   (env3,
                    get_env ^^
-                   Heap.load_field (Wasm.I32.of_int_u (1+i)) ^^
+                   Heap.load_field (Int32.add first_captured (Wasm.I32.of_int_u i)) ^^
                    code ^^
                    code_rest
                   )
@@ -815,10 +822,15 @@ module Func = struct
         let fi = E.add_fun env f in
         E.add_fun_name env fi name.it;
 
+        (* Store the tag *)
+        get_li ^^
+        compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ^^
+        Heap.store_field Tagged.tag_field ^^
+
         (* Store the function number: *)
         get_li ^^
-        compile_unboxed_const fi ^^ (* Store function number *)
-        Heap.store_field 0l ^^
+        compile_unboxed_const fi ^^
+        Heap.store_field funptr_field ^^
         (* Store all captured values *)
         store_env ^^
         if last then get_li  else G.nop)
@@ -973,7 +985,7 @@ module Array = struct
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
 
   let common_funcs env =
-    let get_array_object = Func.load_closure 1l in
+    let get_array_object = Func.load_closure 0l in
     let get_single_arg =   Func.load_argument in
     let get_first_arg =    Func.load_argument ^^ Heap.load_field (field_of_idx 0l) in
     let get_second_arg =   Func.load_argument ^^ Heap.load_field (field_of_idx 1l) in
@@ -1006,14 +1018,14 @@ module Array = struct
     let mk_next_fun mk_code : E.func_with_names = Func.unary_of_body env (fun env1 ->
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
-            Func.load_closure 1l ^^
+            Func.load_closure 0l ^^
             (* Read pointer *)
             load_ptr ^^
             set_i ^^
 
             get_i ^^
             (* Get pointer to array from closure *)
-            Func.load_closure 2l ^^
+            Func.load_closure 1l ^^
             (* Get length *)
             Heap.load_field len_field ^^
             G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
@@ -1022,7 +1034,7 @@ module Array = struct
               compile_null
               (* Else *)
               ( (* Get point to counter from closure *)
-                Func.load_closure 1l ^^
+                Func.load_closure 0l ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_unboxed_const 1l ^^
@@ -1030,7 +1042,7 @@ module Array = struct
                 store_ptr ^^
                 (* Return stuff *)
                 Opt.inject env1 (
-                  mk_code env (Func.load_closure 2l) get_i
+                  mk_code env (Func.load_closure 1l) get_i
                 )
               )
        ) in
@@ -1043,6 +1055,7 @@ module Array = struct
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Heap.obj env1 [
+              compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
               compile_unboxed_const next_funid;
               get_i;
               get_array_object ] ^^
@@ -1079,7 +1092,10 @@ module Array = struct
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Heap.obj env [ compile_unboxed_const (E.built_in env built_in_name) ; get_i ]
+    Heap.obj env [
+      compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
+      compile_unboxed_const (E.built_in env built_in_name) ;
+      get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -1215,7 +1231,7 @@ module Dfinity = struct
   let system_funs env =
     E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-      Func.load_closure 1l ^^ (* the funcref table id *)
+      Func.load_closure 0l ^^ (* the funcref table id *)
       ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (func_internalize_i env))) ^^
 
@@ -1230,7 +1246,7 @@ module Dfinity = struct
 
       (* Create a funcref for the message *)
       G.i_ (Call (nr (actor_self_i env))) ^^
-      Func.load_closure 1l ^^ (* the databuf with the message name *)
+      Func.load_closure 0l ^^ (* the databuf with the message name *)
       G.i_ (Call (nr (actor_export_i env))) ^^
 
       (* Internalize *)
@@ -1267,6 +1283,7 @@ module Dfinity = struct
 
   let static_self_message_pointer name env =
     Heap.obj env [
+      compile_unboxed_const (Tagged.int_of_tag Tagged.Closure) ;
       compile_unboxed_const (E.built_in env "self_message_wrapper");
       compile_databuf_of_bytes env name.it
     ]
@@ -2126,7 +2143,8 @@ and actor_fake_object_idx env name =
 
     (* Create a closure object that calls the funcref *)
     Heap.obj env
-      [ compile_unboxed_const (E.built_in env "funcref_wrapper")
+      [ compile_unboxed_const (Tagged.int_of_tag Tagged.Closure)
+      ; compile_unboxed_const (E.built_in env "funcref_wrapper")
       ; get_i ^^
         Dfinity.compile_databuf_of_bytes env (name.it) ^^
         G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
