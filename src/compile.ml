@@ -509,6 +509,7 @@ module Tagged = struct
     | MutBox (* used for local variables *)
     | Closure
     | Some (* For opt *)
+    | Text
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -519,6 +520,7 @@ module Tagged = struct
     | MutBox -> 5l
     | Closure -> 6l
     | Some -> 7l
+    | Text -> 8l
 
   (* The tag *)
   let header_size = 1l
@@ -947,9 +949,9 @@ module Object = struct
 end (* Object *)
 
 module Text = struct
-  let header_size = 1l
+  let header_size = Int32.add Tagged.header_size 1l
 
-  let len_field = 0l
+  let len_field = Int32.add Tagged.header_size 0l
 
   let bytes_of_int32 (i : int32) : string =
     let b = Buffer.create 4 in
@@ -965,8 +967,9 @@ module Text = struct
 
   let lit env s =
     let len = Int32.of_int (String.length s) in
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Text) in
     let len_bytes = bytes_of_int32 len in
-    let data = len_bytes ^ s in
+    let data = tag ^ len_bytes ^ s in
     let ptr = E.add_static_bytes env data in
     compile_unboxed_const ptr
 
