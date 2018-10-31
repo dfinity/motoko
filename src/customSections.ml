@@ -82,7 +82,7 @@ let encode
       vu32 0x60l; (* function type op code *)
       vu32 nargs; (* two args *)
       for _ = 1 to Int32.to_int nargs do
-        vu32 0x7fl; (* all args int32 *)
+        vu32 0x6cl; (* all args are databuf (for now) *)
       done;
       vu32 0l;
     )

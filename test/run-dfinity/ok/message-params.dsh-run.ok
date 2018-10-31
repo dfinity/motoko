@@ -12,10 +12,4 @@ $ dsh new -a _out/message-params.wasm
 }
 
 $ dsh run -q message-params start
-0
-0
-0
-0
-0
-0
-dsh: user error (Uncaught RuntimeError: function signature mismatch
+dsh: user error (Uncaught RuntimeError: unreachable

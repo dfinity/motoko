@@ -123,7 +123,6 @@ module E = struct
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
   let unary_param_local env : var = nr 1l   (* second param *)
-  let message_param_local env : var = nr 0l
 
   (* The initial global environment *)
   let mk_global mode prelude dyn_mem : t = {
@@ -393,6 +392,14 @@ module Heap = struct
 
     compile_self
 
+  let _with_scap_space env code =
+    let (set_i, get_i) = new_local env "old_heap" in
+    G.i_ (GetGlobal heap_ptr) ^^
+    set_i ^^
+    code ^^
+    get_i ^^
+    G.i_ (SetGlobal heap_ptr)
+
 end (* Heap *)
 
 module ElemHeap = struct
@@ -444,6 +451,8 @@ module Tagged = struct
    *)
 
   type tag =
+    | Null (* not really an existing tag, but useful for branch *)
+    | Unit (* not really an existing tag, but useful for branch *)
     | Object
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
@@ -455,6 +464,8 @@ module Tagged = struct
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
+    | Null -> raise (Invalid_argument "null is not tagged")
+    | Unit -> raise (Invalid_argument "null is not tagged")
     | Object -> 1l
     | Array -> 2l
     | Reference -> 3l
@@ -484,6 +495,16 @@ module Tagged = struct
     let rec go = function
       | [] ->
         G.i_ Unreachable
+      | ((Null, code) :: cases) ->
+        get_i ^^
+        compile_null ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ [I32Type] (get_i ^^ code) (go cases)
+      | ((Unit, code) :: cases) ->
+        get_i ^^
+        compile_unit ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ [I32Type] (get_i ^^ code) (go cases)
       | ((tag, code) :: cases) ->
         get_i ^^
         load ^^
@@ -1317,8 +1338,56 @@ module OrthogonalPersistence = struct
        G.i_ (SetGlobal (nr elem_global))
     )
 
-
 end (* OrthogonalPersistence *)
+
+module Serialization = struct
+  (* Initial serialization: Only BoxedInt, can be serialized directly *)
+
+  let system_funs module_env =
+    Func.define_built_in module_env "serialize" ["x"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+
+      get_x ^^
+      Tagged.branch env
+        [ Tagged.Int,
+          (* x still on the stack *)
+          compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+          G.i_ (Call (nr (Dfinity.data_externalize_i env)))
+        ; Tagged.Null,
+          G.i_ Drop ^^
+          compile_unboxed_const 0l (* HACK: Abusing the empty null reference *)
+        ; Tagged.Unit,
+          G.i_ Drop ^^
+          compile_unboxed_const 0l (* HACK: Abusing the empty null reference *)
+        ]
+    );
+    Func.define_built_in module_env "deserialize" ["ref"] [I32Type] (fun env ->
+      let get_ref = G.i_ (GetLocal (nr 0l)) in
+      let (set_i, get_i) = new_local env "x" in
+
+      (* new positions *)
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      set_i ^^
+
+
+      (* load data *)
+      get_i ^^
+      get_ref ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
+      get_ref ^^
+      compile_unboxed_const 0l ^^
+      G.i_ (Call (nr (Dfinity.data_internalize_i env))) ^^
+
+      (* update heap pointer  *)
+      get_i ^^
+      get_ref ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (SetGlobal Heap.heap_ptr) ^^
+
+      (* return allocated thing *)
+      get_i
+    );
+
+end (* Serialization *)
 
 module Message = struct
   (* We use the first table slot for calls to funcrefs *)
@@ -1331,6 +1400,7 @@ module Message = struct
 
 
   let system_funs env =
+
     E.define_built_in env "funcref_wrapper" (Func.unary_of_body env (fun env1 ->
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
       Func.load_closure 0l ^^ (* the funcref table id *)
@@ -1338,7 +1408,7 @@ module Message = struct
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
       Func.load_argument ^^
-      (* TODO G.i_ (Call (nr (E.built_in env "serialize"))) ^^ *)
+      G.i_ (Call (nr (E.built_in env "serialize"))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr (message_ty env1))) ^^
@@ -1363,12 +1433,9 @@ module Message = struct
       compile_unit
     ))
 
-  let of_body env mk_body =
-    (* Messages take no closure, return nothing*)
-    Func.of_body env ["arg"] [] mk_body
-
   let compile env mk_pat mk_body at : E.func_with_names =
-    of_body env (fun env1 ->
+    (* Messages take no closure, return nothing*)
+    Func.of_body env ["arg"] [] (fun env1 ->
       (* Set up memory *)
       G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
 
@@ -1379,7 +1446,8 @@ module Message = struct
       let body_code = mk_body env2 in
 
       alloc_args_code ^^
-      G.i (GetLocal (E.message_param_local env2) @@ at) ^^
+      G.i (GetLocal (nr 0l) @@ at) ^^
+      G.i_ (Call (nr (E.built_in env "deserialize"))) ^^
       destruct_args_code ^^
       body_code ^^
       G.i_ Drop ^^
@@ -2004,10 +2072,11 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     let env1 = declare_built_in_funs env in
-    let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem" ] in
+    let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem"] in
 
     BoxedInt.common_funcs env2;
     Array.common_funcs env2;
+    if E.mode env2 = DfinityMode then Serialization.system_funs env2;
     if E.mode env2 = DfinityMode then Message.system_funs env2;
 
     let start_fun = Func.of_body env2 [] [] (fun env3 ->
@@ -2058,7 +2127,8 @@ and declare_built_in_funs env =
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
-    then [ "funcref_wrapper"; "self_message_wrapper" ]
+    then [ "funcref_wrapper"; "self_message_wrapper"
+         ; "serialize"; "deserialize" ]
     else []))
 
 and conclude_module env start_fi_o with_orthogonal_persistence =
@@ -2134,6 +2204,7 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let env1 = declare_built_in_funs env in
   BoxedInt.common_funcs env1;
   Array.common_funcs env1;
+  if E.mode env1 = DfinityMode then Serialization.system_funs env1;
   if E.mode env1 = DfinityMode then Message.system_funs env1;
 
   let start_fun = compile_start_func env1 (prelude :: progs) in
