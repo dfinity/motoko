@@ -94,7 +94,7 @@ module E = struct
     (* Function number and fill function for built-in functions *)
     built_in_funcs : ((func_with_names -> unit) * int32) NameEnv.t;
     (* Types registered in this module *)
-    func_types : func_type Wasm.Source.phrase list ref;
+    func_types : func_type list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
     n_param : int32;
     (* Types of locals *)
@@ -119,67 +119,6 @@ module E = struct
 
   let mode (e : t) = e.mode
 
-  (* Common function types *)
-  let start_fun_ty = nr (FuncType ([],[]))
-  let start_fun_ty_i = 0l
-  (* First argument is a pointer to the closure *)
-  let unary_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let unary_fun_ty_i = 1l
-  (* Actor message type *)
-  let actor_message_ty = nr (FuncType ([I32Type],[]))
-  let actor_message_ty_i = 2l
-  let nullary_fun_ty = nr (FuncType ([],[]))
-  let nullary_fun_ty_i = 3l
-  (* Type of the system API *)
-  let test_print_fun_ty = nr (FuncType ([I32Type],[]))
-  let test_print_fun_ty_i = 4l
-  let test_show_i32fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let test_show_i32fun_ty_i = 5l
-  let data_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let data_externalize_fun_ty_i = 6l
-  let data_internalize_fun_ty = nr (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
-  let data_internalize_fun_ty_i = 7l
-  let data_length_ty = nr (FuncType ([I32Type],[I32Type]))
-  let data_length_fun_ty_i = 8l
-  let elem_externalize_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let elem_externalize_fun_ty_i = 9l
-  let elem_internalize_fun_ty = nr (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
-  let elem_internalize_fun_ty_i = 10l
-  let elem_length_ty = nr (FuncType ([I32Type],[I32Type]))
-  let elem_length_fun_ty_i = 11l
-  let module_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let module_new_fun_ty_i = 12l
-  let actor_new_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let actor_new_fun_ty_i = 13l
-  let actor_self_fun_ty = nr (FuncType ([],[I32Type]))
-  let actor_self_fun_ty_i = 14l
-  let actor_export_fun_ty = nr (FuncType ([I32Type; I32Type],[I32Type]))
-  let actor_export_fun_ty_i = 15l
-  let func_internalize_fun_ty = nr (FuncType ([I32Type; I32Type],[]))
-  let func_internalize_fun_ty_i = 16l
-  let box_fun_ty = nr (FuncType ([I32Type],[I32Type]))
-  let box_fun_ty_i = 17l
-  let default_fun_tys = [
-      start_fun_ty;
-      unary_fun_ty;
-      actor_message_ty;
-      nullary_fun_ty;
-      test_print_fun_ty;
-      test_show_i32fun_ty;
-      data_externalize_fun_ty;
-      data_internalize_fun_ty;
-      data_length_ty;
-      elem_externalize_fun_ty;
-      elem_internalize_fun_ty;
-      elem_length_ty;
-      module_new_fun_ty;
-      actor_new_fun_ty;
-      actor_self_fun_ty;
-      actor_export_fun_ty;
-      func_internalize_fun_ty;
-      box_fun_ty;
-      ]
-
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
@@ -195,7 +134,7 @@ module E = struct
     func_names = ref [];
     func_locals = ref [];
     built_in_funcs = NameEnv.empty;
-    func_types = ref default_fun_tys;
+    func_types = ref [];
     dfinity_types = ref [];
     (* Actually unused outside mk_fun_env: *)
     locals = ref [];
@@ -317,10 +256,38 @@ module E = struct
 
   let get_func_local_names (env : t) = !(env.func_locals)
 
-  (* Currently unused, until we add functions to the table *)
-  let _add_type (env : t) ty = reg env.func_types ty
+  let func_type (env : t) ty =
+    let rec go i = function
+      | [] -> env.func_types := !(env.func_types) @ [ ty ]; Int32.of_int i
+      | ty'::tys when ty = ty' -> Int32.of_int i
+      | _ :: tys -> go (i+1) tys
+       in
+    go 0 !(env.func_types)
 
   let get_types (env : t) = !(env.func_types)
+
+  let start_fun_ty env = func_type env (FuncType ([],[]))
+
+  (* First argument is a pointer to the closure *)
+  let unary_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
+  (* Actor message type *)
+  let actor_message_ty env = func_type env (FuncType ([I32Type],[]))
+  let nullary_fun_ty env = func_type env (FuncType ([],[]))
+  (* Type of the system API *)
+  let test_print_fun_ty env = func_type env (FuncType ([I32Type],[]))
+  let test_show_i32fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
+  let data_externalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
+  let data_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
+  let data_length_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
+  let elem_externalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
+  let elem_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[]))
+  let elem_length_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
+  let module_new_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
+  let actor_new_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
+  let actor_self_fun_ty env = func_type env (FuncType ([],[I32Type]))
+  let actor_export_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[I32Type]))
+  let func_internalize_fun_ty env = func_type env (FuncType ([I32Type; I32Type],[]))
+  let box_fun_ty env = func_type env (FuncType ([I32Type],[I32Type]))
 
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
@@ -597,7 +564,7 @@ module BoxedInt = struct
       let env1 = E.mk_fun_env env 1l in
       E.add_local_name env1 0l "n";
       let code = Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ] in
-      (nr { ftype = nr E.box_fun_ty_i;
+      (nr { ftype = nr (E.box_fun_ty env1);
            locals = E.get_locals env1;
            body = G.to_instr_list code
          }
@@ -689,7 +656,7 @@ module Func = struct
     E.add_local_name env1 0l "clos";
     E.add_local_name env1 1l "param";
     let code = mk_body env1 in
-    (nr { ftype = nr E.unary_fun_ty_i;
+    (nr { ftype = nr (E.unary_fun_ty env1);
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
@@ -700,7 +667,7 @@ module Func = struct
     (* Reserve one local, no arguments *)
     let env1 = E.mk_fun_env env 0l in
     let code = mk_body env1 in
-    (nr { ftype = nr E.nullary_fun_ty_i;
+    (nr { ftype = nr (E.nullary_fun_ty env1);
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
@@ -739,7 +706,7 @@ module Func = struct
    get_fi ^^
    Heap.load_field funptr_field ^^
    (* All done: Call! *)
-   G.i (CallIndirect (nr E.unary_fun_ty_i) @@ at)
+   G.i (CallIndirect (nr (E.unary_fun_ty env)) @@ at)
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -1136,91 +1103,91 @@ module Dfinity = struct
     let i = E.add_import env (nr {
       module_name = explode "test";
       item_name = explode "print";
-      idesc = nr (FuncImport (nr E.test_print_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.test_print_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_print_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "test";
       item_name = explode "show_i32";
-      idesc = nr (FuncImport (nr E.test_show_i32fun_ty_i))
+      idesc = nr (FuncImport (nr (E.test_show_i32fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "externalize";
-      idesc = nr (FuncImport (nr E.data_externalize_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.data_externalize_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr E.data_internalize_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.data_internalize_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "data";
       item_name = explode "length";
-      idesc = nr (FuncImport (nr E.data_length_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.data_length_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "externalize";
-      idesc = nr (FuncImport (nr E.elem_externalize_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.elem_externalize_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr E.elem_internalize_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.elem_internalize_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "elem";
       item_name = explode "length";
-      idesc = nr (FuncImport (nr E.elem_length_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.elem_length_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_length_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "module";
       item_name = explode "new";
-      idesc = nr (FuncImport (nr E.module_new_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.module_new_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (module_new_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "new";
-      idesc = nr (FuncImport (nr E.actor_new_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.actor_new_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_new_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "self";
-      idesc = nr (FuncImport (nr E.actor_self_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.actor_self_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_self_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "actor";
       item_name = explode "export";
-      idesc = nr (FuncImport (nr E.actor_export_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.actor_export_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_export_i env));
 
     let i = E.add_import env (nr {
       module_name = explode "func";
       item_name = explode "internalize";
-      idesc = nr (FuncImport (nr E.func_internalize_fun_ty_i))
+      idesc = nr (FuncImport (nr (E.func_internalize_fun_ty env)))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_internalize_i env))
 
@@ -1231,9 +1198,11 @@ module Dfinity = struct
       ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (func_internalize_i env))) ^^
 
-      Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
+      Func.load_argument ^^
+      (* TODO G.i_ (Call (nr (E.built_in env "serialize"))) ^^ *)
+
       compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
+      G.i_ (CallIndirect (nr (E.actor_message_ty env1))) ^^
       compile_unit
     ));
 
@@ -1251,7 +1220,7 @@ module Dfinity = struct
       Func.load_argument ^^ (* Needs to be serialized somehow, can only pass i32 now *)
 
       compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr E.actor_message_ty_i)) ^^
+      G.i_ (CallIndirect (nr (E.actor_message_ty env1))) ^^
       compile_unit
     ))
 
@@ -1433,7 +1402,7 @@ module Message = struct
     let env1 = E.mk_fun_env env 1l in
     E.add_local_name env1 0l "arg";
     let code = mk_body env1 in
-    ( nr { ftype = nr E.actor_message_ty_i;
+    ( nr { ftype = nr (E.actor_message_ty env);
          locals = E.get_locals env1;
          body = G.to_instr_list code
        }
@@ -2019,10 +1988,10 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
 
   let (env2, code) = go env1 progs in
 
-  ( nr { ftype = nr E.start_fun_ty_i;
-       locals = E.get_locals env2;
-       body = G.to_instr_list code
-     }
+  ( nr { ftype = nr (E.start_fun_ty env2);
+         locals = E.get_locals env2;
+         body = G.to_instr_list code
+       }
   , E.get_local_names env2 )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
@@ -2099,7 +2068,7 @@ and actor_lit outer_env name fs =
     let (env5, init_code )  = compile_actor_fields env4 fs in
 
     let start_fun =
-      ( nr { ftype = nr E.start_fun_ty_i;
+      ( nr { ftype = nr (E.start_fun_ty env5);
              locals = E.get_locals env5;
              body = G.to_instr_list (prelude_code ^^ init_code) }
       , E.get_local_names env5) in
@@ -2192,7 +2161,7 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
     }) (E.get_static_memory env) in
 
   { module_ = nr {
-      types = E.get_types env;
+      types = List.map nr (E.get_types env);
       funcs = funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
       elems = [ nr {
