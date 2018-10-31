@@ -53,8 +53,13 @@ type 'env deferred_loc =
   }
 
 type 'env varloc =
-  | Local of int32   (* A Wasm Local in the current function *)
-  | Static of int32  (* A static memory location in the current module *)
+  (* A Wasm Local of the current function, that points to memory location,
+     with an offset to the actual data. *)
+  | Local of (int32 * int32)
+  (* A static memory location in the current module *)
+  | Static of int32
+  (* Dynamic code to allocate the expression, valid in the current module
+     (need not be captured) *)
   | Deferred of 'env deferred_loc
 
 module E = struct
@@ -204,18 +209,19 @@ module E = struct
     static_memory = ref [];
   }
 
+
+  let is_non_local = function
+    | Local _ -> false
+    | Static _ -> true
+    | Deferred _ -> true
+
   (* Resetting the environment for a new function *)
   let mk_fun_env env n_param =
-    (* We keep all local vars that are bound to known functions or globals *)
-    let is_non_local = function
-      | Local _ -> false
-      | Static _ -> true
-      | Deferred _ -> true
-    in
     { env with
       locals = ref [I32Type]; (* the first tmp local *)
       local_names = ref [ n_param , "tmp" ];
       n_param = n_param;
+      (* We keep all local vars that are bound to known functions or globals *)
       local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
       ld = NameEnv.empty;
       }
@@ -225,6 +231,10 @@ module E = struct
       | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
+  let _needs_capture env var = match lookup_var env var with
+    | Some l -> not (is_non_local l)
+    | None -> false
+
   let add_anon_local (env : t) ty =
       let i = reg env.locals ty in
       Wasm.I32.add env.n_param i
@@ -232,17 +242,19 @@ module E = struct
   let add_local_name (env : t) li name =
       let _ = reg env.local_names (li, name) in ()
 
-  let add_local (env : t) name =
+  let reuse_local_with_offset (env : t) name i off =
+      { env with local_vars_env = NameEnv.add name (Local (i, off)) env.local_vars_env }
+
+  let add_local_with_offset (env : t) name off =
       let i = add_anon_local env I32Type in
       add_local_name env i name;
-      ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
+      (reuse_local_with_offset env name i off, i)
 
   let add_local_static (env : t) name ptr =
       { env with local_vars_env = NameEnv.add name (Static ptr) env.local_vars_env }
 
   let add_local_deferred (env : t) name d =
       { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
-
 
   let get_locals (env : t) = !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
@@ -364,12 +376,17 @@ let compile_null =    compile_unboxed_const Int32.max_int
 let set_tmp env = G.i_ (SetLocal (E.tmp_local env))
 let get_tmp env = G.i_ (GetLocal (E.tmp_local env))
 
-let new_local env name =
+let new_local_ env name =
   let i = E.add_anon_local env I32Type in
   E.add_local_name env i name;
   ( G.i_ (SetLocal (nr i))
   , G.i_ (GetLocal (nr i))
+  , i
   )
+
+let new_local env name =
+  let (set_i, get_i, _) = new_local_ env name
+  in (set_i, get_i)
 
 (* Stack utilities *)
 
@@ -489,6 +506,7 @@ module Tagged = struct
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
     | Int
+    | MutBox (* used for local variables *)
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -496,6 +514,7 @@ module Tagged = struct
     | Array -> 2l
     | Reference -> 3l
     | Int -> 4l
+    | MutBox -> 5l
 
   (* The tag *)
   let header_size = 1l
@@ -584,33 +603,57 @@ end (* BoxedInt *)
 module Var = struct
 
   (* When accessing a variable that is a static function, then we need to create a
-     heap-allocated thing on the fly. *)
+     heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Heap.obj env [
-      compile_unboxed_const fi
-    ]
+    Heap.obj env
+      [ compile_unboxed_const fi
+      ]
 
+  (* Local variables may in general be mutable (or at least late-defined).
+     So we need to add an indirection through the heap.
+     We tag this indirection using Tagged.MutBox.
+     (Although I am not yet entirely sure that this needs to be tagged. Do these
+     ever show up in GC or serialization? I guess as part of closures.)
+  *)
+  let mutbox_field = Tagged.header_size
+  let load = Heap.load_field mutbox_field
+  let store = Heap.store_field mutbox_field
+
+  let add_local env name =
+    E.add_local_with_offset env name mutbox_field
+
+  (* Returns the payload *)
   let get_val env var = match E.lookup_var env var with
-    | Some (Local i)  -> G.i_ (GetLocal (nr i)) ^^ load_ptr
+    | Some (Local (i, off))  -> G.i_ (GetLocal (nr i)) ^^ Heap.load_field off
     | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
     | Some (Deferred d) -> d.allocate env
     | None   -> G.i_ Unreachable
 
-  let get_loc env var = match E.lookup_var env var with
-    | Some (Local i) -> G.i_ (GetLocal (nr i))
+  (* Returns a pointer to the payload *)
+  let get_payload_loc env var = match E.lookup_var env var with
+    | Some (Local (i, off)) ->
+      G.i_ (GetLocal (nr i)) ^^
+      compile_unboxed_const (Int32.mul Heap.word_size off) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
     | Some (Static i) -> compile_unboxed_const i
-    (* We have to do some boxing here *)
-    | _ -> Heap.obj env [ get_val env var ]
+    | Some (Deferred _) -> raise (Invalid_argument "Should not write to a deferred thing")
+    | None -> G.i_ Unreachable
 
-  let set_loc env var = match E.lookup_var env var with
-    | Some (Local i) -> G.i_ (SetLocal (nr i))
+  (* Returns a pointer to the box, and code to restore it,
+     including adding to the environment *)
+  let capture env var : G.t * (E.t -> (E.t * G.t)) = match E.lookup_var env var with
+    | Some (Local (i, off)) ->
+      ( G.i_ (GetLocal (nr i))
+      , fun env1 ->
+        let (env2, j) = E.add_local_with_offset env1 var off in
+        let restore_code = G.i_ (SetLocal (nr j))
+        in (env2, restore_code)
+      )
     | Some (Static i) ->
-      set_tmp env ^^
-      compile_unboxed_const i ^^
-      get_tmp env ^^
-      store_ptr
-    | Some (Deferred _) -> raise (Invalid_argument "Cannot set heap location for a deferred thing")
-    | None   -> G.i_ Unreachable
+      ( compile_null , fun env1 -> (E.add_local_static env1 var i, G.i_ Drop))
+    | Some (Deferred d) ->
+      ( compile_null , fun env1 -> (E.add_local_deferred env1 var d, G.i_ Drop))
+    | None -> (G.i_ Unreachable, fun env1 -> (env1, G.i_ Unreachable))
 
 end (* Var *)
 
@@ -694,16 +737,12 @@ module Func = struct
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
 
-  let compile_func env captured mk_pat mk_body at =
+  let compile_func env restore_env mk_pat mk_body at =
     unary_of_body env (fun env1 ->
-      (* Allocate locals for the captured variables *)
-      let env2 = List.fold_left (fun e n -> fst (E.add_local e n)) env1 captured in
-      (* Load the environment *)
-      let load_capture i v =
-          G.i (GetLocal (E.unary_closure_local env2) @@ at) ^^
-          Heap.load_field (Wasm.I32.of_int_u (1+i)) ^^
-          Var.set_loc env2 v in
-      let closure_code = G.concat_mapi load_capture captured in
+      let get_closure = G.i (GetLocal (E.unary_closure_local env1) @@ at) in
+
+      let (env2, closure_code) = restore_env env1 get_closure in
+
       (* Destruct the argument *)
       let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
 
@@ -724,14 +763,14 @@ module Func = struct
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
         let mk_body' env = mk_body env (compile_unboxed_const (static_function_id fi)) in
-        let f = compile_func env [] mk_pat mk_body' at in
+        let f = compile_func env (fun env1 _ -> (env1, G.nop)) mk_pat mk_body' at in
         fill f;
         if last then d.allocate env else G.nop)
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env last name captured mk_pat mk_body at =
       let (set_li, get_li) = new_local pre_env "clos_ind" in
-      let (pre_env1, vi) = E.add_local pre_env name.it in
+      let (pre_env1, vi) = Var.add_local pre_env name.it in
 
       let alloc_code =
         (* Allocate a heap object for the function *)
@@ -739,16 +778,40 @@ module Func = struct
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
-        Heap.obj pre_env1 [ get_li ] ^^
+        Heap.obj pre_env1 [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
+                          ; get_li ] ^^
         G.i ( SetLocal (vi @@ at) @@ at )
       in
 
       ( pre_env1, alloc_code, fun env ->
 
+        let (store_env, restore_env) =
+          let rec go i = function
+            | [] -> (G.nop, fun env1 _ -> (env1, G.nop))
+            | (v::vs) ->
+                let (store_rest, restore_rest) = go (i+1) vs in
+                let (store_this, restore_this) = Var.capture env v in
+                let store_env =
+                  get_li ^^
+                  store_this ^^
+                  Heap.store_field (Wasm.I32.of_int_u (1+i)) ^^
+                  store_rest in
+                let restore_env env1 get_env =
+                  let (env2, code) = restore_this env1 in
+                  let (env3, code_rest) = restore_rest env2 get_env in
+                  (env3,
+                   get_env ^^
+                   Heap.load_field (Wasm.I32.of_int_u (1+i)) ^^
+                   code ^^
+                   code_rest
+                  )
+                in (store_env, restore_env) in
+          go 0 captured in
+
 	(* All functions are unary for now (arguments passed as heap-allocated tuples)
            with the closure itself passed as a first argument *)
         let mk_body' env = mk_body env load_the_closure in
-        let f = compile_func env captured mk_pat mk_body' at in
+        let f = compile_func env restore_env mk_pat mk_body' at in
         let fi = E.add_fun env f in
         E.add_fun_name env fi name.it;
 
@@ -757,11 +820,7 @@ module Func = struct
         compile_unboxed_const fi ^^ (* Store function number *)
         Heap.store_field 0l ^^
         (* Store all captured values *)
-        let store_capture i v =
-          get_li ^^
-          Var.get_loc env v ^^
-          Heap.store_field (Wasm.I32.of_int_u (1+i)) in
-        G.concat_mapi store_capture captured ^^
+        store_env ^^
         if last then get_li  else G.nop)
 
   let dec pre_env last name captured mk_pat mk_body at =
@@ -814,7 +873,7 @@ module Object = struct
              Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs))) in
 
      (* Allocate memory *)
-     let (set_ri, get_ri) = new_local env "obj" in
+     let (set_ri, get_ri, ri) = new_local_ env "obj" in
      Heap.alloc n ^^
      set_ri ^^
 
@@ -825,21 +884,16 @@ module Object = struct
      (* Bind the fields in the envrionment *)
      (* We could omit that if we extend E.local_vars_env to also have an offset,
         and just bind all of them to 'ri' *)
-     let mk_field_ptr (env, code) (id, mk_is) =
-       let (env', fi) = E.add_local env id.it in
-       let offset = Wasm.I32.mul 4l (field_position env id) in
-       let code' = get_ri ^^
-                   compile_unboxed_const offset ^^
-                   G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                   G.i_ (SetLocal (nr fi)) in
-       (env', code ^^ code') in
-     let (env1, field_code) = List.fold_left mk_field_ptr (env, G.nop) fs in
-     field_code ^^
+     let mk_field_ptr env (id, _) =
+      E.reuse_local_with_offset env id.it ri (field_position env id) in
+     let env1 = List.fold_left mk_field_ptr env fs in
 
      (* An extra indirection for the 'this' pointer, if present *)
      let (env2, this_code) = match this_name_opt with
-      | Some name -> let (env2, ti) = E.add_local env1 name.it in
-                     (env2, Heap.obj env1 [ get_ri ] ^^
+      | Some name -> let (env2, ti) = Var.add_local env1 name.it in
+                     (env2, Heap.obj env1
+                              [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
+                              ; get_ri ] ^^
                             G.i_ (SetLocal (nr ti)))
       | None -> (env1, G.nop) in
      this_code ^^
@@ -1495,7 +1549,7 @@ assignment operator, and calculates (puts on the stack) the
 memory location of such a thing. *)
 let rec compile_lexp (env : E.t) exp = match exp.it with
   | VarE var ->
-     Var.get_loc env var.it
+     Var.get_payload_loc env var.it
   | IdxE (e1,e2) ->
      compile_exp env e1 ^^ (* offset to array *)
      compile_exp env e2 ^^ (* idx *)
@@ -1545,7 +1599,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | AssignE (e1,e2) ->
      compile_lexp env e1 ^^
      compile_exp env e2 ^^
-     Heap.store_field 0l ^^
+     store_ptr ^^
      compile_unit
   | LitE l_ref ->
      compile_lit env !l_ref
@@ -1816,13 +1870,19 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
       in (env, G.nop, code)
 
   | VarP name ->
-      let (env1,i) = E.add_local env name.it; in
-      let alloc_code = Heap.alloc 1l ^^ G.i_ (SetLocal (nr i)) in
+      let (env1,i) = Var.add_local env name.it; in
+      let alloc_code =
+        Heap.obj env1
+          [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
+          ; compile_unboxed_const 0l ] ^^
+        G.i_ (SetLocal (nr i)) in
+
       let code = CannotFail (
         set_tmp env ^^
         G.i_ (GetLocal (nr i)) ^^
         get_tmp env ^^
-        store_ptr) in
+        Var.store
+        ) in
       (env1, alloc_code, code)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
@@ -1871,16 +1931,20 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       let stack_fix = if last then dup env else G.nop in
       code1 ^^ stack_fix ^^ code2)
   | VarD (name, e) ->
-      let (pre_env1, i) = E.add_local pre_env name.it in
+      let (pre_env1, i) = E.add_local_with_offset pre_env name.it 1l in
 
-      let alloc_code = Heap.alloc 1l ^^ G.i_ (SetLocal (nr i)) in
+      let alloc_code =
+        Heap.obj pre_env
+          [ compile_unboxed_const (Tagged.int_of_tag Tagged.MutBox)
+          ; compile_unboxed_const 0l ] ^^
+        G.i_ (SetLocal (nr i)) in
 
       ( pre_env1, alloc_code, fun env ->
         let code1 = compile_exp env e in
         G.i_ (GetLocal (nr i)) ^^
         code1 ^^
-        store_ptr ^^
-        if last then G.i_ (GetLocal (nr i)) ^^ load_ptr else G.nop)
+        Var.store ^^
+        if last then G.i_ (GetLocal (nr i)) ^^ Var.load else G.nop)
 
   | FuncD (name, _, p, _rt, e) ->
       (* Get captured variables *)
