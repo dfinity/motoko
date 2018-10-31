@@ -466,11 +466,13 @@ module Tagged = struct
   type tag =
     | Object
     | Array
+    | Reference (* Either arrayref or funcref, no need to distinguish here *)
 
   (* Lets leave out zero to trap earlier on invalid memory *)
   let int_of_tag = function
     | Object -> 1l
     | Array -> 2l
+    | Reference -> 3l
 
   (* The tag *)
   let header_size = 1l
@@ -1523,6 +1525,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Tagged.branch env
       ( [ Tagged.Object, Object.idx env {id with it = n} ^^ load_ptr ] @
+        (if E.mode env = DfinityMode
+         then [ Tagged.Reference, actor_fake_object_idx env {id with it = n} ]
+         else []) @
         match  Array.fake_object_idx env n with
           | None -> []
           | Some code -> [ Tagged.Array, code ]
@@ -1582,9 +1587,6 @@ and compile_exp (env : E.t) exp = match exp.it with
      code1 ^^ BoxedInt.unbox ^^
      G.if_ [I32Type] code2 code3
   | IsE (e1, e2) ->
-     (* There are two cases: Either the class is a pointer to
-        the object on the RHS, or it is -- mangled -- the
-        function id stored therein *)
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
      let (set_i, get_i) = new_local env "is_lhs" in
@@ -1595,7 +1597,15 @@ and compile_exp (env : E.t) exp = match exp.it with
         G.i_ Drop ^^
         code2 (* for the side effect *) ^^ G.i_ Drop ^^
         BoxedInt.lit_false env
+      ; Tagged.Reference,
+        (* TODO: Implement IsE for actor references? *)
+        G.i_ Drop ^^
+        code2 (* for the side effect *) ^^ G.i_ Drop ^^
+        BoxedInt.lit_false env
       ; Tagged.Object,
+        (* There are two cases: Either the class is a pointer to
+           the object on the RHS, or it is -- mangled -- the
+           function id stored therein *)
         Heap.load_field Object.class_position ^^
         set_i ^^
         code2 ^^
@@ -1998,29 +2008,6 @@ and compile_actor_fields env fs =
   let (env1, mk_code2) = go env fs in
   (env1, mk_code2 env1)
 
-(* This function wraps an actor ref as an object, with all fields
-   prepared to be callable as normal function.
-   TODO: Store the actual actorref in a special field of the object
-   representation, for further serialization.
-   TODO: Needs more type information
- *)
-and compile_actorref_wrapper env fields =
-  (* The actor ref (not a table index) is on the stack *)
-  let (set_actorref_i, get_actorref_i) = new_local env "actorref" in
-  set_actorref_i ^^
-
-  let wrap_field name =
-    (* Create a closure object that calls the funcref *)
-    let code env =
-      Tuple.lit env
-        [ compile_unboxed_const (E.built_in env "funcref_wrapper")
-        ; get_actorref_i ^^
-          Dfinity.compile_databuf_of_bytes env (name.it) ^^
-          G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
-          ElemHeap.remember_reference env
-        ] in
-    (name, code) in
-  Object.lit env None None (List.map wrap_field fields)
 
 
 and actor_lit outer_env name fs =
@@ -2056,16 +2043,34 @@ and actor_lit outer_env name fs =
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
-  Dfinity.compile_databuf_of_bytes outer_env wasm ^^
+  let code =
+    Dfinity.compile_databuf_of_bytes outer_env wasm ^^
 
-  (* Create actorref *)
-  G.i_ (Call (nr (Dfinity.module_new_i outer_env))) ^^
-  G.i_ (Call (nr (Dfinity.actor_new_i outer_env))) ^^
+    (* Create actorref *)
+    G.i_ (Call (nr (Dfinity.module_new_i outer_env))) ^^
+    G.i_ (Call (nr (Dfinity.actor_new_i outer_env))) ^^
+    ElemHeap.remember_reference outer_env in
 
-  (* Create an object around it *)
-  compile_actorref_wrapper outer_env
-    (List.map (fun (f : Syntax.exp_field) -> f.it.id)
-    (List.filter (fun (f : Syntax.exp_field) -> f.it.priv.it <> Private) fs))
+  (* Wrap it in a tagged heap object *)
+  Tuple.lit outer_env
+    [ compile_unboxed_const (Tagged.int_of_tag Tagged.Reference)
+    ; code ]
+
+and actor_fake_object_idx env name =
+    let (set_i, get_i) = new_local env "ref" in
+    (* The wrapped actor table entry is on the stack *)
+    Heap.load_field 1l ^^
+    ElemHeap.recall_reference env ^^
+    set_i ^^
+
+    (* Create a closure object that calls the funcref *)
+    Tuple.lit env
+      [ compile_unboxed_const (E.built_in env "funcref_wrapper")
+      ; get_i ^^
+        Dfinity.compile_databuf_of_bytes env (name.it) ^^
+        G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
+        ElemHeap.remember_reference env
+      ]
 
 and declare_built_in_funs env =
   E.declare_built_in_funs env
