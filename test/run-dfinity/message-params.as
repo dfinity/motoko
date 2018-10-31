@@ -25,5 +25,4 @@ a.incn(3);
 a.incn(4);
 a.incnn(5,6);
 a.printCounter();
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
-
+// a.readCounter(func (n : Nat) = { printInt n; print("\n") });

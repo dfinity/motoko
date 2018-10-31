@@ -12,4 +12,10 @@ $ dsh new -a _out/message-params.wasm
 }
 
 $ dsh run -q message-params start
-dsh: user error (Uncaught RuntimeError: unreachable
+1
+3
+6
+10
+21
+21
+

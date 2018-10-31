@@ -310,9 +310,9 @@ let compile_unboxed_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_unboxed_true =    compile_unboxed_const 1l
 let compile_unboxed_false =   compile_unboxed_const 0l
 let compile_unboxed_zero =    compile_unboxed_const 0l
-let compile_unit =    compile_unboxed_const 0l
+let compile_unit = compile_unboxed_const 1l
 (* This needs to be disjoint from all pointers *)
-let compile_null =    compile_unboxed_const Int32.max_int
+let compile_null = compile_unboxed_const 2l
 
 (* Locals *)
 
@@ -391,14 +391,6 @@ module Heap = struct
     G.concat_mapi init_elem element_instructions ^^
 
     compile_self
-
-  let _with_scap_space env code =
-    let (set_i, get_i) = new_local env "old_heap" in
-    G.i_ (GetGlobal heap_ptr) ^^
-    set_i ^^
-    code ^^
-    get_i ^^
-    G.i_ (SetGlobal heap_ptr)
 
 end (* Heap *)
 
@@ -489,7 +481,7 @@ module Tagged = struct
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
-  let branch env (cases : (tag * G.t) list) : G.t =
+  let branch env retty (cases : (tag * G.t) list) : G.t =
     let (set_i, get_i) = new_local env "tagged" in
 
     let rec go = function
@@ -499,18 +491,18 @@ module Tagged = struct
         get_i ^^
         compile_null ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ [I32Type] (get_i ^^ code) (go cases)
+        G.if_ retty (get_i ^^ code) (go cases)
       | ((Unit, code) :: cases) ->
         get_i ^^
         compile_unit ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ [I32Type] (get_i ^^ code) (go cases)
+        G.if_ retty (get_i ^^ code) (go cases)
       | ((tag, code) :: cases) ->
         get_i ^^
         load ^^
         compile_unboxed_const (int_of_tag tag) ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ [I32Type] (get_i ^^ code) (go cases)
+        G.if_ retty (get_i ^^ code) (go cases)
     in
     set_i ^^
     go cases
@@ -1194,6 +1186,10 @@ module Dfinity = struct
   let _compile_static_print env s =
       compile_databuf_of_bytes env s ^^
       G.i_ (Call (nr (test_print_i env)))
+  let _compile_print_int env =
+      G.i_ (Call (nr (test_show_i32_i env))) ^^
+      G.i_ (Call (nr (test_print_i env))) ^^
+      _compile_static_print env "\n"
 
   let static_self_message_pointer name env =
     Tagged.obj env Tagged.Closure
@@ -1341,25 +1337,236 @@ module OrthogonalPersistence = struct
 end (* OrthogonalPersistence *)
 
 module Serialization = struct
-  (* Initial serialization: Only BoxedInt, can be serialized directly *)
+  (*
+    The serialization strategy is as follows:
+    * We remember the current heap pointer.
+    * We deeply and compactly copy the arguments into the space beyond the heap
+      pointer.
+    * We traverse this space and make all pointers relative to the beginning of
+      the space
+    * We copy all that space into a databuf (TODO: an elembuf and databuf)
+    * We reset the heap pointer (just because we can easily)
+
+    We separating code for copying and the code for pointer adjustment because
+    the former might be handy in a GC, and the latter can be used again in the
+    deseriazliation code.
+
+    TODO: Cycles are not detected yet.
+  *)
+
+  (* expects a number on the stack. Iterates from zero t below that number *)
+  let compile_while cond body =
+      G.loop_ [] ( cond ^^ G.if_ [] (body ^^ G.i_ (Br (nr 1l))) G.nop)
+
+  let from_0_to_n env mk_body =
+      let (set_n, get_n) = new_local env "n" in
+      let (set_i, get_i) = new_local env "i" in
+      set_n ^^
+      compile_unboxed_const 0l ^^
+      set_i ^^
+
+      compile_while
+        ( get_i ^^
+          get_n ^^
+          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+        ) (
+          mk_body get_i ^^
+
+          get_i ^^
+          compile_unboxed_const 1l ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_i
+        )
 
   let system_funs module_env =
+    Func.define_built_in module_env "memcpy" ["from"; "two"; "n"] [] (fun env ->
+      let get_from = G.i_ (GetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_n = G.i_ (GetLocal (nr 2l)) in
+      get_n ^^
+      from_0_to_n env (fun get_i ->
+          get_to ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+          get_from ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+
+          G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+      )
+    );
+
+    Func.define_built_in module_env "alloc_bytes" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      (* expect the size (in words), returns the pointer *)
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      get_n ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (SetGlobal Heap.heap_ptr)
+    );
+
+    Func.define_built_in module_env "alloc_words" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      get_n ^^
+      compile_unboxed_const Heap.word_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      G.i_ (Call (nr (E.built_in env "alloc_bytes")))
+    );
+
+
+    Func.define_built_in module_env "deep_copy" ["x"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let (set_copy, get_copy) = new_local env "x" in
+
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      set_copy ^^
+
+      get_x ^^
+      Tagged.branch env [I32Type]
+        [ Tagged.Int,
+          (* x still on the stack *)
+          Heap.alloc 2l ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+          G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+          get_copy
+        ; Tagged.Array,
+          begin
+            let (set_len, get_len) = new_local env "len" in
+            Heap.load_field Array.len_field ^^
+            set_len ^^
+
+            get_len ^^
+            compile_unboxed_const Array.header_size ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+            G.i_ Drop ^^
+
+            (* Copy header *)
+            get_x ^^
+            get_copy ^^
+            compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
+            G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+            (* Copy fields *)
+            get_len ^^
+            from_0_to_n env (fun get_i ->
+              get_copy ^^
+              get_i ^^
+              Array.idx ^^
+
+              get_x ^^
+              get_i ^^
+              Array.idx ^^
+              load_ptr ^^
+              G.i_ (Call (nr (E.built_in env "deep_copy"))) ^^
+              store_ptr
+            ) ^^
+            get_copy
+          end
+        ; Tagged.Null,
+          G.i_ Drop ^^
+          compile_null
+        ; Tagged.Unit,
+          G.i_ Drop ^^
+          compile_unit
+        ]
+    );
+
+    Func.define_built_in module_env "shift_pointers" ["x"; "to"; "offset"] [] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let set_x = G.i_ (SetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_offset = G.i_ (GetLocal (nr 2l)) in
+
+      compile_while
+        (* While we have not reached the end of the area *)
+        ( get_x ^^
+          get_to ^^
+          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+        )
+        ( get_x ^^
+          Tagged.branch env []
+            [ Tagged.Int,
+              (* x still on the stack *)
+              compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              set_x
+            ; Tagged.Array,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Array.len_field ^^
+                set_len ^^
+
+                (* Adjust fields *)
+                get_len ^^
+                from_0_to_n env (fun get_i ->
+                  get_x ^^
+                  get_i ^^
+                  Array.idx ^^
+
+                  get_x ^^
+                  get_i ^^
+                  Array.idx ^^
+                  load_ptr ^^
+                  get_offset ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                  store_ptr
+                ) ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_unboxed_const Array.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ]
+
+        )
+    );
+
     Func.define_built_in module_env "serialize" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
 
+      let (set_start, get_start) = new_local env "old_heap" in
+      let (set_end, get_end) = new_local env "old_heap" in
+
+
+      (* Remember where we start to copy to *)
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      set_start ^^
+
+      (* Copy data *)
       get_x ^^
-      Tagged.branch env
-        [ Tagged.Int,
-          (* x still on the stack *)
-          compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-          G.i_ (Call (nr (Dfinity.data_externalize_i env)))
-        ; Tagged.Null,
-          G.i_ Drop ^^
-          compile_unboxed_const 0l (* HACK: Abusing the empty null reference *)
-        ; Tagged.Unit,
-          G.i_ Drop ^^
-          compile_unboxed_const 0l (* HACK: Abusing the empty null reference *)
-        ]
+      G.i_ (Call (nr (E.built_in env "deep_copy"))) ^^
+      G.i_ Drop ^^
+
+      (* Remember the end *)
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      set_end ^^
+
+      (* Adjust pointers *)
+      get_start ^^
+      get_end ^^
+      compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
+
+      (* Create databuf *)
+      get_start ^^
+        get_end ^^
+        get_start ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      G.i_ (Call (nr (Dfinity.data_externalize_i env)))
+
     );
     Func.define_built_in module_env "deserialize" ["ref"] [I32Type] (fun env ->
       let get_ref = G.i_ (GetLocal (nr 0l)) in
@@ -1382,6 +1589,11 @@ module Serialization = struct
       get_ref ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       G.i_ (SetGlobal Heap.heap_ptr) ^^
+
+      get_i ^^
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      get_i ^^
+      G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
 
       (* return allocated thing *)
       get_i
@@ -1581,7 +1793,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Tagged.branch env
+     Tagged.branch env [I32Type]
       ( [ Tagged.Object, Object.idx env {id with it = n} ^^ load_ptr ] @
         (if E.mode env = DfinityMode
          then [ Tagged.Reference, actor_fake_object_idx env {id with it = n} ]
@@ -1655,7 +1867,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      set_j ^^
 
      get_i ^^
-     Tagged.branch env
+     Tagged.branch env [I32Type]
       [ Tagged.Array,
         G.i_ Drop ^^ BoxedInt.lit_false env
       ; Tagged.Reference,
@@ -2128,7 +2340,8 @@ and declare_built_in_funs env =
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
     then [ "funcref_wrapper"; "self_message_wrapper"
-         ; "serialize"; "deserialize" ]
+         ; "serialize"; "deserialize"; "memcpy"; "deep_copy"
+         ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
     else []))
 
 and conclude_module env start_fi_o with_orthogonal_persistence =
