@@ -466,6 +466,35 @@ module ElemHeap = struct
 
 end (* ElemHeap *)
 
+module Tagged = struct
+  (* Tagged objects have, well, a tag to describe their runtime type.
+     This tag is used to traverse the heap (serialization, GC), but also
+     for objectification of arrays and actorrefs and the like.
+   *)
+
+  type tag =
+    | Object
+    | Array
+
+  (* Lets leave out zero to trap earlier on invalid memory *)
+  let int_of_tag = function
+    | Object -> 1l
+    | Array -> 2l
+
+  (* The tag *)
+  let header_size = 1l
+  let tag_field = 0l
+
+  (* Assumes a pointer to the object on the stack *)
+  let store tag =
+    compile_unboxed_const (int_of_tag tag) ^^
+    Heap.store_field tag_field
+
+  let _load tag =
+    Heap.load_field tag_field
+
+end
+
 module Tuple = struct
   (* A tuple is a heap object with a statically known number of elements.
      This is also used as the primitive representation of objects etc. *)
@@ -763,9 +792,9 @@ end (* Prim *)
 
 module Object = struct
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
-  let header_size = 1l
+  let header_size = Int32.add Tagged.header_size 1l
 
-  let class_position = 0l
+  let class_position = Int32.add Tagged.header_size 0l
 
   let default_header = [ compile_unboxed_const 1l ]
 
@@ -785,6 +814,10 @@ module Object = struct
      let (set_ri, get_ri) = new_local env "obj" in
      Heap.alloc n ^^
      set_ri ^^
+
+     (* Set tag *)
+     get_ri ^^
+     Tagged.store Tagged.Object ^^
 
      (* Bind the fields in the envrionment *)
      (* We could omit that if we extend E.local_vars_env to also have an offset,
@@ -979,7 +1012,8 @@ module Array = struct
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tuple.lit_rec env
-     (List.map (fun i _ -> i) Object.default_header @
+     ([ fun _ -> compile_unboxed_const (Tagged.int_of_tag Tagged.Array) ] @
+      List.map (fun i _ -> i) Object.default_header @
       [ (fun compile_self ->
         Tuple.lit env [ compile_unboxed_const (E.built_in env "array_get"); compile_self])
       ; (fun compile_self ->
