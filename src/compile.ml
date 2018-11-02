@@ -1250,12 +1250,7 @@ module Dfinity = struct
 
   let export_start_stub env =
     (* Create an empty message *)
-    let empty_f = Func.of_body env [] [] (fun env1 ->
-      (* Set up memory *)
-      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
-      (* Save memory *)
-      G.i_ (Call (nr (E.built_in env "save_mem")))
-      ) in
+    let empty_f = Func.of_body env [] [] (fun env1 -> G.nop) in
     let fi = E.add_fun env empty_f in
     E.add_fun_name env fi "start_stub";
     E.add_export env (nr {
