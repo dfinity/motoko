@@ -1239,10 +1239,11 @@ module Dfinity = struct
 
   let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
-    E.add_export env (nr {
-      name = explode "mem";
-      edesc = nr (MemoryExport (nr 0l))
-    });
+    let _ = E.add_import env (nr {
+      module_name = explode "";
+      item_name = explode "mem";
+      idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
+    }) in
     E.add_export env (nr {
       name = explode "table";
       edesc = nr (TableExport (nr 0l))
@@ -2285,6 +2286,7 @@ and actor_lit outer_env name fs =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
+    Dfinity.default_exports env;
     let env1 = declare_built_in_funs env in
 
     BoxedInt.common_funcs env1;
@@ -2344,8 +2346,6 @@ and declare_built_in_funs env =
 
 and conclude_module env start_fi =
 
-  Dfinity.default_exports env;
-
   let imports = E.get_imports env in
   let ni = List.length imports in
   let ni' = Int32.of_int ni in
@@ -2394,7 +2394,7 @@ and conclude_module env start_fi =
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
       start = Some (nr start_fi);
       globals = globals;
-      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+      memories = [];
       imports;
       exports = E.get_exports env;
       data
@@ -2408,6 +2408,7 @@ and conclude_module env start_fi =
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
   let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Dfinity.default_exports env;
 
   let env1 = declare_built_in_funs env in
   BoxedInt.common_funcs env1;
