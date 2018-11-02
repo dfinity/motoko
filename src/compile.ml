@@ -110,7 +110,7 @@ module E = struct
     (* The prelude. We need to re-use this when compiling actors *)
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
-    dfinity_types : (int32 * int32) list ref;
+    dfinity_types : (int32 * CustomSections.type_ list) list ref;
     (* Where does static memory end and dynamic memory begin? *)
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
@@ -1248,7 +1248,16 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_start_fun env fi =
+  let export_start_stub env =
+    (* Create an empty message *)
+    let empty_f = Func.of_body env [] [] (fun env1 ->
+      (* Set up memory *)
+      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+      (* Save memory *)
+      G.i_ (Call (nr (E.built_in env "save_mem")))
+      ) in
+    let fi = E.add_fun env empty_f in
+    E.add_fun_name env fi "start_stub";
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
@@ -2336,7 +2345,7 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
   (* Which name to use? f.it.id or name? Can they differ? *)
   let (fi, fill) = E.reserve_fun pre_env in
   E.add_fun_name pre_env fi name.it;
-  E.add_dfinity_type pre_env (fi, 1l);
+  E.add_dfinity_type pre_env (fi, [CustomSections.ElemBuf]);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
@@ -2378,24 +2387,23 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     let env1 = declare_built_in_funs env in
-    let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem"] in
 
-    BoxedInt.common_funcs env2;
-    Array.common_funcs env2;
-    if E.mode env2 = DfinityMode then Serialization.system_funs env2;
-    if E.mode env2 = DfinityMode then Message.system_funs env2;
+    BoxedInt.common_funcs env1;
+    Array.common_funcs env1;
+    if E.mode env1 = DfinityMode then Serialization.system_funs env1;
+    if E.mode env1 = DfinityMode then Message.system_funs env1;
 
-    let start_fun = Func.of_body env2 [] [] (fun env3 ->
+    let start_fun = Func.of_body env1 [] [] (fun env3 ->
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
-    let start_fi = E.add_fun env2 start_fun in
-    E.add_fun_name env2 start_fi "start";
+    let start_fi = E.add_fun env1 start_fun in
+    E.add_fun_name env1 start_fi "start";
 
-    OrthogonalPersistence.register env2 start_fi;
+    OrthogonalPersistence.register env1 start_fi;
 
-    let m = conclude_module env2 None true in
+    let m = conclude_module env1 None in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -2434,10 +2442,11 @@ and declare_built_in_funs env =
     (if E.mode env = DfinityMode
     then [ "call_funcref"; "export_self_message"
          ; "serialize"; "deserialize"; "memcpy"; "deep_copy"
-         ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
+         ; "alloc_bytes"; "alloc_words"; "shift_pointers"
+         ; "save_mem"; "restore_mem" ]
     else []))
 
-and conclude_module env start_fi_o with_orthogonal_persistence =
+and conclude_module env start_fi_o =
 
   Dfinity.default_exports env;
 
@@ -2495,10 +2504,9 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
       data
     };
     types = E.get_dfinity_types env;
-    persist = if with_orthogonal_persistence
-      then [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ]
-      else [];
+    persist =
+           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
+           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
@@ -2518,7 +2526,10 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   E.add_fun_name env1 start_fi "start";
   let start_fi_o =
     if E.mode env1 = DfinityMode
-    then (Dfinity.export_start_fun env1 start_fi; None)
-    else Some (nr start_fi) in
+    then begin
+      OrthogonalPersistence.register env1 start_fi;
+      Dfinity.export_start_stub env1;
+      None
+    end else Some (nr start_fi) in
 
-  conclude_module env1 start_fi_o false
+  conclude_module env1 start_fi_o
