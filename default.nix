@@ -1,5 +1,6 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dsh ? false,
+  v8 ? true,
 }:
 
 let stdenv = nixpkgs.stdenv; in
@@ -26,7 +27,7 @@ let dsh =
   then
     if !builtins.pathExists ./nix/dev/default.nix
     then throw "\"test-dsh = true\" requires a checkout of dev in ./nix"
-    else ((import ./nix/dev) { v8 = true; }).dsh
+    else ((import ./nix/dev) { v8 = v8; }).dsh
   else null; in
 
 # We need a newer version of menhir.

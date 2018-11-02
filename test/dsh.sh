@@ -17,7 +17,7 @@ function dsh_ () {
   # hide the segmentation fault message
   { dsh $@; } 2>&1 \
     | sed -e 's,.*egmentation.*,Segmentation Fault,' \
-    | grep -v '^Leaked'
+    | sed -e 's,Leaked.*!,,'
 }
 
 dsh_ reset

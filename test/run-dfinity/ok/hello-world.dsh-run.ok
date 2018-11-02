@@ -1,16 +1,14 @@
 $ dsh reset
-{
-    "stateRoot": "0x2207829f2d4cb04ccd2761215c5448d42d3bef6b"
+[97m[0m{
+    "stateRoot": "0x8DFB6EA5A20870F01651DCB02952005D7392B6D2"
 }
-
 $ dsh new -a _out/hello-world.wasm
-{
+[97m[0m{
     "modId": "#inject/0",
     "storage": [],
     "id": "#inject/1 (hello-world)",
-    "type": "actorref"
+    "type": "actor"
 }
-
 $ dsh run -q hello-world start
 Hello World!
-
+[97m[0m
