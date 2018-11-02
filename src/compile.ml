@@ -1249,16 +1249,6 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_start_stub env =
-    (* Create an empty message *)
-    let empty_f = Func.of_body env [] [] (fun env1 -> G.nop) in
-    let fi = E.add_fun env empty_f in
-    E.add_fun_name env fi "start_stub";
-    E.add_export env (nr {
-      name = explode "start";
-      edesc = nr (FuncExport (nr fi))
-    });
-
 end (* Dfinity *)
 
 module Serialization = struct
@@ -2301,8 +2291,11 @@ and actor_lit outer_env name fs =
       prelude_code ^^ init_code) in
     let start_fi = E.add_fun env1 start_fun in
     E.add_fun_name env1 start_fi "start";
-
-    let m = conclude_module env1 start_fi in
+    E.add_export env (nr {
+      name = Dfinity.explode "start";
+      edesc = nr (FuncExport (nr start_fi))
+    });
+    let m = conclude_module env1 in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -2344,7 +2337,7 @@ and declare_built_in_funs env =
          ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
     else []))
 
-and conclude_module env start_fi =
+and conclude_module env =
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -2392,7 +2385,7 @@ and conclude_module env start_fi =
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = Some (nr start_fi);
+      start = None;
       globals = globals;
       memories = [];
       imports;
@@ -2419,5 +2412,8 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
   E.add_fun_name env1 start_fi "start";
-  if E.mode env1 = DfinityMode then Dfinity.export_start_stub env1;
-  conclude_module env1 start_fi
+  E.add_export env (nr {
+    name = Dfinity.explode "start";
+    edesc = nr (FuncExport (nr start_fi))
+  });
+  conclude_module env1
