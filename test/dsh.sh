@@ -15,9 +15,13 @@ function dsh_ () {
   echo "\$ dsh $@"
 
   # hide the segmentation fault message
+  # hide leaked debug log
+  # make sure there is a trailing newline (dsh with hero does not produce it).
   { dsh $@; } 2>&1 \
     | sed -e 's,.*egmentation.*,Segmentation Fault,' \
-    | sed -e 's,Leaked.*!,,'
+    | sed -e 's,Leaked.*!,,' \
+    | sed -e '$a\'
+
 }
 
 dsh_ reset
