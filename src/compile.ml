@@ -1076,6 +1076,8 @@ module Dfinity = struct
   let actor_self_i env = 10l
   let actor_export_i env = 11l
   let func_internalize_i env = 12l
+  let func_externalize_i env = 13l
+  let func_bind_i env = 14l
 
   (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   (* Ok to use as long as everything is ASCII *)
@@ -1174,7 +1176,21 @@ module Dfinity = struct
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
     }) in
-    assert (Int32.to_int i == Int32.to_int (func_internalize_i env))
+    assert (Int32.to_int i == Int32.to_int (func_internalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "func";
+      item_name = explode "externalize";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type], [I32Type])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (func_externalize_i env));
+
+    let i = E.add_import env (nr {
+      module_name = explode "func";
+      item_name = explode "bind_i32";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (func_bind_i env))
 
 
   let compile_databuf_of_bytes env (bytes : string) =
@@ -1361,6 +1377,7 @@ module Serialization = struct
     * We remember the current heap pointer and reference table pointer
     * We deeply and compactly copy the arguments into the space beyond the heap
       pointer.
+    * Special handling for closures: These are turned into funcrefs.
     * We traverse this space and make all pointers relative to the beginning of
       the space. Same for indices into the reference table.
     * We copy all that new data space into a databuf, and add it to the reference table
@@ -1439,7 +1456,7 @@ module Serialization = struct
     );
 
 
-    Func.define_built_in module_env "deep_copy" ["x"] [I32Type] (fun env ->
+    Func.define_built_in module_env "serialize_go" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
 
@@ -1495,11 +1512,22 @@ module Serialization = struct
               get_i ^^
               Array.idx ^^
               load_ptr ^^
-              G.i_ (Call (nr (E.built_in env "deep_copy"))) ^^
+              G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
               store_ptr
             ) ^^
             get_copy
           end
+        ; Tagged.Closure,
+          (* Closures are not copied. Instead, we create a funcref for them *)
+          G.i_ Drop ^^
+          Tagged.obj env Tagged.Reference [
+            (* Funcref *)
+            compile_unboxed_const (E.built_in env "invoke_closure") ^^
+            G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
+            get_x ^^
+            G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
+            ElemHeap.remember_reference env
+          ]
         ; Tagged.Null,
           G.i_ Drop ^^
           compile_null
@@ -1596,7 +1624,7 @@ module Serialization = struct
 
       (* Copy data *)
       get_x ^^
-      G.i_ (Call (nr (E.built_in env "deep_copy"))) ^^
+      G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
       G.i_ Drop ^^
 
       (* Remember the end *)
@@ -1718,6 +1746,33 @@ module Message = struct
 
 
   let system_funs mod_env =
+    Func.define_built_in mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
+      (* This is the entry point for closure invocation.
+         The first argument is simply a pointer into our heap
+         (bound using `i32.bind`).
+         The second a serialized message.
+         This methods must not be exported!
+         We create a funcref internally and then bind the closure to it.
+      *)
+      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+
+      (* Put closure on the stack *)
+      G.i (nr (GetLocal (nr 0l))) ^^
+
+      (* Put argument on the stack *)
+      G.i (nr (GetLocal (nr 1l))) ^^
+      G.i_ (Call (nr (E.built_in env "deserialize"))) ^^
+
+      (* Invoke the call *)
+      Func.call_indirect env no_region ^^
+      G.i_ Drop ^^
+
+      (* Save memory *)
+      G.i_ (Call (nr (E.built_in env "save_mem")))
+    );
+    E.add_dfinity_type mod_env
+      (E.built_in mod_env "invoke_closure",
+      [CustomSections.I32; CustomSections.ElemBuf]);
 
     Func.define_built_in mod_env "call_funcref" ["ref";"arg"] [] (fun env ->
       let get_ref = G.i_ (GetLocal (nr 0l)) in
@@ -2440,8 +2495,8 @@ and declare_built_in_funs env =
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
-    then [ "call_funcref"; "export_self_message"
-         ; "serialize"; "deserialize"; "memcpy"; "deep_copy"
+    then [ "call_funcref"; "export_self_message"; "invoke_closure"
+         ; "serialize"; "deserialize"; "memcpy"; "serialize_go"
          ; "alloc_bytes"; "alloc_words"; "shift_pointers"
          ; "save_mem"; "restore_mem" ]
     else []))
