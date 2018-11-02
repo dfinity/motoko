@@ -788,7 +788,7 @@ and check_pat' env t pat : val_env =
     T.Env.empty
   | TupP pats ->
     (try
-      let ts = T.as_tup t in
+      let ts = T.as_tup_sub (List.length pats) env.cons t in
       check_pats env ts pats T.Env.empty pat.at
     with Invalid_argument _ ->
       error pat.at "tuple pattern cannot consume expected type\n  %s"

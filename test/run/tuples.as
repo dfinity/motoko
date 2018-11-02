@@ -10,3 +10,6 @@ assert (z == 3);
 
 let (_,(_,a)) = nested1;
 assert (a == 3);
+
+type T = (Nat, T);
+func f(x : T) { let (n, _) = x; };
