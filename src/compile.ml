@@ -1248,6 +1248,21 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
+  let export_start_stub env =
+    (* Create an empty message *)
+    let empty_f = Func.of_body env [] [] (fun env1 ->
+      (* Set up memory *)
+      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+      (* Save memory *)
+      G.i_ (Call (nr (E.built_in env "save_mem")))
+      ) in
+    let fi = E.add_fun env empty_f in
+    E.add_fun_name env fi "start_stub";
+    E.add_export env (nr {
+      name = explode "start";
+      edesc = nr (FuncExport (nr fi))
+    });
+
 end (* Dfinity *)
 
 module Serialization = struct
@@ -2408,4 +2423,5 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
   E.add_fun_name env1 start_fi "start";
+  if E.mode env1 = DfinityMode then Dfinity.export_start_stub env1;
   conclude_module env1 start_fi
