@@ -1248,103 +1248,7 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_start_fun env fi =
-    E.add_export env (nr {
-      name = explode "start";
-      edesc = nr (FuncExport (nr fi))
-    });
-
 end (* Dfinity *)
-
-module OrthogonalPersistence = struct
-  (* This module implements the code that fakes orthogonal persistence *)
-
-  let mem_global = 0l
-  let elem_global = 1l
-
-  (* Strategy:
-     * There is a persistent global databuf called `datastore`
-     * Two helper functions are installed in each actor: restore_mem and save_mem.
-       (The don’t actually have names, just numbers, of course).
-     * Upon each message entry, call restore_mem. At the end, call save_mem.
-     * restore_mem checks if memstore is defined.
-       - If it is 0, then this is the first message ever received.
-         Run the actor’s start function (e.g. to initialize globals).
-       - If it is not 0, then load the databuf into memory, and set
-         the global with the end-of-memory pointer to the length.
-     * save_mem simply copies the whole dynamic memory (up to the end-of-memory
-       pointer) to a new databuf and stores that in memstore.
-
-    This does not persist references yet.
-  *)
-
-  let register env start_funid =
-    E.add_export env (nr {
-      name = Dfinity.explode "datastore";
-      edesc = nr (GlobalExport (nr mem_global))
-    });
-    E.add_export env (nr {
-      name = Dfinity.explode "elemstore";
-      edesc = nr (GlobalExport (nr elem_global))
-    });
-
-    Func.define_built_in env "restore_mem" [] [] (fun env1 ->
-       let (set_i, get_i) = new_local env1 "len" in
-       G.i_ (GetGlobal (nr mem_global)) ^^
-       G.i_ (Call (nr (Dfinity.data_length_i env1))) ^^
-       set_i ^^
-
-       get_i ^^
-       compile_unboxed_const 0l ^^
-       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-       G.if_[]
-         (* First run, call the start function *)
-         ( G.i_ (Call (nr start_funid)) )
-
-         (* Subsequent run *)
-         ( (* Set heap pointer based on databuf length *)
-           get_i ^^
-           compile_unboxed_const ElemHeap.begin_dyn_space ^^
-           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-           G.i_ (SetGlobal Heap.heap_ptr) ^^
-
-           (* Load memory *)
-           compile_unboxed_const ElemHeap.begin_dyn_space ^^
-           get_i ^^
-           G.i_ (GetGlobal (nr mem_global)) ^^
-           compile_unboxed_zero ^^
-           G.i_ (Call (nr (Dfinity.data_internalize_i env1))) ^^
-
-           (* Load reference counter *)
-           G.i_ (GetGlobal (nr elem_global)) ^^
-           G.i_ (Call (nr (Dfinity.elem_length_i env1))) ^^
-           G.i_ (SetGlobal ElemHeap.ref_counter) ^^
-
-           (* Load references *)
-           compile_unboxed_const ElemHeap.ref_location ^^
-           G.i_ (GetGlobal ElemHeap.ref_counter) ^^
-           G.i_ (GetGlobal (nr elem_global)) ^^
-           compile_unboxed_zero ^^
-           G.i_ (Call (nr (Dfinity.elem_internalize_i env1)))
-        )
-    );
-    Func.define_built_in env "save_mem" [] [] (fun env1 ->
-       (* Store memory *)
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
-       G.i_ (GetGlobal Heap.heap_ptr) ^^
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
-       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-       G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
-       G.i_ (SetGlobal (nr mem_global)) ^^
-
-       (* Store references *)
-       compile_unboxed_const ElemHeap.ref_location ^^
-       G.i_ (GetGlobal ElemHeap.ref_counter) ^^
-       G.i_ (Call (nr (Dfinity.elem_externalize_i env))) ^^
-       G.i_ (SetGlobal (nr elem_global))
-    )
-
-end (* OrthogonalPersistence *)
 
 module Serialization = struct
   (*
@@ -1742,9 +1646,6 @@ module Message = struct
   let compile env mk_pat mk_body at : E.func_with_names =
     (* Messages take no closure, return nothing*)
     Func.of_body env ["arg"] [] (fun env1 ->
-      (* Set up memory *)
-      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
-
       (* Destruct the argument *)
       let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
 
@@ -1756,10 +1657,7 @@ module Message = struct
       G.i_ (Call (nr (E.built_in env "deserialize"))) ^^
       destruct_args_code ^^
       body_code ^^
-      G.i_ Drop ^^
-
-      (* Save memory *)
-      G.i_ (Call (nr (E.built_in env "save_mem")))
+      G.i_ Drop
       )
 end (* Message *)
 
@@ -2378,24 +2276,21 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     let env1 = declare_built_in_funs env in
-    let env2 = E.declare_built_in_funs env1 ["restore_mem"; "save_mem"] in
 
-    BoxedInt.common_funcs env2;
-    Array.common_funcs env2;
-    if E.mode env2 = DfinityMode then Serialization.system_funs env2;
-    if E.mode env2 = DfinityMode then Message.system_funs env2;
+    BoxedInt.common_funcs env1;
+    Array.common_funcs env1;
+    if E.mode env1 = DfinityMode then Serialization.system_funs env1;
+    if E.mode env1 = DfinityMode then Message.system_funs env1;
 
-    let start_fun = Func.of_body env2 [] [] (fun env3 ->
+    let start_fun = Func.of_body env1 [] [] (fun env3 ->
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
-    let start_fi = E.add_fun env2 start_fun in
-    E.add_fun_name env2 start_fi "start";
+    let start_fi = E.add_fun env1 start_fun in
+    E.add_fun_name env1 start_fi "start";
 
-    OrthogonalPersistence.register env2 start_fi;
-
-    let m = conclude_module env2 None true in
+    let m = conclude_module env1 start_fi in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -2437,7 +2332,7 @@ and declare_built_in_funs env =
          ; "alloc_bytes"; "alloc_words"; "shift_pointers" ]
     else []))
 
-and conclude_module env start_fi_o with_orthogonal_persistence =
+and conclude_module env start_fi =
 
   Dfinity.default_exports env;
 
@@ -2487,7 +2382,7 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = start_fi_o;
+      start = Some (nr start_fi);
       globals = globals;
       memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
       imports;
@@ -2495,10 +2390,7 @@ and conclude_module env start_fi_o with_orthogonal_persistence =
       data
     };
     types = E.get_dfinity_types env;
-    persist = if with_orthogonal_persistence
-      then [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ]
-      else [];
+    persist = [];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
@@ -2516,9 +2408,4 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
   E.add_fun_name env1 start_fi "start";
-  let start_fi_o =
-    if E.mode env1 = DfinityMode
-    then (Dfinity.export_start_fun env1 start_fi; None)
-    else Some (nr start_fi) in
-
-  conclude_module env1 start_fi_o false
+  conclude_module env1 start_fi
