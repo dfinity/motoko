@@ -300,6 +300,7 @@ module E = struct
   let get_static_memory env = !(env.static_memory)
 end
 
+
 (* General code generation functions:
    Rule of thumb: Here goes stuff that independent of the ActorScript AST.
 *)
@@ -335,6 +336,33 @@ let new_local env name =
 
 (* duplicate top element *)
 let dup env : G.t = set_tmp env ^^ get_tmp env ^^ get_tmp env
+
+(* Some code combinators *)
+
+(* expects a number on the stack. Iterates from zero t below that number *)
+let compile_while cond body =
+    G.loop_ [] ( cond ^^ G.if_ [] (body ^^ G.i_ (Br (nr 1l))) G.nop)
+
+let from_0_to_n env mk_body =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_i, get_i) = new_local env "i" in
+    set_n ^^
+    compile_unboxed_const 0l ^^
+    set_i ^^
+
+    compile_while
+      ( get_i ^^
+        get_n ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+      ) (
+        mk_body get_i ^^
+
+        get_i ^^
+        compile_unboxed_const 1l ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        set_i
+      )
+
 
 (* Heap and allocations *)
 
@@ -594,10 +622,10 @@ module Func = struct
     let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) in
     List.iteri (fun i n -> E.add_local_name env1 (Int32.of_int i) n) params;
     let ty = FuncType (List.map (fun _ -> I32Type) params, retty) in
+    let body = G.to_instr_list (mk_body env1) in
     (nr { ftype = nr (E.func_type env ty);
           locals = E.get_locals env1;
-          body = G.to_instr_list (mk_body env1)
-        }
+          body }
     , E.get_local_names env1)
 
   let unary_of_body env mk_body =
@@ -756,6 +784,51 @@ module Func = struct
 
 end (* Func *)
 
+module RTS = struct
+  let common_funcs module_env =
+    Func.define_built_in module_env "memcpy" ["from"; "two"; "n"] [] (fun env ->
+      let get_from = G.i_ (GetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_n = G.i_ (GetLocal (nr 2l)) in
+      get_n ^^
+      from_0_to_n env (fun get_i ->
+          get_to ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+          get_from ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+
+          G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+      )
+    );
+
+    Func.define_built_in module_env "alloc_bytes" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      (* expect the size (in words), returns the pointer *)
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      get_n ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (SetGlobal Heap.heap_ptr)
+    );
+
+    Func.define_built_in module_env "alloc_words" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      get_n ^^
+      compile_unboxed_const Heap.word_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      G.i_ (Call (nr (E.built_in env "alloc_bytes")))
+    );
+
+
+
+end (* RTS *)
+
 module BoxedInt = struct
   (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
      This way, we know that everything inside a polymorphic data structure
@@ -913,12 +986,75 @@ module Text = struct
     Buffer.contents b
 
   let lit env s =
-    let len = Int32.of_int (String.length s) in
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Text) in
-    let len_bytes = bytes_of_int32 len in
-    let data = tag ^ len_bytes ^ s in
+    let len = bytes_of_int32 (Int32.of_int (String.length s)) in
+    let data = tag ^ len ^ s in
     let ptr = E.add_static_bytes env data in
     compile_unboxed_const ptr
+
+  (* Two strings on stack *)
+  let common_funcs module_env =
+    Func.define_built_in module_env "concat" ["x"; "y"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let get_y = G.i_ (GetLocal (nr 1l)) in
+      let (set_z, get_z) = new_local env "z" in
+      let (set_len1, get_len1) = new_local env "len1" in
+      let (set_len2, get_len2) = new_local env "len2" in
+
+      get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
+      get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
+
+      (* allocate memory *)
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      get_len1 ^^
+      get_len2 ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Call (nr (E.built_in env "alloc_bytes"))) ^^
+      set_z ^^
+
+      (* Set tag *)
+      get_z ^^ Tagged.store Tagged.Text ^^
+
+      (* Set length *)
+      get_z ^^
+      get_len1 ^^
+      get_len2 ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      Heap.store_field len_field ^^
+
+      (* Copy first string *)
+      get_x ^^
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+      get_z ^^
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+      get_len1 ^^
+
+      G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+      (* Copy second string *)
+      get_y ^^
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+      get_z ^^
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      get_len1 ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+      get_len2 ^^
+
+      G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+      (* Done *)
+      get_z
+    )
+
 
 end (* String *)
 
@@ -1196,9 +1332,7 @@ module Dfinity = struct
     assert (Int32.to_int i == Int32.to_int (func_bind_i env))
 
 
-  let compile_databuf_of_bytes env (bytes : string) =
-    Text.lit env bytes ^^
-
+  let compile_databuf_of_text env  =
     let (set_i, get_i) = new_local env "string_lit" in
     set_i ^^
 
@@ -1212,6 +1346,9 @@ module Dfinity = struct
 
     (* Externalize *)
     G.i_ (Call (nr (data_externalize_i env)))
+
+  let compile_databuf_of_bytes env (bytes : string) =
+    Text.lit env bytes ^^ compile_databuf_of_text env
 
   (* For debugging *)
   let _compile_static_print env s =
@@ -1239,17 +1376,7 @@ module Dfinity = struct
   let prim_print env =
     if E.mode env = DfinityMode
     then
-      let (set_i, get_i) = new_local env "string_lit" in
-      set_i ^^
-      (* Calculate the offset *)
-      get_i ^^
-      compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      (* Calculate the length *)
-      get_i ^^
-      Heap.load_field (Text.len_field) ^^
-      (* Externalize *)
-      G.i_ (Call (nr (data_externalize_i env))) ^^
+      compile_databuf_of_text env ^^
       (* Call print *)
       G.i_ (Call (nr (test_print_i env))) ^^
       compile_unit
@@ -1394,71 +1521,7 @@ module Serialization = struct
     TODO: Cycles are not detected yet.
   *)
 
-  (* expects a number on the stack. Iterates from zero t below that number *)
-  let compile_while cond body =
-      G.loop_ [] ( cond ^^ G.if_ [] (body ^^ G.i_ (Br (nr 1l))) G.nop)
-
-  let from_0_to_n env mk_body =
-      let (set_n, get_n) = new_local env "n" in
-      let (set_i, get_i) = new_local env "i" in
-      set_n ^^
-      compile_unboxed_const 0l ^^
-      set_i ^^
-
-      compile_while
-        ( get_i ^^
-          get_n ^^
-          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-        ) (
-          mk_body get_i ^^
-
-          get_i ^^
-          compile_unboxed_const 1l ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          set_i
-        )
-
   let system_funs module_env =
-    Func.define_built_in module_env "memcpy" ["from"; "two"; "n"] [] (fun env ->
-      let get_from = G.i_ (GetLocal (nr 0l)) in
-      let get_to = G.i_ (GetLocal (nr 1l)) in
-      let get_n = G.i_ (GetLocal (nr 2l)) in
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-
-          get_from ^^
-          get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-
-          G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
-      )
-    );
-
-    Func.define_built_in module_env "alloc_bytes" ["n"] [I32Type] (fun env ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-
-      (* expect the size (in words), returns the pointer *)
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
-      get_n ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (SetGlobal Heap.heap_ptr)
-    );
-
-    Func.define_built_in module_env "alloc_words" ["n"] [I32Type] (fun env ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-
-      get_n ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-      G.i_ (Call (nr (E.built_in env "alloc_bytes")))
-    );
-
-
     Func.define_built_in module_env "serialize_go" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
@@ -1912,6 +1975,7 @@ let compile_binop env op = BoxedInt.lift_unboxed_binary env (match op with
   | AddOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
   | SubOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
   | MulOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul))
+  | CatOp -> G.i_ (Call (nr (E.built_in env "concat")))
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable)
 
 let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
@@ -2450,7 +2514,9 @@ and actor_lit outer_env name fs =
     let env1 = declare_built_in_funs env in
 
     BoxedInt.common_funcs env1;
+    RTS.common_funcs env1;
     Array.common_funcs env1;
+    Text.common_funcs env1;
     if E.mode env1 = DfinityMode then Serialization.system_funs env1;
     if E.mode env1 = DfinityMode then Message.system_funs env1;
 
@@ -2497,13 +2563,15 @@ and actor_fake_object_idx env name =
 and declare_built_in_funs env =
   E.declare_built_in_funs env
     ([ "box_int";
+       "memcpy"; "alloc_bytes"; "alloc_words";
+       "concat";
        "array_get"; "array_set"; "array_len";
        "array_keys_next"; "array_keys";
        "array_vals_next"; "array_vals" ] @
     (if E.mode env = DfinityMode
     then [ "call_funcref"; "export_self_message"; "invoke_closure"
-         ; "serialize"; "deserialize"; "memcpy"; "serialize_go"
-         ; "alloc_bytes"; "alloc_words"; "shift_pointers"
+         ; "serialize"; "deserialize"; "serialize_go"
+         ; "shift_pointers"
          ; "save_mem"; "restore_mem" ]
     else []))
 
@@ -2578,7 +2646,9 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
 
   let env1 = declare_built_in_funs env in
   BoxedInt.common_funcs env1;
+  RTS.common_funcs env1;
   Array.common_funcs env1;
+  Text.common_funcs env1;
   if E.mode env1 = DfinityMode then Serialization.system_funs env1;
   if E.mode env1 = DfinityMode then Message.system_funs env1;
 
