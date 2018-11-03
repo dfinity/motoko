@@ -84,7 +84,8 @@ module E = struct
     mode : mode;
 
     (* Imports defined *)
-    imports : import list ref;
+    func_imports : import list ref;
+    other_imports : import list ref;
     (* Exports defined *)
     exports : export list ref;
     (* Function defined in this module *)
@@ -127,7 +128,8 @@ module E = struct
   (* The initial global environment *)
   let mk_global mode prelude dyn_mem : t = {
     mode;
-    imports = ref [];
+    func_imports = ref [];
+    other_imports = ref [];
     exports = ref [];
     funcs = ref [];
     func_names = ref [];
@@ -201,10 +203,13 @@ module E = struct
     let l = env.local_vars_env in
     NameEnv.fold (fun k _ -> Freevars.S.add k) l Freevars.S.empty
 
-  let add_import (env : t) i =
+  let add_func_import (env : t) f =
     if !(env.funcs) = []
-    then reg env.imports i
+    then reg env.func_imports f
     else raise (Invalid_argument "add all imports before all functions!")
+
+  let add_other_import (env : t) m =
+    reg env.other_imports m
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
@@ -212,7 +217,7 @@ module E = struct
 
   let reserve_fun (env : t) =
     let (j, fill) = reserve_promise env.funcs in
-    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
+    let n = Wasm.I32.of_int_u (List.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) =
       fill f;
@@ -247,7 +252,8 @@ module E = struct
     | None -> raise (Invalid_argument ("built_in: Undeclared built-in " ^ name))
     | Some (_, fi) -> fi
 
-  let get_imports (env : t) = !(env.imports)
+  let get_func_imports (env : t) = !(env.func_imports)
+  let get_other_imports (env : t) = !(env.other_imports) 
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -1085,91 +1091,91 @@ module Dfinity = struct
     exp (String.length s - 1) []
 
   let system_imports env =
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "test";
       item_name = explode "print";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_print_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "test";
       item_name = explode "show_i32";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_length_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "module";
       item_name = explode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (module_new_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_new_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "self";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_self_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "export";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_export_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "func";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
@@ -1239,6 +1245,11 @@ module Dfinity = struct
 
   let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
+    let _ = E.add_other_import env (nr {
+      module_name = explode "";
+      item_name = explode "mem";
+      idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
+    }) in
     E.add_export env (nr {
       name = explode "table";
       edesc = nr (TableExport (nr 0l))
@@ -2334,9 +2345,11 @@ and declare_built_in_funs env =
 
 and conclude_module env =
 
-  let imports = E.get_imports env in
-  let ni = List.length imports in
+  let func_imports = E.get_func_imports env in
+  let ni = List.length func_imports in
   let ni' = Int32.of_int ni in
+
+  let other_imports = E.get_other_imports env in
 
   let funcs = E.get_funcs env in
   let nf = List.length funcs in
@@ -2383,15 +2396,7 @@ and conclude_module env =
       start = None;
       globals = globals;
       memories = [];
-      imports = begin
-        let memory_import = nr {
-          module_name = Dfinity.explode "";
-          item_name = Dfinity.explode "mem";
-          idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
-        } in
-        imports @ [ memory_import ]
-      end;
-
+      imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
     };
