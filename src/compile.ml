@@ -1239,11 +1239,6 @@ module Dfinity = struct
 
   let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
-    let _ = E.add_import env (nr {
-      module_name = explode "";
-      item_name = explode "mem";
-      idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
-    }) in
     E.add_export env (nr {
       name = explode "table";
       edesc = nr (TableExport (nr 0l))
@@ -2388,7 +2383,15 @@ and conclude_module env =
       start = None;
       globals = globals;
       memories = [];
-      imports;
+      imports = begin
+        let memory_import = nr {
+          module_name = Dfinity.explode "";
+          item_name = Dfinity.explode "mem";
+          idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
+        } in
+        imports @ [ memory_import ]
+      end;
+
       exports = E.get_exports env;
       data
     };
