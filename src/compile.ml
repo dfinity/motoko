@@ -939,11 +939,14 @@ module Array = struct
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
 
+  (* Expects on the stack the pointer to the array. *)
+  let load_n n = Heap.load_field (field_of_idx n)
+
   let common_funcs env =
     let get_array_object = Func.load_closure 0l in
     let get_single_arg =   Func.load_argument in
-    let get_first_arg =    Func.load_argument ^^ Heap.load_field (field_of_idx 0l) in
-    let get_second_arg =   Func.load_argument ^^ Heap.load_field (field_of_idx 1l) in
+    let get_first_arg =    Func.load_argument ^^ load_n 0l in
+    let get_second_arg =   Func.load_argument ^^ load_n 1l in
 
     E.define_built_in env "array_get"
       (Func.unary_of_body env (fun env1 ->
@@ -2085,6 +2088,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
   | TupE es -> Array.lit env (List.map (compile_exp env) es)
+  | ProjE (e1,n) ->
+     compile_exp env e1 ^^ (* offset to tuple (an array) *)
+     Array.load_n (Int32.of_int n)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object; _}, name, fs) ->
      let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
@@ -2267,7 +2273,7 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
           let (env2, alloc_code2, code2) = go (i+1) ps env1 in
           ( env2,
             alloc_code1 ^^ alloc_code2,
-            CannotFail (get_i ^^ Heap.load_field (Array.field_of_idx (Int32.of_int i))) ^^^
+            CannotFail (get_i ^^ Array.load_n (Int32.of_int i)) ^^^
             code1 ^^^
             code2) in
       let (env1, alloc_code, code) = go 0 ps env in
