@@ -1,0 +1,13 @@
+$ dsh reset
+[97m[0m{
+    "stateRoot": "0x8DFB6EA5A20870F01651DCB02952005D7392B6D2"
+}
+$ dsh new -a _out/counter.wasm
+[97m[0m{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (counter)",
+    "type": "actor"
+}
+$ dsh run -q counter start
+2344[97m[0m

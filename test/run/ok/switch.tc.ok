@@ -1,1 +1,5 @@
-switch.as:75.26-75.29: type error, unbound type identifier Opt
+switch.as:46.3-46.14: warning, this case is never reached
+switch.as:75.11-77.2: warning, the cases in this switch do not cover all possible values
+switch.as:81.3-81.14: warning, the cases in this switch do not cover all possible values
+switch.as:87.33-87.34: warning, this pattern is never matched
+switch.as:87.3-87.40: warning, the cases in this switch do not cover all possible values

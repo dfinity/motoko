@@ -1,0 +1,448 @@
+compile_exp: (DeclareE
+  i@2
+  (BlockE
+    (LetD (VarP $2) (DefineE i@2 Var (LitE (NatLit 0))))
+    (ExpD
+      (BlockE
+        (FuncD
+          Local
+          $6
+          (VarP $7)
+          (PrimT Any)
+          (BlockE
+            (FuncD
+              Local
+              $4
+              (VarP $5)
+              (PrimT Any)
+              (SwitchE
+                (CallE (DotE (VarE $7) next) (TupE))
+                (case
+                  (LitP NullLit)
+                  (BlockE
+                    (LetD (VarP $9) (TupE))
+                    (ExpD
+                      (BlockE
+                        (LetD
+                          (VarP $10)
+                          (AssertE (RelE (VarE i@2) EqOp (LitE (NatLit 11))))
+                        )
+                        (ExpD
+                          (DeclareE
+                            i@4
+                            (BlockE
+                              (LetD
+                                (VarP $11)
+                                (DefineE i@4 Var (LitE (NatLit 0)))
+                              )
+                              (ExpD
+                                (BlockE
+                                  (LetD
+                                    (VarP $12)
+                                    (AssignE (VarE i@4) (LitE (NatLit 0)))
+                                  )
+                                  (ExpD
+                                    (BlockE
+                                      (LetD
+                                        (VarP $13)
+                                        (CallE
+                                          (VarE range)
+                                          (TupE
+                                            (LitE (NatLit 0))
+                                            (LitE (NatLit 10))
+                                          )
+                                        )
+                                      )
+                                      (ExpD
+                                        (BlockE
+                                          (FuncD
+                                            Local
+                                            $14
+                                            (VarP $15)
+                                            (PrimT Any)
+                                            (SwitchE
+                                              (CallE
+                                                (DotE (VarE $13) next)
+                                                (TupE)
+                                              )
+                                              (case
+                                                (LitP NullLit)
+                                                (BlockE
+                                                  (LetD (VarP $19) (TupE))
+                                                  (ExpD
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $20)
+                                                        (AssertE
+                                                          (RelE
+                                                            (VarE i@4)
+                                                            EqOp
+                                                            (LitE (NatLit 11))
+                                                          )
+                                                        )
+                                                      )
+                                                      (ExpD
+                                                        (DeclareE
+                                                          i@6
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $21)
+                                                              (DefineE
+                                                                i@6
+                                                                Var
+                                                                (LitE
+                                                                  (NatLit 0)
+                                                                )
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (BlockE
+                                                                (FuncD
+                                                                  Local
+                                                                  $28
+                                                                  (VarP $29)
+                                                                  (PrimT Any)
+                                                                  (BlockE
+                                                                    (FuncD
+                                                                      Local
+                                                                      $23
+                                                                      (VarP $24)
+                                                                      (PrimT
+                                                                        Any
+                                                                      )
+                                                                      (SwitchE
+                                                                        (CallE
+                                                                          (DotE
+                                                                            (VarE
+                                                                              $29
+                                                                            )
+                                                                            next
+                                                                          )
+                                                                          (TupE)
+                                                                        )
+                                                                        (case
+                                                                          (LitP
+                                                                            NullLit
+                                                                          )
+                                                                          (BlockE
+                                                                            (LetD
+                                                                              (VarP
+                                                                                $31
+                                                                              )
+                                                                              (TupE
+                                                                              )
+                                                                            )
+                                                                            (ExpD
+                                                                              (CallE
+                                                                                (VarE
+                                                                                  $0
+                                                                                )
+                                                                                (AssertE
+                                                                                  (RelE
+                                                                                    (VarE
+                                                                                      i@6
+                                                                                    )
+                                                                                    EqOp
+                                                                                    (LitE
+                                                                                      (NatLit
+                                                                                        11
+                                                                                      )
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                        (case
+                                                                          (OptP
+                                                                            (VarP
+                                                                              j@7
+                                                                            )
+                                                                          )
+                                                                          (BlockE
+                                                                            (LetD
+                                                                              (VarP
+                                                                                $25
+                                                                              )
+                                                                              (CallE
+                                                                                (VarE
+                                                                                  printInt
+                                                                                )
+                                                                                (VarE
+                                                                                  j@7
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                            (ExpD
+                                                                              (BlockE
+                                                                                (LetD
+                                                                                  (VarP
+                                                                                    $26
+                                                                                  )
+                                                                                  (AssertE
+                                                                                    (RelE
+                                                                                      (VarE
+                                                                                        j@7
+                                                                                      )
+                                                                                      EqOp
+                                                                                      (VarE
+                                                                                        i@6
+                                                                                      )
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                                (ExpD
+                                                                                  (CallE
+                                                                                    (PrimE
+                                                                                      @await
+                                                                                    )
+                                                                                    (TupE
+                                                                                      (CallE
+                                                                                        (PrimE
+                                                                                          @async
+                                                                                        )
+                                                                                        (DecE
+                                                                                          (FuncD
+                                                                                            Local
+                                                                                            
+                                                                                            (VarP
+                                                                                              $27
+                                                                                            )
+                                                                                            (PrimT
+                                                                                              Any
+                                                                                            )
+                                                                                            (CallE
+                                                                                              (VarE
+                                                                                                $27
+                                                                                              )
+                                                                                              (AssignE
+                                                                                                (VarE
+                                                                                                  i@6
+                                                                                                )
+                                                                                                (BinE
+                                                                                                  (VarE
+                                                                                                    i@6
+                                                                                                  )
+                                                                                                  AddOp
+                                                                                                  (LitE
+                                                                                                    (NatLit
+                                                                                                      1
+                                                                                                    )
+                                                                                                  )
+                                                                                                )
+                                                                                              )
+                                                                                            )
+                                                                                          )
+                                                                                        )
+                                                                                      )
+                                                                                      (VarE
+                                                                                        $23
+                                                                                      )
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (CallE
+                                                                        (VarE
+                                                                          $23
+                                                                        )
+                                                                        (TupE)
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                                (ExpD
+                                                                  (CallE
+                                                                    (PrimE
+                                                                      @await
+                                                                    )
+                                                                    (TupE
+                                                                      (CallE
+                                                                        (PrimE
+                                                                          @async
+                                                                        )
+                                                                        (DecE
+                                                                          (FuncD
+                                                                            Local
+                                                                            
+                                                                            (VarP
+                                                                              $30
+                                                                            )
+                                                                            (PrimT
+                                                                              Any
+                                                                            )
+                                                                            (CallE
+                                                                              (VarE
+                                                                                $30
+                                                                              )
+                                                                              (CallE
+                                                                                (VarE
+                                                                                  range
+                                                                                )
+                                                                                (TupE
+                                                                                  (LitE
+                                                                                    (NatLit
+                                                                                      0
+                                                                                    )
+                                                                                  )
+                                                                                  (LitE
+                                                                                    (NatLit
+                                                                                      10
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                      (VarE $28)
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                              (case
+                                                (OptP (VarP j@5))
+                                                (BlockE
+                                                  (LetD
+                                                    (VarP $16)
+                                                    (CallE
+                                                      (VarE printInt)
+                                                      (VarE j@5)
+                                                    )
+                                                  )
+                                                  (ExpD
+                                                    (BlockE
+                                                      (LetD
+                                                        (VarP $17)
+                                                        (AssertE
+                                                          (RelE
+                                                            (VarE j@5)
+                                                            EqOp
+                                                            (VarE i@4)
+                                                          )
+                                                        )
+                                                      )
+                                                      (ExpD
+                                                        (CallE
+                                                          (PrimE @await)
+                                                          (TupE
+                                                            (CallE
+                                                              (PrimE @async)
+                                                              (DecE
+                                                                (FuncD
+                                                                  Local
+                                                                  
+                                                                  (VarP $18)
+                                                                  (PrimT Any)
+                                                                  (CallE
+                                                                    (VarE $18)
+                                                                    (AssignE
+                                                                      (VarE i@4)
+                                                                      (BinE
+                                                                        (VarE
+                                                                          i@4
+                                                                        )
+                                                                        AddOp
+                                                                        (LitE
+                                                                          (NatLit
+                                                                            1
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                            (VarE $14)
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                          (ExpD (CallE (VarE $14) (TupE)))
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                (case
+                  (OptP (VarP j@3))
+                  (CallE
+                    (VarE $4)
+                    (BlockE
+                      (ExpD (CallE (VarE printInt) (VarE j@3)))
+                      (ExpD (AssertE (RelE (VarE j@3) EqOp (VarE i@2))))
+                      (ExpD
+                        (AssignE
+                          (VarE i@2)
+                          (BinE (VarE i@2) AddOp (LitE (NatLit 1)))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            (ExpD (CallE (VarE $4) (TupE)))
+          )
+        )
+        (ExpD
+          (CallE
+            (PrimE @await)
+            (TupE
+              (CallE
+                (PrimE @async)
+                (DecE
+                  (FuncD
+                    Local
+                    
+                    (VarP $8)
+                    (PrimT Any)
+                    (CallE
+                      (VarE $8)
+                      (CallE
+                        (VarE range)
+                        (TupE (LitE (NatLit 0)) (LitE (NatLit 10)))
+                      )
+                    )
+                  )
+                )
+              )
+              (VarE $6)
+            )
+          )
+        )
+      )
+    )
+  )
+)
+compile_exp: (PrimE @async)

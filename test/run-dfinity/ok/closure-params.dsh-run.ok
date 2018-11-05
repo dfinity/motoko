@@ -1,0 +1,23 @@
+$ dsh reset
+[97m[0m{
+    "stateRoot": "0x8DFB6EA5A20870F01651DCB02952005D7392B6D2"
+}
+$ dsh new -a _out/closure-params.wasm
+[97m[0m{
+    "modId": "#inject/0",
+    "storage": [],
+    "id": "#inject/1 (closure-params)",
+    "type": "actor"
+}
+$ dsh run -q closure-params start
+1
+1
+3
+3
+6
+6
+10
+10
+15
+15
+[97m[0m

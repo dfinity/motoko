@@ -556,4 +556,4 @@ let encode m =
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 
-  (Yojson.Basic.to_string json, to_string s)
+  ((if !Flags.source_map then Yojson.Basic.to_string json else ""), to_string s)

@@ -18,7 +18,7 @@ type Text = prim "Text";
 
 type Iter<T_> = {next : () -> T_?};
 
-let abs : Int -> Nat = prim "abs";
+func abs (x : Int) : Nat { ((prim "abs") : Int -> Nat) x };
 
 func ignore (_ : Any) {};
 
@@ -32,10 +32,21 @@ class revrange(x : Nat, y : Nat) {
   next() : Nat? { if (i <= y) null else {i -= 1; i?} };
 };
 
-let printInt : Int -> () = prim "printInt";
-let print : Text -> () = prim "print";
+func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
+func print (x : Text) { ((prim "print") : Text -> ()) x };
 |}
 
+(*
+type cont<T> = T -> () ;
+type cps<T> = cont<T> -> ();
+
+func new_async<T>(e:cps<T>) : async T  = {
+  let async_ = ((prim "@make_async") : () -> async T)();
+  func k(t:T):() =  ((prim "@set_async" ) : (async T,T)->() ) (async_,t);
+  ((prim "@scheduler_queue") : cont<()> -> () ) (func () : () = e k);
+  async_
+};
+*)
 
 (* Primitives *)
 
@@ -48,4 +59,4 @@ let prim = function
     fun v k ->
       Printf.printf "printInt(%s)\n%!" (Int.to_string (as_int v));
       k unit
-  | _ -> raise (Invalid_argument "Value.prim")
+  | s -> raise (Invalid_argument ("Value.prim: " ^ s))

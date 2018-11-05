@@ -94,3 +94,5 @@ assert.ok(Array.isArray(map.sources))
 assert.ok(Array.isArray(map.sourcesContent))
 assert.equal(typeof(map.mappings), 'string')
 assert.equal(typeof(map.version), 'number')
+
+assert.equal(empty_wasm_dfinity.map, '')

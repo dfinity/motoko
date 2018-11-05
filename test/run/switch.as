@@ -72,7 +72,7 @@ let x11 = switch null {
 };
 assert (x11 == 5);
 
-let x12 = switch (null : Opt<Int>) {
+let x12 = switch (null : Int?) {
   case null 6;
 };
 assert (x12 == 6);

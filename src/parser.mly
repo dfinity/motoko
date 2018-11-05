@@ -362,7 +362,7 @@ exp_post :
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
-    { DotE(e, x) @? at $sloc }
+    { DotE(e, {x with it = Name x.it}) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
 
@@ -462,15 +462,14 @@ case :
 
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
+    { {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {id = x; mut = m; priv = p; exp = e} @@ at $sloc }
+      {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt s=shared_opt x=id fd=func_dec
     { let d = fd s x in
       let e = DecE(d) @? d.at in
-      {id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
-
+      {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 (* Patterns *)
 
@@ -541,8 +540,9 @@ dec_nonexp :
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
-      in ClassD(xf "class" $sloc, tps, s, p, efs') @? at $sloc }
-
+      in
+      let id as tid = xf "class" $sloc in	
+      ClassD(xf "class" $sloc, tid, tps, s, p, efs') @? at $sloc }
 dec :
   | d=dec_nonexp
     { d }

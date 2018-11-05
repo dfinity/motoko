@@ -35,7 +35,7 @@ you maintain your Ocaml installation manually), run
 
 ```
 nix-env -i -f . -A wasm
-nix-env -i -f . -A dsh
+nix-env -i -f . -A dsh --arg test-dsh true
 ```
 
 ## Installation and development without Nix

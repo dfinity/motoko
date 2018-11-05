@@ -80,7 +80,7 @@ let process_files names : unit =
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
     let oc = open_out !out_file in
-    let (source_map, wasm) = EncodeMap.encode module_ in
+    let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin

@@ -13,7 +13,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
-  | DotE (e, i)         -> "DotE"    $$ [exp e; id i]
+  | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE es           -> "ArrayE"  $$ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
@@ -41,8 +41,9 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
-  | NewObjE (s, ids)    -> "NewObjE" $$ (obj_sort s :: List.map id ids)
-
+  | NewObjE (s, nameids)-> "NewObjE" $$ (obj_sort s ::
+                                              List.fold_left (fun flds (n,i) ->
+                                                  (name n)::(id i):: flds) [] nameids)
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
@@ -128,7 +129,7 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and exp_field (ef : exp_field)
-  = ef.it.id.it $$ [exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
+  = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
 
 
 and typ t = match t.it with
@@ -144,6 +145,8 @@ and typ t = match t.it with
 
 and id i = Atom i.it
 
+and name n = Atom (string_of_name n.it)
+
 and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
@@ -152,7 +155,7 @@ and dec d = match d.it with
     "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
-  | ClassD (i, tp, s, p, efs) ->
-    "ClassD" $$ [id i] @ List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
+  | ClassD (i, j, tp, s, p, efs) ->
+    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
