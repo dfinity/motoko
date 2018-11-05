@@ -1971,12 +1971,12 @@ let compile_unop env op = match op with
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
 
-let compile_binop env op = BoxedInt.lift_unboxed_binary env (match op with
-  | AddOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
-  | SubOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
-  | MulOp -> G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul))
+let compile_binop env op = match op with
+  | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)))
+  | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
+  | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
   | CatOp -> G.i_ (Call (nr (E.built_in env "concat")))
-  | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable)
+  | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
 
 let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
