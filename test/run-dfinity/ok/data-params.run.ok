@@ -14,21 +14,27 @@ printInt(45)
 
 printInt(91)
 
-printInt(1_091)
+printInt(1_000_091)
 
-printInt(3_091)
+printInt(1_000_105)
 
-printInt(6_091)
+printInt(1_001_105)
 
-printInt(10_091)
+printInt(1_003_105)
 
-printInt(21_091)
+printInt(1_006_105)
 
-printInt(45_091)
+printInt(1_010_105)
 
-printInt(91_091)
+printInt(1_021_105)
 
-printInt(91_091)
+printInt(1_045_105)
+
+printInt(1_091_105)
+
+printInt(1_105_105)
+
+printInt(1_105_105)
 
 -- Finished data-params.as:
 

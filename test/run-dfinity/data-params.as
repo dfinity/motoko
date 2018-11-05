@@ -20,6 +20,14 @@ let a = actor {
     printInt(c);
     print("\n");
   };
+  incopt(a : Nat?) : () {
+    switch a {
+      case null { c += 1000000 };
+      case (a?) { c += a };
+    };
+    printInt(c);
+    print("\n");
+  };
   printCounter () {
     printInt(c);
     print("\n");
@@ -38,6 +46,8 @@ a.incn(4);
 a.incnn(5,6);
 a.incnested(7,(8,9));
 a.incarray([10,11,12,13]);
+a.incopt(null);
+a.incopt(14?);
 
 
 // large values
@@ -48,6 +58,7 @@ a.incn(4000);
 a.incnn(5000,6000);
 a.incnested(7000,(8000,9000));
 a.incarray([10000,11000,12000,13000]);
+a.incopt(14000?);
 
 a.printCounter();
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });

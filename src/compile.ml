@@ -313,7 +313,7 @@ let compile_unboxed_false =   compile_unboxed_const 0l
 let compile_unboxed_zero =    compile_unboxed_const 0l
 let compile_unit = compile_unboxed_const 1l
 (* This needs to be disjoint from all pointers *)
-let compile_null = compile_unboxed_const 2l
+let compile_null = compile_unboxed_const 3l
 
 (* Locals *)
 
@@ -618,6 +618,8 @@ module Var = struct
 end (* Var *)
 
 module Opt = struct
+
+let payload_field = Tagged.header_size
 
 let inject env e = Tagged.obj env Tagged.Some [e]
 let project = Heap.load_field Tagged.header_size
@@ -1593,6 +1595,12 @@ module Serialization = struct
               set_ref ^^
               Tagged.obj env Tagged.Reference [ get_ref ]
             end
+          ; Tagged.Some,
+            G.i_ Drop ^^
+            Opt.inject env (
+              get_x ^^ Opt.project ^^
+              G.i_ (Call (nr (E.built_in env "serialize_go")))
+            )
           ; Tagged.Array,
             begin
               let (set_len, get_len) = new_local env "len" in
@@ -1689,6 +1697,18 @@ module Serialization = struct
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
               Heap.store_field 1l ^^
 
+              get_x ^^
+              compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              set_x
+            ; Tagged.Some,
+              (* Adust pointer *)
+              compile_unboxed_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              get_ptr_offset ^^
+              G.i_ (Call (nr (E.built_in env "shift_pointer_at"))) ^^
+
+              (* Carry on *)
               get_x ^^
               compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
