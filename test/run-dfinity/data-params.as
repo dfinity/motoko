@@ -34,7 +34,12 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  printCounter () {
+  printCounter() {
+    printInt(c);
+    print("\n");
+  };
+  printLabeled(l:Text) {
+    print l;
     printInt(c);
     print("\n");
   };
@@ -57,6 +62,6 @@ a.incopt(null);
 a.incopt(14?);
 a.increcord(new {x = 15; y = 16});
 a.increcord(new {x = 17; y = 18; z = 19});
-
 a.printCounter();
+a.printLabeled("Foo: ");
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });

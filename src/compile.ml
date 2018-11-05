@@ -1674,6 +1674,33 @@ module Serialization = struct
               ) ^^
               get_copy
             end
+          ; Tagged.Text,
+            begin
+              let (set_len, get_len) = new_local env "len" in
+              Heap.load_field Text.len_field ^^
+              (* get length in words *)
+              compile_unboxed_const 3l ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_unboxed_const Heap.word_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
+              compile_unboxed_const Array.header_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              set_len ^^
+
+              get_len ^^
+              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              G.i_ Drop ^^
+
+              (* Copy header and data *)
+              get_x ^^
+              get_copy ^^
+              get_len ^^
+              compile_unboxed_const Heap.word_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+              get_copy
+            end
           ; Tagged.Object,
             begin
               let (set_len, get_len) = new_local env "len" in
@@ -1848,6 +1875,30 @@ module Serialization = struct
                   get_ptr_offset ^^
                   G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
                 ) ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_unboxed_const Array.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Text,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Text.len_field ^^
+                (* get length in words *)
+                compile_unboxed_const 3l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
+                compile_unboxed_const Array.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_len ^^
 
                 (* Advance pointer *)
                 get_x ^^
