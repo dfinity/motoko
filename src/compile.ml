@@ -286,12 +286,12 @@ module E = struct
 
   let reserve_static_memory (env : t) size : int32 =
     let ptr = !(env.end_of_static_memory) in
-    env.end_of_static_memory := Int32.add ptr size;
+    let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
+    env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
   let add_static_bytes (env : t) data : int32 =
-    let ptr = !(env.end_of_static_memory) in
-    env.end_of_static_memory := Int32.add ptr (Int32.of_int (String.length data));
+    let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ptr
 
@@ -385,10 +385,11 @@ module Heap = struct
   let heap_ptr : var = nr 2l
 
   let alloc_bytes (n : int32) : G.t =
-    (* expect the size (in words), returns the pointer *)
+    (* returns the pointer to the allocate space on the heap *)
     G.i_ (GetGlobal heap_ptr) ^^
     G.i_ (GetGlobal heap_ptr) ^^
-    compile_unboxed_const n  ^^
+    let aligned = Int32.logand (Int32.add n 3l) (Int32.lognot 3l) in
+    compile_unboxed_const aligned  ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
     G.i_ (SetGlobal heap_ptr)
 
@@ -464,15 +465,48 @@ module ElemHeap = struct
 
 end (* ElemHeap *)
 
+module BitTagged = struct
+  (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
+     Pointers are stored as is (and should be aligned to have a zero there).
+  *)
+
+  (* Expect a possibly bit-tagged pointer on the stack.
+     If taged, untags it and executes the first sequest.
+     Otherwise, leaves it on the stack and executes the second sequence.
+  *)
+  let if_unboxed env retty is1 is2 =
+    let (set_i, get_i) = new_local env "bittagged" in
+    set_i ^^
+    (* Check bit *)
+    get_i ^^
+    compile_unboxed_const 1l ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.And)) ^^
+    compile_unboxed_const 1l ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+    G.if_ retty
+      ( get_i ^^
+        compile_unboxed_const 1l ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.ShrU)) ^^
+        is1)
+      ( get_i ^^ is2)
+
+  let tag =
+    compile_unboxed_const 1l ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Shl)) ^^
+    compile_unboxed_const 1l ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Or))
+
+end (* BitTagged *)
+
 module Tagged = struct
   (* Tagged objects have, well, a tag to describe their runtime type.
      This tag is used to traverse the heap (serialization, GC), but also
      for objectification of arrays and actorrefs and the like.
+
+     All tagged heap objects have a size of at least two words.
    *)
 
   type tag =
-    | Null (* not really an existing tag, but useful for branch *)
-    | Unit (* not really an existing tag, but useful for branch *)
     | Object
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
@@ -482,10 +516,8 @@ module Tagged = struct
     | Some (* For opt *)
     | Text
 
-  (* Lets leave out zero to trap earlier on invalid memory *)
+  (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
-    | Null -> raise (Invalid_argument "null is not tagged")
-    | Unit -> raise (Invalid_argument "null is not tagged")
     | Object -> 1l
     | Array -> 2l
     | Reference -> 3l
@@ -515,16 +547,6 @@ module Tagged = struct
     let rec go = function
       | [] ->
         G.i_ Unreachable
-      | ((Null, code) :: cases) ->
-        get_i ^^
-        compile_null ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ retty (get_i ^^ code) (go cases)
-      | ((Unit, code) :: cases) ->
-        get_i ^^
-        compile_unit ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ retty (get_i ^^ code) (go cases)
       | ((tag, code) :: cases) ->
         get_i ^^
         load ^^
@@ -812,6 +834,14 @@ module RTS = struct
       G.i_ (GetGlobal Heap.heap_ptr) ^^
       G.i_ (GetGlobal Heap.heap_ptr) ^^
       get_n ^^
+      (* align *)
+      compile_unboxed_const 3l ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_unboxed_const (-1l) ^^
+      compile_unboxed_const 3l ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Xor)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.And)) ^^
+      (* add to old heap value *)
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       G.i_ (SetGlobal Heap.heap_ptr)
     );
@@ -830,18 +860,17 @@ module RTS = struct
 end (* RTS *)
 
 module BoxedInt = struct
-  (* For now, both Nat and Int are represented as immutable boxed 32bit numbers.
-     This way, we know that everything inside a polymorphic data structure
-     (e.g. a tuple) is a pointer. This makes message
-     serialization/deserialization, and later for GC, easier.
-     Eventually, we can look into storing small numbers using a tagged format.
+  (* We store large nats and ints in immutable boxed 32bit heap objects.
+     Eventually, this should contain the bigint implementation.
+
+     Small values (<5, so that both paths are tested) are stored unboxed,
+     tagged, see BitTagged.
   *)
 
-  (* We include booleans here, i.e. they are also presented as boxed.
-     Horribly inefficient, I know.
-  *)
-  let unbox = Heap.load_field (Int32.add Tagged.header_size 0l)
   let box env = G.i_ (Call (nr (E.built_in env "box_int")))
+  let unbox env = G.i_ (Call (nr (E.built_in env "unbox_int")))
+
+  let payload_field = Int32.add Tagged.header_size 0l
 
   let lit env n = compile_unboxed_const n ^^ box env
 
@@ -850,7 +879,7 @@ module BoxedInt = struct
 
   let lift_unboxed_unary env op_is =
     (* unbox argument *)
-    unbox ^^
+    unbox env ^^
     (* apply operator *)
     op_is ^^
     (* box result *)
@@ -859,9 +888,8 @@ module BoxedInt = struct
   let lift_unboxed_binary env op_is =
     let (set_i, get_i) = new_local env "n" in
     (* unbox both arguments *)
-    set_i ^^
-    unbox ^^
-    get_i ^^ unbox ^^
+    set_i ^^ unbox env ^^
+    get_i ^^ unbox env ^^
     (* apply operator *)
     op_is ^^
     (* box result *)
@@ -869,7 +897,19 @@ module BoxedInt = struct
 
   let common_funcs env =
     Func.define_built_in env "box_int" ["n"] [I32Type] (fun env1 ->
-      Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ]
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 5)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.if_ [I32Type]
+        (get_n ^^ BitTagged.tag)
+        (Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ])
+    );
+    Func.define_built_in env "unbox_int" ["n"] [I32Type] (fun env1 ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+      get_n ^^
+      BitTagged.if_unboxed env [I32Type]
+        G.nop
+        (Heap.load_field payload_field)
     )
 
 end (* BoxedInt *)
@@ -881,13 +921,13 @@ module Prim = struct
     let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
-    BoxedInt.unbox ^^
+    BoxedInt.unbox env ^^
     compile_unboxed_zero ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
     G.if_ [I32Type]
       ( compile_unboxed_zero ^^
         get_i ^^
-        BoxedInt.unbox ^^
+        BoxedInt.unbox env ^^
         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
         BoxedInt.box env
       )
@@ -1088,7 +1128,7 @@ module Array = struct
       (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
-            BoxedInt.unbox ^^
+            BoxedInt.unbox env1 ^^
             idx ^^
             load_ptr
        ));
@@ -1096,7 +1136,7 @@ module Array = struct
       (Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
-            BoxedInt.unbox ^^
+            BoxedInt.unbox env1 ^^
             idx ^^
             get_second_arg ^^ (* the value *)
             store_ptr ^^
@@ -1118,7 +1158,7 @@ module Array = struct
             Var.load ^^
             set_boxed_i ^^
             get_boxed_i ^^
-            BoxedInt.unbox ^^
+            BoxedInt.unbox env1 ^^
             set_i ^^
 
             get_i ^^
@@ -1366,7 +1406,7 @@ module Dfinity = struct
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
-      BoxedInt.unbox ^^
+      BoxedInt.unbox env ^^
       G.i_ (Call (nr (test_show_i32_i env))) ^^
       G.i_ (Call (nr (test_print_i env))) ^^
       compile_unit
@@ -1530,77 +1570,94 @@ module Serialization = struct
       set_copy ^^
 
       get_x ^^
-      Tagged.branch env [I32Type]
-        [ Tagged.Int,
-          (* x still on the stack *)
-          Heap.alloc 2l ^^
-          compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-          G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
-          get_copy
-        ; Tagged.Reference,
-          begin
+      BitTagged.if_unboxed env [I32Type]
+        ( (* Tagged unboxed value, can be left alone *)
+          G.i_ Drop ^^ get_x
+        )
+        ( Tagged.branch env [I32Type]
+          [ Tagged.Int,
             (* x still on the stack *)
-            Heap.load_field 1l ^^
-            ElemHeap.recall_reference env ^^
-            (* Re-remember reference, to move it into the fresh space in the
-               table *)
-            ElemHeap.remember_reference env ^^
-            let (set_ref, get_ref) = new_local env "reference" in
-            set_ref ^^
-            Tagged.obj env Tagged.Reference [ get_ref ]
-          end
-        ; Tagged.Array,
-          begin
-            let (set_len, get_len) = new_local env "len" in
-            Heap.load_field Array.len_field ^^
-            set_len ^^
-
-            get_len ^^
-            compile_unboxed_const Array.header_size ^^
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-            G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
-            G.i_ Drop ^^
-
-            (* Copy header *)
-            get_x ^^
-            get_copy ^^
-            compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
+            Heap.alloc 2l ^^
+            compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
             G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
-
-            (* Copy fields *)
-            get_len ^^
-            from_0_to_n env (fun get_i ->
-              get_copy ^^
-              get_i ^^
-              Array.idx ^^
-
-              get_x ^^
-              get_i ^^
-              Array.idx ^^
-              load_ptr ^^
-              G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
-              store_ptr
-            ) ^^
             get_copy
-          end
-        ; Tagged.Closure,
-          (* Closures are not copied. Instead, we create a funcref for them *)
-          G.i_ Drop ^^
-          Tagged.obj env Tagged.Reference [
-            (* Funcref *)
-            compile_unboxed_const (E.built_in env "invoke_closure") ^^
-            G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
-            get_x ^^
-            G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
-            ElemHeap.remember_reference env
+          ; Tagged.Reference,
+            begin
+              (* x still on the stack *)
+              Heap.load_field 1l ^^
+              ElemHeap.recall_reference env ^^
+              (* Re-remember reference, to move it into the fresh space in the
+                 table *)
+              ElemHeap.remember_reference env ^^
+              let (set_ref, get_ref) = new_local env "reference" in
+              set_ref ^^
+              Tagged.obj env Tagged.Reference [ get_ref ]
+            end
+          ; Tagged.Array,
+            begin
+              let (set_len, get_len) = new_local env "len" in
+              Heap.load_field Array.len_field ^^
+              set_len ^^
+
+              get_len ^^
+              compile_unboxed_const Array.header_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              G.i_ Drop ^^
+
+              (* Copy header *)
+              get_x ^^
+              get_copy ^^
+              compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
+              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+              (* Copy fields *)
+              get_len ^^
+              from_0_to_n env (fun get_i ->
+                get_copy ^^
+                get_i ^^
+                Array.idx ^^
+
+                get_x ^^
+                get_i ^^
+                Array.idx ^^
+                load_ptr ^^
+                G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
+                store_ptr
+              ) ^^
+              get_copy
+            end
+          ; Tagged.Closure,
+            (* Closures are not copied. Instead, we create a funcref for them *)
+            G.i_ Drop ^^
+            Tagged.obj env Tagged.Reference [
+              (* Funcref *)
+              compile_unboxed_const (E.built_in env "invoke_closure") ^^
+              G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
+              get_x ^^
+              G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
+              ElemHeap.remember_reference env
+            ]
           ]
-        ; Tagged.Null,
-          G.i_ Drop ^^
-          compile_null
-        ; Tagged.Unit,
-          G.i_ Drop ^^
-          compile_unit
-        ]
+        )
+    );
+
+    Func.define_built_in module_env "shift_pointer_at" ["loc";  "ptr_offset"] [] (fun env ->
+      let get_loc = G.i_ (GetLocal (nr 0l)) in
+      let get_ptr_offset = G.i_ (GetLocal (nr 1l)) in
+      get_loc ^^
+      load_ptr ^^
+      BitTagged.if_unboxed env []
+        (* nothing to do *)
+        ( G.i_ Drop )
+        ( set_tmp env ^^
+
+          get_loc ^^
+          get_tmp env ^^
+          get_ptr_offset ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          store_ptr
+        )
     );
 
     Func.define_built_in module_env "shift_pointers" ["x"; "to"; "ptr_offset"; "tbl_offset"] [] (fun env ->
@@ -1649,14 +1706,8 @@ module Serialization = struct
                   get_x ^^
                   get_i ^^
                   Array.idx ^^
-
-                  get_x ^^
-                  get_i ^^
-                  Array.idx ^^
-                  load_ptr ^^
                   get_ptr_offset ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                  store_ptr
+                  G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
                 ) ^^
 
                 (* Advance pointer *)
@@ -1690,19 +1741,34 @@ module Serialization = struct
 
       (* Copy data *)
       get_x ^^
-      G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
-      G.i_ Drop ^^
+      BitTagged.if_unboxed env []
+        (* We have a bit-tagged raw value. Put this into a singleton databuf,
+           which will be recognized as such by its size.
+        *)
+        ( G.i_ Drop ^^
+          Heap.alloc 1l ^^
+          get_x ^^
+          store_ptr ^^
 
-      (* Remember the end *)
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
-      set_end ^^
+          (* Remember the end *)
+          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          set_end
+        )
+        (* We have real data on the heap. Copy.  *)
+        ( G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
+          G.i_ Drop ^^
 
-      (* Adjust pointers *)
-      get_start ^^
-      get_end ^^
-      compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-      compile_unboxed_zero ^^ get_tbl_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-      G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
+          (* Remember the end *)
+          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          set_end ^^
+
+          (* Adjust pointers *)
+          get_start ^^
+          get_end ^^
+          compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+          compile_unboxed_zero ^^ get_tbl_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+          G.i_ (Call (nr (E.built_in env "shift_pointers")))
+        ) ^^
 
       (* Create databuf *)
       get_start ^^
@@ -1738,8 +1804,9 @@ module Serialization = struct
 
     Func.define_built_in module_env "deserialize" ["ref"] [I32Type] (fun env ->
       let get_elembuf = G.i_ (GetLocal (nr 0l)) in
-      let (set_databuf, get_databuf) = new_local env "x" in
+      let (set_databuf, get_databuf) = new_local env "databuf" in
       let (set_i, get_i) = new_local env "x" in
+      let (set_data_len, get_data_len) = new_local env "data_len" in
       let (set_tbl_start, get_tbl_start) = new_local env "tbl_start" in
 
 
@@ -1774,29 +1841,40 @@ module Serialization = struct
       ElemHeap.recall_reference env ^^
       set_databuf ^^
 
+      get_databuf ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
+      set_data_len ^^
 
       (* Load data from databuf *)
       get_i ^^
-      get_databuf ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
+      get_data_len ^^
       get_databuf ^^
       compile_unboxed_const 0l ^^
       G.i_ (Call (nr (Dfinity.data_internalize_i env))) ^^
 
-      (* update heap pointer *)
-      get_i ^^
-      get_databuf ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (SetGlobal Heap.heap_ptr) ^^
+      (* Check if we got something unboxed (data buf size 1 word) *)
+      get_data_len ^^
+      compile_unboxed_const Heap.word_size ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.if_ [I32Type]
+        (* Yes, we got something unboxed *)
+        ( get_i ^^ load_ptr )
+        (* No, it is actual heap-data *)
+        ( (* update heap pointer *)
+          get_i ^^
+          get_data_len ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (SetGlobal Heap.heap_ptr) ^^
 
-      (* Fix pointers *)
-      get_i ^^
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
-      get_i ^^
-      get_tbl_start ^^
-      G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
+          (* Fix pointers *)
+          get_i ^^
+          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          get_i ^^
+          get_tbl_start ^^
+          G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
 
-      (* return allocated thing *)
-      get_i
+          (* return allocated thing *)
+          get_i
+        )
     );
 
 end (* Serialization *)
@@ -1996,7 +2074,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
   | IdxE (e1,e2) ->
      compile_exp env e1 ^^ (* offset to array *)
      compile_exp env e2 ^^ (* idx *)
-     BoxedInt.unbox ^^
+     BoxedInt.unbox env ^^
      Array.idx
   | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e ^^
@@ -2048,11 +2126,11 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_lit env !l_ref
   | AssertE e1 ->
      compile_exp env e1 ^^
-     BoxedInt.unbox ^^
+     BoxedInt.unbox env ^^
      G.if_ [I32Type] compile_unit (G.i (Unreachable @@ exp.at))
   | NotE e ->
      compile_exp env e ^^
-     BoxedInt.unbox ^^
+     BoxedInt.unbox env ^^
      G.if_ [I32Type] (BoxedInt.lit_false env) (BoxedInt.lit_true env)
   | UnE (op, e1) ->
      compile_exp env e1 ^^
@@ -2068,18 +2146,18 @@ and compile_exp (env : E.t) exp = match exp.it with
   | OrE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox ^^
+     code1 ^^ BoxedInt.unbox env ^^
      G.if_ [I32Type] (BoxedInt.lit_true env) code2
   | AndE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox ^^
+     code1 ^^ BoxedInt.unbox env ^^
      G.if_ [I32Type] code2 (BoxedInt.lit_false env)
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
      let code3 = compile_exp env e3 in
-     code1 ^^ BoxedInt.unbox ^^
+     code1 ^^ BoxedInt.unbox env ^^
      G.if_ [I32Type] code2 code3
   | IsE (e1, e2) ->
      let code1 = compile_exp env e1 in
@@ -2142,7 +2220,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
      G.loop_ [] (
-       code1 ^^ BoxedInt.unbox ^^
+       code1 ^^ BoxedInt.unbox env ^^
        G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop
      ) ^^
      compile_unit
@@ -2266,15 +2344,15 @@ and compile_lit_pat env opo l = match opo, l with
     compile_lit env l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | None, (NatLit _ | IntLit _ | BoolLit _) ->
-    BoxedInt.unbox ^^
+    BoxedInt.unbox env ^^
     compile_lit env l ^^
-    BoxedInt.unbox ^^
+    BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | Some uo, (NatLit _ | IntLit _) ->
-    BoxedInt.unbox ^^
+    BoxedInt.unbox env ^^
     compile_lit env l ^^
     compile_unop env uo ^^
-    BoxedInt.unbox ^^
+    BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
 
@@ -2562,7 +2640,7 @@ and actor_fake_object_idx env name =
 
 and declare_built_in_funs env =
   E.declare_built_in_funs env
-    ([ "box_int";
+    ([ "box_int"; "unbox_int";
        "memcpy"; "alloc_bytes"; "alloc_words";
        "concat";
        "array_get"; "array_set"; "array_len";
@@ -2571,7 +2649,7 @@ and declare_built_in_funs env =
     (if E.mode env = DfinityMode
     then [ "call_funcref"; "export_self_message"; "invoke_closure"
          ; "serialize"; "deserialize"; "serialize_go"
-         ; "shift_pointers"
+         ; "shift_pointers"; "shift_pointer_at"
          ; "save_mem"; "restore_mem" ]
     else []))
 

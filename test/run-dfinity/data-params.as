@@ -29,6 +29,8 @@ let a = actor {
   };
 };
 
+
+// small values
 a.incn(1);
 a.incn(2);
 a.incn(3);
@@ -36,5 +38,16 @@ a.incn(4);
 a.incnn(5,6);
 a.incnested(7,(8,9));
 a.incarray([10,11,12,13]);
+
+
+// large values
+a.incn(1000);
+a.incn(2000);
+a.incn(3000);
+a.incn(4000);
+a.incnn(5000,6000);
+a.incnested(7000,(8000,9000));
+a.incarray([10000,11000,12000,13000]);
+
 a.printCounter();
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });
