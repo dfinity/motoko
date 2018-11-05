@@ -2409,7 +2409,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^ (* offset to tuple (an array) *)
      Array.load_n (Int32.of_int n)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
-  | ObjE ({ it = Type.Object; _}, name, fs) ->
+  | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
       (fun (f : Syntax.exp_field) ->
         (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
@@ -2644,7 +2644,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
         Var.store ^^
         if last then G.i_ (GetLocal (nr i)) ^^ Var.load else G.nop)
 
-  | FuncD (name, _, p, _rt, e) ->
+  | FuncD (_, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
@@ -2721,11 +2721,15 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
   let (name, _, pat, _rt, exp) =
     let rec find_func exp = match exp.it with
     | AnnotE (exp, _) -> find_func exp
-    | DecE {it = FuncD (name, ty_args, pat, rt, exp); _ } -> (name, ty_args, pat, rt, exp)
+    | DecE {it = FuncD (s, name, ty_args, pat, rt, exp); _ } -> (name, ty_args, pat, rt, exp)
     | _ -> raise (Invalid_argument "public actor field not a function")
     in find_func f.it.exp in
 
   (* Which name to use? f.it.id or name? Can they differ? *)
+  (* crusso: use name for the name of the field, access by projection; id for the bound name. 
+     They can differ after alpha-renaming of id due to CPS conversion, but are initially the same after the parsing
+     I have not reviewed/fixed the code below.
+  *)
   let (fi, fill) = E.reserve_fun pre_env in
   E.add_fun_name pre_env fi name.it;
   E.add_dfinity_type pre_env (fi, [CustomSections.ElemBuf]);

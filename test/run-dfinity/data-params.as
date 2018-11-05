@@ -38,7 +38,7 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  readCounter(f : Nat -> ()) : () {
+  readCounter(f : shared Nat -> ()) : () {
     f(c);
   };
 };

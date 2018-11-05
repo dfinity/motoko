@@ -39,12 +39,11 @@ let rec exp e = match e.it with
   | DecE d              -> "DecE"    $$ [dec d]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | DeclareE (i, t, e1) -> "DeclareE"   $$ [id i; exp e1]
-  | DefineE (i, m, e1)  -> "DefineE"   $$ [id i; mut m; exp e1]
-  | NewObjE (s, nameids)    -> "NewObjE" $$ (obj_sort s ::
+  | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
+  | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
+  | NewObjE (s, nameids)-> "NewObjE" $$ (obj_sort s ::
                                               List.fold_left (fun flds (n,i) ->
                                                   (name n)::(id i):: flds) [] nameids)
-
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
@@ -103,12 +102,16 @@ and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
 and prim p = Atom (Type.string_of_prim p)
 
+and sharing sh = match sh with
+  | Type.Local -> "Local"
+  | Type.Sharable -> "Sharable"
+
 and obj_sort s = match s.it with
-  | Type.Object -> Atom "Object"
-  | Type.Actor  -> Atom "Actor"
+  | Type.Object sh -> Atom ("Object " ^ sharing sh)
+  | Type.Actor -> Atom "Actor"
 
 and func_sort s = match s.it with
-  | Type.Call      -> Atom "Call"
+  | Type.Call sh -> Atom ("Call " ^ sharing sh)
   | Type.Construct -> Atom "Construct"
 
 and mut m = match m.it with
@@ -148,8 +151,8 @@ and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | FuncD (i, tp, p, t, e) ->
-    "FuncD" $$ [id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+  | FuncD (s, i, tp, p, t, e) ->
+    "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, j, tp, s, p, efs) ->

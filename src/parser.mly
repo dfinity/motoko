@@ -50,6 +50,36 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
+let share_typ t =
+  match t.it with
+  | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
+    ObjT ({s with it = Type.Object Type.Sharable}, tfs) @@ t.at
+  | FuncT ({it = Type.Call Type.Local; _} as s, tbs, t1, t2) ->
+    FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2) @@ t.at
+  | _ -> t
+
+let share_typfield tf =
+  {tf with it = {tf.it with typ = share_typ tf.it.typ}}
+
+let share_dec d =
+  match d.it with
+  | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
+    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
+  | _ -> d
+
+let share_exp e =
+  match e.it with
+  | ObjE ({it = Type.Object Type.Local; _} as s, x, efs) ->
+    ObjE ({s with it = Type.Object Type.Sharable}, x, efs) @? e.at
+  | DecE d ->
+    DecE (share_dec d) @? e.at
+  | _ -> e
+
+let share_expfield (ef : exp_field) =
+  if ef.it.priv.it = Private
+  then ef
+  else {ef with it = {ef.it with exp = share_exp ef.it.exp}}
+
 %}
 
 %token EOF
@@ -59,7 +89,7 @@ let assign_op lhs rhs_f at =
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
 %token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
-%token FUNC TYPE ACTOR CLASS PRIVATE NEW
+%token FUNC TYPE ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
@@ -139,15 +169,21 @@ seplist1(X, SEP) :
   | VAR { Var @@ at $sloc }
 
 %inline obj_sort :
-  | NEW { Type.Object @@ at $sloc }
+  | NEW { Type.Object Type.Local @@ at $sloc }
+  | SHARED { Type.Object Type.Sharable @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object @@ no_region }
+  | (* empty *) { Type.Object Type.Local @@ no_region }
   | s=obj_sort { s }
 
+%inline shared_opt :
+  | (* empty *) { Type.Local @@ no_region }
+  | SHARED { Type.Sharable @@ at $sloc }
+
 %inline func_sort_opt :
-  | (* empty *) { Type.Call @@ no_region }
+  | (* empty *) { Type.Call Type.Local @@ no_region }
+  | SHARED { Type.Call Type.Sharable @@ at $sloc }
   | CLASS { Type.Construct @@ at $sloc }
 
 
@@ -164,8 +200,8 @@ typ_nullary :
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
-  | s=obj_sort_opt tfs=typ_obj
-    { ObjT(s, tfs) @@ at $sloc }
+  | tfs=typ_obj
+    { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @@ at $sloc }
 
 typ_post :
   | t=typ_nullary
@@ -186,11 +222,17 @@ typ_pre :
     { LikeT(t) @@ at $sloc }
   | mut=var t=typ_nullary LBRACKET RBRACKET
     { ArrayT(mut, t) @@ at $sloc }
+  | s=obj_sort tfs=typ_obj
+    { let tfs' =
+        if s.it = Type.Object Type.Local
+        then tfs
+        else List.map share_typfield tfs
+      in ObjT(s, tfs') @@ at $sloc }
 
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_pre ARROW t2=typ 
+  | s=func_sort_opt tps=typ_params_opt t1=typ_post ARROW t2=typ
     { FuncT(s, tps, t1, t2) @@ at $sloc }
 
 typ_item :
@@ -208,7 +250,8 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
-    { let t = FuncT(Type.Call @@ no_region, tps, t1, t2) @@ span x.at t2.at in
+    { let t = FuncT(Type.Call Type.Local @@ no_region, tps, t1, t2)
+        @@ span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :
@@ -301,7 +344,11 @@ exp_nullary :
     { TupE(es) @? at $sloc }
   | s=obj_sort xf=id_opt efs=exp_obj
     { let anon = if s.it = Type.Actor then "actor" else "object" in
-      ObjE(s, xf anon $sloc, efs) @? at $sloc }
+      let efs' =
+        if s.it = Type.Object Type.Local
+        then efs
+        else List.map share_expfield efs
+      in ObjE(s, xf anon $sloc, efs') @? at $sloc }
 
 exp_post :
   | e=exp_nullary
@@ -419,11 +466,10 @@ exp_field :
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
       {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
-  | priv=private_opt x=id fd=func_dec
-    { let d = fd x in
+  | priv=private_opt s=shared_opt x=id fd=func_dec
+    { let d = fd s x in
       let e = DecE(d) @? d.at in
       {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
-
 
 (* Patterns *)
 
@@ -485,14 +531,18 @@ dec_nonexp :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
-  | FUNC xf=id_opt fd=func_dec
-    { (fd (xf "func" $sloc)).it @? at $sloc }
+  | s=shared_opt FUNC xf=id_opt fd=func_dec
+    { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
-    { let id as tid = xf "class" $sloc in
-      ClassD(id, tid, tps, s, p, efs) @? at $sloc }
-
+    { let efs' =
+        if s.it = Type.Object Type.Local
+        then efs
+        else List.map share_expfield efs
+      in
+      let id as tid = xf "class" $sloc in	
+      ClassD(xf "class" $sloc, tid, tps, s, p, efs') @? at $sloc }
 dec :
   | d=dec_nonexp
     { d }
@@ -509,7 +559,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun x -> FuncD(x, tps, p, t, e) @? at $sloc }
+      in fun s x -> FuncD(s, x, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }

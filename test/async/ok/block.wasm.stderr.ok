@@ -6,6 +6,7 @@ compile_exp: (DeclareE
       b@14
       (BlockE
         (FuncD
+          Local
           $30
           (VarP $31)
           (PrimT Any)
@@ -17,6 +18,7 @@ compile_exp: (DeclareE
                 (ExpD
                   (BlockE
                     (FuncD
+                      Local
                       $37
                       (VarP $38)
                       (PrimT Any)
@@ -52,6 +54,7 @@ compile_exp: (DeclareE
                             (PrimE @async)
                             (DecE
                               (FuncD
+                                Local
                                 
                                 (VarP $39)
                                 (PrimT Any)
@@ -80,6 +83,7 @@ compile_exp: (DeclareE
                 (PrimE @async)
                 (DecE
                   (FuncD
+                    Local
                     
                     (VarP $32)
                     (PrimT Any)
@@ -110,6 +114,7 @@ compile_exp: (DeclareE
             (ExpD
               (BlockE
                 (FuncD
+                  Local
                   $24
                   (VarP $25)
                   (PrimT Any)
@@ -142,6 +147,7 @@ compile_exp: (DeclareE
                         (PrimE @async)
                         (DecE
                           (FuncD
+                            Local
                             
                             (VarP $26)
                             (PrimT Any)
@@ -176,6 +182,7 @@ compile_exp: (DeclareE
           (VarP $10)
           (DecE
             (FuncD
+              Local
               f@4
               (TupP
                 (AnnotP (VarP a@7) (VarT Text))
@@ -193,6 +200,7 @@ compile_exp: (DeclareE
         (ExpD
           (BlockE
             (FuncD
+              Local
               $14
               (VarP $15)
               (PrimT Any)
@@ -221,6 +229,7 @@ compile_exp: (DeclareE
                     (PrimE @async)
                     (DecE
                       (FuncD
+                        Local
                         
                         (VarP $16)
                         (PrimT Any)
@@ -248,6 +257,7 @@ compile_exp: (DeclareE
     b@3
     (BlockE
       (FuncD
+        Local
         $4
         (VarP $5)
         (PrimT Any)
@@ -272,6 +282,7 @@ compile_exp: (DeclareE
               (PrimE @async)
               (DecE
                 (FuncD
+                  Local
                   
                   (VarP $6)
                   (PrimT Any)
