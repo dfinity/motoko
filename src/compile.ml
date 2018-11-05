@@ -104,9 +104,6 @@ module E = struct
     ld : G.depth NameEnv.t;
     (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
     local_vars_env : t varloc NameEnv.t;
-    (* Field labels to index *)
-    (* (This is for the prototypical simple tuple-implementations for objects *)
-    field_env : int32 NameEnv.t ref;
     (* The prelude. We need to re-use this when compiling actors *)
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
@@ -141,7 +138,6 @@ module E = struct
     local_vars_env = NameEnv.empty;
     n_param = 0l;
     ld = NameEnv.empty;
-    field_env = ref NameEnv.empty;
     prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
@@ -272,15 +268,6 @@ module E = struct
     match NameEnv.find_opt name.it env.ld with
       | Some d -> d
       | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
-
-  let field_to_index (env : t) name : int32 =
-    let e = !(env.field_env) in
-    match NameEnv.find_opt name.it e with
-      | Some i -> i
-      | None ->
-        let i = Wasm.I32.of_int_u (NameEnv.cardinal e) in
-        env.field_env := NameEnv.add name.it i e;
-        i
 
   let get_prelude (env : t) = env.prelude
 
@@ -939,35 +926,59 @@ end (* Prim *)
 
 module Object = struct
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
-  let header_size = Int32.add Tagged.header_size 1l
+  let header_size = Int32.add Tagged.header_size 2l
 
   let class_position = Int32.add Tagged.header_size 0l
+  (* Number of object fields *)
+  let size_field = Int32.add Tagged.header_size 1l
 
-  (* Takes the header into account *)
-  let field_position env f =
-     let fi = E.field_to_index env f in
-     let i = Int32.add header_size fi in
-     i
+  let hash_field_name (name : string) = Int32.of_int (Hashtbl.hash name)
 
+  module FieldEnv = Env.Make(String)
   let lit env this_name_opt class_option fs =
-     (* Find largest index, to know the size of the heap representation *)
-     let max a b = if Int32.compare a b >= 0 then a else b in
-     let n = Int32.add header_size (
-             Int32.add 1l (List.fold_left max 0l (List.map (fun (id, _) -> E.field_to_index env id) fs))) in
+    let name_pos_map =
+      fs |>
+      (* We could store only public fields in the object, but
+         then we need to allocate separate boxes for the non-public ones:
+         List.filter (fun (_, priv, f) -> priv.it = Public) |>
+      *)
+      List.map (fun (id,priv,_) -> (hash_field_name (id.it), id.it)) |>
+      List.sort compare |>
+      List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
+      List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
+
+     let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
 
      (* Allocate memory *)
      let (set_ri, get_ri, ri) = new_local_ env "obj" in
-     Heap.alloc n ^^
+     Heap.alloc (Int32.add header_size (Int32.mul 2l sz)) ^^
      set_ri ^^
 
      (* Set tag *)
      get_ri ^^
      Tagged.store Tagged.Object ^^
 
+     (* Write the class field *)
+     get_ri ^^
+     (match class_option with
+       | Some class_instrs -> class_instrs
+       | None -> compile_unboxed_const 1l ) ^^
+     Heap.store_field class_position ^^
+
+     (* Set size *)
+     get_ri ^^
+     compile_unboxed_const sz ^^
+     Heap.store_field size_field ^^
+
+    let hash_position env f =
+        let i = FieldEnv.find f.it name_pos_map in
+        Int32.add header_size (Int32.mul 2l i) in
+    let field_position env f =
+        let i = FieldEnv.find f.it name_pos_map in
+        Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
+
      (* Bind the fields in the envrionment *)
-     (* We could omit that if we extend E.local_vars_env to also have an offset,
-        and just bind all of them to 'ri' *)
-     let mk_field_ptr env (id, _) =
+     let mk_field_ptr env (id, _, _) =
       E.reuse_local_with_offset env id.it ri (field_position env id) in
      let env1 = List.fold_left mk_field_ptr env fs in
 
@@ -979,34 +990,62 @@ module Object = struct
       | None -> (env1, G.nop) in
      this_code ^^
 
-     (* Write the class field *)
-     get_ri ^^
-     (match class_option with
-       | Some class_instrs -> class_instrs
-       | None -> compile_unboxed_const 1l ) ^^
-     Heap.store_field class_position ^^
-
      (* Write all the fields *)
-     let init_field (id, mk_is) : G.t =
-        let i = field_position env id in
-        get_ri ^^
-	mk_is env2 ^^
-        Heap.store_field i
+     let init_field (id, _, mk_is) : G.t =
+        match FieldEnv.find_opt id.it name_pos_map with
+        | None -> G.nop
+        | Some i ->
+          (* Write the hash *)
+          get_ri ^^
+          compile_unboxed_const (hash_field_name id.it) ^^
+          Heap.store_field (hash_position env id) ^^
+          (* Write the value *)
+          get_ri ^^
+          mk_is env2 ^^
+          Heap.store_field (field_position env id)
      in
      G.concat_map init_field fs ^^
 
      (* Return the pointer to the object *)
      get_ri
 
-  let idx env f =
-     (* Expects the pointer to the object on the stack *)
-     let i = field_position env f in
-     compile_unboxed_const (Wasm.I32.mul 4l i) ^^
-     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+  let idx env (name : string) =
+    (* Expects the pointer to the object on the stack *)
+    (* Linearly scan through the fields (binary search can come later) *)
+    (* Maybe this should be a Wasm function *)
+    let (set_x, get_x) = new_local env "x" in
+    let (set_f, get_f) = new_local env "f" in
+    let (set_r, get_r) = new_local env "r" in
+    set_x ^^
 
-  let load_idx env f =
-     let i = field_position env f in
-     Heap.load_field i
+    get_x ^^
+    Heap.load_field size_field ^^
+    from_0_to_n env (fun get_i ->
+      get_i ^^
+       compile_unboxed_const 2l ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+       compile_unboxed_const header_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+       compile_unboxed_const Heap.word_size  ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+       get_x ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      set_f ^^
+
+      get_f ^^
+      Heap.load_field 0l ^^ (* the hash field *)
+      compile_unboxed_const (hash_field_name name) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.if_ []
+        ( get_f ^^
+          compile_unboxed_const Heap.word_size ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_r
+        ) G.nop
+    ) ^^
+    get_r
+
+  let load_idx env f = idx env f ^^ load_ptr
 
 end (* Object *)
 
@@ -1198,7 +1237,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit env1 None None
-              [ (nr_ "next", fun _ -> get_ni) ]
+              [ (nr_ "next", nr__ Public, fun _ -> get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -2096,10 +2135,10 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^ (* idx *)
      BoxedInt.unbox env ^^
      Array.idx
-  | DotE (e, ({it = Name n;_} as id)) ->
+  | DotE (e, {it = Name n;_}) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env {id with it = n}
+     Object.idx env n
   | _ -> todo "compile_lexp" (Arrange.exp exp) G.i_ Unreachable
 
 (* compile_exp returns an *value*.
@@ -2115,9 +2154,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      load_ptr
   | DotE (e, ({it = Name n;_} as id)) ->
      compile_exp env e ^^
-     (* Only real objects have mutable fields, no need to branch on the tag *)
      Tagged.branch env [I32Type]
-      ( [ Tagged.Object, Object.idx env {id with it = n} ^^ load_ptr ] @
+      ( [ Tagged.Object, Object.load_idx env n ] @
         (if E.mode env = DfinityMode
          then [ Tagged.Reference, actor_fake_object_idx env {id with it = n} ]
          else []) @
@@ -2255,7 +2293,10 @@ and compile_exp (env : E.t) exp = match exp.it with
      Array.load_n (Int32.of_int n)
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object; _}, name, fs) ->
-     let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) fs in
+     let fs' = List.map
+      (fun (f : Syntax.exp_field) ->
+        (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+      ) fs in
      Object.lit env (Some name) None fs'
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
     let captured = Freevars.exp exp in
@@ -2301,7 +2342,7 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      G.loop_ []
        ( get_i ^^
-         Object.load_idx env1 (nr__ "next") ^^
+         Object.load_idx env1 "next" ^^
          compile_unit ^^
          Func.call_indirect env1 Source.no_region ^^
          let (set_oi, get_oi) = new_local env "opt" in
@@ -2499,7 +2540,9 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
-        let fs' = List.map (fun (f : Syntax.exp_field) -> (f.it.id, fun env -> compile_exp env f.it.exp)) efs in
+        let fs' = List.map (fun (f : Syntax.exp_field) ->
+          (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+          ) efs in
         (* this is run within the function. The class id is the function
 	identifier, as provided by Func.dec:
 	For closures it is the pointer to the closure.
