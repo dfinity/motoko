@@ -1674,6 +1674,86 @@ module Serialization = struct
               ) ^^
               get_copy
             end
+          ; Tagged.Object,
+            begin
+              let (set_len, get_len) = new_local env "len" in
+              Heap.load_field Object.size_field ^^
+              set_len ^^
+
+              get_len ^^
+              compile_unboxed_const 2l ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+              compile_unboxed_const Object.header_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              G.i_ Drop ^^
+
+              (* Copy header *)
+              get_x ^^
+              get_copy ^^
+              compile_unboxed_const (Int32.mul Heap.word_size Object.header_size) ^^
+              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+              (* Copy fields *)
+              get_len ^^
+              from_0_to_n env (fun get_i ->
+                (* Copy hash *)
+                get_i ^^
+                compile_unboxed_const 2l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_unboxed_const Object.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                get_copy ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+                get_i ^^
+                compile_unboxed_const 2l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_unboxed_const Object.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                get_x ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+
+                load_ptr ^^
+                store_ptr ^^
+
+                (* Copy data *)
+
+                get_i ^^
+                compile_unboxed_const 2l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_unboxed_const Object.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                get_copy ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+                get_i ^^
+                compile_unboxed_const 2l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_unboxed_const Object.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                get_x ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+                load_ptr ^^
+                G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
+                store_ptr
+              ) ^^
+              get_copy
+            end
           ; Tagged.Closure,
             (* Closures are not copied. Instead, we create a funcref for them *)
             G.i_ Drop ^^
@@ -1776,6 +1856,43 @@ module Serialization = struct
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 compile_unboxed_const Heap.word_size ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Object,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Object.size_field ^^
+                set_len ^^
+
+                (* Adjust fields *)
+                get_len ^^
+                from_0_to_n env (fun get_i ->
+                  get_i ^^
+                  compile_unboxed_const 2l ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                  compile_unboxed_const Object.header_size ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                  compile_unboxed_const Heap.word_size ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                  compile_unboxed_const Heap.word_size ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                  get_x ^^
+                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                  get_ptr_offset ^^
+                  G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
+                ) ^^
+
+                (* Advance pointer *)
+                get_len ^^
+                compile_unboxed_const 2l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_unboxed_const Object.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                get_x ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 set_x
               end

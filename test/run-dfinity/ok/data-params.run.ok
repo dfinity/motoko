@@ -8,33 +8,25 @@ printInt(6)
 
 printInt(10)
 
-printInt(21)
+printInt(1_010)
 
-printInt(45)
+printInt(1_021)
 
-printInt(91)
+printInt(6_021)
 
-printInt(1_000_091)
+printInt(6_045)
 
-printInt(1_000_105)
+printInt(6_091)
 
-printInt(1_001_105)
-
-printInt(1_003_105)
+printInt(1_006_091)
 
 printInt(1_006_105)
 
-printInt(1_010_105)
+printInt(1_006_136)
 
-printInt(1_021_105)
+printInt(1_006_171)
 
-printInt(1_045_105)
-
-printInt(1_091_105)
-
-printInt(1_105_105)
-
-printInt(1_105_105)
+printInt(1_006_171)
 
 -- Finished data-params.as:
 

@@ -28,6 +28,12 @@ let a = actor {
     printInt(c);
     print("\n");
   };
+  increcord(a : { x : Nat; y : Nat }) : () {
+    c += a.x;
+    c += a.y;
+    printInt(c);
+    print("\n");
+  };
   printCounter () {
     printInt(c);
     print("\n");
@@ -38,27 +44,19 @@ let a = actor {
 };
 
 
-// small values
 a.incn(1);
 a.incn(2);
 a.incn(3);
 a.incn(4);
+a.incn(1000);
 a.incnn(5,6);
+a.incnn(2000,3000);
 a.incnested(7,(8,9));
 a.incarray([10,11,12,13]);
 a.incopt(null);
 a.incopt(14?);
-
-
-// large values
-a.incn(1000);
-a.incn(2000);
-a.incn(3000);
-a.incn(4000);
-a.incnn(5000,6000);
-a.incnested(7000,(8000,9000));
-a.incarray([10000,11000,12000,13000]);
-a.incopt(14000?);
+a.increcord(new {x = 15; y = 16});
+a.increcord(new {x = 17; y = 18; z = 19});
 
 a.printCounter();
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });
