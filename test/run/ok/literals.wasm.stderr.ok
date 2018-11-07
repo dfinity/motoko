@@ -1,5 +1,3 @@
-compile_exp: (PrimE Array.tabular)
-compile_exp: (PrimE Array.init)
 compile_lit: (CharLit 2612)
 compile_lit: (Word32Lit 4294967295)
 compile_lit: (Word16Lit 6_5535)

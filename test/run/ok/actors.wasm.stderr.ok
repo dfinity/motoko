@@ -1,9 +1,5 @@
-compile_exp: (PrimE Array.tabular)
-compile_exp: (PrimE Array.init)
 compile_binop: DivOp
 compile_exp: (AsyncE (BinE (LitE (NatLit 1)) DivOp (LitE (NatLit 0))))
-compile_exp: (PrimE Array.tabular)
-compile_exp: (PrimE Array.init)
 compile_exp: (AsyncE
   (BlockE
     (ExpD
@@ -38,5 +34,3 @@ compile_exp: (AsyncE
     )
   )
 )
-compile_exp: (PrimE Array.tabular)
-compile_exp: (PrimE Array.init)
