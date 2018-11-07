@@ -34,6 +34,16 @@ class revrange(x : Nat, y : Nat) {
 
 func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
 func print (x : Text) { ((prim "print") : Text -> ()) x };
+
+/* This would be nicer as a objects, but lets do them as functions
+   until the compiler has a concept of “static objects” */
+func Array_init <T> (len : Nat,  x : T) : var T[] {
+  ((prim "Array.init") : <T> (Nat, T) -> var T[]) <T>(len, x)
+};
+func Array_tabular <T> (len : Nat,  gen : Nat -> T) : T[] {
+  ((prim "Array.tabular") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
+};
+
 |}
 
 (*

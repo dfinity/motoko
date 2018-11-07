@@ -1,0 +1,2 @@
+compile_exp: (PrimE Array.tabular)
+compile_exp: (PrimE Array.init)

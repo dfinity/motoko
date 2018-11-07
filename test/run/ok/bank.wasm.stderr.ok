@@ -1,3 +1,5 @@
+compile_exp: (PrimE Array.tabular)
+compile_exp: (PrimE Array.init)
 compile_exp: (AsyncE
   (BlockE
     (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
