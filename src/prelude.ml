@@ -40,8 +40,8 @@ func print (x : Text) { ((prim "print") : Text -> ()) x };
 func Array_init <T> (len : Nat,  x : T) : var T[] {
   ((prim "Array.init") : <T> (Nat, T) -> var T[]) <T>(len, x)
 };
-func Array_tabular <T> (len : Nat,  gen : Nat -> T) : T[] {
-  ((prim "Array.tabular") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
+func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
+  ((prim "Array.tabulate") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
 };
 
 |}
@@ -74,7 +74,7 @@ let prim = function
        | [len; x] ->
          k (Array (Array.make (Int.to_int (as_nat len)) x))
       | _ -> assert false)
-  | "Array.tabular" -> fun v k ->
+  | "Array.tabulate" -> fun v k ->
       (match Value.as_tup v with
        | [len; g] ->
          let len_nat = Int.to_int (as_nat len) in

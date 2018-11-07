@@ -1312,7 +1312,7 @@ module Array = struct
     ) ^^
     get_r
 
-  let tabular env =
+  let tabulate env =
     let (set_len, get_len) = new_local env "len" in
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
@@ -2407,7 +2407,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^
      match p with
       | "Array.init" -> Array.init env
-      | "Array.tabular" -> Array.tabular env
+      | "Array.tabulate" -> Array.tabulate env
       | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
     end
   (* Unary prims *)

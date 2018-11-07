@@ -5,7 +5,7 @@ for (n in a.vals()) {
   assert(n == 42);
 };
 
-let b = Array_tabular<Nat>(10,func (x : Nat) : Nat = x);
+let b = Array_tabulate<Nat>(10,func (x : Nat) : Nat = x);
 
 assert(b.len() == 10);
 for (i in b.keys()) {
