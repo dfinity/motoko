@@ -2,7 +2,7 @@ let a = Array_init<Nat>(10,42);
 
 assert (a.len() == 10);
 for (n in a.vals()) {
-  assert(n == 10);
+  assert(n == 42);
 };
 
 let b = Array_tabular<Nat>(10,func (x : Nat) : Nat = x);
