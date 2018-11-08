@@ -1284,6 +1284,7 @@ module Array = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
+    BoxedInt.unbox env ^^
     set_len ^^
 
     (* Allocate *)
@@ -1301,7 +1302,6 @@ module Array = struct
     Heap.store_field len_field ^^
 
     (* Write fields *)
-    (* Copy fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
       get_r ^^
@@ -1317,6 +1317,7 @@ module Array = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     set_f ^^
+    BoxedInt.unbox env ^^
     set_len ^^
 
     (* Allocate *)
@@ -1342,6 +1343,7 @@ module Array = struct
       idx ^^
       get_f ^^
       get_i ^^
+      BoxedInt.box env ^^
       Func.call_indirect env no_region ^^
       store_ptr
     ) ^^
