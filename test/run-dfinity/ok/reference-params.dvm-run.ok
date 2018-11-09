@@ -1,0 +1,17 @@
+$ dvm reset
+{
+    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
+}
+$ dvm new -a _out/reference-params.wasm
+{
+    "modId": "#inject_id/0",
+    "storage": [],
+    "id": "#inject_id/1 (reference-params)",
+    "type": "actor"
+}
+$ dvm run -q reference-params start
+Hello World!
+Hello World!
+Hello World!
+Hello World!
+
