@@ -198,27 +198,29 @@ let prelude_error phase (at, _, msg) =
   print_error (at, "fatal", phase ^ " prelude failed: " ^ msg);
   exit 1
 
-let check_prelude () : Syntax.prog * stat_env =
-  let lexer = Lexing.from_string Prelude.prelude in
+let check_prelude prelude_source env : Syntax.prog * stat_env =
+  let lexer = Lexing.from_string prelude_source in
   let parser = Parser.parse_prog in
   match parse_with Lexer.Privileged lexer parser prelude_name with
   | Error e -> prelude_error "parsing" e
   | Ok prog ->
-    match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
+    match check_prog infer_prog_unit env prelude_name prog with
     | Error es -> prelude_error "checking" (List.hd es)
     | Ok (_t, sscope) ->
-      let senv = Typing.adjoin Typing.empty_env sscope in
+      let senv = Typing.adjoin env sscope in
       prog, senv
 
-let prelude, initial_stat_env = check_prelude ()
+let prelude, pre_initial_stat_env = check_prelude Prelude.prelude Typing.empty_env
+let toplevel_prelude, initial_stat_env = check_prelude Prelude.toplevel_prelude pre_initial_stat_env
 
-let run_prelude () : dyn_env =
-  match interpret_prog Interpret.empty_env prelude_name prelude with
+let run_prelude prog env : dyn_env =
+  match interpret_prog env prelude_name prog with
   | None -> prelude_error "initializing" (Source.no_region, "", "crashed")
   | Some (_v, dscope) ->
-    Interpret.adjoin Interpret.empty_env dscope
+    Interpret.adjoin env dscope
 
-let initial_dyn_env = run_prelude ()
+let pre_initial_dyn_env = run_prelude prelude Interpret.empty_env
+let initial_dyn_env = run_prelude toplevel_prelude pre_initial_dyn_env
 let initial_env = (initial_stat_env, initial_dyn_env)
 
 

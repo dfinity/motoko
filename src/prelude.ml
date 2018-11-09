@@ -43,7 +43,16 @@ func Array_init <T> (len : Nat,  x : T) : var T[] {
 func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
   ((prim "Array.tabulate") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
 };
+|}
 
+(* This is used by the type checker and the interpreter, and
+corresponds to the arguments that the hypervisor passes to the 
+start function. It is ignored by the compiler. *)
+let toplevel_prelude = {|
+let console : actor { log : Text -> () } = actor {
+  logI32 (x : Int) { ((prim "printInt") : Int -> ()) x };
+  log (x : Text) { ((prim "print") : Text -> ()) x };
+};
 |}
 
 (*

@@ -26,6 +26,6 @@ function dvm_ () {
 
 dvm_ reset
 dvm_ new -a $1
-dvm_ run -q $name start
+dvm_ run -q $name start console
 # not stable across v8 vs. hero!
 # dvm_ root

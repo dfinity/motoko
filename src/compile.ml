@@ -766,7 +766,7 @@ module Func = struct
                 in (store_env, restore_env) in
           go 0 captured in
 
-	(* All functions are unary for now (arguments passed as heap-allocated tuples)
+        (* All functions are unary for now (arguments passed as heap-allocated tuples)
            with the closure itself passed as a first argument *)
         let mk_body' env = mk_body env load_the_closure in
         let f = compile_func env restore_env mk_pat mk_body' at in
@@ -1545,16 +1545,28 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_start_stub env =
-    (* Create an empty message *)
-    let empty_f = Func.of_body env [] [] (fun env1 ->
+  let export_start env mk_code =
+    (* The start function receives the console actor  *)
+    let empty_f = Func.of_body env ["console_ref"] [] (fun env1 ->
       (* Set up memory *)
       G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+
+      (* Put the console into the environment *)
+      let get_console_ref = G.i_ (GetLocal (nr 0l)) in
+      let (env2, ci) = Var.add_local env1 "console" in
+      Tagged.obj env2 Tagged.MutBox [
+        get_console_ref ^^ ElemHeap.remember_reference env2
+      ] ^^
+      G.i_ (SetLocal (nr ci)) ^^
+
+      mk_code env2 ^^
+
       (* Save memory *)
       G.i_ (Call (nr (E.built_in env "save_mem")))
       ) in
     let fi = E.add_fun env empty_f in
-    E.add_fun_name env fi "start_stub";
+    E.add_dfinity_type env (fi, [CustomSections.ActorRef]);
+    E.add_fun_name env fi "start";
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
@@ -1584,7 +1596,7 @@ module OrthogonalPersistence = struct
     This does not persist references yet.
   *)
 
-  let register env start_funid =
+  let register env start_funid_o =
     E.add_export env (nr {
       name = Dfinity.explode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
@@ -1604,8 +1616,9 @@ module OrthogonalPersistence = struct
        compile_unboxed_const 0l ^^
        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
        G.if_[]
-         (* First run, call the start function *)
-         ( G.i_ (Call (nr start_funid)) )
+         (match start_funid_o with
+          | Some start_funid -> ( G.i_ (Call (nr start_funid)) )
+          | None -> G.nop)
 
          (* Subsequent run *)
          ( (* Set heap pointer based on databuf length *)
@@ -2797,9 +2810,9 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
           (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
           ) efs in
         (* this is run within the function. The class id is the function
-	identifier, as provided by Func.dec:
-	For closures it is the pointer to the closure.
-	For functions it is the function id (shifted to never class with pointers) *)
+        identifier, as provided by Func.dec:
+        For closures it is the pointer to the closure.
+        For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 None (Some compile_fun_identifier) fs' in
       Func.dec pre_env last name captured mk_pat mk_body dec.at
 
@@ -2832,17 +2845,14 @@ and find_prelude_names env =
   let (env3, _) = compile_prelude env2 in
   E.in_scope_set env3
 
-
-and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
-  Func.of_body env [] [] (fun env1 ->
+and compile_progs env (progs : Syntax.prog list) : G.t =
     let rec go env = function
       | [] -> G.nop
       | (prog::progs) ->
           let (env1, code1) = compile_decs_block env false prog.it in
           let code2 = go env1 progs in
           code1 ^^ code2 in
-    go env1 progs
-    )
+    go env progs
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
   let ptr = E.reserve_static_memory pre_env Heap.word_size in
@@ -2926,7 +2936,7 @@ and actor_lit outer_env name fs =
     let start_fi = E.add_fun env1 start_fun in
     E.add_fun_name env1 start_fi "start";
 
-    OrthogonalPersistence.register env1 start_fi;
+    OrthogonalPersistence.register env1 (Some start_fi);
 
     let m = conclude_module env1 None in
     let (_map, wasm) = CustomModule.encode m in
@@ -3050,15 +3060,17 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   if E.mode env1 = DfinityMode then Serialization.system_funs env1;
   if E.mode env1 = DfinityMode then Message.system_funs env1;
 
-  let start_fun = compile_start_func env1 (prelude :: progs) in
-  let start_fi = E.add_fun env1 start_fun in
-  E.add_fun_name env1 start_fi "start";
   let start_fi_o =
     if E.mode env1 = DfinityMode
     then begin
-      OrthogonalPersistence.register env1 start_fi;
-      Dfinity.export_start_stub env1;
+      OrthogonalPersistence.register env1 None;
+      Dfinity.export_start env1 (fun env2 -> compile_progs env2 progs);
       None
-    end else Some (nr start_fi) in
+    end else begin
+      let start_fun = Func.of_body env [] [] (fun env1 -> compile_progs env1 progs) in
+      let start_fi = E.add_fun env1 start_fun in
+      E.add_fun_name env1 start_fi "start";
+      Some (nr start_fi)
+    end in
 
   conclude_module env1 start_fi_o
