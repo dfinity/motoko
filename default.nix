@@ -1,5 +1,5 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
-  test-dsh ? false,
+  test-dvm ? false,
   v8 ? true,
 }:
 
@@ -21,13 +21,13 @@ let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
-# Include dsh
-let dsh =
-  if test-dsh
+# Include dvm
+let dvm =
+  if test-dvm
   then
     if !builtins.pathExists ./nix/dev/default.nix
-    then throw "\"test-dsh = true\" requires a checkout of dev in ./nix"
-    else ((import ./nix/dev) { v8 = v8; }).dsh
+    then throw "\"test-dvm = true\" requires a checkout of dev in ./nix"
+    else ((import ./nix/dev) { v8 = v8; }).dvm
   else null; in
 
 # We need a newer version of menhir.
@@ -101,7 +101,7 @@ rec {
       [ native
         ocaml_wasm
         nixpkgs.bash ] ++
-      (if test-dsh then [ dsh ] else []);
+      (if test-dvm then [ dvm ] else []);
 
     buildPhase = ''
       patchShebangs .
@@ -110,7 +110,7 @@ rec {
       make -C test/run VERBOSE=1 ASC=asc all
       make -C test/fail VERBOSE=1 ASC=asc all
     '' +
-      (if test-dsh then ''
+      (if test-dvm then ''
       make -C test/run-dfinity VERBOSE=1 ASC=asc all
       '' else "");
 
@@ -146,5 +146,5 @@ rec {
   });
 
   wasm = ocaml_wasm;
-  inherit dsh;
+  inherit dvm;
 }

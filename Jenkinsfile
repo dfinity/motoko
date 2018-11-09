@@ -12,7 +12,7 @@ pipeline {
 
         stage('Build and test (native)') {
             steps {
-                sh 'nix-build -A native --arg test-dsh true'
+                sh 'nix-build -A native --arg test-dvm true'
             }
         }
         stage('Build and test (js)') {

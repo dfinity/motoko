@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a:  Update the files in ok/
-#    -d: Compile with --dfinity, use dsh to run
+#    -d: Compile with --dfinity, use dvm to run
 #
 
 
@@ -16,7 +16,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 WASM=${WASM:-wasm}
-DSH_WRAPPER=$(realpath $(dirname $0)/dsh.sh)
+DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 
 while getopts "ad" o; do
     case "${o}" in
@@ -55,7 +55,7 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dsh-run}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run}
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -84,9 +84,9 @@ do
 
       if [ $DFINITY = 'yes' ];
       then
-        echo -n " [dsh]"
-        $DSH_WRAPPER $out/$base.wasm > $out/$base.dsh-run 2>&1
-        diff_files="$diff_files $base.dsh-run"
+        echo -n " [dvm]"
+        $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
+        diff_files="$diff_files $base.dvm-run"
       else
         echo -n " [wasm-run]"
         $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1

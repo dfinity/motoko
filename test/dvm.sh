@@ -11,21 +11,21 @@ name="$(basename $1 .wasm)"
 
 
 export LANG=C
-function dsh_ () {
-  echo "\$ dsh $@"
+function dvm_ () {
+  echo "\$ dvm $@"
 
   # hide the segmentation fault message
   # hide leaked debug log
-  # make sure there is a trailing newline (dsh with hero does not produce it).
-  { dsh $@; } 2>&1 \
+  # make sure there is a trailing newline (dvm with hero does not produce it).
+  { dvm $@; } 2>&1 \
     | sed -e 's,.*egmentation.*,Segmentation Fault,' \
     | sed -e 's,Leaked.*!,,' \
     | sed -e '$a\'
 
 }
 
-dsh_ reset
-dsh_ new -a $1
-dsh_ run -q $name start
+dvm_ reset
+dvm_ new -a $1
+dvm_ run -q $name start
 # not stable across v8 vs. hero!
-# dsh_ root
+# dvm_ root
