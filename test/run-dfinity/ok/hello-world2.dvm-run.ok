@@ -1,0 +1,35 @@
+$ dvm reset
+{
+    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
+}
+$ dvm new -a _out/hello-world2.wasm
+{
+    "modId": "#inject_id/0",
+    "storage": [],
+    "id": "#inject_id/1 (hello-world2)",
+    "type": "actor"
+}
+$ dvm run -q hello-world2 start
+dvm: no such sys: ("test","print")
+CallStack (from HasCallStack):
+  error, called at src/DFINITY/Hypervisor.hs:744:8 in dfinity-hypervisor-0.0.0-BhJEuQSGvsBHeeUsRxkdqL:DFINITY.Hypervisor
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
