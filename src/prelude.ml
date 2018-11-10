@@ -34,10 +34,43 @@ class revrange(x : Nat, y : Nat) {
 
 func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
 func print (x : Text) { ((prim "print") : Text -> ()) x };
+
+
+type Cont<T <: Shared> = T -> () ;
+type Async<T <: Shared> = Cont<T> -> (); 
+
+func new_async<T <: Shared>():(Async<T>,shared T->()) {
+    let empty = func k (t:T) = ();
+    var result : T ? = null;
+    var ks : T -> () = empty;
+    shared func fullfill(t:T):() { 
+    	 switch(result) {
+	 case null {
+	     result := t?;
+	     let ks_ = ks;
+	     ks := empty;
+	     ks_(t);
+	 };
+	 case (t?) (assert(false));
+	 };
+    };
+    func enqueue(k:Cont<T>):() {
+     	switch(result) {
+	case null {
+	    let ks_ = ks;
+            ks := (func (t:T) {ks_(t);k(t);});
+	};
+	case (t?) (k(t));
+	};
+    };
+    (enqueue,fullfill)
+};
+
 |}
 
 (*
 type cont<T> = T -> () ;
+
 type cps<T> = cont<T> -> ();
 
 func new_async<T>(e:cps<T>) : async T  = {

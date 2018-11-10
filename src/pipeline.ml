@@ -1,6 +1,7 @@
 open Printf
 
-module A = Awaitopt   (* Await *)    
+module A = Awaitopt   (* Await *)
+(* module Async = Async      *)
 type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
