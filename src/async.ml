@@ -26,6 +26,8 @@ let sharableS =
    at=no_region;
    note=()}
 
+let replyT typ = T.Func(T.Call T.Sharable, [], typ, answerT)
+              
 let tupT ts = {it = TupT ts;
                at = no_region;
                note = ()}
@@ -37,14 +39,44 @@ let funcT(s,bds,t1,t2) =
    at = no_region;
    note = ()}
 
+let new_asyncT =
+  (T.Func(T.Call T.Local,[{var = "T";
+                           bound = T.Shared}],
+                          T.Tup[],
+                          T.Tup [T.Async (T.Var ("T",0));
+                                 replyT (T.Var ("T",0))])
+  )
+  
+let new_asyncE =
+  exp_of_id "new_async" new_asyncT
+
+let bogusT = PrimT "Any"@@no_region (* bogus,  but we shouln't use it anymore *)
+             
+let prelude_new_async t1 =
+  { it = CallE(new_asyncE,[bogusT],tupE []);
+    note = {note_typ = T.Tup [T.Async t1;
+                               replyT t1];
+            note_eff = T.Triv};
+    at = no_region;    
+  }
 let contTT t = funcT(localS,[],t,unitT)
              
 let tupP pats =
   {it = TupP pats; 
    note = {note_typ = T.Tup (List.map typ pats);
            note_eff = T.Triv};
-   at = no_region}     
+   at = no_region}
 
+let projE e n =
+  match typ e with
+  | T.Tup ts ->
+     {it = ProjE(e,n);
+      note = {note_typ = List.nth ts n;
+              note_eff = T.Triv};
+      at = no_region;
+     }
+  | _ -> failwith "projE"
+             
 let t_async t =  T.Func (T.Call T.Local, [], T.Func(T.Call T.Local,[],t,T.unit), T.unit)
   
 let rec t_typ (t:T.typ) =
@@ -87,20 +119,48 @@ and t_bind {var; bound} =
 
 and t_field {name; typ} =
   {name; typ = t_typ typ}
-let rec t_exp exp =
-  { exp with it = t_exp' exp.it }
-and t_exp' exp' =
+let rec t_exp (exp:Syntax.exp) =
+  { it = t_exp' exp;
+    note = { note_typ = t_typ exp.note.note_typ;
+             note_eff = exp.note.note_eff};
+    at = exp.at;
+  }
+and t_exp' (exp:Syntax.exp) =
+  let exp' = exp.it in
   match exp' with
   | PrimE _
   | LitE _ -> exp'
-  | VarE _ -> exp'
-  (*     
+  | VarE id -> 
      begin
-     match typ exp1 with
+     match typ exp with
+     | T.Func (T.Call T.Sharable,_,_,T.Tup[]) ->
+        exp'
+     | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) ->
+        let t_id = idE id (t_typ (typ exp)) in
+        let t1 = t_typ t1 in
+        let t2 = t_typ t2 in
+        let v1 = fresh_id t1 in
+        let call_new_async = prelude_new_async t2 in
+        let p = fresh_id (typ call_new_async) in
+        DecE
+          { it = FuncD(
+                     {it=Sharable;at=no_region;note=()},                     
+                     id,
+                     [] (*tbs*), (*fix me with bogus bounds *)
+                     varP v1,
+                     unitT,
+                     blockE [letD p (call_new_async);
+                             expD (t_id -*- tupE [v1;projE p 1]); (*TBC add instantiation, check others*)
+                             expD (projE p 0)]);
+            note = {note_typ = t_typ (typ exp);
+                  note_eff = T.Triv};
+          at = no_region
+        }
      | T.Func (T.Call T.Sharable,_,_,_) ->
-     | _ -> exp'
+        failwith "t_exp:VarE"
+     | _ ->
+        exp'
      end
- *)
   | UnE (op, exp1) ->
     UnE (op, t_exp exp1)
   | BinE (exp1, op, exp2) ->
@@ -124,15 +184,66 @@ and t_exp' exp' =
     ArrayE (List.map t_exp exps)
   | IdxE (exp1, exp2) ->
      IdxE (t_exp exp1, t_exp exp2)
-  | CallE (exp1, typs, exp2) ->
-     begin
-     match typ exp1 with
-     | T.Func (T.Call T.Sharable,_,_,_) ->
-        exp'
-     | _ -> exp'
-     end
+  | CallE ({it=PrimE "@await";_}, typs, exp2) ->
+    begin
+     match exp2.it with
+     | TupE [a;k] -> ((t_exp a) -*- (t_exp k)).it
+     | _ -> failwith "t_exp: @await"
+    end
+  | CallE ({it=PrimE "@async";_}, typs, exp2) ->
+     let t1, contT = match typ exp2 with
+       | Func(_,
+              [],
+              (Func(_,[],t1,Tup[]) as contT),
+              Tup[]) ->
+          (t_typ t1,t_typ contT)
+       | _ -> failwith "t_exp: @async" in
+     let k = fresh_id contT in
+     let v1 = fresh_id t1 in
+     let call_new_async = prelude_new_async t1 in
+     let p = fresh_id (typ call_new_async) in
+     let p_0 = projE p 0 in
+     let p_1 = projE p 1 in
+     let async  = fresh_id (typ p_0) in
+     let fullfill = fresh_id (typ p_1) in
+         (blockE [letD p call_new_async;
+                 letD async p_0;
+                 letD fullfill p_1;
+                 funcD k v1 (fullfill -*- v1);
+                 expD ((t_exp exp2) -*- k);
+                 expD async])
+           .it
+  
+
+  | CallE ({it=VarE id;_} as exp1, typs, exp2) 
+       when
+         begin match typ exp1 with
+         | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) -> true
+         | _ -> false
+         end
+    ->
+     let t1,t2 =
+       match typ exp1 with
+       | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) ->
+          t_typ t1, t_typ t2
+       | _ -> assert(false)
+     in
+     let id = idE id (t_typ (typ exp1)) in
+     let typs = List.map t_typT typs in
+     let call_new_async = prelude_new_async t2 in
+     let p = fresh_id (typ call_new_async) in
+     (blockE [letD p (call_new_async);
+              expD {
+                  it = CallE(id,typs,tupE [exp1;projE p 1]);
+                  at = exp.at;
+                  note = {note_typ = T.unit;
+                          note_eff = T.Triv}};
+              expD (projE p 0)])
+       .it
+  | CallE (exp1, typs, exp2)  ->
+    CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
   | BlockE decs ->
-     BlockE (t_decs decs)
+    BlockE (t_decs decs)
   | NotE exp1 ->
     NotE (t_exp exp1)     
   | AndE (exp1, exp2) ->
@@ -157,9 +268,9 @@ and t_exp' exp' =
   | LabelE (id, _typ, exp1) ->
     LabelE (id, t_typT _typ, t_exp exp1)
   | BreakE (id, exp1) ->
-     BreakE (id, t_exp exp1)
+    BreakE (id, t_exp exp1)
   | RetE exp1 ->
-     RetE (t_exp exp1)
+    RetE (t_exp exp1)
   | AsyncE _ -> failwith "unexpected asyncE" 
   | AwaitE _ -> failwith "unexpected awaitE" 
   | AssertE exp1 ->
