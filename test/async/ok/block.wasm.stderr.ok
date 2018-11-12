@@ -48,25 +48,43 @@ compile_exp: (DeclareE
                     )
                     (ExpD
                       (CallE
-                        (PrimE @await)
-                        (TupE
-                          (CallE
-                            (PrimE @async)
-                            (DecE
-                              (FuncD
-                                Local
-                                
-                                (VarP $39)
-                                (PrimT Any)
-                                (CallE
-                                  (VarE $39)
-                                  (TupE (LitE (TextLit a5)) (LitE (TextLit b5)))
+                        (BlockE
+                          (LetD
+                            (VarP $84)
+                            (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                          )
+                          (LetD (VarP $85) (ProjE (VarE $84) 0))
+                          (LetD (VarP $86) (ProjE (VarE $84) 1))
+                          (FuncD
+                            Local
+                            $82
+                            (VarP $83)
+                            (PrimT Any)
+                            (CallE (VarE $86) (VarE $83))
+                          )
+                          (ExpD
+                            (CallE
+                              (DecE
+                                (FuncD
+                                  Local
+                                  
+                                  (VarP $39)
+                                  (PrimT Any)
+                                  (CallE
+                                    (VarE $39)
+                                    (TupE
+                                      (LitE (TextLit a5))
+                                      (LitE (TextLit b5))
+                                    )
+                                  )
                                 )
                               )
+                              (VarE $82)
                             )
                           )
-                          (VarE $37)
+                          (ExpD (VarE $85))
                         )
+                        (VarE $37)
                       )
                     )
                   )
@@ -77,29 +95,40 @@ compile_exp: (DeclareE
         )
         (ExpD
           (CallE
-            (PrimE @await)
-            (TupE
-              (CallE
-                (PrimE @async)
-                (DecE
-                  (FuncD
-                    Local
-                    
-                    (VarP $32)
-                    (PrimT Any)
-                    (CallE (VarE $32) (LitE (NatLit 5)))
+            (BlockE
+              (LetD (VarP $89) (CallE (VarE new_async) (PrimT BogusT) (TupE)))
+              (LetD (VarP $90) (ProjE (VarE $89) 0))
+              (LetD (VarP $91) (ProjE (VarE $89) 1))
+              (FuncD
+                Local
+                $87
+                (VarP $88)
+                (PrimT Any)
+                (CallE (VarE $91) (VarE $88))
+              )
+              (ExpD
+                (CallE
+                  (DecE
+                    (FuncD
+                      Local
+                      
+                      (VarP $32)
+                      (PrimT Any)
+                      (CallE (VarE $32) (LitE (NatLit 5)))
+                    )
                   )
+                  (VarE $87)
                 )
               )
-              (VarE $30)
+              (ExpD (VarE $90))
             )
+            (VarE $30)
           )
         )
       )
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   f@9
   (DeclareE
@@ -141,25 +170,40 @@ compile_exp: (DeclareE
                 )
                 (ExpD
                   (CallE
-                    (PrimE @await)
-                    (TupE
-                      (CallE
-                        (PrimE @async)
-                        (DecE
-                          (FuncD
-                            Local
-                            
-                            (VarP $26)
-                            (PrimT Any)
-                            (CallE
-                              (VarE $26)
-                              (TupE (LitE (TextLit a4)) (LitE (TextLit b4)))
+                    (BlockE
+                      (LetD
+                        (VarP $74)
+                        (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                      )
+                      (LetD (VarP $75) (ProjE (VarE $74) 0))
+                      (LetD (VarP $76) (ProjE (VarE $74) 1))
+                      (FuncD
+                        Local
+                        $72
+                        (VarP $73)
+                        (PrimT Any)
+                        (CallE (VarE $76) (VarE $73))
+                      )
+                      (ExpD
+                        (CallE
+                          (DecE
+                            (FuncD
+                              Local
+                              
+                              (VarP $26)
+                              (PrimT Any)
+                              (CallE
+                                (VarE $26)
+                                (TupE (LitE (TextLit a4)) (LitE (TextLit b4)))
+                              )
                             )
                           )
+                          (VarE $72)
                         )
                       )
-                      (VarE $24)
+                      (ExpD (VarE $75))
                     )
+                    (VarE $24)
                   )
                 )
               )
@@ -170,7 +214,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   f@4
   (DeclareE
@@ -223,25 +266,40 @@ compile_exp: (DeclareE
             )
             (ExpD
               (CallE
-                (PrimE @await)
-                (TupE
-                  (CallE
-                    (PrimE @async)
-                    (DecE
-                      (FuncD
-                        Local
-                        
-                        (VarP $16)
-                        (PrimT Any)
-                        (CallE
-                          (VarE $16)
-                          (TupE (LitE (TextLit a3)) (LitE (TextLit b3)))
+                (BlockE
+                  (LetD
+                    (VarP $64)
+                    (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                  )
+                  (LetD (VarP $65) (ProjE (VarE $64) 0))
+                  (LetD (VarP $66) (ProjE (VarE $64) 1))
+                  (FuncD
+                    Local
+                    $62
+                    (VarP $63)
+                    (PrimT Any)
+                    (CallE (VarE $66) (VarE $63))
+                  )
+                  (ExpD
+                    (CallE
+                      (DecE
+                        (FuncD
+                          Local
+                          
+                          (VarP $16)
+                          (PrimT Any)
+                          (CallE
+                            (VarE $16)
+                            (TupE (LitE (TextLit a3)) (LitE (TextLit b3)))
+                          )
                         )
                       )
+                      (VarE $62)
                     )
                   )
-                  (VarE $14)
+                  (ExpD (VarE $65))
                 )
+                (VarE $14)
               )
             )
           )
@@ -250,7 +308,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   a@2
   (DeclareE
@@ -276,29 +333,39 @@ compile_exp: (DeclareE
       )
       (ExpD
         (CallE
-          (PrimE @await)
-          (TupE
-            (CallE
-              (PrimE @async)
-              (DecE
-                (FuncD
-                  Local
-                  
-                  (VarP $6)
-                  (PrimT Any)
-                  (CallE
-                    (VarE $6)
-                    (TupE (LitE (TextLit a2)) (LitE (TextLit b2)))
+          (BlockE
+            (LetD (VarP $54) (CallE (VarE new_async) (PrimT BogusT) (TupE)))
+            (LetD (VarP $55) (ProjE (VarE $54) 0))
+            (LetD (VarP $56) (ProjE (VarE $54) 1))
+            (FuncD
+              Local
+              $52
+              (VarP $53)
+              (PrimT Any)
+              (CallE (VarE $56) (VarE $53))
+            )
+            (ExpD
+              (CallE
+                (DecE
+                  (FuncD
+                    Local
+                    
+                    (VarP $6)
+                    (PrimT Any)
+                    (CallE
+                      (VarE $6)
+                      (TupE (LitE (TextLit a2)) (LitE (TextLit b2)))
+                    )
                   )
                 )
+                (VarE $52)
               )
             )
-            (VarE $4)
+            (ExpD (VarE $55))
           )
+          (VarE $4)
         )
       )
     )
   )
 )
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @async)

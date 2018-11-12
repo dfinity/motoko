@@ -212,35 +212,60 @@ compile_exp: (DeclareE
                                     )
                                     (ExpD
                                       (CallE
-                                        (PrimE @await)
-                                        (TupE
-                                          (CallE
-                                            (PrimE @async)
-                                            (DecE
-                                              (FuncD
-                                                Local
-                                                
-                                                (VarP $104)
-                                                (PrimT Any)
-                                                (CallE
-                                                  (VarE $104)
-                                                  (DecE
-                                                    (FuncD
-                                                      Local
-                                                      get_b@56@59
-                                                      (TupP)
-                                                      (VarT Text)
-                                                      (BlockE
-                                                        (ExpD (VarE b@51))
+                                        (BlockE
+                                          (LetD
+                                            (VarP $173)
+                                            (CallE
+                                              (VarE new_async)
+                                              (PrimT BogusT)
+                                              (TupE)
+                                            )
+                                          )
+                                          (LetD
+                                            (VarP $174)
+                                            (ProjE (VarE $173) 0)
+                                          )
+                                          (LetD
+                                            (VarP $175)
+                                            (ProjE (VarE $173) 1)
+                                          )
+                                          (FuncD
+                                            Local
+                                            $171
+                                            (VarP $172)
+                                            (PrimT Any)
+                                            (CallE (VarE $175) (VarE $172))
+                                          )
+                                          (ExpD
+                                            (CallE
+                                              (DecE
+                                                (FuncD
+                                                  Local
+                                                  
+                                                  (VarP $104)
+                                                  (PrimT Any)
+                                                  (CallE
+                                                    (VarE $104)
+                                                    (DecE
+                                                      (FuncD
+                                                        Local
+                                                        get_b@56@59
+                                                        (TupP)
+                                                        (VarT Text)
+                                                        (BlockE
+                                                          (ExpD (VarE b@51))
+                                                        )
                                                       )
                                                     )
                                                   )
                                                 )
                                               )
+                                              (VarE $171)
                                             )
                                           )
-                                          (VarE $102)
+                                          (ExpD (VarE $174))
                                         )
+                                        (VarE $102)
                                       )
                                     )
                                   )
@@ -249,33 +274,52 @@ compile_exp: (DeclareE
                             )
                             (ExpD
                               (CallE
-                                (PrimE @await)
-                                (TupE
-                                  (CallE
-                                    (PrimE @async)
-                                    (DecE
-                                      (FuncD
-                                        Local
-                                        
-                                        (VarP $99)
-                                        (PrimT Any)
-                                        (CallE
-                                          (VarE $99)
-                                          (DecE
-                                            (FuncD
-                                              Local
-                                              get_a@55@58
-                                              (TupP)
-                                              (VarT Text)
-                                              (BlockE (ExpD (VarE a@50)))
+                                (BlockE
+                                  (LetD
+                                    (VarP $178)
+                                    (CallE
+                                      (VarE new_async)
+                                      (PrimT BogusT)
+                                      (TupE)
+                                    )
+                                  )
+                                  (LetD (VarP $179) (ProjE (VarE $178) 0))
+                                  (LetD (VarP $180) (ProjE (VarE $178) 1))
+                                  (FuncD
+                                    Local
+                                    $176
+                                    (VarP $177)
+                                    (PrimT Any)
+                                    (CallE (VarE $180) (VarE $177))
+                                  )
+                                  (ExpD
+                                    (CallE
+                                      (DecE
+                                        (FuncD
+                                          Local
+                                          
+                                          (VarP $99)
+                                          (PrimT Any)
+                                          (CallE
+                                            (VarE $99)
+                                            (DecE
+                                              (FuncD
+                                                Local
+                                                get_a@55@58
+                                                (TupP)
+                                                (VarT Text)
+                                                (BlockE (ExpD (VarE a@50)))
+                                              )
                                             )
                                           )
                                         )
                                       )
+                                      (VarE $176)
                                     )
                                   )
-                                  (VarE $97)
+                                  (ExpD (VarE $179))
                                 )
+                                (VarE $97)
                               )
                             )
                           )
@@ -292,7 +336,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@36
   (DeclareE
@@ -501,22 +544,37 @@ compile_exp: (DeclareE
                         )
                         (ExpD
                           (CallE
-                            (PrimE @await)
-                            (TupE
-                              (CallE
-                                (PrimE @async)
-                                (DecE
-                                  (FuncD
-                                    Local
-                                    
-                                    (VarP $74)
-                                    (PrimT Any)
-                                    (CallE (VarE $74) (LitE (TextLit eb)))
+                            (BlockE
+                              (LetD
+                                (VarP $163)
+                                (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                              )
+                              (LetD (VarP $164) (ProjE (VarE $163) 0))
+                              (LetD (VarP $165) (ProjE (VarE $163) 1))
+                              (FuncD
+                                Local
+                                $161
+                                (VarP $162)
+                                (PrimT Any)
+                                (CallE (VarE $165) (VarE $162))
+                              )
+                              (ExpD
+                                (CallE
+                                  (DecE
+                                    (FuncD
+                                      Local
+                                      
+                                      (VarP $74)
+                                      (PrimT Any)
+                                      (CallE (VarE $74) (LitE (TextLit eb)))
+                                    )
                                   )
+                                  (VarE $161)
                                 )
                               )
-                              (VarE $72)
+                              (ExpD (VarE $164))
                             )
+                            (VarE $72)
                           )
                         )
                       )
@@ -531,7 +589,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@27
   (DeclareE
@@ -691,22 +748,37 @@ compile_exp: (DeclareE
                       )
                       (ExpD
                         (CallE
-                          (PrimE @await)
-                          (TupE
-                            (CallE
-                              (PrimE @async)
-                              (DecE
-                                (FuncD
-                                  Local
-                                  
-                                  (VarP $53)
-                                  (PrimT Any)
-                                  (CallE (VarE $53) (LitE (TextLit db)))
+                          (BlockE
+                            (LetD
+                              (VarP $153)
+                              (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                            )
+                            (LetD (VarP $154) (ProjE (VarE $153) 0))
+                            (LetD (VarP $155) (ProjE (VarE $153) 1))
+                            (FuncD
+                              Local
+                              $151
+                              (VarP $152)
+                              (PrimT Any)
+                              (CallE (VarE $155) (VarE $152))
+                            )
+                            (ExpD
+                              (CallE
+                                (DecE
+                                  (FuncD
+                                    Local
+                                    
+                                    (VarP $53)
+                                    (PrimT Any)
+                                    (CallE (VarE $53) (LitE (TextLit db)))
+                                  )
                                 )
+                                (VarE $151)
                               )
                             )
-                            (VarE $51)
+                            (ExpD (VarE $154))
                           )
+                          (VarE $51)
                         )
                       )
                     )
@@ -720,7 +792,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@18
   (DeclareE
@@ -898,22 +969,37 @@ compile_exp: (DeclareE
                           )
                           (ExpD
                             (CallE
-                              (PrimE @await)
-                              (TupE
-                                (CallE
-                                  (PrimE @async)
-                                  (DecE
-                                    (FuncD
-                                      Local
-                                      
-                                      (VarP $32)
-                                      (PrimT Any)
-                                      (CallE (VarE $32) (LitE (TextLit cb)))
+                              (BlockE
+                                (LetD
+                                  (VarP $138)
+                                  (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                                )
+                                (LetD (VarP $139) (ProjE (VarE $138) 0))
+                                (LetD (VarP $140) (ProjE (VarE $138) 1))
+                                (FuncD
+                                  Local
+                                  $136
+                                  (VarP $137)
+                                  (PrimT Any)
+                                  (CallE (VarE $140) (VarE $137))
+                                )
+                                (ExpD
+                                  (CallE
+                                    (DecE
+                                      (FuncD
+                                        Local
+                                        
+                                        (VarP $32)
+                                        (PrimT Any)
+                                        (CallE (VarE $32) (LitE (TextLit cb)))
+                                      )
                                     )
+                                    (VarE $136)
                                   )
                                 )
-                                (VarE $30)
+                                (ExpD (VarE $139))
                               )
+                              (VarE $30)
                             )
                           )
                         )
@@ -922,22 +1008,37 @@ compile_exp: (DeclareE
                   )
                   (ExpD
                     (CallE
-                      (PrimE @await)
-                      (TupE
-                        (CallE
-                          (PrimE @async)
-                          (DecE
-                            (FuncD
-                              Local
-                              
-                              (VarP $27)
-                              (PrimT Any)
-                              (CallE (VarE $27) (LitE (TextLit ca)))
+                      (BlockE
+                        (LetD
+                          (VarP $143)
+                          (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                        )
+                        (LetD (VarP $144) (ProjE (VarE $143) 0))
+                        (LetD (VarP $145) (ProjE (VarE $143) 1))
+                        (FuncD
+                          Local
+                          $141
+                          (VarP $142)
+                          (PrimT Any)
+                          (CallE (VarE $145) (VarE $142))
+                        )
+                        (ExpD
+                          (CallE
+                            (DecE
+                              (FuncD
+                                Local
+                                
+                                (VarP $27)
+                                (PrimT Any)
+                                (CallE (VarE $27) (LitE (TextLit ca)))
+                              )
                             )
+                            (VarE $141)
                           )
                         )
-                        (VarE $25)
+                        (ExpD (VarE $144))
                       )
+                      (VarE $25)
                     )
                   )
                 )
@@ -949,7 +1050,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   o@9
   (DeclareE
@@ -1111,22 +1211,37 @@ compile_exp: (DeclareE
                   )
                   (ExpD
                     (CallE
-                      (PrimE @await)
-                      (TupE
-                        (CallE
-                          (PrimE @async)
-                          (DecE
-                            (FuncD
-                              Local
-                              
-                              (VarP $6)
-                              (PrimT Any)
-                              (CallE (VarE $6) (LitE (TextLit ba)))
+                      (BlockE
+                        (LetD
+                          (VarP $128)
+                          (CallE (VarE new_async) (PrimT BogusT) (TupE))
+                        )
+                        (LetD (VarP $129) (ProjE (VarE $128) 0))
+                        (LetD (VarP $130) (ProjE (VarE $128) 1))
+                        (FuncD
+                          Local
+                          $126
+                          (VarP $127)
+                          (PrimT Any)
+                          (CallE (VarE $130) (VarE $127))
+                        )
+                        (ExpD
+                          (CallE
+                            (DecE
+                              (FuncD
+                                Local
+                                
+                                (VarP $6)
+                                (PrimT Any)
+                                (CallE (VarE $6) (LitE (TextLit ba)))
+                              )
                             )
+                            (VarE $126)
                           )
                         )
-                        (VarE $4)
+                        (ExpD (VarE $129))
                       )
+                      (VarE $4)
                     )
                   )
                 )
@@ -1138,5 +1253,3 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @async)

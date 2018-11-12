@@ -1,7 +1,7 @@
 open Syntax
 open Source
 module T = Type
-module R = Rename             
+module R = Rename
 
 (* TODO: 
 - is async<T> shareable or not?

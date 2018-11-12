@@ -1,5 +1,6 @@
 compile_lit: Overflow in literal 72462525423451963967165868
 compile_lit: Overflow in literal 1314235251543424342678909
+compile_binop: DivOp
 compile_lit: Overflow in literal 1152921504606846976
 compile_lit: Overflow in literal 1152921504606846976
 compile_lit: Overflow in literal 6917529027641081856
