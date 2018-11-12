@@ -1,7 +1,7 @@
 open Printf
 
-module A = Awaitopt   (* Await *)
-(* module Async = Async *)
+module Await = Awaitopt   (* Await *)
+module Async = Async 
 type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
@@ -122,12 +122,22 @@ let check_prog infer senv name prog
   with Typing.Error errs ->
     errors "type" errs
 
-let await_lowering prog name =
-  if !Flags.await_lowering then
+let await_lowering flag prog name =
+  if flag then
     begin
       phase "Await Lowering" name;
-      let prog' = A.t_prog prog in
+      let prog' = Await.t_prog prog in
       dump_prog Flags.dump_lowering prog';
+      prog'
+    end
+  else prog
+
+let async_lowering flag prog name =
+  if flag then
+    begin
+      phase "Async Lowering" name;
+      let prog' = Async.t_prog prog in
+      dump_prog Flags.dump_lowering prog'; 
       prog'
     end
   else prog
@@ -139,8 +149,7 @@ let check_with parse infer senv name : check_result =
     match check_prog infer senv name prog with
     | Error es -> Error es
     | Ok (t, scope) ->
-       let prog' = await_lowering prog name in
-       Ok (prog', t, scope)
+       Ok (prog, t, scope)
 
 let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
 
@@ -179,6 +188,8 @@ let interpret_with check (senv, denv) name : interpret_result =
     List.iter print_error es;
     None
   | Ok (prog, t, sscope) ->
+    let prog = await_lowering (!Flags.await_lowering) prog name in
+    let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
     match interpret_prog denv name prog with
     | None -> None
     | Some (v, dscope) -> Some (prog, t, v, sscope, dscope)
@@ -278,6 +289,8 @@ let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error es -> Error es
   | Ok (prog, _t, _scope) ->
+    let prog = await_lowering true prog name in
+    let prog = async_lowering true prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode prelude [prog] in
     Ok module_
