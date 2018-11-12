@@ -1278,6 +1278,76 @@ module Array = struct
       | "vals" -> Some (fake_object_idx_option env "array_vals")
       | _ -> None
 
+  (* The primitive operations *)
+  let init env =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_x, get_x) = new_local env "x" in
+    let (set_r, get_r) = new_local env "r" in
+    set_x ^^
+    BoxedInt.unbox env ^^
+    set_len ^^
+
+    (* Allocate *)
+    get_len ^^
+    compile_unboxed_const header_size ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+    set_r ^^
+
+    (* Write header *)
+    get_r ^^
+    Tagged.store Tagged.Array ^^
+    get_r ^^
+    get_len ^^
+    Heap.store_field len_field ^^
+
+    (* Write fields *)
+    get_len ^^
+    from_0_to_n env (fun get_i ->
+      get_r ^^
+      get_i ^^
+      idx ^^
+      get_x ^^
+      store_ptr
+    ) ^^
+    get_r
+
+  let tabulate env =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_f, get_f) = new_local env "f" in
+    let (set_r, get_r) = new_local env "r" in
+    set_f ^^
+    BoxedInt.unbox env ^^
+    set_len ^^
+
+    (* Allocate *)
+    get_len ^^
+    compile_unboxed_const header_size ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+    set_r ^^
+
+    (* Write header *)
+    get_r ^^
+    Tagged.store Tagged.Array ^^
+    get_r ^^
+    get_len ^^
+    Heap.store_field len_field ^^
+
+    (* Write fields *)
+    (* Copy fields *)
+    get_len ^^
+    from_0_to_n env (fun get_i ->
+      get_r ^^
+      get_i ^^
+      idx ^^
+      get_f ^^
+      get_i ^^
+      BoxedInt.box env ^^
+      Func.call_indirect env no_region ^^
+      store_ptr
+    ) ^^
+    get_r
 end (* Array *)
 
 module Dfinity = struct
@@ -1674,6 +1744,33 @@ module Serialization = struct
               ) ^^
               get_copy
             end
+          ; Tagged.Text,
+            begin
+              let (set_len, get_len) = new_local env "len" in
+              Heap.load_field Text.len_field ^^
+              (* get length in words *)
+              compile_unboxed_const 3l ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_unboxed_const Heap.word_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
+              compile_unboxed_const Array.header_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              set_len ^^
+
+              get_len ^^
+              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              G.i_ Drop ^^
+
+              (* Copy header and data *)
+              get_x ^^
+              get_copy ^^
+              get_len ^^
+              compile_unboxed_const Heap.word_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+
+              get_copy
+            end
           ; Tagged.Object,
             begin
               let (set_len, get_len) = new_local env "len" in
@@ -1848,6 +1945,30 @@ module Serialization = struct
                   get_ptr_offset ^^
                   G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
                 ) ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_unboxed_const Array.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Text,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Text.len_field ^^
+                (* get length in words *)
+                compile_unboxed_const 3l ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_unboxed_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
+                compile_unboxed_const Array.header_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_len ^^
 
                 (* Advance pointer *)
                 get_x ^^
@@ -2229,16 +2350,20 @@ let compile_binop env op = match op with
   | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)))
   | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
+  | DivOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)))
+  | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.RemU)))
   | CatOp -> G.i_ (Call (nr (E.built_in env "concat")))
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
 
 let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+  | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+             G.if_ [I32Type] compile_unboxed_false compile_unboxed_true
   | GeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeS))
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS))
   | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-  | _ -> todo "compile_relop" (Arrange.relop op) G.i_ Unreachable)
+  )
 
 
 (* compile_lexp is used for expressions on the left of an
@@ -2281,6 +2406,17 @@ and compile_exp (env : E.t) exp = match exp.it with
           | Some code -> [ Tagged.Array, code ]
       )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
+  (* Binary prims *)
+  |  CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, { it = TupE [e1;e2]; _}) ->
+    begin
+     compile_exp env e1 ^^
+     compile_exp env e2 ^^
+     match p with
+      | "Array.init" -> Array.init env
+      | "Array.tabulate" -> Array.tabulate env
+      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
+    end
+  (* Unary prims *)
   | CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, e) ->
     begin
      compile_exp env e ^^
@@ -2288,7 +2424,7 @@ and compile_exp (env : E.t) exp = match exp.it with
       | "abs" -> Prim.prim_abs env
       | "printInt" -> Dfinity.prim_printInt env
       | "print" -> Dfinity.prim_print env
-      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable) 
+      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
     end
   | VarE var ->
      Var.get_val env var.it

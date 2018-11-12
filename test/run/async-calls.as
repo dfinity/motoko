@@ -21,3 +21,27 @@ let async_actor = actor self {
 };
 
 async_actor.test();
+
+let async2_actor = actor self {
+  private var x : Bool = false;
+
+  bump() { assert (x == false); x := true; assert (x == true);  };
+
+  test()  { assert (x == false); bump(); assert (x == false); is_true(); };
+
+  is_true() { assert (x == true); };
+};
+
+async2_actor.test();
+
+let async_rec_actor = actor self {
+  private var x : Bool = false;
+
+  test(b : Bool)  {
+    if (b) { assert (x == false); x := true; assert (x == true); }
+    else   { assert (x == false); test(false); assert (x == false); is_true(); }
+  };
+  is_true() { assert (x == true); };
+};
+
+async_rec_actor.test(true);

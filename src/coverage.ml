@@ -90,7 +90,7 @@ and match_lit ce ctxt desc v t sets =
       succeed ce ctxt desc_succ sets &&
       fail ce ctxt (desc_fail ValSet.empty) sets
   | Val v' ->
-    if v = v'
+    if Value.equal v v'
     then succeed ce ctxt desc sets
     else fail ce ctxt desc sets
   | NotVal vs ->

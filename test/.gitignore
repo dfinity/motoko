@@ -1,5 +1,8 @@
 _out
 
+new-asc
+old-asc
+
 *.diff
 *.wat
 *.wat.stderr

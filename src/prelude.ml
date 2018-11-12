@@ -36,6 +36,17 @@ func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
 func print (x : Text) { ((prim "print") : Text -> ()) x };
 
 
+/* This would be nicer as a objects, but lets do them as functions
+   until the compiler has a concept of “static objects” */
+func Array_init <T> (len : Nat,  x : T) : var T[] {
+  ((prim "Array.init") : <T> (Nat, T) -> var T[]) <T>(len, x)
+};
+
+func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
+  ((prim "Array.tabulate") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
+
+};
+
 type Cont<T <: Shared> = T -> () ;
 type Async<T <: Shared> = Cont<T> -> (); 
 
@@ -64,22 +75,8 @@ func new_async<T <: Shared>():(Async<T>,shared T->()) {
 	};
     };
     (enqueue,fullfill)
-};
 
 |}
-
-(*
-type cont<T> = T -> () ;
-
-type cps<T> = cont<T> -> ();
-
-func new_async<T>(e:cps<T>) : async T  = {
-  let async_ = ((prim "@make_async") : () -> async T)();
-  func k(t:T):() =  ((prim "@set_async" ) : (async T,T)->() ) (async_,t);
-  ((prim "@scheduler_queue") : cont<()> -> () ) (func () : () = e k);
-  async_
-};
-*)
 
 (* Primitives *)
 
@@ -92,4 +89,20 @@ let prim = function
     fun v k ->
       Printf.printf "printInt(%s)\n%!" (Int.to_string (as_int v));
       k unit
+  | "Array.init" -> fun v k ->
+      (match Value.as_tup v with
+       | [len; x] ->
+         k (Array (Array.make (Int.to_int (as_nat len)) x))
+      | _ -> assert false)
+  | "Array.tabulate" -> fun v k ->
+      (match Value.as_tup v with
+       | [len; g] ->
+         let len_nat = Int.to_int (as_nat len) in
+         let (_, g') = Value.as_func g in
+         let rec go prefix k i =
+          if i == len_nat
+          then k (Array (Array.of_list (prefix [])))
+          else g' (Nat (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
+         in go (fun xs -> xs) k 0
+      | _ -> assert false)
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

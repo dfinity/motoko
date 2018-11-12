@@ -122,6 +122,7 @@ val new_class : unit -> class_
 
 (* Ordering *)
 
+val equal : value -> value -> bool
 val compare : value -> value -> int
 
 
