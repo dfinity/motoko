@@ -1,8 +1,9 @@
 (* Representation *)
 
 type con = Con.t
-type obj_sort = Object | Actor
-type func_sort = Call | Construct
+type sharing = Local | Sharable
+type obj_sort = Object of sharing | Actor
+type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
 type prim =
@@ -32,6 +33,7 @@ and typ =
   | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
+  | Shared                                    (* sharable *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
@@ -68,20 +70,21 @@ let prim = function
   | _ -> raise (Invalid_argument "Type.prim")
 
 let iter_obj t =
-  Obj (Object, [{name = "next"; typ = Func (Call, [], unit, Opt t)}])
+  Obj (Object Local,
+    [{name = "next"; typ = Func (Call Local, [], unit, Opt t)}])
 
 let array_obj t =
   let immut t =
-    [ {name = "get";  typ = Func (Call, [], Prim Nat, t)};
-      {name = "len";  typ = Func (Call, [], unit, Prim Nat)};
-      {name = "keys"; typ = Func (Call, [], unit, iter_obj (Prim Nat))};
-      {name = "vals"; typ = Func (Call, [], unit, iter_obj t)};
+    [ {name = "get";  typ = Func (Call Local, [], Prim Nat, t)};
+      {name = "len";  typ = Func (Call Local, [], unit, Prim Nat)};
+      {name = "keys"; typ = Func (Call Local, [], unit, iter_obj (Prim Nat))};
+      {name = "vals"; typ = Func (Call Local, [], unit, iter_obj t)};
     ] in
   let mut t = immut t @
-    [ {name = "set"; typ = Func (Call, [], Tup [Prim Nat; t], unit)} ] in
+    [ {name = "set"; typ = Func (Call Local, [], Tup [Prim Nat; t], unit)} ] in
   match t with
-  | Mut t' -> Obj (Object, List.sort compare (mut t'))
-  | t -> Obj (Object, List.sort compare (immut t))
+  | Mut t' -> Obj (Object Local, List.sort compare (mut t'))
+  | t -> Obj (Object Local, List.sort compare (immut t))
 
 
 (* Shifting *)
@@ -102,6 +105,7 @@ let rec shift i n t =
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Class -> Class
+  | Shared -> Shared
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -136,6 +140,7 @@ let rec subst sigma t =
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Class -> Class
+  | Shared -> Shared
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -176,6 +181,7 @@ let rec open' i ts t =
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Class -> Class
+  | Shared -> Shared
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -258,7 +264,7 @@ let as_prim_sub p env t = match promote env t with
 let rec as_obj_sub name env t = match promote env t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub name env (array_obj t)
-  | Non -> Object, [{name; typ = Non}]
+  | Non -> Object Sharable, [{name; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub env t = match promote env t with
   | Array t -> t
@@ -310,7 +316,7 @@ let rec span env = function
   | Prim Word16 -> Some 0x10000
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
-  | Array _ | Func _ | Class | Any -> None
+  | Array _ | Func _ | Class | Shared | Any -> None
   | Opt _ -> Some 2
   | Mut t -> span env t
   | Non -> Some 0
@@ -321,7 +327,7 @@ let rec span env = function
 exception Unavoidable of con
 
 let rec avoid' env env' = function
-  | (Prim _ | Var _ | Any | Non | Class | Pre) as t -> t
+  | (Prim _ | Var _ | Any | Non | Shared | Class | Pre) as t -> t
   | Con (c, ts) ->
     (match Con.Env.find_opt c env' with
     | Some (Abs _) -> raise (Unavoidable c)
@@ -366,6 +372,7 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 let rel_list p env rel eq xs1 xs2 =
   try List.for_all2 (p env rel eq) xs1 xs2 with Invalid_argument _ -> false
 
+let str = ref (fun _ -> failwith "")
 let rec rel_typ env rel eq t1 t2 =
 (*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
   t1 == t2 || S.mem (t1, t2) !rel || begin
@@ -412,21 +419,32 @@ let rec rel_typ env rel eq t1 t2 =
     true
   | Prim p1, Prim p2 when rel != eq ->
     p1 = Nat && p2 = Int
-  | Obj (a1, tfs1), Obj (a2, tfs2) ->
-    a1 = a2 &&
+  | Prim p1, Shared when rel != eq ->
+    true
+  | Obj (s1, tfs1), Obj (s2, tfs2) ->
+    s1 = s2 &&
     rel_fields env rel eq tfs1 tfs2
+  | Obj (s, _), Shared when rel != eq ->
+    s != Object Local
   | Array t1', Array t2' ->
     rel_typ env rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
     rel_typ env rel eq (array_obj t1') t2
+  | Array t, Shared when rel != eq ->
+    rel_typ env rel eq t Shared
   | Opt t1', Opt t2' ->
     rel_typ env rel eq t1' t2'
+  | Opt t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ env rel eq ts1 ts2
+  | Tup ts1, Shared ->
+    rel_list rel_typ env rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
-    (s1 = s2 || rel != eq && s2 = Call) &&
+    (* TODO: not all classes should be sharable *)
+    (s1 = s2 || rel != eq && s1 = Construct) &&
     (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
       rel_typ env' rel eq (open_ ts t21) (open_ ts t11) &&
@@ -435,12 +453,23 @@ let rec rel_typ env rel eq t1 t2 =
     )
   | Func (Construct, _, _, _), Class when rel != eq ->
     true
+  | Func (s1, _, _, _), Shared when rel != eq ->
+    (* TODO: not all classes should be sharable *)
+    s1 <> Call Local
   | Class, Class ->
+    true
+  | Class, Shared ->
+    true
+  | Shared, Shared ->
     true
   | Async t1', Async t2' ->
     rel_typ env rel eq t1' t2'
+  | Async t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Like t1', Like t2' ->
     rel_typ env rel eq t1' t2'
+  | Like t1', Shared ->
+    rel_typ env rel eq t1' Shared
   | Mut t1', Mut t2' ->
     eq_typ env rel eq t1' t2'
   | _, _ -> false
@@ -547,14 +576,19 @@ let string_of_con vs c =
   let s = Con.to_string c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
+let string_of_sharing = function
+  | Local -> ""
+  | Sharable -> "shared "
+
 let string_of_func_sort = function
-  | Call -> ""
+  | Call sh -> string_of_sharing sh
   | Construct -> "class "
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
   | Non -> "None"
+  | Shared -> "Shared"
   | Class -> "Class"
   | Prim p -> string_of_prim p
   | Var (s, i) -> string_of_var (List.nth vs i)
@@ -566,7 +600,7 @@ let rec string_of_typ_nullary vs = function
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_typ' vs) ts))
       (if List.length ts = 1 then "," else "")
-  | Obj (Object, fs) ->
+  | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
@@ -590,8 +624,10 @@ and string_of_typ' vs t =
     sprintf "async %s" (string_of_typ_nullary vs t)
   | Like t ->
     sprintf "like %s" (string_of_typ_nullary vs t)
+  | Obj (Object Sharable, fs) ->
+    sprintf "shared %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
+    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
@@ -616,7 +652,7 @@ and string_of_binds vs vs' = function
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
 let string_of_typ = string_of_typ' []
-
+let _ = str := string_of_typ
 
 let strings_of_kind k =
   let op, tbs, t =

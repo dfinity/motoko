@@ -28,6 +28,7 @@ compile_exp: (DeclareE
                         (ExpD
                           (BlockE
                             (FuncD
+                              Local
                               $97
                               (VarP $98)
                               (PrimT Any)
@@ -38,6 +39,7 @@ compile_exp: (DeclareE
                                 (ExpD
                                   (BlockE
                                     (FuncD
+                                      Local
                                       $102
                                       (VarP $103)
                                       (PrimT Any)
@@ -53,6 +55,7 @@ compile_exp: (DeclareE
                                               (VarP $107)
                                               (DecE
                                                 (FuncD
+                                                  Local
                                                   get_ab@57
                                                   (TupP)
                                                   (TupT (VarT Text) (VarT Text))
@@ -92,7 +95,7 @@ compile_exp: (DeclareE
                                                 (LetD
                                                   (VarP $109)
                                                   (NewObjE
-                                                    Object
+                                                    Object Local
                                                     get_ab
                                                     get_ab@54
                                                     get_b
@@ -215,6 +218,7 @@ compile_exp: (DeclareE
                                             (PrimE @async)
                                             (DecE
                                               (FuncD
+                                                Local
                                                 
                                                 (VarP $104)
                                                 (PrimT Any)
@@ -222,6 +226,7 @@ compile_exp: (DeclareE
                                                   (VarE $104)
                                                   (DecE
                                                     (FuncD
+                                                      Local
                                                       get_b@56@59
                                                       (TupP)
                                                       (VarT Text)
@@ -250,6 +255,7 @@ compile_exp: (DeclareE
                                     (PrimE @async)
                                     (DecE
                                       (FuncD
+                                        Local
                                         
                                         (VarP $99)
                                         (PrimT Any)
@@ -257,6 +263,7 @@ compile_exp: (DeclareE
                                           (VarE $99)
                                           (DecE
                                             (FuncD
+                                              Local
                                               get_a@55@58
                                               (TupP)
                                               (VarT Text)
@@ -311,6 +318,7 @@ compile_exp: (DeclareE
                     (ExpD
                       (BlockE
                         (FuncD
+                          Local
                           $72
                           (VarP $73)
                           (PrimT Any)
@@ -324,6 +332,7 @@ compile_exp: (DeclareE
                                   (VarP $77)
                                   (DecE
                                     (FuncD
+                                      Local
                                       get_a@44
                                       (TupP)
                                       (VarT Text)
@@ -339,6 +348,7 @@ compile_exp: (DeclareE
                                       (VarP $79)
                                       (DecE
                                         (FuncD
+                                          Local
                                           get_b@45
                                           (TupP)
                                           (VarT Text)
@@ -354,6 +364,7 @@ compile_exp: (DeclareE
                                           (VarP $81)
                                           (DecE
                                             (FuncD
+                                              Local
                                               get_ab@46
                                               (TupP)
                                               (TupT (VarT Text) (VarT Text))
@@ -383,7 +394,7 @@ compile_exp: (DeclareE
                                             (LetD
                                               (VarP $83)
                                               (NewObjE
-                                                Object
+                                                Object Local
                                                 get_ab
                                                 get_ab@43
                                                 get_b
@@ -496,6 +507,7 @@ compile_exp: (DeclareE
                                 (PrimE @async)
                                 (DecE
                                   (FuncD
+                                    Local
                                     
                                     (VarP $74)
                                     (PrimT Any)
@@ -543,6 +555,7 @@ compile_exp: (DeclareE
                   (ExpD
                     (BlockE
                       (FuncD
+                        Local
                         $51
                         (VarP $52)
                         (PrimT Any)
@@ -556,6 +569,7 @@ compile_exp: (DeclareE
                                 (VarP $56)
                                 (DecE
                                   (FuncD
+                                    Local
                                     get_a@34
                                     (TupP)
                                     (VarT Text)
@@ -571,6 +585,7 @@ compile_exp: (DeclareE
                                     (VarP $58)
                                     (DecE
                                       (FuncD
+                                        Local
                                         get_b@35
                                         (TupP)
                                         (VarT Text)
@@ -585,7 +600,7 @@ compile_exp: (DeclareE
                                       (LetD
                                         (VarP $60)
                                         (NewObjE
-                                          Object
+                                          Object Local
                                           get_b
                                           get_b@33
                                           get_a
@@ -682,6 +697,7 @@ compile_exp: (DeclareE
                               (PrimE @async)
                               (DecE
                                 (FuncD
+                                  Local
                                   
                                   (VarP $53)
                                   (PrimT Any)
@@ -723,6 +739,7 @@ compile_exp: (DeclareE
                 anon-object-25.12
                 (BlockE
                   (FuncD
+                    Local
                     $25
                     (VarP $26)
                     (PrimT Any)
@@ -733,6 +750,7 @@ compile_exp: (DeclareE
                       (ExpD
                         (BlockE
                           (FuncD
+                            Local
                             $30
                             (VarP $31)
                             (PrimT Any)
@@ -746,6 +764,7 @@ compile_exp: (DeclareE
                                     (VarP $35)
                                     (DecE
                                       (FuncD
+                                        Local
                                         get_a@25
                                         (TupP)
                                         (VarT Text)
@@ -761,6 +780,7 @@ compile_exp: (DeclareE
                                         (VarP $37)
                                         (DecE
                                           (FuncD
+                                            Local
                                             get_b@26
                                             (TupP)
                                             (VarT Text)
@@ -775,7 +795,7 @@ compile_exp: (DeclareE
                                           (LetD
                                             (VarP $39)
                                             (NewObjE
-                                              Object
+                                              Object Local
                                               get_b
                                               get_b@24
                                               get_a
@@ -884,6 +904,7 @@ compile_exp: (DeclareE
                                   (PrimE @async)
                                   (DecE
                                     (FuncD
+                                      Local
                                       
                                       (VarP $32)
                                       (PrimT Any)
@@ -907,6 +928,7 @@ compile_exp: (DeclareE
                           (PrimE @async)
                           (DecE
                             (FuncD
+                              Local
                               
                               (VarP $27)
                               (PrimT Any)
@@ -946,6 +968,7 @@ compile_exp: (DeclareE
                 anon-object-14.12
                 (BlockE
                   (FuncD
+                    Local
                     $4
                     (VarP $5)
                     (PrimT Any)
@@ -964,6 +987,7 @@ compile_exp: (DeclareE
                                 (VarP $11)
                                 (DecE
                                   (FuncD
+                                    Local
                                     get_a@16
                                     (TupP)
                                     (VarT Text)
@@ -979,6 +1003,7 @@ compile_exp: (DeclareE
                                     (VarP $13)
                                     (DecE
                                       (FuncD
+                                        Local
                                         get_b@17
                                         (TupP)
                                         (VarT Text)
@@ -993,7 +1018,7 @@ compile_exp: (DeclareE
                                       (LetD
                                         (VarP $15)
                                         (NewObjE
-                                          Object
+                                          Object Local
                                           get_b
                                           get_b@15
                                           get_a
@@ -1092,6 +1117,7 @@ compile_exp: (DeclareE
                           (PrimE @async)
                           (DecE
                             (FuncD
+                              Local
                               
                               (VarP $6)
                               (PrimT Any)

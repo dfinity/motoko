@@ -27,447 +27,237 @@ compile_exp: (DeclareE
                         (ExpD (DefineE b@51 Const (VarE $138)))
                         (ExpD
                           (BlockE
-                            (LetD (VarP $141) (PrimE @actor_field_async))
-                            (ExpD
+                            (FuncD
+                              Local
+                              $141
+                              (VarP $142)
+                              (PrimT Any)
                               (BlockE
-                                (LetD (VarP $142) (LitE (TextLit get_a@52)))
+                                (LetD (VarP $145) (VarE $142))
+                                (LetD (VarP $140) (VarE $145))
+                                (ExpD (DefineE get_a@52 Const (VarE $140)))
                                 (ExpD
                                   (BlockE
                                     (FuncD
-                                      $143
-                                      (VarP $144)
+                                      Local
+                                      $147
+                                      (VarP $148)
                                       (PrimT Any)
                                       (BlockE
-                                        (LetD
-                                          (VarP $147)
-                                          (TupE (VarE $142) (VarE $144))
+                                        (LetD (VarP $151) (VarE $148))
+                                        (LetD (VarP $146) (VarE $151))
+                                        (ExpD
+                                          (DefineE get_b@53 Const (VarE $146))
                                         )
                                         (ExpD
                                           (BlockE
                                             (LetD
-                                              (VarP $148)
-                                              (CallE (VarE $141) (VarE $147))
-                                            )
-                                            (ExpD
-                                              (BlockE
-                                                (LetD (VarP $149) (VarE $148))
-                                                (LetD (VarP $140) (VarE $149))
-                                                (ExpD
-                                                  (DefineE
-                                                    get_a@52
-                                                    Const
-                                                    (VarE $140)
-                                                  )
-                                                )
-                                                (ExpD
-                                                  (BlockE
-                                                    (LetD
-                                                      (VarP $151)
-                                                      (PrimE @actor_field_async)
-                                                    )
-                                                    (ExpD
-                                                      (BlockE
-                                                        (LetD
-                                                          (VarP $152)
-                                                          (LitE
-                                                            (TextLit get_b@53)
-                                                          )
+                                              (VarP $158)
+                                              (CallE
+                                                (PrimE @actor_field_async)
+                                                (TupE
+                                                  (LitE (TextLit get_ab@54))
+                                                  (DecE
+                                                    (FuncD
+                                                      Sharable
+                                                      get_ab@57
+                                                      (TupP)
+                                                      (AsyncT
+                                                        (TupT
+                                                          (VarT Text)
+                                                          (VarT Text)
                                                         )
-                                                        (ExpD
-                                                          (BlockE
-                                                            (FuncD
-                                                              $153
-                                                              (VarP $154)
-                                                              (PrimT Any)
-                                                              (BlockE
-                                                                (LetD
-                                                                  (VarP $157)
-                                                                  (TupE
-                                                                    (VarE $152)
-                                                                    (VarE $154)
-                                                                  )
-                                                                )
-                                                                (ExpD
-                                                                  (BlockE
-                                                                    (LetD
-                                                                      (VarP
-                                                                        $158
+                                                      )
+                                                      (CallE
+                                                        (PrimE @async)
+                                                        (DecE
+                                                          (FuncD
+                                                            Local
+                                                            
+                                                            (VarP $153)
+                                                            (PrimT Any)
+                                                            (BlockE
+                                                              (FuncD
+                                                                Local
+                                                                $154
+                                                                (VarP $155)
+                                                                (PrimT Any)
+                                                                (BlockE
+                                                                  (FuncD
+                                                                    Local
+                                                                    $156
+                                                                    (VarP $157)
+                                                                    (PrimT Any)
+                                                                    (CallE
+                                                                      (VarE
+                                                                        $153
                                                                       )
-                                                                      (CallE
+                                                                      (TupE
                                                                         (VarE
-                                                                          $151
+                                                                          $155
                                                                         )
                                                                         (VarE
                                                                           $157
                                                                         )
                                                                       )
                                                                     )
-                                                                    (ExpD
-                                                                      (BlockE
-                                                                        (LetD
-                                                                          (VarP
-                                                                            $159
-                                                                          )
+                                                                  )
+                                                                  (ExpD
+                                                                    (CallE
+                                                                      (PrimE
+                                                                        @await
+                                                                      )
+                                                                      (TupE
+                                                                        (CallE
                                                                           (VarE
-                                                                            $158
-                                                                          )
-                                                                        )
-                                                                        (LetD
-                                                                          (VarP
-                                                                            $150
-                                                                          )
-                                                                          (VarE
-                                                                            $159
-                                                                          )
-                                                                        )
-                                                                        (ExpD
-                                                                          (DefineE
                                                                             get_b@53
-                                                                            Const
-                                                                            (VarE
-                                                                              $150
-                                                                            )
                                                                           )
+                                                                          (TupE)
                                                                         )
-                                                                        (ExpD
-                                                                          (BlockE
-                                                                            (LetD
-                                                                              (VarP
-                                                                                $166
-                                                                              )
-                                                                              (CallE
-                                                                                (PrimE
-                                                                                  @actor_field_async
-                                                                                )
-                                                                                (TupE
-                                                                                  (LitE
-                                                                                    (TextLit
-                                                                                      get_ab@54
-                                                                                    )
-                                                                                  )
-                                                                                  (DecE
-                                                                                    (FuncD
-                                                                                      get_ab@57
-                                                                                      (TupP
-                                                                                      )
-                                                                                      (AsyncT
-                                                                                        (TupT
-                                                                                          (VarT
-                                                                                            Text
-                                                                                          )
-                                                                                          (VarT
-                                                                                            Text
-                                                                                          )
-                                                                                        )
-                                                                                      )
-                                                                                      (CallE
-                                                                                        (PrimE
-                                                                                          @async
-                                                                                        )
-                                                                                        (DecE
-                                                                                          (FuncD
-                                                                                            
-                                                                                            (VarP
-                                                                                              $161
-                                                                                            )
-                                                                                            (PrimT
-                                                                                              Any
-                                                                                            )
-                                                                                            (BlockE
-                                                                                              (FuncD
-                                                                                                $162
-                                                                                                (VarP
-                                                                                                  $163
-                                                                                                )
-                                                                                                (PrimT
-                                                                                                  Any
-                                                                                                )
-                                                                                                (BlockE
-                                                                                                  (FuncD
-                                                                                                    $164
-                                                                                                    (VarP
-                                                                                                      $165
-                                                                                                    )
-                                                                                                    (PrimT
-                                                                                                      Any
-                                                                                                    )
-                                                                                                    (CallE
-                                                                                                      (VarE
-                                                                                                        $161
-                                                                                                      )
-                                                                                                      (TupE
-                                                                                                        (VarE
-                                                                                                          $163
-                                                                                                        )
-                                                                                                        (VarE
-                                                                                                          $165
-                                                                                                        )
-                                                                                                      )
-                                                                                                    )
-                                                                                                  )
-                                                                                                  (ExpD
-                                                                                                    (CallE
-                                                                                                      (PrimE
-                                                                                                        @await
-                                                                                                      )
-                                                                                                      (TupE
-                                                                                                        (CallE
-                                                                                                          (DotE
-                                                                                                            (VarE
-                                                                                                              this
-                                                                                                            )
-                                                                                                            get_b
-                                                                                                          )
-                                                                                                          (TupE
-                                                                                                          )
-                                                                                                        )
-                                                                                                        (VarE
-                                                                                                          $164
-                                                                                                        )
-                                                                                                      )
-                                                                                                    )
-                                                                                                  )
-                                                                                                )
-                                                                                              )
-                                                                                              (ExpD
-                                                                                                (CallE
-                                                                                                  (PrimE
-                                                                                                    @await
-                                                                                                  )
-                                                                                                  (TupE
-                                                                                                    (CallE
-                                                                                                      (DotE
-                                                                                                        (VarE
-                                                                                                          this
-                                                                                                        )
-                                                                                                        get_a
-                                                                                                      )
-                                                                                                      (TupE
-                                                                                                      )
-                                                                                                    )
-                                                                                                    (VarE
-                                                                                                      $162
-                                                                                                    )
-                                                                                                  )
-                                                                                                )
-                                                                                              )
-                                                                                            )
-                                                                                          )
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                            (LetD
-                                                                              (VarP
-                                                                                $160
-                                                                              )
-                                                                              (VarE
-                                                                                $166
-                                                                              )
-                                                                            )
-                                                                            (ExpD
-                                                                              (DefineE
-                                                                                get_ab@54
-                                                                                Const
-                                                                                (VarE
-                                                                                  $160
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                            (ExpD
-                                                                              (BlockE
-                                                                                (LetD
-                                                                                  (VarP
-                                                                                    $168
-                                                                                  )
-                                                                                  (NewObjE
-                                                                                    Actor
-                                                                                    get_ab
-                                                                                    get_ab@54
-                                                                                    get_b
-                                                                                    get_b@53
-                                                                                    get_a
-                                                                                    get_a@52
-                                                                                  )
-                                                                                )
-                                                                                (LetD
-                                                                                  (VarP
-                                                                                    $167
-                                                                                  )
-                                                                                  (VarE
-                                                                                    $168
-                                                                                  )
-                                                                                )
-                                                                                (ExpD
-                                                                                  (DefineE
-                                                                                    this
-                                                                                    Const
-                                                                                    (VarE
-                                                                                      $167
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                                (ExpD
-                                                                                  (BlockE
-                                                                                    (LetD
-                                                                                      (VarP
-                                                                                        $169
-                                                                                      )
-                                                                                      (VarE
-                                                                                        $168
-                                                                                      )
-                                                                                    )
-                                                                                    (LetD
-                                                                                      (VarP
-                                                                                        $135
-                                                                                      )
-                                                                                      (VarE
-                                                                                        $169
-                                                                                      )
-                                                                                    )
-                                                                                    (ExpD
-                                                                                      (DefineE
-                                                                                        o@47
-                                                                                        Const
-                                                                                        (VarE
-                                                                                          $135
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                    (ExpD
-                                                                                      (BlockE
-                                                                                        (FuncD
-                                                                                          $172
-                                                                                          (VarP
-                                                                                            $173
-                                                                                          )
-                                                                                          (PrimT
-                                                                                            Any
-                                                                                          )
-                                                                                          (BlockE
-                                                                                            (LetD
-                                                                                              (VarP
-                                                                                                $174
-                                                                                              )
-                                                                                              (VarE
-                                                                                                $173
-                                                                                              )
-                                                                                            )
-                                                                                            (LetD
-                                                                                              (TupP
-                                                                                                (VarP
-                                                                                                  $170
-                                                                                                )
-                                                                                                (VarP
-                                                                                                  $171
-                                                                                                )
-                                                                                              )
-                                                                                              (VarE
-                                                                                                $174
-                                                                                              )
-                                                                                            )
-                                                                                            (ExpD
-                                                                                              (DefineE
-                                                                                                a@48
-                                                                                                Const
-                                                                                                (VarE
-                                                                                                  $170
-                                                                                                )
-                                                                                              )
-                                                                                            )
-                                                                                            (ExpD
-                                                                                              (DefineE
-                                                                                                b@49
-                                                                                                Const
-                                                                                                (VarE
-                                                                                                  $171
-                                                                                                )
-                                                                                              )
-                                                                                            )
-                                                                                            (ExpD
-                                                                                              (BlockE
-                                                                                                (LetD
-                                                                                                  (VarP
-                                                                                                    $175
-                                                                                                  )
-                                                                                                  (CallE
-                                                                                                    (VarE
-                                                                                                      print
-                                                                                                    )
-                                                                                                    (VarE
-                                                                                                      a@48
-                                                                                                    )
-                                                                                                  )
-                                                                                                )
-                                                                                                (ExpD
-                                                                                                  (BlockE
-                                                                                                    (LetD
-                                                                                                      (VarP
-                                                                                                        $176
-                                                                                                      )
-                                                                                                      (CallE
-                                                                                                        (VarE
-                                                                                                          print
-                                                                                                        )
-                                                                                                        (VarE
-                                                                                                          b@49
-                                                                                                        )
-                                                                                                      )
-                                                                                                    )
-                                                                                                    (ExpD
-                                                                                                      (CallE
-                                                                                                        (VarE
-                                                                                                          $134
-                                                                                                        )
-                                                                                                        (CallE
-                                                                                                          (VarE
-                                                                                                            print
-                                                                                                          )
-                                                                                                          (LitE
-                                                                                                            (TextLit
-                                                                                                              
+                                                                        (VarE
+                                                                          $156
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                              (ExpD
+                                                                (CallE
+                                                                  (PrimE @await)
+                                                                  (TupE
+                                                                    (CallE
+                                                                      (VarE
+                                                                        get_a@52
+                                                                      )
+                                                                      (TupE)
+                                                                    )
+                                                                    (VarE $154)
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (LetD (VarP $152) (VarE $158))
+                                            (ExpD
+                                              (DefineE
+                                                get_ab@54
+                                                Const
+                                                (VarE $152)
+                                              )
+                                            )
+                                            (ExpD
+                                              (BlockE
+                                                (LetD
+                                                  (VarP $160)
+                                                  (NewObjE
+                                                    Actor
+                                                    get_ab
+                                                    get_ab@54
+                                                  )
+                                                )
+                                                (LetD (VarP $159) (VarE $160))
+                                                (ExpD
+                                                  (DefineE
+                                                    this
+                                                    Const
+                                                    (VarE $159)
+                                                  )
+                                                )
+                                                (ExpD
+                                                  (BlockE
+                                                    (LetD
+                                                      (VarP $161)
+                                                      (VarE $160)
+                                                    )
+                                                    (LetD
+                                                      (VarP $135)
+                                                      (VarE $161)
+                                                    )
+                                                    (ExpD
+                                                      (DefineE
+                                                        o@47
+                                                        Const
+                                                        (VarE $135)
+                                                      )
+                                                    )
+                                                    (ExpD
+                                                      (BlockE
+                                                        (FuncD
+                                                          Local
+                                                          $164
+                                                          (VarP $165)
+                                                          (PrimT Any)
+                                                          (BlockE
+                                                            (LetD
+                                                              (VarP $166)
+                                                              (VarE $165)
+                                                            )
+                                                            (LetD
+                                                              (TupP
+                                                                (VarP $162)
+                                                                (VarP $163)
+                                                              )
+                                                              (VarE $166)
+                                                            )
+                                                            (ExpD
+                                                              (DefineE
+                                                                a@48
+                                                                Const
+                                                                (VarE $162)
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (DefineE
+                                                                b@49
+                                                                Const
+                                                                (VarE $163)
+                                                              )
+                                                            )
+                                                            (ExpD
+                                                              (BlockE
+                                                                (LetD
+                                                                  (VarP $167)
+                                                                  (CallE
+                                                                    (VarE print)
+                                                                    (VarE a@48)
+                                                                  )
+                                                                )
+                                                                (ExpD
+                                                                  (BlockE
+                                                                    (LetD
+                                                                      (VarP
+                                                                        $168
+                                                                      )
+                                                                      (CallE
+                                                                        (VarE
+                                                                          print
+                                                                        )
+                                                                        (VarE
+                                                                          b@49
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                    (ExpD
+                                                                      (CallE
+                                                                        (VarE
+                                                                          $134
+                                                                        )
+                                                                        (CallE
+                                                                          (VarE
+                                                                            print
+                                                                          )
+                                                                          (LitE
+                                                                            (TextLit
+                                                                              
 
-                                                                                                            )
-                                                                                                          )
-                                                                                                        )
-                                                                                                      )
-                                                                                                    )
-                                                                                                  )
-                                                                                                )
-                                                                                              )
-                                                                                            )
-                                                                                          )
-                                                                                        )
-                                                                                        (ExpD
-                                                                                          (CallE
-                                                                                            (PrimE
-                                                                                              @await
-                                                                                            )
-                                                                                            (TupE
-                                                                                              (CallE
-                                                                                                (DotE
-                                                                                                  (VarE
-                                                                                                    o@47
-                                                                                                  )
-                                                                                                  get_ab
-                                                                                                )
-                                                                                                (TupE
-                                                                                                )
-                                                                                              )
-                                                                                              (VarE
-                                                                                                $172
-                                                                                              )
-                                                                                            )
-                                                                                          )
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
                                                                             )
                                                                           )
                                                                         )
@@ -477,74 +267,20 @@ compile_exp: (DeclareE
                                                                 )
                                                               )
                                                             )
-                                                            (ExpD
+                                                          )
+                                                        )
+                                                        (ExpD
+                                                          (CallE
+                                                            (PrimE @await)
+                                                            (TupE
                                                               (CallE
-                                                                (PrimE @await)
-                                                                (TupE
-                                                                  (CallE
-                                                                    (PrimE
-                                                                      @async
-                                                                    )
-                                                                    (DecE
-                                                                      (FuncD
-                                                                        
-                                                                        (VarP
-                                                                          $155
-                                                                        )
-                                                                        (PrimT
-                                                                          Any
-                                                                        )
-                                                                        (CallE
-                                                                          (VarE
-                                                                            $155
-                                                                          )
-                                                                          (DecE
-                                                                            (FuncD
-                                                                              get_b@56@59
-                                                                              (TupP
-                                                                              )
-                                                                              (AsyncT
-                                                                                (VarT
-                                                                                  Text
-                                                                                )
-                                                                              )
-                                                                              (CallE
-                                                                                (PrimE
-                                                                                  @async
-                                                                                )
-                                                                                (DecE
-                                                                                  (FuncD
-                                                                                    
-                                                                                    (VarP
-                                                                                      $156
-                                                                                    )
-                                                                                    (PrimT
-                                                                                      Any
-                                                                                    )
-                                                                                    (CallE
-                                                                                      (VarE
-                                                                                        $156
-                                                                                      )
-                                                                                      (BlockE
-                                                                                        (ExpD
-                                                                                          (VarE
-                                                                                            b@51
-                                                                                          )
-                                                                                        )
-                                                                                      )
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                  (VarE $153)
+                                                                (DotE
+                                                                  (VarE o@47)
+                                                                  get_ab
                                                                 )
+                                                                (TupE)
                                                               )
+                                                              (VarE $164)
                                                             )
                                                           )
                                                         )
@@ -566,28 +302,31 @@ compile_exp: (DeclareE
                                             (PrimE @async)
                                             (DecE
                                               (FuncD
+                                                Local
                                                 
-                                                (VarP $145)
+                                                (VarP $149)
                                                 (PrimT Any)
                                                 (CallE
-                                                  (VarE $145)
+                                                  (VarE $149)
                                                   (DecE
                                                     (FuncD
-                                                      get_a@55@58
+                                                      Local
+                                                      get_b@56@59
                                                       (TupP)
                                                       (AsyncT (VarT Text))
                                                       (CallE
                                                         (PrimE @async)
                                                         (DecE
                                                           (FuncD
+                                                            Local
                                                             
-                                                            (VarP $146)
+                                                            (VarP $150)
                                                             (PrimT Any)
                                                             (CallE
-                                                              (VarE $146)
+                                                              (VarE $150)
                                                               (BlockE
                                                                 (ExpD
-                                                                  (VarE a@50)
+                                                                  (VarE b@51)
                                                                 )
                                                               )
                                                             )
@@ -600,11 +339,58 @@ compile_exp: (DeclareE
                                               )
                                             )
                                           )
-                                          (VarE $143)
+                                          (VarE $147)
                                         )
                                       )
                                     )
                                   )
+                                )
+                              )
+                            )
+                            (ExpD
+                              (CallE
+                                (PrimE @await)
+                                (TupE
+                                  (CallE
+                                    (PrimE @async)
+                                    (DecE
+                                      (FuncD
+                                        Local
+                                        
+                                        (VarP $143)
+                                        (PrimT Any)
+                                        (CallE
+                                          (VarE $143)
+                                          (DecE
+                                            (FuncD
+                                              Local
+                                              get_a@55@58
+                                              (TupP)
+                                              (AsyncT (VarT Text))
+                                              (CallE
+                                                (PrimE @async)
+                                                (DecE
+                                                  (FuncD
+                                                    Local
+                                                    
+                                                    (VarP $144)
+                                                    (PrimT Any)
+                                                    (CallE
+                                                      (VarE $144)
+                                                      (BlockE
+                                                        (ExpD (VarE a@50))
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (VarE $141)
                                 )
                               )
                             )
@@ -648,6 +434,7 @@ compile_exp: (DeclareE
                     (ExpD
                       (BlockE
                         (FuncD
+                          Local
                           $107
                           (VarP $108)
                           (PrimT Any)
@@ -665,6 +452,7 @@ compile_exp: (DeclareE
                                       (LitE (TextLit get_a@41))
                                       (DecE
                                         (FuncD
+                                          Sharable
                                           get_a@44
                                           (TupP)
                                           (AsyncT (VarT Text))
@@ -672,6 +460,7 @@ compile_exp: (DeclareE
                                             (PrimE @async)
                                             (DecE
                                               (FuncD
+                                                Local
                                                 
                                                 (VarP $112)
                                                 (PrimT Any)
@@ -699,6 +488,7 @@ compile_exp: (DeclareE
                                           (LitE (TextLit get_b@42))
                                           (DecE
                                             (FuncD
+                                              Sharable
                                               get_b@45
                                               (TupP)
                                               (AsyncT (VarT Text))
@@ -706,6 +496,7 @@ compile_exp: (DeclareE
                                                 (PrimE @async)
                                                 (DecE
                                                   (FuncD
+                                                    Local
                                                     
                                                     (VarP $115)
                                                     (PrimT Any)
@@ -735,6 +526,7 @@ compile_exp: (DeclareE
                                               (LitE (TextLit get_ab@43))
                                               (DecE
                                                 (FuncD
+                                                  Sharable
                                                   get_ab@46
                                                   (TupP)
                                                   (AsyncT
@@ -747,16 +539,19 @@ compile_exp: (DeclareE
                                                     (PrimE @async)
                                                     (DecE
                                                       (FuncD
+                                                        Local
                                                         
                                                         (VarP $118)
                                                         (PrimT Any)
                                                         (BlockE
                                                           (FuncD
+                                                            Local
                                                             $119
                                                             (VarP $120)
                                                             (PrimT Any)
                                                             (BlockE
                                                               (FuncD
+                                                                Local
                                                                 $121
                                                                 (VarP $122)
                                                                 (PrimT Any)
@@ -847,6 +642,7 @@ compile_exp: (DeclareE
                                                 (ExpD
                                                   (BlockE
                                                     (FuncD
+                                                      Local
                                                       $129
                                                       (VarP $130)
                                                       (PrimT Any)
@@ -953,6 +749,7 @@ compile_exp: (DeclareE
                                 (PrimE @async)
                                 (DecE
                                   (FuncD
+                                    Local
                                     
                                     (VarP $109)
                                     (PrimT Any)
@@ -1000,6 +797,7 @@ compile_exp: (DeclareE
                   (ExpD
                     (BlockE
                       (FuncD
+                        Local
                         $79
                         (VarP $80)
                         (PrimT Any)
@@ -1017,6 +815,7 @@ compile_exp: (DeclareE
                                     (LitE (TextLit get_a@32))
                                     (DecE
                                       (FuncD
+                                        Sharable
                                         get_a@34
                                         (TupP)
                                         (AsyncT (VarT Text))
@@ -1024,6 +823,7 @@ compile_exp: (DeclareE
                                           (PrimE @async)
                                           (DecE
                                             (FuncD
+                                              Local
                                               
                                               (VarP $84)
                                               (PrimT Any)
@@ -1051,6 +851,7 @@ compile_exp: (DeclareE
                                         (LitE (TextLit get_b@33))
                                         (DecE
                                           (FuncD
+                                            Sharable
                                             get_b@35
                                             (TupP)
                                             (AsyncT (VarT Text))
@@ -1058,6 +859,7 @@ compile_exp: (DeclareE
                                               (PrimE @async)
                                               (DecE
                                                 (FuncD
+                                                  Local
                                                   
                                                   (VarP $87)
                                                   (PrimT Any)
@@ -1103,11 +905,13 @@ compile_exp: (DeclareE
                                           (ExpD
                                             (BlockE
                                               (FuncD
+                                                Local
                                                 $94
                                                 (VarP $95)
                                                 (PrimT Any)
                                                 (BlockE
                                                   (FuncD
+                                                    Local
                                                     $96
                                                     (VarP $97)
                                                     (PrimT Any)
@@ -1241,6 +1045,7 @@ compile_exp: (DeclareE
                               (PrimE @async)
                               (DecE
                                 (FuncD
+                                  Local
                                   
                                   (VarP $81)
                                   (PrimT Any)
@@ -1282,6 +1087,7 @@ compile_exp: (DeclareE
                 anon-actor-25.12
                 (BlockE
                   (FuncD
+                    Local
                     $46
                     (VarP $47)
                     (PrimT Any)
@@ -1292,6 +1098,7 @@ compile_exp: (DeclareE
                       (ExpD
                         (BlockE
                           (FuncD
+                            Local
                             $51
                             (VarP $52)
                             (PrimT Any)
@@ -1309,6 +1116,7 @@ compile_exp: (DeclareE
                                         (LitE (TextLit get_a@23))
                                         (DecE
                                           (FuncD
+                                            Sharable
                                             get_a@25
                                             (TupP)
                                             (AsyncT (VarT Text))
@@ -1316,6 +1124,7 @@ compile_exp: (DeclareE
                                               (PrimE @async)
                                               (DecE
                                                 (FuncD
+                                                  Local
                                                   
                                                   (VarP $56)
                                                   (PrimT Any)
@@ -1343,6 +1152,7 @@ compile_exp: (DeclareE
                                             (LitE (TextLit get_b@24))
                                             (DecE
                                               (FuncD
+                                                Sharable
                                                 get_b@26
                                                 (TupP)
                                                 (AsyncT (VarT Text))
@@ -1350,6 +1160,7 @@ compile_exp: (DeclareE
                                                   (PrimE @async)
                                                   (DecE
                                                     (FuncD
+                                                      Local
                                                       
                                                       (VarP $59)
                                                       (PrimT Any)
@@ -1399,11 +1210,13 @@ compile_exp: (DeclareE
                                               (ExpD
                                                 (BlockE
                                                   (FuncD
+                                                    Local
                                                     $66
                                                     (VarP $67)
                                                     (PrimT Any)
                                                     (BlockE
                                                       (FuncD
+                                                        Local
                                                         $68
                                                         (VarP $69)
                                                         (PrimT Any)
@@ -1548,6 +1361,7 @@ compile_exp: (DeclareE
                                   (PrimE @async)
                                   (DecE
                                     (FuncD
+                                      Local
                                       
                                       (VarP $53)
                                       (PrimT Any)
@@ -1571,6 +1385,7 @@ compile_exp: (DeclareE
                           (PrimE @async)
                           (DecE
                             (FuncD
+                              Local
                               
                               (VarP $48)
                               (PrimT Any)
@@ -1610,6 +1425,7 @@ compile_exp: (DeclareE
                 anon-actor-14.12
                 (BlockE
                   (FuncD
+                    Local
                     $18
                     (VarP $19)
                     (PrimT Any)
@@ -1632,6 +1448,7 @@ compile_exp: (DeclareE
                                     (LitE (TextLit get_a@14))
                                     (DecE
                                       (FuncD
+                                        Sharable
                                         get_a@16
                                         (TupP)
                                         (AsyncT (VarT Text))
@@ -1639,6 +1456,7 @@ compile_exp: (DeclareE
                                           (PrimE @async)
                                           (DecE
                                             (FuncD
+                                              Local
                                               
                                               (VarP $25)
                                               (PrimT Any)
@@ -1666,6 +1484,7 @@ compile_exp: (DeclareE
                                         (LitE (TextLit get_b@15))
                                         (DecE
                                           (FuncD
+                                            Sharable
                                             get_b@17
                                             (TupP)
                                             (AsyncT (VarT Text))
@@ -1673,6 +1492,7 @@ compile_exp: (DeclareE
                                               (PrimE @async)
                                               (DecE
                                                 (FuncD
+                                                  Local
                                                   
                                                   (VarP $28)
                                                   (PrimT Any)
@@ -1718,11 +1538,13 @@ compile_exp: (DeclareE
                                           (ExpD
                                             (BlockE
                                               (FuncD
+                                                Local
                                                 $35
                                                 (VarP $36)
                                                 (PrimT Any)
                                                 (BlockE
                                                   (FuncD
+                                                    Local
                                                     $37
                                                     (VarP $38)
                                                     (PrimT Any)
@@ -1858,6 +1680,7 @@ compile_exp: (DeclareE
                           (PrimE @async)
                           (DecE
                             (FuncD
+                              Local
                               
                               (VarP $20)
                               (PrimT Any)
@@ -1897,6 +1720,7 @@ compile_exp: (DeclareE
               get_a@5
               (DecE
                 (FuncD
+                  Sharable
                   get_a@7
                   (TupP)
                   (AsyncT (VarT Text))
@@ -1904,6 +1728,7 @@ compile_exp: (DeclareE
                     (PrimE @async)
                     (DecE
                       (FuncD
+                        Local
                         
                         (VarP $2)
                         (PrimT Any)
@@ -1920,6 +1745,7 @@ compile_exp: (DeclareE
               get_b@6
               (DecE
                 (FuncD
+                  Sharable
                   get_b@8
                   (TupP)
                   (AsyncT (VarT Text))
@@ -1927,6 +1753,7 @@ compile_exp: (DeclareE
                     (PrimE @async)
                     (DecE
                       (FuncD
+                        Local
                         
                         (VarP $3)
                         (PrimT Any)
@@ -1946,11 +1773,13 @@ compile_exp: (DeclareE
         (ExpD
           (BlockE
             (FuncD
+              Local
               $7
               (VarP $8)
               (PrimT Any)
               (BlockE
                 (FuncD
+                  Local
                   $9
                   (VarP $10)
                   (PrimT Any)

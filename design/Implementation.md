@@ -12,8 +12,8 @@
 * Uniform representation with 32 bit word size.
 
 * Use pointer tagging in LSB;.
-  - 1 for pointers, 0 for scalars.
-  - Pointers are real address minus 1; corrected by offset immediate in load/store instructions.
+  - 0 for pointers, 1 for scalars.
+  - Scalars are real value shifted left by 1, lowest bit set.
 
 * Q: Allocation and GC strategies?
 

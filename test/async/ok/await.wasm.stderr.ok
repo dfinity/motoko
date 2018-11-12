@@ -10,6 +10,7 @@ compile_exp: (DeclareE
         (ExpD
           (BlockE
             (FuncD
+              Local
               $20
               (VarP $21)
               (PrimT Any)
@@ -18,6 +19,7 @@ compile_exp: (DeclareE
             (ExpD
               (BlockE
                 (FuncD
+                  Local
                   $22
                   (VarP $23)
                   (PrimT Any)
@@ -25,6 +27,7 @@ compile_exp: (DeclareE
                     (LitE (BoolLit true))
                     (BlockE
                       (FuncD
+                        Local
                         $24
                         (VarP $25)
                         (PrimT Any)
@@ -41,6 +44,7 @@ compile_exp: (DeclareE
                             (ExpD
                               (BlockE
                                 (FuncD
+                                  Local
                                   $27
                                   (VarP $28)
                                   (PrimT Any)
@@ -109,6 +113,7 @@ compile_exp: (DeclareE
         (ExpD
           (BlockE
             (FuncD
+              Local
               $11
               (VarP $12)
               (PrimT Any)
@@ -116,6 +121,7 @@ compile_exp: (DeclareE
                 (RelE (VarE i@0) LtOp (LitE (NatLit 10)))
                 (BlockE
                   (FuncD
+                    Local
                     $13
                     (VarP $14)
                     (PrimT Any)

@@ -16,6 +16,7 @@ let string_of_name (Name s ) = s
 
 (* Types *)
 
+type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
 type func_sort = Type.func_sort Source.phrase
 
@@ -179,7 +180,7 @@ and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)
   | VarD of id * exp                                   (* mutable *)
-  | FuncD of id * typ_bind list * pat * typ * exp      (* function *)
+  | FuncD of sharing * id * typ_bind list * pat * typ * exp (* function *)
   | TypD of id * typ_bind list * typ                   (* type *)
   | ClassD of id (* term id*) * id (*type id*) * typ_bind list * obj_sort * pat * exp_field list (* class *)
 

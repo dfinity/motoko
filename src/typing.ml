@@ -95,45 +95,6 @@ let disjoint_union at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2 with T.Env.Clash k -> error at fmt k
 
 
-(* Type Analysis *)
-
-(* TBR: the whole notion of sharable type needs to be reviewed in the presence of subtyping *)
-let rec is_shared_typ ce t =
-  match T.promote ce t with
-  | T.Var _
-  | T.Con _ -> false
-  | T.Prim p -> true
-  | T.Array t -> is_shared_typ ce t
-  | T.Opt t -> is_shared_typ ce t
-  | T.Tup ts -> List.for_all (is_shared_typ ce) ts 
-    (* TBR: a function type should be non-sharable if it closes over non-shareable locals *)
-  | T.Func _ as t' -> is_async_typ ce t'
-  | T.Async _ as t' -> is_async_typ ce t'
-  | T.Like t -> is_shared_typ ce t
-  | T.Obj (T.Object, fs) ->
-    (* TBR: this isn't stable with subtyping *)
-    List.for_all (fun {T.name; typ} -> is_shared_typ ce typ) fs
-  | T.Obj (T.Actor, fs) -> true
-  | T.Mut _ -> false
-  | T.Class -> true
-  | T.Any -> false (* TBR *)
-  | T.Non -> true
-  | T.Pre -> assert false
-
-(* Type of an actor field *)
-and is_async_typ ce t =
-  match T.promote ce t with
-  | T.Func (_s, tbs, t1, t2) ->
-    let ts, ce' = T.open_binds ce tbs in
-    is_shared_typ ce' (T.open_ ts t1) &&
-    (match T.normalize ce' (T.open_ ts t2) with
-    | T.Tup [] | T.Async _ -> true
-    | _ -> false
-    )
-  | T.Async t -> is_shared_typ ce t
-  | _ -> false
-
-
 (* Types *)
 
 let check_ids ids = ignore
@@ -162,6 +123,7 @@ let rec check_typ env typ : T.typ =
     )
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
+  | PrimT "Shared" -> T.Shared
   | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
@@ -177,6 +139,18 @@ let rec check_typ env typ : T.typ =
     let env' = adjoin_typs env te ce in
     let t1 = check_typ env' typ1 in
     let t2 = check_typ env' typ2 in
+    if sort.it = T.Call T.Sharable then begin
+      if not (T.sub env'.cons t1 T.Shared) then
+        error typ1.at "shared function has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand env'.cons t1);
+      if not (T.sub env'.cons t2 T.Shared) then
+        error typ1.at "shared function has non-shared result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2);
+      let t2' = T.promote env'.cons t2 in
+      if not (T.is_unit t2' || T.is_async t2') then
+        error typ1.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
+    end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, T.close_binds cs tbs, T.close cs t1, T.close cs t2)
   | OptT typ ->
@@ -193,8 +167,11 @@ let rec check_typ env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (is_async_typ env.cons t) then
-    error typ.at "actor field %s has non-async type\n  %s"
+  if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
+    error typ.at "actor field %s has non-function type\n  %s"
+      id.it (T.string_of_typ_expand env.cons t);
+  if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
+    error typ.at "shared objext or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
@@ -900,11 +877,23 @@ and infer_exp_fields env s id t fields : T.field list * T.field list * val_env =
     List.fold_left (infer_exp_field env' s) ([], [], T.Env.empty) fields in
   List.sort compare tfs, List.sort compare tfs_inner, ve
 
+and is_func_exp exp =
+  match exp.it with
+  | DecE dec -> is_func_dec dec
+  | AnnotE (exp, _) -> is_func_exp exp
+  | _ -> Printf.printf "[1]%!"; false
+
+and is_func_dec dec =
+  match dec.it with
+  | FuncD _ -> true
+  | _ -> Printf.printf "[2]%!"; false
+
 and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field list * val_env =
   let {id; name; exp; mut; priv} = field.it in
   let t =
     match T.Env.find id.it env.vals with
-    | T.Pre -> infer_mut mut (infer_exp (adjoin_vals env ve) exp)
+    | T.Pre ->
+      infer_mut mut (infer_exp (adjoin_vals env ve) exp)
     | t ->
       (* When checking object in analysis mode *)
       if not env.pre then
@@ -912,8 +901,10 @@ and infer_exp_field env s (tfs, tfs_inner, ve) field : T.field list * T.field li
       t
   in
   if not env.pre then begin
-    if s = T.Actor && priv.it = Public && not (is_async_typ env.cons t) then
-      error field.at "public actor field %s has non-async type\n  %s"
+    if s = T.Actor && priv.it = Public && not (is_func_exp exp) then
+      error field.at "public actor field is not a function";
+    if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
+      error field.at "public shared object or actor field %s has non-shared type\n  %s"
         (string_of_name name.it) (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in
@@ -973,7 +964,7 @@ and infer_dec env ce_inner dec : T.typ =
   | LetD (_, exp) | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (id, typbinds, pat, typ, exp) ->
+  | FuncD (sort, id, typbinds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let _cs, _ts, te, ce = check_typ_binds env typbinds in
@@ -1164,7 +1155,7 @@ and gather_dec_valdecs ve dec : val_env =
     ve
   | LetD (pat, _) ->
     gather_pat ve pat
-  | VarD (id, _) | FuncD (id, _, _, _, _) | ClassD (id,_ , _, _, _, _) ->
+  | VarD (id, _) | FuncD (_, id, _, _, _, _) | ClassD (id, _ , _, _, _, _) ->
     if T.Env.mem id.it ve then
       error dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
@@ -1190,13 +1181,26 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (id, typbinds, pat, typ, _) ->
+  | FuncD (sort, id, typbinds, pat, typ, _) ->
     let cs, ts, te, ce = check_typ_binds env typbinds in
     let env' = adjoin_typs env te ce in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
+    if not env.pre && sort.it = T.Sharable then begin
+      if not (T.sub env'.cons t1 T.Shared) then
+        error pat.at "shared function has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand env'.cons t1);
+      if not (T.sub env'.cons t2 T.Shared) then
+        error typ.at "shared function has non-shared result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2);
+      let t2' = T.promote env'.cons t2 in
+      if not (T.is_unit t2' || T.is_async t2') then
+        error typ.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
+    end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (T.Call, tbs, T.close cs t1, T.close cs t2))
+    T.Env.singleton id.it
+      (T.Func (T.Call sort.it, tbs, T.close cs t1, T.close cs t2))
   | TypD _ ->
     T.Env.empty
   | ClassD (conid, id, typbinds, sort, pat, fields) ->

@@ -5,18 +5,18 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  readCounter(f : Nat -> ()) : () {
+  readCounter(f : shared Nat -> ()) : () {
     f(c);
   };
 };
 
 a.incn(1);
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.readCounter(shared func (n : Nat) = { printInt n; print("\n") });
 a.incn(2);
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.readCounter(shared func (n : Nat) = { printInt n; print("\n") });
 a.incn(3);
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.readCounter(shared func (n : Nat) = { printInt n; print("\n") });
 a.incn(4);
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.readCounter(shared func (n : Nat) = { printInt n; print("\n") });
 a.incn(5);
-a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.readCounter(shared func (n : Nat) = { printInt n; print("\n") });
