@@ -1,5 +1,3 @@
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   i@1
   (BlockE
@@ -75,13 +73,7 @@ compile_exp: (DeclareE
                                   )
                                 )
                                 (ExpD
-                                  (CallE
-                                    (PrimE @await)
-                                    (TupE
-                                      (CallE (VarE f) (VarE i@1))
-                                      (VarE $27)
-                                    )
-                                  )
+                                  (CallE (CallE (VarE f) (VarE i@1)) (VarE $27))
                                 )
                               )
                             )
@@ -102,7 +94,6 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
 compile_exp: (DeclareE
   i@0
   (BlockE
@@ -139,12 +130,7 @@ compile_exp: (DeclareE
                       )
                     )
                   )
-                  (ExpD
-                    (CallE
-                      (PrimE @await)
-                      (TupE (CallE (VarE f) (VarE i@0)) (VarE $13))
-                    )
-                  )
+                  (ExpD (CallE (CallE (VarE f) (VarE i@0)) (VarE $13)))
                 )
                 (BlockE
                   (LetD (VarP $16) (TupE))
@@ -164,14 +150,3 @@ compile_exp: (DeclareE
     )
   )
 )
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @await)
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @await)
-compile_exp: (PrimE @await)
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @await)
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @await)
-compile_exp: (PrimE @async)
-compile_exp: (PrimE @async)
