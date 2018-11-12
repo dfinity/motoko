@@ -32,7 +32,7 @@ let x5 = switch (new {}?) {
 };
 assert (x5 == 1);
 
-let oo : {}? = new {};
+let oo : {}? = new {}?;
 let x6 = switch oo {
   case null 0;
   case _ 1;
@@ -88,3 +88,13 @@ func f() {
 };
 
 func g(_ : None) {};
+
+let x13 = switch (5?) {
+  case (n?) 7;
+};
+assert (x13 == 7);
+
+let x14 = switch (null : Nat?) {
+  case null 8;
+};
+assert (x14 == 8);
