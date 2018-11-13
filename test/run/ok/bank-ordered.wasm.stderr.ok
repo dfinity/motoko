@@ -1,22 +1,2 @@
-compile_exp: (DeclareE
-  trx@0
-  (BlockE
-    (FuncD
-      Local
-      $8
-      (VarP $9)
-      (PrimT Any)
-      (BlockE
-        (LetD (VarP $10) (VarE $9))
-        (LetD (VarP $7) (VarE $10))
-        (ExpD (DefineE trx@0 Const (VarE $7)))
-        (ExpD
-          (CallE (VarE $6) (CallE (DotE (VarE trx@0) join) (VarE receiver)))
-        )
-      )
-    )
-    (ExpD (CallE (CallE (DotE (VarE sender) split) (VarE amount)) (VarE $8)))
-  )
-)
 Could not find Account
 Could not find Account

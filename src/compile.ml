@@ -1009,6 +1009,67 @@ module Object = struct
      (* Return the pointer to the object *)
      get_ri
 
+  (* This is for non-recursive objects, i.e. ObjNewE *)
+  (* TODO: Remove duplication with above *)
+  let lit_raw env fs =
+    let name_pos_map =
+      fs |>
+      (* We could store only public fields in the object, but
+         then we need to allocate separate boxes for the non-public ones:
+         List.filter (fun (_, priv, f) -> priv.it = Public) |>
+      *)
+      List.map (fun (id,_) -> (hash_field_name id, id)) |>
+      List.sort compare |>
+      List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
+      List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
+
+     let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
+
+     (* Allocate memory *)
+     let (set_ri, get_ri, ri) = new_local_ env "obj" in
+     Heap.alloc (Int32.add header_size (Int32.mul 2l sz)) ^^
+     set_ri ^^
+
+     (* Set tag *)
+     get_ri ^^
+     Tagged.store Tagged.Object ^^
+
+     (* Write the class field *)
+     get_ri ^^
+     compile_unboxed_const 1l ^^
+     Heap.store_field class_position ^^
+
+     (* Set size *)
+     get_ri ^^
+     compile_unboxed_const sz ^^
+     Heap.store_field size_field ^^
+
+    let hash_position env f =
+        let i = FieldEnv.find f name_pos_map in
+        Int32.add header_size (Int32.mul 2l i) in
+    let field_position env f =
+        let i = FieldEnv.find f name_pos_map in
+        Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
+
+     (* Write all the fields *)
+     let set_field (id, mk_is) : G.t =
+        match FieldEnv.find_opt id name_pos_map with
+        | None -> G.nop
+        | Some i ->
+          (* Write the hash *)
+          get_ri ^^
+          compile_unboxed_const (hash_field_name id) ^^
+          Heap.store_field (hash_position env id) ^^
+          (* Write the value *)
+          get_ri ^^
+          mk_is env ^^
+          Heap.store_field (field_position env id)
+     in
+     G.concat_map set_field fs ^^
+
+     (* Return the pointer to the object *)
+     get_ri
+
   let idx env (name : string) =
     (* Expects the pointer to the object on the stack *)
     (* Linearly scan through the fields (binary search can come later) *)
@@ -2612,6 +2673,25 @@ and compile_exp (env : E.t) exp = match exp.it with
            )
      ) ^^
      compile_unit
+  (* Async-wait lowering support features *)
+  | DeclareE (name, _, e) ->
+      let (env1, i) = E.add_local_with_offset env name.it 1l in
+      Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
+      G.i_ (SetLocal (nr i)) ^^
+      compile_exp env1 e
+  | DefineE (name, _, e) ->
+      compile_exp env e ^^
+      Var.get_payload_loc env name.it ^^
+      load_ptr ^^
+      store_ptr ^^
+      compile_unit
+  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
+     let fs' = List.map
+      (fun ({ it = Name name; _}, id) -> (name, fun env ->
+        Var.get_payload_loc env id.it ^^
+        load_ptr
+      )) fs in
+     Object.lit_raw env fs'
   | _ -> todo "compile_exp" (Arrange.exp exp) (G.i_ Unreachable)
 
 
