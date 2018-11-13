@@ -1,15 +1,6 @@
-$ dvm reset
-{
-    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
-}
-$ dvm new -a _out/closure-params.wasm
-{
-    "modId": "#inject_id/0",
-    "storage": [],
-    "id": "#inject_id/1 (closure-params)",
-    "type": "actor"
-}
-$ dvm run -q closure-params start
+$ dvm -q reset
+$ dvm -q new -a _out/closure-params.wasm
+$ dvm -q run closure-params start
 1
 1
 3

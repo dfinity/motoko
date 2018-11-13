@@ -1,14 +1,5 @@
-$ dvm reset
-{
-    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
-}
-$ dvm new -a _out/hello-world-async.wasm
-{
-    "modId": "#inject_id/0",
-    "storage": [],
-    "id": "#inject_id/1 (hello-world-async)",
-    "type": "actor"
-}
-$ dvm run -q hello-world-async start
+$ dvm -q reset
+$ dvm -q new -a _out/hello-world-async.wasm
+$ dvm -q run hello-world-async start
 Hello World!
 

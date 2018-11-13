@@ -8,8 +8,6 @@ fi
 
 name="$(basename $1 .wasm)"
 
-
-
 export LANG=C
 function dvm_ () {
   echo "\$ dvm $@"
@@ -24,8 +22,6 @@ function dvm_ () {
 
 }
 
-dvm_ reset
-dvm_ new -a $1
-dvm_ run -q $name start
-# not stable across v8 vs. hero!
-# dvm_ root
+dvm_ -q reset
+dvm_ -q new -a $1
+dvm_ -q run $name start

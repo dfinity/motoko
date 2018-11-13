@@ -1,13 +1,4 @@
-$ dvm reset
-{
-    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
-}
-$ dvm new -a _out/empty-actor.wasm
-{
-    "modId": "#inject_id/0",
-    "storage": [],
-    "id": "#inject_id/1 (empty-actor)",
-    "type": "actor"
-}
-$ dvm run -q empty-actor start
+$ dvm -q reset
+$ dvm -q new -a _out/empty-actor.wasm
+$ dvm -q run empty-actor start
 

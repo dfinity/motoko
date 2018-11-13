@@ -1,13 +1,4 @@
-$ dvm reset
-{
-    "stateRoot": "0x814DA3A38302A37CFFFF1980B77A2FB1586947F9"
-}
-$ dvm new -a _out/counter.wasm
-{
-    "modId": "#inject_id/0",
-    "storage": [],
-    "id": "#inject_id/1 (counter)",
-    "type": "actor"
-}
-$ dvm run -q counter start
+$ dvm -q reset
+$ dvm -q new -a _out/counter.wasm
+$ dvm -q run counter start
 2344
