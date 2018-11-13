@@ -272,7 +272,7 @@ let as_array_sub env t = match promote env t with
   | _ -> invalid "as_array_sub"
 let as_opt_sub env t = match promote env t with
   | Opt t -> t
-  | t -> t
+  | _ -> invalid "as_opt_sub"
 let as_tup_sub n env t = match promote env t with
   | Tup ts -> ts
   | Non -> Lib.List.make n Non
@@ -403,8 +403,6 @@ let rec rel_typ env rel eq t1 t2 =
     (match Con.Env.find con1 env, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ env rel eq (open_ ts1 t) t2
-    | Abs (tbs, t), Opt t2' when rel != eq ->
-      rel_typ env rel eq t1 t2'
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ env rel eq (open_ ts1 t) t2
     | _ -> false

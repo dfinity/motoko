@@ -35,28 +35,48 @@ class revrange(x : Nat, y : Nat) {
 func printInt (x : Int) { ((prim "printInt") : Int -> ()) x };
 func print (x : Text) { ((prim "print") : Text -> ()) x };
 
+
 /* This would be nicer as a objects, but lets do them as functions
    until the compiler has a concept of “static objects” */
 func Array_init <T> (len : Nat,  x : T) : var T[] {
   ((prim "Array.init") : <T> (Nat, T) -> var T[]) <T>(len, x)
 };
+
 func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
   ((prim "Array.tabulate") : <T> (Nat, Nat -> T) -> T[]) <T>(len, gen)
+
 };
+
+type Cont<T <: Shared> = T -> () ;
+type Async<T <: Shared> = Cont<T> -> (); 
+
+func new_async<T <: Shared>():(Async<T>,shared T->()) {
+    let empty = func k (t:T) = ();
+    var result : T ? = null;
+    var ks : T -> () = empty;
+    shared func fullfill(t:T):() { 
+    	 switch(result) {
+	 case null {
+	     result := t?;
+	     let ks_ = ks;
+	     ks := empty;
+	     ks_(t);
+	 };
+	 case (t?) (assert(false));
+	 };
+    };
+    func enqueue(k:Cont<T>):() {
+     	switch(result) {
+	case null {
+	    let ks_ = ks;
+            ks := (func (t:T) {ks_(t);k(t);});
+	};
+	case (t?) (k(t));
+	};
+    };
+    (enqueue,fullfill)
 
 |}
-
-(*
-type cont<T> = T -> () ;
-type cps<T> = cont<T> -> ();
-
-func new_async<T>(e:cps<T>) : async T  = {
-  let async_ = ((prim "@make_async") : () -> async T)();
-  func k(t:T):() =  ((prim "@set_async" ) : (async T,T)->() ) (async_,t);
-  ((prim "@scheduler_queue") : cont<()> -> () ) (func () : () = e k);
-  async_
-};
-*)
 
 (* Primitives *)
 

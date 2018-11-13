@@ -1,14 +1,21 @@
-compile_exp: (AsyncE
+compile_exp: (DeclareE
+  trx@0
   (BlockE
-    (LetD (VarP trx) (AwaitE (CallE (DotE (VarE sender) split) (VarE amount))))
-    (ExpD (CallE (DotE (VarE receiver) join) (VarE trx)))
+    (FuncD
+      Local
+      $5
+      (VarP $6)
+      (PrimT Any)
+      (BlockE
+        (LetD (VarP $7) (VarE $6))
+        (LetD (VarP $4) (VarE $7))
+        (ExpD (DefineE trx@0 Const (VarE $4)))
+        (ExpD
+          (CallE (VarE $3) (CallE (DotE (VarE receiver) join) (VarE trx@0)))
+        )
+      )
+    )
+    (ExpD (CallE (CallE (DotE (VarE sender) split) (VarE amount)) (VarE $5)))
   )
 )
-compile_exp: (AsyncE (BlockE (ExpD (RetE (VarE balance)))))
-compile_exp: (AsyncE
-  (BlockE
-    (ExpD (AssignE (VarE balance) (BinE (VarE balance) SubOp (VarE amount))))
-    (ExpD (RetE (CallE (VarE Account) (VarE amount))))
-  )
-)
-compile_exp: (AsyncE (BlockE (ExpD (RetE (IsE (VarE account) (VarE Account))))))
+Could not find Account

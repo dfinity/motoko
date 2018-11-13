@@ -584,7 +584,7 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env t exp =
-  match exp.it, T.as_opt_sub env.cons t with
+  match exp.it, t with
   | PrimE s, T.Func _ ->
     ()
   | LitE lit, _ ->
@@ -596,8 +596,8 @@ and check_exp' env t exp =
     check_exp env t' exp2
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps
-  | OptE exp1, t' when T.is_opt t ->
-    check_exp env t' exp1
+  | OptE exp1, _ when T.is_opt t ->
+    check_exp env (T.as_opt t) exp1
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
     ignore (check_obj env s tfs id fields exp.at)
   | ArrayE exps, T.Array t' ->
