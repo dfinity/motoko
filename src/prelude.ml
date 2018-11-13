@@ -75,7 +75,7 @@ func new_async<T <: Shared>():(Async<T>,shared T->()) {
 	};
     };
     (enqueue,fullfill)
-
+};
 |}
 
 (* Primitives *)
