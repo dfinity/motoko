@@ -100,7 +100,9 @@ rec {
     buildInputs =
       [ native
         ocaml_wasm
-        nixpkgs.bash ] ++
+        nixpkgs.bash
+        nixpkgs.perl
+      ] ++
       (if test-dvm then [ dvm ] else []);
 
     buildPhase = ''
