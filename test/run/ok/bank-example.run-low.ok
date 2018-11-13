@@ -29,4 +29,4 @@ show = func
 test = func
 transfer = func
 
-Raised at file "nat.ml", line 524, characters 55-59
+Raised at file "nat.ml", line 524, characters 49-59

@@ -18,5 +18,5 @@ tictac_actor = {tac_msg = func; tic_msg = func}
 tictac_actor_async = {tac_msg_async = func; tic_msg_async = func}
 tictac_async = {tac_async = func; tic_async = func}
 
-Raised at file "nat.ml", line 524, characters 55-59
+Raised at file "nat.ml", line 524, characters 49-59
 actors.as:21.15-21.18: execution error, arithmetic overflow
