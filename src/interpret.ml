@@ -158,6 +158,7 @@ let actor_field id t v : V.value =
 let extended_prim s at =
   match s with
   | "@async" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
      let (call,f) = V.as_func v in
      async at
@@ -166,31 +167,35 @@ let extended_prim s at =
          f k' V.as_unit)
        k
   | "@await" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-      (match V.as_tup v with
-       | [async; w] ->
+     begin
+       match V.as_tup v with
+      | [async; w] ->
         let (_,f) = V.as_func w in
         await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
-      )
+     end
   | "@actor_field_unit" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-      begin
-        match V.as_tup v with
-        | [v1;v2] -> 
-           let id = V.as_text v1 in                           
+     begin
+       match V.as_tup v with
+       | [v1;v2] -> 
+          let id = V.as_text v1 in                           
            k (actor_field_unit id v2)
-        | _ -> assert false
-      end
+       | _ -> assert false
+     end
   | "@actor_field_async" ->
-      fun v k ->
-        begin
-          match V.as_tup v with
-         | [v1;v2] -> 
-            let id = V.as_text v1 in                           
-            k (actor_field_async id v2)
-         | _ -> assert false
-        end
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
+     fun v k ->
+     begin
+       match V.as_tup v with
+       | [v1;v2] -> 
+          let id = V.as_text v1 in                           
+          k (actor_field_async id v2)
+       | _ -> assert false
+     end
   | _ -> Prelude.prim s
 
                        
@@ -286,10 +291,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        let _, f = V.as_func v1 in f v2 k
+        interpret_exp env exp2 (fun v2 ->
+            let _, f = V.as_func v1 in f v2 k
+                                    
 (*
-        try
+        try     
           let _, f = V.as_func v1 in f v2 k
         with Invalid_argument s ->
           trap exp.at "%s" s

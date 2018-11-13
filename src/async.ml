@@ -31,11 +31,13 @@ let funcT(s,bds,t1,t2) =
    at = no_region;
    note = ()}
 
+let t_async t =  T.Func (T.Call T.Local, [], T.Func(T.Call T.Local,[],t,T.unit), T.unit)
+               
 let new_asyncT =
   (T.Func(T.Call T.Local,[{var = "T";
                            bound = T.Shared}],
                           T.Tup[],
-                          T.Tup [T.Async (T.Var ("T",0));
+                          T.Tup [t_async (T.Var ("T",0));
                                  replyT (T.Var ("T",0))])
   )
   
@@ -46,11 +48,12 @@ let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore
              
 let prelude_new_async t1 =
   { it = CallE(new_asyncE,[bogusT],tupE []);
-    note = {note_typ = T.Tup [T.Async t1;
+    note = {note_typ = T.Tup [t_async t1; 
                                replyT t1];
             note_eff = T.Triv};
     at = no_region;    
   }
+  
 let contTT t = funcT(localS,[],t,unitT)
              
 let tupP pats =
@@ -76,7 +79,7 @@ let callE e1 ts e2 t =
             note_eff = T.Triv}
   }
   
-let t_async t =  T.Func (T.Call T.Local, [], T.Func(T.Call T.Local,[],t,T.unit), T.unit)
+
 
 let isAwaitableFunc exp =
   match typ exp with
@@ -100,7 +103,7 @@ let rec t_typ (t:T.typ) =
            | Tup [] ->
               Func(s, List.map t_bind tbs, t_typ t1, t_typ t2)
            | Async t2 ->
-              Func (T.Call T.Local, List.map t_bind tbs,
+              Func (s, List.map t_bind tbs,
                     Tup [t_typ t1; contT (t_typ t2)], T.unit)
            | _ -> failwith "t_typT'"
          end
@@ -144,8 +147,9 @@ and t_exp' (exp:Syntax.exp) =
   match exp' with
   | PrimE _
   | LitE _ -> exp'
-  | VarE id -> 
-     begin
+  | VarE id -> exp'
+(* TBD:
+    begin
      match typ exp with
      | T.Func (T.Call T.Sharable,_,_,T.Tup[]) ->
         exp'
@@ -172,7 +176,7 @@ and t_exp' (exp:Syntax.exp) =
                              expD (callE t_id bogus_ts (tupE [v1;projE p 1]) T.unit); (* bogus instantiation, but should no longer be needed *)
                              expD (projE p 0)]);
             note = {note_typ = t_typ (typ exp);
-                  note_eff = T.Triv};
+                    note_eff = T.Triv};
           at = no_region
         }
      | T.Func (T.Call T.Sharable,_,_,_) ->
@@ -180,6 +184,7 @@ and t_exp' (exp:Syntax.exp) =
      | _ ->
         exp'
      end
+ *)
   | UnE (op, exp1) ->
     UnE (op, t_exp exp1)
   | BinE (exp1, op, exp2) ->
@@ -244,6 +249,7 @@ and t_exp' (exp:Syntax.exp) =
               expD ((t_exp exp2) -*- k);
               expD async])
        .it
+(*     
   | CallE ({it=VarE id;_} as exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
        match typ exp1 with
@@ -257,6 +263,23 @@ and t_exp' (exp:Syntax.exp) =
      let p = fresh_id (typ call_new_async) in
      (blockE [letD p (call_new_async);
               expD (callE id typs (tupE [exp1;projE p 1]) T.unit);
+              expD (projE p 0)])
+       .it
+ *)
+  | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
+     let t1,t2 =
+       match typ exp1 with
+       | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) ->
+          t_typ t1, t_typ t2
+       | _ -> assert(false)
+     in
+     let exp1 = t_exp exp1 in
+     let exp2 = t_exp exp2 in
+     let typs = List.map t_typT typs in
+     let call_new_async = prelude_new_async t2 in
+     let p = fresh_id (typ call_new_async) in
+     (blockE [letD p (call_new_async);
+              expD (callE exp1 typs (tupE [exp2;projE p 1]) T.unit);
               expD (projE p 0)])
        .it
   | CallE (exp1, typs, exp2)  ->
@@ -330,10 +353,8 @@ and t_dec' dec' =
            | T.Async res_typ ->
               let res_typ = t_typ res_typ in
               let pat = t_pat pat in
-              let typT = t_typT typT in 
               let cont_typ = contT res_typ in
-              let cont_typT = funcT(sharableS,[],typT,unitT) in
-              let typT' = tupT [typT; cont_typT] in
+              let typT' = tupT []  in
               let k = fresh_id cont_typ in
               let pat' = tupP [pat;varP k] in
               let typbinds' = t_typbinds typbinds in                   
@@ -353,7 +374,7 @@ and t_dec' dec' =
                    failwith
                      ("async.ml t_dec': funcD2" ^ (Wasm.Sexpr.to_string 80 (Arrange.exp exp)))
               in
-              FuncD ({s with it = T.Local}, id, typbinds', pat', typT', exp')
+              FuncD (s, id, typbinds', pat', typT', exp')
           | _ -> failwith "async.ml t_dec': funcD3"
          end
     end
