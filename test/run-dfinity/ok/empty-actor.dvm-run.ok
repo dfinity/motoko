@@ -1,4 +1,1 @@
-$ dvm -q reset
-$ dvm -q new -a _out/empty-actor.wasm
-$ dvm -q run empty-actor start
 

@@ -1,5 +1,2 @@
-$ dvm -q reset
-$ dvm -q new -a _out/hello-world-async.wasm
-$ dvm -q run hello-world-async start
 Hello World!
 

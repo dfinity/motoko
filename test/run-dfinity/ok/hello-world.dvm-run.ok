@@ -1,5 +1,2 @@
-$ dvm -q reset
-$ dvm -q new -a _out/hello-world.wasm
-$ dvm -q run hello-world start
 Hello World!
 

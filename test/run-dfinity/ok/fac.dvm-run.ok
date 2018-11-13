@@ -1,4 +1,1 @@
-$ dvm -q reset
-$ dvm -q new -a _out/fac.wasm
-$ dvm -q run fac start
 120

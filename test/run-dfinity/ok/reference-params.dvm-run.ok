@@ -1,6 +1,3 @@
-$ dvm -q reset
-$ dvm -q new -a _out/reference-params.wasm
-$ dvm -q run reference-params start
 Hello World!
 Hello World!
 Hello World!

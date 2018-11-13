@@ -1,4 +1,1 @@
-$ dvm -q reset
-$ dvm -q new -a _out/indirect-counter.wasm
-$ dvm -q run indirect-counter start
 2344

@@ -1,5 +1,2 @@
-$ dvm -q reset
-$ dvm -q new -a _out/hello-concat-world.wasm
-$ dvm -q run hello-concat-world start
 Hello World!
 

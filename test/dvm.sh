@@ -10,7 +10,7 @@ name="$(basename $1 .wasm)"
 
 export LANG=C
 function dvm_ () {
-  echo "\$ dvm $@"
+  # echo "\$ dvm $@"
 
   # hide the segmentation fault message
   # hide leaked debug log

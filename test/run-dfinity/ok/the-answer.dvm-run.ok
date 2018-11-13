@@ -1,4 +1,1 @@
-$ dvm -q reset
-$ dvm -q new -a _out/the-answer.wasm
-$ dvm -q run the-answer start
 42
