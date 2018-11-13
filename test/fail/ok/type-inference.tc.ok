@@ -29,4 +29,4 @@ this case produces type
 the previous produce type
   Text
 type-inference.as:83.1-88.2: type error, local class type C/3 is contained in inferred block type
-  T/11 = C/3
+  T/17 = C/3
