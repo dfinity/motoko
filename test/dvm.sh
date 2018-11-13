@@ -14,11 +14,10 @@ function dvm_ () {
 
   # hide the segmentation fault message
   # hide leaked debug log
-  # make sure there is a trailing newline (dvm with hero does not produce it).
   { dvm $@; } 2>&1 \
     | sed -e 's,.*egmentation.*,Segmentation Fault,' \
-    | sed -e 's,Leaked.*!,,' \
-    | sed -e '$a\'
+    | sed -e '/^Leaked.*!/d' \
+    | sed -e 's/Leaked.*!//' \
 
 }
 
