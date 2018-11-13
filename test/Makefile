@@ -1,12 +1,10 @@
 all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
-	$(MAKE) -C async
 
 accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
-	$(MAKE) -C async accept
 
 
 all-dfn: all

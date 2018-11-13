@@ -1,0 +1,32 @@
+(unknown location): fatal error, Invalid_argument("Value.as_func")
+
+Last environment:
+ = func
+$11 = func
+$13 = func
+$49 = func
+$51 = (func, func)
+$52 = func
+$53 = func
+Account = class
+Array_init = func
+Array_tabulate = func
+Bank = class
+Issuer = class
+a1@2 = _
+a2@3 = _
+abs = func
+b = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 100; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
+ignore = func
+main = _
+new_async = func
+print = func
+printInt = func
+range = class
+reserve@1 = _
+revrange = class
+show = func
+test = func
+transfer = func
+
+Raised at file "nat.ml", line 524, characters 55-59

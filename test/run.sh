@@ -68,11 +68,15 @@ do
 
   if [ "$tc_succeeded" -eq 0 ];
   then
-    echo -n " [run]"
-
     # Interpret
-    $ASC $ASC_FLAGS -r -v $base.as > $out/$base.run 2>&1
+    echo -n " [run]"
+    $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
     diff_files="$diff_files $base.run"
+
+    # Interpret with lowering
+    echo -n " [run-low]"
+    $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
+    diff_files="$diff_files $base.run-low"
 
     # Compile
     echo -n " [wasm]"
