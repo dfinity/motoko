@@ -18,4 +18,3 @@ clean:
 	$(MAKE) -C fail clean
 	$(MAKE) -C run clean
 	$(MAKE) -C run-dfinity clean
-	$(MAKE) -C asyn clean
