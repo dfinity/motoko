@@ -10,9 +10,14 @@ pipeline {
             }
         }
 
-        stage('Build and test (native)') {
+        stage('Build (native)') {
             steps {
                 sh 'nix-build -A native --arg test-dvm true'
+            }
+        }
+        stage('Test (native)') {
+            steps {
+                sh 'nix-build -A native_test --arg test-dvm true'
             }
         }
         stage('Build and test (js)') {
