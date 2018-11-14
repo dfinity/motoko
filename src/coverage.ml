@@ -11,6 +11,7 @@ type desc =
   | Val of V.value
   | NotVal of ValSet.t
   | Tup of desc list
+  | Opt of desc
 
 type ctxt =
   | InOpt of ctxt
@@ -65,14 +66,27 @@ let rec match_pat ce ctxt desc pat t sets =
     let f = Operator.unop pat.note.note_typ op in
     match_lit ce ctxt desc (f (value_of_lit !lit)) t sets
   | TupP pats ->
-    let descs, ts =
-      match desc, Type.promote ce t with
-      | Tup descs, Type.Tup ts -> descs, ts
-      | Any, Type.Tup ts -> List.map (fun _ -> Any) pats, ts
+    let ts = Type.as_tup (Type.promote ce t) in
+    let descs =
+      match desc with
+      | Tup descs -> descs
+      | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
     in match_tup ce ctxt [] descs pats ts sets
 	| OptP pat1 ->
-    match_pat ce (InOpt ctxt) desc pat1 t sets
+    let t' = Type.as_opt (Type.promote ce t) in
+    (match desc with
+    | Val Value.Null ->
+      fail ce ctxt desc sets
+    | NotVal vs when ValSet.mem Value.Null vs ->
+      match_pat ce (InOpt ctxt) Any pat1 t' sets
+    | Opt desc' ->
+      match_pat ce (InOpt ctxt) desc' pat1 t' sets
+    | Any ->
+      fail ce ctxt (Val Value.Null) sets &&
+      match_pat ce (InOpt ctxt) Any pat1 t' sets
+    | _ -> assert false
+    )
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat ce (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
@@ -90,7 +104,7 @@ and match_lit ce ctxt desc v t sets =
       succeed ce ctxt desc_succ sets &&
       fail ce ctxt (desc_fail ValSet.empty) sets
   | Val v' ->
-    if v = v'
+    if Value.equal v v'
     then succeed ce ctxt desc sets
     else fail ce ctxt desc sets
   | NotVal vs ->
@@ -100,6 +114,8 @@ and match_lit ce ctxt desc v t sets =
       succeed ce ctxt desc_succ sets
     else
       succeed ce ctxt desc_succ sets && fail ce ctxt (desc_fail vs) sets
+  | Opt _ ->
+    fail ce ctxt desc sets
   | _ ->
     assert false
 
@@ -116,7 +132,7 @@ and match_tup ce ctxt descs_r descs pats ts sets =
 and succeed ce ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
-    succeed ce ctxt' desc sets
+    succeed ce ctxt' (Opt desc) sets
   | InTup (ctxt', descs_r, descs, pats, ts) ->
     match_tup ce ctxt' (desc::descs_r) descs pats ts sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
@@ -140,7 +156,7 @@ and skip cases sets : bool =
 and fail ce ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
-    fail ce ctxt' desc sets
+    fail ce ctxt' (Opt desc) sets
   | InTup (ctxt', descs', descs, pats, _ts) ->
     fail ce ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->

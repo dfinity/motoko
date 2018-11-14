@@ -198,6 +198,7 @@ rule token mode = parse
   | "loop" { LOOP }
   | "private" { PRIVATE }
   | "return" { RETURN }
+  | "shared" { SHARED }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }

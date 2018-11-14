@@ -1,8 +1,4 @@
--- Checking indirect-counter.as:
--- Interpreting indirect-counter.as:
 printInt(2)
 printInt(3)
 printInt(4)
 printInt(4)
--- Finished indirect-counter.as:
-

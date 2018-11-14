@@ -321,6 +321,8 @@ let rec compare x1 x2 =
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2
 
+let equal x1 x2 = compare x1 x2 = 0
+
 
 (* Pretty Printing *)
 

@@ -30,12 +30,12 @@ To build `asc.js`, the JavaScript library, use
 nix-build -A js
 ```
 
-If you want to install `wasm` and `dsh` binaries with nix (for example because
+If you want to install `wasm` and `dvm` binaries with nix (for example because
 you maintain your Ocaml installation manually), run
 
 ```
 nix-env -i -f . -A wasm
-nix-env -i -f . -A dsh --arg test-dsh true
+nix-env -i -f . -A dvm --arg test-dvm true
 ```
 
 ## Installation and development without Nix
@@ -52,7 +52,7 @@ You do not have to use nix:
    `make install` therein.
  * Make sure `wasm` (a binary found in `vendor/wasm-spec/interpreter`) is in
    the path to run the `run` tests.
- * Make sure `dsh` (a binary from the `hs-hypervisor` package) is in the path
+ * Make sure `dvm` (a binary from the `hs-dfinity-dvm` package) is in the path
    to run the `run-dfinity` tests.
 
 

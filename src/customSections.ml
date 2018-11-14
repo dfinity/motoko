@@ -1,6 +1,6 @@
 (* Some data type to represent custom sectoins *)
 
-type persistSort = DataBuf | ElemBuf
+type type_ = I32 | DataBuf | ElemBuf
 
 (* Some Code copied from encodeMap.ml *)
 type stream =
@@ -23,8 +23,8 @@ let to_string s =
 
 let encode
     (offset : int32) (* Number of imports, to offset the numbers in dfinity_types *)
-    (dfinity_types : (int32 * int32) list) (* List of messages and number of arguments *)
-    (persistent_globals : (int32 * persistSort) list)
+    (dfinity_types : (int32 * type_ list) list) (* List of messages and arguments *)
+    (persistent_globals : (int32 * type_) list)
     (function_names : (int32 * string) list)
     (locals_names : (int32 * (int32 * string) list) list)
     : string =
@@ -75,15 +75,17 @@ let encode
     vec (List.sort (fun (i1,_) (i2,_) -> compare i1 i2) xs)
         (fun _ (li, x) -> vu32 li; f x) in
 
+  let ty = function
+      | I32     -> vu32 0x7fl
+      | DataBuf -> vu32 0x6cl
+      | ElemBuf -> vu32 0x6bl in
+
   section 0 (fun _ ->
     string "types";
     (* We could deduplicate the types here *)
-    vec dfinity_types (fun _ (_, nargs) ->
+    vec dfinity_types (fun _ (_, param_types) ->
       vu32 0x60l; (* function type op code *)
-      vu32 nargs; (* two args *)
-      for _ = 1 to Int32.to_int nargs do
-        vu32 0x6bl; (* all args are elembuf *)
-      done;
+      vec param_types (fun _ -> ty); (* all args are elembuf *)
       vu32 0l;
     )
   );
@@ -99,9 +101,7 @@ let encode
     vec persistent_globals (fun _ (i, sort) ->
       vu32 0x03l; (* a global *)
       vu32 i; (* the index *)
-      match sort with
-      | DataBuf -> vu32 0x6cl
-      | ElemBuf -> vu32 0x6bl;
+      ty sort;
     )
   );
   section 0 (fun _ ->

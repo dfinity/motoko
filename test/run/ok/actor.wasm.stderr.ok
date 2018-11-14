@@ -1,0 +1,5 @@
+compile_exp: (NewObjE Actor get_ab get_ab@54)
+compile_exp: (NewObjE Actor get_ab get_ab@43 get_b get_b@42 get_a get_a@41)
+compile_exp: (NewObjE Actor get_b get_b@33 get_a get_a@32)
+compile_exp: (NewObjE Actor get_b get_b@24 get_a get_a@23)
+compile_exp: (NewObjE Actor get_b get_b@15 get_a get_a@14)

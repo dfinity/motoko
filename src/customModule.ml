@@ -9,9 +9,9 @@ type extended_module = {
   (* The non-custom sections *)
   module_ : module_;
   (* function index, and number of arguments (simplified type system) *)
-  types : (int32 * int32) list;
+  types : (int32 * CustomSections.type_ list) list;
   (* index of persisted global, and its type *)
-  persist : (int32 * CustomSections.persistSort) list;
+  persist : (int32 * CustomSections.type_) list;
   (* Function names *)
   function_names : (int32 * string) list;
   (* Names of locals *)

@@ -146,12 +146,12 @@ and dec' rho d = match d with
      let i',rho = id_bind rho i in
      (fun rho' -> VarD(i',exp rho' e)),
      rho
-  | FuncD (i, tp, p, t, e) ->
+  | FuncD (s, i, tp, p, t, e) ->
      let i',rho = id_bind rho i in
      (fun rho' ->
        let p',rho'' = pat rho' p in
        let e' = exp rho'' e in
-       FuncD(i', tp, p', t, e')),
+       FuncD(s, i', tp, p', t, e')),
      rho
   | TypD (i, tp, t) -> (* we don't rename type names *)
      (fun rho -> d),

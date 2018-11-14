@@ -158,6 +158,7 @@ let actor_field id t v : V.value =
 let extended_prim s at =
   match s with
   | "@async" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
      let (call,f) = V.as_func v in
      async at
@@ -166,31 +167,35 @@ let extended_prim s at =
          f k' V.as_unit)
        k
   | "@await" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-      (match V.as_tup v with
-       | [async; w] ->
+     begin
+       match V.as_tup v with
+      | [async; w] ->
         let (_,f) = V.as_func w in
         await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
-      )
+     end
   | "@actor_field_unit" ->
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-      begin
-        match V.as_tup v with
-        | [v1;v2] -> 
-           let id = V.as_text v1 in                           
+     begin
+       match V.as_tup v with
+       | [v1;v2] -> 
+          let id = V.as_text v1 in                           
            k (actor_field_unit id v2)
-        | _ -> assert false
-      end
+       | _ -> assert false
+     end
   | "@actor_field_async" ->
-      fun v k ->
-        begin
-          match V.as_tup v with
-         | [v1;v2] -> 
-            let id = V.as_text v1 in                           
-            k (actor_field_async id v2)
-         | _ -> assert false
-        end
+     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
+     fun v k ->
+     begin
+       match V.as_tup v with
+       | [v1;v2] -> 
+          let id = V.as_text v1 in                           
+          k (actor_field_async id v2)
+       | _ -> assert false
+     end
   | _ -> Prelude.prim s
 
                        
@@ -286,10 +291,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        let _, f = V.as_func v1 in f v2 k
+        interpret_exp env exp2 (fun v2 ->
+            let _, f = V.as_func v1 in f v2 k
+                                    
 (*
-        try
+        try     
           let _, f = V.as_func v1 in f v2 k
         with Invalid_argument s ->
           trap exp.at "%s" s
@@ -355,7 +361,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
                interpret_exp (adjoin_vals env ve) exp2 k_continue)
           | V.Null -> k V.unit
           | _ -> assert false
-	)
+        )
       in k_continue V.unit
     )
   | LabelE (id, _typ, exp1) ->
@@ -601,7 +607,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
-  | FuncD (id, _, _, _, _)
+  | FuncD (_, id, _, _, _, _)
   | ClassD (id, _, _, _, _, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
@@ -628,7 +634,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | FuncD (id, _typbinds, pat, _typ, exp) ->
+  | FuncD (_sort, id, _typbinds, pat, _typ, exp) ->
     let f = interpret_func env id pat
       (fun env' -> interpret_exp env' exp) in
     let v = V.Func (None, f) in

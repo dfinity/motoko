@@ -1,4 +1,5 @@
 .database
+.dvm
 /result*
 
 nix/dev-in-nix
