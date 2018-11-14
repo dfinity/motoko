@@ -1,0 +1,4 @@
+asyncret2.as:1.63-1.66: type error, expression of type
+  async B/1
+cannot produce expected type
+  B/1
