@@ -148,43 +148,6 @@ and t_exp' (exp:Syntax.exp) =
   | PrimE _
   | LitE _ -> exp'
   | VarE id -> exp'
-(* TBD:
-    begin
-     match typ exp with
-     | T.Func (T.Call T.Sharable,_,_,T.Tup[]) ->
-        exp'
-     | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) ->
-        let t_id = idE id (t_typ (typ exp)) in
-        let t1 = t_typ t1 in
-        let t2 = t_typ t2 in
-        let v1 = fresh_id t1 in
-        let bogus_tbs = bogus_typ_binds tbs in
-        let bogus_ts = List.map (fun tb -> {it = VarT (tb.it.Syntax.var,[]);
-                                            at = no_region;
-                                            note = ()}) bogus_tbs
-        in
-        let call_new_async = prelude_new_async t2 in
-        let p = fresh_id (typ call_new_async) in
-        DecE
-          { it = FuncD(
-                     {it=Sharable;at=no_region;note=()},                     
-                     id,
-                     bogus_tbs, (* bogus, but should no longer be needed *)
-                     varP v1,
-                     unitT,
-                     blockE [letD p (call_new_async);
-                             expD (callE t_id bogus_ts (tupE [v1;projE p 1]) T.unit); (* bogus instantiation, but should no longer be needed *)
-                             expD (projE p 0)]);
-            note = {note_typ = t_typ (typ exp);
-                    note_eff = T.Triv};
-          at = no_region
-        }
-     | T.Func (T.Call T.Sharable,_,_,_) ->
-        failwith "t_exp:VarE"
-     | _ ->
-        exp'
-     end
- *)
   | UnE (op, exp1) ->
     UnE (op, t_exp exp1)
   | BinE (exp1, op, exp2) ->
@@ -249,23 +212,6 @@ and t_exp' (exp:Syntax.exp) =
               expD ((t_exp exp2) -*- k);
               expD async])
        .it
-(*     
-  | CallE ({it=VarE id;_} as exp1, typs, exp2) when isAwaitableFunc exp1 ->
-     let t1,t2 =
-       match typ exp1 with
-       | T.Func (T.Call T.Sharable,tbs,t1,T.Async t2) ->
-          t_typ t1, t_typ t2
-       | _ -> assert(false)
-     in
-     let id = idE id (t_typ (typ exp1)) in
-     let typs = List.map t_typT typs in
-     let call_new_async = prelude_new_async t2 in
-     let p = fresh_id (typ call_new_async) in
-     (blockE [letD p (call_new_async);
-              expD (callE id typs (tupE [exp1;projE p 1]) T.unit);
-              expD (projE p 0)])
-       .it
- *)
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
        match typ exp1 with

@@ -64,7 +64,14 @@ let share_typfield tf =
 let share_dec d =
   match d.it with
   | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
+(*     
+     let e =
+       match t.it with
+       | AsyncT _ -> AsyncE(e) @? e.at
+       | _ -> e
+     in
+*)
+     FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
   | _ -> d
 
 let share_exp e =
@@ -564,6 +571,24 @@ func_dec :
 func_body :
   | EQ e=exp { (false, e) }
   | e=exp_block { (true, e) }
+
+(*
+func_dec :
+  | tps=typ_params_opt p=pat_nullary rt=return_typ? e=func_body
+    { fun s x ->
+        let t = Lib.Option.get rt (TupT([]) @@ no_region) in
+        let e =
+	  match (s.it,t.it) with
+	  | Type.Sharable, AsyncT _ ->
+	     AsyncE(e) @? e.at
+          | _ -> e	     
+	in
+	FuncD(s, x, tps, p, t, e) @? at $sloc }
+
+func_body :
+  | EQ e=exp { e }
+  | e=exp_block { e }
+*)
 
 class_body :
   | EQ efs=exp_obj { efs }
