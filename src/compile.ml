@@ -205,7 +205,7 @@ module E = struct
     else raise (Invalid_argument "add all imports before all functions!")
 
   let add_other_import (env : t) m =
-    reg env.other_imports m
+    let _ = reg env.other_imports m in ()
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
@@ -1603,23 +1603,26 @@ module Dfinity = struct
 
   let default_exports env =
     (* these export seems to be wanted by the hypervisor/v8 *)
-    let _ = E.add_other_import env (nr {
-      module_name = explode "";
-      item_name = explode "mem";
-      idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
-    }) in
-    E.add_export env (nr {
-      name = explode "table";
-      edesc = nr (TableExport (nr 0l))
-    });
-    E.add_export env (nr {
-      name = explode "heap_ptr";
-      edesc = nr (GlobalExport (nr Heap.heap_ptr))
-    });
-    E.add_export env (nr {
-      name = explode "elem_ptr";
-      edesc = nr (GlobalExport (nr ElemHeap.ref_counter))
-    })
+    if E.mode env = DfinityMode
+    then
+      E.add_other_import env (nr {
+        module_name = explode "";
+        item_name = explode "mem";
+        idesc = nr (MemoryImport (MemoryType {min = 1024l; max = None}))
+      });
+      E.add_export env (nr {
+        name = explode "table";
+        edesc = nr (TableExport (nr 0l))
+      });
+      E.add_export env (nr {
+        name = explode "heap_ptr";
+        edesc = nr (GlobalExport (nr Heap.heap_ptr))
+      });
+      E.add_export env (nr {
+        name = explode "elem_ptr";
+        edesc = nr (GlobalExport (nr ElemHeap.ref_counter))
+      })
+
 
 end (* Dfinity *)
 
@@ -2903,12 +2906,7 @@ and actor_lit outer_env name fs =
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
     let start_fi = E.add_fun env1 start_fun in
-    E.add_fun_name env1 start_fi "start";
-    E.add_export env (nr {
-      name = Dfinity.explode "start";
-      edesc = nr (FuncExport (nr start_fi))
-    });
-    let m = conclude_module env1 in
+    let m = conclude_module env1 start_fi in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -2965,8 +2963,15 @@ and declare_built_in_funs env =
          ; "shift_pointers"; "shift_pointer_at" ]
     else []))
 
-and conclude_module env =
+and conclude_module env start_fi =
   Dfinity.default_exports env;
+
+  E.add_fun_name env start_fi "start";
+  if E.mode env = DfinityMode then
+    E.add_export env (nr {
+      name = Dfinity.explode "start";
+      edesc = nr (FuncExport (nr start_fi))
+    });
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in
@@ -2979,6 +2984,10 @@ and conclude_module env =
   let nf' = Wasm.I32.of_int_u nf in
 
   let table_sz = Int32.add nf' ni' in
+
+  let memories = if E.mode env = DfinityMode
+    then []
+    else [nr {mtype = MemoryType {min = 1024l; max = None}} ] in
 
   (* We want to put all persistent globals first:
      The index in the persist annotation refers to the index in the
@@ -3008,9 +3017,9 @@ and conclude_module env =
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = None;
+      start = if E.mode env = DfinityMode then None else Some (nr start_fi);
       globals = globals;
-      memories = [];
+      memories = memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
@@ -3037,9 +3046,4 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
 
   let start_fun = compile_start_func env1 (prelude :: progs) in
   let start_fi = E.add_fun env1 start_fun in
-  E.add_fun_name env1 start_fi "start";
-  E.add_export env (nr {
-    name = Dfinity.explode "start";
-    edesc = nr (FuncExport (nr start_fi))
-  });
-  conclude_module env1
+  conclude_module env1 start_fi
