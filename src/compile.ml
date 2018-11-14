@@ -2913,11 +2913,24 @@ and actor_lit outer_env name fs =
     wasm in
 
   let code =
+    let (set_a, get_a) = new_local outer_env "actor" in
     Dfinity.compile_databuf_of_bytes outer_env wasm ^^
 
     (* Create actorref *)
     G.i_ (Call (nr (Dfinity.module_new_i outer_env))) ^^
     G.i_ (Call (nr (Dfinity.actor_new_i outer_env))) ^^
+    set_a ^^
+
+    (* Call the "start" function *)
+    compile_unboxed_const Message.tmp_table_slot ^^
+    get_a ^^
+    Dfinity.compile_databuf_of_bytes outer_env "start" ^^
+    G.i_ (Call (nr (Dfinity.actor_export_i outer_env))) ^^
+    G.i_ (Call (nr (Dfinity.func_internalize_i outer_env))) ^^
+    compile_unboxed_const Message.tmp_table_slot ^^
+    G.i_ (CallIndirect (nr (E.func_type outer_env (FuncType ([],[]))))) ^^
+
+    get_a ^^
     ElemHeap.remember_reference outer_env in
 
   (* Wrap it in a tagged heap object *)
