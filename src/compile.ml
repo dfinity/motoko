@@ -375,16 +375,16 @@ module Heap = struct
      *)
   let word_size = 4l
 
-  let heap_ptr : var = nr 2l
+  let heap_ptr = 0l
 
   let alloc_bytes (n : int32) : G.t =
     (* returns the pointer to the allocate space on the heap *)
-    G.i_ (GetGlobal heap_ptr) ^^
-    G.i_ (GetGlobal heap_ptr) ^^
+    G.i_ (GetGlobal (nr heap_ptr)) ^^
+    G.i_ (GetGlobal (nr heap_ptr)) ^^
     let aligned = Int32.logand (Int32.add n 3l) (Int32.lognot 3l) in
     compile_unboxed_const aligned  ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (SetGlobal heap_ptr)
+    G.i_ (SetGlobal (nr heap_ptr))
 
   let alloc (n : int32) : G.t =
     alloc_bytes (Wasm.I32.mul word_size n)
@@ -417,7 +417,7 @@ module Heap = struct
 end (* Heap *)
 
 module ElemHeap = struct
-  let ref_counter : var = nr 3l
+  let ref_counter = 1l
 
   let max_references = 1024l
   let ref_location = 0l
@@ -431,10 +431,10 @@ module ElemHeap = struct
     set_i ^^
 
     (* Return index *)
-    G.i_ (GetGlobal ref_counter) ^^
+    G.i_ (GetGlobal (nr ref_counter)) ^^
 
     (* Store reference *)
-    G.i_ (GetGlobal ref_counter) ^^
+    G.i_ (GetGlobal (nr ref_counter)) ^^
     compile_unboxed_const Heap.word_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
     compile_unboxed_const ref_location ^^
@@ -443,10 +443,10 @@ module ElemHeap = struct
     store_ptr ^^
 
     (* Bump counter *)
-    G.i_ (GetGlobal ref_counter) ^^
+    G.i_ (GetGlobal (nr ref_counter)) ^^
     compile_unboxed_const 1l ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (SetGlobal ref_counter)
+    G.i_ (SetGlobal (nr ref_counter))
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
   let recall_reference env : G.t =
@@ -826,8 +826,8 @@ module RTS = struct
       let get_n = G.i_ (GetLocal (nr 0l)) in
 
       (* expect the size (in words), returns the pointer *)
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
+      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
       get_n ^^
       (* align *)
       compile_unboxed_const 3l ^^
@@ -838,7 +838,7 @@ module RTS = struct
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.And)) ^^
       (* add to old heap value *)
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (SetGlobal Heap.heap_ptr)
+      G.i_ (SetGlobal (nr Heap.heap_ptr))
     );
 
     Func.define_built_in module_env "alloc_words" ["n"] [I32Type] (fun env ->
@@ -1611,6 +1611,14 @@ module Dfinity = struct
     E.add_export env (nr {
       name = explode "table";
       edesc = nr (TableExport (nr 0l))
+    });
+    E.add_export env (nr {
+      name = explode "heap_ptr";
+      edesc = nr (GlobalExport (nr Heap.heap_ptr))
+    });
+    E.add_export env (nr {
+      name = explode "elem_ptr";
+      edesc = nr (GlobalExport (nr ElemHeap.ref_counter))
     })
 
 end (* Dfinity *)
@@ -1640,7 +1648,7 @@ module Serialization = struct
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
 
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
       set_copy ^^
 
       get_x ^^
@@ -1994,9 +2002,9 @@ module Serialization = struct
       let (set_tbl_end, get_tbl_end) = new_local env "tbl_end" in
 
       (* Remember where we start to copy to *)
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
       set_start ^^
-      G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
       set_tbl_start ^^
 
       (* Copy data *)
@@ -2011,7 +2019,7 @@ module Serialization = struct
           store_ptr ^^
 
           (* Remember the end *)
-          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
           set_end
         )
         (* We have real data on the heap. Copy.  *)
@@ -2019,7 +2027,7 @@ module Serialization = struct
           G.i_ Drop ^^
 
           (* Remember the end *)
-          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
           set_end ^^
 
           (* Adjust pointers *)
@@ -2041,14 +2049,14 @@ module Serialization = struct
       ElemHeap.remember_reference env ^^
       G.i_ Drop ^^
 
-      G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
       set_tbl_end ^^
 
       (* Reset the counters, to free some space *)
       get_start ^^
-      G.i_ (SetGlobal Heap.heap_ptr) ^^
+      G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
       get_tbl_start ^^
-      G.i_ (SetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (SetGlobal (nr ElemHeap.ref_counter)) ^^
 
       (* Finalloy, create elembuf *)
       compile_unboxed_const ElemHeap.ref_location ^^
@@ -2071,10 +2079,10 @@ module Serialization = struct
 
 
       (* new positions *)
-      G.i_ (GetGlobal Heap.heap_ptr) ^^
+      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
       set_i ^^
 
-      G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
       set_tbl_start ^^
 
       (* Load references *)
@@ -2094,10 +2102,10 @@ module Serialization = struct
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       compile_unboxed_const 1l ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-      G.i_ (SetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (SetGlobal (nr ElemHeap.ref_counter)) ^^
 
       (* That last entry is the databuf to load *)
-      G.i_ (GetGlobal ElemHeap.ref_counter) ^^
+      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
       ElemHeap.recall_reference env ^^
       set_databuf ^^
 
@@ -2123,11 +2131,11 @@ module Serialization = struct
           get_i ^^
           get_data_len ^^
           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          G.i_ (SetGlobal Heap.heap_ptr) ^^
+          G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
 
           (* Fix pointers *)
           get_i ^^
-          G.i_ (GetGlobal Heap.heap_ptr) ^^
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
           get_i ^^
           get_tbl_start ^^
           G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
@@ -2963,14 +2971,6 @@ and conclude_module env =
      The index in the persist annotation refers to the index in the
      list of *exported* globals, not all globals (at least with v8) *)
   let globals = [
-      (* persistent databuf for memory *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
-      (* persistent elembuf for memory *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
       (* End-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
@@ -3003,7 +3003,9 @@ and conclude_module env =
       data
     };
     types = E.get_dfinity_types env;
-    persist = [];
+    persist =
+           [ (Heap.heap_ptr, CustomSections.I32)
+           ; (ElemHeap.ref_counter, CustomSections.I32) ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
