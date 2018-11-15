@@ -97,9 +97,14 @@ let set_async async v =
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
+let fulfill async v =
+  Scheduler.queue (fun () -> set_async async v)
+
+          
 let async at (f: (V.value V.cont) -> unit) (k:V.value V.cont) =
     let async = make_async () in
-    let k' = fun v1 -> set_async async v1 in
+    (*    let k' = fun v1 -> set_async async v1 in *)
+    let k' = fun v1 -> fulfill async v1 in 
     if !Flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
       if !Flags.trace then trace "<- async %s" (string_of_region at);
@@ -152,7 +157,9 @@ let actor_field id t v : V.value =
      actor_field_unit id.it v
   | T.Func (_, _, _, T.Async _) ->
      actor_field_async id.it v
-  | _ -> assert false
+  | _ ->
+     failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
+     (*     assert false *)
 
   
 let extended_prim s at =
@@ -178,7 +185,8 @@ let extended_prim s at =
      end
   | "@actor_field_unit" ->
      assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k ->
+     fun v k -> k v
+(*     
      begin
        match V.as_tup v with
        | [v1;v2] -> 
@@ -186,9 +194,11 @@ let extended_prim s at =
            k (actor_field_unit id v2)
        | _ -> assert false
      end
+ *)
   | "@actor_field_async" ->
      assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k ->
+     fun v k -> k v
+(*     
      begin
        match V.as_tup v with
        | [v1;v2] -> 
@@ -196,6 +206,7 @@ let extended_prim s at =
           k (actor_field_async id v2)
        | _ -> assert false
      end
+ *)
   | _ -> Prelude.prim s
 
                        
@@ -580,9 +591,10 @@ and interpret_fields env s co fields ve (k : V.value V.cont) =
   | {it = {id; name; mut; priv; exp}; _}::fields' ->
     interpret_exp env exp (fun v ->
       let v' =
-        if s = T.Actor && priv.it = Public
+(*        if s = T.Actor && priv.it = Public
         then actor_field id exp.note.note_typ v
-        else v
+        else *)
+        v
       in
       let v'' =
         match mut.it with
@@ -638,6 +650,12 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id pat
       (fun env' -> interpret_exp env' exp) in
     let v = V.Func (None, f) in
+    let v =
+      match _sort.it with
+      | T.Sharable ->
+         actor_field id dec.note.note_typ v
+      |  T.Local -> v
+    in                      
     define_id env id v;
     k v
   | ClassD (id, _,  _typbinds, sort, pat, fields) ->

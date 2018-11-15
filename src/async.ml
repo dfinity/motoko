@@ -79,6 +79,19 @@ let callE e1 ts e2 t =
             note_eff = T.Triv}
   }
   
+let shared_funcD f x e =
+  match f.it,x.it with
+  | VarE _, VarE _ ->
+     let note = {note_typ = T.Func(T.Call T.Sharable, [], typ x, typ e);
+                 note_eff = T.Triv} in
+     {it=FuncD(T.Sharable @@ no_region, (id_of_exp f),
+               [],
+               {it=VarP (id_of_exp x);at=no_region;note=x.note},
+               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               e);
+            at = no_region;
+            note;}
+  | _ -> failwith "Impossible: funcD"
 
 
 let isAwaitableFunc exp =
@@ -171,6 +184,7 @@ and t_exp' (exp:Syntax.exp) =
     ArrayE (List.map t_exp exps)
   | IdxE (exp1, exp2) ->
      IdxE (t_exp exp1, t_exp exp2)
+(* TBD     
   | CallE ({it=PrimE "@actor_field_unit";_}, [],exp2) ->
     begin
      match exp2.it with
@@ -183,6 +197,7 @@ and t_exp' (exp:Syntax.exp) =
      | TupE [string;f] -> (t_exp f).it
      | _ -> failwith "t_exp: @actor_field_async"
     end
+*)
   | CallE ({it=PrimE "@await";_}, typs, exp2) ->
     begin
      match exp2.it with
@@ -199,6 +214,8 @@ and t_exp' (exp:Syntax.exp) =
        | _ -> failwith "t_exp: @async" in
      let k = fresh_id contT in
      let v1 = fresh_id t1 in
+     let post = fresh_id (T.Func(T.Call T.Sharable,[],T.unit,T.unit)) in
+     let u = fresh_id T.unit in
      let call_new_async = prelude_new_async t1 in
      let p = fresh_id (typ call_new_async) in
      let p_0 = projE p 0 in
@@ -209,7 +226,8 @@ and t_exp' (exp:Syntax.exp) =
               letD async p_0;
               letD fullfill p_1;
               funcD k v1 (fullfill -*- v1);
-              expD ((t_exp exp2) -*- k);
+              shared_funcD post u (t_exp exp2 -*- k);
+              expD (post -*- tupE[]);
               expD async])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
@@ -279,7 +297,12 @@ and t_block decs : dec list=
   List.map t_dec decs
 
 and t_dec dec =
-  {dec with it = t_dec' dec.it}
+  { it = t_dec' dec.it;
+    note = { note_typ = t_typ dec.note.note_typ;
+             note_eff = dec.note.note_eff};
+    at = dec.at
+  }
+ 
 and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)

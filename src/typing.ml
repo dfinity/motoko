@@ -1026,7 +1026,9 @@ and check_block_exps env ce_inner t decs at =
 and check_dec env ce_inner t dec =
   begin
     match dec.it with
-    | ExpD exp -> check_exp env t exp
+    | ExpD exp ->
+       check_exp env t exp;
+       dec.note <- exp.note;
 (* TBR: push in external type annotation;
    unfortunately, this is enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -1058,8 +1060,6 @@ and check_dec env ce_inner t dec =
            (T.string_of_typ_expand env.cons t)
            (T.string_of_typ_expand env.cons t');
   end;
-  let eff = A.infer_effect_dec dec in
-  dec.note <- {note_typ = t; note_eff = eff};
   
 (*
 and print_ce =

@@ -717,10 +717,11 @@ and c_obj context exp sort id fields =
                     decs in
          blockE (List.rev decs)
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-         let exp = if sort.it = T.Actor && priv.it = Public
+(*         let exp = if sort.it = T.Actor && priv.it = Public
                    then actor_field (typ exp) -*- tupE([textE id.it;exp])
                    else exp
          in
+ *)
          let ids =
            match priv.it with
            | Public -> (name,id)::nameids
