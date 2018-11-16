@@ -2,12 +2,10 @@ open Syntax
 open Source
 module T = Type
 module W = Wasm         
-module R = Rename             
 open T
 open Awaitopt    (* TBD *)
 
 (* lower the async type itself *)
-
 
 let localS =
   {it=T.Call T.Local;

@@ -67,14 +67,14 @@ d(func f(v1,...,vn) = e) : w[shared (S1,...,Sn) -> ())] =
 d(null,S?) = databuf{}  if scalar(d[S])
            | elembuf{d} otherwise
 d(v?,S?) = databuf{bytes(d(v))} if scalar(d[S])
-         | elembuf{d(v)} otherwise
+	   | elembuf{d(v)} otherwise
 d({v1,...,vn}) : d[S1[]] = databuf {bytes{v1,...,vn}} if scalar[d(S1)]
 d({v1,...,vn}) : d[S1[]] = elembuf {d(v1),...,d(vn)}  otherwise
 d(actor (actorref,...)) : d[actor ...] = actorref
-d((v1,...,vN)] = elembuf { databuf {bytes [| vi | i in 1 .. n, scalar(d(Si)) |]}
-                           elembuf {d[| vi | i in 1 .. n, !scalar(d(Si)) |]}}
+d((v1,...,vn)] = elembuf { databuf { bytes(vi) | i in 1 .. n, scalar(d(Si)) }} (* roughly *)
+                           elembuf { d(vi) | i in 1 .. n, !scalar(d(Si)) }}
 
-d(shared object {f1 = v1,..,fn=vn}) (where f1,...,fn in sort order)
+d(shared object {f1 = v1,..,fn=vn}) (assuming f1,...,fn in sort order)
   d[shared object {f1 :S1, ..., fn: S2n}] = d((v1,...,vn)) 
 ```  
 
@@ -98,14 +98,14 @@ a (S?) = if elembuf.len w = 0 then null else Some a(S)(w[o]) otherwise
 a (actor {fi:shared function (Si1,...,Sin) -> ()}) actorref =
    actor (actorref, {fi = a (shared function (Si1,...,Sin) -> ()) (actor.internalize fi) })
 a (S1,...,Sn) (elembuf{eb,db}) =
-   (* roughly *)
+   (* roughly, we'd need to be more precise for scalar sizes*)
    let buf(Si) = if scalar then eb else db
    let ind(Si) = |{Sj | scalar(Sj)=scalar(Si) and j<i}| in
    (a(S1)(buf(S1)(w1)(ind(S1))), ...
-    a(SN)(buf(SN)(w1)(ind(SN))))
-a (shared object {f:S1,...,fn:SN}) w = (f1,...,fn in sort order)
-  let (v1,...,vn) = a (S1,...,SN) w in
-  new object (f = v1,...,f=vn) 
+    a(Sn)(buf(Sn)(w1)(ind(Sn))))
+a (shared object {f:S1,...,fn:Sn}) w = (assuming f1,...,fn in sort order)
+  let (v1,...,vn) = a (S1,...,Sn) w in
+  new object (f1 = v1,...,fn=vn) 
 ```
 
 But what should we do about polymorphism? Can we rule it out,
