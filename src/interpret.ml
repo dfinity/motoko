@@ -137,11 +137,12 @@ let actor_msg id f v (k : V.value V.cont) =
     f v k
   )
                   
-let actor_field_unit id v =
+let make_unit_message id v =
     let _, f = V.as_func v in
     V.Func (None, fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
 
-let actor_field_async id v =
+let make_async_message id v =
+    assert (not !Flags.async_lowering);
     let _, f = V.as_func v in
     V.Func (None, fun v k ->
       let async = make_async () in
@@ -151,12 +152,13 @@ let actor_field_async id v =
       k (V.Async async)
     )
 
-let actor_field id t v : V.value =
+let make_message id t v : V.value =
   match t with
   | T.Func (_, _, _, T.Tup []) ->
-     actor_field_unit id.it v
+     make_unit_message id.it v
   | T.Func (_, _, _, T.Async _) ->
-     actor_field_async id.it v
+     assert (not !Flags.async_lowering);
+     make_async_message id.it v
   | _ ->
      failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
      (*     assert false *)
@@ -183,30 +185,6 @@ let extended_prim s at =
         await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
      end
-  | "@actor_field_unit" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k -> k v
-(*     
-     begin
-       match V.as_tup v with
-       | [v1;v2] -> 
-          let id = V.as_text v1 in                           
-           k (actor_field_unit id v2)
-       | _ -> assert false
-     end
- *)
-  | "@actor_field_async" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k -> k v
-(*     
-     begin
-       match V.as_tup v with
-       | [v1;v2] -> 
-          let id = V.as_text v1 in                           
-          k (actor_field_async id v2)
-       | _ -> assert false
-     end
- *)
   | _ -> Prelude.prim s
 
                        
@@ -591,17 +569,11 @@ and interpret_fields env s co fields ve (k : V.value V.cont) =
   | {it = {id; name; mut; priv; exp}; _}::fields' ->
     interpret_exp env exp (fun v ->
       let v' =
-(*        if s = T.Actor && priv.it = Public
-        then actor_field id exp.note.note_typ v
-        else *)
-        v
-      in
-      let v'' =
         match mut.it with
-        | Const -> v'
-        | Var -> V.Mut (ref v')
+        | Const -> v
+        | Var -> V.Mut (ref v)
       in
-      define_id env id v'';
+      define_id env id v';
       interpret_fields env s co fields' ve k
     )
 
@@ -653,7 +625,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let v =
       match _sort.it with
       | T.Sharable ->
-         actor_field id dec.note.note_typ v
+         make_message id dec.note.note_typ v
       |  T.Local -> v
     in                      
     define_id env id v;

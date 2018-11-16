@@ -64,13 +64,6 @@ let share_typfield tf =
 let share_dec d =
   match d.it with
   | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-(*     
-     let e =
-       match t.it with
-       | AsyncT _ -> AsyncE(e) @? e.at
-       | _ -> e
-     in
-*)
      FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
   | _ -> d
 
@@ -559,7 +552,9 @@ dec :
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @@ no_region) in
-      (* This is a hack to support async method declarations. *)
+      (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
@@ -571,24 +566,6 @@ func_dec :
 func_body :
   | EQ e=exp { (false, e) }
   | e=exp_block { (true, e) }
-
-(*
-func_dec :
-  | tps=typ_params_opt p=pat_nullary rt=return_typ? e=func_body
-    { fun s x ->
-        let t = Lib.Option.get rt (TupT([]) @@ no_region) in
-        let e =
-	  match (s.it,t.it) with
-	  | Type.Sharable, AsyncT _ ->
-	     AsyncE(e) @? e.at
-          | _ -> e	     
-	in
-	FuncD(s, x, tps, p, t, e) @? at $sloc }
-
-func_body :
-  | EQ e=exp { e }
-  | e=exp_block { e }
-*)
 
 class_body :
   | EQ efs=exp_obj { efs }

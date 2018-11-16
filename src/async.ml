@@ -184,20 +184,6 @@ and t_exp' (exp:Syntax.exp) =
     ArrayE (List.map t_exp exps)
   | IdxE (exp1, exp2) ->
      IdxE (t_exp exp1, t_exp exp2)
-(* TBD     
-  | CallE ({it=PrimE "@actor_field_unit";_}, [],exp2) ->
-    begin
-     match exp2.it with
-     | TupE [string;f] -> (t_exp f).it
-     | _ -> failwith "t_exp: @actor_field_unit"
-    end
-  | CallE ({it=PrimE "@actor_field_async";_}, typs, exp2) ->
-    begin
-     match exp2.it with
-     | TupE [string;f] -> (t_exp f).it
-     | _ -> failwith "t_exp: @actor_field_async"
-    end
-*)
   | CallE ({it=PrimE "@await";_}, typs, exp2) ->
     begin
      match exp2.it with

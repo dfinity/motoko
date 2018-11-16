@@ -176,19 +176,6 @@ let primE name typ =
 let prim_async typ = primE "@async" (T.Func(T.Call T.Local,[], cpsT typ, T.Async typ))
 let prim_await typ = 
   primE "@await" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
-let prim_actor_field_unit typ = 
-  primE "@actor_field_unit" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))
-let prim_actor_field_async typ = 
-  primE "@actor_field_async" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))
-
-        
-let actor_field typ =
-  match typ with
-  | T.Func (_, _, _, T.Tup []) ->
-     prim_actor_field_unit typ
-  | T.Func (_, _, _, T.Async _) ->
-     prim_actor_field_async typ
-  | _ -> assert false
   
 (* smart(ish) constructors *)
     
@@ -717,11 +704,6 @@ and c_obj context exp sort id fields =
                     decs in
          blockE (List.rev decs)
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-(*         let exp = if sort.it = T.Actor && priv.it = Public
-                   then actor_field (typ exp) -*- tupE([textE id.it;exp])
-                   else exp
-         in
- *)
          let ids =
            match priv.it with
            | Public -> (name,id)::nameids
