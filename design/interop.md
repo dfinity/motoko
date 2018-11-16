@@ -45,10 +45,12 @@ d[Int] = databuf
 d[Word8|Word16|Word32] = i32
 d[Word64] = i64
 d[shared (S1,..,SN) -> ()] = funcref
-d[a[]] = (elembuf U databuf)
+d[a[]] = databuf if scalar d[a]
+       | elembuf otherwise
 d[actor ...] = actorref
 d[shared object (f1:S1,...fn:Sn)] = d[(S1,...,Sn)] (f1,...,fn in sort order)
-d[S?] = elembuf U databuf
+d[a[]] = databuf if scalar d[a]
+       | elembuf otherwise
 d[(S1,..,S2)] = elembuf
 ```
 
@@ -62,12 +64,12 @@ d(n) : d[Nat] = databuf (bytes(n))
 d(i) : d[Int] = databuf (bytes(i))
 d(w) : d[Word8|Word16|Word32] = word32(w)
 d(w) : d[Word64] = word64(w)
-d(func f(v1,...,vn) = e) : w[shared (S1,...,Sn) -> ())] =
+d(func f(v1,...,vn) = e) : d[shared (S1,...,Sn) -> ())] =
        funcref ((w1:d(S1),...,wn:d(Sn)) -> let vi = a(wi) in e)
-d(null,S?) = databuf{}  if scalar(d[S])
-           | elembuf{d} otherwise
+d(null,S?) = databuf{} if scalar(d[S])
+           | elembuf{} otherwise
 d(v?,S?) = databuf{bytes(d(v))} if scalar(d[S])
-	   | elembuf{d(v)} otherwise
+	 | elembuf{d(v)}        otherwise
 d({v1,...,vn}) : d[S1[]] = databuf {bytes{v1,...,vn}} if scalar[d(S1)]
 d({v1,...,vn}) : d[S1[]] = elembuf {d(v1),...,d(vn)}  otherwise
 d(actor (actorref,...)) : d[actor ...] = actorref
