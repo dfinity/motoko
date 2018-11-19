@@ -255,7 +255,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DotE (exp1, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      k (find n fs)
+      k (try find n fs with _ -> (assert false))
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->

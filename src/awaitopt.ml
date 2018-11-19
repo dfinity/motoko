@@ -704,11 +704,7 @@ and c_obj context exp sort id fields =
                     decs in
          blockE (List.rev decs)
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-         let ids =
-           match priv.it with
-           | Public -> (name,id)::nameids
-           | Private -> nameids                
-         in
+         let ids = (name,id)::nameids in
          match mut.it with 
          | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
          | Var -> c_fields fields (varD id exp::decs) ids
