@@ -76,10 +76,15 @@ module E = struct
       ref := !ref @ [ p ];
       (i, Lib.Promise.fulfill p)
 
+
   (* The environment type *)
   module NameEnv = Env.Make(String)
   type local_names = (int32 * string) list
   type func_with_names = func * local_names
+  type lazy_built_in =
+    | Declared of (int32 * (func_with_names -> unit))
+    | Defined of int32
+    | Pending of (unit -> func_with_names)
   type t = {
     mode : mode;
 
@@ -92,7 +97,7 @@ module E = struct
     func_names : (int32 * string) list ref;
     func_locals : (int32 * local_names) list ref;
     (* Function number and fill function for built-in functions *)
-    built_in_funcs : ((func_with_names -> unit) * int32) NameEnv.t;
+    built_in_funcs : lazy_built_in NameEnv.t ref;
     (* Types registered in this module *)
     func_types : func_type list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
@@ -129,7 +134,7 @@ module E = struct
     funcs = ref [];
     func_names = ref [];
     func_locals = ref [];
-    built_in_funcs = NameEnv.empty;
+    built_in_funcs = ref NameEnv.empty;
     func_types = ref [];
     dfinity_types = ref [];
     (* Actually unused outside mk_fun_env: *)
@@ -223,25 +228,32 @@ module E = struct
   let add_fun_name (env : t) fi name =
     let _ = reg env.func_names (fi, name) in ()
 
-  let declare_built_in_fun (env : t) name : t =
-    let (fi, fill) = reserve_fun env in
-    add_fun_name env fi name;
-    { env with
-      built_in_funcs = NameEnv.add name (fill, fi) env.built_in_funcs
-    }
-
-  let declare_built_in_funs (env : t) names : t =
-    List.fold_left declare_built_in_fun env names
-
-  let define_built_in (env : t) name f : unit =
-    match NameEnv.find_opt name env.built_in_funcs with
-    | None -> raise (Invalid_argument ("define_built_in: Undeclared built-in " ^ name))
-    | Some (fill, _) -> fill f
-
   let built_in (env : t) name : int32 =
-    match NameEnv.find_opt name env.built_in_funcs with
-    | None -> raise (Invalid_argument ("built_in: Undeclared built-in " ^ name))
-    | Some (_, fi) -> fi
+    match NameEnv.find_opt name !(env.built_in_funcs) with
+    | None ->
+        let (fi, fill) = reserve_fun env in
+        add_fun_name env fi name;
+        env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
+        fi
+    | Some (Declared (fi, _)) -> fi
+    | Some (Defined fi) -> fi
+    | Some (Pending mk_fun) ->
+        let (fi, fill) = reserve_fun env in
+        add_fun_name env fi name;
+        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+        fill (mk_fun ());
+        fi
+
+  let define_built_in (env : t) name mk_fun : unit =
+    match NameEnv.find_opt name !(env.built_in_funcs) with
+    | None ->
+        env.built_in_funcs := NameEnv.add name (Pending mk_fun) !(env.built_in_funcs);
+    | Some (Declared (fi, fill)) ->
+        env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+        fill (mk_fun ());
+    | Some (Defined fi) ->  ()
+    | Some (Pending mk_fun) -> ()
+
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
@@ -643,7 +655,7 @@ module Func = struct
     of_body env ["clos"; "param"] [I32Type] mk_body
 
   let define_built_in env name params retty mk_body =
-    E.define_built_in env name (of_body env params retty mk_body)
+    E.define_built_in env name (fun () -> of_body env params retty mk_body)
 
   (* The argument on the stack *)
   let call_direct env fi at =
@@ -1227,7 +1239,7 @@ module Array = struct
     let get_second_arg =   Func.load_argument ^^ load_n 1l in
 
     E.define_built_in env "array_get"
-      (Func.unary_of_body env (fun env1 ->
+      (fun () -> Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1235,7 +1247,7 @@ module Array = struct
             load_ptr
        ));
     E.define_built_in env "array_set"
-      (Func.unary_of_body env (fun env1 ->
+      (fun () -> Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1245,7 +1257,7 @@ module Array = struct
             compile_unit
        ));
     E.define_built_in env "array_len"
-      (Func.unary_of_body env (fun env1 ->
+      (fun () -> Func.unary_of_body env (fun env1 ->
             get_array_object ^^
             Heap.load_field len_field ^^
             BoxedInt.box env1
@@ -1302,21 +1314,21 @@ module Array = struct
        ) in
 
     E.define_built_in env "array_keys_next"
-      (mk_next_fun (fun env1 get_array get_boxed_i get_i ->
+      (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
               get_boxed_i
        ));
     E.define_built_in env "array_keys"
-      (mk_iterator (E.built_in env "array_keys_next"));
+      (fun () -> mk_iterator (E.built_in env "array_keys_next"));
 
     E.define_built_in env "array_vals_next"
-      (mk_next_fun (fun env1 get_array get_boxed_i get_i ->
+      (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
               get_array ^^
               get_i ^^
               idx ^^
               load_ptr
       ));
     E.define_built_in env "array_vals"
-      (mk_iterator (E.built_in env "array_vals_next"))
+      (fun () -> mk_iterator (E.built_in env "array_vals_next"))
 
   (* Compile an array literal. *)
   let lit env element_instructions =
@@ -2908,9 +2920,8 @@ prelude. So this function compiles the prelude, just to find out the bound names
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l in
-  let env2 = declare_built_in_funs env1 in
-  let (env3, _) = compile_prelude env2 in
-  E.in_scope_set env3
+  let (env2, _) = compile_prelude env1 in
+  E.in_scope_set env2
 
 
 and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
@@ -2989,26 +3000,25 @@ and actor_lit outer_env name fs =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
-    let env1 = declare_built_in_funs env in
 
-    BoxedInt.common_funcs env1;
-    RTS.common_funcs env1;
-    Array.common_funcs env1;
-    Text.common_funcs env1;
-    if E.mode env1 = DfinityMode then Serialization.system_funs env1;
-    if E.mode env1 = DfinityMode then Message.system_funs env1;
+    BoxedInt.common_funcs env;
+    RTS.common_funcs env;
+    Array.common_funcs env;
+    Text.common_funcs env;
+    if E.mode env = DfinityMode then Serialization.system_funs env;
+    if E.mode env = DfinityMode then Message.system_funs env;
 
-    let start_fun = Func.of_body env1 [] [] (fun env3 ->
+    let start_fun = Func.of_body env [] [] (fun env3 ->
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
-    let start_fi = E.add_fun env1 start_fun in
-    E.add_fun_name env1 start_fi "start";
+    let start_fi = E.add_fun env start_fun in
+    E.add_fun_name env start_fi "start";
 
-    OrthogonalPersistence.register env1 start_fi;
+    OrthogonalPersistence.register env start_fi;
 
-    let m = conclude_module env1 None in
+    let m = conclude_module env None in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -3037,21 +3047,6 @@ and actor_fake_object_idx env name =
         G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
         ElemHeap.remember_reference env
       ]
-
-and declare_built_in_funs env =
-  E.declare_built_in_funs env
-    ([ "box_int"; "unbox_int";
-       "memcpy"; "alloc_bytes"; "alloc_words";
-       "concat";
-       "array_get"; "array_set"; "array_len";
-       "array_keys_next"; "array_keys";
-       "array_vals_next"; "array_vals" ] @
-    (if E.mode env = DfinityMode
-    then [ "call_funcref"; "export_self_message"; "invoke_closure"
-         ; "serialize"; "deserialize"; "serialize_go"
-         ; "shift_pointers"; "shift_pointer_at"
-         ; "save_mem"; "restore_mem" ]
-    else []))
 
 and conclude_module env start_fi_o =
 
@@ -3122,23 +3117,22 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
-  let env1 = declare_built_in_funs env in
-  BoxedInt.common_funcs env1;
-  RTS.common_funcs env1;
-  Array.common_funcs env1;
-  Text.common_funcs env1;
-  if E.mode env1 = DfinityMode then Serialization.system_funs env1;
-  if E.mode env1 = DfinityMode then Message.system_funs env1;
+  BoxedInt.common_funcs env;
+  RTS.common_funcs env;
+  Array.common_funcs env;
+  Text.common_funcs env;
+  if E.mode env = DfinityMode then Serialization.system_funs env;
+  if E.mode env = DfinityMode then Message.system_funs env;
 
-  let start_fun = compile_start_func env1 (prelude :: progs) in
-  let start_fi = E.add_fun env1 start_fun in
-  E.add_fun_name env1 start_fi "start";
+  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fi = E.add_fun env start_fun in
+  E.add_fun_name env start_fi "start";
   let start_fi_o =
-    if E.mode env1 = DfinityMode
+    if E.mode env = DfinityMode
     then begin
-      OrthogonalPersistence.register env1 start_fi;
-      Dfinity.export_start_stub env1;
+      OrthogonalPersistence.register env start_fi;
+      Dfinity.export_start_stub env;
       None
     end else Some (nr start_fi) in
 
-  conclude_module env1 start_fi_o
+  conclude_module env start_fi_o
