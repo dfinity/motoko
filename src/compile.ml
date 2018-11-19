@@ -805,6 +805,11 @@ module Func = struct
     then dec_closed pre_env last name mk_pat mk_body at
     else dec_closure pre_env last name captured mk_pat mk_body at
 
+  (* (Almost) transparently lift code into a function and call this function. *)
+  let share_code env name params retty mk_body =
+    define_built_in env name params retty mk_body;
+    G.i_ (Call (nr (E.built_in env name)))
+
 end (* Func *)
 
 module RTS = struct
@@ -1147,8 +1152,7 @@ module Text = struct
     compile_unboxed_const ptr
 
   (* Two strings on stack *)
-  let common_funcs module_env =
-    Func.define_built_in module_env "concat" ["x"; "y"] [I32Type] (fun env ->
+  let concat env = Func.share_code env "concat" ["x"; "y"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let get_y = G.i_ (GetLocal (nr 1l)) in
       let (set_z, get_z) = new_local env "z" in
@@ -2425,7 +2429,7 @@ let compile_binop env op = match op with
   | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
   | DivOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)))
   | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.RemU)))
-  | CatOp -> G.i_ (Call (nr (E.built_in env "concat")))
+  | CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
 
 let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
@@ -3004,7 +3008,6 @@ and actor_lit outer_env name fs =
     BoxedInt.common_funcs env;
     RTS.common_funcs env;
     Array.common_funcs env;
-    Text.common_funcs env;
     if E.mode env = DfinityMode then Serialization.system_funs env;
     if E.mode env = DfinityMode then Message.system_funs env;
 
@@ -3120,7 +3123,6 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   BoxedInt.common_funcs env;
   RTS.common_funcs env;
   Array.common_funcs env;
-  Text.common_funcs env;
   if E.mode env = DfinityMode then Serialization.system_funs env;
   if E.mode env = DfinityMode then Message.system_funs env;
 
