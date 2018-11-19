@@ -813,8 +813,8 @@ module Func = struct
 end (* Func *)
 
 module RTS = struct
-  let common_funcs module_env =
-    Func.define_built_in module_env "memcpy" ["from"; "two"; "n"] [] (fun env ->
+  let memcpy env =
+    Func.share_code env "memcpy" ["from"; "two"; "n"] [] (fun env ->
       let get_from = G.i_ (GetLocal (nr 0l)) in
       let get_to = G.i_ (GetLocal (nr 1l)) in
       let get_n = G.i_ (GetLocal (nr 2l)) in
@@ -831,9 +831,10 @@ module RTS = struct
 
           G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
       )
-    );
+    )
 
-    Func.define_built_in module_env "alloc_bytes" ["n"] [I32Type] (fun env ->
+  let alloc_bytes env =
+    Func.share_code env "alloc_bytes" ["n"] [I32Type] (fun env ->
       let get_n = G.i_ (GetLocal (nr 0l)) in
 
       (* expect the size (in words), returns the pointer *)
@@ -850,17 +851,17 @@ module RTS = struct
       (* add to old heap value *)
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       G.i_ (SetGlobal Heap.heap_ptr)
-    );
+    )
 
-    Func.define_built_in module_env "alloc_words" ["n"] [I32Type] (fun env ->
+  let alloc_words env =
+    Func.share_code env "alloc_words" ["n"] [I32Type] (fun env ->
       let get_n = G.i_ (GetLocal (nr 0l)) in
 
       get_n ^^
       compile_unboxed_const Heap.word_size ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-      G.i_ (Call (nr (E.built_in env "alloc_bytes")))
-    );
-
+      alloc_bytes env
+    )
 
 
 end (* RTS *)
@@ -873,10 +874,23 @@ module BoxedInt = struct
      tagged, see BitTagged.
   *)
 
-  let box env = G.i_ (Call (nr (E.built_in env "box_int")))
-  let unbox env = G.i_ (Call (nr (E.built_in env "unbox_int")))
-
   let payload_field = Int32.add Tagged.header_size 0l
+
+  let box env = Func.share_code env "box_int" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 5)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.if_ [I32Type]
+        (get_n ^^ BitTagged.tag)
+        (Tagged.obj env Tagged.Int [ G.i_ (GetLocal (nr 0l)) ])
+    )
+  let unbox env = Func.share_code env "unbox_int" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+      get_n ^^
+      BitTagged.if_unboxed env [I32Type]
+        G.nop
+        (Heap.load_field payload_field)
+    )
 
   let lit env n = compile_unboxed_const n ^^ box env
 
@@ -900,23 +914,6 @@ module BoxedInt = struct
     op_is ^^
     (* box result *)
     box env
-
-  let common_funcs env =
-    Func.define_built_in env "box_int" ["n"] [I32Type] (fun env1 ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 5)) ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
-      G.if_ [I32Type]
-        (get_n ^^ BitTagged.tag)
-        (Tagged.obj env1 Tagged.Int [ G.i_ (GetLocal (nr 0l)) ])
-    );
-    Func.define_built_in env "unbox_int" ["n"] [I32Type] (fun env1 ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-      get_n ^^
-      BitTagged.if_unboxed env [I32Type]
-        G.nop
-        (Heap.load_field payload_field)
-    )
 
 end (* BoxedInt *)
 
@@ -1168,7 +1165,7 @@ module Text = struct
       get_len2 ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (Call (nr (E.built_in env "alloc_bytes"))) ^^
+      RTS.alloc_bytes env ^^
       set_z ^^
 
       (* Set tag *)
@@ -1192,7 +1189,7 @@ module Text = struct
 
       get_len1 ^^
 
-      G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+      RTS.memcpy env ^^
 
       (* Copy second string *)
       get_y ^^
@@ -1207,7 +1204,7 @@ module Text = struct
 
       get_len2 ^^
 
-      G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+      RTS.memcpy env ^^
 
       (* Done *)
       get_z
@@ -1368,7 +1365,7 @@ module Array = struct
     get_len ^^
     compile_unboxed_const header_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+    RTS.alloc_words env ^^
     set_r ^^
 
     (* Write header *)
@@ -1401,7 +1398,7 @@ module Array = struct
     get_len ^^
     compile_unboxed_const header_size ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+    RTS.alloc_words env ^^
     set_r ^^
 
     (* Write header *)
@@ -1767,7 +1764,7 @@ module Serialization = struct
             (* x still on the stack *)
             Heap.alloc 2l ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+            RTS.memcpy env ^^
             get_copy
           ; Tagged.Reference,
             begin
@@ -1796,14 +1793,14 @@ module Serialization = struct
               get_len ^^
               compile_unboxed_const Array.header_size ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              RTS.alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
-              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+              RTS.memcpy env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -1835,7 +1832,7 @@ module Serialization = struct
               set_len ^^
 
               get_len ^^
-              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              RTS.alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header and data *)
@@ -1844,7 +1841,7 @@ module Serialization = struct
               get_len ^^
               compile_unboxed_const Heap.word_size ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+              RTS.memcpy env ^^
 
               get_copy
             end
@@ -1859,14 +1856,14 @@ module Serialization = struct
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
               compile_unboxed_const Object.header_size ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              G.i_ (Call (nr (E.built_in env "alloc_words"))) ^^
+              RTS.alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Object.header_size) ^^
-              G.i_ (Call (nr (E.built_in env "memcpy"))) ^^
+              RTS.memcpy env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -3005,8 +3002,6 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
-    BoxedInt.common_funcs env;
-    RTS.common_funcs env;
     Array.common_funcs env;
     if E.mode env = DfinityMode then Serialization.system_funs env;
     if E.mode env = DfinityMode then Message.system_funs env;
@@ -3120,8 +3115,6 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
-  BoxedInt.common_funcs env;
-  RTS.common_funcs env;
   Array.common_funcs env;
   if E.mode env = DfinityMode then Serialization.system_funs env;
   if E.mode env = DfinityMode then Message.system_funs env;
