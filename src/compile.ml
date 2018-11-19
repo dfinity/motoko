@@ -1724,6 +1724,9 @@ module OrthogonalPersistence = struct
        G.i_ (SetGlobal (nr elem_global))
     )
 
+  let save_mem env = G.i_ (Call (nr (E.built_in env "save_mem")))
+  let restore_mem env = G.i_ (Call (nr (E.built_in env "restore_mem")))
+
 end (* OrthogonalPersistence *)
 
 module Serialization = struct
@@ -1746,8 +1749,9 @@ module Serialization = struct
     TODO: Cycles are not detected yet.
   *)
 
-  let system_funs module_env =
-    Func.define_built_in module_env "serialize_go" ["x"] [I32Type] (fun env ->
+
+  let serialize_go env =
+    Func.share_code env "serialize_go" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
 
@@ -1938,9 +1942,10 @@ module Serialization = struct
             ]
           ]
         )
-    );
+    )
 
-    Func.define_built_in module_env "shift_pointer_at" ["loc";  "ptr_offset"] [] (fun env ->
+  let shift_pointer_at env =
+    Func.share_code env "shift_pointer_at" ["loc";  "ptr_offset"] [] (fun env ->
       let get_loc = G.i_ (GetLocal (nr 0l)) in
       let get_ptr_offset = G.i_ (GetLocal (nr 1l)) in
       get_loc ^^
@@ -1956,9 +1961,10 @@ module Serialization = struct
           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
           store_ptr
         )
-    );
+    )
 
-    Func.define_built_in module_env "shift_pointers" ["x"; "to"; "ptr_offset"; "tbl_offset"] [] (fun env ->
+  let shift_pointers env =
+    Func.share_code env "shift_pointers" ["x"; "to"; "ptr_offset"; "tbl_offset"] [] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let set_x = G.i_ (SetLocal (nr 0l)) in
       let get_to = G.i_ (GetLocal (nr 1l)) in
@@ -1996,7 +2002,7 @@ module Serialization = struct
               compile_unboxed_const (Int32.mul Heap.word_size Opt.payload_field) ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
               get_ptr_offset ^^
-              G.i_ (Call (nr (E.built_in env "shift_pointer_at"))) ^^
+              shift_pointer_at env ^^
 
               (* Carry on *)
               get_x ^^
@@ -2017,7 +2023,7 @@ module Serialization = struct
                   get_i ^^
                   Array.idx ^^
                   get_ptr_offset ^^
-                  G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
+                  shift_pointer_at env
                 ) ^^
 
                 (* Advance pointer *)
@@ -2076,7 +2082,7 @@ module Serialization = struct
                   get_x ^^
                   G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                   get_ptr_offset ^^
-                  G.i_ (Call (nr (E.built_in env "shift_pointer_at")))
+                  shift_pointer_at env
                 ) ^^
 
                 (* Advance pointer *)
@@ -2094,9 +2100,10 @@ module Serialization = struct
             ]
 
         )
-    );
+    )
 
-    Func.define_built_in module_env "serialize" ["x"] [I32Type] (fun env ->
+  let serialize env =
+    Func.share_code env "serialize" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
 
       let (set_start, get_start) = new_local env "old_heap" in
@@ -2126,7 +2133,7 @@ module Serialization = struct
           set_end
         )
         (* We have real data on the heap. Copy.  *)
-        ( G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
+        ( serialize_go env ^^
           G.i_ Drop ^^
 
           (* Remember the end *)
@@ -2138,7 +2145,7 @@ module Serialization = struct
           get_end ^^
           compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
           compile_unboxed_zero ^^ get_tbl_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-          G.i_ (Call (nr (E.built_in env "shift_pointers")))
+          shift_pointers env
         ) ^^
 
       (* Create databuf *)
@@ -2171,9 +2178,10 @@ module Serialization = struct
       get_tbl_start ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
       G.i_ (Call (nr (Dfinity.elem_externalize_i env)))
-    );
+    )
 
-    Func.define_built_in module_env "deserialize" ["ref"] [I32Type] (fun env ->
+  let deserialize env =
+    Func.share_code env "deserialize" ["ref"] [I32Type] (fun env ->
       let get_elembuf = G.i_ (GetLocal (nr 0l)) in
       let (set_databuf, get_databuf) = new_local env "databuf" in
       let (set_i, get_i) = new_local env "x" in
@@ -2246,7 +2254,7 @@ module Serialization = struct
           (* return allocated thing *)
           get_i
         )
-    );
+    )
 
 end (* Serialization *)
 
@@ -2269,21 +2277,21 @@ module Message = struct
          This methods must not be exported!
          We create a funcref internally and then bind the closure to it.
       *)
-      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+      OrthogonalPersistence.restore_mem env ^^
 
       (* Put closure on the stack *)
       G.i (nr (GetLocal (nr 0l))) ^^
 
       (* Put argument on the stack *)
       G.i (nr (GetLocal (nr 1l))) ^^
-      G.i_ (Call (nr (E.built_in env "deserialize"))) ^^
+      Serialization.deserialize env ^^
 
       (* Invoke the call *)
       Func.call_indirect env no_region ^^
       G.i_ Drop ^^
 
       (* Save memory *)
-      G.i_ (Call (nr (E.built_in env "save_mem")))
+      OrthogonalPersistence.save_mem env
     );
     E.add_dfinity_type mod_env
       (E.built_in mod_env "invoke_closure",
@@ -2300,7 +2308,7 @@ module Message = struct
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
       get_arg ^^
-      G.i_ (Call (nr (E.built_in env "serialize"))) ^^
+      Serialization.serialize env ^^
 
       compile_unboxed_const tmp_table_slot ^^
       G.i_ (CallIndirect (nr (message_ty env)))
@@ -2322,7 +2330,7 @@ module Message = struct
     (* Messages take no closure, return nothing*)
     Func.of_body env ["arg"] [] (fun env1 ->
       (* Set up memory *)
-      G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+      OrthogonalPersistence.restore_mem env ^^
 
       (* Destruct the argument *)
       let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
@@ -2332,13 +2340,13 @@ module Message = struct
 
       alloc_args_code ^^
       G.i (GetLocal (nr 0l) @@ at) ^^
-      G.i_ (Call (nr (E.built_in env "deserialize"))) ^^
+      Serialization.deserialize env ^^
       destruct_args_code ^^
       body_code ^^
       G.i_ Drop ^^
 
       (* Save memory *)
-      G.i_ (Call (nr (E.built_in env "save_mem")))
+      OrthogonalPersistence.save_mem env
       )
 end (* Message *)
 
@@ -3003,7 +3011,6 @@ and actor_lit outer_env name fs =
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
     Array.common_funcs env;
-    if E.mode env = DfinityMode then Serialization.system_funs env;
     if E.mode env = DfinityMode then Message.system_funs env;
 
     let start_fun = Func.of_body env [] [] (fun env3 ->
@@ -3116,7 +3123,6 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;
-  if E.mode env = DfinityMode then Serialization.system_funs env;
   if E.mode env = DfinityMode then Message.system_funs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
