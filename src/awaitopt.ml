@@ -319,7 +319,7 @@ let funcD f x e =
 let  (-->) x e =
   match x.it with
   | VarE _ ->
-     let f = exp_of_id "" (T.Func(T.Call T.Local, [], typ x, typ e)) in
+     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, [], typ x, typ e)) in
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
             
