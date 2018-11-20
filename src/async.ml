@@ -5,7 +5,13 @@ module W = Wasm
 open T
 open Awaitopt    (* TBD *)
 
-(* lower the async type itself *)
+(* lower the async type itself
+   - adds a final callback argument to every awaitable shared function, replace the result by unit
+   - transforms types, introductions and eliminations awaitable shared functions only, leaving non-awaitable shared functions unchanged.
+   - ensures every call to an awaitable shared function that takes a tuple has a manifest tuple argument.
+
+   (for debugging, the `flattening` function can be used to disable argument flattening and use uniform pairing instead)
+ *)
 
 let localS =
   {it=T.Call T.Local;
@@ -21,7 +27,7 @@ let replyT typ = T.Func(T.Call T.Sharable, [], typ, answerT)
 let tupT ts = {it = TupT ts;
                at = no_region;
                note = ()}
-
+       
 let unitT = tupT []
 
 let funcT(s,bds,t1,t2) =
@@ -53,7 +59,7 @@ let prelude_new_async t1 =
   }
   
 let contTT t = funcT(localS,[],t,unitT)
-             
+            
 let tupP pats =
   {it = TupP pats; 
    note = {note_typ = T.Tup (List.map typ pats);
@@ -96,7 +102,81 @@ let isAwaitableFunc exp =
   match typ exp with
   | T.Func (T.Call T.Sharable,_,_,T.Async _) -> true
   | _ -> false
-  
+
+
+(* control flattening of shared function args, default true *)
+let flattening() = true
+                  
+let extendTupT t1 t2 =
+  match t1.it with
+  (* NB: this will introduce a bogus type when t1 is a type abbreviation or variable, 
+    but the syntactic type should not be used anymore anyway *)
+  | TupT ts when flattening() ->
+    begin
+     match ts with
+     | [] -> t2
+     | _ -> tupT (ts@[t2])
+    end
+  | VarT _ -> bogusT
+  | _ -> tupT [t1;t2]
+
+let extendTup t1 t2 =
+  match t1 with
+  | Tup ts when flattening() ->
+    begin
+     match ts with
+     | [] -> t2
+     | _ -> Tup (ts@[t2])
+    end
+  | _ -> Tup [t1;t2]
+
+let letP p e =  {it = LetD(p,e);
+                 at = no_region;
+                 note = e.note}
+              
+let extendTupP p1 p2 =
+  match typ p1 with
+  | Tup ts when flattening() ->
+    begin
+      match ts with
+      | [] -> p2, fun d -> (letP p1 (tupE [])::d)
+      | _ ->
+         begin
+           match p1.it with
+           | TupP ps -> tupP (ps@[p2]), fun d -> d
+           | _ -> let xs = List.map fresh_id ts in
+                  let pxs = List.map varP xs in
+                  tupP (pxs@[p2]),
+                  fun d -> letP p1 (tupE xs) :: d
+         end
+    end
+  | _ -> tupP [p1;p2], fun d -> d
+
+let extendTupE e1 e2 =
+  match typ e1 with
+  | Tup ts when flattening() ->
+    begin
+     match ts with
+     | [] ->
+        let x = fresh_id unit in
+        (fun d -> (letD x e1)::d),
+        e2
+     | _ ->
+        match e1.it with
+        | TupE es ->
+           (fun d -> d),
+           tupE (es@[e2])
+        | _ ->
+          let xs = List.map fresh_id ts in
+          let p = tupP (List.map varP xs) in
+          (fun d -> (letP p e1)::d),
+          tupE (xs@[e2])
+    end
+  | _ ->
+     (fun d -> d),
+     tupE [e1;e2]
+                              
+                              
 let rec t_typ (t:T.typ) =
   match t with
   | T.Prim _
@@ -115,7 +195,7 @@ let rec t_typ (t:T.typ) =
               Func(s, List.map t_bind tbs, t_typ t1, t_typ t2)
            | Async t2 ->
               Func (s, List.map t_bind tbs,
-                    Tup [t_typ t1; contT (t_typ t2)], T.unit)
+                    extendTup (t_typ t1) (contT (t_typ t2)), T.unit)
            | _ -> failwith "t_typT'"
          end
        | _ ->
@@ -226,9 +306,10 @@ and t_exp' (exp:Syntax.exp) =
      let typs = List.map t_typT typs in
      let call_new_async = prelude_new_async t2 in
      let p = fresh_id (typ call_new_async) in
-     (blockE [letD p (call_new_async);
-              expD (callE exp1 typs (tupE [exp2;projE p 1]) T.unit);
-              expD (projE p 0)])
+     let (d,es) = extendTupE exp2 (projE p 1) in
+     (blockE (letD p (call_new_async)::
+              d [expD (callE exp1 typs es T.unit);
+                 expD (projE p 0)]))
        .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
@@ -309,7 +390,8 @@ and t_dec' dec' =
               let cont_typ = contT res_typ in
               let typT' = tupT []  in
               let k = fresh_id cont_typ in
-              let pat' = tupP [pat;varP k] in
+              let pat',d = extendTupP pat (varP k) in
+              (* let pat' = tupP [pat;varP k] in *)
               let typbinds' = t_typbinds typbinds in                   
               let x = fresh_id res_typ in
               let exp' =
@@ -318,8 +400,8 @@ and t_dec' dec' =
                    begin
                      match async.it with
                      | PrimE("@async") ->
-                        (t_exp cps)
-                        -*- (x --> (k -*- x))
+                        blockE
+                          (d [expD ((t_exp cps) -*- (x --> (k -*- x)))])
                      | _ -> failwith ("async.ml t_dec': funcD1"
                                       ^ (Wasm.Sexpr.to_string 80 (Arrange.exp async)))
                    end

@@ -1,0 +1,32 @@
+flatten-awaitables.as:33.9-33.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:35.9-35.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:37.9-37.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:42.9-42.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:44.9-44.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:46.9-46.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:56.9-56.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:58.9-58.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:60.9-60.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:65.9-65.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:67.9-67.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:69.9-69.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:75.9-75.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:77.9-77.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:79.9-79.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:84.9-84.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:86.9-86.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:88.9-88.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:93.9-93.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:95.9-95.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:97.9-97.25: warning, this pattern does not cover all possible values
+flatten-awaitables.as:102.9-102.10: warning, this pattern does not cover all possible values
+flatten-awaitables.as:104.9-104.17: warning, this pattern does not cover all possible values
+flatten-awaitables.as:106.9-106.25: warning, this pattern does not cover all possible values
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
+compile_lit_pat: (TextLit text)
