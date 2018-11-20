@@ -1358,6 +1358,7 @@ module Array = struct
       | _ -> None
 
   (* The primitive operations *)
+  (* No need to wrap them in RTS functions: They occurr only once, in the prelude. *)
   let init env =
     let (set_len, get_len) = new_local env "len" in
     let (set_x, get_x) = new_local env "x" in
@@ -1563,19 +1564,20 @@ module Dfinity = struct
 
 
   let compile_databuf_of_text env  =
-    let (set_i, get_i) = new_local env "string_lit" in
-    set_i ^^
+    Func.share_code env "databuf_of_text" ["string"] [I32Type] (fun env ->
+      let get_i = G.i_ (GetLocal (nr 0l)) in
 
-    (* Calculate the offset *)
-    get_i ^^
-    compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    (* Calculate the length *)
-    get_i ^^
-    Heap.load_field (Text.len_field) ^^
+      (* Calculate the offset *)
+      get_i ^^
+      compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      (* Calculate the length *)
+      get_i ^^
+      Heap.load_field (Text.len_field) ^^
 
-    (* Externalize *)
-    G.i_ (Call (nr (data_externalize_i env)))
+      (* Externalize *)
+      G.i_ (Call (nr (data_externalize_i env)))
+    )
 
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^ compile_databuf_of_text env
