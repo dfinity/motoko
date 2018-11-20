@@ -1226,14 +1226,17 @@ module Array = struct
   (* Calculates a static offset *)
   let field_of_idx n = Int32.add header_size n
 
-  (* Expects on the stack the pointer to the array and the index
-     of the element (unboxed), and returns the pointer to the element. *)
-  let idx =
-    compile_unboxed_const header_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    compile_unboxed_const element_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+  let idx env = Func.share_code env "Array.idx" ["array"; "idx"] [I32Type] (fun env ->
+      let get_array = G.i_ (GetLocal (nr 0l)) in
+      let get_idx = G.i_ (GetLocal (nr 1l)) in
+      get_idx ^^
+      compile_unboxed_const header_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_unboxed_const element_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      get_array ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+    )
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (field_of_idx n)
@@ -1249,7 +1252,7 @@ module Array = struct
             get_array_object ^^
             get_single_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
-            idx ^^
+            idx env ^^
             load_ptr
        ));
     E.define_built_in env "array_set"
@@ -1257,7 +1260,7 @@ module Array = struct
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
-            idx ^^
+            idx env ^^
             get_second_arg ^^ (* the value *)
             store_ptr ^^
             compile_unit
@@ -1330,7 +1333,7 @@ module Array = struct
       (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
               get_array ^^
               get_i ^^
-              idx ^^
+              idx env ^^
               load_ptr
       ));
     E.define_built_in env "array_vals"
@@ -1386,7 +1389,7 @@ module Array = struct
     from_0_to_n env (fun get_i ->
       get_r ^^
       get_i ^^
-      idx ^^
+      idx env ^^
       get_x ^^
       store_ptr
     ) ^^
@@ -1420,7 +1423,7 @@ module Array = struct
     from_0_to_n env (fun get_i ->
       get_r ^^
       get_i ^^
-      idx ^^
+      idx env ^^
       get_f ^^
       get_i ^^
       BoxedInt.box env ^^
@@ -1818,11 +1821,11 @@ module Serialization = struct
               from_0_to_n env (fun get_i ->
                 get_copy ^^
                 get_i ^^
-                Array.idx ^^
+                Array.idx env ^^
 
                 get_x ^^
                 get_i ^^
-                Array.idx ^^
+                Array.idx env ^^
                 load_ptr ^^
                 G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
                 store_ptr
@@ -2028,7 +2031,7 @@ module Serialization = struct
                 from_0_to_n env (fun get_i ->
                   get_x ^^
                   get_i ^^
-                  Array.idx ^^
+                  Array.idx env ^^
                   get_ptr_offset ^^
                   shift_pointer_at env
                 ) ^^
@@ -2465,7 +2468,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^ (* offset to array *)
      compile_exp env e2 ^^ (* idx *)
      BoxedInt.unbox env ^^
-     Array.idx
+     Array.idx env
   | DotE (e, {it = Name n;_}) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
