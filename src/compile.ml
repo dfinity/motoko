@@ -457,48 +457,6 @@ module Heap = struct
 
 end (* Heap *)
 
-module ElemHeap = struct
-  let ref_counter = 1l
-
-  let max_references = 1024l
-  let ref_location = 0l
-
-  let begin_dyn_space : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
-
-  (* Assumes a reference on the stack, and replaces it with an index into the
-     reference table *)
-  let remember_reference env : G.t =
-    Func.share_code env "remember_reference" ["ref"] [I32Type] (fun env ->
-      let get_ref = G.i_ (GetLocal (nr 0l)) in
-
-      (* Return index *)
-      G.i_ (GetGlobal (nr ref_counter)) ^^
-
-      (* Store reference *)
-      G.i_ (GetGlobal (nr ref_counter)) ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const ref_location ^^
-      get_ref ^^
-      store_ptr ^^
-
-      (* Bump counter *)
-      G.i_ (GetGlobal (nr ref_counter)) ^^
-      compile_add_const 1l ^^
-      G.i_ (SetGlobal (nr ref_counter))
-    )
-
-  (* Assumes a index into the table on the stack, and replaces it with the reference *)
-  let recall_reference env : G.t =
-    Func.share_code env "recall_reference" ["ref_idx"] [I32Type] (fun env ->
-      let get_ref_idx = G.i_ (GetLocal (nr 0l)) in
-      get_ref_idx ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const ref_location ^^
-      load_ptr
-    )
-
-end (* ElemHeap *)
-
 module BitTagged = struct
   (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
      Pointers are stored as is (and should be aligned to have a zero there).
@@ -1671,12 +1629,7 @@ module Dfinity = struct
       E.add_export env (nr {
         name = explode "heap_ptr";
         edesc = nr (GlobalExport (nr Heap.heap_ptr))
-      });
-      E.add_export env (nr {
-        name = explode "elem_ptr";
-        edesc = nr (GlobalExport (nr ElemHeap.ref_counter))
       })
-
 
 end (* Dfinity *)
 
@@ -1733,17 +1686,11 @@ module Serialization = struct
             RTS.memcpy env ^^
             get_copy
           ; Tagged.Reference,
-            begin
-              (* x still on the stack *)
-              Heap.load_field 1l ^^
-              ElemHeap.recall_reference env ^^
-              (* Re-remember reference, to move it into the fresh space in the
-                 table *)
-              ElemHeap.remember_reference env ^^
-              let (set_ref, get_ref) = new_local env "reference" in
-              set_ref ^^
-              Tagged.obj env Tagged.Reference [ get_ref ]
-            end
+            (* x still on the stack *)
+            Heap.alloc 2l ^^
+            compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+            RTS.memcpy env ^^
+            get_copy
           ; Tagged.Some,
             G.i_ Drop ^^
             Opt.inject env (
@@ -1878,8 +1825,7 @@ module Serialization = struct
               compile_unboxed_const (E.built_in env "invoke_closure") ^^
               G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
               get_x ^^
-              G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
-              ElemHeap.remember_reference env
+              G.i_ (Call (nr (Dfinity.func_bind_i env)))
             ]
           ]
         )
@@ -1905,12 +1851,11 @@ module Serialization = struct
     )
 
   let shift_pointers env =
-    Func.share_code env "shift_pointers" ["x"; "to"; "ptr_offset"; "tbl_offset"] [] (fun env ->
+    Func.share_code env "shift_pointers" ["x"; "to"; "ptr_offset"] [] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       let set_x = G.i_ (SetLocal (nr 0l)) in
       let get_to = G.i_ (GetLocal (nr 1l)) in
       let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
-      let get_tbl_offset = G.i_ (GetLocal (nr 3l)) in
 
       compile_while
         (* While we have not reached the end of the area *)
@@ -1926,14 +1871,6 @@ module Serialization = struct
               set_x
             ; Tagged.Reference,
               (* x still on the stack *)
-              (* Adjust reference *)
-              get_x ^^
-              Heap.load_field 1l ^^
-              get_tbl_offset ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              Heap.store_field 1l ^^
-
-              get_x ^^
               compile_add_const (Int32.mul 2l Heap.word_size) ^^
               set_x
             ; Tagged.Some,
@@ -2024,20 +1961,210 @@ module Serialization = struct
         )
     )
 
+  let extract_references env =
+    Func.share_code env "extract_references" ["x"; "to"; "tbl_area"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let set_x = G.i_ (SetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_tbl_area = G.i_ (GetLocal (nr 2l)) in
+      let (set_i, get_i) = new_local env "i" in
+
+      compile_unboxed_const 0l ^^ set_i ^^
+
+      compile_while
+        (* While we have not reached the end of the area *)
+        ( get_x ^^
+          get_to ^^
+          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+        )
+        ( get_x ^^
+          Tagged.branch env []
+            [ Tagged.Int,
+              (* x still on the stack *)
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Reference,
+              (* x still on the stack *)
+              G.i_ Drop ^^
+
+              (* Adjust reference *)
+              get_tbl_area ^^
+              get_i ^^ compile_mul_const Heap.word_size ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              get_x ^^
+              Heap.load_field 1l ^^
+              store_ptr ^^
+
+              get_x ^^
+              get_i ^^
+              Heap.store_field 1l ^^
+
+              get_i ^^
+              compile_add_const 1l ^^
+              set_i ^^
+
+              get_x ^^
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Some,
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Array,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Array.len_field ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_add_const Array.header_size ^^
+                compile_mul_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Text,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Text.len_field ^^
+                (* get length in words *)
+                compile_add_const 3l ^^
+                compile_divU_const Heap.word_size ^^
+                compile_add_const Text.header_size ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_mul_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Object,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Object.size_field ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_len ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
+                get_x ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ]
+        ) ^^
+      get_i
+    )
+
+  let intract_references env =
+    Func.share_code env "intract_references" ["x"; "to"; "tbl_area"] [] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let set_x = G.i_ (SetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_tbl_area = G.i_ (GetLocal (nr 2l)) in
+
+      compile_while
+        (* While we have not reached the end of the area *)
+        ( get_x ^^
+          get_to ^^
+          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+        )
+        ( get_x ^^
+          Tagged.branch env []
+            [ Tagged.Int,
+              (* x still on the stack *)
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Reference,
+              (* x still on the stack *)
+
+              (* Adjust reference *)
+              get_x ^^
+              Heap.load_field 1l ^^
+              compile_mul_const Heap.word_size ^^
+              get_tbl_area ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              load_ptr ^^
+              Heap.store_field 1l ^^
+
+              get_x ^^
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Some,
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
+              set_x
+            ; Tagged.Array,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Array.len_field ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_add_const Array.header_size ^^
+                compile_mul_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Text,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Text.len_field ^^
+                (* get length in words *)
+                compile_add_const 3l ^^
+                compile_divU_const Heap.word_size ^^
+                compile_add_const Text.header_size ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_x ^^
+                get_len ^^
+                compile_mul_const Heap.word_size ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ; Tagged.Object,
+              begin
+                let (set_len, get_len) = new_local env "len" in
+                (* x still on the stack *)
+                Heap.load_field Object.size_field ^^
+                set_len ^^
+
+                (* Advance pointer *)
+                get_len ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
+                get_x ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                set_x
+              end
+            ]
+        )
+    )
+
   let serialize env =
     Func.share_code env "serialize" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
 
       let (set_start, get_start) = new_local env "old_heap" in
       let (set_end, get_end) = new_local env "end" in
-      let (set_tbl_start, get_tbl_start) = new_local env "tbl_start" in
-      let (set_tbl_end, get_tbl_end) = new_local env "tbl_end" in
+      let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
+      let (set_databuf, get_databuf) = new_local env "databuf" in
 
       (* Remember where we start to copy to *)
       G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
       set_start ^^
-      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
-      set_tbl_start ^^
 
       (* Copy data *)
       get_x ^^
@@ -2052,7 +2179,10 @@ module Serialization = struct
 
           (* Remember the end *)
           G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-          set_end
+          set_end ^^
+
+          (* Empty table of references *)
+          compile_unboxed_const 0l ^^ set_tbl_size
         )
         (* We have real data on the heap. Copy.  *)
         ( serialize_go env ^^
@@ -2066,38 +2196,38 @@ module Serialization = struct
           get_start ^^
           get_end ^^
           compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-          compile_unboxed_zero ^^ get_tbl_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-          shift_pointers env
+          shift_pointers env ^^
+
+          (* Extract references, and remember how many there were *)
+          get_start ^^
+          get_end ^^
+          get_end ^^
+          extract_references env ^^
+          set_tbl_size
         ) ^^
 
       (* Create databuf *)
       get_start ^^
-        get_end ^^
-        get_start ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      get_end ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
       G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
+      set_databuf ^^
 
-      (* Put into the table *)
-      ElemHeap.remember_reference env ^^
-      G.i_ Drop ^^
+      (* Append this reference at the end of the extracted references *)
+      get_end ^^
+      get_tbl_size ^^ compile_mul_const Heap.word_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      get_databuf ^^
+      store_ptr ^^
+      (* And bump table end *)
+      get_tbl_size ^^ compile_add_const 1l ^^ set_tbl_size ^^
 
-      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
-      set_tbl_end ^^
-
-      (* Reset the counters, to free some space *)
+      (* Reset the heap counter, to free some space *)
       get_start ^^
       G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
-      get_tbl_start ^^
-      G.i_ (SetGlobal (nr ElemHeap.ref_counter)) ^^
 
-      (* Finalloy, create elembuf *)
-      compile_unboxed_const ElemHeap.ref_location ^^
-      get_tbl_start ^^
-      compile_mul_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      get_tbl_end ^^
-      get_tbl_start ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      (* Finally, create elembuf *)
+      get_end ^^
+      get_tbl_size ^^
       G.i_ (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
@@ -2105,45 +2235,31 @@ module Serialization = struct
     Func.share_code env "deserialize" ["ref"] [I32Type] (fun env ->
       let get_elembuf = G.i_ (GetLocal (nr 0l)) in
       let (set_databuf, get_databuf) = new_local env "databuf" in
-      let (set_i, get_i) = new_local env "x" in
+      let (set_start, get_start) = new_local env "start" in
       let (set_data_len, get_data_len) = new_local env "data_len" in
-      let (set_tbl_start, get_tbl_start) = new_local env "tbl_start" in
-
+      let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
 
       (* new positions *)
       G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-      set_i ^^
+      set_start ^^
 
-      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
-      set_tbl_start ^^
-
-      (* Load references *)
-      compile_unboxed_const ElemHeap.ref_location ^^
-      get_tbl_start ^^
-      compile_mul_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       get_elembuf ^^ G.i_ (Call (nr (Dfinity.elem_length_i env))) ^^
+      set_tbl_size ^^
+
+      (* First load databuf (last entry) at the heap position somehow *)
+      get_start ^^
+      compile_unboxed_const 1l ^^
       get_elembuf ^^
-      compile_unboxed_const 0l ^^
+      get_tbl_size ^^ compile_sub_const 1l ^^
       G.i_ (Call (nr (Dfinity.elem_internalize_i env))) ^^
-
-      (* update table pointer to point at the last entry *)
-      get_tbl_start ^^
-      get_elembuf ^^ G.i_ (Call (nr (Dfinity.elem_length_i env))) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      compile_sub_const 1l ^^
-      G.i_ (SetGlobal (nr ElemHeap.ref_counter)) ^^
-
-      (* That last entry is the databuf to load *)
-      G.i_ (GetGlobal (nr ElemHeap.ref_counter)) ^^
-      ElemHeap.recall_reference env ^^
+      get_start ^^ load_ptr ^^
       set_databuf ^^
 
-      get_databuf ^^ G.i_ (Call (nr (Dfinity.data_length_i env))) ^^
+      get_databuf ^^ G.i_ (Call (nr (Dfinity.data_length_i env)))  ^^
       set_data_len ^^
 
       (* Load data from databuf *)
-      get_i ^^
+      get_start ^^
       get_data_len ^^
       get_databuf ^^
       compile_unboxed_const 0l ^^
@@ -2154,24 +2270,37 @@ module Serialization = struct
       compile_unboxed_const Heap.word_size ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
       G.if_ [I32Type]
-        (* Yes, we got something unboxed *)
-        ( get_i ^^ load_ptr )
+        (* Yes, we got something unboxed. Return it, and do _not_ bump the heap pointer *)
+        ( get_start ^^ load_ptr )
         (* No, it is actual heap-data *)
         ( (* update heap pointer *)
-          get_i ^^
+          get_start ^^
           get_data_len ^^
           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
           G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
 
           (* Fix pointers *)
-          get_i ^^
+          get_start ^^
           G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-          get_i ^^
-          get_tbl_start ^^
+          get_start ^^
           G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
 
+          (* Load references *)
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
+          get_tbl_size ^^ compile_sub_const 1l ^^
+          get_elembuf ^^
+          compile_unboxed_const 0l ^^
+          G.i_ (Call (nr (Dfinity.elem_internalize_i env))) ^^
+
+          (* Fix references *)
+          (* Extract references *)
+          get_start ^^
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
+          intract_references env ^^
+
           (* return allocated thing *)
-          get_i
+          get_start
         )
     )
 
@@ -2218,7 +2347,6 @@ module Message = struct
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
       get_ref ^^ (* the boxed funcref table id *)
       Heap.load_field 1l ^^
-      ElemHeap.recall_reference env ^^
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
       get_arg ^^
@@ -2235,8 +2363,7 @@ module Message = struct
         (* Create a funcref for the message *)
         G.i_ (Call (nr (Dfinity.actor_self_i env))) ^^
         get_name ^^ (* the databuf with the message name *)
-        G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
-        ElemHeap.remember_reference env
+        G.i_ (Call (nr (Dfinity.actor_export_i env)))
       ]
     )
 
@@ -2914,7 +3041,7 @@ and actor_lit outer_env name fs =
   if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
 
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) 0l in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -2949,8 +3076,7 @@ and actor_lit outer_env name fs =
     compile_unboxed_const Message.tmp_table_slot ^^
     G.i_ (CallIndirect (nr (E.func_type outer_env (FuncType ([],[]))))) ^^
 
-    get_a ^^
-    ElemHeap.remember_reference outer_env in
+    get_a in
 
   (* Wrap it in a tagged heap object *)
   Tagged.obj outer_env Tagged.Reference [ code ]
@@ -2959,15 +3085,13 @@ and actor_fake_object_idx env name =
     let (set_i, get_i) = new_local env "ref" in
     (* The wrapped actor table entry is on the stack *)
     Heap.load_field 1l ^^
-    ElemHeap.recall_reference env ^^
     set_i ^^
 
     (* Export the methods and put it in a Reference object *)
     Tagged.obj env Tagged.Reference
       [ get_i ^^
         Dfinity.compile_databuf_of_bytes env (name.it) ^^
-        G.i_ (Call (nr (Dfinity.actor_export_i env))) ^^
-        ElemHeap.remember_reference env
+        G.i_ (Call (nr (Dfinity.actor_export_i env)))
       ]
 
 and conclude_module env start_fi =
@@ -3032,15 +3156,13 @@ and conclude_module env start_fi =
       data
     };
     types = E.get_dfinity_types env;
-    persist =
-           [ (Heap.heap_ptr, CustomSections.I32)
-           ; (ElemHeap.ref_counter, CustomSections.I32) ];
+    persist = [ (Heap.heap_ptr, CustomSections.I32) ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
-  let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
+  let env = E.mk_global mode prelude 0l in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;
