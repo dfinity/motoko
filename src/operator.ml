@@ -47,7 +47,7 @@ let word_binop fword8 fword16 fword32 fword64 = function
   | _ -> raise (Invalid_argument "binop")
 
 let num_binop fnat fint fword8 fword16 fword32 fword64 ffloat = function
-  | T.Nat -> fun v1 v2 -> Nat (fnat (as_nat v1) (as_nat v2))
+  | T.Nat -> fun v1 v2 -> Int (fnat (as_int v1) (as_int v2))
   | T.Int -> fun v1 v2 -> Int (fint (as_int v1) (as_int v2))
   | T.Float -> fun v1 v2 -> Float (ffloat (as_float v1) (as_float v2))
   | t -> word_binop fword8 fword16 fword32 fword64 t
@@ -85,7 +85,7 @@ let word_relop fword8 fword16 fword32 fword64 = function
   | _ -> raise (Invalid_argument "relop")
 
 let num_relop fnat fint fword8 fword16 fword32 fword64 ffloat = function
-  | T.Nat -> fun v1 v2 -> Bool (fnat (as_nat v1) (as_nat v2))
+  | T.Nat -> fun v1 v2 -> Bool (fnat (as_int v1) (as_int v2))
   | T.Int -> fun v1 v2 -> Bool (fint (as_int v1) (as_int v2))
   | T.Float -> fun v1 v2 -> Bool (ffloat (as_float v1) (as_float v2))
   | t -> word_relop fword8 fword16 fword32 fword64 t

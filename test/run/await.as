@@ -27,7 +27,7 @@ let c = async {
 
 print "d";
 
-let d  = (async { return await f(4); }) : async Int; // annotation avoids bug
+let d  = (async { return await f(4); }) : async Int; 
 
 print "e";
 

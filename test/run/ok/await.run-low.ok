@@ -1,46 +1,16 @@
-acnt: printInt(0)
- i: printInt(0)
-
-bcnt: printInt(1)
- i: printInt(1)
-
-ccnt: printInt(2)
- i: printInt(2)
-
-cnt: printInt(3)
- i: printInt(3)
-
-dcnt: printInt(4)
- i: printInt(4)
-
-ee-whilecnt: printInt(5)
- i: printInt(5)
-
-cnt: printInt(6)
- i: printInt(6)
-
-cnt: printInt(7)
- i: printInt(7)
-
-cnt: printInt(8)
- i: printInt(8)
-
-cnt: printInt(9)
- i: printInt(9)
-
-e-exitgg-label.cnt: printInt(10)
- i: printInt(10)
-
-.cnt: printInt(11)
- i: printInt(11)
-
-.cnt: printInt(12)
- i: printInt(12)
-
-.cnt: printInt(13)
- i: printInt(13)
-
-.cnt: printInt(14)
- i: printInt(14)
-
-g-exitholyab
+abcdegholye-whileg-label.abcnt: 0 i: 0
+cnt: 1 i: 1
+cnt: 2 i: 2
+cnt: 3 i: 4
+cnt: 4 i: 5
+cnt: 5 i: 10
+.cnt: 6 i: 3
+cnt: 7 i: 6
+cnt: 8 i: 11
+.cnt: 9 i: 7
+cnt: 10 i: 12
+.cnt: 11 i: 8
+cnt: 12 i: 13
+.cnt: 13 i: 9
+cnt: 14 i: 14
+e-exitg-exit

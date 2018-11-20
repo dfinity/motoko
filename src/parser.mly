@@ -64,7 +64,7 @@ let share_typfield tf =
 let share_dec d =
   match d.it with
   | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
+     FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
   | _ -> d
 
 let share_exp e =
@@ -552,7 +552,9 @@ dec :
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @@ no_region) in
-      (* This is a hack to support async method declarations. *)
+      (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)

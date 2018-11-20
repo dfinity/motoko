@@ -97,9 +97,14 @@ let set_async async v =
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
+let fulfill async v =
+  Scheduler.queue (fun () -> set_async async v)
+
+          
 let async at (f: (V.value V.cont) -> unit) (k:V.value V.cont) =
     let async = make_async () in
-    let k' = fun v1 -> set_async async v1 in
+    (*    let k' = fun v1 -> set_async async v1 in *)
+    let k' = fun v1 -> fulfill async v1 in 
     if !Flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
       if !Flags.trace then trace "<- async %s" (string_of_region at);
@@ -132,11 +137,12 @@ let actor_msg id f v (k : V.value V.cont) =
     f v k
   )
                   
-let actor_field_unit id v =
+let make_unit_message id v =
     let _, f = V.as_func v in
     V.Func (None, fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
 
-let actor_field_async id v =
+let make_async_message id v =
+    assert (not !Flags.async_lowering);
     let _, f = V.as_func v in
     V.Func (None, fun v k ->
       let async = make_async () in
@@ -146,13 +152,16 @@ let actor_field_async id v =
       k (V.Async async)
     )
 
-let actor_field id t v : V.value =
+let make_message id t v : V.value =
   match t with
   | T.Func (_, _, _, T.Tup []) ->
-     actor_field_unit id.it v
+     make_unit_message id.it v
   | T.Func (_, _, _, T.Async _) ->
-     actor_field_async id.it v
-  | _ -> assert false
+     assert (not !Flags.async_lowering);
+     make_async_message id.it v
+  | _ ->
+     failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
+     (*     assert false *)
 
   
 let extended_prim s at =
@@ -176,26 +185,6 @@ let extended_prim s at =
         await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
      end
-  | "@actor_field_unit" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k ->
-     begin
-       match V.as_tup v with
-       | [v1;v2] -> 
-          let id = V.as_text v1 in                           
-           k (actor_field_unit id v2)
-       | _ -> assert false
-     end
-  | "@actor_field_async" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
-     fun v k ->
-     begin
-       match V.as_tup v with
-       | [v1;v2] -> 
-          let id = V.as_text v1 in                           
-          k (actor_field_async id v2)
-       | _ -> assert false
-     end
   | _ -> Prelude.prim s
 
                        
@@ -205,7 +194,7 @@ let interpret_lit env lit : V.value =
   match !lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
-  | NatLit n -> V.Nat n
+  | NatLit n -> V.Int n
   | IntLit i -> V.Int i
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w
@@ -266,7 +255,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DotE (exp1, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      k (find n fs)
+      k (try find n fs with _ -> (assert false))
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
@@ -286,7 +275,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (V.as_array v1).(V.Nat.to_int (V.as_nat v2)) (* TBR *)
+        k (V.as_array v1).(V.Int.to_int (V.as_int v2))
       )
     )
   | CallE (exp1, typs, exp2) ->
@@ -498,7 +487,7 @@ and match_lit lit v : bool =
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Nat n' -> V.Nat.eq n n'
+  | NatLit n, V.Int n' -> V.Int.eq n n'
   | IntLit i, V.Int i' -> V.Int.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'
@@ -580,16 +569,11 @@ and interpret_fields env s co fields ve (k : V.value V.cont) =
   | {it = {id; name; mut; priv; exp}; _}::fields' ->
     interpret_exp env exp (fun v ->
       let v' =
-        if s = T.Actor && priv.it = Public
-        then actor_field id exp.note.note_typ v
-        else v
-      in
-      let v'' =
         match mut.it with
-        | Const -> v'
-        | Var -> V.Mut (ref v')
+        | Const -> v
+        | Var -> V.Mut (ref v)
       in
-      define_id env id v'';
+      define_id env id v';
       interpret_fields env s co fields' ve k
     )
 
@@ -638,6 +622,12 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id pat
       (fun env' -> interpret_exp env' exp) in
     let v = V.Func (None, f) in
+    let v =
+      match _sort.it with
+      | T.Sharable ->
+         make_message id dec.note.note_typ v
+      |  T.Local -> v
+    in                      
     define_id env id v;
     k v
   | ClassD (id, _,  _typbinds, sort, pat, fields) ->

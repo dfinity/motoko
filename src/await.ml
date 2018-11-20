@@ -201,20 +201,6 @@ let prim_async typ =
 let prim_await typ = 
   primE "@await" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
 
-let prim_actor_field_unit typ = 
-  primE "@actor_field_unit" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))
-
-let prim_actor_field_async typ = 
-  primE "@actor_field_async" (T.Func(T.Call T.Local, [], T.Tup [T.Prim T.Text; typ], typ))        
-
-let actor_field typ =
-  match typ with
-  | T.Func (_, _, _, T.Tup []) ->
-     prim_actor_field_unit typ
-  | T.Func (_, _, _, T.Async _) ->
-     prim_actor_field_async typ
-  | _ -> assert false
-  
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
 let varD x exp = { exp with it = VarD (x,exp) }                   
@@ -666,15 +652,7 @@ and c_obj context exp sort id fields =
          let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) :: decs in
          {exp with it = BlockE (List.rev decs)}
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-         let exp = if sort.it = T.Actor && priv.it = Public
-                   then actor_field (typ exp) -@- tupE([textE (string_of_name name.it);exp])
-                   else exp
-         in
-         let nameids =
-           match priv.it with
-           | Public -> (name,id)::nameids
-           | Private -> nameids                
-         in
+         let nameids = (name,id)::nameids in
          match mut.it with 
          | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) nameids
          | Var -> c_fields fields (varD id exp::decs) nameids

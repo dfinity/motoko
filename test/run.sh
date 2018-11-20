@@ -78,6 +78,11 @@ do
     $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
     diff_files="$diff_files $base.run-low"
 
+    # Diff interpretations without/with lowering
+    echo -n " [diff-low]"
+    diff -u -N $out/$base.run $out/$base.run-low > $out/$base.diff-low 
+    diff_files="$diff_files $base.diff-low"
+
     # Compile
     echo -n " [wasm]"
     $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as 2> $out/$base.wasm.stderr

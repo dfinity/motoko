@@ -194,7 +194,6 @@ type func = value -> value cont -> unit
 and value =
   | Null
   | Bool of bool
-  | Nat of Nat.t
   | Int of Int.t
   | Word8 of Word8.t
   | Word16 of Word16.t
@@ -229,8 +228,7 @@ let invalid s = raise (Invalid_argument ("Value." ^ s))
 
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
-let as_nat = function Nat n -> n | _ -> invalid "as_nat"
-let as_int = function Int n -> n | Nat n -> n | _ -> invalid "as_int"
+let as_int = function Int n -> n | _ -> invalid "as_int"
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
@@ -247,7 +245,7 @@ let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 let obj_of_array a =
   let get =
     Func (None, fun v k ->
-      let n = as_nat v in
+      let n = as_int v in
       if Nat.lt n (Nat.of_int (Array.length a)) then
         k (a.(Nat.to_int n))
       else
@@ -257,7 +255,7 @@ let obj_of_array a =
   let set =
     Func (None, fun v k ->
       let v1, v2 = as_pair v in
-      let n = as_nat v1 in
+      let n = as_int v1 in
       if Nat.lt n (Nat.of_int (Array.length a)) then
         k (a.(Nat.to_int n) <- v2; Tup [])
       else
@@ -265,7 +263,7 @@ let obj_of_array a =
     )
   in
   let len =
-    Func (None, fun v k -> as_unit v; k (Nat (Nat.of_int (Array.length a))))
+    Func (None, fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a))))
   in
   let keys =
     Func (None, fun v k ->
@@ -273,7 +271,7 @@ let obj_of_array a =
       let i = ref 0 in
       let next = fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = Opt (Nat (Nat.of_int !i)) in incr i; k' v
+        let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
       in k (Obj (None, Env.singleton "next" (Func (None, next))))
     )
   in
@@ -307,7 +305,6 @@ let generic_compare = compare
 let rec compare x1 x2 =
   if x1 == x2 then 0 else
   match x1, x2 with
-  | Nat n1, Nat n2 -> Nat.compare n1 n2
   | Int n1, Int n2 -> Int.compare n1 n2
   | Opt v1, Opt v2 -> compare v1 v2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
@@ -345,7 +342,6 @@ let string_of_string lsep s rsep =
 let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
-  | Nat n -> Nat.to_string n
   | Int i -> Int.to_string i
   | Word8 w -> Word8.to_string w
   | Word16 w -> Word16.to_string w

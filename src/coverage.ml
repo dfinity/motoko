@@ -39,7 +39,7 @@ let make_sets () =
 let value_of_lit = function
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
-  | NatLit n -> V.Nat n
+  | NatLit n -> V.Int n
   | IntLit i -> V.Int i
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w

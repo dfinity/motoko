@@ -276,6 +276,11 @@ let check_lit env t lit at =
 
 (* Expressions *)
 
+let isAsyncE exp =
+  match exp.it with
+  | AsyncE _ -> true
+  | _ -> false
+                          
 let rec infer_exp env exp : T.typ =
   T.as_immut (infer_exp_mut env exp)
 
@@ -1021,7 +1026,9 @@ and check_block_exps env ce_inner t decs at =
 and check_dec env ce_inner t dec =
   begin
     match dec.it with
-    | ExpD exp -> check_exp env t exp
+    | ExpD exp ->
+       check_exp env t exp;
+       dec.note <- exp.note;
 (* TBR: push in external type annotation;
    unfortunately, this is enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -1053,8 +1060,6 @@ and check_dec env ce_inner t dec =
            (T.string_of_typ_expand env.cons t)
            (T.string_of_typ_expand env.cons t');
   end;
-  let eff = A.infer_effect_dec dec in
-  dec.note <- {note_typ = t; note_eff = eff};
   
 (*
 and print_ce =
@@ -1181,7 +1186,7 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (sort, id, typbinds, pat, typ, _) ->
+  | FuncD (sort, id, typbinds, pat, typ, exp) ->
     let cs, ts, te, ce = check_typ_binds env typbinds in
     let env' = adjoin_typs env te ce in
     let t1, _ = infer_pat {env' with pre = true} pat in
@@ -1196,8 +1201,11 @@ and infer_dec_valdecs env dec : val_env =
       let t2' = T.promote env'.cons t2 in
       if not (T.is_unit t2' || T.is_async t2') then
         error typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
-    end;
+          (T.string_of_typ_expand env'.cons t2);
+      if T.is_async t2' && (not (isAsyncE exp)) then
+        error dec.at "shared function with async type has non-async body"
+      
+      end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
       (T.Func (T.Call sort.it, tbs, T.close cs t1, T.close cs t2))
