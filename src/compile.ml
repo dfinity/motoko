@@ -371,6 +371,28 @@ let load_ptr : G.t =
 let store_ptr : G.t =
   G.i_ (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
+module Func = struct
+
+  let of_body env params retty mk_body =
+    let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) in
+    List.iteri (fun i n -> E.add_local_name env1 (Int32.of_int i) n) params;
+    let ty = FuncType (List.map (fun _ -> I32Type) params, retty) in
+    let body = G.to_instr_list (mk_body env1) in
+    (nr { ftype = nr (E.func_type env ty);
+          locals = E.get_locals env1;
+          body }
+    , E.get_local_names env1)
+
+  let define_built_in env name params retty mk_body =
+    E.define_built_in env name (fun () -> of_body env params retty mk_body)
+
+  (* (Almost) transparently lift code into a function and call this function. *)
+  let share_code env name params retty mk_body =
+    define_built_in env name params retty mk_body;
+    G.i_ (Call (nr (E.built_in env name)))
+
+end (* Func *)
+
 module Heap = struct
 
   (* General heap object functionalty (allocation, setting fields, reading fields) *)
@@ -433,34 +455,39 @@ module ElemHeap = struct
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
   let remember_reference env : G.t =
-    let (set_i, get_i) = new_local env "ref" in
-    set_i ^^
+    Func.share_code env "remember_reference" ["ref"] [I32Type] (fun env ->
+      let get_ref = G.i_ (GetLocal (nr 0l)) in
 
-    (* Return index *)
-    G.i_ (GetGlobal ref_counter) ^^
+      (* Return index *)
+      G.i_ (GetGlobal ref_counter) ^^
 
-    (* Store reference *)
-    G.i_ (GetGlobal ref_counter) ^^
-    compile_unboxed_const Heap.word_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-    compile_unboxed_const ref_location ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    get_i ^^
-    store_ptr ^^
+      (* Store reference *)
+      G.i_ (GetGlobal ref_counter) ^^
+      compile_unboxed_const Heap.word_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_unboxed_const ref_location ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      get_ref ^^
+      store_ptr ^^
 
-    (* Bump counter *)
-    G.i_ (GetGlobal ref_counter) ^^
-    compile_unboxed_const 1l ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    G.i_ (SetGlobal ref_counter)
+      (* Bump counter *)
+      G.i_ (GetGlobal ref_counter) ^^
+      compile_unboxed_const 1l ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (SetGlobal ref_counter)
+    )
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
   let recall_reference env : G.t =
-    compile_unboxed_const Heap.word_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-    compile_unboxed_const ref_location ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-    load_ptr
+    Func.share_code env "recall_reference" ["ref_idx"] [I32Type] (fun env ->
+      let get_ref_idx = G.i_ (GetLocal (nr 0l)) in
+      get_ref_idx ^^
+      compile_unboxed_const Heap.word_size ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_unboxed_const ref_location ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      load_ptr
+    )
 
 end (* ElemHeap *)
 
@@ -625,7 +652,8 @@ let project = Heap.load_field Tagged.header_size
 
 end (* Opt *)
 
-module Func = struct
+
+module Closure = struct
 
   let funptr_field = Tagged.header_size
   let first_captured = Int32.add Tagged.header_size 1l
@@ -641,21 +669,8 @@ module Func = struct
     (* should be different from any pointer *)
     Int32.add (Int32.mul fi Heap.word_size) 1l
 
-  let of_body env params retty mk_body =
-    let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) in
-    List.iteri (fun i n -> E.add_local_name env1 (Int32.of_int i) n) params;
-    let ty = FuncType (List.map (fun _ -> I32Type) params, retty) in
-    let body = G.to_instr_list (mk_body env1) in
-    (nr { ftype = nr (E.func_type env ty);
-          locals = E.get_locals env1;
-          body }
-    , E.get_local_names env1)
-
   let unary_of_body env mk_body =
-    of_body env ["clos"; "param"] [I32Type] mk_body
-
-  let define_built_in env name params retty mk_body =
-    E.define_built_in env name (fun () -> of_body env params retty mk_body)
+    Func.of_body env ["clos"; "param"] [I32Type] mk_body
 
   (* The argument on the stack *)
   let call_direct env fi at =
@@ -805,12 +820,7 @@ module Func = struct
     then dec_closed pre_env last name mk_pat mk_body at
     else dec_closure pre_env last name captured mk_pat mk_body at
 
-  (* (Almost) transparently lift code into a function and call this function. *)
-  let share_code env name params retty mk_body =
-    define_built_in env name params retty mk_body;
-    G.i_ (Call (nr (E.built_in env name)))
-
-end (* Func *)
+end (* Closure *)
 
 module RTS = struct
   let memcpy env =
@@ -1242,13 +1252,13 @@ module Array = struct
   let load_n n = Heap.load_field (field_of_idx n)
 
   let common_funcs env =
-    let get_array_object = Func.load_closure 0l in
-    let get_single_arg =   Func.load_argument in
-    let get_first_arg =    Func.load_argument ^^ load_n 0l in
-    let get_second_arg =   Func.load_argument ^^ load_n 1l in
+    let get_array_object = Closure.load_closure 0l in
+    let get_single_arg =   Closure.load_argument in
+    let get_first_arg =    Closure.load_argument ^^ load_n 0l in
+    let get_second_arg =   Closure.load_argument ^^ load_n 1l in
 
     E.define_built_in env "array_get"
-      (fun () -> Func.unary_of_body env (fun env1 ->
+      (fun () -> Closure.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1256,7 +1266,7 @@ module Array = struct
             load_ptr
        ));
     E.define_built_in env "array_set"
-      (fun () -> Func.unary_of_body env (fun env1 ->
+      (fun () -> Closure.unary_of_body env (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1266,17 +1276,17 @@ module Array = struct
             compile_unit
        ));
     E.define_built_in env "array_len"
-      (fun () -> Func.unary_of_body env (fun env1 ->
+      (fun () -> Closure.unary_of_body env (fun env1 ->
             get_array_object ^^
             Heap.load_field len_field ^^
             BoxedInt.box env1
       ));
 
-    let mk_next_fun mk_code : E.func_with_names = Func.unary_of_body env (fun env1 ->
+    let mk_next_fun mk_code : E.func_with_names = Closure.unary_of_body env (fun env1 ->
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
-            Func.load_closure 0l ^^
+            Closure.load_closure 0l ^^
             (* Read pointer *)
             Var.load ^^
             set_boxed_i ^^
@@ -1286,7 +1296,7 @@ module Array = struct
 
             get_i ^^
             (* Get pointer to array from closure *)
-            Func.load_closure 1l ^^
+            Closure.load_closure 1l ^^
             (* Get length *)
             Heap.load_field len_field ^^
             G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
@@ -1295,7 +1305,7 @@ module Array = struct
               compile_null
               (* Else *)
               ( (* Get point to counter from closure *)
-                Func.load_closure 0l ^^
+                Closure.load_closure 0l ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_unboxed_const 1l ^^
@@ -1304,11 +1314,11 @@ module Array = struct
                 Var.store ^^
                 (* Return stuff *)
                 Opt.inject env1 (
-                  mk_code env (Func.load_closure 1l) get_boxed_i get_i
+                  mk_code env (Closure.load_closure 1l) get_boxed_i get_i
                 )
               )
        ) in
-    let mk_iterator next_funid = Func.unary_of_body env (fun env1 ->
+    let mk_iterator next_funid = Closure.unary_of_body env (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Tagged.obj env1 Tagged.Closure
@@ -1427,7 +1437,7 @@ module Array = struct
       get_f ^^
       get_i ^^
       BoxedInt.box env ^^
-      Func.call_indirect env no_region ^^
+      Closure.call_indirect env no_region ^^
       store_ptr
     ) ^^
     get_r
@@ -2308,7 +2318,7 @@ module Message = struct
       Serialization.deserialize env ^^
 
       (* Invoke the call *)
-      Func.call_indirect env no_region ^^
+      Closure.call_indirect env no_region ^^
       G.i_ Drop ^^
 
       (* Save memory *)
@@ -2663,11 +2673,11 @@ and compile_exp (env : E.t) exp = match exp.it with
   | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_exp env e2 ^^
-     Func.call_direct env fi exp.at
+     Closure.call_direct env fi exp.at
   | CallE (e1, _, e2) ->
      compile_exp env e1 ^^
      compile_exp env e2 ^^
-     Func.call_indirect env exp.at
+     Closure.call_indirect env exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -2700,7 +2710,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        ( get_i ^^
          Object.load_idx env1 "next" ^^
          compile_unit ^^
-         Func.call_indirect env1 Source.no_region ^^
+         Closure.call_indirect env1 Source.no_region ^^
          let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
@@ -2907,7 +2917,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 _ = compile_exp env1 e in
-      Func.dec pre_env last name captured mk_pat mk_body dec.at
+      Closure.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, _, typ_params, s, p, efs) ->
@@ -2923,7 +2933,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
 	For closures it is the pointer to the closure.
 	For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 None (Some compile_fun_identifier) fs' in
-      Func.dec pre_env last name captured mk_pat mk_body dec.at
+      Closure.dec pre_env last name captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
 
