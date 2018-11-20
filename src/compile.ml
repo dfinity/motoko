@@ -315,21 +315,13 @@ let compile_unit = compile_unboxed_const 1l
 let compile_null = compile_unboxed_const 3l
 
 (* Some common arithmetic *)
-let compile_add_const i =
+let compile_op_const op i =
     compile_unboxed_const i ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
-
-let compile_sub_const i =
-    compile_unboxed_const i ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
-
-let compile_mul_const i =
-    compile_unboxed_const i ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul))
-
-let compile_divU_const i =
-    compile_unboxed_const i ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU))
+    G.i_ (Binary (Wasm.Values.I32 op))
+let compile_add_const = compile_op_const Wasm.Ast.I32Op.Add
+let compile_sub_const = compile_op_const Wasm.Ast.I32Op.Sub
+let compile_mul_const = compile_op_const Wasm.Ast.I32Op.Mul
+let compile_divU_const = compile_op_const Wasm.Ast.I32Op.DivU
 
 (* Locals *)
 
