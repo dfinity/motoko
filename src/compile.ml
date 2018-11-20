@@ -1887,139 +1887,125 @@ module Serialization = struct
         ]
     )
 
-  let shift_pointers env =
-    Func.share_code env "shift_pointers" ["x"; "to"; "ptr_offset"] [] (fun env ->
-      let get_x = G.i_ (GetLocal (nr 0l)) in
-      let set_x = G.i_ (SetLocal (nr 0l)) in
-      let get_to = G.i_ (GetLocal (nr 1l)) in
-      let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
-
+  let walk_heap_from_to env compile_from compile_to mk_code =
+      let (set_x, get_x) = new_local env "x" in
+      compile_from ^^ set_x ^^
       compile_while
         (* While we have not reached the end of the area *)
         ( get_x ^^
-          get_to ^^
+          compile_to ^^
           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
         )
-        ( get_x ^^
-          Tagged.branch_default env [] (G.i_ Nop)
-            [ Tagged.Some,
-              (* Adust pointer *)
-              compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            ; Tagged.Array,
-              (* x still on the stack *)
-              Heap.load_field Array.len_field ^^
-              (* Adjust fields *)
-              from_0_to_n env (fun get_i ->
-                get_x ^^
-                get_i ^^
-                Array.idx env ^^
-                get_ptr_offset ^^
-                shift_pointer_at env
-              )
-            ; Tagged.Object,
-              (* x still on the stack *)
-              Heap.load_field Object.size_field ^^
-
-              (* Adjust fields *)
-              from_0_to_n env (fun get_i ->
-                get_i ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                compile_add_const Heap.word_size ^^
-                get_x ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                get_ptr_offset ^^
-                shift_pointer_at env
-              )
-            ] ^^
+        ( mk_code get_x ^^
           get_x ^^
           get_x ^^ object_size env ^^
           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
           set_x
         )
+
+  let shift_pointers env =
+    Func.share_code env "shift_pointers" ["start"; "to"; "ptr_offset"] [] (fun env ->
+      let get_start = G.i_ (GetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
+
+      walk_heap_from_to env get_start get_to (fun get_x ->
+        get_x ^^
+        Tagged.branch_default env [] (G.i_ Nop)
+          [ Tagged.Some,
+            (* Adust pointer *)
+            compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+            get_ptr_offset ^^
+            shift_pointer_at env
+          ; Tagged.Array,
+            (* x still on the stack *)
+            Heap.load_field Array.len_field ^^
+            (* Adjust fields *)
+            from_0_to_n env (fun get_i ->
+              get_x ^^
+              get_i ^^
+              Array.idx env ^^
+              get_ptr_offset ^^
+              shift_pointer_at env
+            )
+          ; Tagged.Object,
+            (* x still on the stack *)
+            Heap.load_field Object.size_field ^^
+
+            (* Adjust fields *)
+            from_0_to_n env (fun get_i ->
+              get_i ^^
+              compile_mul_const 2l ^^
+              compile_add_const Object.header_size ^^
+              compile_mul_const Heap.word_size ^^
+              compile_add_const Heap.word_size ^^
+              get_x ^^
+              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              get_ptr_offset ^^
+              shift_pointer_at env
+            )
+          ]
+      )
     )
 
   let extract_references env =
-    Func.share_code env "extract_references" ["x"; "to"; "tbl_area"] [I32Type] (fun env ->
-      let get_x = G.i_ (GetLocal (nr 0l)) in
-      let set_x = G.i_ (SetLocal (nr 0l)) in
+    Func.share_code env "extract_references" ["start"; "to"; "tbl_area"] [I32Type] (fun env ->
+      let get_start = G.i_ (GetLocal (nr 0l)) in
       let get_to = G.i_ (GetLocal (nr 1l)) in
       let get_tbl_area = G.i_ (GetLocal (nr 2l)) in
       let (set_i, get_i) = new_local env "i" in
 
       compile_unboxed_const 0l ^^ set_i ^^
 
-      compile_while
-        (* While we have not reached the end of the area *)
-        ( get_x ^^
-          get_to ^^
-          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-        )
-        ( get_x ^^
-          Tagged.branch_default env [] (G.i_ Nop)
-            [ Tagged.Reference,
-              (* x still on the stack *)
-              G.i_ Drop ^^
+      walk_heap_from_to env get_start get_to (fun get_x ->
+        get_x ^^
+        Tagged.branch_default env [] (G.i_ Nop)
+          [ Tagged.Reference,
+            (* x still on the stack *)
+            G.i_ Drop ^^
 
-              (* Adjust reference *)
-              get_tbl_area ^^
-              get_i ^^ compile_mul_const Heap.word_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              get_x ^^
-              Heap.load_field 1l ^^
-              store_ptr ^^
+            (* Adjust reference *)
+            get_tbl_area ^^
+            get_i ^^ compile_mul_const Heap.word_size ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            get_x ^^
+            Heap.load_field 1l ^^
+            store_ptr ^^
 
-              get_x ^^
-              get_i ^^
-              Heap.store_field 1l ^^
+            get_x ^^
+            get_i ^^
+            Heap.store_field 1l ^^
 
-              get_i ^^
-              compile_add_const 1l ^^
-              set_i
-            ] ^^
-          get_x ^^
-          get_x ^^ object_size env ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          set_x
-        ) ^^
+            get_i ^^
+            compile_add_const 1l ^^
+            set_i
+          ]
+      ) ^^
       get_i
     )
 
   let intract_references env =
-    Func.share_code env "intract_references" ["x"; "to"; "tbl_area"] [] (fun env ->
-      let get_x = G.i_ (GetLocal (nr 0l)) in
-      let set_x = G.i_ (SetLocal (nr 0l)) in
+    Func.share_code env "intract_references" ["start"; "to"; "tbl_area"] [] (fun env ->
+      let get_start = G.i_ (GetLocal (nr 0l)) in
       let get_to = G.i_ (GetLocal (nr 1l)) in
       let get_tbl_area = G.i_ (GetLocal (nr 2l)) in
 
-      compile_while
-        (* While we have not reached the end of the area *)
-        ( get_x ^^
-          get_to ^^
-          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-        )
-        ( get_x ^^
-          Tagged.branch_default env [] (G.i_ Nop)
-            [ Tagged.Reference,
-              (* x still on the stack *)
+      walk_heap_from_to env get_start get_to (fun get_x ->
+        get_x ^^
+        Tagged.branch_default env [] (G.i_ Nop)
+          [ Tagged.Reference,
+            (* x still on the stack *)
 
-              (* Adjust reference *)
-              get_x ^^
-              Heap.load_field 1l ^^
-              compile_mul_const Heap.word_size ^^
-              get_tbl_area ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              load_ptr ^^
-              Heap.store_field 1l
-            ] ^^
-          get_x ^^
-          get_x ^^ object_size env ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          set_x
-        )
+            (* Adjust reference *)
+            get_x ^^
+            Heap.load_field 1l ^^
+            compile_mul_const Heap.word_size ^^
+            get_tbl_area ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            load_ptr ^^
+            Heap.store_field 1l
+          ]
+      )
     )
 
   let serialize env =
