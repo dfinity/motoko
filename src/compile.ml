@@ -1748,15 +1748,26 @@ module Serialization = struct
     * Special handling for closures: These are turned into funcrefs.
     * We traverse this space and make all pointers relative to the beginning of
       the space. Same for indices into the reference table.
-    * We copy all that new data space into a databuf, and add it to the reference table
-    * We copy all that new table space into a databuf
-    * TODO: reset the heap pointer and table pointer (just because we can easily)
-
-    We separating code for copying and the code for pointer adjustment because
-    the former might be handy in a GC, and the latter can be used again in the
-    deseriazliation code.
+    * We externalize all that new data space into a databuf, and add it to the
+      reference table
+    * We externalize all that new table space into a elembuf
+    * We reset the heap pointer and table pointer, to garbage collect the scratch space.
 
     TODO: Cycles are not detected yet.
+
+    We separate code for copying and the code for pointer adjustment because
+    the latter can be used again in the deseriazliation code.
+
+    The deserialization is analogous:
+    * We internalize the elembuf into the table, bumping the table reference
+      pointer.
+    * The last entry of the table is the dataref from above. Since we don't
+      need it after this, we decrement the table reference pointer by one.
+    * We internalize this databuf intot the heap space, bumping the heap
+      pointer.
+    * We traverse this space and adjust all pointers.
+      Same for indices into the reference table.
+
   *)
 
 
