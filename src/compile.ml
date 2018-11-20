@@ -1084,41 +1084,46 @@ module Object = struct
      (* Return the pointer to the object *)
      get_ri
 
+  (* Returns a pointer to the object field *)
+  let idx_hash env =
+    Func.share_code env "obj_idx" ["x"; "hash"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let get_hash = G.i_ (GetLocal (nr 1l)) in
+      let (set_f, get_f) = new_local env "f" in
+      let (set_r, get_r) = new_local env "r" in
+
+      get_x ^^
+      Heap.load_field size_field ^^
+      (* Linearly scan through the fields (binary search can come later) *)
+      from_0_to_n env (fun get_i ->
+        get_i ^^
+         compile_unboxed_const 2l ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+         compile_unboxed_const header_size ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+         compile_unboxed_const Heap.word_size  ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+         get_x ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        set_f ^^
+
+        get_f ^^
+        Heap.load_field 0l ^^ (* the hash field *)
+        get_hash ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ []
+          ( get_f ^^
+            compile_unboxed_const Heap.word_size ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            set_r
+          ) G.nop
+      ) ^^
+      get_r
+    )
+
   let idx env (name : string) =
-    (* Expects the pointer to the object on the stack *)
-    (* Linearly scan through the fields (binary search can come later) *)
-    (* Maybe this should be a Wasm function *)
-    let (set_x, get_x) = new_local env "x" in
-    let (set_f, get_f) = new_local env "f" in
-    let (set_r, get_r) = new_local env "r" in
-    set_x ^^
-
-    get_x ^^
-    Heap.load_field size_field ^^
-    from_0_to_n env (fun get_i ->
-      get_i ^^
-       compile_unboxed_const 2l ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-       compile_unboxed_const header_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-       compile_unboxed_const Heap.word_size  ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-       get_x ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      set_f ^^
-
-      get_f ^^
-      Heap.load_field 0l ^^ (* the hash field *)
-      compile_unboxed_const (hash_field_name name) ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-      G.if_ []
-        ( get_f ^^
-          compile_unboxed_const Heap.word_size ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          set_r
-        ) G.nop
-    ) ^^
-    get_r
+    compile_unboxed_const (hash_field_name name) ^^
+    idx_hash env
 
   let load_idx env f = idx env f ^^ load_ptr
 
