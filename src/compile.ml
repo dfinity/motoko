@@ -314,6 +314,23 @@ let compile_unit = compile_unboxed_const 1l
 (* This needs to be disjoint from all pointers *)
 let compile_null = compile_unboxed_const 3l
 
+(* Some common arithmetic *)
+let compile_add_const i =
+    compile_unboxed_const i ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+
+let compile_sub_const i =
+    compile_unboxed_const i ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub))
+
+let compile_mul_const i =
+    compile_unboxed_const i ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul))
+
+let compile_divU_const i =
+    compile_unboxed_const i ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU))
+
 (* Locals *)
 
 let set_tmp env = G.i_ (SetLocal (E.tmp_local env))
@@ -357,8 +374,7 @@ let from_0_to_n env mk_body =
         mk_body get_i ^^
 
         get_i ^^
-        compile_unboxed_const 1l ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        compile_add_const 1l ^^
         set_i
       )
 
@@ -410,8 +426,7 @@ module Heap = struct
     G.i_ (GetGlobal heap_ptr) ^^
     G.i_ (GetGlobal heap_ptr) ^^
     let aligned = Int32.logand (Int32.add n 3l) (Int32.lognot 3l) in
-    compile_unboxed_const aligned  ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    compile_add_const aligned  ^^
     G.i_ (SetGlobal heap_ptr)
 
   let alloc (n : int32) : G.t =
@@ -463,17 +478,14 @@ module ElemHeap = struct
 
       (* Store reference *)
       G.i_ (GetGlobal ref_counter) ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-      compile_unboxed_const ref_location ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const ref_location ^^
       get_ref ^^
       store_ptr ^^
 
       (* Bump counter *)
       G.i_ (GetGlobal ref_counter) ^^
-      compile_unboxed_const 1l ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const 1l ^^
       G.i_ (SetGlobal ref_counter)
     )
 
@@ -482,10 +494,8 @@ module ElemHeap = struct
     Func.share_code env "recall_reference" ["ref_idx"] [I32Type] (fun env ->
       let get_ref_idx = G.i_ (GetLocal (nr 0l)) in
       get_ref_idx ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-      compile_unboxed_const ref_location ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const ref_location ^^
       load_ptr
     )
 
@@ -619,8 +629,7 @@ module Var = struct
   let get_payload_loc env var = match E.lookup_var env var with
     | Some (Local (i, off)) ->
       G.i_ (GetLocal (nr i)) ^^
-      compile_unboxed_const (Int32.mul Heap.word_size off) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+      compile_add_const (Int32.mul Heap.word_size off)
     | Some (Static i) -> compile_unboxed_const i
     | Some (Deferred _) -> raise (Invalid_argument "Should not write to a deferred thing")
     | None -> G.i_ Unreachable
@@ -852,8 +861,7 @@ module RTS = struct
       G.i_ (GetGlobal Heap.heap_ptr) ^^
       get_n ^^
       (* align *)
-      compile_unboxed_const 3l ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const 3l ^^
       compile_unboxed_const (-1l) ^^
       compile_unboxed_const 3l ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Xor)) ^^
@@ -868,8 +876,7 @@ module RTS = struct
       let get_n = G.i_ (GetLocal (nr 0l)) in
 
       get_n ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_mul_const Heap.word_size ^^
       alloc_bytes env
     )
 
@@ -1107,13 +1114,10 @@ module Object = struct
       (* Linearly scan through the fields (binary search can come later) *)
       from_0_to_n env (fun get_i ->
         get_i ^^
-         compile_unboxed_const 2l ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-         compile_unboxed_const header_size ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-         compile_unboxed_const Heap.word_size  ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-         get_x ^^
+        compile_mul_const 2l ^^
+        compile_add_const header_size ^^
+        compile_mul_const Heap.word_size  ^^
+        get_x ^^
         G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
         set_f ^^
 
@@ -1123,8 +1127,7 @@ module Object = struct
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
         G.if_ []
           ( get_f ^^
-            compile_unboxed_const Heap.word_size ^^
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            compile_add_const Heap.word_size ^^
             set_r
           ) G.nop
       ) ^^
@@ -1195,12 +1198,10 @@ module Text = struct
 
       (* Copy first string *)
       get_x ^^
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const (Int32.mul Heap.word_size header_size) ^^
 
       get_z ^^
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const (Int32.mul Heap.word_size header_size) ^^
 
       get_len1 ^^
 
@@ -1208,12 +1209,10 @@ module Text = struct
 
       (* Copy second string *)
       get_y ^^
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const (Int32.mul Heap.word_size header_size) ^^
 
       get_z ^^
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const (Int32.mul Heap.word_size header_size) ^^
       get_len1 ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
 
@@ -1240,10 +1239,8 @@ module Array = struct
       let get_array = G.i_ (GetLocal (nr 0l)) in
       let get_idx = G.i_ (GetLocal (nr 1l)) in
       get_idx ^^
-      compile_unboxed_const header_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      compile_unboxed_const element_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
       get_array ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
     )
@@ -1308,8 +1305,7 @@ module Array = struct
                 Closure.load_closure 0l ^^
                 (* Store increased counter *)
                 get_i ^^
-                compile_unboxed_const 1l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_add_const 1l ^^
                 BoxedInt.box env1 ^^
                 Var.store ^^
                 (* Return stuff *)
@@ -1382,8 +1378,7 @@ module Array = struct
 
     (* Allocate *)
     get_len ^^
-    compile_unboxed_const header_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    compile_add_const header_size ^^
     RTS.alloc_words env ^^
     set_r ^^
 
@@ -1415,8 +1410,7 @@ module Array = struct
 
     (* Allocate *)
     get_len ^^
-    compile_unboxed_const header_size ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    compile_add_const header_size ^^
     RTS.alloc_words env ^^
     set_r ^^
 
@@ -1582,8 +1576,7 @@ module Dfinity = struct
 
       (* Calculate the offset *)
       get_i ^^
-      compile_unboxed_const (Int32.mul Heap.word_size Text.header_size) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      compile_add_const (Int32.mul Heap.word_size Text.header_size) ^^
       (* Calculate the length *)
       get_i ^^
       Heap.load_field (Text.len_field) ^^
@@ -1704,8 +1697,7 @@ module OrthogonalPersistence = struct
          (* Subsequent run *)
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
-           compile_unboxed_const ElemHeap.begin_dyn_space ^^
-           G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+           compile_add_const ElemHeap.begin_dyn_space ^^
            G.i_ (SetGlobal Heap.heap_ptr) ^^
 
            (* Load memory *)
@@ -1826,8 +1818,7 @@ module Serialization = struct
               set_len ^^
 
               get_len ^^
-              compile_unboxed_const Array.header_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const Array.header_size ^^
               RTS.alloc_words env ^^
               G.i_ Drop ^^
 
@@ -1858,12 +1849,9 @@ module Serialization = struct
               let (set_len, get_len) = new_local env "len" in
               Heap.load_field Text.len_field ^^
               (* get length in words *)
-              compile_unboxed_const 3l ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              compile_unboxed_const Heap.word_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
-              compile_unboxed_const Array.header_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const 3l ^^
+              compile_divU_const Heap.word_size ^^
+              compile_add_const Array.header_size ^^
               set_len ^^
 
               get_len ^^
@@ -1874,8 +1862,7 @@ module Serialization = struct
               get_x ^^
               get_copy ^^
               get_len ^^
-              compile_unboxed_const Heap.word_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+              compile_mul_const Heap.word_size ^^
               RTS.memcpy env ^^
 
               get_copy
@@ -1887,10 +1874,8 @@ module Serialization = struct
               set_len ^^
 
               get_len ^^
-              compile_unboxed_const 2l ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-              compile_unboxed_const Object.header_size ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_mul_const 2l ^^
+              compile_add_const Object.header_size ^^
               RTS.alloc_words env ^^
               G.i_ Drop ^^
 
@@ -1905,22 +1890,16 @@ module Serialization = struct
               from_0_to_n env (fun get_i ->
                 (* Copy hash *)
                 get_i ^^
-                compile_unboxed_const 2l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                compile_unboxed_const Object.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 get_copy ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
 
                 get_i ^^
-                compile_unboxed_const 2l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                compile_unboxed_const Object.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 get_x ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
 
@@ -1931,28 +1910,20 @@ module Serialization = struct
                 (* Copy data *)
 
                 get_i ^^
-                compile_unboxed_const 2l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                compile_unboxed_const Object.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 get_copy ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_add_const Heap.word_size ^^
 
                 get_i ^^
-                compile_unboxed_const 2l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                compile_unboxed_const Object.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 get_x ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_add_const Heap.word_size ^^
 
                 load_ptr ^^
                 G.i_ (Call (nr (E.built_in env "serialize_go"))) ^^
@@ -2012,8 +1983,7 @@ module Serialization = struct
           Tagged.branch env []
             [ Tagged.Int,
               (* x still on the stack *)
-              compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
               set_x
             ; Tagged.Reference,
               (* x still on the stack *)
@@ -2025,20 +1995,17 @@ module Serialization = struct
               Heap.store_field 1l ^^
 
               get_x ^^
-              compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
               set_x
             ; Tagged.Some,
               (* Adust pointer *)
-              compile_unboxed_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
               get_ptr_offset ^^
               shift_pointer_at env ^^
 
               (* Carry on *)
               get_x ^^
-              compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+              compile_add_const (Int32.mul 2l Heap.word_size) ^^
               set_x
             ; Tagged.Array,
               begin
@@ -2060,10 +2027,8 @@ module Serialization = struct
                 (* Advance pointer *)
                 get_x ^^
                 get_len ^^
-                compile_unboxed_const Array.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_add_const Array.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 set_x
               end
@@ -2073,21 +2038,16 @@ module Serialization = struct
                 (* x still on the stack *)
                 Heap.load_field Text.len_field ^^
                 (* get length in words *)
-                compile_unboxed_const 3l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)) ^^
-                compile_unboxed_const Array.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                compile_add_const 3l ^^
+                compile_divU_const Heap.word_size ^^
+                compile_add_const Array.header_size ^^
                 set_len ^^
 
                 (* Advance pointer *)
                 get_x ^^
                 get_len ^^
-                compile_unboxed_const Array.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_add_const Array.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 set_x
               end
@@ -2102,14 +2062,10 @@ module Serialization = struct
                 get_len ^^
                 from_0_to_n env (fun get_i ->
                   get_i ^^
-                  compile_unboxed_const 2l ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                  compile_unboxed_const Object.header_size ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                  compile_unboxed_const Heap.word_size ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                  compile_unboxed_const Heap.word_size ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                  compile_mul_const 2l ^^
+                  compile_add_const Object.header_size ^^
+                  compile_mul_const Heap.word_size ^^
+                  compile_add_const Heap.word_size ^^
                   get_x ^^
                   G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                   get_ptr_offset ^^
@@ -2118,12 +2074,9 @@ module Serialization = struct
 
                 (* Advance pointer *)
                 get_len ^^
-                compile_unboxed_const 2l ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-                compile_unboxed_const Object.header_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                compile_unboxed_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+                compile_mul_const 2l ^^
+                compile_add_const Object.header_size ^^
+                compile_mul_const Heap.word_size ^^
                 get_x ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 set_x
@@ -2202,8 +2155,7 @@ module Serialization = struct
       (* Finalloy, create elembuf *)
       compile_unboxed_const ElemHeap.ref_location ^^
       get_tbl_start ^^
-      compile_unboxed_const Heap.word_size ^^ (* mangle *)
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_mul_const Heap.word_size ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       get_tbl_end ^^
       get_tbl_start ^^
@@ -2230,8 +2182,7 @@ module Serialization = struct
       (* Load references *)
       compile_unboxed_const ElemHeap.ref_location ^^
       get_tbl_start ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
+      compile_mul_const Heap.word_size ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       get_elembuf ^^ G.i_ (Call (nr (Dfinity.elem_length_i env))) ^^
       get_elembuf ^^
@@ -2242,8 +2193,7 @@ module Serialization = struct
       get_tbl_start ^^
       get_elembuf ^^ G.i_ (Call (nr (Dfinity.elem_length_i env))) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      compile_unboxed_const 1l ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      compile_sub_const 1l ^^
       G.i_ (SetGlobal ElemHeap.ref_counter) ^^
 
       (* That last entry is the databuf to load *)
@@ -2615,10 +2565,8 @@ and compile_exp (env : E.t) exp = match exp.it with
             Heap.load_field Object.class_position ^^
             get_j ^^
             Heap.load_field 0l ^^ (* get the function id *)
-            compile_unboxed_const Heap.word_size ^^ (* mangle *)
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)) ^^
-            compile_unboxed_const 1l ^^ (* mangle *)
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            compile_mul_const Heap.word_size ^^
+            compile_add_const 1l ^^ 
             G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
           )
         ]
