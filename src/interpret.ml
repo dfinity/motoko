@@ -194,7 +194,7 @@ let interpret_lit env lit : V.value =
   match !lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
-  | NatLit n -> V.Nat n
+  | NatLit n -> V.Int n
   | IntLit i -> V.Int i
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w
@@ -275,7 +275,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (V.as_array v1).(V.Nat.to_int (V.as_nat v2)) (* TBR *)
+        k (V.as_array v1).(V.Int.to_int (V.as_int v2))
       )
     )
   | CallE (exp1, typs, exp2) ->
@@ -487,7 +487,7 @@ and match_lit lit v : bool =
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Nat n' -> V.Nat.eq n n'
+  | NatLit n, V.Int n' -> V.Int.eq n n'
   | IntLit i, V.Int i' -> V.Int.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'

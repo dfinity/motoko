@@ -83,23 +83,23 @@ func new_async<T <: Shared>():(Async<T>,shared T->()) {
 open Value
 
 let prim = function
-  | "abs" -> fun v k -> k (Nat (Nat.abs (as_int v)))
+  | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
       (match Value.as_tup v with
        | [len; x] ->
-         k (Array (Array.make (Int.to_int (as_nat len)) x))
+         k (Array (Array.make (Int.to_int (as_int len)) x))
       | _ -> assert false)
   | "Array.tabulate" -> fun v k ->
       (match Value.as_tup v with
        | [len; g] ->
-         let len_nat = Int.to_int (as_nat len) in
+         let len_nat = Int.to_int (as_int len) in
          let (_, g') = Value.as_func g in
          let rec go prefix k i =
           if i == len_nat
           then k (Array (Array.of_list (prefix [])))
-          else g' (Nat (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
+          else g' (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
          in go (fun xs -> xs) k 0
       | _ -> assert false)
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

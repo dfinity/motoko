@@ -64,7 +64,6 @@ type func = value -> value cont -> unit
 and value =
   | Null
   | Bool of bool
-  | Nat of Nat.t
   | Int of Int.t
   | Word8 of Word8.t
   | Word16 of Word16.t
@@ -95,7 +94,6 @@ val unit : value
 
 val as_null : value -> unit
 val as_bool : value -> bool
-val as_nat : value -> Nat.t
 val as_int : value -> Int.t
 val as_word8 : value -> Word8.t
 val as_word16 : value -> Word16.t
