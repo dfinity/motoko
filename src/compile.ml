@@ -533,12 +533,11 @@ module Tagged = struct
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
-  let branch env retty (cases : (tag * G.t) list) : G.t =
+  let branch_default env retty def (cases : (tag * G.t) list) : G.t =
     let (set_i, get_i) = new_local env "tagged" in
 
     let rec go = function
-      | [] ->
-        G.i_ Unreachable
+      | [] -> def
       | ((tag, code) :: cases) ->
         get_i ^^
         load ^^
@@ -548,6 +547,9 @@ module Tagged = struct
     in
     set_i ^^
     go cases
+
+  let branch env retty (cases : (tag * G.t) list) : G.t =
+    branch_default env retty (G.i_ Unreachable) cases
 
   let obj env tag element_instructions : G.t =
     Heap.obj env (compile_unboxed_const (int_of_tag tag) :: element_instructions)
@@ -1850,6 +1852,41 @@ module Serialization = struct
         )
     )
 
+  let object_size env =
+    Func.share_code env "object_size" ["x"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      get_x ^^
+      Tagged.branch env [I32Type]
+        [ Tagged.Int,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.Reference,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.Some,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.Array,
+          (* x still on the stack *)
+          Heap.load_field Array.len_field ^^
+          compile_add_const Array.header_size ^^
+          compile_mul_const Heap.word_size
+        ; Tagged.Text,
+          (* x still on the stack *)
+          Heap.load_field Text.len_field ^^
+          compile_add_const 3l ^^
+          compile_divU_const Heap.word_size ^^
+          compile_add_const Text.header_size ^^
+          compile_mul_const Heap.word_size
+        ; Tagged.Object,
+          (* x still on the stack *)
+          Heap.load_field Object.size_field ^^
+          compile_mul_const 2l ^^
+          compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size
+        ]
+    )
+
   let shift_pointers env =
     Func.share_code env "shift_pointers" ["x"; "to"; "ptr_offset"] [] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
@@ -1864,100 +1901,44 @@ module Serialization = struct
           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
         )
         ( get_x ^^
-          Tagged.branch env []
-            [ Tagged.Int,
-              (* x still on the stack *)
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Reference,
-              (* x still on the stack *)
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Some,
+          Tagged.branch_default env [] (G.i_ Nop)
+            [ Tagged.Some,
               (* Adust pointer *)
               compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
               get_ptr_offset ^^
-              shift_pointer_at env ^^
-
-              (* Carry on *)
-              get_x ^^
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
+              shift_pointer_at env
             ; Tagged.Array,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Array.len_field ^^
-                set_len ^^
-
-                (* Adjust fields *)
-                get_len ^^
-                from_0_to_n env (fun get_i ->
-                  get_x ^^
-                  get_i ^^
-                  Array.idx env ^^
-                  get_ptr_offset ^^
-                  shift_pointer_at env
-                ) ^^
-
-                (* Advance pointer *)
+              (* x still on the stack *)
+              Heap.load_field Array.len_field ^^
+              (* Adjust fields *)
+              from_0_to_n env (fun get_i ->
                 get_x ^^
-                get_len ^^
-                compile_add_const Array.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ; Tagged.Text,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Text.len_field ^^
-                (* get length in words *)
-                compile_add_const 3l ^^
-                compile_divU_const Heap.word_size ^^
-                compile_add_const Text.header_size ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_x ^^
-                get_len ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
+                get_i ^^
+                Array.idx env ^^
+                get_ptr_offset ^^
+                shift_pointer_at env
+              )
             ; Tagged.Object,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Object.size_field ^^
-                set_len ^^
+              (* x still on the stack *)
+              Heap.load_field Object.size_field ^^
 
-                (* Adjust fields *)
-                get_len ^^
-                from_0_to_n env (fun get_i ->
-                  get_i ^^
-                  compile_mul_const 2l ^^
-                  compile_add_const Object.header_size ^^
-                  compile_mul_const Heap.word_size ^^
-                  compile_add_const Heap.word_size ^^
-                  get_x ^^
-                  G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                  get_ptr_offset ^^
-                  shift_pointer_at env
-                ) ^^
-
-                (* Advance pointer *)
-                get_len ^^
+              (* Adjust fields *)
+              from_0_to_n env (fun get_i ->
+                get_i ^^
                 compile_mul_const 2l ^^
                 compile_add_const Object.header_size ^^
                 compile_mul_const Heap.word_size ^^
+                compile_add_const Heap.word_size ^^
                 get_x ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ]
-
+                get_ptr_offset ^^
+                shift_pointer_at env
+              )
+            ] ^^
+          get_x ^^
+          get_x ^^ object_size env ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_x
         )
     )
 
@@ -1978,12 +1959,8 @@ module Serialization = struct
           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
         )
         ( get_x ^^
-          Tagged.branch env []
-            [ Tagged.Int,
-              (* x still on the stack *)
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Reference,
+          Tagged.branch_default env [] (G.i_ Nop)
+            [ Tagged.Reference,
               (* x still on the stack *)
               G.i_ Drop ^^
 
@@ -2001,64 +1978,12 @@ module Serialization = struct
 
               get_i ^^
               compile_add_const 1l ^^
-              set_i ^^
-
-              get_x ^^
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Some,
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Array,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Array.len_field ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_x ^^
-                get_len ^^
-                compile_add_const Array.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ; Tagged.Text,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Text.len_field ^^
-                (* get length in words *)
-                compile_add_const 3l ^^
-                compile_divU_const Heap.word_size ^^
-                compile_add_const Text.header_size ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_x ^^
-                get_len ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ; Tagged.Object,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Object.size_field ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_len ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_x ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ]
+              set_i
+            ] ^^
+          get_x ^^
+          get_x ^^ object_size env ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_x
         ) ^^
       get_i
     )
@@ -2077,12 +2002,8 @@ module Serialization = struct
           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
         )
         ( get_x ^^
-          Tagged.branch env []
-            [ Tagged.Int,
-              (* x still on the stack *)
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Reference,
+          Tagged.branch_default env [] (G.i_ Nop)
+            [ Tagged.Reference,
               (* x still on the stack *)
 
               (* Adjust reference *)
@@ -2092,64 +2013,12 @@ module Serialization = struct
               get_tbl_area ^^
               G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
               load_ptr ^^
-              Heap.store_field 1l ^^
-
-              get_x ^^
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Some,
-              compile_add_const (Int32.mul 2l Heap.word_size) ^^
-              set_x
-            ; Tagged.Array,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Array.len_field ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_x ^^
-                get_len ^^
-                compile_add_const Array.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ; Tagged.Text,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Text.len_field ^^
-                (* get length in words *)
-                compile_add_const 3l ^^
-                compile_divU_const Heap.word_size ^^
-                compile_add_const Text.header_size ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_x ^^
-                get_len ^^
-                compile_mul_const Heap.word_size ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ; Tagged.Object,
-              begin
-                let (set_len, get_len) = new_local env "len" in
-                (* x still on the stack *)
-                Heap.load_field Object.size_field ^^
-                set_len ^^
-
-                (* Advance pointer *)
-                get_len ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_x ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-                set_x
-              end
-            ]
+              Heap.store_field 1l
+            ] ^^
+          get_x ^^
+          get_x ^^ object_size env ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_x
         )
     )
 
