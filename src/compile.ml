@@ -1879,7 +1879,7 @@ module Serialization = struct
               (* get length in words *)
               compile_add_const 3l ^^
               compile_divU_const Heap.word_size ^^
-              compile_add_const Array.header_size ^^
+              compile_add_const Text.header_size ^^
               set_len ^^
 
               get_len ^^
@@ -2068,13 +2068,12 @@ module Serialization = struct
                 (* get length in words *)
                 compile_add_const 3l ^^
                 compile_divU_const Heap.word_size ^^
-                compile_add_const Array.header_size ^^
+                compile_add_const Text.header_size ^^
                 set_len ^^
 
                 (* Advance pointer *)
                 get_x ^^
                 get_len ^^
-                compile_add_const Array.header_size ^^
                 compile_mul_const Heap.word_size ^^
                 G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
                 set_x
