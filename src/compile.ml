@@ -879,7 +879,7 @@ module BoxedInt = struct
   (* We store large nats and ints in immutable boxed 32bit heap objects.
      Eventually, this should contain the bigint implementation.
 
-     Small values (<5, so that both paths are tested) are stored unboxed,
+     Small values (<2^5, so that both paths are tested) are stored unboxed,
      tagged, see BitTagged.
   *)
 
@@ -2707,9 +2707,8 @@ and compile_exp (env : E.t) exp = match exp.it with
       G.i_ (SetLocal (nr i)) ^^
       compile_exp env1 e
   | DefineE (name, _, e) ->
-      compile_exp env e ^^
       Var.get_payload_loc env name.it ^^
-      load_ptr ^^
+      compile_exp env e ^^
       store_ptr ^^
       compile_unit
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
