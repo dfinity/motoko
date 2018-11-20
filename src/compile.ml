@@ -1216,6 +1216,42 @@ module Text = struct
       get_z
     )
 
+  (* Two strings on stack *)
+  let compare env = Func.share_code env "Text.compare" ["x"; "y"] [I32Type] (fun env ->
+      let get_x = G.i_ (GetLocal (nr 0l)) in
+      let get_y = G.i_ (GetLocal (nr 1l)) in
+      let (set_len1, get_len1) = new_local env "len1" in
+      let (set_len2, get_len2) = new_local env "len2" in
+
+      get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
+      get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
+
+      get_len1 ^^
+      get_len2 ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return) ^^
+
+      (* We could do word-wise comparisons if we know that the trailing bytes
+         are zeroed *)
+      get_len1 ^^
+      from_0_to_n env (fun get_i ->
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size header_size) ^^
+        get_i ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+
+        get_y ^^
+        compile_add_const (Int32.mul Heap.word_size header_size) ^^
+        get_i ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+
+        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return)
+      ) ^^
+      compile_unboxed_true
+  )
 
 end (* String *)
 
@@ -2740,6 +2776,9 @@ and compile_lit_pat env opo l = match opo, l with
     compile_unop env uo ^^
     BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+  | None, (TextLit t) ->
+    Text.lit env t ^^
+    Text.compare env
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
 
 and compile_pat env pat : E.t * G.t * patternCode = match pat.it with

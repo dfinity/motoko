@@ -22,11 +22,3 @@ flatten-awaitables.as:97.9-97.25: warning, this pattern does not cover all possi
 flatten-awaitables.as:102.9-102.10: warning, this pattern does not cover all possible values
 flatten-awaitables.as:104.9-104.17: warning, this pattern does not cover all possible values
 flatten-awaitables.as:106.9-106.25: warning, this pattern does not cover all possible values
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
-compile_lit_pat: (TextLit text)
