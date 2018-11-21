@@ -584,6 +584,7 @@ module Tagged = struct
     | Closure
     | Some (* For opt *)
     | Text
+    | Indirection
 
   (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -595,6 +596,7 @@ module Tagged = struct
     | Closure -> 6l
     | Some -> 7l
     | Text -> 8l
+    | Indirection -> 9l
 
   (* The tag *)
   let header_size = 1l
@@ -2044,6 +2046,7 @@ module Serialization = struct
         )
     )
 
+  (* Returns the object size (in bytes) *)
   let object_size env =
     Func.share_code env "object_size" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
@@ -2080,6 +2083,12 @@ module Serialization = struct
           Heap.load_field Closure.len_field ^^
           compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size
+        ; Tagged.Indirection,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.MutBox,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ]
     )
 
