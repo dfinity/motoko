@@ -411,7 +411,7 @@ module Heap = struct
      *)
   let word_size = 4l
 
-  let heap_ptr = 2l
+  let heap_ptr = 3l
 
   let alloc_bytes (n : int32) : G.t =
     (* returns the pointer to the allocate space on the heap *)
@@ -452,12 +452,12 @@ module Heap = struct
 end (* Heap *)
 
 module ElemHeap = struct
-  let ref_counter = 3l
+  let ref_counter = 4l
 
   let max_references = 1024l
   let ref_location = 0l
 
-  let begin_dyn_space : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
+  let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
 
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
@@ -492,6 +492,47 @@ module ElemHeap = struct
     )
 
 end (* ElemHeap *)
+
+module ClosureTable = struct
+  let global = 2l
+
+  let max_entries = 1024l
+  let loc = ElemHeap.table_end
+  let table_end = Int32.(add loc (mul max_entries Heap.word_size))
+
+  (* Assumes a reference on the stack, and replaces it with an index into the
+     reference table *)
+  let remember_closure env : G.t =
+    Func.share_code env "remember_closure" ["ptr"] [I32Type] (fun env ->
+      let get_ptr = G.i_ (GetLocal (nr 0l)) in
+
+      (* Return index *)
+      G.i_ (GetGlobal (nr global)) ^^
+
+      (* Store reference *)
+      G.i_ (GetGlobal (nr global)) ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      get_ptr ^^
+      store_ptr ^^
+
+      (* Bump counter *)
+      G.i_ (GetGlobal (nr global)) ^^
+      compile_add_const 1l ^^
+      G.i_ (SetGlobal (nr global))
+    )
+
+  (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
+  let recall_closure env : G.t =
+    Func.share_code env "recall_closure" ["closure_idx"] [I32Type] (fun env ->
+      let get_closure_idx = G.i_ (GetLocal (nr 0l)) in
+      get_closure_idx ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      load_ptr
+    )
+
+end (* ClosureTable *)
 
 module BitTagged = struct
   (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
@@ -1740,11 +1781,11 @@ module OrthogonalPersistence = struct
          (* Subsequent run *)
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
-           compile_add_const ElemHeap.begin_dyn_space ^^
+           compile_add_const ElemHeap.table_end ^^
            G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
 
            (* Load memory *)
-           compile_unboxed_const ElemHeap.begin_dyn_space ^^
+           compile_unboxed_const ElemHeap.table_end ^^
            get_i ^^
            G.i_ (GetGlobal (nr mem_global)) ^^
            compile_unboxed_zero ^^
@@ -1765,9 +1806,9 @@ module OrthogonalPersistence = struct
     );
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.table_end ^^
        G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.table_end ^^
        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
        G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
        G.i_ (SetGlobal (nr mem_global)) ^^
@@ -1976,6 +2017,7 @@ module Serialization = struct
               compile_unboxed_const (E.built_in env "invoke_closure") ^^
               G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
               get_x ^^
+              ClosureTable.remember_closure env ^^
               G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
               ElemHeap.remember_reference env
             ]
@@ -2329,17 +2371,18 @@ module Message = struct
 
   let system_funs mod_env =
     Func.define_built_in mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
-      (* This is the entry point for closure invocation.
-         The first argument is simply a pointer into our heap
+      (* This is the entry point for external closure invocation.
+         The first argument is the index of the closure in the ClosureTable
          (bound using `i32.bind`).
          The second a serialized message.
-         This methods must not be exported!
+         This method must not be exported!
          We create a funcref internally and then bind the closure to it.
       *)
       OrthogonalPersistence.restore_mem env ^^
 
       (* Put closure on the stack *)
       G.i (nr (GetLocal (nr 0l))) ^^
+      ClosureTable.recall_closure env ^^
 
       (* Put argument on the stack *)
       G.i (nr (GetLocal (nr 1l))) ^^
@@ -3065,7 +3108,7 @@ and actor_lit outer_env name fs =
   if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
 
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -3138,14 +3181,18 @@ and conclude_module env start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* End-of-heap pointer *)
+      (* closure table counter *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list compile_unboxed_zero)
+      };
+      (* end-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
       };
-      (* reference pointer *)
+      (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
-      }
+      };
       ] in
 
   let data = List.map (fun (offset, init) -> nr {
@@ -3172,13 +3219,15 @@ and conclude_module env start_fi_o =
     types = E.get_dfinity_types env;
     persist =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ];
+           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
+           ; (ClosureTable.global, CustomSections.I32)
+           ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
-  let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
+  let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;
