@@ -37,6 +37,10 @@ you maintain your Ocaml installation manually), run
 nix-env -i -f . -A wasm
 nix-env -i -f . -A dvm --arg test-dvm true
 ```
+On Mac, nix cannot currently build V8, so you'll need
+```
+nix-env -i -f . -A dvm --arg test-dvm true --arg v8 false
+```
 
 ## Installation and development without Nix
 
