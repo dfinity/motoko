@@ -3047,12 +3047,15 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
     )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
-  let ptr = E.reserve_static_memory pre_env Heap.word_size in
-  let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
+  let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
+  let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
   ( pre_env1, fun env ->
     compile_unboxed_const ptr ^^
+    Tagged.store Tagged.MutBox ^^
+
+    compile_unboxed_const ptr ^^
     compile_exp env f.it.exp ^^
-    store_ptr
+    Var.store
   )
 
 and compile_public_actor_field pre_env (f : Syntax.exp_field) =
