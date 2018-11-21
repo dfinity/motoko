@@ -2108,6 +2108,59 @@ module Serialization = struct
           set_x
         )
 
+  (* Calls mk_code for each pointer in the object pointed to by get_x,
+     passing code get the address of the pointer. *)
+  let for_each_pointer env get_x mk_code =
+    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    get_x ^^
+    Tagged.branch_default env [] G.nop
+      [ Tagged.Some,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Array,
+        (* x still on the stack *)
+        Heap.load_field Array.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_x ^^
+          get_i ^^
+          Array.idx env ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Object,
+        (* x still on the stack *)
+        Heap.load_field Object.size_field ^^
+
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_mul_const 2l ^^
+          compile_add_const 1l ^^
+          compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Closure,
+        (* x still on the stack *)
+        Heap.load_field Closure.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ]
+
   let shift_pointers env =
     Func.share_code env "shift_pointers" ["start"; "to"; "ptr_offset"] [] (fun env ->
       let get_start = G.i_ (GetLocal (nr 0l)) in
@@ -2115,41 +2168,11 @@ module Serialization = struct
       let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
 
       walk_heap_from_to env get_start get_to (fun get_x ->
-        get_x ^^
-        Tagged.branch_default env [] G.nop
-          [ Tagged.Some,
-            (* Adust pointer *)
-            compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-            get_ptr_offset ^^
-            shift_pointer_at env
-          ; Tagged.Array,
-            (* x still on the stack *)
-            Heap.load_field Array.len_field ^^
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_x ^^
-              get_i ^^
-              Array.idx env ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ; Tagged.Object,
-            (* x still on the stack *)
-            Heap.load_field Object.size_field ^^
-
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_i ^^
-              compile_mul_const 2l ^^
-              compile_add_const Object.header_size ^^
-              compile_mul_const Heap.word_size ^^
-              compile_add_const Heap.word_size ^^
-              get_x ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ]
+        for_each_pointer env get_x (fun get_ptr_loc ->
+          get_ptr_loc ^^
+          get_ptr_offset ^^
+          shift_pointer_at env
+        )
       )
     )
 
