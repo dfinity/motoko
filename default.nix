@@ -27,7 +27,7 @@ let dvm =
   then
     if !builtins.pathExists ./nix/dev/default.nix
     then throw "\"test-dvm = true\" requires a checkout of dev in ./nix"
-    else ((import ./nix/dev) { v8 = v8; }).dvm
+    else ((import ./nix/dev) { v8 = v8; devel = true; }).dvm
   else null; in
 
 # We need a newer version of menhir.
