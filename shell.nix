@@ -15,8 +15,7 @@ let default = import ./default.nix { inherit nixpkgs test-dvm v8; }; in
 # https://github.com/NixOS/nix/issues/955
 #
 
-stdenv.mkDerivation {
-    name = "actorscript-build-env";
+nixpkgs.mkShell {
     buildInputs = default.native.buildInputs ++ default.native_test.buildInputs;
 }
 
