@@ -597,7 +597,7 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi ]
+    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi; compile_unboxed_const 0l ]
 
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
@@ -657,9 +657,12 @@ end (* Opt *)
 
 
 module Closure = struct
+  let header_size = Int32.add Tagged.header_size 2l
 
   let funptr_field = Tagged.header_size
-  let first_captured = Int32.add Tagged.header_size 1l
+  let len_field = Int32.add 1l Tagged.header_size
+
+  let first_captured = header_size
 
   let load_the_closure = G.i_ (GetLocal (nr 0l))
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
@@ -761,9 +764,10 @@ module Closure = struct
       let (set_li, get_li) = new_local pre_env "clos_ind" in
       let (pre_env1, vi) = Var.add_local pre_env name.it in
 
+      let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
         (* Allocate a heap object for the function *)
-        Heap.alloc (Int32.add first_captured (Wasm.I32.of_int_u (List.length captured))) ^^
+        Heap.alloc (Int32.add header_size len) ^^
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
@@ -811,9 +815,21 @@ module Closure = struct
         get_li ^^
         compile_unboxed_const fi ^^
         Heap.store_field funptr_field ^^
+
+        (* Store the length *)
+        get_li ^^
+        compile_unboxed_const len ^^
+        Heap.store_field len_field ^^
+
         (* Store all captured values *)
         store_env ^^
         if last then get_li  else G.nop)
+
+  let fixed_closure env fi fields =
+      Tagged.obj env Tagged.Closure
+        ([ compile_unboxed_const fi
+         ; compile_unboxed_const (Int32.of_int (List.length fields)) ] @
+         fields)
 
   let dec pre_env last name captured mk_pat mk_body at =
     (* This could be smarter: It is ok to capture closed functions,
@@ -1347,9 +1363,8 @@ module Array = struct
     let mk_iterator next_funid = Closure.unary_of_body env (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
-            Tagged.obj env1 Tagged.Closure
-              [ compile_unboxed_const next_funid
-              ; Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
+            Closure.fixed_closure env1 next_funid
+              [ Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
               ; get_array_object
               ] ^^
             set_ni ^^
@@ -1384,9 +1399,7 @@ module Array = struct
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Tagged.obj env Tagged.Closure
-      [ compile_unboxed_const (E.built_in env built_in_name)
-      ; get_i ]
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -2020,6 +2033,10 @@ module Serialization = struct
           Heap.load_field Object.size_field ^^
           compile_mul_const 2l ^^
           compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size
+        ; Tagged.Closure,
+          Heap.load_field Closure.len_field ^^
+          compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size
         ]
     )
