@@ -18,10 +18,14 @@ type extended_module = {
   locals_names : (int32 * (int32 * string) list) list;
   }
 
+let is_fun_import (i : import) = match i.it.idesc.it with
+  | FuncImport _ -> true
+  | _            -> false
+
 let encode m =
   let (map, wasm) = EncodeMap.encode m.module_ in
   let custom_sections = CustomSections.encode
-    (Int32.of_int (List.length (m.module_.it.imports)))
+    (Int32.of_int (List.length (List.filter is_fun_import m.module_.it.imports)))
     m.types
     m.persist
     m.function_names
