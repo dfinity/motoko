@@ -2931,7 +2931,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       Closure.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
-  | ClassD (name, _, typ_params, s, p, efs) ->
+  | ClassD (name, _, typ_params, s, p, self, efs) ->
       let captured = Freevars.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 compile_fun_identifier =
@@ -2943,7 +2943,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
 	identifier, as provided by Func.dec:
 	For closures it is the pointer to the closure.
 	For functions it is the function id (shifted to never class with pointers) *)
-        Object.lit env1 None (Some compile_fun_identifier) fs' in
+        Object.lit env1 (Some self) (Some compile_fun_identifier) fs' in
       Closure.dec pre_env last name captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)

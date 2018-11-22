@@ -156,13 +156,13 @@ and dec' rho d = match d with
   | TypD (i, tp, t) -> (* we don't rename type names *)
      (fun rho -> d),
      rho
-  | ClassD (i, l, tp, s, p, efs) ->
-     (* TBR - we can't really alpha-convert class constructors - should we internally separate type name from constructor name *)
+  | ClassD (i, l, tp, s, p, i2, efs) ->
     let i',rho = id_bind rho i in
      (fun rho' ->
        let p',rho'' = pat rho' p in
-       let efs' = exp_fields rho'' efs in
-       ClassD(i', l, tp, s, p', efs')),
+       let i2',rho''' = id_bind rho'' i2 in
+       let efs' = exp_fields rho''' efs in
+       ClassD(i', l, tp, s, p', i2', efs')),
       rho
        
 and decs rho ds =

@@ -251,11 +251,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
-    interpret_obj env sort id fields k
+    interpret_obj env sort id None fields k
   | DotE (exp1, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      k (try find n fs with _ -> (assert false))
+      k (try find n fs with _ -> assert false)
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
@@ -539,28 +539,21 @@ and match_pats pats vs ve : val_env option =
 
 (* Objects *)
 
-and interpret_obj env sort id fields (k : V.value V.cont) =
-  let ve0 = declare_id id in
-  let private_ve, public_ve = declare_exp_fields fields ve0 V.Env.empty in
-  let env' = adjoin_vals env private_ve in
-  interpret_fields env' sort.it None fields public_ve (fun v ->
-    define_id (adjoin_vals env ve0) id v;
+and interpret_obj env sort id co fields (k : V.value V.cont) =
+  let ve = declare_exp_fields fields (declare_id id) in
+  let env' = adjoin_vals env ve in
+  interpret_fields env' sort.it co fields V.Env.empty (fun v ->
+    define_id env' id v;
     k v
   )
 
-and declare_field (id,name) =
-  let p = Lib.Promise.make () in
-  V.Env.singleton id.it p,
-  V.Env.singleton (string_of_name name.it) p
-  
-                   
-and declare_exp_fields fields private_ve public_ve : val_env * val_env =
+and declare_exp_fields fields ve : val_env =
   match fields with
-  | [] -> private_ve, public_ve
+  | [] -> ve
   | {it = {id; name; mut; priv; _}; _}::fields' ->
-    let private_ve', public_ve' = declare_field (id,name) in
-    declare_exp_fields fields'
-      (V.Env.adjoin private_ve private_ve') (V.Env.adjoin public_ve public_ve')
+    let p = Lib.Promise.make () in
+    let ve' = V.Env.singleton id.it p in
+    declare_exp_fields fields' (V.Env.adjoin ve ve')
 
 
 and interpret_fields env s co fields ve (k : V.value V.cont) =
@@ -574,7 +567,11 @@ and interpret_fields env s co fields ve (k : V.value V.cont) =
         | Var -> V.Mut (ref v)
       in
       define_id env id v';
-      interpret_fields env s co fields' ve k
+      let ve' =
+        if priv.it = Private
+        then ve
+        else V.Env.add (string_of_name name.it) (V.Env.find id.it env.vals) ve
+      in interpret_fields env s co fields' ve' k
     )
 
 (* Blocks and Declarations *)
@@ -592,7 +589,7 @@ and declare_dec dec : val_env =
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
   | FuncD (_, id, _, _, _, _)
-  | ClassD (id, _, _, _, _, _) -> declare_id id
+  | ClassD (id, _, _, _, _, _, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -630,16 +627,10 @@ and interpret_dec env dec (k : V.value V.cont) =
     in                      
     define_id env id v;
     k v
-  | ClassD (id, _,  _typbinds, sort, pat, fields) ->
+  | ClassD (id, _,  _typbinds, sort, pat, id', fields) ->
     let c = V.new_class () in
     let f = interpret_func env id pat
-      (fun env' k' ->
-        let private_ve, public_ve =
-          declare_exp_fields fields V.Env.empty V.Env.empty in
-        interpret_fields (adjoin_vals env' private_ve) sort.it (Some c)
-          fields public_ve k'
-      )
-    in
+      (fun env' k' -> interpret_obj env' sort id' (Some c) fields k') in
     let v = V.Func (Some c, f) in
     define_id env id v;
     k v

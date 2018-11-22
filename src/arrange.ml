@@ -141,7 +141,7 @@ and typ t = match t.it with
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
-  | LikeT  t            -> "LikeT" $$ [typ t]
+  | LikeT t             -> "LikeT" $$ [typ t]
 
 and id i = Atom i.it
 
@@ -155,7 +155,7 @@ and dec d = match d.it with
     "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
-  | ClassD (i, j, tp, s, p, efs) ->
-    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p] @ List.map exp_field efs
+  | ClassD (i, j, tp, s, p, i', efs) ->
+    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
