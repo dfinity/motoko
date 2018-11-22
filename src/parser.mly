@@ -55,7 +55,7 @@ let share_typ t =
   | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
     ObjT ({s with it = Type.Object Type.Sharable}, tfs) @@ t.at
   | FuncT ({it = Type.Call Type.Local; _} as s, tbs, t1, t2) ->
-    FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2) @@ t.at
+     FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2) @@ t.at
   | _ -> t
 
 let share_typfield tf =
@@ -195,7 +195,7 @@ typ_obj :
 
 typ_nullary :
   | LPAR t=typ RPAR
-    { t }
+    { ParT(t) @@ at $loc }
   | LPAR ts=seplist1(typ_item, COMMA) RPAR
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
