@@ -2211,7 +2211,7 @@ module Serialization = struct
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
-        Tagged.branch_default env [] (G.i_ Nop)
+        Tagged.branch_default env [] G.nop
           [ Tagged.Reference,
             (* x still on the stack *)
             G.i_ Drop ^^
@@ -2245,7 +2245,7 @@ module Serialization = struct
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
-        Tagged.branch_default env [] (G.i_ Nop)
+        Tagged.branch_default env [] G.nop
           [ Tagged.Reference,
             (* x still on the stack *)
 
