@@ -107,8 +107,8 @@ and sharing sh = match sh with
   | Type.Sharable -> "Sharable"
 
 and control c = match c with
-  | Type.A -> "A"
-  | Type.S -> "S"            
+  | Type.Returns -> "Returns"
+  | Type.Promises -> "Promises"
             
 and obj_sort s = match s.it with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)

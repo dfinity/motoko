@@ -192,13 +192,16 @@ type prog = prog' Source.phrase
 and prog' = dec list
 
 
-let packT ts =
-    match ts with
-    | [t] -> t
-    | ts -> {Source.it = TupT ts; at = Source.no_region; Source.note = ()}
+(* n-ary arguments/result sequences *)
+          
+let seqT ts =
+  match ts with
+  | [t] -> t
+  | ts -> {Source.it = TupT ts; at = Source.no_region; Source.note = ()}
 
-let unpackT t =
+let as_seqT t =
   match t.Source.it with
-    | TupT [_] -> failwith "unpackT"
-    | TupT ts -> ts
-    | _ -> [t]                
+  | TupT [_] -> failwith "as_seqT"
+  | TupT ts -> ts
+  | _ -> [t]
+           

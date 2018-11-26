@@ -134,8 +134,8 @@ let is_triv phrase  =
     eff phrase = T.Triv
               
 let answerT = Type.unit
-let contT typ = T.Func(T.Call T.Local, T.S, [], [typ], [])
-let cpsT typ = T.Func(T.Call  T.Local, T.S, [], [contT typ], [])
+let contT typ = T.Func(T.Call T.Local, T.Returns, [], [typ], [])
+let cpsT typ = T.Func(T.Call  T.Local, T.Returns, [], [contT typ], [])
 
                  
 (* sugar *)                     
@@ -173,9 +173,9 @@ let primE name typ =
   } 
 
 (* TBR: require shareable typ? *)                                  
-let prim_async typ = primE "@async" (T.Func(T.Call T.Local, T.S ,[], [cpsT typ], [T.Async typ]))
+let prim_async typ = primE "@async" (T.Func(T.Call T.Local, T.Returns ,[], [cpsT typ], [T.Async typ]))
 let prim_await typ = 
-  primE "@await" (T.Func(T.Call T.Local, T.S, [], [T.Async typ; contT typ],[]))
+  primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ],[]))
   
 (* smart(ish) constructors *)
     
@@ -303,7 +303,7 @@ let fresh_cont typ = fresh_id (contT typ)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, T.S, [], T.unpack (typ x), T.unpack (typ e));
+     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
                  note_eff = T.Triv} in
      {it=FuncD(T.Local @@ no_region, (id_of_exp f),
                [],
@@ -319,7 +319,7 @@ let funcD f x e =
 let  (-->) x e =
   match x.it with
   | VarE _ ->
-     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, T.S, [], T.unpack (typ x), T.unpack (typ e))) in
+     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
             
@@ -330,7 +330,7 @@ let ( -*- ) exp1 exp2 =
   | Type.Func(_, _, [], _, ts) ->
      {it = CallE(exp1, [], exp2);
       at = no_region;
-      note = {note_typ = T.pack ts;
+      note = {note_typ = T.seq ts;
               note_eff = max_eff (eff exp1) (eff exp2)}
      }
   | typ1 -> failwith
@@ -672,7 +672,7 @@ and c_loop_some context k e1 e2 =
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
 
- let next_typ = (T.Func(T.Call T.Local, T.S, [], [], [T.Opt (typ pat)])) in
+ let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
  let dotnext v = dotE v (Name "next") next_typ -*- unitE in
  let loop = fresh_id (contT T.unit) in 
  let v2 = fresh_id T.unit in                    

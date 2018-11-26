@@ -22,7 +22,7 @@ let sharableS =
    at=no_region;
    note=()}
 
-let replyT typ = T.Func(T.Call T.Sharable, T.A, [], [typ], [])
+let replyT typ = T.Func(T.Call T.Sharable, T.Returns, [], [typ], [])
               
 let tupT ts = {it = TupT ts;
                at = no_region;
@@ -35,10 +35,10 @@ let funcT(s,bds,t1,t2) =
    at = no_region;
    note = ()}
 
-let t_async t =  T.Func (T.Call T.Local, T.S, [], [T.Func(T.Call T.Local, T.S, [],[t],[])], [])
+let t_async t =  T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],[t],[])], [])
                
 let new_asyncT =
-  (T.Func(T.Call T.Local,T.S,
+  (T.Func(T.Call T.Local,T.Returns,
                           [{var = "T";
                             bound = T.Shared}],
                           [],
@@ -53,7 +53,7 @@ let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore
              
 let prelude_new_async t1 =
   { it = CallE(new_asyncE,[bogusT],tupE []);
-    note = {note_typ = T.pack [t_async t1; 
+    note = {note_typ = T.seq [t_async t1; 
                                replyT t1];
             note_eff = T.Triv};
     at = no_region;    
@@ -87,7 +87,7 @@ let callE e1 ts e2 t =
 let shared_funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Sharable, T.S, [], unpack (typ x), unpack (typ e));
+     let note = {note_typ = T.Func(T.Call T.Sharable, T.Returns, [], as_seq (typ x), as_seq (typ e));
                  note_eff = T.Triv} in
      {it=FuncD(T.Sharable @@ no_region, (id_of_exp f),
                [],
@@ -101,7 +101,7 @@ let shared_funcD f x e =
 
 let isAwaitableFunc exp =
   match typ exp with
-  | T.Func (T.Call T.Sharable,T.A,_,_,[T.Async _]) -> true
+  | T.Func (T.Call T.Sharable,T.Promises,_,_,[T.Async _]) -> true
   | _ -> false
 
 
@@ -267,11 +267,11 @@ and t_exp' (exp:Syntax.exp) =
               [],
               [Func(_,_,[],ts1,[]) as contT],
               []) -> (* TBR, why isn't this []? *)
-          (t_typ (T.pack ts1),t_typ contT)
+          (t_typ (T.seq ts1),t_typ contT)
        | t -> failwith ("t_exp: @async " ^ (T.string_of_typ t)) in
      let k = fresh_id contT in
      let v1 = fresh_id t1 in
-     let post = fresh_id (T.Func(T.Call T.Sharable,T.S,[],[],[])) in
+     let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
      let u = fresh_id T.unit in
      let call_new_async = prelude_new_async t1 in
      let p = fresh_id (typ call_new_async) in
@@ -290,7 +290,7 @@ and t_exp' (exp:Syntax.exp) =
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
        match typ exp1 with
-       | T.Func (T.Call T.Sharable,T.A,tbs,t1,[T.Async t2]) ->
+       | T.Func (T.Call T.Sharable,T.Promises,tbs,t1,[T.Async t2]) ->
           List.map t_typ t1, t_typ t2
        | _ -> assert(false)
      in

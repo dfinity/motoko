@@ -137,17 +137,17 @@ let rec check_typ env typ : T.typ =
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
-    let typs1 = unpackT typ1 in
-    let typs2 = unpackT typ2 in
+    let typs1 = as_seqT typ1 in
+    let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let t1 = T.pack ts1 in
-    let t2 = T.pack ts2 in
-    let c = match typs2 with [{it=AsyncT _;_}] -> T.A | _ -> T.S in
+    let c = match typs2 with [{it=AsyncT _;_}] -> T.Promises | _ -> T.Returns in
     if sort.it = T.Call T.Sharable then begin
+      let t1 = T.seq ts1 in        
       if not (T.sub env'.cons t1 T.Shared) then
         error typ1.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
+      let t2 = T.seq ts2 in
       if not (T.sub env'.cons t2 T.Shared) then
         error typ1.at "shared function has non-shared result type\n  %s"
           (T.string_of_typ_expand env'.cons t2);
@@ -1120,7 +1120,7 @@ and gather_dec_typdecs (ve, te, ce) dec : scope =
       match dec.it with
       | ClassD (conid, _, _ , _, _, _) ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add conid.it (T.Func (T.Construct, T.S, pre_tbs, [T.Pre], [t2])) ve
+        T.Env.add conid.it (T.Func (T.Construct, T.Returns, pre_tbs, [T.Pre], [t2])) ve
       | _ -> ve
     in ve', T.Env.add id.it c te, Con.Env.add c pre_k ce
 
@@ -1213,16 +1213,16 @@ and infer_dec_valdecs env dec : val_env =
         error dec.at "shared function with async type has non-async body"
       end;
     let ts1 = match pat.it with
-      | TupP _ -> T.unpack t1
+      | TupP _ -> T.as_seq t1
       | _ -> [t1]
     in
     let ts2 = match typ.it with
-      | TupT _ -> T.unpack t2
+      | TupT _ -> T.as_seq t2
       | _ -> [t2]
     in
     let c = match sort.it, typ.it with
-            | T.Sharable, (AsyncT _) -> T.A  (* TBR: do we want this for T.Local too? *)
-            | _ -> T.S
+      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | _ -> T.Returns
     in                 
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
@@ -1235,11 +1235,11 @@ and infer_dec_valdecs env dec : val_env =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with
-      | TupP _ -> T.unpack t1
+      | TupP _ -> T.as_seq t1
       | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton conid.it (T.Func (T.Construct, T.S, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
+    T.Env.singleton conid.it (T.Func (T.Construct, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
 
 
 (* Programs *)

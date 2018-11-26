@@ -1,11 +1,10 @@
 (* Representation *)
 
 type con = Con.t
-type control = S | A (* synchronous or asynchronous *)
+type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
-type func_sort = Call of sharing 
-               | Construct
+type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
 type prim =
@@ -50,14 +49,14 @@ type kind =
 
 type con_env = kind Con.Env.t
 
-let pack ts =
+let seq ts =
     match ts with
     | [t] -> t
     | ts -> Tup ts
 
-let unpack t =
+let as_seq t =
     match t with
-    | Tup [_] -> failwith "unpack"
+    | Tup [_] -> failwith "as_seq"
     | Tup ts -> ts
     | t -> [t]                
 
@@ -84,17 +83,17 @@ let prim = function
 
 let iter_obj t =
   Obj (Object Local,
-    [{name = "next"; typ = Func (Call Local, S, [], [], [Opt t])}])
+    [{name = "next"; typ = Func (Call Local, Returns, [], [], [Opt t])}])
 
 let array_obj t =
   let immut t =
-    [ {name = "get";  typ = Func (Call Local, S, [], [Prim Nat], [t])};
-      {name = "len";  typ = Func (Call Local, S, [], [], [Prim Nat])};
-      {name = "keys"; typ = Func (Call Local, S, [], [], [iter_obj (Prim Nat)])};
-      {name = "vals"; typ = Func (Call Local, S, [], [], [iter_obj t])};
+    [ {name = "get";  typ = Func (Call Local, Returns, [], [Prim Nat], [t])};
+      {name = "len";  typ = Func (Call Local, Returns, [], [], [Prim Nat])};
+      {name = "keys"; typ = Func (Call Local, Returns, [], [], [iter_obj (Prim Nat)])};
+      {name = "vals"; typ = Func (Call Local, Returns, [], [], [iter_obj t])};
     ] in
   let mut t = immut t @
-    [ {name = "set"; typ = Func (Call Local, S, [], [Prim Nat; t], [])} ] in
+    [ {name = "set"; typ = Func (Call Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
   | Mut t' -> Obj (Object Local, List.sort compare (mut t'))
   | t -> Obj (Object Local, List.sort compare (immut t))
@@ -300,11 +299,11 @@ let as_pair_sub env t = match promote env t with
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
 let as_func_sub n env t = match promote env t with
-  | Func (_, _, tbs, ts1, ts2) -> tbs, pack ts1,  pack ts2
+  | Func (_, _, tbs, ts1, ts2) -> tbs, seq ts1,  seq ts2
   | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub env t = match promote env t with
-  | Func (_, _, [], ts1, ts2) -> pack ts1, pack ts2
+  | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
 let as_async_sub env t = match promote env t with
@@ -357,12 +356,10 @@ let rec avoid' env env' = function
   | Array t -> Array (avoid' env env' t)
   | Tup ts -> Tup (List.map (avoid' env env') ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    Func (
-        s,
-        c,
-        List.map (avoid_bind env env') tbs,
-        List.map (avoid' env env') ts1, List.map (avoid' env env') ts2
-    )
+    Func (s,
+          c,
+          List.map (avoid_bind env env') tbs,
+          List.map (avoid' env env') ts1, List.map (avoid' env env') ts2)
   | Opt t -> Opt (avoid' env env' t)
   | Async t -> Async (avoid' env env' t)
   | Like t -> Like (avoid' env env' t)
@@ -619,23 +616,23 @@ let rec string_of_typ_nullary vs = function
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
-    let dom = string_of_typ_nullary vs (pack ts) in
-    match ts with
-    | [Tup _] ->
-       sprintf "(%s)" dom
-    | _ -> dom
-
+  let dom = string_of_typ_nullary vs (seq ts) in
+  match ts with
+  | [Tup _] ->
+     sprintf "(%s)" dom
+  | _ -> dom
+         
 and string_of_cod c vs ts =
-    let cod = string_of_typ' vs (pack ts) in
-    match ts with
-    | [Tup _] ->
-       sprintf "(%s)" cod
-    | [Async _] ->       
-       (match c with
-        | S -> sprintf "(%s)" cod
-        | A -> sprintf "%s" cod
-       )
-    | _ -> cod
+  let cod = string_of_typ' vs (seq ts) in
+  match ts with
+  | [Tup _] ->
+    sprintf "(%s)" cod
+  | [Async _] ->       
+    (match c with
+     | Returns -> sprintf "(%s)" cod
+     | Promises -> sprintf "%s" cod
+    )
+  | _ -> cod
        
 and string_of_typ' vs t =
   match t with

@@ -1,7 +1,7 @@
 (* Representation *)
 
 type con = Con.t
-type control = S | A (* synchronous or asynchronous *)         
+type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
 type func_sort = Call of sharing | Construct
@@ -49,10 +49,10 @@ type kind =
 
 type con_env = kind Con.Env.t
 
-(* n-ary arguments/results *)
+(* n-ary argument/result sequences *)
              
-val pack : typ list -> typ
-val unpack : typ -> typ list
+val seq: typ list -> typ
+val as_seq : typ -> typ list
 
 
 (* Short-hands *)
