@@ -106,6 +106,10 @@ and sharing sh = match sh with
   | Type.Local -> "Local"
   | Type.Sharable -> "Sharable"
 
+and control c = match c with
+  | Type.Returns -> "Returns"
+  | Type.Promises -> "Promises"
+            
 and obj_sort s = match s.it with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
@@ -142,6 +146,7 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | LikeT  t            -> "LikeT" $$ [typ t]
+  | ParT t              -> "ParT" $$ [typ t]           
 
 and id i = Atom i.it
 

@@ -34,6 +34,7 @@ and typ' =
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of typ                                  (* future *)
   | LikeT of typ                                   (* expansion *)
+  | ParT of typ                                    (* parentheses, used to control function arity only *)
 (*
   | UnionT of type * typ                           (* union *)
   | AtomT of string                                (* atom *)
@@ -190,3 +191,17 @@ and dec' =
 type prog = prog' Source.phrase
 and prog' = dec list
 
+
+(* n-ary arguments/result sequences *)
+          
+let seqT ts =
+  match ts with
+  | [t] -> t
+  | ts -> {Source.it = TupT ts; at = Source.no_region; Source.note = ()}
+
+let as_seqT t =
+  match t.Source.it with
+  | TupT [_] -> failwith "as_seqT"
+  | TupT ts -> ts
+  | _ -> [t]
+           

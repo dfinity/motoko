@@ -1,6 +1,7 @@
 (* Representation *)
 
 type con = Con.t
+type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
 type func_sort = Call of sharing | Construct
@@ -28,7 +29,8 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * bind list * typ * typ (* function *)
+  | Func of func_sort * control *
+            bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
@@ -47,6 +49,16 @@ type kind =
 
 type con_env = kind Con.Env.t
 
+let seq ts =
+    match ts with
+    | [t] -> t
+    | ts -> Tup ts
+
+let as_seq t =
+    match t with
+    | Tup [_] -> failwith "as_seq"
+    | Tup ts -> ts
+    | t -> [t]                
 
 (* Short-hands *)
 
@@ -71,17 +83,17 @@ let prim = function
 
 let iter_obj t =
   Obj (Object Local,
-    [{name = "next"; typ = Func (Call Local, [], unit, Opt t)}])
+    [{name = "next"; typ = Func (Call Local, Returns, [], [], [Opt t])}])
 
 let array_obj t =
   let immut t =
-    [ {name = "get";  typ = Func (Call Local, [], Prim Nat, t)};
-      {name = "len";  typ = Func (Call Local, [], unit, Prim Nat)};
-      {name = "keys"; typ = Func (Call Local, [], unit, iter_obj (Prim Nat))};
-      {name = "vals"; typ = Func (Call Local, [], unit, iter_obj t)};
+    [ {name = "get";  typ = Func (Call Local, Returns, [], [Prim Nat], [t])};
+      {name = "len";  typ = Func (Call Local, Returns, [], [], [Prim Nat])};
+      {name = "keys"; typ = Func (Call Local, Returns, [], [], [iter_obj (Prim Nat)])};
+      {name = "vals"; typ = Func (Call Local, Returns, [], [], [iter_obj t])};
     ] in
   let mut t = immut t @
-    [ {name = "set"; typ = Func (Call Local, [], Tup [Prim Nat; t], unit)} ] in
+    [ {name = "set"; typ = Func (Call Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
   | Mut t' -> Obj (Object Local, List.sort compare (mut t'))
   | t -> Obj (Object Local, List.sort compare (immut t))
@@ -96,9 +108,9 @@ let rec shift i n t =
   | Con (c, ts) -> Con (c, List.map (shift i n) ts)
   | Array t -> Array (shift i n t)
   | Tup ts -> Tup (List.map (shift i n) ts)
-  | Func (s, tbs, t1, t2) ->
+  | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, List.map (shift_bind i' n) tbs, shift i' n t1, shift i' n t2)
+    Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
   | Async t -> Async (shift i n t)
   | Like t -> Like (shift i n t)
@@ -131,9 +143,10 @@ let rec subst sigma t =
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
-  | Func (s, tbs, t1, t2) ->
+  | Func (s, c, tbs, ts1, ts2) ->
     let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
-    Func (s, List.map (subst_bind sigma') tbs, subst sigma' t1, subst sigma' t2)
+    Func (s, c, List.map (subst_bind sigma') tbs,
+          List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Like t -> Like (subst sigma t)
@@ -172,9 +185,9 @@ let rec open' i ts t =
   | Con (c, ts') -> Con (c, List.map (open' i ts) ts')
   | Array t -> Array (open' i ts t)
   | Tup ts' -> Tup (List.map (open' i ts) ts')
-  | Func (s, tbs, t1, t2) ->
+  | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, List.map (open_bind i' ts) tbs, open' i' ts t1, open' i' ts t2)
+    Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Like t -> Like (open' i ts t)
@@ -252,7 +265,7 @@ let as_opt = function Opt t -> t | _ -> invalid "as_opt"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
-let as_func = function Func (s, tbs, t1, t2) -> s, tbs, t1, t2 | _ -> invalid "as_func"
+let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> invalid "as_func"
 let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
@@ -286,11 +299,11 @@ let as_pair_sub env t = match promote env t with
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
 let as_func_sub n env t = match promote env t with
-  | Func (_, tbs, t1, t2) -> tbs, t1, t2
+  | Func (_, _, tbs, ts1, ts2) -> tbs, seq ts1,  seq ts2
   | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub env t = match promote env t with
-  | Func (_, [], t1, t2) -> t1, t2
+  | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
 let as_async_sub env t = match promote env t with
@@ -342,12 +355,11 @@ let rec avoid' env env' = function
     )
   | Array t -> Array (avoid' env env' t)
   | Tup ts -> Tup (List.map (avoid' env env') ts)
-  | Func (s, tbs, t1, t2) ->
-    Func (
-      s,
-      List.map (avoid_bind env env') tbs,
-      avoid' env env' t1, avoid' env env' t2
-    )
+  | Func (s, c, tbs, ts1, ts2) ->
+    Func (s,
+          c,
+          List.map (avoid_bind env env') tbs,
+          List.map (avoid' env env') ts1, List.map (avoid' env env') ts2)
   | Opt t -> Opt (avoid' env env' t)
   | Async t -> Async (avoid' env env' t)
   | Like t -> Like (avoid' env env' t)
@@ -440,18 +452,19 @@ let rec rel_typ env rel eq t1 t2 =
     rel_list rel_typ env rel eq ts1 ts2
   | Tup ts1, Shared ->
     rel_list rel_typ env rel eq ts1 (List.map (fun _ -> Shared) ts1)
-  | Func (s1, tbs1, t11, t12), Func (s2, tbs2, t21, t22) ->
-    (* TODO: not all classes should be sharable *)
-    (s1 = s2 || rel != eq && s1 = Construct) &&
+  | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
+     (* TODO: not all classes should be sharable *)
+    c1 = c2 && 
+    (s1 = s2 || rel != eq && s1 = Construct) && 
     (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
-      rel_typ env' rel eq (open_ ts t21) (open_ ts t11) &&
-      rel_typ env' rel eq (open_ ts t12) (open_ ts t22)
+      rel_list rel_typ env' rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+      rel_list rel_typ env' rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Func (Construct, _, _, _), Class when rel != eq ->
+  | Func (Construct, _, _, _, _), Class when rel != eq ->
     true
-  | Func (s1, _, _, _), Shared when rel != eq ->
+  | Func (s1, _,  _, _, _), Shared when rel != eq ->
     (* TODO: not all classes should be sharable *)
     s1 <> Call Local
   | Class, Class ->
@@ -602,20 +615,40 @@ let rec string_of_typ_nullary vs = function
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
+and string_of_dom vs ts =
+  let dom = string_of_typ_nullary vs (seq ts) in
+  match ts with
+  | [Tup _] ->
+     sprintf "(%s)" dom
+  | _ -> dom
+         
+and string_of_cod c vs ts =
+  let cod = string_of_typ' vs (seq ts) in
+  match ts with
+  | [Tup _] ->
+    sprintf "(%s)" cod
+  | [Async _] ->       
+    (match c with
+     | Returns -> sprintf "(%s)" cod
+     | Promises -> sprintf "%s" cod
+    )
+  | _ -> cod
+       
 and string_of_typ' vs t =
   match t with
   | Array (Mut t) ->
     sprintf "var %s[]" (string_of_typ_nullary vs t)
   | Array t ->
     sprintf "%s[]" (string_of_typ_nullary vs t)
-  | Func (s, [], t1, t2) ->
+  | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_typ_nullary vs t1) (string_of_typ' vs t2)
-  | Func (s, tbs, t1, t2) ->
+      (string_of_dom vs ts1) 
+      (string_of_cod c vs ts2) 
+  | Func (s, c, tbs, ts1, ts2) ->
     let vs' = names_of_binds vs tbs in
     sprintf "%s%s%s -> %s"
       (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_typ_nullary (vs' @ vs) t1) (string_of_typ' (vs' @ vs) t2)
+      (string_of_dom (vs' @ vs) ts1) (string_of_cod c (vs' @ vs) ts2)
   | Opt t ->
     sprintf "%s?"  (string_of_typ_nullary vs t)
   | Async t ->

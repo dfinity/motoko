@@ -195,7 +195,7 @@ typ_obj :
 
 typ_nullary :
   | LPAR t=typ RPAR
-    { t }
+    { ParT(t) @@ at $loc }
   | LPAR ts=seplist1(typ_item, COMMA) RPAR
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
