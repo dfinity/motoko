@@ -2079,6 +2079,9 @@ module Serialization = struct
         ; Tagged.Some,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.MutBox,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Array,
           (* x still on the stack *)
           Heap.load_field Array.len_field ^^
@@ -2098,16 +2101,12 @@ module Serialization = struct
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size
         ; Tagged.Closure,
+          (* x still on the stack *)
           Heap.load_field Closure.len_field ^^
           compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size
-        ; Tagged.Indirection,
-          G.i_ Drop ^^
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
-        ; Tagged.MutBox,
-          G.i_ Drop ^^
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ]
+	(* Indirections have unknown size. *)
     )
 
   let walk_heap_from_to env compile_from compile_to mk_code =
@@ -2132,7 +2131,12 @@ module Serialization = struct
     let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
     get_x ^^
     Tagged.branch_default env [] G.nop
-      [ Tagged.Some,
+      [ Tagged.MutBox,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Some,
         (* Adust pointer *)
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
         set_ptr_loc ^^
