@@ -117,6 +117,8 @@ module E = struct
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
     static_memory : (int32 * string) list ref;
+    (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    static_memory_frozen : bool ref;
   }
 
   let mode (e : t) = e.mode
@@ -146,6 +148,7 @@ module E = struct
     prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
+    static_memory_frozen = ref false;
   }
 
 
@@ -284,6 +287,7 @@ module E = struct
   let get_prelude (env : t) = env.prelude
 
   let reserve_static_memory (env : t) size : int32 =
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -294,9 +298,12 @@ module E = struct
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ptr
 
-  let get_end_of_static_memory env : int32 = !(env.end_of_static_memory)
+  let get_end_of_static_memory env : int32 =
+    env.static_memory_frozen := true;
+    !(env.end_of_static_memory)
 
-  let get_static_memory env = !(env.static_memory)
+  let get_static_memory env =
+    !(env.static_memory)
 end
 
 
