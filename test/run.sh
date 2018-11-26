@@ -10,6 +10,10 @@
 #    -d: Compile with --dfinity, use dvm to run
 #
 
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
 
 ACCEPT=no
 DFINITY=no
@@ -99,7 +103,8 @@ do
       else
         echo -n " [wasm-run]"
         $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
-        sed -i -e 's,wasm:0x[a-f0-9]\+:,wasm:0x___:,' $out/$base.wasm-run
+        sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
+        mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
         diff_files="$diff_files $base.wasm-run"
       fi
     fi

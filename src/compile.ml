@@ -118,6 +118,8 @@ module E = struct
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
     static_memory : (int32 * string) list ref;
+    (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    static_memory_frozen : bool ref;
   }
 
   let mode (e : t) = e.mode
@@ -148,6 +150,7 @@ module E = struct
     prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
+    static_memory_frozen = ref false;
   }
 
 
@@ -290,6 +293,7 @@ module E = struct
   let get_prelude (env : t) = env.prelude
 
   let reserve_static_memory (env : t) size : int32 =
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -300,9 +304,12 @@ module E = struct
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ptr
 
-  let get_end_of_static_memory env : int32 = !(env.end_of_static_memory)
+  let get_end_of_static_memory env : int32 =
+    env.static_memory_frozen := true;
+    !(env.end_of_static_memory)
 
-  let get_static_memory env = !(env.static_memory)
+  let get_static_memory env =
+    !(env.static_memory)
 end
 
 
@@ -457,6 +464,55 @@ module Heap = struct
 
 end (* Heap *)
 
+module ClosureTable = struct
+  let max_entries = 1024l
+  let loc = 0l
+  let table_end = Int32.(add loc (mul max_entries Heap.word_size))
+
+  let get_counter = compile_unboxed_const loc ^^ load_ptr
+  let set_counter env =
+    let (set_i, get_i) = new_local env "new_counter" in
+    set_i ^^
+    compile_unboxed_const loc ^^
+    get_i ^^
+    store_ptr
+
+  (* Assumes a reference on the stack, and replaces it with an index into the
+     reference table *)
+  let remember_closure env : G.t =
+    Func.share_code env "remember_closure" ["ptr"] [I32Type] (fun env ->
+      let get_ptr = G.i_ (GetLocal (nr 0l)) in
+
+      (* Return index *)
+      get_counter ^^
+      compile_add_const 1l ^^
+
+      (* Store reference *)
+      get_counter ^^
+      compile_add_const 1l ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      get_ptr ^^
+      store_ptr ^^
+
+      (* Bump counter *)
+      get_counter ^^
+      compile_add_const 1l ^^
+      set_counter env
+    )
+
+  (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
+  let recall_closure env : G.t =
+    Func.share_code env "recall_closure" ["closure_idx"] [I32Type] (fun env ->
+      let get_closure_idx = G.i_ (GetLocal (nr 0l)) in
+      get_closure_idx ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      load_ptr
+    )
+
+end (* ClosureTable *)
+
 module BitTagged = struct
   (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
      Pointers are stored as is (and should be aligned to have a zero there).
@@ -507,6 +563,7 @@ module Tagged = struct
     | Closure
     | Some (* For opt *)
     | Text
+    | Indirection
 
   (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -518,6 +575,7 @@ module Tagged = struct
     | Closure -> 6l
     | Some -> 7l
     | Text -> 8l
+    | Indirection -> 9l
 
   (* The tag *)
   let header_size = 1l
@@ -561,7 +619,10 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi ]
+    Tagged.obj env Tagged.Closure [
+      compile_unboxed_const fi;
+      compile_unboxed_const 0l (* number of parameters: none *)
+    ]
 
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
@@ -621,9 +682,12 @@ end (* Opt *)
 
 
 module Closure = struct
+  let header_size = Int32.add Tagged.header_size 2l
 
   let funptr_field = Tagged.header_size
-  let first_captured = Int32.add Tagged.header_size 1l
+  let len_field = Int32.add 1l Tagged.header_size
+
+  let first_captured = header_size
 
   let load_the_closure = G.i_ (GetLocal (nr 0l))
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
@@ -725,9 +789,10 @@ module Closure = struct
       let (set_li, get_li) = new_local pre_env "clos_ind" in
       let (pre_env1, vi) = Var.add_local pre_env name.it in
 
+      let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
         (* Allocate a heap object for the function *)
-        Heap.alloc (Int32.add first_captured (Wasm.I32.of_int_u (List.length captured))) ^^
+        Heap.alloc (Int32.add header_size len) ^^
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
@@ -775,9 +840,21 @@ module Closure = struct
         get_li ^^
         compile_unboxed_const fi ^^
         Heap.store_field funptr_field ^^
+
+        (* Store the length *)
+        get_li ^^
+        compile_unboxed_const len ^^
+        Heap.store_field len_field ^^
+
         (* Store all captured values *)
         store_env ^^
         if last then get_li  else G.nop)
+
+  let fixed_closure env fi fields =
+      Tagged.obj env Tagged.Closure
+        ([ compile_unboxed_const fi
+         ; compile_unboxed_const (Int32.of_int (List.length fields)) ] @
+         fields)
 
   let dec pre_env last name captured mk_pat mk_body at =
     (* This could be smarter: It is ok to capture closed functions,
@@ -1311,9 +1388,8 @@ module Array = struct
     let mk_iterator next_funid = Closure.unary_of_body env (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
-            Tagged.obj env1 Tagged.Closure
-              [ compile_unboxed_const next_funid
-              ; Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
+            Closure.fixed_closure env1 next_funid
+              [ Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
               ; get_array_object
               ] ^^
             set_ni ^^
@@ -1348,9 +1424,7 @@ module Array = struct
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Tagged.obj env Tagged.Closure
-      [ compile_unboxed_const (E.built_in env built_in_name)
-      ; get_i ]
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -1827,6 +1901,7 @@ module Serialization = struct
               compile_unboxed_const (E.built_in env "invoke_closure") ^^
               G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
               get_x ^^
+              ClosureTable.remember_closure env ^^
               G.i_ (Call (nr (Dfinity.func_bind_i env)))
             ]
           ]
@@ -1852,6 +1927,7 @@ module Serialization = struct
         )
     )
 
+  (* Returns the object size (in bytes) *)
   let object_size env =
     Func.share_code env "object_size" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
@@ -1864,6 +1940,9 @@ module Serialization = struct
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Some,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.MutBox,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Array,
@@ -1884,7 +1963,13 @@ module Serialization = struct
           compile_mul_const 2l ^^
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size
+        ; Tagged.Closure,
+          (* x still on the stack *)
+          Heap.load_field Closure.len_field ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size
         ]
+	(* Indirections have unknown size. *)
     )
 
   let walk_heap_from_to env compile_from compile_to mk_code =
@@ -1903,6 +1988,64 @@ module Serialization = struct
           set_x
         )
 
+  (* Calls mk_code for each pointer in the object pointed to by get_x,
+     passing code get the address of the pointer. *)
+  let for_each_pointer env get_x mk_code =
+    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    get_x ^^
+    Tagged.branch_default env [] G.nop
+      [ Tagged.MutBox,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Some,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Array,
+        (* x still on the stack *)
+        Heap.load_field Array.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_x ^^
+          get_i ^^
+          Array.idx env ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Object,
+        (* x still on the stack *)
+        Heap.load_field Object.size_field ^^
+
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_mul_const 2l ^^
+          compile_add_const 1l ^^
+          compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Closure,
+        (* x still on the stack *)
+        Heap.load_field Closure.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ]
+
   let shift_pointers env =
     Func.share_code env "shift_pointers" ["start"; "to"; "ptr_offset"] [] (fun env ->
       let get_start = G.i_ (GetLocal (nr 0l)) in
@@ -1910,41 +2053,11 @@ module Serialization = struct
       let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
 
       walk_heap_from_to env get_start get_to (fun get_x ->
-        get_x ^^
-        Tagged.branch_default env [] (G.i_ Nop)
-          [ Tagged.Some,
-            (* Adust pointer *)
-            compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-            get_ptr_offset ^^
-            shift_pointer_at env
-          ; Tagged.Array,
-            (* x still on the stack *)
-            Heap.load_field Array.len_field ^^
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_x ^^
-              get_i ^^
-              Array.idx env ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ; Tagged.Object,
-            (* x still on the stack *)
-            Heap.load_field Object.size_field ^^
-
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_i ^^
-              compile_mul_const 2l ^^
-              compile_add_const Object.header_size ^^
-              compile_mul_const Heap.word_size ^^
-              compile_add_const Heap.word_size ^^
-              get_x ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ]
+        for_each_pointer env get_x (fun get_ptr_loc ->
+          get_ptr_loc ^^
+          get_ptr_offset ^^
+          shift_pointer_at env
+        )
       )
     )
 
@@ -2173,15 +2286,16 @@ module Message = struct
 
   let system_funs mod_env =
     Func.define_built_in mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
-      (* This is the entry point for closure invocation.
-         The first argument is simply a pointer into our heap
+      (* This is the entry point for external closure invocation.
+         The first argument is the index of the closure in the ClosureTable
          (bound using `i32.bind`).
          The second a serialized message.
-         This methods must not be exported!
+         This method must not be exported!
          We create a funcref internally and then bind the closure to it.
       *)
       (* Put closure on the stack *)
       G.i (nr (GetLocal (nr 0l))) ^^
+      ClosureTable.recall_closure env ^^
 
       (* Put argument on the stack *)
       G.i (nr (GetLocal (nr 1l))) ^^
@@ -2835,12 +2949,15 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
     )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
-  let ptr = E.reserve_static_memory pre_env Heap.word_size in
-  let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
+  let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
+  let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
   ( pre_env1, fun env ->
     compile_unboxed_const ptr ^^
+    Tagged.store Tagged.MutBox ^^
+
+    compile_unboxed_const ptr ^^
     compile_exp env f.it.exp ^^
-    store_ptr
+    Var.store
   )
 
 and compile_public_actor_field pre_env (f : Syntax.exp_field) =
@@ -2896,7 +3013,7 @@ and actor_lit outer_env name fs =
   if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
 
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) 0l in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -2983,10 +3100,6 @@ and conclude_module env start_fi =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
       };
-      (* reference pointer *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      }
       ] in
 
   let data = List.map (fun (offset, init) -> nr {
@@ -3017,7 +3130,7 @@ and conclude_module env start_fi =
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
-  let env = E.mk_global mode prelude 0l in
+  let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;

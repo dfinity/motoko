@@ -1,5 +1,5 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
-  test-dvm ? false,
+  test-dvm ? true,
   v8 ? true,
 }:
 
@@ -26,8 +26,11 @@ let dvm =
   if test-dvm
   then
     if !builtins.pathExists ./nix/dev/default.nix
-    then throw "\"test-dvm = true\" requires a checkout of dev in ./nix"
-    else ((import ./nix/dev) { v8 = v8; }).dvm
+    then
+      throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
+    else
+      # Pass devel = true until the dev test suite runs on MacOS again
+      ((import ./nix/dev) { v8 = v8; devel = true; }).dvm
   else null; in
 
 # We need a newer version of menhir.
@@ -120,7 +123,6 @@ rec {
       mkdir -p $out
     '';
   };
-
 
   js = native.overrideAttrs (oldAttrs: {
     name = "asc.js";

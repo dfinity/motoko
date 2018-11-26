@@ -15,7 +15,7 @@ function dvm_ () {
   # hide the segmentation fault message
   # hide leaked debug log
   { dvm $@; } 2>&1 \
-    | sed -e 's,.*egmentation.*,Segmentation Fault,' \
+    | perl -pe 's,.*egmentation.*,Segmentation Fault,' \
     | perl -pe 's/Leaked.*!\n//m' \
 
 }
