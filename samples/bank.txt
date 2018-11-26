@@ -8,8 +8,8 @@ let Issuer : class () -> Issuer
 let bank : Bank
 let main : async (Account, Account)
 let show : (Text, Account) -> ()
-let test : () -> async (Account, Account)
-let transfer : (Account, Account, Int) -> async ()
+let test : () -> (async (Account, Account))
+let transfer : (Account, Account, Int) -> (async ())
 -- Interpreting bank.as:
 Bank(100)
   Issuer()
@@ -96,6 +96,6 @@ let Issuer : class () -> Issuer = class
 let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = func}; reserve = {balance = 80; credit = func; getBalance = func; isCompatible = func; join = func; split = func}}
 let main : async (Account, Account) = async ({balance = 5; credit = func; getBalance = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; getBalance = func; isCompatible = func; join = func; split = func})
 let show : (Text, Account) -> () = func
-let test : () -> async (Account, Account) = func
-let transfer : (Account, Account, Int) -> async () = func
+let test : () -> (async (Account, Account)) = func
+let transfer : (Account, Account, Int) -> (async ()) = func
 

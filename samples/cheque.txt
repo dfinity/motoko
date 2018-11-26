@@ -11,8 +11,8 @@ let bank : Bank
 let main : async (Account, Account)
 let show : (Text, Account) -> ()
 let showBalance : (Text, Int) -> ()
-let test : () -> async (Account, Account)
-let transfer : (Account, Account, Int) -> async ()
+let test : () -> (async (Account, Account))
+let transfer : (Account, Account, Int) -> (async ())
 -- Interpreting cheque.as:
 Bank(100)
   Issuer()
@@ -125,6 +125,6 @@ let bank : Bank = {getIssuer = func; getReserve = func; issuer = {hasIssued = fu
 let main : async (Account, Account) = async ({balance = 5; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func}, {balance = 15; credit = func; deposit = func; getBalance = func; invoice = func; isCompatible = func; join = func; split = func})
 let show : (Text, Account) -> () = func
 let showBalance : (Text, Int) -> () = func
-let test : () -> async (Account, Account) = func
-let transfer : (Account, Account, Int) -> async () = func
+let test : () -> (async (Account, Account)) = func
+let transfer : (Account, Account, Int) -> (async ()) = func
 
