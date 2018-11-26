@@ -418,7 +418,7 @@ module Heap = struct
      *)
   let word_size = 4l
 
-  let heap_ptr = 3l
+  let heap_ptr = 2l
 
   let alloc_bytes (n : int32) : G.t =
     (* returns the pointer to the allocate space on the heap *)
@@ -459,7 +459,7 @@ module Heap = struct
 end (* Heap *)
 
 module ElemHeap = struct
-  let ref_counter = 4l
+  let ref_counter = 3l
 
   let max_references = 1024l
   let ref_location = 0l
@@ -501,11 +501,17 @@ module ElemHeap = struct
 end (* ElemHeap *)
 
 module ClosureTable = struct
-  let global = 2l
-
   let max_entries = 1024l
   let loc = ElemHeap.table_end
   let table_end = Int32.(add loc (mul max_entries Heap.word_size))
+
+  let get_counter = compile_unboxed_const loc ^^ load_ptr
+  let set_counter env =
+    let (set_i, get_i) = new_local env "new_counter" in
+    set_i ^^
+    compile_unboxed_const loc ^^
+    get_i ^^
+    store_ptr
 
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
@@ -514,19 +520,21 @@ module ClosureTable = struct
       let get_ptr = G.i_ (GetLocal (nr 0l)) in
 
       (* Return index *)
-      G.i_ (GetGlobal (nr global)) ^^
+      get_counter ^^
+      compile_add_const 1l ^^
 
       (* Store reference *)
-      G.i_ (GetGlobal (nr global)) ^^
+      get_counter ^^
+      compile_add_const 1l ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const loc ^^
       get_ptr ^^
       store_ptr ^^
 
       (* Bump counter *)
-      G.i_ (GetGlobal (nr global)) ^^
+      get_counter ^^
       compile_add_const 1l ^^
-      G.i_ (SetGlobal (nr global))
+      set_counter env
     )
 
   (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
@@ -647,7 +655,10 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi; compile_unboxed_const 0l ]
+    Tagged.obj env Tagged.Closure [
+      compile_unboxed_const fi;
+      compile_unboxed_const 0l (* number of parameters: none *)
+    ]
 
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
@@ -3223,10 +3234,6 @@ and conclude_module env start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* closure table counter *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
       (* end-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
@@ -3262,7 +3269,6 @@ and conclude_module env start_fi_o =
     persist =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
-           ; (ClosureTable.global, CustomSections.I32)
            ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
