@@ -2274,6 +2274,147 @@ module Serialization = struct
 
 end (* Serialization *)
 
+module GC = struct
+  (* This is a very simple GC:
+     It copies everything live to the to-space beyond the bump pointer,
+     then it memcpies it back, over the from-space (so that we still neatly use
+     the beginning of memory).
+
+     Roots are:
+     * All objects in the static part of the memory.
+     * all closures ever bound to a `funcref`.
+       These therefore need to live in a separate area of memory
+       (could be mutable array of pointers, similar to the reference table)
+  *)
+
+  (* If the pointer at ptr_loc points after begin_from_space, copy
+     to after end_to_space, and replace it with a pointer, adjusted for where
+     the object will be finally. *)
+  (* Invariant: Must not be called on the same pointer twice. *)
+  let evacuate env = Func.share_code env "evaucate" ["begin_from_space"; "begin_to_space"; "end_to_space"; "ptr_loc"] [I32Type] (fun env ->
+    let get_begin_from_space = G.i_ (GetLocal (nr 0l)) in
+    let get_begin_to_space = G.i_ (GetLocal (nr 1l)) in
+    let get_end_to_space = G.i_ (GetLocal (nr 2l)) in
+    let get_ptr_loc = G.i_ (GetLocal (nr 3l)) in
+    let (set_len, get_len) = new_local env "len" in
+    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
+
+    let get_obj = get_ptr_loc ^^ load_ptr in
+
+    get_obj ^^
+    (* If this is an unboxed scalar, ignore it *)
+    BitTagged.if_unboxed env [] (G.i_ Drop ^^ get_end_to_space ^^ G.i_ Return) (G.i_ Drop) ^^
+
+    (* If this is static, ignore it *)
+    get_obj ^^
+    get_begin_from_space ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+    G.if_ [] (get_end_to_space ^^ G.i_ Return) G.nop ^^
+
+    (* If this is an indirection, just use that value *)
+    get_obj ^^
+    Tagged.branch_default env [] G.nop [
+      Tagged.Indirection,
+      G.i_ Drop ^^
+
+      (* Update pointer *)
+      get_ptr_loc ^^
+      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
+      store_ptr ^^
+
+      get_end_to_space ^^
+      G.i_ Return
+    ] ^^
+
+    (* Copy the referenced object to to space *)
+    get_obj ^^ Serialization.object_size env ^^ set_len ^^
+
+    get_obj ^^ get_end_to_space ^^ get_len ^^ RTS.memcpy env ^^
+
+    (* Calculate new pointer *)
+    get_end_to_space ^^
+    get_begin_to_space ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    get_begin_from_space ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    set_new_ptr ^^
+
+    (* Set indirection *)
+    get_obj ^^
+    Tagged.store Tagged.Indirection ^^
+    get_obj ^^
+    get_new_ptr ^^
+    Heap.store_field 1l ^^
+
+    (* Update pointer *)
+    get_ptr_loc ^^
+    get_new_ptr ^^
+    store_ptr ^^
+
+    (* Calculate new end of to space *)
+    get_end_to_space ^^
+    get_len ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+  )
+
+  let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
+    (* Copy all roots. *)
+    let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
+    let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
+    let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
+
+    compile_unboxed_const end_of_static_space ^^ set_begin_from_space ^^
+    G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^ set_begin_to_space ^^
+    G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^ set_end_to_space ^^
+
+
+    (* Common arguments for evalcuate *)
+    let evac get_ptr_loc =
+        get_begin_from_space ^^
+        get_begin_to_space ^^
+        get_end_to_space ^^
+        get_ptr_loc ^^
+        evacuate env ^^
+        set_end_to_space in
+
+    (* Go through the roots, and evacaute them *)
+    ClosureTable.get_counter ^^
+    from_0_to_n env (fun get_i -> evac (
+      get_i ^^
+      compile_add_const 1l ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const ClosureTable.loc
+    )) ^^
+    Serialization.walk_heap_from_to env
+      (compile_unboxed_const ClosureTable.table_end)
+      (compile_unboxed_const end_of_static_space)
+      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+
+    (* Go through the to-space, and evacuate that.
+       Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
+     *)
+    Serialization.walk_heap_from_to env
+      get_begin_to_space
+      get_end_to_space
+      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+
+    (* Copy the to-space to the beginning of memory. *)
+    get_begin_to_space ^^
+    get_begin_from_space ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    RTS.memcpy env ^^
+
+    (* Reset the heap pointer *)
+    get_begin_from_space ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    G.i_ (SetGlobal (nr Heap.heap_ptr))
+  )
+
+
+end (* GC *)
+
+
 module Message = struct
   (* We use the first table slot for calls to funcrefs *)
   (* This does not clash with slots for our functions as long as there
@@ -2303,7 +2444,10 @@ module Message = struct
 
       (* Invoke the call *)
       Closure.call_indirect env no_region ^^
-      G.i_ Drop
+      G.i_ Drop ^^
+
+      (* Collect garbage *)
+      G.i_ (Call (nr (E.built_in env "collect")))
     );
     E.add_dfinity_type mod_env
       (E.built_in mod_env "invoke_closure",
@@ -2350,8 +2494,11 @@ module Message = struct
       Serialization.deserialize env ^^
       destruct_args_code ^^
       body_code ^^
-      G.i_ Drop
-      )
+      G.i_ Drop ^^
+
+      (* Collect memory *)
+      G.i_ (Call (nr (E.built_in env "collect")))
+    )
 end (* Message *)
 
 module PatCode = struct
@@ -3068,6 +3215,7 @@ and actor_fake_object_idx env name =
 
 and conclude_module env start_fi =
   Dfinity.default_exports env;
+  GC.register env (E.get_end_of_static_memory env);
 
   E.add_fun_name env start_fi "start";
   if E.mode env = DfinityMode then
