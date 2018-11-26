@@ -362,7 +362,7 @@ let rec avoid' env env' = function
           List.map (avoid' env env') ts1, List.map (avoid' env env') ts2)
   | Opt t -> Opt (avoid' env env' t)
   | Async t -> Async (avoid' env env' t)
-  | Like t -> Like (avoid' env env' t)
+  | Like t -> avoid' env env' (promote env t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
   | Mut t -> Mut (avoid' env env' t)
 
@@ -386,7 +386,7 @@ let rel_list p env rel eq xs1 xs2 =
 
 let str = ref (fun _ -> failwith "")
 let rec rel_typ env rel eq t1 t2 =
-(*printf "[sub] %s == %s\n" (string_of_typ t1) (string_of_typ t2); flush_all();*)
+(*Printf.printf "[sub] %s == %s\n%!" (!str t1) (!str t2);*)
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
@@ -477,10 +477,10 @@ let rec rel_typ env rel eq t1 t2 =
     rel_typ env rel eq t1' t2'
   | Async t1', Shared ->
     rel_typ env rel eq t1' Shared
-  | Like t1', Like t2' ->
-    rel_typ env rel eq t1' t2'
-  | Like t1', Shared ->
-    rel_typ env rel eq t1' Shared
+  | Like t1', t2 ->
+    rel_typ env rel eq (promote env t1') t2
+  | t1, Like t2' ->
+    rel_typ env rel eq t1 (promote env t2')
   | Mut t1', Mut t2' ->
     eq_typ env rel eq t1' t2'
   | _, _ -> false

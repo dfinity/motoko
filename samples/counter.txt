@@ -8,7 +8,7 @@ let testDec : () -> ()
 let testRead : () -> ()
 -- Interpreting counter.as:
 Counter(10)
-  <= {c = 10; dec = func; read = func}
+  <= {dec = func; read = func}
 testDec()
   -> message dec()
   -> message dec()
@@ -288,7 +288,7 @@ testRead()
   <= ()
 -- Finished counter.as:
 let Counter : class Int -> Counter = class
-let c : Counter = {c = -10; dec = func; read = func}
+let c : Counter = {dec = func; read = func}
 let show : (Text, Int) -> () = func
 let showAsync : (Text, async Int) -> () = func
 let testDec : () -> () = func

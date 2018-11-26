@@ -113,7 +113,7 @@ and infer_effect_dec dec =
     T.Triv
   | FuncD (s, v, tps, p, t, e) ->
     T.Triv
-  | ClassD (v, l, tps, s, p, efs) ->
+  | ClassD (v, l, tps, s, p, v', efs) ->
     T.Triv
 
 (* sugar *)                      
@@ -436,10 +436,10 @@ and t_dec' context dec' =
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncD (sh, id, typbinds, pat, typ,t_exp context' exp)
 
-  | ClassD (id, lab, typbinds, sort, pat, fields) ->
+  | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in     
     let fields' = t_fields context' fields in             
-    ClassD (id, lab, typbinds, sort, pat, fields')
+    ClassD (id, lab, typbinds, sort, pat, id', fields')
 and t_decs context decs = List.map (t_dec context) decs           
 and t_fields context fields = 
   List.map (fun (field:exp_field) ->
@@ -831,7 +831,7 @@ and c_dec context dec =
                   (k -@- define_idE id Var v)))
      end                                       
   | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
-  | ClassD (id, _ (* lab *),  _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
+  | ClassD (id, _ (* lab *),  _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* id *), _ (* fields *) ) ->
      (* todo: use a block not lets as in LetD *)
     let func_typ = typ_dec dec in
     let k = fresh_cont func_typ in
@@ -868,7 +868,7 @@ and declare_dec dec exp : exp =
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
   | FuncD (_, id, _, _, _, _)
-  | ClassD (id, _, _, _, _, _) -> declare_id id (typ_dec dec) exp
+  | ClassD (id, _, _, _, _, _, _) -> declare_id id (typ_dec dec) exp
 
 and declare_decs decs exp : exp =
   match decs with

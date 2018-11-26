@@ -406,9 +406,9 @@ and t_dec' dec' =
           | _ -> failwith "async.ml t_dec': funcD3"
          end
     end
-  | ClassD (id, lab, typbinds, sort, pat, fields) ->
+  | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
      let fields' = t_fields fields in             
-     ClassD (id, lab, t_typbinds typbinds, sort, t_pat pat, fields')
+     ClassD (id, lab, t_typbinds typbinds, sort, t_pat pat, id', fields')
 
 and t_decs decs = List.map t_dec decs           
 

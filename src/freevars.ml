@@ -103,8 +103,8 @@ and dec d = match d.it with
   | FuncD (s, i, tp, p, t, e) ->
     (S.empty, S.singleton i.it) +++ (exp e /// pat p)
   | TypD (i, tp, t) -> (S.empty, S.empty)
-  | ClassD (i, l, tp, s, p, efs) ->
-    (S.empty, S.singleton i.it) +++ (close (exp_fields efs) /// pat p)
+  | ClassD (i, l, tp, s, p, i', efs) ->
+    (S.empty, S.singleton i.it) +++ (close (exp_fields efs) /// pat p // i'.it)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e = S.elements (exp e /// pat p)
