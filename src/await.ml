@@ -129,8 +129,8 @@ let is_triv (exp:exp)  =
               
 let answerT = Type.unit
 
-let contT typ = T.Func(T.Call T.Local, [], typ, answerT)
-let cpsT typ = T.Func(T.Call T.Local, [], contT typ, answerT)
+let contT typ = T.Func(T.Call T.Local, T.Returns, [], [typ], [])
+let cpsT typ = T.Func(T.Call T.Local, T.Returns, [], [contT typ], [])
 
 (* identifiers *)
 let exp_of_id name typ =
@@ -166,7 +166,7 @@ let id_ret = ""
 let  (-->) k e =
   match k.it with
   | VarE v ->
-     let note = {note_typ = T.Func(T.Call T.Local, [], typ k, typ e);
+     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ k), T.as_seq (typ e));
                  note_eff = T.Triv} in
      {it=DecE({it=FuncD(T.Local @@ no_region, "" @@ no_region, (* no recursion *)
                         [],
@@ -196,10 +196,10 @@ let idE id typ =
 
 (* TBR: require shareable typ? *)                                  
 let prim_async typ =
-  primE "@async" (T.Func(T.Call T.Local,[], cpsT typ, T.Async typ))
+  primE "@async" (T.Func(T.Call T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ = 
-  primE "@await" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
+  primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
 
 let varP x = {x with it=VarP (id_of_exp x)}
 let letD x exp = { exp with it = LetD (varP x,exp) }
@@ -304,12 +304,12 @@ let newObjE  typ sort ids =
     
 let ( -@- ) exp1 exp2 =
   match exp1.note.note_typ with
-  | Type.Func(_, [], _, t) ->
-     {it = CallE(exp1, [], exp2);
+  | Type.Func(_, _, [], _, ts) ->
+    { it = CallE(exp1, [], exp2);
       at = no_region;
-      note = {note_typ = t;
-              note_eff = max_eff (eff exp1) (eff exp2)}
-     }
+      note = { note_typ = T.seq ts; 
+               note_eff = max_eff (eff exp1) (eff exp2)}
+    }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
@@ -452,8 +452,8 @@ and unary context k unE e1 =
   match eff e1 with
   | T.Await ->
     let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-             (v1 --> (k -@- unE v1))
+    k -->  ((c_exp context e1) -@-
+             (v1 --> (k -@- unE v1)))
   | T.Triv ->
     failwith "Impossible:unary"
     
@@ -468,13 +468,13 @@ and binary context k binE e1 e2 =
   | T.Await, T.Await ->
     let v1 = fresh_id (typ e1) in
     let v2 = fresh_id (typ e2) in     
-    k -->  (c_exp context e1) -@-
-             (v1 --> (c_exp context e2) -@-
-                      (v2 --> (k -@- binE v1 v2)))
+    k -->  ((c_exp context e1) -@-
+             (v1 --> ((c_exp context e2) -@-
+                      (v2 --> (k -@- binE v1 v2)))))
   | T.Await, T.Triv ->
     let v1 = fresh_id (typ e1) in
-    k -->  (c_exp context e1) -@-
-             (v1 --> (k -@- binE v1 (t_exp context e2)))
+    k -->  ((c_exp context e1) -@-
+             (v1 --> (k -@- binE v1 (t_exp context e2))))
   | T.Triv, T.Triv ->
     failwith "Impossible:binary";  
 
@@ -615,13 +615,13 @@ and c_loop_some context k e1 e2 =
              (loop -@- unitE)
  | T.Await ->
      k --> letE loop (u -->
-                        (c_exp context e1) -@-
-                        (v1 --> e2))
+                        ((c_exp context e1) -@-
+                         (v1 --> e2)))
              (loop -@- unitE)
 
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
- let next_typ = (T.Func(T.Call T.Local, [], T.unit, T.Opt (typ pat))) in
+ let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
  let v1dotnext = dotE v1 (Name "next") next_typ -@- unitE in
  let loop = fresh_id (contT T.unit) in 
  let v2 = fresh_id T.unit in                    

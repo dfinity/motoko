@@ -20,6 +20,16 @@ let a = actor {
        { await f2 xy; };
     h3 (f3:shared (Int,Bool,Text) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
+
+    g0 (f0:shared (()) -> async (),u:()) : async ()
+       { await f0 u;};
+    g1 (f1:shared (Int) -> async Int,x:Int)  : async Int
+       { await f1 x;};
+    g2 (f2:shared ((Int,Bool)) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
+       { await f2 xy; };
+    g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
+       { await f3 xyz; };
+
 };
 
 func println(s:Text) {print s;print ",";};
@@ -79,13 +89,13 @@ let _ = async {
     let (3,false,"text") = await a.h3(a.m3,(3,false,"text"));
     println "3";
 
-    let () = await a.h0(a.n0,());
+    let () = await a.g0(a.n0,());
     println "4";
-    let 1 = await a.h1(a.n1,1);
+    let 1 = await a.g1(a.n1,1);
     println "5";
-    let (2,true) = await a.h2(a.n2,(2,true));
+    let (2,true) = await a.g2(a.n2,(2,true));
     println "6";
-    let (3,false,"text") = await a.h3(a.n3,(3,false,"text"));
+    let (3,false,"text") = await a.g3(a.n3,(3,false,"text"));
     println "7";
 
     let () = await a.h0(a.m0,u);
@@ -97,13 +107,13 @@ let _ = async {
     let (3,false,"text") = await a.h3(a.m3,xyz);
     println "11";
 
-    let () = await a.h0(a.n0,u);
+    let () = await a.g0(a.n0,u);
     println "12";
-    let 1 = await a.h1(a.n1,x);
+    let 1 = await a.g1(a.n1,x);
     println "13";
-    let (2,true) = await a.h2(a.n2,xy);
+    let (2,true) = await a.g2(a.n2,xy);
     println "14";
-    let (3,false,"text") = await a.h3(a.n3,xyz);
+    let (3,false,"text") = await a.g3(a.n3,xyz);
     println "15";
 
     print "\n";

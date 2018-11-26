@@ -1,6 +1,7 @@
 (* Representation *)
 
 type con = Con.t
+type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
 type func_sort = Call of sharing | Construct
@@ -28,7 +29,8 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * bind list * typ * typ (* function *)
+  | Func of func_sort * control *
+            bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
   | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
@@ -46,6 +48,11 @@ type kind =
   | Abs of bind list * typ
 
 type con_env = kind Con.Env.t
+
+(* n-ary argument/result sequences *)
+             
+val seq: typ list -> typ
+val as_seq : typ -> typ list
 
 
 (* Short-hands *)
@@ -78,7 +85,7 @@ val as_opt : typ -> typ
 val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
-val as_func : typ -> func_sort * bind list * typ * typ
+val as_func : typ -> func_sort * control * bind list * typ list * typ list
 val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ

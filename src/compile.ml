@@ -117,6 +117,8 @@ module E = struct
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
     static_memory : (int32 * string) list ref;
+    (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    static_memory_frozen : bool ref;
   }
 
   let mode (e : t) = e.mode
@@ -146,6 +148,7 @@ module E = struct
     prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
+    static_memory_frozen = ref false;
   }
 
 
@@ -284,6 +287,7 @@ module E = struct
   let get_prelude (env : t) = env.prelude
 
   let reserve_static_memory (env : t) size : int32 =
+    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -294,9 +298,12 @@ module E = struct
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ptr
 
-  let get_end_of_static_memory env : int32 = !(env.end_of_static_memory)
+  let get_end_of_static_memory env : int32 =
+    env.static_memory_frozen := true;
+    !(env.end_of_static_memory)
 
-  let get_static_memory env = !(env.static_memory)
+  let get_static_memory env =
+    !(env.static_memory)
 end
 
 
@@ -457,7 +464,7 @@ module ElemHeap = struct
   let max_references = 1024l
   let ref_location = 0l
 
-  let begin_dyn_space : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
+  let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
 
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
@@ -492,6 +499,55 @@ module ElemHeap = struct
     )
 
 end (* ElemHeap *)
+
+module ClosureTable = struct
+  let max_entries = 1024l
+  let loc = ElemHeap.table_end
+  let table_end = Int32.(add loc (mul max_entries Heap.word_size))
+
+  let get_counter = compile_unboxed_const loc ^^ load_ptr
+  let set_counter env =
+    let (set_i, get_i) = new_local env "new_counter" in
+    set_i ^^
+    compile_unboxed_const loc ^^
+    get_i ^^
+    store_ptr
+
+  (* Assumes a reference on the stack, and replaces it with an index into the
+     reference table *)
+  let remember_closure env : G.t =
+    Func.share_code env "remember_closure" ["ptr"] [I32Type] (fun env ->
+      let get_ptr = G.i_ (GetLocal (nr 0l)) in
+
+      (* Return index *)
+      get_counter ^^
+      compile_add_const 1l ^^
+
+      (* Store reference *)
+      get_counter ^^
+      compile_add_const 1l ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      get_ptr ^^
+      store_ptr ^^
+
+      (* Bump counter *)
+      get_counter ^^
+      compile_add_const 1l ^^
+      set_counter env
+    )
+
+  (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
+  let recall_closure env : G.t =
+    Func.share_code env "recall_closure" ["closure_idx"] [I32Type] (fun env ->
+      let get_closure_idx = G.i_ (GetLocal (nr 0l)) in
+      get_closure_idx ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const loc ^^
+      load_ptr
+    )
+
+end (* ClosureTable *)
 
 module BitTagged = struct
   (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
@@ -543,6 +599,7 @@ module Tagged = struct
     | Closure
     | Some (* For opt *)
     | Text
+    | Indirection
 
   (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -554,6 +611,7 @@ module Tagged = struct
     | Closure -> 6l
     | Some -> 7l
     | Text -> 8l
+    | Indirection -> 9l
 
   (* The tag *)
   let header_size = 1l
@@ -597,7 +655,10 @@ module Var = struct
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
   let static_fun_pointer fi env =
-    Tagged.obj env Tagged.Closure [ compile_unboxed_const fi ]
+    Tagged.obj env Tagged.Closure [
+      compile_unboxed_const fi;
+      compile_unboxed_const 0l (* number of parameters: none *)
+    ]
 
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
@@ -657,9 +718,12 @@ end (* Opt *)
 
 
 module Closure = struct
+  let header_size = Int32.add Tagged.header_size 2l
 
   let funptr_field = Tagged.header_size
-  let first_captured = Int32.add Tagged.header_size 1l
+  let len_field = Int32.add 1l Tagged.header_size
+
+  let first_captured = header_size
 
   let load_the_closure = G.i_ (GetLocal (nr 0l))
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
@@ -761,9 +825,10 @@ module Closure = struct
       let (set_li, get_li) = new_local pre_env "clos_ind" in
       let (pre_env1, vi) = Var.add_local pre_env name.it in
 
+      let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
         (* Allocate a heap object for the function *)
-        Heap.alloc (Int32.add first_captured (Wasm.I32.of_int_u (List.length captured))) ^^
+        Heap.alloc (Int32.add header_size len) ^^
         set_li ^^
 
         (* Allocate an extra indirection for the variable *)
@@ -811,9 +876,21 @@ module Closure = struct
         get_li ^^
         compile_unboxed_const fi ^^
         Heap.store_field funptr_field ^^
+
+        (* Store the length *)
+        get_li ^^
+        compile_unboxed_const len ^^
+        Heap.store_field len_field ^^
+
         (* Store all captured values *)
         store_env ^^
         if last then get_li  else G.nop)
+
+  let fixed_closure env fi fields =
+      Tagged.obj env Tagged.Closure
+        ([ compile_unboxed_const fi
+         ; compile_unboxed_const (Int32.of_int (List.length fields)) ] @
+         fields)
 
   let dec pre_env last name captured mk_pat mk_body at =
     (* This could be smarter: It is ok to capture closed functions,
@@ -1347,9 +1424,8 @@ module Array = struct
     let mk_iterator next_funid = Closure.unary_of_body env (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
-            Tagged.obj env1 Tagged.Closure
-              [ compile_unboxed_const next_funid
-              ; Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
+            Closure.fixed_closure env1 next_funid
+              [ Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0l ]
               ; get_array_object
               ] ^^
             set_ni ^^
@@ -1384,9 +1460,7 @@ module Array = struct
   let fake_object_idx_option env built_in_name =
     let (set_i, get_i) = new_local env "array" in
     set_i ^^
-    Tagged.obj env Tagged.Closure
-      [ compile_unboxed_const (E.built_in env built_in_name)
-      ; get_i ]
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -1667,6 +1741,8 @@ module Dfinity = struct
     let empty_f = Func.of_body env [] [] (fun env1 ->
       (* Set up memory *)
       G.i_ (Call (nr (E.built_in env "restore_mem"))) ^^
+      (* Collect garbage *)
+      G.i_ (Call (nr (E.built_in env "collect"))) ^^
       (* Save memory *)
       G.i_ (Call (nr (E.built_in env "save_mem")))
       ) in
@@ -1727,11 +1803,11 @@ module OrthogonalPersistence = struct
          (* Subsequent run *)
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
-           compile_add_const ElemHeap.begin_dyn_space ^^
+           compile_add_const ElemHeap.table_end ^^
            G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
 
            (* Load memory *)
-           compile_unboxed_const ElemHeap.begin_dyn_space ^^
+           compile_unboxed_const ElemHeap.table_end ^^
            get_i ^^
            G.i_ (GetGlobal (nr mem_global)) ^^
            compile_unboxed_zero ^^
@@ -1752,9 +1828,9 @@ module OrthogonalPersistence = struct
     );
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.table_end ^^
        G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-       compile_unboxed_const ElemHeap.begin_dyn_space ^^
+       compile_unboxed_const ElemHeap.table_end ^^
        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
        G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
        G.i_ (SetGlobal (nr mem_global)) ^^
@@ -1963,6 +2039,7 @@ module Serialization = struct
               compile_unboxed_const (E.built_in env "invoke_closure") ^^
               G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
               get_x ^^
+              ClosureTable.remember_closure env ^^
               G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
               ElemHeap.remember_reference env
             ]
@@ -1989,6 +2066,7 @@ module Serialization = struct
         )
     )
 
+  (* Returns the object size (in bytes) *)
   let object_size env =
     Func.share_code env "object_size" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
@@ -2001,6 +2079,9 @@ module Serialization = struct
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Some,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.MutBox,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Array,
@@ -2021,7 +2102,13 @@ module Serialization = struct
           compile_mul_const 2l ^^
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size
+        ; Tagged.Closure,
+          (* x still on the stack *)
+          Heap.load_field Closure.len_field ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size
         ]
+	(* Indirections have unknown size. *)
     )
 
   let walk_heap_from_to env compile_from compile_to mk_code =
@@ -2040,6 +2127,64 @@ module Serialization = struct
           set_x
         )
 
+  (* Calls mk_code for each pointer in the object pointed to by get_x,
+     passing code get the address of the pointer. *)
+  let for_each_pointer env get_x mk_code =
+    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    get_x ^^
+    Tagged.branch_default env [] G.nop
+      [ Tagged.MutBox,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Some,
+        (* Adust pointer *)
+        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Array,
+        (* x still on the stack *)
+        Heap.load_field Array.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_x ^^
+          get_i ^^
+          Array.idx env ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Object,
+        (* x still on the stack *)
+        Heap.load_field Object.size_field ^^
+
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_mul_const 2l ^^
+          compile_add_const 1l ^^
+          compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Closure,
+        (* x still on the stack *)
+        Heap.load_field Closure.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ]
+
   let shift_pointers env =
     Func.share_code env "shift_pointers" ["start"; "to"; "ptr_offset"] [] (fun env ->
       let get_start = G.i_ (GetLocal (nr 0l)) in
@@ -2047,41 +2192,11 @@ module Serialization = struct
       let get_ptr_offset = G.i_ (GetLocal (nr 2l)) in
 
       walk_heap_from_to env get_start get_to (fun get_x ->
-        get_x ^^
-        Tagged.branch_default env [] G.nop
-          [ Tagged.Some,
-            (* Adust pointer *)
-            compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-            get_ptr_offset ^^
-            shift_pointer_at env
-          ; Tagged.Array,
-            (* x still on the stack *)
-            Heap.load_field Array.len_field ^^
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_x ^^
-              get_i ^^
-              Array.idx env ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ; Tagged.Object,
-            (* x still on the stack *)
-            Heap.load_field Object.size_field ^^
-
-            (* Adjust fields *)
-            from_0_to_n env (fun get_i ->
-              get_i ^^
-              compile_mul_const 2l ^^
-              compile_add_const Object.header_size ^^
-              compile_mul_const Heap.word_size ^^
-              compile_add_const Heap.word_size ^^
-              get_x ^^
-              G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-              get_ptr_offset ^^
-              shift_pointer_at env
-            )
-          ]
+        for_each_pointer env get_x (fun get_ptr_loc ->
+          get_ptr_loc ^^
+          get_ptr_offset ^^
+          shift_pointer_at env
+        )
       )
     )
 
@@ -2300,6 +2415,147 @@ module Serialization = struct
 
 end (* Serialization *)
 
+module GC = struct
+  (* This is a very simple GC:
+     It copies everything live to the to-space beyond the bump pointer,
+     then it memcpies it back, over the from-space (so that we still neatly use
+     the beginning of memory).
+
+     Roots are:
+     * All objects in the static part of the memory.
+     * all closures ever bound to a `funcref`.
+       These therefore need to live in a separate area of memory
+       (could be mutable array of pointers, similar to the reference table)
+  *)
+
+  (* If the pointer at ptr_loc points after begin_from_space, copy
+     to after end_to_space, and replace it with a pointer, adjusted for where
+     the object will be finally. *)
+  (* Invariant: Must not be called on the same pointer twice. *)
+  let evacuate env = Func.share_code env "evaucate" ["begin_from_space"; "begin_to_space"; "end_to_space"; "ptr_loc"] [I32Type] (fun env ->
+    let get_begin_from_space = G.i_ (GetLocal (nr 0l)) in
+    let get_begin_to_space = G.i_ (GetLocal (nr 1l)) in
+    let get_end_to_space = G.i_ (GetLocal (nr 2l)) in
+    let get_ptr_loc = G.i_ (GetLocal (nr 3l)) in
+    let (set_len, get_len) = new_local env "len" in
+    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
+
+    let get_obj = get_ptr_loc ^^ load_ptr in
+
+    get_obj ^^
+    (* If this is an unboxed scalar, ignore it *)
+    BitTagged.if_unboxed env [] (G.i_ Drop ^^ get_end_to_space ^^ G.i_ Return) (G.i_ Drop) ^^
+
+    (* If this is static, ignore it *)
+    get_obj ^^
+    get_begin_from_space ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+    G.if_ [] (get_end_to_space ^^ G.i_ Return) G.nop ^^
+
+    (* If this is an indirection, just use that value *)
+    get_obj ^^
+    Tagged.branch_default env [] G.nop [
+      Tagged.Indirection,
+      G.i_ Drop ^^
+
+      (* Update pointer *)
+      get_ptr_loc ^^
+      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
+      store_ptr ^^
+
+      get_end_to_space ^^
+      G.i_ Return
+    ] ^^
+
+    (* Copy the referenced object to to space *)
+    get_obj ^^ Serialization.object_size env ^^ set_len ^^
+
+    get_obj ^^ get_end_to_space ^^ get_len ^^ RTS.memcpy env ^^
+
+    (* Calculate new pointer *)
+    get_end_to_space ^^
+    get_begin_to_space ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    get_begin_from_space ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    set_new_ptr ^^
+
+    (* Set indirection *)
+    get_obj ^^
+    Tagged.store Tagged.Indirection ^^
+    get_obj ^^
+    get_new_ptr ^^
+    Heap.store_field 1l ^^
+
+    (* Update pointer *)
+    get_ptr_loc ^^
+    get_new_ptr ^^
+    store_ptr ^^
+
+    (* Calculate new end of to space *)
+    get_end_to_space ^^
+    get_len ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+  )
+
+  let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
+    (* Copy all roots. *)
+    let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
+    let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
+    let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
+
+    compile_unboxed_const end_of_static_space ^^ set_begin_from_space ^^
+    G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^ set_begin_to_space ^^
+    G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^ set_end_to_space ^^
+
+
+    (* Common arguments for evalcuate *)
+    let evac get_ptr_loc =
+        get_begin_from_space ^^
+        get_begin_to_space ^^
+        get_end_to_space ^^
+        get_ptr_loc ^^
+        evacuate env ^^
+        set_end_to_space in
+
+    (* Go through the roots, and evacaute them *)
+    ClosureTable.get_counter ^^
+    from_0_to_n env (fun get_i -> evac (
+      get_i ^^
+      compile_add_const 1l ^^
+      compile_mul_const Heap.word_size ^^
+      compile_add_const ClosureTable.loc
+    )) ^^
+    Serialization.walk_heap_from_to env
+      (compile_unboxed_const ClosureTable.table_end)
+      (compile_unboxed_const end_of_static_space)
+      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+
+    (* Go through the to-space, and evacuate that.
+       Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
+     *)
+    Serialization.walk_heap_from_to env
+      get_begin_to_space
+      get_end_to_space
+      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+
+    (* Copy the to-space to the beginning of memory. *)
+    get_begin_to_space ^^
+    get_begin_from_space ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    RTS.memcpy env ^^
+
+    (* Reset the heap pointer *)
+    get_begin_from_space ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    G.i_ (SetGlobal (nr Heap.heap_ptr))
+  )
+
+
+end (* GC *)
+
+
 module Message = struct
   (* We use the first table slot for calls to funcrefs *)
   (* This does not clash with slots for our functions as long as there
@@ -2312,17 +2568,18 @@ module Message = struct
 
   let system_funs mod_env =
     Func.define_built_in mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
-      (* This is the entry point for closure invocation.
-         The first argument is simply a pointer into our heap
+      (* This is the entry point for external closure invocation.
+         The first argument is the index of the closure in the ClosureTable
          (bound using `i32.bind`).
          The second a serialized message.
-         This methods must not be exported!
+         This method must not be exported!
          We create a funcref internally and then bind the closure to it.
       *)
       OrthogonalPersistence.restore_mem env ^^
 
       (* Put closure on the stack *)
       G.i (nr (GetLocal (nr 0l))) ^^
+      ClosureTable.recall_closure env ^^
 
       (* Put argument on the stack *)
       G.i (nr (GetLocal (nr 1l))) ^^
@@ -2331,6 +2588,9 @@ module Message = struct
       (* Invoke the call *)
       Closure.call_indirect env no_region ^^
       G.i_ Drop ^^
+
+      (* Collect garbage *)
+      G.i_ (Call (nr (E.built_in env "collect"))) ^^
 
       (* Save memory *)
       OrthogonalPersistence.save_mem env
@@ -2386,6 +2646,9 @@ module Message = struct
       destruct_args_code ^^
       body_code ^^
       G.i_ Drop ^^
+
+      (* Collect memory *)
+      G.i_ (Call (nr (E.built_in env "collect"))) ^^
 
       (* Save memory *)
       OrthogonalPersistence.save_mem env
@@ -2987,12 +3250,15 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
     )
 
 and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
-  let ptr = E.reserve_static_memory pre_env Heap.word_size in
-  let pre_env1 = E.add_local_static pre_env f.it.id.it ptr in
+  let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
+  let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
   ( pre_env1, fun env ->
     compile_unboxed_const ptr ^^
+    Tagged.store Tagged.MutBox ^^
+
+    compile_unboxed_const ptr ^^
     compile_exp env f.it.exp ^^
-    store_ptr
+    Var.store
   )
 
 and compile_public_actor_field pre_env (f : Syntax.exp_field) =
@@ -3048,7 +3314,7 @@ and actor_lit outer_env name fs =
   if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
 
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ElemHeap.begin_dyn_space in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -3098,6 +3364,7 @@ and actor_fake_object_idx env name =
 and conclude_module env start_fi_o =
 
   Dfinity.default_exports env;
+  GC.register env (E.get_end_of_static_memory env);
 
   let imports = E.get_imports env in
   let ni = List.length imports in
@@ -3121,14 +3388,14 @@ and conclude_module env start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* End-of-heap pointer *)
+      (* end-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
       };
-      (* reference pointer *)
+      (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
-      }
+      };
       ] in
 
   let data = List.map (fun (offset, init) -> nr {
@@ -3155,13 +3422,14 @@ and conclude_module env start_fi_o =
     types = E.get_dfinity_types env;
     persist =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf) ];
+           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
+           ];
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
 
 let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
-  let env = E.mk_global mode prelude ElemHeap.begin_dyn_space in
+  let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;

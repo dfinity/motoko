@@ -154,9 +154,9 @@ let make_async_message id v =
 
 let make_message id t v : V.value =
   match t with
-  | T.Func (_, _, _, T.Tup []) ->
+  | T.Func (_, _, _, _, []) ->
      make_unit_message id.it v
-  | T.Func (_, _, _, T.Async _) ->
+  | T.Func (_, _, _, _, [T.Async _]) ->
      assert (not !Flags.async_lowering);
      make_async_message id.it v
   | _ ->
