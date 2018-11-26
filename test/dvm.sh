@@ -20,6 +20,7 @@ function dvm_ () {
 
 }
 
+rm -rf .dvm
 dvm_ -q reset
 dvm_ -q new --persistent-memory -a $1
 dvm_ -q run $name start
