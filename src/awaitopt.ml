@@ -1,344 +1,15 @@
 open Syntax
 open Source
-module T = Type
+open Effect
 module R = Rename
+module T = Type         
+open Syntaxops         
 
 (* TODO: 
-- is async<T> shareable or not?
-- consider introducing async function type, removing AsyncE and then allocating async<T> values on caller side, not callee side.
+- make async<T> non-shareable
 - consider using labels for (any) additional continuation arguments.
 - Our compilation of loops won't be stack efficient unless the compiler optimizes (self) tail calls - alternatively we could rejig the translation to compile loops as tail recursive functions that enter a loop, not just plain tail recursive functions.
 *)
-             
-
-(* a simple effect analysis to annote expressions as Triv(ial) (await-free) or Await (containing unprotected awaits) *)
-
-(* in future we could merge this with the type-checker
-   but I prefer to keep it mostly separate for now *)
-
-let max_eff e1 e2 =
-  match e1,e2 with
-  | T.Triv,T.Triv -> T.Triv
-  | _ , T.Await -> T.Await
-  | T.Await,_ -> T.Await
-
-let effect_exp (exp:Syntax.exp) : T.eff =
-   exp.note.note_eff
-
-     
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
-let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
-  match exp.it with
-  | PrimE _
-  | VarE _ 
-  | LitE _ ->
-    T.Triv
-  | UnE (_, exp1)
-  | ProjE (exp1, _)
-  | OptE exp1
-  | DotE (exp1, _)
-  | NotE exp1
-  | AssertE exp1 
-  | LabelE (_, _, exp1) 
-  | BreakE (_, exp1) 
-  | RetE exp1   
-  | AnnotE (exp1, _) 
-  | LoopE (exp1, None) ->  
-    effect_exp exp1 
-  | BinE (exp1, _, exp2)
-  | IdxE (exp1, exp2)
-  | IsE (exp1, exp2) 
-  | RelE (exp1, _, exp2) 
-  | AssignE (exp1, exp2) 
-  | CallE (exp1, _, exp2) 
-  | AndE (exp1, exp2)
-  | OrE (exp1, exp2) 
-  | WhileE (exp1, exp2) 
-  | LoopE (exp1, Some exp2) 
-  | ForE (_, exp1, exp2)->
-    let t1 = effect_exp exp1 in
-    let t2 = effect_exp exp2 in
-    max_eff t1 t2
-  | TupE exps 
-  | ArrayE exps ->
-    let es = List.map effect_exp exps in
-    List.fold_left max_eff Type.Triv es
-  | BlockE decs ->
-    let es = List.map effect_dec decs in
-    List.fold_left max_eff Type.Triv es 
-  | ObjE (_, _, efs) ->
-    effect_field_exps efs 
-  | IfE (exp1, exp2, exp3) ->
-    let e1 = effect_exp exp1 in
-    let e2 = effect_exp exp2 in
-    let e3 = effect_exp exp3 in
-    max_eff e1 (max_eff e2 e3)
-  | SwitchE (exp1, cases) ->
-    let e1 = effect_exp exp1 in
-    let e2 = effect_cases cases in
-    max_eff e1 e2
-  | AsyncE exp1 ->
-    T.Triv
-  | AwaitE exp1 ->
-    T.Await 
-  | DecE d ->
-     effect_dec d
-  | DeclareE (_, _, exp1) ->
-     effect_exp exp1
-  | DefineE (_, _, exp1) ->
-     effect_exp exp1
-  | NewObjE _ ->
-     T.Triv
-    
-and effect_cases cases =
-  match cases with
-  | [] ->
-    T.Triv
-  | {it = {pat; exp}; _}::cases' ->
-    let e = effect_exp exp in
-    max_eff e (effect_cases cases')
-
-and effect_field_exps efs =
-  List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
-                 
-and effect_dec dec =
-  dec.note.note_eff
-
-and infer_effect_dec dec =    
-  match dec.it with
-  | ExpD e
-  | LetD (_,e) 
-  | VarD (_, e) ->
-    effect_exp e
-  | TypD (v, tps, t) ->
-    T.Triv
-  | FuncD (s, v, tps, p, t, e) ->
-    T.Triv
-  | ClassD (v, l, tps, s, p, v', efs) ->
-    T.Triv
-
-
-let typ phrase = phrase.note.note_typ                   
-
-let eff phrase = phrase.note.note_eff
-
-let rec typ_decs decs =
-  match decs with
-     | [] -> T.unit
-     | [dec] -> typ dec
-     | _::decs -> typ_decs decs 
-                 
-
-(* the translation *)
-let is_triv phrase  =
-    eff phrase = T.Triv
-              
-let answerT = Type.unit
-let contT typ = T.Func(T.Call T.Local, T.Returns, [], [typ], [])
-let cpsT typ = T.Func(T.Call  T.Local, T.Returns, [], [contT typ], [])
-
-                 
-(* sugar *)                     
-
-(* identifiers *)
-
-let exp_of_id name typ =
-  {it = VarE (name@@no_region);
-   at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
-  }
-
-let id_of_exp x =
-  match x.it with
-  | VarE x -> x
-  | _ -> failwith "Impossible: id_of_exp"
-    
-    
-let id_stamp = ref 0
-
-let fresh_id typ =
-  let name = Printf.sprintf "$%i" (!id_stamp) in
-  let k = exp_of_id name typ in
-  (id_stamp := !id_stamp + 1;
-   k)
-
-
-(* primitives *)
-let primE name typ =
-  {it = PrimE name;
-   at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
-  } 
-
-(* TBR: require shareable typ? *)                                  
-let prim_async typ = primE "@async" (T.Func(T.Call T.Local, T.Returns ,[], [cpsT typ], [T.Async typ]))
-let prim_await typ = 
-  primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ],[]))
-  
-(* smart(ish) constructors *)
-    
-let idE id typ =
-  {it = VarE id;
-   at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
-  }
-
-let varP x = {x with it=VarP (id_of_exp x)}
-let letD x exp = { exp with it = LetD (varP x,exp) }
-let decE exp = {exp with it = DecE exp}
-
-let blockE decs = 
-    let es = List.map eff decs in
-    let typ = typ_decs decs in
-    let e =  List.fold_left max_eff Type.Triv es in
-    { it = BlockE decs;
-      at = no_region;
-      note = {note_typ = typ;
-              note_eff = e}
-    }
-                       
-let varD x exp = { exp with it = VarD (x,exp) }                   
-
-let textE s =
-  { it = LitE (ref (TextLit s));
-    at = no_region;
-    note = {note_typ = T.Prim T.Text;
-            note_eff = T.Triv;}
-  }
-    
-let letE x exp1 exp2 = 
-  { it = BlockE [letD x exp1;
-                 {exp2 with it = ExpD exp2}];
-    at = no_region;
-    note = {note_typ = typ exp2;
-            note_eff = max_eff (eff exp1) (eff exp2)}           
-  }
-
-let unitE =
-  { it = TupE [];
-    at = no_region;
-    note = {note_typ = T.Tup [];
-            note_eff = T.Triv}
-  }
-  
-let boolE b =
-  { it = LitE (ref (BoolLit true));
-    at = no_region;
-    note = {note_typ = T.bool;
-            note_eff = T.Triv}
-  }
-
-let ifE exp1 exp2 exp3 typ =
-  { it = IfE (exp1, exp2, exp3);
-    at = no_region;
-    note = {note_typ = typ;
-            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
-           }
-  }
-let dotE exp1 id typ =
-  { it = DotE (exp1,{it=id;at=no_region;note=()});
-    at = no_region;
-    note = {note_typ = typ;
-            note_eff = eff exp1}
-  }
-let switch_optE exp1 exp2 pat exp3 typ =
-  { it = SwitchE (exp1,
-                  [{it = {pat = {it = LitP (ref NullLit); 
-                                 at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
-                          exp = exp2};
-                    at = no_region;
-                    note = ()};
-                   {it = {pat = {it = OptP pat; 
-                                 at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
-                          exp = exp3};
-                    at = no_region;
-                    note = ()}]
-           );
-    at = no_region;
-    note = {note_typ = typ;
-            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
-           }
-  }
-    
-let expD exp =  {exp with it = ExpD exp}
-let tupE exps =
-   let effs = List.map effect_exp exps in
-   let eff = List.fold_left max_eff Type.Triv effs in
-   {it = TupE exps;
-    at = no_region;
-    note = {note_typ = T.Tup (List.map typ exps);
-            note_eff = eff}
-   }
-
-let declare_idE x typ exp1 =
-  { it = DeclareE (x, typ, exp1);
-    at = no_region;
-    note = exp1.note;
-   }
-
-let define_idE x mut exp1 =
-  { it = DefineE (x, mut @@ no_region, exp1);
-    at = no_region;
-    note = { note_typ = T.unit;
-             note_eff =T.Triv}
-  }
-
-let newObjE  typ sort ids =
-  { it = NewObjE (sort, ids);
-    at = no_region;
-    note = { note_typ = typ;
-             note_eff = T.Triv}
-  }
-
-let fresh_cont typ = fresh_id (contT typ)
-
-(* mono-morphic function def *)
-let funcD f x e =
-  match f.it,x.it with
-  | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
-                 note_eff = T.Triv} in
-     {it=FuncD(T.Local @@ no_region, (id_of_exp f),
-               [],
-               {it=VarP (id_of_exp x);at=no_region;note=x.note},
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
-               e);
-            at = no_region;
-            note;}
-  | _ -> failwith "Impossible: funcD"
-                              
-(* Lambda abstraction *)
-
-let  (-->) x e =
-  match x.it with
-  | VarE _ ->
-     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
-     decE (funcD f x e)
-  | _ -> failwith "Impossible: -->"
-            
-(* Lambda application *)
-    
-let ( -*- ) exp1 exp2 =
-  match exp1.note.note_typ with
-  | Type.Func(_, _, [], _, ts) ->
-     {it = CallE(exp1, [], exp2);
-      at = no_region;
-      note = {note_typ = T.seq ts;
-              note_eff = max_eff (eff exp1) (eff exp2)}
-     }
-  | typ1 -> failwith
-           (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
-              (Type.string_of_typ typ1)
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
-
 
 (* continuations, syntactic and meta-level *)
                               
@@ -482,9 +153,6 @@ and t_exp' context exp' =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | NewObjE (sort, ids) -> exp' 
-
-and t_block context decs : dec list= 
-  List.map (t_dec context) decs
 
 and t_dec context dec =
   {dec with it = t_dec' context dec.it}
@@ -673,7 +341,7 @@ and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
 
  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
- let dotnext v = dotE v (Name "next") next_typ -*- unitE in
+ let dotnext v = dotE v nextN next_typ -*- unitE in
  let loop = fresh_id (contT T.unit) in 
  let v2 = fresh_id T.unit in                    
  let e2 = match eff e2 with
@@ -873,11 +541,11 @@ and c_dec context dec (k:kont) =
      begin
      match eff exp with
      | T.Triv ->
-        k -@- define_idE id Var (t_exp context exp)
+        k -@- define_idE id varM (t_exp context exp)
      | T.Await ->
         c_exp context exp
           (meta (typ exp)
-             (fun v -> k -@- define_idE id Var v))
+             (fun v -> k -@- define_idE id varM v))
      end                                       
   | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
   | ClassD (id, _ (* name *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* id *), _ (* fields *) ) ->
@@ -885,7 +553,7 @@ and c_dec context dec (k:kont) =
     let v = fresh_id func_typ in 
     let u = fresh_id T.unit in
     blockE [letD v (decE (t_dec context dec));
-            letD u (define_idE id Const v);
+            letD u (define_idE id constM v);
             expD (k -@- v)]
 
 
@@ -973,7 +641,7 @@ and define_pat patenv pat : dec list =
   | LitP _ | SignP _ ->
     []
   | VarP id ->
-     [ let d = define_idE id Const (PatEnv.find id.it patenv) in
+     [ let d = define_idE id constM (PatEnv.find id.it patenv) in
        expD d  
      ]
   | TupP pats -> define_pats patenv pats  

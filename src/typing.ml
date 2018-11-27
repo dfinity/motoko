@@ -2,7 +2,7 @@ open Syntax
 open Source
 
 module T = Type
-module A = Await
+module A = Effect
 
 
 (* Error Handling *)
@@ -18,6 +18,7 @@ let warn at fmt =
     Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
+  
 let recover_with x f y =
   try f y, [] with Error es -> x, es
 

@@ -1,9 +1,9 @@
 open Syntax
 open Source
+open Effect   
 module T = Type
-module W = Wasm         
 open T
-open Awaitopt    (* TBD *)
+open Syntaxops   
 
 (* lower the async type itself
    - adds a final callback argument to every awaitable shared function, replace the result by unit
@@ -17,10 +17,13 @@ let localS =
   {it=T.Call T.Local;
    at=no_region;
    note=()}
+
+(*  
 let sharableS =
   {it=T.Call T.Sharable;
    at=no_region;
    note=()}
+*)
 
 let replyT typ = T.Func(T.Call T.Sharable, T.Returns, [], [typ], [])
               
@@ -47,7 +50,7 @@ let new_asyncT =
   )
   
 let new_asyncE =
-  exp_of_id "new_async" new_asyncT
+  idE ("new_async"@@no_region) new_asyncT
 
 let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore *)
              
@@ -61,29 +64,7 @@ let prelude_new_async t1 =
   
 let contTT t = funcT(localS,[],t,unitT)
             
-let tupP pats =
-  {it = TupP pats; 
-   note = {note_typ = T.Tup (List.map typ pats);
-           note_eff = T.Triv};
-   at = no_region}
-
-let projE e n =
-  match typ e with
-  | T.Tup ts ->
-     {it = ProjE(e,n);
-      note = {note_typ = List.nth ts n;
-              note_eff = T.Triv};
-      at = no_region;
-     }
-  | _ -> failwith "projE"
-
-let callE e1 ts e2 t =
-  { it = CallE(e1,ts,e2);
-    at = no_region;
-    note = {note_typ = t;
-            note_eff = T.Triv}
-  }
-  
+ 
 let shared_funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
@@ -107,7 +88,8 @@ let isAwaitableFunc exp =
 
 (* control flattening of shared function args, default true *)
 let flattening() = true
-                  
+
+(* TBD                 
 let extendTupT t1 t2 =
   match t1.it with
   (* NB: this will introduce a bogus type when t1 is a type abbreviation or variable, 
@@ -120,7 +102,8 @@ let extendTupT t1 t2 =
     end
   | VarT _ -> bogusT
   | _ -> tupT [t1;t2]
-
+ *)
+                 
 let extendTup ts t2 = ts @ [t2]
 
 let letP p e =  {it = LetD(p,e);
@@ -208,7 +191,7 @@ let rec t_typ (t:T.typ) =
 and t_bind {var; bound} =
   {var; bound = t_typ bound}
 
-  
+(* TBD   
 and bogus_typ_binds tbs =
   List.map (fun tb -> { it = {Syntax.var =
                                   {it = tb.T.var;
@@ -217,6 +200,7 @@ and bogus_typ_binds tbs =
                               bound = bogusT};
                         at = no_region;
                         note = ()}) tbs
+*)
   
 and t_field {name; typ} =
   {name; typ = t_typ typ}
@@ -350,9 +334,6 @@ and t_exp' (exp:Syntax.exp) =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp exp1)
   | NewObjE (sort, ids) -> exp' 
-
-and t_block decs : dec list= 
-  List.map t_dec decs
 
 and t_dec dec =
   { it = t_dec' dec.it;
