@@ -3,6 +3,12 @@ open Type
 
 (* A miscellany of helpers to construct typed terms from typed terms *)
 
+(* For convenience, fresh identifiers are returned as expressions, and binders
+   take expressions (that must be variables) as arguments.   
+   This makes code transformations easier to write and read, 
+   at the loss of some precision in OCaml typing.
+*)
+
 type var = exp
 
 (* Mutabilities *)         
