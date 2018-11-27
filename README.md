@@ -301,8 +301,8 @@ actor class Issuer() {
   };
 };
 
-actor class Account(initial_balance : Int) {
-  private var balance : Int = initial_balance;
+actor class Account(initialBalance : Int) = this {
+  private var balance : Int = initialBalance;
 
   getBalance() : async Int {
     return balance;
@@ -313,15 +313,15 @@ actor class Account(initial_balance : Int) {
     return Account(amount);
   };
 
-  join(account : Account) {  // this implicitly asserts that account is Account
+  join(account : like Account) {
+    assert(account is Account);
     let amount = balance;
     balance := 0;
-    account.credit(amount);
+    account.credit(amount, Account);
   };
 
-  private credit(amount : Int) {
-    // private implicitly asserts that caller is own class
-    // by implicitly passing the modref as an extra argument
+  credit(amount : Int, caller : Class) {
+    assert(this is caller);
     balance += amount;
   };
 
@@ -332,13 +332,13 @@ actor class Account(initial_balance : Int) {
 ```
 
 Example use:
+
 ```
-func transfer(sender : Account, receiver : Account, amount : Int) async {
+func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
   let trx = await sender.split(amount);
   trx.join(receiver);
 };
 ```
-
 
 ## Syntax
 

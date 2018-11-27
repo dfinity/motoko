@@ -114,7 +114,7 @@ and infer_effect_dec dec =
     T.Triv
   | FuncD (s, v, tps, p, t, e) ->
     T.Triv
-  | ClassD (v, l, tps, s, p, efs) ->
+  | ClassD (v, l, tps, s, p, v', efs) ->
     T.Triv
 
 
@@ -134,8 +134,8 @@ let is_triv phrase  =
     eff phrase = T.Triv
               
 let answerT = Type.unit
-let contT typ = T.Func(T.Call T.Local, [], typ, answerT)
-let cpsT typ = T.Func(T.Call T.Local, [], contT typ, answerT)
+let contT typ = T.Func(T.Call T.Local, T.Returns, [], [typ], [])
+let cpsT typ = T.Func(T.Call  T.Local, T.Returns, [], [contT typ], [])
 
                  
 (* sugar *)                     
@@ -173,9 +173,9 @@ let primE name typ =
   } 
 
 (* TBR: require shareable typ? *)                                  
-let prim_async typ = primE "@async" (T.Func(T.Call T.Local,[], cpsT typ, T.Async typ))
+let prim_async typ = primE "@async" (T.Func(T.Call T.Local, T.Returns ,[], [cpsT typ], [T.Async typ]))
 let prim_await typ = 
-  primE "@await" (T.Func(T.Call T.Local, [], T.Tup [T.Async typ; contT typ], T.unit))
+  primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ],[]))
   
 (* smart(ish) constructors *)
     
@@ -303,7 +303,7 @@ let fresh_cont typ = fresh_id (contT typ)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, [], typ x, typ e);
+     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
                  note_eff = T.Triv} in
      {it=FuncD(T.Local @@ no_region, (id_of_exp f),
                [],
@@ -319,7 +319,7 @@ let funcD f x e =
 let  (-->) x e =
   match x.it with
   | VarE _ ->
-     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, [], typ x, typ e)) in
+     let f = exp_of_id "$await-lambda" (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
             
@@ -327,10 +327,10 @@ let  (-->) x e =
     
 let ( -*- ) exp1 exp2 =
   match exp1.note.note_typ with
-  | Type.Func(_, [], _, t) ->
+  | Type.Func(_, _, [], _, ts) ->
      {it = CallE(exp1, [], exp2);
       at = no_region;
-      note = {note_typ = t;
+      note = {note_typ = T.seq ts;
               note_eff = max_eff (eff exp1) (eff exp2)}
      }
   | typ1 -> failwith
@@ -497,10 +497,10 @@ and t_dec' context dec' =
   | FuncD (s, id, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncD (s, id, typbinds, pat, typ,t_exp context' exp)
-  | ClassD (id, lab, typbinds, sort, pat, fields) ->
+  | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in     
     let fields' = t_fields context' fields in             
-    ClassD (id, lab, typbinds, sort, pat, fields')
+    ClassD (id, lab, typbinds, sort, pat, id', fields')
 
 and t_decs context decs = List.map (t_dec context) decs           
 
@@ -671,7 +671,8 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
- let next_typ = (T.Func(T.Call T.Local, [], T.unit, T.Opt (typ pat))) in
+
+ let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
  let dotnext v = dotE v (Name "next") next_typ -*- unitE in
  let loop = fresh_id (contT T.unit) in 
  let v2 = fresh_id T.unit in                    
@@ -879,7 +880,7 @@ and c_dec context dec (k:kont) =
              (fun v -> k -@- define_idE id Var v))
      end                                       
   | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) 
-  | ClassD (id, _ (* name *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* fields *) ) ->     
+  | ClassD (id, _ (* name *), _ (* typbinds *), _ (* sort *), _ (* pat *), _ (* id *), _ (* fields *) ) ->
     let func_typ = typ dec in
     let v = fresh_id func_typ in 
     let u = fresh_id T.unit in
@@ -905,7 +906,7 @@ and declare_dec dec exp : exp =
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
   | FuncD (_, id, _, _, _, _)
-  | ClassD (id, _, _, _, _, _) -> declare_id id (typ dec) exp
+  | ClassD (id, _, _, _, _, _, _) -> declare_id id (typ dec) exp
 
 and declare_decs decs exp : exp =
   match decs with

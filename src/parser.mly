@@ -195,7 +195,7 @@ typ_obj :
 
 typ_nullary :
   | LPAR t=typ RPAR
-    { t }
+    { ParT(t) @@ at $loc }
   | LPAR ts=seplist1(typ_item, COMMA) RPAR
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
@@ -535,14 +535,15 @@ dec_nonexp :
     { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary efs=class_body
-    { let efs' =
+  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+    { let x, efs = xefs in
+      let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
       in
       let id as tid = xf "class" $sloc in	
-      ClassD(xf "class" $sloc, tid, tps, s, p, efs') @? at $sloc }
+      ClassD(xf "class" $sloc, tid, tps, s, p, x, efs') @? at $sloc }
 dec :
   | d=dec_nonexp
     { d }
@@ -568,8 +569,8 @@ func_body :
   | e=exp_block { (true, e) }
 
 class_body :
-  | EQ efs=exp_obj { efs }
-  | efs=exp_obj { efs }
+  | EQ xf=id_opt efs=exp_obj { xf "object" $sloc, efs }
+  | efs=exp_obj { ("anon-object-" ^ string_of_pos (at $sloc).left) @@ at $sloc, efs }
 
 
 (* Programs *)

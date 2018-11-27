@@ -1,5 +1,6 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dvm ? true,
+  dvm ? null,
   v8 ? true,
 }:
 
@@ -22,16 +23,19 @@ let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
 }; in
 
 # Include dvm
-let dvm =
-  if test-dvm
+let real-dvm =
+  if dvm == null
   then
-    if !builtins.pathExists ./nix/dev/default.nix
+    if test-dvm
     then
-      throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
-    else
-      # Pass devel = true until the dev test suite runs on MacOS again
-      ((import ./nix/dev) { v8 = v8; devel = true; }).dvm
-  else null; in
+      if !builtins.pathExists ./nix/dev/default.nix
+      then
+        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
+      else
+        # Pass devel = true until the dev test suite runs on MacOS again
+        ((import ./nix/dev) { v8 = v8; devel = true; }).dvm
+    else null
+  else dvm; in
 
 # We need a newer version of menhir.
 # So lets fetch the generic rules for menhir from nixpkgs
@@ -106,7 +110,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
       ] ++
-      (if test-dvm then [ dvm ] else []);
+      (if test-dvm then [ real-dvm ] else []);
 
     buildPhase = ''
       patchShebangs .
@@ -150,5 +154,5 @@ rec {
   });
 
   wasm = ocaml_wasm;
-  inherit dvm;
+  dvm = real-dvm;
 }

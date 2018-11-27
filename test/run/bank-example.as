@@ -12,7 +12,7 @@ actor class Issuer() {
   };
 };
 
-actor class Account(initialBalance : Int) {
+actor class Account(initialBalance : Int) = self {
   private var balance : Int = initialBalance;
 
   getBalance() : async Int {
@@ -24,15 +24,15 @@ actor class Account(initialBalance : Int) {
     return Account(amount);
   };
 
-  join(account : Account) {  // this implicitly asserts that account is Account
+  join(account : like Account) {
+    assert(account is Account);
     let amount = balance;
     balance := 0;
-    account.credit(amount);
+    account.credit(amount, Account);
   };
 
-  private credit(amount : Int) {
-    // private implicitly asserts that caller is own class
-    // by implicitly passing the modref as an extra argument
+  credit(amount : Int, caller : Class) {
+    assert(self is caller);
     balance += amount;
   };
 
