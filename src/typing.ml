@@ -18,7 +18,7 @@ let has_errors : errors -> bool = List.fold_left (fun b e -> b || is_error e) fa
 
 exception Abort
 
-let abort = raise Abort
+let abort () = raise Abort
 let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Abort -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
@@ -61,7 +61,7 @@ let add_err env e = env.errs := !(env.errs) @ [e] (* TODO: Proper data structure
 let error env at fmt =
   Printf.ksprintf (fun s -> add_err env (Error (at, s))) fmt
 let fatal_error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (Error (at, s)); abort) fmt
+  Printf.ksprintf (fun s -> add_err env (Error (at, s)); abort ()) fmt
 let warn env at fmt =
   Printf.ksprintf (fun s -> add_err env (Warning (at, s))) fmt
 
