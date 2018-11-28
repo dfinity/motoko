@@ -1127,12 +1127,15 @@ and check_block_use_before_define ve decs : unit =
 
 and check_dec_use_before_define (ua : NameRel.t) dec : NameRel.t =
   let (f,d) = Freevars.dec dec in
-  List.iter (fun v1 ->
+  Freevars.S.iter (fun v1 ->
     List.iter (fun v2 ->
       error dec.at "cannot use %s before %s has been defined" v1 v2
     ) (Freevars.S.elements (NameRel.lookup v1 ua))
   ) (Freevars.eager_vars f);
-  NameRel.remove_range d ua
+  NameRel.remove_range d
+   (NameRel.union
+    ua
+    (NameRel.comp (NameRel.prod d (Freevars.delayed_vars f)) ua))
 
 (* Pass 6: infer value types *)
 and infer_block_valdecs env decs : val_env =
