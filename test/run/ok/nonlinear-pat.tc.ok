@@ -1,2 +1,1 @@
-nonlinear-pat.as:1.11-1.12: type error, duplicate binding for x in block
 nonlinear-pat.as:1.5-1.14: type error, duplicate binding for x in pattern

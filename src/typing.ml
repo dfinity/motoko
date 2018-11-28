@@ -677,21 +677,24 @@ and check_case env t_pat t {it = {pat; exp}; _} =
 
 (* Patterns *)
 
-and gather_pat env ve pat : val_env =
-  match pat.it with
-  | WildP | LitP _ | SignP _ ->
-    ve
-  | VarP id ->
-    if T.Env.mem id.it ve then
-      error env pat.at "duplicate binding for %s in block" id.it;
-    T.Env.add id.it T.Pre ve
-  | TupP pats ->
-    List.fold_left (gather_pat env) ve pats
-  | AltP (pat1, pat2) ->
-    gather_pat env ve pat1
-  | OptP pat1
-  | AnnotP (pat1, _) ->
-    gather_pat env ve pat1
+and gather_pat env ve0 pat : val_env =
+  let rec go ve pat =
+    match pat.it with
+    | WildP | LitP _ | SignP _ ->
+      ve
+    | VarP id ->
+      if T.Env.mem id.it ve0 then
+        error env pat.at "duplicate binding for %s in block" id.it;
+      T.Env.add id.it T.Pre ve
+    | TupP pats ->
+      List.fold_left go ve pats
+    | AltP (pat1, pat2) ->
+      go ve pat1
+    | OptP pat1
+    | AnnotP (pat1, _) ->
+      go ve pat1
+   in T.Env.adjoin ve0 (go T.Env.empty pat)
+
 
 
 and infer_pat_exhaustive env pat : T.typ * val_env =
