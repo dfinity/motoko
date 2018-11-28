@@ -1,2 +1,4 @@
 asyncret1.as:1.36-1.38: type error, shared function has non-async result type
   C
+asyncret1.as:1.36-1.38: type error, shared function has non-async result type
+  C/1

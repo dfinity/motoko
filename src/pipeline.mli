@@ -2,7 +2,8 @@ type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-type error = Source.region * string * string
+type error = Source.region * string * bool * string
+val print_error : error -> unit
 
 val initial_stat_env : stat_env
 val initial_dyn_env  : dyn_env

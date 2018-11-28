@@ -56,15 +56,11 @@ let exit_on_none = function
 let exit_on_failure = function
   | Ok x -> x
   | Error errs ->
-    List.iter (fun (at, category, msg) ->
-      eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
-    ) errs;
+    List.iter Pipeline.print_error errs;
     exit 1
 
 let exit_on_failure' (es, r) =
-    List.iter (fun (at, category, msg) ->
-      eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
-    ) es;
+    List.iter Pipeline.print_error es;
     match r with
     | Some x -> x
     | None -> exit 1

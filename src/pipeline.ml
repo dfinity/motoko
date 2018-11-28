@@ -12,13 +12,15 @@ type env = stat_env * dyn_env
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-type error = Source.region * string * string
+type error = Source.region * string * bool * string
 
 let error at category msg =
-  Error (at, category, msg)
+  Error (at, category, true, msg)
 
-let print_error (at, category, msg) =
-  eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
+let print_error (at, category, is_error, msg) =
+  if is_error
+  then eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
+  else eprintf "%s: warning, %s\n%!" (Source.string_of_region at) msg
 
 let print_ce =
   Con.Env.iter (fun c k ->
@@ -111,8 +113,8 @@ let check_prog infer senv name prog
   phase "Checking" name;
   let errs, r = infer senv prog in
   let errs' = List.map (function
-    | Typing.Error (at, msg) -> (at, "type", msg)
-    | Typing.Warning (at, msg) -> (at, "type", msg)
+    | Typing.Error (at, msg) -> (at, "type", true, msg)
+    | Typing.Warning (at, msg) -> (at, "type", false, msg)
   ) errs in
   match r with
   | Some (t, ((ve, te, ce) as scope)) ->
@@ -178,7 +180,7 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    print_error (Interpret.get_last_region (), "fatal", Printexc.to_string exn);
+    print_error (Interpret.get_last_region (), "fatal", true, Printexc.to_string exn);
     eprintf "\nLast environment:\n%!";
     eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
     eprintf "\n";
@@ -211,8 +213,8 @@ let interpret_files env = function
 
 let prelude_name = "prelude"
 
-let prelude_error phase (at, _, msg) =
-  print_error (at, "fatal", phase ^ " prelude failed: " ^ msg);
+let prelude_error phase (at, _, is_err, msg) =
+  print_error (at, "fatal", is_err, phase ^ " prelude failed: " ^ msg);
   exit 1
 
 let check_prelude () : Syntax.prog * stat_env =
@@ -231,7 +233,7 @@ let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_env prelude_name prelude with
-  | None -> prelude_error "initializing" (Source.no_region, "", "crashed")
+  | None -> prelude_error "initializing" (Source.no_region, "", true, "crashed")
   | Some (_v, dscope) ->
     Interpret.adjoin Interpret.empty_env dscope
 
