@@ -14,7 +14,7 @@ val parse_files  : string list -> parse_result
 val parse_string : string -> string -> parse_result
 val parse_lexer  : Lexing.lexbuf -> string -> parse_result
 
-type check_result = (Syntax.prog * Type.typ * Typing.scope, error list) result
+type check_result = error list * (Syntax.prog * Type.typ * Typing.scope) option
 val check_file   : stat_env -> string -> check_result
 val check_files  : stat_env -> string list -> check_result
 val check_string : stat_env -> string -> string -> check_result
