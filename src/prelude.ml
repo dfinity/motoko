@@ -50,7 +50,7 @@ func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
 type Cont<T <: Shared> = T -> () ;
 type Async<T <: Shared> = Cont<T> -> (); 
 
-func new_async<T <: Shared>():(Async<T>,shared T->()) {
+func @new_async<T <: Shared>():(Async<T>,shared T->()) {
     let empty = func k (t:T) = ();
     var result : T ? = null;
     var ks : T -> () = empty;
