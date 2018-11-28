@@ -2911,7 +2911,16 @@ and compile_exp (env : E.t) exp = match exp.it with
        let code = compile_exp env e in
        code ^^ G.i_ (Br (nr 0l))
      ) ^^
-     G.i_ Unreachable
+       G.i_ Unreachable
+  | LoopE (e1, Some e2) ->
+     let code1 = compile_exp env e1 in
+     let code2 = compile_exp env e2 in
+     G.loop_ [] (
+       code1 ^^ G.i_ Drop ^^
+       code2 ^^ BoxedInt.unbox env ^^
+       G.if_ [] (G.i_ (Br (nr 1l))) G.nop
+     ) ^^
+     compile_unit
   | WhileE (e1, e2) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
