@@ -868,7 +868,7 @@ and gather_exp_fields env id fields : val_env =
 and gather_exp_field env ve field : val_env =
   let {id; _} : exp_field' = field.it in
   if T.Env.mem id.it ve then
-    error env id.at "duplicate field name %s in object" id.it;
+    fatal_error env id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it T.Pre ve
 
 
