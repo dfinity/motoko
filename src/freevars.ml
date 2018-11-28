@@ -39,11 +39,16 @@ let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
 (* The bound variables from the second argument scope over the first *)
 let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 
-(* This closes a combined set over itself (recursion or mutual recursion) *)
-let close (f,d) = diff f d
-
-(* Lambdas delay all usages, applications (and similar beta-reductions, like
-   projections) eagerify all of them *)
+(* Usage tracking. We distinguish between eager and delayed variables.
+   Eager variables become delayed
+   - inside lambda
+   Delayed variables may stay delayed
+   - when storing variables in data structures (tuples, objects, lists)
+   Delayed variables become eager
+   - when used in an application
+   - when extracted from data structures (projection, indexing)
+   - when a block uses any of its own variables eagerly (see function `close`)
+*)
 let delayify : f -> f = M.map (fun _ -> Delayed)
 let eagerify : f -> f = M.map (fun _ -> Eager)
 
@@ -52,6 +57,11 @@ let eager_vars : f -> S.t =
 let delayed_vars : f -> S.t =
   fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u == Delayed) (M.bindings f)))
 
+(* This closes a combined set over itself (recursion or mutual recursion) *)
+let close (f,d) =
+  if S.is_empty (S.inter d (eager_vars f))
+  then diff f d
+  else eagerify (diff f d)
 
 (* One traversal for each syntactic category, named by that category *)
 
