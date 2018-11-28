@@ -1042,6 +1042,7 @@ and infer_block_decs env decs : scope =
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
   let pre_ve' = gather_block_valdecs decs in
+  check_block_use_before_define pre_ve' decs;
   let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
   (ve, te, ce)
 
@@ -1117,7 +1118,23 @@ and gather_dec_valdecs ve dec : val_env =
     T.Env.add id.it T.Pre ve
 
 
-(* Pass 5: infer value types *)
+(* Pass 5: check use-before-define *)
+
+and check_block_use_before_define ve decs : unit =
+  let ua = NameRel.diag (List.map fst (T.Env.bindings ve)) in
+  let _ = List.fold_left check_dec_use_before_define ua decs
+  in ()
+
+and check_dec_use_before_define (ua : NameRel.t) dec : NameRel.t =
+  let (f,d) = Freevars.dec dec in
+  List.iter (fun v1 ->
+    List.iter (fun v2 ->
+      error dec.at "cannot use %s before %s has been defined" v1 v2
+    ) (Freevars.S.elements (NameRel.lookup v1 ua))
+  ) (Freevars.eager_vars f);
+  NameRel.remove_range d ua
+
+(* Pass 6: infer value types *)
 and infer_block_valdecs env decs : val_env =
   let _, ve =
     List.fold_left (fun (env, ve) dec ->

@@ -47,6 +47,9 @@ let close (f,d) = diff f d
 let delayify : f -> f = M.map (fun _ -> Delayed)
 let eagerify : f -> f = M.map (fun _ -> Eager)
 
+let eager_vars : f -> string list =
+  fun f -> List.map fst (List.filter (fun (k,u) -> u == Eager) (M.bindings f))
+
 
 (* One traversal for each syntactic category, named by that category *)
 
