@@ -9,9 +9,9 @@ let join u1 u2 = match u1, u2 with
   | _, Eager -> Eager
   | Delayed, Delayed -> Delayed
 
+
 module M = Env.Make(String)
 module S = Set.Make(String)
-
 
 (* A set of free variables *)
 type f = usage_info M.t
@@ -42,23 +42,29 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) = diff f d
 
+(* Lambdas delay all usages, applications (and similar beta-reductions, like
+   projections) eagerify all of them *)
+let delayify : f -> f = M.map (fun _ -> Delayed)
+let eagerify : f -> f = M.map (fun _ -> Eager)
+
+
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
   | VarE i              -> M.singleton i.it Eager
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
-  | UnE (uo, e)         -> exp e
-  | BinE (e1, bo, e2)   -> exps [e1; e2]
-  | RelE (e1, ro, e2)   -> exps [e1; e2]
+  | UnE (uo, e)         -> eagerify (exp e)
+  | BinE (e1, bo, e2)   -> eagerify (exps [e1; e2])
+  | RelE (e1, ro, e2)   -> eagerify (exps [e1; e2])
   | TupE es             -> exps es
-  | ProjE (e, i)        -> exp e
+  | ProjE (e, i)        -> eagerify (exp e)
   | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
-  | DotE (e, i)         -> exp e
-  | AssignE (e1, e2)    -> exps [e1; e2]
+  | DotE (e, i)         -> eagerify (exp e)
+  | AssignE (e1, e2)    -> eagerify (exps [e1; e2])
   | ArrayE es           -> exps es
-  | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (e1, ts, e2)  -> exps [e1; e2]
+  | IdxE (e1, e2)       -> eagerify (exps [e1; e2])
+  | CallE (e1, ts, e2)  -> eagerify (exps [e1; e2])
   | BlockE ds           -> close (decs ds)
   | NotE e              -> exp e
   | AndE (e1, e2)       -> exps [e1; e2]
@@ -80,8 +86,8 @@ let rec exp e : f = match e.it with
   | DecE d              -> close (dec d)
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
-  | DefineE (i, m, e)   -> (id i) ++ exp e
-  | NewObjE (_,ids)    -> unions id (List.map (fun (lab,id) -> id) ids)
+  | DefineE (i, m, e)   -> eagerify (id i ++ exp e)
+  | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
 
@@ -111,12 +117,13 @@ and id i = M.singleton i.it Eager
 and dec d = match d.it with
   | ExpD e -> (exp e, S.empty)
   | LetD (p, e) -> pat p +++ exp e
-  | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp e
+  | VarD (i, e) ->
+    (M.empty, S.singleton i.it) +++ exp e
   | FuncD (s, i, tp, p, t, e) ->
-    (M.empty, S.singleton i.it) +++ (exp e /// pat p)
+    (M.empty, S.singleton i.it) +++ delayify (exp e /// pat p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, l, tp, s, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ (close (exp_fields efs) /// pat p // i'.it)
+    (M.empty, S.singleton i.it) +++ delayify (close (exp_fields efs) /// pat p // i'.it)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =
@@ -125,6 +132,5 @@ and captured p e =
 (* The variables captured by a class function. May include the function itself! *)
 and captured_exp_fields p efs =
   List.map fst (M.bindings (close (exp_fields efs) /// pat p))
-
 
 and decs ps : fd = union_binders dec ps
