@@ -1,4 +1,4 @@
-{ nixpkgs ? (import ./nix/dev/nix/nixpkgs.nix) {},
+{ nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dvm ? true,
   dvm ? null,
   v8 ? true,
