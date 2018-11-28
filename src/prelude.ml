@@ -99,9 +99,7 @@ let prim = function
          let rec go prefix k i =
           if i == len_nat
           then k (Array (Array.of_list (prefix [])))
-          else g' (Int (Int.of_int i)) (fun x ->
-	    go (fun tl -> prefix (Mut (ref x)::tl)) k (i + 1)
-	  )
+          else g' (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
          in go (fun xs -> xs) k 0
       | _ -> assert false)
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))
