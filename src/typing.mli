@@ -8,8 +8,8 @@ type ret_env = typ option
 
 type scope = val_env * typ_env * con_env
 
-type error = Error of (Source.region * string)
-           | Warning of (Source.region * string)
+type error = Error of Source.region * string
+           | Warning of Source.region * string
 type errors = error list
 
 type env =

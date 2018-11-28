@@ -7,8 +7,8 @@ module A = Effect
 
 (* Error bookkeeping *)
 
-type error = Error of (Source.region * string)
-           | Warning of (Source.region * string)
+type error = Error of Source.region * string
+           | Warning of Source.region * string
 type errors = error list
 
 let is_error : error -> bool = function Error _ -> true | Warning _ -> false
