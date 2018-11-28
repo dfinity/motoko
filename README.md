@@ -29,8 +29,8 @@ To update, just run the last two commands again.
 
 ## Development using Nix
 
-**Mac OS X note**: Currently, Nix on Mac cannot built V8. So pass `--arg v8` to
-any of the following `nix` commands.
+Currently, V8 is not used by default. Pass `--arg v8 true` to
+any of the following `nix` commands to build using V8.
 
 
 This is the command that should always pass on master is the following, which builds everything:
