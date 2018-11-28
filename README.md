@@ -29,10 +29,6 @@ To update, just run the last two commands again.
 
 ## Development using Nix
 
-**Mac OS X note**: Currently, Nix on Mac cannot built V8. So pass `--arg v8` to
-any of the following `nix` commands.
-
-
 This is the command that should always pass on master is the following, which builds everything:
 ```
 $ nix-build
@@ -60,6 +56,10 @@ nix-env -i -f . -A wasm
 nix-env -i -f . -A dvm
 ```
 Repeat the last command after upgrading `dev/nix`.
+
+By default, `dvm` is built using the V8 engine. To build with the Haskell
+engine, pass `--arg v8 false` to any of the above `nix-*` commands.
+
 
 ## Installation and development without Nix
 
