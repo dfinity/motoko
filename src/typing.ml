@@ -114,7 +114,7 @@ let check_ids env ids = ignore
   (List.fold_left
     (fun dom id ->
       if List.mem id.it dom
-      then (error env id.at "duplicate field name %s in object type" id.it; dom)
+      then fatal_error env id.at "duplicate field name %s in object type" id.it
       else id.it::dom
     ) [] ids
   )
@@ -684,7 +684,7 @@ and gather_pat env ve0 pat : val_env =
       ve
     | VarP id ->
       if T.Env.mem id.it ve0 then
-        error env pat.at "duplicate binding for %s in block" id.it;
+        fatal_error env pat.at "duplicate binding for %s in block" id.it;
       T.Env.add id.it T.Pre ve
     | TupP pats ->
       List.fold_left go ve pats
@@ -738,7 +738,7 @@ and infer_pat' env pat : T.typ * val_env =
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub env.cons t1 t2 in
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "variables are not allowed in pattern alternatives";
+      fatal_error env pat.at "variables are not allowed in pattern alternatives";
     t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
@@ -1060,7 +1060,7 @@ and gather_dec_typdecs env (ve, te, ce) dec : scope =
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> ve, te, ce
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _) ->
     if T.Env.mem id.it te then
-      error env dec.at "duplicate definition for type %s in block" id.it;
+      fatal_error env dec.at "duplicate definition for type %s in block" id.it;
     let cs =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
     let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
@@ -1117,7 +1117,7 @@ and gather_dec_valdecs env ve dec : val_env =
     gather_pat env ve pat
   | VarD (id, _) | FuncD (_, id, _, _, _, _) | ClassD (id, _ , _, _, _, _, _) ->
     if T.Env.mem id.it ve then
-      error env dec.at "duplicate definition for %s in block" id.it;
+      fatal_error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
 
 
