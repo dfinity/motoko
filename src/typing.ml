@@ -308,7 +308,7 @@ and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
   let t' = T.promote env.cons t in
   if t' = T.Pre then
-    error env exp.at "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
+    fatal_error env exp.at "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
       (T.string_of_typ_expand env.cons t);
   t'
 
@@ -583,16 +583,16 @@ and infer_exp' env exp : T.typ =
      begin
        match T.Env.find_opt id.it env.vals with
        | Some T.Pre ->
-          error env id.at "cannot infer type of forward variable %s" id.it;
+          fatal_error env id.at "cannot infer type of forward variable %s" id.it
        | Some t1 -> 
           if not env.pre then begin
               try
                 let t2 = match mut.it with | Var -> T.as_mut t1 | Const -> t1 in
                 check_exp env t2 exp1
               with Invalid_argument _ ->
-                error env exp.at "expected mutable assignment target";
+                fatal_error env exp.at "expected mutable assignment target";
             end;
-       | None -> error env id.at "unbound variable %s" id.it
+       | None -> fatal_error env id.at "unbound variable %s" id.it
     end;
     T.unit
   | NewObjE (sort, labids) ->
@@ -828,8 +828,8 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i fewer components than expected type"
       (List.length ts); ve
   | ts, [] ->
-    error env at "tuple pattern has %i more components than expected type"
-      (List.length ts); ve
+    fatal_error env at "tuple pattern has %i more components than expected type"
+      (List.length ts)
 
 
 (* Objects *)
