@@ -152,15 +152,15 @@ let rec check_typ env typ : T.typ =
     if sort.it = T.Call T.Sharable then begin
       let t1 = T.seq ts1 in
       if not (T.sub env'.cons t1 T.Shared) then
-        local_error env typ1.at "shared function has non-shared parameter type\n  %s"
+        error env typ1.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
       let t2 = T.seq ts2 in
       if not (T.sub env'.cons t2 T.Shared) then
-        local_error env typ1.at "shared function has non-shared result type\n  %s"
+        error env typ1.at "shared function has non-shared result type\n  %s"
           (T.string_of_typ_expand env'.cons t2);
       let t2' = T.promote env'.cons t2 in
       if not (T.is_unit t2' || T.is_async t2') then
-        local_error env typ1.at "shared function has non-async result type\n  %s"
+        error env typ1.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons t2)
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
@@ -182,10 +182,10 @@ and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
   if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
-    local_error env typ.at "actor field %s has non-function type\n  %s"
+    error env typ.at "actor field %s has non-function type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
-    local_error env typ.at "shared objext or actor field %s has non-shared type\n  %s"
+    error env typ.at "shared objext or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
@@ -195,7 +195,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
-        local_error env id.at "duplicate type name %s in type parameter list" id.it;
+        error env id.at "duplicate type name %s in type parameter list" id.it;
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
   let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
@@ -900,9 +900,9 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
   in
   if not env.pre then begin
     if s = T.Actor && priv.it = Public && not (is_func_exp exp) then
-      local_error env field.at "public actor field is not a function";
+      error env field.at "public actor field is not a function";
     if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
-      local_error env field.at "public shared object or actor field %s has non-shared type\n  %s"
+      error env field.at "public shared object or actor field %s has non-shared type\n  %s"
         (string_of_name name.it) (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in
@@ -1142,17 +1142,17 @@ and infer_dec_valdecs env dec : val_env =
     let t2 = check_typ env' typ in
     if not env.pre && sort.it = T.Sharable then begin
       if not (T.sub env'.cons t1 T.Shared) then
-        local_error env pat.at "shared function has non-shared parameter type\n  %s"
+        error env pat.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
       if not (T.sub env'.cons t2 T.Shared) then
-        local_error env typ.at "shared function has non-shared result type\n  %s"
+        error env typ.at "shared function has non-shared result type\n  %s"
           (T.string_of_typ_expand env'.cons t2);
       let t2' = T.promote env'.cons t2 in
       if not (T.is_unit t2' || T.is_async t2') then
-        local_error env typ.at "shared function has non-async result type\n  %s"
+        error env typ.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons t2);
       if T.is_async t2' && (not (isAsyncE exp)) then
-        local_error env dec.at "shared function with async type has non-async body"
+        error env dec.at "shared function with async type has non-async body"
       end;
     let ts1 = match pat.it with
       | TupP _ -> T.as_seq t1
