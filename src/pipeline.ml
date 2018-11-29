@@ -36,9 +36,9 @@ let print_stat_ve =
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
 
-let print_dyn_ve (vals, _, _)=
+let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
-    let t = Type.Env.find x vals in
+    let t = Type.Env.find x scope.Typing.val_env in
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
@@ -50,8 +50,8 @@ let eprint_dyn_ve_untyped =
     eprintf "%s = %s\n%!" x (Value.string_of_def d)
   )
 
-let print_scope senv (sve, te, ce) dve =
-  print_ce ce;
+let print_scope senv scope dve =
+  print_ce scope.Typing.con_env;
   print_dyn_ve senv dve
 
 let print_val _senv v t =
@@ -113,10 +113,10 @@ let check_prog infer senv name prog
   : (Type.typ * Typing.scope, error list) result =
   try
     phase "Checking" name;
-    let t, ((ve, te, ce) as scope) = infer senv prog in
+    let t, scope = infer senv prog in
     if !Flags.trace && !Flags.verbose then begin
-      print_ce ce;
-      print_stat_ve ve
+      print_ce scope.Typing.con_env;
+      print_stat_ve scope.Typing.val_env
     end;
     Ok (t, scope)
   with Typing.Error errs ->
