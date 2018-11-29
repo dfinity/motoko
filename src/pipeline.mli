@@ -4,7 +4,7 @@ type env = stat_env * dyn_env
 
 type message = Source.region * string * Severity.t * string
 type messages = message list
-val print_message : message -> unit
+val print_messages : messages -> unit
 
 val initial_stat_env : stat_env
 val initial_dyn_env  : dyn_env

@@ -23,6 +23,8 @@ let print_message (at, category, severity, msg) =
   | Severity.Error -> eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
   | Severity.Warning -> eprintf "%s: warning, %s\n%!" (Source.string_of_region at) msg
 
+let print_messages = List.iter print_message
+
 let print_ce =
   Con.Env.iter (fun c k ->
     let eq, params, typ = Type.strings_of_kind k in
@@ -188,10 +190,10 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
 let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
   | Error msgs ->
-    List.iter print_message msgs;
+    print_messages msgs;
     None
   | Ok (prog, t, sscope, msgs) ->
-    List.iter print_message msgs;
+    print_messages msgs;
     let prog = await_lowering (!Flags.await_lowering) prog name in
     let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
     match interpret_prog denv name prog with
@@ -293,7 +295,7 @@ let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error msgs -> Error msgs
   | Ok (prog, _t, _scope, msgs) ->
-    List.iter print_message msgs;
+    print_messages msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     phase "Compiling" name;

@@ -56,7 +56,7 @@ let exit_on_none = function
 let exit_on_failure = function
   | Ok x -> x
   | Error errs ->
-    List.iter Pipeline.print_message errs;
+    Pipeline.print_messages errs;
     exit 1
 
 let process_files names : unit =
@@ -71,7 +71,7 @@ let process_files names : unit =
     Pipeline.run_stdin env
   | Check ->
     let (_,_,_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env names) in
-    List.iter Pipeline.print_message msgs
+    Pipeline.print_messages msgs
   | Compile ->
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     if !out_file = "" then begin
