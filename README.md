@@ -55,7 +55,7 @@ you maintain your Ocaml installation manually), run
 nix-env -i -f . -A wasm
 nix-env -i -f . -A dvm
 ```
-Repeat the last command after upgrading `dev/nix`.
+To update the `dev` checkout and install `dvm` in one go, run `./update-dvm.sh`.
 
 By default, `dvm` is built using the V8 engine. To build with the Haskell
 engine, pass `--arg v8 false` to any of the above `nix-*` commands.
