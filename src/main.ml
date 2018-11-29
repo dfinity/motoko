@@ -59,12 +59,6 @@ let exit_on_failure = function
     List.iter Pipeline.print_message errs;
     exit 1
 
-let exit_on_failure' (es, r) =
-    List.iter Pipeline.print_message es;
-    match r with
-    | Some x -> x
-    | None -> exit 1
-
 let process_files names : unit =
   match !mode with
   | Default ->
@@ -76,7 +70,8 @@ let process_files names : unit =
     let env = exit_on_none Pipeline.(run_files initial_env names) in
     Pipeline.run_stdin env
   | Check ->
-    ignore (exit_on_failure' Pipeline.(check_files initial_stat_env names));
+    let (_,_,_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env names) in
+    List.iter Pipeline.print_message msgs
   | Compile ->
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     if !out_file = "" then begin

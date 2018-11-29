@@ -23,10 +23,12 @@ let diagnostics_of_error (at, category, sev, msg) =
 
 
 let js_check source =
-  let es, r = Pipeline.check_string
-    Pipeline.initial_stat_env (Js.to_string source) "js-input"
-  in object%js
-    val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error es))
+  let msgs = match
+    Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source) "js-input" with
+    | Error msgs -> msgs
+    | Ok (_, _, _,  msgs) -> msgs in
+  object%js
+    val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
     val code = Js.null
   end
 

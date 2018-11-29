@@ -64,11 +64,6 @@ let error env at fmt =
 let warn env at fmt =
   Printf.ksprintf (fun s -> add_err env (at, Severity.Warning, s)) fmt
 
-let recover_and_report env f y =
-  let r = recover_opt f y in
-  let errs = !(env.errs) in
-  env.errs := [];
-  if has_errors errs then (errs, None) else (errs, r)
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
@@ -1191,8 +1186,18 @@ and infer_dec_valdecs env dec : val_env =
 
 (* Programs *)
 
-let check_prog env prog : messages * scope option =
-  recover_and_report env (check_block env T.unit prog.it) prog.at
+let check_prog env prog : (scope * messages, messages) result =
+  let r = recover_opt (check_block env T.unit prog.it) prog.at in
+  let msgs = !(env.errs) in
+  match r with
+  | Some scope when not (has_errors msgs) ->
+    Ok (scope, msgs)
+  | _ -> Error msgs
 
-let infer_prog env prog : messages * (T.typ * scope) option =
-  recover_and_report env (infer_block env prog.it) prog.at
+let infer_prog env prog : (T.typ * scope * messages, messages) result =
+  let r = recover_opt (infer_block env prog.it) prog.at in
+  let msgs = !(env.errs) in
+  match r with
+  | Some (t, scope) when not (has_errors msgs) ->
+    Ok (t, scope, msgs)
+  | _ -> Error msgs

@@ -27,5 +27,5 @@ val adjoin : env -> scope -> env
 val adjoin_vals : env -> val_env -> env
 val adjoin_typs : env -> typ_env -> con_env -> env
 
-val check_prog : env -> Syntax.prog -> messages * scope option
-val infer_prog : env -> Syntax.prog -> messages * (typ * scope) option
+val check_prog : env -> Syntax.prog -> (scope * messages, messages) result
+val infer_prog : env -> Syntax.prog -> (typ * scope * messages, messages) result

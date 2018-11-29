@@ -13,6 +13,7 @@ let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
 type message = Source.region * string * Severity.t * string
+type messages = message list
 
 let error at category msg =
   Error (at, category, Severity.Error, msg)
@@ -106,22 +107,21 @@ let parse_files filenames =
 
 (* Checking *)
 
-type check_result = message list * (Syntax.prog * Type.typ * Typing.scope) option
+type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages) result
+
+let messages_of_typing_messages = List.map (fun (at, sev, msg) -> (at, "type", sev, msg))
 
 let check_prog infer senv name prog
-  : message list * (Type.typ * Typing.scope) option =
+  : (Type.typ * Typing.scope * messages, messages) result =
   phase "Checking" name;
-  let errs, r = infer senv prog in
-  let errs' = List.map (fun (at, sev, msg) -> (at, "type", sev, msg)) errs in
-  match r with
-  | Some (t, ((ve, te, ce) as scope)) ->
+  match infer senv prog with
+  | Ok (t, ((ve, te, ce) as scope), msgs) ->
     if !Flags.trace && !Flags.verbose then begin
       print_ce ce;
       print_stat_ve ve
     end;
-    errs', Some (t, scope)
-  | None ->
-    errs', None
+    Ok (t, scope, messages_of_typing_messages msgs)
+  | Error msgs -> Error (messages_of_typing_messages msgs)
 
 let await_lowering flag prog name =
   if flag then
@@ -145,16 +145,16 @@ let async_lowering flag prog name =
 
 let check_with parse infer senv name : check_result =
   match parse name with
-  | Error e -> [e], None
+  | Error e -> Error [e]
   | Ok prog ->
     match check_prog infer senv name prog with
-    | es, None -> es, None
-    | es, Some (t, scope) -> es, Some (prog, t, scope)
+    | Error msgs -> Error msgs
+    | Ok (t, scope, msgs) -> Ok (prog, t, scope, msgs)
 
 let infer_prog_unit senv prog =
   match Typing.check_prog senv prog with
-  | errs, None -> errs, None
-  | errs, Some scope -> errs, Some (Type.unit, scope)
+  | Error msgs -> Error msgs
+  | Ok (scope, msgs) -> Ok (Type.unit, scope, msgs)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
 let check_file senv n = check_with parse_file infer_prog_unit senv n
@@ -187,11 +187,11 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
 
 let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
-  | es, None ->
-    List.iter print_message es;
+  | Error msgs ->
+    List.iter print_message msgs;
     None
-  | es, Some (prog, t, sscope) ->
-    List.iter print_message es;
+  | Ok (prog, t, sscope, msgs) ->
+    List.iter print_message msgs;
     let prog = await_lowering (!Flags.await_lowering) prog name in
     let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
     match interpret_prog denv name prog with
@@ -221,8 +221,8 @@ let check_prelude () : Syntax.prog * stat_env =
   | Error e -> prelude_error "parsing" e
   | Ok prog ->
     match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
-    | es, None -> prelude_error "checking" (List.hd es)
-    | _, Some (_t, sscope) ->
+    | Error msgs -> prelude_error "checking" (List.hd msgs)
+    | Ok (_t, sscope, msgs) ->
       let senv = Typing.adjoin Typing.empty_env sscope in
       prog, senv
 
@@ -287,13 +287,13 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (CustomModule.extended_module, message list) result
+type compile_result = (CustomModule.extended_module, messages) result
 
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
-  | es, None -> Error es
-  | es, Some (prog, _t, _scope) ->
-    List.iter print_message es;
+  | Error msgs -> Error msgs
+  | Ok (prog, _t, _scope, msgs) ->
+    List.iter print_message msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     phase "Compiling" name;

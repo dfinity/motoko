@@ -3,6 +3,7 @@ type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
 type message = Source.region * string * Severity.t * string
+type messages = message list
 val print_message : message -> unit
 
 val initial_stat_env : stat_env
@@ -15,7 +16,7 @@ val parse_files  : string list -> parse_result
 val parse_string : string -> string -> parse_result
 val parse_lexer  : Lexing.lexbuf -> string -> parse_result
 
-type check_result = message list * (Syntax.prog * Type.typ * Typing.scope) option
+type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages) result
 val check_file   : stat_env -> string -> check_result
 val check_files  : stat_env -> string list -> check_result
 val check_string : stat_env -> string -> string -> check_result
