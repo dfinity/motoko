@@ -32,15 +32,26 @@ let return es =
   return_with () es
 
 
-(* Contexts *)
+(* Scope (the external interface) *)
 
 type val_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.con_env
-type lab_env = T.typ T.Env.t
-type ret_env = T.typ option
 
 type scope = val_env * typ_env * con_env
+
+let empty_scope : scope = (T.Env.empty, T.Env.empty, Con.Env.empty)
+
+let adjoin_scope (ve1, te1, ce1) (ve2, te2, ce2) =
+  ( T.Env.adjoin ve1 ve2
+  , T.Env.adjoin te1 te2
+  , Con.Env.adjoin ce1 ce2
+  )
+
+(* Contexts (internal) *)
+
+type lab_env = T.typ T.Env.t
+type ret_env = T.typ option
 
 type env =
   { vals : val_env;
@@ -52,10 +63,10 @@ type env =
     pre : bool;
   }
 
-let empty_env =
-  { vals = T.Env.empty;
-    typs = T.Env.empty;
-    cons = Con.Env.empty;
+let mk_env (vals, typs, cons) =
+  { vals;
+    typs;
+    cons;
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -1188,8 +1199,8 @@ and infer_dec_valdecs env dec : val_env =
 
 (* Programs *)
 
-let check_prog env prog : scope =
-  check_block env T.unit prog.it prog.at
+let check_prog scope0 prog : scope =
+  check_block (mk_env scope0) T.unit prog.it prog.at
 
-let infer_prog env prog : T.typ * scope =
-  infer_block env prog.it prog.at
+let infer_prog scope0 prog : T.typ * scope =
+  infer_block (mk_env scope0) prog.it prog.at
