@@ -56,11 +56,11 @@ let exit_on_none = function
 let exit_on_failure = function
   | Ok x -> x
   | Error errs ->
-    List.iter Pipeline.print_error errs;
+    List.iter Pipeline.print_message errs;
     exit 1
 
 let exit_on_failure' (es, r) =
-    List.iter Pipeline.print_error es;
+    List.iter Pipeline.print_message es;
     match r with
     | Some x -> x
     | None -> exit 1

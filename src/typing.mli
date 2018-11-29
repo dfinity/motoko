@@ -8,9 +8,8 @@ type ret_env = typ option
 
 type scope = val_env * typ_env * con_env
 
-type error = Error of Source.region * string
-           | Warning of Source.region * string
-type errors = error list
+type message = Source.region * Severity.t * string
+type messages = message list
 
 type env =
   { vals : val_env;
@@ -20,7 +19,7 @@ type env =
     rets : ret_env;
     async : bool;
     pre : bool;
-    errs : errors ref;
+    errs : messages ref;
   }
 
 val empty_env : env
@@ -28,5 +27,5 @@ val adjoin : env -> scope -> env
 val adjoin_vals : env -> val_env -> env
 val adjoin_typs : env -> typ_env -> con_env -> env
 
-val check_prog : env -> Syntax.prog -> errors * scope option
-val infer_prog : env -> Syntax.prog -> errors * (typ * scope) option
+val check_prog : env -> Syntax.prog -> messages * scope option
+val infer_prog : env -> Syntax.prog -> messages * (typ * scope) option

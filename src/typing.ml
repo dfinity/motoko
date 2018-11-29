@@ -7,12 +7,11 @@ module A = Effect
 
 (* Error bookkeeping *)
 
-type error = Error of Source.region * string
-           | Warning of Source.region * string
-type errors = error list
+type message = Source.region * Severity.t * string
+type messages = message list
 
-let is_error : error -> bool = function Error _ -> true | Warning _ -> false
-let has_errors : errors -> bool = List.fold_left (fun b e -> b || is_error e) false
+let has_errors : messages -> bool =
+  List.fold_left (fun b (_,sev,_) -> b || sev == Severity.Error) false
 
 (* Aborting *)
 
@@ -41,7 +40,7 @@ type env =
     rets : ret_env;
     async : bool;
     pre : bool;
-    errs : errors ref;
+    errs : messages ref;
   }
 
 let empty_env =
@@ -59,11 +58,11 @@ let empty_env =
 let add_err env e = env.errs := !(env.errs) @ [e] (* TODO: Proper data structure *)
 
 let local_error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (Error (at, s))) fmt
+  Printf.ksprintf (fun s -> add_err env (at, Severity.Error, s)) fmt
 let error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (Error (at, s)); abort ()) fmt
+  Printf.ksprintf (fun s -> add_err env (at, Severity.Error, s); abort ()) fmt
 let warn env at fmt =
-  Printf.ksprintf (fun s -> add_err env (Warning (at, s))) fmt
+  Printf.ksprintf (fun s -> add_err env (at, Severity.Warning, s)) fmt
 
 let recover_and_report env f y =
   let r = recover_opt f y in
@@ -1192,8 +1191,8 @@ and infer_dec_valdecs env dec : val_env =
 
 (* Programs *)
 
-let check_prog env prog : errors * scope option =
+let check_prog env prog : messages * scope option =
   recover_and_report env (check_block env T.unit prog.it) prog.at
 
-let infer_prog env prog : errors * (T.typ * scope) option =
+let infer_prog env prog : messages * (T.typ * scope) option =
   recover_and_report env (infer_block env prog.it) prog.at

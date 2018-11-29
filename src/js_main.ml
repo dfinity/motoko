@@ -13,10 +13,10 @@ let range_of_region at =
     val _end = position_of_pos at.right
   end
 
-let diagnostics_of_error (at, category, is_error, msg) =
+let diagnostics_of_error (at, category, sev, msg) =
   object%js
     val range = range_of_region at
-    val severity = if is_error then 1 (* error *) else 2 (* warning *)
+    val severity = match sev with Severity.Error -> 1 | Severity.Warning -> 2
     val source = Js.string "actorscript"
     val message = Js.string msg
   end
