@@ -166,12 +166,20 @@ and t_dec' env inTailPos dec =
     ClassD (id, lab, typbinds, sort, pat, id', fields')
 
 and t_decs env inTailPos decs =
-  (* TBR, trailing innocous type decs will disable tco - optimize?, or do in reverse?*)
-  match decs with
-  | [] -> []
-  | [dec] -> [t_dec env inTailPos dec]
-  | dec::decs -> t_dec env None dec::t_decs env inTailPos decs          
-    
+  let tailPos dec inTailPos =
+    match dec.it with
+    | TypD _ -> inTailPos
+    | _ -> None
+  in         
+  let rec go decs =
+    match decs with
+    | [] -> inTailPos,[]
+    | dec::decs ->
+      let (inTailPos',decs') = go decs in
+      (tailPos dec inTailPos',
+       t_dec env inTailPos' dec::decs')
+  in snd (go decs)
+
 
 and t_fields env inTailPos fields = 
   List.map (fun (field:exp_field) ->
