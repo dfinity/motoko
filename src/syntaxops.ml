@@ -35,11 +35,19 @@ let id_of_exp x =
 
 let id_stamp = ref 0
 
-let fresh_id typ =
+let fresh () =
   let name = Printf.sprintf "$%i" (!id_stamp) in
-  let exp = idE (name@@no_region) typ in
-  (id_stamp := !id_stamp + 1;
-   exp)
+  id_stamp := !id_stamp + 1;
+  name
+
+let fresh_lab () =
+  let name = fresh () in
+  name@@no_region          
+  
+let fresh_id typ =
+  let name = fresh () in
+  idE (name@@no_region) typ
+ 
 
 (* Patterns *)
 
@@ -192,9 +200,14 @@ let newObjE typ sort ids =
   
 let letD x exp = { exp with it = LetD (varP x,exp) }
 
+let letP p e =
+  {it = LetD(p,e);
+   at = no_region;
+   note = e.note}
+               
 let varD x exp = { exp with it = VarD (x,exp) }
 
-let expD exp =  {exp with it = ExpD exp}
+let expD exp =  { exp with it = ExpD exp}
 
 (* let expressions (derived) *)              
 
@@ -271,3 +284,18 @@ let prim_async typ =
 let prim_await typ = 
   primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
                        
+
+(* sequences *)
+  
+let seqP pats =
+  match pats with
+  | [pat] -> pat
+  | pats -> tupP pats
+
+let seqE exps =
+  match exps with
+  | [exp] -> exp
+  | exps -> tupE exps
+ 
+    
+    

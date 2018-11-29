@@ -22,10 +22,13 @@ val nameN : string -> name
 val nextN : name
 
 (* Identifiers *)
-  
+
+val fresh_lab : unit -> id                           
+val fresh_id : typ -> var                         
+ 
 val idE : id -> typ -> exp
 val id_of_exp : exp -> id
-val fresh_id : typ -> var                         
+
 
 (* Patterns *)
 
@@ -53,7 +56,8 @@ val define_idE : id -> mut -> exp -> exp
 val newObjE : typ -> Syntax.obj_sort -> (name*id) list -> exp                                      
                                                       
 (* Declarations *)
-                                          
+
+val letP : pat -> exp -> dec   (* TBR: rename to letD? *)
 val letD : var -> exp -> dec
 val varD : id -> exp -> dec
 val expD : exp -> dec
@@ -78,7 +82,10 @@ val (-*-) : exp -> exp -> exp
 val prim_async : typ -> exp
 val prim_await : typ -> exp                          
                           
-                                         
+(* argument/result sequences (avoiding unary tuples) *)
+
+val seqP : pat list -> pat
+val seqE : exp list -> exp                         
                                  
                                    
                            

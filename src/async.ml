@@ -106,10 +106,7 @@ let extendTupT t1 t2 =
                  
 let extendTup ts t2 = ts @ [t2]
 
-let letP p e =  {it = LetD(p,e);
-                 at = no_region;
-                 note = e.note}
-              
+             
 let extendTupP p1 p2 =
   match typ p1 with
   | Tup ts when flattening() ->

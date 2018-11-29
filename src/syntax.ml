@@ -194,7 +194,8 @@ and prog' = dec list
 
 
 (* n-ary arguments/result sequences *)
-          
+
+ 
 let seqT ts =
   match ts with
   | [t] -> t

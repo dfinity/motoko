@@ -1,7 +1,8 @@
 open Printf
 
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
-module Async = Async 
+module Async = Async
+module Tailcall = Tailcall             
 type stat_env = Typing.env
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
@@ -291,6 +292,7 @@ let compile_with check mode name : compile_result =
   | Ok (prog, _t, _scope) ->
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
+    let prog = Tailcall.t_prog () prog in
     phase "Compiling" name;
     let module_ = Compile.compile mode prelude [prog] in
     Ok module_
