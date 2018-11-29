@@ -43,17 +43,5 @@ test: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) all
 	$(MAKE) -C ../samples ASC=$(ASC) all
 
-test-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) all-dfn
-
-diffs: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) diffs
-
-diffs-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) diffs-dfn
-
 accept: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) accept
-
-accept-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) accept-dfn

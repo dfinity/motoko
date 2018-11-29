@@ -1,4 +1,4 @@
-type stat_env = Typing.env
+type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 

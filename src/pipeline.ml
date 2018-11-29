@@ -2,7 +2,7 @@ open Printf
 
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async 
-type stat_env = Typing.env
+type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
@@ -38,9 +38,9 @@ let print_stat_ve =
       (if t == t' then "let" else "var") x (Type.string_of_typ t')
   )
 
-let print_dyn_ve senv =
+let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
-    let t = Type.Env.find x senv.Typing.vals in
+    let t = Type.Env.find x scope.Typing.val_env in
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
@@ -52,8 +52,8 @@ let eprint_dyn_ve_untyped =
     eprintf "%s = %s\n%!" x (Value.string_of_def d)
   )
 
-let print_scope senv (sve, te, ce) dve =
-  print_ce ce;
+let print_scope senv scope dve =
+  print_ce scope.Typing.con_env;
   print_dyn_ve senv dve
 
 let print_val _senv v t =
@@ -117,10 +117,10 @@ let check_prog infer senv name prog
   : (Type.typ * Typing.scope * messages, messages) result =
   phase "Checking" name;
   match infer senv prog with
-  | Ok (t, ((ve, te, ce) as scope), msgs) ->
+  | Ok (t, scope, msgs) ->
     if !Flags.trace && !Flags.verbose then begin
-      print_ce ce;
-      print_stat_ve ve
+      print_ce scope.Typing.con_env;
+      print_stat_ve scope.Typing.val_env
     end;
     Ok (t, scope, messages_of_typing_messages msgs)
   | Error msgs -> Error (messages_of_typing_messages msgs)
@@ -222,10 +222,10 @@ let check_prelude () : Syntax.prog * stat_env =
   match parse_with Lexer.Privileged lexer parser prelude_name with
   | Error e -> prelude_error "parsing" e
   | Ok prog ->
-    match check_prog infer_prog_unit Typing.empty_env prelude_name prog with
-    | Error msgs -> prelude_error "checking" (List.hd msgs)
+    match check_prog infer_prog_unit Typing.empty_scope prelude_name prog with
+    | Error es -> prelude_error "checking" (List.hd es)
     | Ok (_t, sscope, msgs) ->
-      let senv = Typing.adjoin Typing.empty_env sscope in
+      let senv = Typing.adjoin_scope Typing.empty_scope sscope in
       prog, senv
 
 let prelude, initial_stat_env = check_prelude ()
@@ -262,7 +262,7 @@ let run_with interpret output ((senv, denv) as env) name : run_result =
       None
     | Some (prog, t, v, sscope, dscope) ->
       phase "Finished" name;
-      let senv' = Typing.adjoin senv sscope in
+      let senv' = Typing.adjoin_scope senv sscope in
       let denv' = Interpret.adjoin denv dscope in
       let env' = (senv', denv') in
       (* TBR: hack *)

@@ -89,11 +89,11 @@ and t_exp' context exp' =
   | ArrayE exps ->
     ArrayE (List.map (t_exp context) exps)
   | IdxE (exp1, exp2) ->
-     IdxE (t_exp context exp1, t_exp context exp2)
+    IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (exp1, typs, exp2) ->
     CallE (t_exp context exp1, typs, t_exp context exp2)
   | BlockE decs ->
-     BlockE (t_decs context decs)
+    BlockE (t_decs context decs)
   | NotE exp1 ->
     NotE (t_exp context exp1)     
   | AndE (exp1, exp2) ->
@@ -339,7 +339,6 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
  let v1 = fresh_id (typ e1) in
-
  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
  let dotnext v = dotE v nextN next_typ -*- unitE in
  let loop = fresh_id (contT T.unit) in 
@@ -500,9 +499,9 @@ and c_exp' context exp k =
   | DecE dec ->
     c_dec context dec k  
   | DeclareE (id, typ, exp1) ->
-     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
+    unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->
-     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
+    unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
                                                                                                                     
 and c_block context decs k = 
