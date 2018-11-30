@@ -1,0 +1,22 @@
+nested-lexpr.as:8.11-8.12: fatal error, Invalid_argument("Value.as_mut")
+
+Last environment:
+@new_async = func
+Array_init = func
+Array_tabulate = func
+a = [[2]]
+abs = func
+b = [{x = 1}]
+ignore = func
+print = func
+printInt = func
+range = class
+revrange = class
+
+Raised at file "value.ml", line 227, characters 22-55
+Called from file "interpret.ml", line 263, characters 8-19
+Called from file "interpret.ml", line 77, characters 8-23
+Re-raised at file "interpret.ml", line 74, characters 19-35
+Called from file "interpret.ml", line 81, characters 36-44
+Called from file "interpret.ml", line 677, characters 2-18
+Called from file "pipeline.ml", line 171, characters 20-54
