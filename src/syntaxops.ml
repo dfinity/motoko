@@ -174,6 +174,40 @@ let tupE exps =
    note = {note_typ = T.Tup (List.map typ exps);
            note_eff = eff}
   }
+
+let breakE l exp typ =
+  { it = BreakE (l, exp);
+    at = no_region;
+    note = {note_eff = eff exp;
+            note_typ = typ}
+  }
+
+let retE exp typ =
+  { it = RetE exp;
+    at = no_region;
+    note = {note_eff = eff exp;
+            note_typ = typ}
+  }
+
+let assignE exp1 exp2 =
+  { it = AssignE (exp1,exp2);
+    at = no_region;
+    note = {note_eff = Effect.max_eff (eff exp1) (eff exp2);
+            note_typ = Type.unit}
+  }
+
+let labelE l typT exp =  
+  { exp with it = LabelE(l,typT,exp) }
+
+let loopE exp1 exp2Opt =
+  { it = LoopE(exp1,exp2Opt);
+    at = no_region;
+    note = {note_eff = Effect.max_eff (eff exp1)
+                         (match exp2Opt with
+                          | Some exp2 -> eff exp2
+                          | None -> Type.Triv);
+            note_typ = Type.unit}
+  }
   
 let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
@@ -196,6 +230,7 @@ let newObjE typ sort ids =
   }
 
 
+  
 (* Declarations *)
   
 let letD x exp = { exp with it = LetD (varP x,exp) }

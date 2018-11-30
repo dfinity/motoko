@@ -4,53 +4,13 @@ open Effect
 open Type   
 open Syntaxops   
 
-let breakE l exp typ =
-  { it = BreakE (l, exp);
-    at = no_region;
-    note = {note_eff = eff exp;
-            note_typ = typ}
-  }
-
-let retE exp typ =
-  { it = RetE exp;
-    at = no_region;
-    note = {note_eff = eff exp;
-            note_typ = typ}
-  }
-  
-
-let assignE exp1 exp2 =
-  { it = AssignE (exp1,exp2);
-    at = no_region;
-    note = {note_eff = Effect.max_eff (eff exp1) (eff exp2);
-            note_typ = Type.unit}
-  }
-
-let labelE l typT exp =  
-  { exp with it = LabelE(l,typT,exp) }
-
-let loopE exp1 exp2Opt =
-  { it = LoopE(exp1,exp2Opt);
-    at = no_region;
-    note = {note_eff = Effect.max_eff (eff exp1)
-                         (match exp2Opt with
-                          | Some exp2 -> eff exp2
-                          | None -> Type.Triv);
-            note_typ = Type.unit}
-  }
-   
-
 (* One traversal for each syntactic category, named by that category *)
 
-let id rho (i:id) =  i
-
-let id_bind rho i =
+let bind rho i =
   match rho with
   | Some (f,x,l,tailCalled) when i.it = f.it -> (* remove shadowed tailbindings *)
     None
   | _ -> rho
-
-let nonTail rho = None
 
 let rec tailexp rho e =
     {e with it = exp' rho e}
@@ -92,9 +52,9 @@ and exp' rho e  = match e.it with
   | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
   | ForE (p, e1, e2)    -> let rho' = pat rho p in
                            ForE (p, exp rho e1, exp rho' e2)
-  | LabelE (i, t, e)    -> let rho' = id_bind rho i in
+  | LabelE (i, t, e)    -> let rho' = bind rho i in
                            LabelE(i, t, exp rho' e)
-  | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
+  | BreakE (i, e)       -> BreakE(i,exp rho e)
   | RetE e              -> RetE (tailexp rho e)
   | AsyncE e            -> AsyncE (exp rho e)
   | AwaitE e            -> AwaitE (exp rho e)
@@ -104,10 +64,10 @@ and exp' rho e  = match e.it with
   | DecE d              -> let mk_d, rho' = dec rho d in
                            DecE ({mk_d with it = mk_d.it rho'})
   | OptE e              -> OptE (exp rho e)
-  | DeclareE (i, t, e)  -> let rho' = id_bind rho i in
+  | DeclareE (i, t, e)  -> let rho' = bind rho i in
                            DeclareE (i, t, tailexp rho' e)
-  | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
-  | NewObjE (s,is)      -> NewObjE (s, List.map (fun (l,i) -> (l,id rho i)) is)
+  | DefineE (i, m, e)   -> DefineE (i, m, exp rho e)
+  | NewObjE (s,is)      -> NewObjE (s, is)
                                    
 and exps rho es  = List.map (exp rho) es
 
@@ -116,9 +76,9 @@ and pat rho p =
     rho
      
 and pat' rho p = match p with
-  | WildP        ->  rho
+  | WildP          ->  rho
   | VarP i        ->
-     let rho' = id_bind rho i in
+     let rho' = bind rho i in
      rho'
   | TupP ps       -> pats rho ps 
   | AnnotP (p, t) -> pat rho p 
@@ -151,7 +111,7 @@ and exp_field rho (ef : exp_field) =
     ({ef with it = mk_ef}, rho)
 
 and exp_field' rho {name = n; id = i; exp = e; mut; priv} =
-  let rho = id_bind rho i in
+  let rho = bind rho i in
   ((fun rho'-> {name = n; id = i; exp = exp rho' e; mut; priv}),
    rho)            
 
@@ -180,11 +140,11 @@ and dec' rho d =
      (fun rho' -> LetD(p,exp rho' e)),
      rho              
   | VarD (i, e) ->
-     let rho = id_bind rho i in
+     let rho = bind rho i in
      (fun rho' -> VarD(i,exp rho' e)),
      rho
   | FuncD (({it=Local;_} as s), id, ([] as typbinds), pat, typT, exp0) ->
-    let rho = id_bind rho id in
+    let rho = bind rho id in
     (fun rho' ->
       let temp = fresh_id (Mut (typ pat)) in
       let l = fresh_lab () in
@@ -210,7 +170,7 @@ and dec' rho d =
     ,
     rho
   | FuncD (s, i, tp, p, t, e) ->
-     let rho = id_bind rho i in
+     let rho = bind rho i in
      (fun rho' ->
        let rho'' = pat rho' p in
        let e' = tailexp rho'' e in
@@ -220,26 +180,26 @@ and dec' rho d =
      (fun rho -> d.it),
      rho
   | ClassD (i, l, tp, s, p, i2, efs) ->
-    let rho = id_bind rho i in
+    let rho = bind rho i in
      (fun rho' ->
        let rho'' = pat rho' p in
-       let rho''' = id_bind rho'' i2 in
+       let rho''' = bind rho'' i2 in
        let efs' = exp_fields rho''' efs in
        ClassD(i, l, tp, s, p, i2, efs')),
       rho
        
 and decs rho ds =
-  let rec tailPosns ds =
+  let rec tail_posns ds =
     match ds with
     | [] -> (true,[])
     | {it=TypD _;_}::ds ->
-      let (b,bs) = tailPosns ds in
+      let (b,bs) = tail_posns ds in
       (b,b::bs)
     | d::ds ->
-      let (b,bs) = tailPosns ds in
+      let (b,bs) = tail_posns ds in
       (false,b::bs)
   in
-  let _,tailPosns = tailPosns ds in
+  let _,tail_posns = tail_posns ds in
   let rec decs_aux rho ds =
     match ds with
     | [] -> ([],rho)
@@ -249,9 +209,9 @@ and decs rho ds =
        (mk_d::mk_ds,rho'')
   in
   let mk_ds,rho' = decs_aux rho ds in                           
-  List.map2 (fun mk_d inTailPos ->
-      let rho'' = if inTailPos then rho' else None in
-      {mk_d with it = mk_d.it rho''}) mk_ds tailPosns
+  List.map2 (fun mk_d in_tail_pos ->
+      let rho'' = if in_tail_pos then rho' else None in
+      {mk_d with it = mk_d.it rho''}) mk_ds tail_posns
 
  
 and prog p:prog = {p with it = decs None p.it}
