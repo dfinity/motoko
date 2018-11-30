@@ -25,6 +25,7 @@ let encode
     (offset : int32) (* Number of imports, to offset the numbers in dfinity_types *)
     (dfinity_types : (int32 * type_ list) list) (* List of messages and arguments *)
     (persistent_globals : (int32 * type_) list)
+    (module_name : string)
     (function_names : (int32 * string) list)
     (locals_names : (int32 * (int32 * string) list) list)
     : string =
@@ -106,6 +107,8 @@ let encode
   );
   section 0 (fun _ ->
     string "name";
+    (* module name section *)
+    section 0 (fun _ -> string module_name);
     (* function names section *)
     section 1 (fun _ -> assoc_list function_names string);
     (* locals names section *)

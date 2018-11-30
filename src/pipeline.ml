@@ -286,21 +286,22 @@ type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, error list) result
 
 let compile_with check mode name : compile_result =
+  let module_name = Filename.remove_extension (Filename.basename name) in
   match check initial_stat_env name with
   | Error es -> Error es
   | Ok (prog, _t, _scope) ->
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     phase "Compiling" name;
-    let module_ = Compile.compile mode prelude [prog] in
+    let module_ = Compile.compile module_name mode prelude [prog] in
     Ok module_
 
 let compile_string mode s =
   compile_with (fun senv name -> check_string senv s name) mode
 let compile_file mode n = compile_with check_file mode n
-let compile_files mode = function
-  | [n] -> compile_file mode n
-  | ns -> compile_with (fun senv _name -> check_files senv ns) mode "all"
+let compile_files mode name = function
+  | [_] -> compile_file mode name
+  | ns -> compile_with (fun senv _name -> check_files senv ns) mode name
 
 
 (* Interactively *)

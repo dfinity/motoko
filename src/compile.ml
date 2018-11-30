@@ -88,6 +88,8 @@ module E = struct
   type t = {
     mode : mode;
 
+    (* Module name *)
+    module_name : string;
     (* Imports defined *)
     imports : import list ref;
     (* Exports defined *)
@@ -129,8 +131,9 @@ module E = struct
   let unary_param_local env : var = nr 1l   (* second param *)
 
   (* The initial global environment *)
-  let mk_global mode prelude dyn_mem : t = {
+  let mk_global module_name mode prelude dyn_mem : t = {
     mode;
+    module_name;
     imports = ref [];
     exports = ref [];
     funcs = ref [];
@@ -258,6 +261,7 @@ module E = struct
     | Some (Pending mk_fun) -> ()
 
 
+  let get_module_name (env : t) = env.module_name
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
@@ -3242,7 +3246,7 @@ prelude. So this function compiles the prelude, just to find out the bound names
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l in
+  let env1 = E.mk_fun_env (E.mk_global (E.get_module_name env) (E.mode env) (E.get_prelude env) 0l) 0l in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
 
@@ -3323,7 +3327,7 @@ and actor_lit outer_env name fs =
   if E.mode outer_env <> DfinityMode then G.i_ Unreachable else
 
   let wasm =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
+    let env = E.mk_global (E.get_module_name outer_env) (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -3433,12 +3437,13 @@ and conclude_module env start_fi_o =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
            ];
+    module_name = E.get_module_name env;
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
 
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
-  let env = E.mk_global mode prelude ClosureTable.table_end in
+let compile module_name mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
+  let env = E.mk_global module_name mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
   Array.common_funcs env;
