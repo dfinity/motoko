@@ -40,150 +40,222 @@ let loopE exp1 exp2Opt =
   }
    
 
-let rec t_exp env inTailPos (exp:Syntax.exp) =
- { exp with it = t_exp' env inTailPos exp }
+(* One traversal for each syntactic category, named by that category *)
 
-and t_exp' env inTailPos (exp:Syntax.exp) =
-  let exp' = exp.it in
-  match exp' with
-  | PrimE _
-  | LitE _ -> exp'
-  | VarE id -> exp'
-  | UnE (op, exp1) ->
-    UnE (op, t_exp env None exp1)
-  | BinE (exp1, op, exp2) ->
-    BinE (t_exp env None exp1, op, t_exp env None exp2)
-  | RelE (exp1, op, exp2) ->
-    RelE (t_exp env None exp1, op, t_exp env None exp2)
-  | TupE exps ->
-    TupE (List.map (t_exp env None) exps)
-  | OptE exp1 ->
-    OptE (t_exp env None exp1)
-  | ProjE (exp1, n) ->
-    ProjE (t_exp  env None exp1, n)
-  | ObjE (sort, id, fields) ->
-    let fields' = t_fields env None fields in                    
-    ObjE (sort, id, fields')
-  | DotE (exp1, id) ->
-    DotE (t_exp env None exp1, id)
-  | AssignE (exp1, exp2) ->
-    AssignE (t_exp env None exp1, t_exp env None exp2)
-  | ArrayE exps ->
-    ArrayE (List.map (t_exp env None) exps)
-  | IdxE (exp1, exp2) ->
-    IdxE (t_exp env None exp1, t_exp  env None exp2)
-  | CallE (exp1, typs, exp2)  ->
+let id rho (i:id) =  i
+
+let id_bind rho i =
+  match rho with
+  | Some (f,x,l,tailCalled) when i.it = f.it -> (* remove shadowed tailbindings *)
+    None
+  | _ -> rho
+
+let nonTail rho = None
+
+let rec tailexp rho e =
+    {e with it = exp' rho e}
+
+and exp rho e  =
+    {e with it = exp' None e}
+
+and exp' rho e  = match e.it with
+  | VarE i              -> VarE i
+  | LitE l              -> e.it
+  | PrimE _             -> e.it
+  | UnE (uo, e)         -> UnE (uo, exp rho e)
+  | BinE (e1, bo, e2)   -> BinE (exp rho e1, bo, exp rho e2)
+  | RelE (e1, ro, e2)   -> RelE (exp rho e1, ro, exp rho e2)
+  | TupE es             -> TupE (List.map (exp rho) es)
+  | ProjE (e, i)        -> ProjE (exp rho e, i)
+  | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields rho efs)
+  | DotE (e, i)         -> DotE (exp rho e, i)
+  | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
+  | ArrayE es           -> ArrayE (exps rho es)
+  | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
+  | CallE (e1, ts, e2)  -> 
     begin
-      match exp1.it, typs, inTailPos with
+      match e1.it, ts, rho with
       | VarE f1, [], Some (f2,x,l,tailCalled) when f1.it = f2.it ->
         tailCalled := true;
-        (blockE [expD (assignE x (t_exp env None exp2));
-                expD (breakE l (tupE []) (typ exp))]).it
-      | _,_ ,_-> CallE(t_exp env None exp1, typs, t_exp env None exp2)
+        (blockE [expD (assignE x (exp rho e2));
+                expD (breakE l (tupE []) (typ e))]).it
+      | _,_ ,_-> CallE(exp rho e1, ts, exp rho e2)
     end
-  | BlockE decs ->
-    BlockE (t_decs env inTailPos decs)
-  | NotE exp1 ->
-    NotE (t_exp env None exp1)     
-  | AndE (exp1, exp2) ->
-    AndE (t_exp env None exp1, t_exp env inTailPos exp2)
-  | OrE (exp1, exp2) ->
-    OrE (t_exp env None exp1, t_exp env inTailPos exp2)
-  | IfE (exp1, exp2, exp3) ->
-    IfE (t_exp env None exp1, t_exp env inTailPos exp2, t_exp env inTailPos exp3)
-  | SwitchE (exp1, cases) ->
-    let cases' = List.map
-                  (fun {it = {pat;exp}; at; note} ->
-                    {it = {pat = pat ;exp = t_exp env inTailPos exp}; at; note})
-                  cases
-    in
-    SwitchE (t_exp env None exp1, cases')
-  | WhileE (exp1, exp2) ->
-    WhileE (t_exp env None exp1, t_exp env None exp2)
-  | LoopE (exp1, exp2_opt) ->
-    LoopE (t_exp env None exp1, Lib.Option.map (t_exp env None) exp2_opt)
-  | ForE (pat, exp1, exp2) ->
-    ForE (pat, t_exp env None exp1, t_exp env None exp2)
-  | LabelE (id, _typ, exp1) ->
-    LabelE (id, _typ, t_exp env inTailPos exp1)
-  | BreakE (id, exp1) ->
-    BreakE (id, t_exp env None exp1)
-  | RetE exp1 ->
-    RetE (t_exp env inTailPos exp1)
-  | AsyncE _ -> failwith "unexpected asyncE" 
-  | AwaitE _ -> failwith "unexpected awaitE" 
-  | AssertE exp1 ->
-    AssertE (t_exp env None exp1)
-  | IsE (exp1, exp2) ->
-    IsE (t_exp env None exp1, t_exp env None exp2) 
-  | AnnotE (exp1, typ) ->
-    AnnotE (t_exp env inTailPos exp1, typ)
-  | DecE dec ->
-    DecE (t_dec env inTailPos dec)
-  | DeclareE (id, typ, exp1) ->
-    DeclareE (id, typ, t_exp env inTailPos exp1)
-  | DefineE (id, mut ,exp1) ->
-    DefineE (id, mut, t_exp env None exp1)
-  | NewObjE (sort, ids) -> exp' 
+  | BlockE ds           -> BlockE (decs rho ds)
+  | NotE e              -> NotE (exp rho e)
+  | AndE (e1, e2)       -> AndE (exp rho e1, tailexp rho e2)
+  | OrE (e1, e2)        -> OrE (exp rho e1, tailexp rho e2)
+  | IfE (e1, e2, e3)    -> IfE (exp rho e1, tailexp rho e2, tailexp rho e3)
+  | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
+  | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
+  | LoopE (e1, None)    -> LoopE (exp rho e1, None)
+  | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
+  | ForE (p, e1, e2)    -> let rho' = pat rho p in
+                           ForE (p, exp rho e1, exp rho' e2)
+  | LabelE (i, t, e)    -> let rho' = id_bind rho i in
+                           LabelE(i, t, exp rho' e)
+  | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
+  | RetE e              -> RetE (tailexp rho e)
+  | AsyncE e            -> AsyncE (exp rho e)
+  | AwaitE e            -> AwaitE (exp rho e)
+  | AssertE e           -> AssertE (exp rho e)
+  | IsE (e, t)          -> IsE (exp rho e, t)
+  | AnnotE (e, t)       -> AnnotE (exp rho e, t)
+  | DecE d              -> let mk_d, rho' = dec rho d in
+                           DecE ({mk_d with it = mk_d.it rho'})
+  | OptE e              -> OptE (exp rho e)
+  | DeclareE (i, t, e)  -> let rho' = id_bind rho i in
+                           DeclareE (i, t, tailexp rho' e)
+  | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
+  | NewObjE (s,is)      -> NewObjE (s, List.map (fun (l,i) -> (l,id rho i)) is)
+                                   
+and exps rho es  = List.map (exp rho) es
 
-and t_dec env inTailPos dec =
-  { dec with it = t_dec' env inTailPos dec }
- 
-and t_dec' env inTailPos dec =
-  match dec.it with
-  | ExpD exp -> ExpD (t_exp env inTailPos exp)
-  | TypD _ -> dec.it
-  | LetD (pat,exp) -> LetD (pat,t_exp env None exp)
-  | VarD (id,exp) -> VarD (id,t_exp env None exp)
-  | FuncD (({it=Local;_} as s), id, ([] as typbinds), pat, typT, exp) ->
-    let pat,rho = Rename.pat Rename.Renaming.empty pat in
-    let exp = Rename.exp rho exp in
-    let temp = fresh_id (Mut (typ pat)) in
-    let l = fresh_lab () in
-    let tailCalled = ref false in
-    let inTailPos = Some(id,temp,l,tailCalled) in
-    let exp' = t_exp env inTailPos exp in
-    if !tailCalled then
-      let ids = match typ dec with
-        | Func(_,_,_,dom,_) -> List.map fresh_id dom         
-        | _ -> assert false
-      in
-      let args = seqP (List.map varP ids) in
-      let body =
+and pat rho p =
+    let rho = pat' rho p.it in
+    rho
+     
+and pat' rho p = match p with
+  | WildP        ->  rho
+  | VarP i        ->
+     let rho' = id_bind rho i in
+     rho'
+  | TupP ps       -> pats rho ps 
+  | AnnotP (p, t) -> pat rho p 
+  | LitP l        -> rho
+  | SignP (uo, l) -> rho
+  | OptP p        -> pat rho p 
+  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
+                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
+                     rho
+
+and pats rho ps  =
+  match ps with
+  | [] -> rho
+  | p::ps ->
+    let rho' = pat rho p in
+    pats rho' ps 
+
+and case rho (c : case) =
+  {c with it = case' rho c.it}
+and case' rho {pat=p;exp=e} =
+  let rho' = pat rho p in
+  let e' = tailexp rho' e in
+  {pat=p; exp=e'}
+
+
+and cases rho cs = List.map (case rho) cs
+
+and exp_field rho (ef : exp_field) =
+  let (mk_ef,rho) = exp_field' rho ef.it in
+    ({ef with it = mk_ef}, rho)
+
+and exp_field' rho {name = n; id = i; exp = e; mut; priv} =
+  let rho = id_bind rho i in
+  ((fun rho'-> {name = n; id = i; exp = exp rho' e; mut; priv}),
+   rho)            
+
+and exp_fields rho efs  = 
+  let rec exp_fields_aux rho efs =
+    match efs with
+    | [] -> ([],rho)
+    | ef::efs ->
+       let (mk_ef,rho) = exp_field rho ef in
+       let (mk_efs,rho) = exp_fields_aux rho efs in
+       (mk_ef::mk_efs,rho) in
+  let mk_efs,rho = exp_fields_aux rho efs in                           
+  List.map (fun mk_ef -> {mk_ef with it = mk_ef.it rho}) mk_efs
+
+and dec rho d =
+  let (mk_d,rho') = dec' rho d in
+  ({d with it = mk_d}, rho')
+                 
+and dec' rho d =
+  match d.it with
+  | ExpD e ->
+     (fun rho -> ExpD (tailexp rho e)),
+     rho
+  | LetD (p, e) ->
+     let rho = pat rho p in
+     (fun rho' -> LetD(p,exp rho' e)),
+     rho              
+  | VarD (i, e) ->
+     let rho = id_bind rho i in
+     (fun rho' -> VarD(i,exp rho' e)),
+     rho
+  | FuncD (({it=Local;_} as s), id, ([] as typbinds), pat, typT, exp0) ->
+    let rho = id_bind rho id in
+    (fun rho' ->
+      let temp = fresh_id (Mut (typ pat)) in
+      let l = fresh_lab () in
+      let tailCalled = ref false in
+      let rho'' = Some(id,temp,l,tailCalled) in
+      let exp0' = tailexp rho'' exp0 in
+      if !tailCalled then
+        let ids = match typ d with
+          | Func(_,_,_,dom,_) -> List.map fresh_id dom         
+          | _ -> assert false
+        in
+        let args = seqP (List.map varP ids) in
+        let body =
         blockE [ varD (id_of_exp temp) (seqE ids);
                  expD (loopE
                          (labelE l typT
                             (blockE [letP pat temp;
-                                     expD (retE exp' unit)])) None)
-               ] in
-      FuncD (s, id, typbinds, args, typT, body)
-    else
-      FuncD (s, id, typbinds, pat, typT, exp')
-  | FuncD (s, id, typbinds, pat, typT, exp) ->
-      FuncD (s, id, typbinds, pat, typT, t_exp env None exp)
-  | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
-    let fields' = t_fields env None fields in             
-    ClassD (id, lab, typbinds, sort, pat, id', fields')
+                                     expD (retE exp0' unit)])) None)
+          ] in
+        FuncD (s, id, typbinds, args, typT, body)
+      else
+        FuncD (s, id, typbinds, pat, typT, exp0'))
+    ,
+    rho
+  | FuncD (s, i, tp, p, t, e) ->
+     let rho = id_bind rho i in
+     (fun rho' ->
+       let rho'' = pat rho' p in
+       let e' = tailexp rho'' e in
+       FuncD(s, i, tp, p, t, e')),
+     rho
+  | TypD (i, tp, t) -> (* we don't rename type names *)
+     (fun rho -> d.it),
+     rho
+  | ClassD (i, l, tp, s, p, i2, efs) ->
+    let rho = id_bind rho i in
+     (fun rho' ->
+       let rho'' = pat rho' p in
+       let rho''' = id_bind rho'' i2 in
+       let efs' = exp_fields rho''' efs in
+       ClassD(i, l, tp, s, p, i2, efs')),
+      rho
+       
+and decs rho ds =
+  let rec tailPosns ds =
+    match ds with
+    | [] -> (true,[])
+    | {it=TypD _;_}::ds ->
+      let (b,bs) = tailPosns ds in
+      (b,b::bs)
+    | d::ds ->
+      let (b,bs) = tailPosns ds in
+      (false,b::bs)
+  in
+  let _,tailPosns = tailPosns ds in
+  let rec decs_aux rho ds =
+    match ds with
+    | [] -> ([],rho)
+    | d::ds ->
+      let (mk_d,rho') = dec rho d in
+       let (mk_ds,rho'') = decs_aux rho' ds in
+       (mk_d::mk_ds,rho'')
+  in
+  let mk_ds,rho' = decs_aux rho ds in                           
+  List.map2 (fun mk_d inTailPos ->
+      let rho'' = if inTailPos then rho' else None in
+      {mk_d with it = mk_d.it rho''}) mk_ds tailPosns
 
-and t_decs env inTailPos decs =
-  let tailPos dec inTailPos =
-    match dec.it with
-    | TypD _ -> inTailPos
-    | _ -> None
-  in         
-  let rec go decs =
-    match decs with
-    | [] -> inTailPos,[]
-    | dec::decs ->
-      let (inTailPos',decs') = go decs in
-      (tailPos dec inTailPos',
-       t_dec env inTailPos' dec::decs')
-  in snd (go decs)
+ 
+and prog p:prog = {p with it = decs None p.it}
 
 
-and t_fields env inTailPos fields = 
-  List.map (fun (field:exp_field) ->
-      { field with it = { field.it with exp = t_exp env None field.it.exp }})
-    fields
 
-and t_prog env prog:prog = {prog with it = t_decs env None prog.it}
+

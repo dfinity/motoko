@@ -292,7 +292,7 @@ let compile_with check mode name : compile_result =
   | Ok (prog, _t, _scope) ->
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
-    let prog = Tailcall.t_prog () prog in
+    let prog = Tailcall.prog prog in
     phase "Compiling" name;
     let module_ = Compile.compile mode prelude [prog] in
     Ok module_
