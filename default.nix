@@ -22,6 +22,9 @@ let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
+let ocaml_bisect_ppx = (import ./nix/ocaml-bisect_ppx.nix) nixpkgs; in
+let ocaml_bisect_ppx-ocamlbuild = (import ./nix/ocaml-bisect_ppx-ocamlbuild.nix) nixpkgs; in
+
 # Include dvm
 let real-dvm =
   if dvm == null
@@ -61,6 +64,8 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  ocaml_bisect_ppx
+  ocaml_bisect_ppx-ocamlbuild
 ]; in
 
 rec {
@@ -99,10 +104,10 @@ rec {
 
     src = sourceByRegex ./. [
       "test/"
-      "test/.*/"
       "test/.*Makefile.*"
-      "test/.*/.*.as"
-      "test/.*/ok/.*"
+      "test/(run.*|fail)/"
+      "test/(run.*|fail)/.*.as"
+      "test/(run.*|fail)/ok/.*"
       "test/.*.sh"
       "samples/"
       "samples/.*"
@@ -131,6 +136,53 @@ rec {
       mkdir -p $out
     '';
   };
+
+  native-coverage = native.overrideAttrs (oldAttrs: {
+    name = "asc-coverage";
+    buildPhase =
+      "export BISECT_COVERAGE=YES;" +
+      oldAttrs.buildPhase;
+    installPhase =
+      oldAttrs.installPhase + ''
+      mv src/ $out/src
+      '';
+  });
+
+  coverage-report = stdenv.mkDerivation {
+    name = "native.test";
+
+    src = sourceByRegex ./. [
+      "test/"
+      "test/.*Makefile.*"
+      "test/(run.*|fail)/"
+      "test/(run.*|fail)/.*.as"
+      "test/(run.*|fail)/ok/.*"
+      "test/.*.sh"
+      "samples/"
+      "samples/.*"
+      ];
+
+    buildInputs =
+      [ native-coverage
+        ocaml_wasm
+        nixpkgs.bash
+        nixpkgs.perl
+        ocaml_bisect_ppx
+      ] ++
+      (if test-dvm then [ real-dvm ] else []);
+
+    buildPhase = ''
+      patchShebangs .
+      ln -vs ${native-coverage}/src src
+      make -C test ASC=asc coverage
+      '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv test/coverage/* $out/
+    '';
+  };
+
 
   js = native.overrideAttrs (oldAttrs: {
     name = "asc.js";
