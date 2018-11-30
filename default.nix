@@ -69,7 +69,7 @@ rec {
     name = "asc";
 
     src = sourceByRegex ./. [
-      ".*/Makefile.*"
+      "src/Makefile.*"
       "src/.*.ml"
       "src/.*.mli"
       "src/.*.mly"
@@ -97,7 +97,6 @@ rec {
 
     src = sourceByRegex ./. [
       "test/.*Makefile.*"
-      "test/node-test.js"
       "test/.*/.*.as"
       "test/.*/ok/.*"
       "test/.*.sh"
