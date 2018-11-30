@@ -8,9 +8,9 @@ let stdenv = nixpkgs.stdenv; in
 
 let sourceByRegex = src: regexes: builtins.filterSource (path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
-      (type == "directory" ||
-      builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes) relPath != null))
-    src; in
+      let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
+      ( type == "directory"  &&  match (relPath + "/") != null
+      || match relPath != null)) src; in
 
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -69,12 +69,14 @@ rec {
     name = "asc";
 
     src = sourceByRegex ./. [
+      "src/"
       "src/Makefile.*"
       "src/.*.ml"
       "src/.*.mli"
       "src/.*.mly"
       "src/.*.mll"
       "src/_tags"
+      "test/"
       "test/node-test.js"
       ];
 
@@ -96,10 +98,13 @@ rec {
     name = "native.test";
 
     src = sourceByRegex ./. [
+      "test/"
+      "test/.*/"
       "test/.*Makefile.*"
       "test/.*/.*.as"
       "test/.*/ok/.*"
       "test/.*.sh"
+      "samples/"
       "samples/.*"
       ];
 
