@@ -285,23 +285,21 @@ let run_files env = function
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, error list) result
 
-let compile_with check mode out_file name : compile_result =
-  let module_name = Filename.remove_extension (Filename.basename out_file) in
+let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error es -> Error es
   | Ok (prog, _t, _scope) ->
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     phase "Compiling" name;
-    let module_ = Compile.compile module_name mode prelude [prog] in
+    let module_ = Compile.compile name mode prelude [prog] in
     Ok module_
 
 let compile_string mode s n =
-  compile_with (fun senv name -> check_string senv s name) mode (n ^ ".wasm") n
-let compile_file mode out_file n = compile_with check_file mode out_file n
-let compile_files mode out_file = function
-  | [n] -> compile_file mode out_file n
-  | ns -> compile_with (fun senv _name -> check_files senv ns) mode out_file "all"
+  compile_with (fun senv name -> check_string senv s name) mode n
+let compile_file mode file name = compile_with check_file mode name
+let compile_files mode files name =
+  compile_with (fun senv _name -> check_files senv files) mode name
 
 
 (* Interactively *)

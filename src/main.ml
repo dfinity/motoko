@@ -61,25 +61,26 @@ let exit_on_failure = function
     ) errs;
     exit 1
 
-let process_files names : unit =
+let process_files files : unit =
   match !mode with
   | Default ->
     assert false
   | Run ->
-    ignore (exit_on_none Pipeline.(run_files initial_env names))
+    ignore (exit_on_none Pipeline.(run_files initial_env files))
   | Interact ->
     printf "%s\n" banner;
-    let env = exit_on_none Pipeline.(run_files initial_env names) in
+    let env = exit_on_none Pipeline.(run_files initial_env files) in
     Pipeline.run_stdin env
   | Check ->
-    ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
+    ignore (exit_on_failure Pipeline.(check_files initial_stat_env files));
   | Compile ->
     if !out_file = "" then begin
-      match names with
+      match files with
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode !out_file names) in
+    let module_name = Filename.remove_extension (Filename.basename !out_file) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
