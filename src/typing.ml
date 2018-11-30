@@ -218,7 +218,12 @@ and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   | [], _ -> error at "too many type arguments"
   | _, [] -> error at "too few type arguments"
 
-
+and check_inst_bounds env tbs (insts:inst list) at =
+  let typs = List.map (fun inst -> inst.it) insts in
+  let tys = check_typ_bounds env tbs typs at  in
+  List.iter2 (fun inst ty -> inst.note := ty) insts tys;
+  tys
+    
 (* Literals *)
 
 let check_lit_val t of_string at s =
@@ -420,11 +425,11 @@ and infer_exp' env exp : T.typ =
       error exp1.at "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-  | CallE (exp1, typs, exp2) ->
+  | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let tbs, t2, t = T.as_func_sub (List.length typs) env.cons t1 in
-      let ts = check_typ_bounds env tbs typs exp.at in
+      let tbs, t2, t = T.as_func_sub (List.length insts) env.cons t1 in
+      let ts = check_inst_bounds env tbs insts exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
     with Invalid_argument _ ->

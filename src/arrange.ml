@@ -17,7 +17,7 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE es           -> "ArrayE"  $$ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
+  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map inst ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -135,7 +135,8 @@ and typ_bind (tb : typ_bind)
 and exp_field (ef : exp_field)
   = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
 
-
+and inst t = typ t.it
+           
 and typ t = match t.it with
   | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]

@@ -52,10 +52,13 @@ let new_asyncT =
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
 
-let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore *)
+let bogusT t =
+  {it = PrimT "BogusT"@@no_region;
+   at = no_region;
+   note = ref t} (* bogus,  but we shouln't use it anymore *)
              
 let prelude_new_async t1 =
-  { it = CallE(new_asyncE,[bogusT],tupE []);
+  { it = CallE(new_asyncE,[bogusT t1],tupE []);
     note = {note_typ = T.seq [t_async t1; 
                                replyT t1];
             note_eff = T.Triv};
@@ -277,7 +280,7 @@ and t_exp' (exp:Syntax.exp) =
      in
      let exp1 = t_exp exp1 in
      let exp2 = t_exp exp2 in
-     let typs = List.map t_typT typs in
+     let typs = List.map t_inst typs in
      let call_new_async = prelude_new_async t2 in
      let p = fresh_id (typ call_new_async) in
      let (d,es) = extendTupE exp2 (projE p 1) in
@@ -286,7 +289,7 @@ and t_exp' (exp:Syntax.exp) =
                  expD (projE p 0)]))
        .it
   | CallE (exp1, typs, exp2)  ->
-    CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
+    CallE(t_exp exp1, List.map t_inst typs, t_exp exp2)               
   | BlockE decs ->
     BlockE (t_decs decs)
   | NotE exp1 ->
@@ -423,9 +426,15 @@ and t_asyncT t =
          [],
          funcT(localS,[],t,unitT),
          unitT)
+
+and t_inst t : inst  =
+  { it = t_typT t.it;
+    at = t.at;
+    note = ref (t_typ (!(t.note)))}
   
 and t_typT t =
   { t with it = t_typT' t.it }
+
 and t_typT' t =
   match t with
   | VarT (s, ts) ->

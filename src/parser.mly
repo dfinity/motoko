@@ -364,7 +364,9 @@ exp_post :
   | e=exp_post DOT x=id
     { DotE(e, {x with it = Name x.it}) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
-    { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
+    { let typ_args = Lib.Option.get tso [] in
+      let typ_insts = List.map (fun typ_arg -> {it = typ_arg; at = typ_arg.at; note = ref Type.Pre}) typ_args in
+      CallE(e1, typ_insts, e2) @? at $sloc }
 
 exp_un :
   | e=exp_post
