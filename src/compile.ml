@@ -2948,7 +2948,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
-    if Freevars.S.is_empty (Freevars.S.diff captured prelude_names)
+    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange.exp exp) G.i_ Unreachable
   | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
