@@ -3438,7 +3438,7 @@ and conclude_module env module_name start_fi_o =
     locals_names = E.get_func_local_names env;
   }
 
-let compile module_name mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
+let compile mode module_name (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
   let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
