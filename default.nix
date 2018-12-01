@@ -179,7 +179,9 @@ rec {
 
     installPhase = ''
       mkdir -p $out
-      mv test/coverage/* $out/
+      mv test/coverage/ $out/
+      mkdir -p $out/nix-support
+      echo "report coverage $out/coverage index.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
