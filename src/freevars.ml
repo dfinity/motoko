@@ -54,7 +54,6 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
    - when storing variables in data structures (tuples, objects, lists)
    Delayed variables become eager again
    - when used in an application
-   - when extracted from data structures (projection, indexing)
    - when a block uses any of its own variables eagerly (see function `close`)
 
    Additionally, we track which variables may be captured.
@@ -83,16 +82,16 @@ let rec exp e : f = match e.it with
   | VarE i              -> M.singleton i.it {eager = true; captured = false}
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
-  | UnE (uo, e)         -> eagerify (exp e)
-  | BinE (e1, bo, e2)   -> eagerify (exps [e1; e2])
-  | RelE (e1, ro, e2)   -> eagerify (exps [e1; e2])
+  | UnE (uo, e)         -> exp e
+  | BinE (e1, bo, e2)   -> exps [e1; e2]
+  | RelE (e1, ro, e2)   -> exps [e1; e2]
   | TupE es             -> exps es
-  | ProjE (e, i)        -> eagerify (exp e)
+  | ProjE (e, i)        -> exp e
   | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
-  | DotE (e, i)         -> eagerify (exp e)
-  | AssignE (e1, e2)    -> eagerify (exps [e1; e2])
+  | DotE (e, i)         -> exp e
+  | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE es           -> exps es
-  | IdxE (e1, e2)       -> eagerify (exps [e1; e2])
+  | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (e1, ts, e2)  -> eagerify (exps [e1; e2])
   | BlockE ds           -> close (decs ds)
   | NotE e              -> exp e
@@ -115,7 +114,7 @@ let rec exp e : f = match e.it with
   | DecE d              -> close (dec d)
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
-  | DefineE (i, m, e)   -> eagerify (id i ++ exp e)
+  | DefineE (i, m, e)   -> id i ++ exp e
   | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
