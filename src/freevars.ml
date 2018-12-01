@@ -2,13 +2,18 @@ open Source
 open Syntax
 
 (* We collect a few things along the way *)
-type usage_info = Eager | Delayed
 
-let join u1 u2 = match u1, u2 with
-  | Eager, _ -> Eager
-  | _, Eager -> Eager
-  | Delayed, Delayed -> Delayed
+(* We want to know:
+   Is this variable used (potentially) eager?
+   Is this variable used (potentially) captured?
+   We actually need both, hence a product lattice.
+*)
+type usage_info = { eager: bool; captured : bool }
 
+let join u1 u2 =
+  { eager = u1.eager || u2.eager ;
+    captured = u1.captured || u2.captured 
+  }
 
 module M = Env.Make(String)
 module S = Set.Make(String)
@@ -49,13 +54,15 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
    - when extracted from data structures (projection, indexing)
    - when a block uses any of its own variables eagerly (see function `close`)
 *)
-let delayify : f -> f = M.map (fun _ -> Delayed)
-let eagerify : f -> f = M.map (fun _ -> Eager)
+let delayify : f -> f = M.map (fun _ -> { eager = false; captured = true })
+let eagerify : f -> f = M.map (fun u -> { eager = true; captured = u.captured })
 
 let eager_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u == Eager) (M.bindings f)))
+  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.eager) (M.bindings f)))
 let delayed_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u == Delayed) (M.bindings f)))
+  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> not u.eager) (M.bindings f)))
+let captured_vars : f -> S.t =
+  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.captured) (M.bindings f)))
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) =
@@ -66,7 +73,7 @@ let close (f,d) =
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
-  | VarE i              -> M.singleton i.it Eager
+  | VarE i              -> M.singleton i.it {eager = true; captured = false}
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (uo, e)         -> eagerify (exp e)
@@ -127,7 +134,7 @@ and exp_field (ef : exp_field) : fd
 
 and exp_fields efs : fd = union_binders exp_field efs
 
-and id i = M.singleton i.it Eager
+and id i = M.singleton i.it {eager = true; captured = false}
 
 and dec d = match d.it with
   | ExpD e -> (exp e, S.empty)

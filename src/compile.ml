@@ -783,13 +783,13 @@ module AllocHow = struct
   let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
 
   let is_static env how f =
-    (* Does this capture anything from outside? *)
+    (* Does this capture nothing from outside? *)
     (S.is_empty (S.inter
-      (Freevars.delayed_vars f)
+      (Freevars.captured_vars f)
       (set_of_map (M.filter (fun _ x -> not (E.is_non_local x)) (env.E.local_vars_env))))) &&
-    (* Does this capture anything from here? *)
+    (* Does this capture nothing non-static from here? *)
     (S.is_empty (S.inter
-      (Freevars.delayed_vars f)
+      (Freevars.captured_vars f)
       (set_of_map how)))
 
   let dec env (seen, how0) dec =
@@ -805,13 +805,13 @@ module AllocHow = struct
       map_of_set StoreHeap
         (S.inter
           (set_of_map how0)
-          (S.diff (Freevars.delayed_vars f) seen)) in
+          (S.diff (Freevars.captured_vars f) seen)) in
     (* Do we capture anything mutable? *)
     let how3 =
       map_of_set StoreHeap
         (S.inter
           (set_of_map (M.filter (fun _ h -> h = LocalMut) how0))
-          (Freevars.delayed_vars f)) in
+          (Freevars.captured_vars f)) in
     let how = List.fold_left join M.empty [how0; how1; how2; how3] in
     let seen' = S.union seen d
     in (seen', how)
