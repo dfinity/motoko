@@ -4,21 +4,23 @@ open Effect
 open Type   
 open Syntaxops   
 
-(* Optimize (self) tail calls in a single iinear pass *)
+(* Optimize (self) tail calls to jumps, avoiding stack overflow 
+   in a single iinear pass *)
 
 (*
-    Given any function f whose body[...]
-    has at least one self tailcall to f<Ts>, apply the transformation:
+    For each function f whose body[...]
+    has at least one self tailcall to f<Ts>, 
+    apply the transformation:
 
-    func f<Ts>(pat) body[f<Ts>(es)+] 
+    func f<Ts>(pat) = body[f<Ts>(es)+] 
     ~~>
-    func f<Ts>(args) {
+    func f<Ts>(args) = {
        var temp = args;
        loop 
        label l {
         let pat = temp
         return body[{temp = es;break l;}+] 
-       }
+        }       
     }
 
 *)
@@ -26,21 +28,16 @@ open Syntaxops
 
 let bind rho i =
   match rho with
-  | (tail,Some (f,x,l,tailCalled)) when i.it = f.it -> (* remove shadowed tailbindings *)
+  | (tail,Some (f, tbds, x, l, tailCalled)) when i.it = f.it -> (* remove shadowed tailbindings *)
     (tail,None)
   | _ -> rho
 
-let are_generic_insts insts = 
-  let ts = List.map (fun inst -> !(inst.note)) insts in
-  let _ = List.iter  (fun ty -> Printf.printf "%s" (Type.string_of_typ ty)) ts in
-  let rec are_generic ts n =
-    match ts with
-    | [] -> true
-    | Type.Var(_,i)::ts ->
-      Printf.printf ("%i  %i") i n;
-      (i = n) && are_generic ts (n+1)
-    | _ :: _ -> false
-  in are_generic ts 0
+let are_generic_insts tbs insts =
+  List.for_all2 (fun tb inst ->
+      match !(tb.note),!(inst.note) with
+      | Some c1, Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
+      | Some c1, _ -> false                                          
+      | None,_ -> assert false) tbs insts
                             
 let rec tailexp rho e =
     {e with it = exp' rho e}
@@ -64,12 +61,13 @@ and exp' rho e  = match e.it with
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (e1, insts, e2)  -> 
     begin
-      match e1.it, insts, rho with
-      | VarE f1, ts, (true,Some (f2, x, l, tailCalled)) when f1.it = f2.it && are_generic_insts insts ->
+      match e1.it, rho with
+      | VarE f1, (true,Some (f2, ts, x, l, tailCalled))
+          when f1.it = f2.it && are_generic_insts ts insts  ->
         tailCalled := true;
         (blockE [expD (assignE x (exp rho e2));
                 expD (breakE l (tupE []) (typ e))]).it
-      | _,_ ,_-> CallE(exp rho e1, insts, exp rho e2)
+      | _,_-> CallE(exp rho e1, insts, exp rho e2)
     end
   | BlockE ds           -> BlockE (decs rho ds)
   | NotE e              -> NotE (exp rho e)
@@ -174,13 +172,13 @@ and dec' rho d =
     let rho = bind rho i in
     (fun rho' -> VarD(i,exp rho' e)),
     rho
-  | FuncD (({it=Local;_} as s), id, typbinds, pat, typT, exp0) ->
+  | FuncD (({it=Local;_} as s), id, tbs, pat, typT, exp0) ->
     let rho = bind rho id in
     (fun rho' ->
       let temp = fresh_id (Mut (typ pat)) in
       let l = fresh_lab () in
       let tailCalled = ref false in
-      let rho'' = (true,Some(id,temp,l,tailCalled)) in
+      let rho'' = (true, Some(id, tbs, temp, l, tailCalled)) in
       let exp0' = tailexp rho'' exp0 in
       if !tailCalled then
         let ids = match typ d with
@@ -195,28 +193,28 @@ and dec' rho d =
                               (blockE [letP pat temp;
                                        expD (retE exp0' unit)])) None)
           ] in
-        FuncD (s, id, typbinds, args, typT, body)
+        FuncD (s, id, tbs, args, typT, body)
       else
-        FuncD (s, id, typbinds, pat, typT, exp0'))
+        FuncD (s, id, tbs, pat, typT, exp0'))
     ,
       rho
-  | FuncD (s, i, tp, p, t, e) ->
+  | FuncD (s, i, tbs, p, t, e) ->
     let rho = bind rho i in
     (fun rho' ->
       let rho'' = pat rho' p in
       let e' = tailexp rho'' e in
-      FuncD(s, i, tp, p, t, e')),
+      FuncD(s, i, tbs, p, t, e')),
     rho
-  | TypD (i, tp, t) -> 
+  | TypD (i, tbs, t) -> 
     (fun rho -> d.it),
     rho
-  | ClassD (i, l, tp, s, p, i2, efs) ->
+  | ClassD (i, l, tbs, s, p, i2, efs) ->
     let rho = bind rho i in
     (fun rho' ->
       let rho'' = pat rho' p in
       let rho''' = bind rho'' i2 in
       let efs' = exp_fields rho''' efs in
-      ClassD(i, l, tp, s, p, i2, efs')),
+      ClassD(i, l, tbs, s, p, i2, efs')),
     rho
        
 and decs rho ds =

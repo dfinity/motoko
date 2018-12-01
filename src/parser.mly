@@ -21,6 +21,7 @@ let positions_to_region position1 position2 =
 let at (startpos, endpos) = positions_to_region startpos endpos
 
 let (@?) it at = {it; at; note = empty_typ_note}
+let (@!) it at = {it; at; note = ref None}	       
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -256,9 +257,9 @@ typ_field :
 
 typ_bind :
   | x=id SUB t=typ
-    { {var = x; bound = t} @@ at $sloc }
+    { {var = x; bound = t} @! at $sloc }
   | x=id
-    { {var = x; bound = PrimT "Any" @@ at $sloc} @@ at $sloc }
+    { {var = x; bound = PrimT "Any" @@ at $sloc} @! at $sloc }
 
 
 
