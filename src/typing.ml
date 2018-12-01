@@ -199,7 +199,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
   let env' = add_typs env xs cs ks in
-  let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
+  ignore (List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds);
   cs, ts, te, Con.Env.from_list2 cs ks
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
