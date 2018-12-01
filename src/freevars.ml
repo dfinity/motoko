@@ -53,9 +53,9 @@ let delayify : f -> f = M.map (fun _ -> Delayed)
 let eagerify : f -> f = M.map (fun _ -> Eager)
 
 let eager_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u == Eager) (M.bindings f)))
+  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u = Eager) (M.bindings f)))
 let delayed_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u == Delayed) (M.bindings f)))
+  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u = Delayed) (M.bindings f)))
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) =
