@@ -21,34 +21,32 @@ open Syntaxops
        }
     }
 
-caveat:
-  we don't consider arguments to RetE to be in tail position unless RetE is.
-  We could do better.
-
 *)
 
 
 let bind rho i =
   match rho with
-  | Some (f,x,l,tailCalled) when i.it = f.it -> (* remove shadowed tailbindings *)
-    None
+  | (tail,Some (f,x,l,tailCalled)) when i.it = f.it -> (* remove shadowed tailbindings *)
+    (tail,None)
   | _ -> rho
 
 let are_generic_insts insts = 
   let ts = List.map (fun inst -> !(inst.note)) insts in
+  let _ = List.iter  (fun ty -> Printf.printf "%s" (Type.string_of_typ ty)) ts in
   let rec are_generic ts n =
     match ts with
     | [] -> true
     | Type.Var(_,i)::ts ->
-      (i = n) && are_generic ts (n-1)
+      Printf.printf ("%i  %i") i n;
+      (i = n) && are_generic ts (n+1)
     | _ :: _ -> false
-  in are_generic ts (List.length ts)
+  in are_generic ts 0
                             
 let rec tailexp rho e =
     {e with it = exp' rho e}
 
-and exp rho e  =
-    {e with it = exp' None e}
+and exp (_,opt) e  =
+    {e with it = exp' (false,opt)  e}
 
 and exp' rho e  = match e.it with
   | VarE _              
@@ -67,7 +65,7 @@ and exp' rho e  = match e.it with
   | CallE (e1, insts, e2)  -> 
     begin
       match e1.it, insts, rho with
-      | VarE f1, ts, Some (f2, x, l, tailCalled) when f1.it = f2.it && are_generic_insts insts ->
+      | VarE f1, ts, (true,Some (f2, x, l, tailCalled)) when f1.it = f2.it && are_generic_insts insts ->
         tailCalled := true;
         (blockE [expD (assignE x (exp rho e2));
                 expD (breakE l (tupE []) (typ e))]).it
@@ -87,7 +85,8 @@ and exp' rho e  = match e.it with
   | LabelE (i, t, e)    -> let rho' = bind rho i in
                            LabelE(i, t, exp rho' e)
   | BreakE (i, e)       -> BreakE(i,exp rho e)
-  | RetE e              -> RetE (tailexp rho e)
+  | RetE e              -> RetE (tailexp (true,snd rho) e)
+   (* NB:^ e is always in tailposition, regardless of rho *)
   | AsyncE e            -> AsyncE (exp rho e)
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
@@ -110,8 +109,8 @@ and pat rho p =
 and pat' rho p = match p with
   | WildP          ->  rho
   | VarP i        ->
-     let rho' = bind rho i in
-     rho'
+    let rho' = bind rho i in
+    rho'
   | TupP ps       -> pats rho ps 
   | AnnotP (p, t) -> pat rho p 
   | LitP l        -> rho
@@ -134,13 +133,13 @@ and case' rho {pat=p;exp=e} =
   let rho' = pat rho p in
   let e' = tailexp rho' e in
   {pat=p; exp=e'}
-
+  
 
 and cases rho cs = List.map (case rho) cs
 
 and exp_field rho (ef : exp_field) =
   let (mk_ef,rho) = exp_field' rho ef.it in
-    ({ef with it = mk_ef}, rho)
+  ({ef with it = mk_ef}, rho)
 
 and exp_field' rho {name = n; id = i; exp = e; mut; priv} =
   let rho = bind rho i in
@@ -152,9 +151,9 @@ and exp_fields rho efs  =
     match efs with
     | [] -> ([],rho)
     | ef::efs ->
-       let (mk_ef,rho) = exp_field rho ef in
-       let (mk_efs,rho) = exp_fields_aux rho efs in
-       (mk_ef::mk_efs,rho) in
+      let (mk_ef,rho) = exp_field rho ef in
+      let (mk_efs,rho) = exp_fields_aux rho efs in
+      (mk_ef::mk_efs,rho) in
   let mk_efs,rho = exp_fields_aux rho efs in                           
   List.map (fun mk_ef -> {mk_ef with it = mk_ef.it rho}) mk_efs
 
@@ -165,23 +164,23 @@ and dec rho d =
 and dec' rho d =
   match d.it with
   | ExpD e ->
-     (fun rho -> ExpD (tailexp rho e)),
-     rho
+    (fun rho -> ExpD (tailexp rho e)),
+    rho
   | LetD (p, e) ->
-     let rho = pat rho p in
-     (fun rho' -> LetD(p,exp rho' e)),
-     rho              
+    let rho = pat rho p in
+    (fun rho' -> LetD(p,exp rho' e)),
+    rho              
   | VarD (i, e) ->
-     let rho = bind rho i in
-     (fun rho' -> VarD(i,exp rho' e)),
-     rho
+    let rho = bind rho i in
+    (fun rho' -> VarD(i,exp rho' e)),
+    rho
   | FuncD (({it=Local;_} as s), id, typbinds, pat, typT, exp0) ->
     let rho = bind rho id in
     (fun rho' ->
       let temp = fresh_id (Mut (typ pat)) in
       let l = fresh_lab () in
       let tailCalled = ref false in
-      let rho'' = Some(id,temp,l,tailCalled) in
+      let rho'' = (true,Some(id,temp,l,tailCalled)) in
       let exp0' = tailexp rho'' exp0 in
       if !tailCalled then
         let ids = match typ d with
@@ -190,35 +189,35 @@ and dec' rho d =
         in
         let args = seqP (List.map varP ids) in
         let body =
-        blockE [ varD (id_of_exp temp) (seqE ids);
-                 expD (loopE
-                         (labelE l typT
-                            (blockE [letP pat temp;
-                                     expD (retE exp0' unit)])) None)
+          blockE [ varD (id_of_exp temp) (seqE ids);
+                   expD (loopE
+                           (labelE l typT
+                              (blockE [letP pat temp;
+                                       expD (retE exp0' unit)])) None)
           ] in
         FuncD (s, id, typbinds, args, typT, body)
       else
         FuncD (s, id, typbinds, pat, typT, exp0'))
     ,
-    rho
+      rho
   | FuncD (s, i, tp, p, t, e) ->
-     let rho = bind rho i in
-     (fun rho' ->
-       let rho'' = pat rho' p in
-       let e' = tailexp rho'' e in
-       FuncD(s, i, tp, p, t, e')),
-     rho
+    let rho = bind rho i in
+    (fun rho' ->
+      let rho'' = pat rho' p in
+      let e' = tailexp rho'' e in
+      FuncD(s, i, tp, p, t, e')),
+    rho
   | TypD (i, tp, t) -> 
-     (fun rho -> d.it),
-     rho
+    (fun rho -> d.it),
+    rho
   | ClassD (i, l, tp, s, p, i2, efs) ->
     let rho = bind rho i in
-     (fun rho' ->
-       let rho'' = pat rho' p in
-       let rho''' = bind rho'' i2 in
-       let efs' = exp_fields rho''' efs in
-       ClassD(i, l, tp, s, p, i2, efs')),
-      rho
+    (fun rho' ->
+      let rho'' = pat rho' p in
+      let rho''' = bind rho'' i2 in
+      let efs' = exp_fields rho''' efs in
+      ClassD(i, l, tp, s, p, i2, efs')),
+    rho
        
 and decs rho ds =
   let rec tail_posns ds =
@@ -237,16 +236,16 @@ and decs rho ds =
     | [] -> ([],rho)
     | d::ds ->
       let (mk_d,rho') = dec rho d in
-       let (mk_ds,rho'') = decs_aux rho' ds in
-       (mk_d::mk_ds,rho'')
+      let (mk_ds,rho'') = decs_aux rho' ds in
+      (mk_d::mk_ds,rho'')
   in
   let mk_ds,rho' = decs_aux rho ds in                           
   List.map2 (fun mk_d in_tail_pos ->
-      let rho'' = if in_tail_pos then rho' else None in
+      let rho'' = if in_tail_pos then rho' else (false,snd rho') in
       {mk_d with it = mk_d.it rho''}) mk_ds tail_posns
 
  
-and prog p:prog = {p with it = decs None p.it}
+and prog p:prog = {p with it = decs (false,None) p.it}
 
 
 

@@ -11,6 +11,20 @@ func Loop(n:Int){
 Loop(0);     
 };
 
+
+{
+func Loop(n:Int){
+     if (n >= bound) {
+          print "done";
+	  return;
+     };
+     return Loop(n+1);
+     assert(false);
+     };
+
+Loop(0);     
+};
+
 {
 func Loop<T>(n:Int){
      if (n >= bound) {
