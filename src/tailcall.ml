@@ -32,7 +32,7 @@ let bind ((tail_pos,info_opt) as rho) i info=
      (tail_pos, info)  (* override any previous info *)
   | None ->
     match info_opt with
-    | Some (f,_,_,_) when i.it = f.it ->
+    | Some (f,_,_,_,_) when i.it = f.it ->
       (tail_pos, None) (* remove shadowed func info *)
     | _ -> rho         (* preserve existing, non-shadowed info *)                  
          
@@ -177,14 +177,14 @@ and dec' rho d =
     let rho = bind rho i None in
     (fun rho' -> VarD(i,exp rho' e)),
     rho
-  | FuncD (({it=Local;_} as s), id, tbs, pat, typT, exp0) ->
+  | FuncD (({it=Local;_} as s), id, tbs, p, typT, exp0) ->
     let rho = bind rho id None in
     (fun rho' ->
-      let temp = fresh_id (Mut (typ pat)) in
+      let temp = fresh_id (Mut (typ p)) in
       let l = fresh_lab () in
       let tailCalled = ref false in
       let rho'' = (true, Some(id, tbs, temp, l, tailCalled)) in
-      let rho''' = pat rho'' pat  in (* shadow id if necessary *)
+      let rho''' = pat rho'' p  in (* shadow id if necessary *)
       let exp0' = tailexp rho''' exp0 in
       if !tailCalled then
         let ids = match typ d with
@@ -196,18 +196,18 @@ and dec' rho d =
           blockE [ varD (id_of_exp temp) (seqE ids);
                    expD (loopE
                            (labelE l typT
-                              (blockE [letP pat temp;
+                              (blockE [letP p temp;
                                        expD (retE exp0' unit)])) None)
           ] in
         FuncD (s, id, tbs, args, typT, body)
       else
-        FuncD (s, id, tbs, pat, typT, exp0'))
+        FuncD (s, id, tbs, p, typT, exp0'))
     ,
       rho
-  | FuncD ({it=Shared;_}, i, tbs, p, t, e) ->
+  | FuncD ({it=Sharable;_} as s, i, tbs, p, t, e) ->
     (* don't optimize self-tail calls for shared functions otherwise
        we won't go through the scheduler  *) 
-    let rho = bind rho i None in e
+    let rho = bind rho i None in
     (fun rho' ->
       let rho'' = pat (true,None) p in
       let e' = tailexp rho'' e in
