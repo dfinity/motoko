@@ -26,11 +26,16 @@ open Syntaxops
 *)
 
 
-let bind rho i =
-  match rho with
-  | (tail,Some (f, tbds, x, l, tailCalled)) when i.it = f.it -> (* remove shadowed tailbindings *)
-    (tail,None)
-  | _ -> rho
+let bind ((tail_pos,info_opt) as rho) i info=
+  match info with
+  | Some func ->
+     (tail_pos, info)  (* override any previous info *)
+  | None ->
+    match info_opt with
+    | Some (f,_,_,_) when i.it = f.it ->
+      (tail_pos, None) (* remove shadowed func info *)
+    | _ -> rho         (* preserve existing, non-shadowed info *)                  
+         
 
 let are_generic_insts tbs insts =
   List.for_all2 (fun tb inst ->
@@ -42,8 +47,8 @@ let are_generic_insts tbs insts =
 let rec tailexp rho e =
     {e with it = exp' rho e}
 
-and exp (_,opt) e  =
-    {e with it = exp' (false,opt)  e}
+and exp (_,func_info) e  =
+    {e with it = exp' (false,func_info)  e}
 
 and exp' rho e  = match e.it with
   | VarE _              
@@ -80,12 +85,12 @@ and exp' rho e  = match e.it with
   | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
   | ForE (p, e1, e2)    -> let rho' = pat rho p in
                            ForE (p, exp rho e1, exp rho' e2)
-  | LabelE (i, t, e)    -> let rho' = bind rho i in
+  | LabelE (i, t, e)    -> let rho' = bind rho i None in
                            LabelE(i, t, exp rho' e)
   | BreakE (i, e)       -> BreakE(i,exp rho e)
   | RetE e              -> RetE (tailexp (true,snd rho) e)
-   (* NB:^ e is always in tailposition, regardless of rho *)
-  | AsyncE e            -> AsyncE (exp rho e)
+   (* NB:^ e is always in tailposition, regardless of fst rho *)
+  | AsyncE e            -> AsyncE (exp (false,None) e)
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
   | IsE (e, t)          -> IsE (exp rho e, t)
@@ -93,7 +98,7 @@ and exp' rho e  = match e.it with
   | DecE d              -> let mk_d, rho' = dec rho d in
                            DecE ({mk_d with it = mk_d.it rho'})
   | OptE e              -> OptE (exp rho e)
-  | DeclareE (i, t, e)  -> let rho' = bind rho i in
+  | DeclareE (i, t, e)  -> let rho' = bind rho i None in
                            DeclareE (i, t, tailexp rho' e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp rho e)
   | NewObjE (s,is)      -> NewObjE (s, is)
@@ -107,7 +112,7 @@ and pat rho p =
 and pat' rho p = match p with
   | WildP          ->  rho
   | VarP i        ->
-    let rho' = bind rho i in
+    let rho' = bind rho i None in
     rho'
   | TupP ps       -> pats rho ps 
   | AnnotP (p, t) -> pat rho p 
@@ -140,7 +145,7 @@ and exp_field rho (ef : exp_field) =
   ({ef with it = mk_ef}, rho)
 
 and exp_field' rho {name = n; id = i; exp = e; mut; priv} =
-  let rho = bind rho i in
+  let rho = bind rho i None in
   ((fun rho'-> {name = n; id = i; exp = exp rho' e; mut; priv}),
    rho)            
 
@@ -169,17 +174,18 @@ and dec' rho d =
     (fun rho' -> LetD(p,exp rho' e)),
     rho              
   | VarD (i, e) ->
-    let rho = bind rho i in
+    let rho = bind rho i None in
     (fun rho' -> VarD(i,exp rho' e)),
     rho
   | FuncD (({it=Local;_} as s), id, tbs, pat, typT, exp0) ->
-    let rho = bind rho id in
+    let rho = bind rho id None in
     (fun rho' ->
       let temp = fresh_id (Mut (typ pat)) in
       let l = fresh_lab () in
       let tailCalled = ref false in
       let rho'' = (true, Some(id, tbs, temp, l, tailCalled)) in
-      let exp0' = tailexp rho'' exp0 in
+      let rho''' = pat rho'' pat  in (* shadow id if necessary *)
+      let exp0' = tailexp rho''' exp0 in
       if !tailCalled then
         let ids = match typ d with
           | Func(_,_,_,dom,_) -> List.map fresh_id dom         
@@ -198,10 +204,12 @@ and dec' rho d =
         FuncD (s, id, tbs, pat, typT, exp0'))
     ,
       rho
-  | FuncD (s, i, tbs, p, t, e) ->
-    let rho = bind rho i in
+  | FuncD ({it=Shared;_}, i, tbs, p, t, e) ->
+    (* don't optimize self-tail calls for shared functions otherwise
+       we won't go through the scheduler  *) 
+    let rho = bind rho i None in e
     (fun rho' ->
-      let rho'' = pat rho' p in
+      let rho'' = pat (true,None) p in
       let e' = tailexp rho'' e in
       FuncD(s, i, tbs, p, t, e')),
     rho
@@ -209,10 +217,10 @@ and dec' rho d =
     (fun rho -> d.it),
     rho
   | ClassD (i, l, tbs, s, p, i2, efs) ->
-    let rho = bind rho i in
+    let rho = bind rho i None in
     (fun rho' ->
-      let rho'' = pat rho' p in
-      let rho''' = bind rho'' i2 in
+      let rho'' = pat (false, None)  p in
+      let rho''' = bind rho'' i2 None in
       let efs' = exp_fields rho''' efs in
       ClassD(i, l, tbs, s, p, i2, efs')),
     rho

@@ -1,3 +1,5 @@
+(* test generic self-tail-recursion *)
+
 let bound:Int = 100000;
 
 {

@@ -1,3 +1,6 @@
+/* test asynchronous loops don't blow the stack,
+   ensured by optimization of self-tail calls
+*/
 
 let _ =
 {
