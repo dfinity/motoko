@@ -12,7 +12,14 @@ MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain
 
 OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45 -warn-error +a'
-OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" -I src -I lib $(OPAM_PACKAGES:%=-pkg %) -tags debug
+OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
+ -use-ocamlfind \
+ -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
+ -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" \
+ -I src \
+ -I lib \
+ $(OPAM_PACKAGES:%=-pkg %) \
+ -tags debug
 
 .PHONY: all clean test
 
@@ -43,17 +50,5 @@ test: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) all
 	$(MAKE) -C ../samples ASC=$(ASC) all
 
-test-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) all-dfn
-
-diffs: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) diffs
-
-diffs-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) diffs-dfn
-
 accept: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) accept
-
-accept-dfn: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) accept-dfn

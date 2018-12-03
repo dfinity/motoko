@@ -1,4 +1,4 @@
-type stat_env = Typing.env
+type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
@@ -36,6 +36,6 @@ val run_stdin  : env -> unit
 
 type compile_mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, error list) result
-val compile_file   : compile_mode -> string -> compile_result
-val compile_files  : compile_mode -> string list -> compile_result
+val compile_file   : compile_mode -> string -> string -> compile_result
+val compile_files  : compile_mode -> string list -> string -> compile_result
 val compile_string : compile_mode -> string -> string -> compile_result

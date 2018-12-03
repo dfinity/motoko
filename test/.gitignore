@@ -3,6 +3,9 @@ _out
 new-asc
 old-asc
 
+coverage
+_coverage
+
 *.diff
 *.wat
 *.wat.stderr

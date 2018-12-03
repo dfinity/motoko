@@ -16,6 +16,9 @@ let default = import ./default.nix { inherit nixpkgs test-dvm v8; }; in
 #
 
 nixpkgs.mkShell {
-    buildInputs = default.native.buildInputs ++ default.native_test.buildInputs;
+  buildInputs =
+    default.native.buildInputs ++
+    default.native_test.buildInputs ++
+    [ nixpkgs.ncurses ];
 }
 
