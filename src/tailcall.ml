@@ -39,7 +39,7 @@ type env = {tail_pos:bool; (* is the expression in tail position *)
          
    
 let bind env i info =
-  match env.info with
+  match info with
   | Some _ ->
      {env with info = info; }
   | None ->
