@@ -1207,6 +1207,7 @@ and infer_dec_valdecs env dec : val_env =
 
 
 (* Programs *)
+
 let with_messages env f x =
   let r = recover_opt f x in
   let msgs = List.rev !(env.msgs) in
