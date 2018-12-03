@@ -15,6 +15,10 @@ let lookup : string -> t -> S.t = fun k rel ->
   | None -> S.empty
   | Some s -> s
 
+(* dom R = { x | (x,y) ∈ R } *)
+let dom : t -> S.t = fun rel ->
+  M.fold (fun v s dom -> if S.is_empty s then dom else S.add v dom) rel S.empty
+
 (* remove_range R S = { (x,y) | (x,y) ∈ R ∧ y ∉ S } *)
 let remove_range : S.t -> t -> t = fun s ->
   M.map (fun s' -> S.diff s' s)
@@ -27,6 +31,18 @@ let union : t -> t -> t =
 let prod : S.t -> S.t -> t = fun s1 s2 ->
   S.fold (fun x rel -> M.add x s2 rel) s1 empty
 
+(* Just a utility function *)
+let set_bind f s =
+  S.fold (fun y -> S.union (f y)) s S.empty
+
 (* comp R1 R2 = R1 ∘ R2 = { (x,z) | (x,y) ∈ R1 ∧ (y,z) ∈ R2 } *)
 let comp : t -> t -> t = fun rel1 rel2 ->
-  M.map (fun s -> S.fold (fun y -> S.union (lookup y rel2)) s S.empty) rel1
+  M.map (set_bind (fun y -> lookup y rel2)) rel1
+
+(* We can use a relation R to represent its transitive closure R⁺,
+   and operations like dom, union, prod, comp work just fine.
+   Only removing needs special care:*)
+
+(* remove_range_trans S R = R' where remove_range S R⁺ = R'⁺ *)
+let remove_range_trans : S.t -> t -> t = fun s rel ->
+  M.map (set_bind (fun y -> if S.mem y s then S.diff (lookup y rel) s else S.singleton y)) rel

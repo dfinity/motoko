@@ -1146,16 +1146,18 @@ and check_block_use_before_define env ve decs : unit =
   in ()
 
 and check_dec_use_before_define env (ua : NameRel.t) dec : NameRel.t =
+  (* Consider let x = (y, func () { z } ) *)
   let (f,d) = Freevars.dec dec in
+  (* First, report if y cannot be used yet *)
   Freevars.S.iter (fun v1 ->
     List.iter (fun v2 ->
       local_error env dec.at "cannot use %s before %s has been defined" v1 v2
     ) (Freevars.S.elements (NameRel.lookup v1 ua))
   ) (Freevars.eager_vars f);
-  NameRel.remove_range d
-   (NameRel.union
-    ua
-    (NameRel.comp (NameRel.prod d (Freevars.delayed_vars f)) ua))
+  (* Next, what is x waiting on? Everything that z was waiting on *)
+  let ua_add = NameRel.(comp (prod d (Freevars.delayed_vars f)) ua) in
+  (* And now, take into account that x is now defined *)
+  NameRel.(remove_range_trans d (union ua ua_add))
 
 (* Pass 6: infer value types *)
 and infer_block_valdecs env decs : val_env =
