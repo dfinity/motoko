@@ -114,15 +114,15 @@ type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages)
 let messages_of_typing_messages = List.map (fun (sev, at, msg) -> (sev, at, "type", msg))
 
 let check_prog infer senv name prog
-  : (Type.typ * Typing.scope * messages, messages) result =
+  : ((Type.typ * Typing.scope) * messages, messages) result =
   phase "Checking" name;
   match infer senv prog with
-  | Ok (t, scope, msgs) ->
+  | Ok ((t, scope), msgs) ->
     if !Flags.trace && !Flags.verbose then begin
       print_ce scope.Typing.con_env;
       print_stat_ve scope.Typing.val_env
     end;
-    Ok (t, scope, messages_of_typing_messages msgs)
+    Ok ((t, scope), messages_of_typing_messages msgs)
   | Error msgs -> Error (messages_of_typing_messages msgs)
 
 let await_lowering flag prog name =
@@ -151,12 +151,12 @@ let check_with parse infer senv name : check_result =
   | Ok prog ->
     match check_prog infer senv name prog with
     | Error msgs -> Error msgs
-    | Ok (t, scope, msgs) -> Ok (prog, t, scope, msgs)
+    | Ok ((t, scope), msgs) -> Ok (prog, t, scope, msgs)
 
 let infer_prog_unit senv prog =
   match Typing.check_prog senv prog with
   | Error msgs -> Error msgs
-  | Ok (scope, msgs) -> Ok (Type.unit, scope, msgs)
+  | Ok (scope, msgs) -> Ok ((Type.unit, scope), msgs)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
 let check_file senv n = check_with parse_file infer_prog_unit senv n
@@ -224,7 +224,7 @@ let check_prelude () : Syntax.prog * stat_env =
   | Ok prog ->
     match check_prog infer_prog_unit Typing.empty_scope prelude_name prog with
     | Error es -> prelude_error "checking" (List.hd es)
-    | Ok (_t, sscope, msgs) ->
+    | Ok ((_t, sscope), msgs) ->
       let senv = Typing.adjoin_scope Typing.empty_scope sscope in
       prog, senv
 

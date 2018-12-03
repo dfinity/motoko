@@ -9,6 +9,7 @@ module A = Effect
 
 type message = Severity.t * Source.region * string
 type messages = message list
+type 'a messages_result = ('a * messages, messages) result
 
 let has_errors : messages -> bool =
   List.fold_left (fun b (sev,_,_) -> b || sev == Severity.Error) false
@@ -1206,21 +1207,17 @@ and infer_dec_valdecs env dec : val_env =
 
 
 (* Programs *)
+let with_messages env f x =
+  let r = recover_opt f x in
+  let msgs = List.rev !(env.msgs) in
+  match r with
+  | Some x when not (has_errors msgs) -> Ok (x, msgs)
+  | _ -> Error msgs
 
 let check_prog scope prog : (scope * messages, messages) result =
   let env = env_of_scope scope in
-  let r = recover_opt (check_block env T.unit prog.it) prog.at in
-  let msgs = List.rev !(env.msgs) in
-  match r with
-  | Some scope when not (has_errors msgs) ->
-    Ok (scope, msgs)
-  | _ -> Error msgs
+  with_messages env (check_block env T.unit prog.it) prog.at
 
-let infer_prog scope prog : (T.typ * scope * messages, messages) result =
+let infer_prog scope prog : ((T.typ * scope) * messages, messages) result =
   let env = env_of_scope scope in
-  let r = recover_opt (infer_block env prog.it) prog.at in
-  let msgs = List.rev !(env.msgs) in
-  match r with
-  | Some (t, scope) when not (has_errors msgs) ->
-    Ok (t, scope, msgs)
-  | _ -> Error msgs
+  with_messages env (infer_block env prog.it) prog.at
