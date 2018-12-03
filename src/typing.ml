@@ -71,9 +71,10 @@ let env_of_scope scope =
     pre = false;
     msgs = ref [];
   }
+
 (* More error bookkeeping *)
 
-let add_err env e = env.msgs := !(env.msgs) @ [e] (* TODO: Proper data structure *)
+let add_err env e = env.msgs := e :: !(env.msgs)
 
 let local_error env at fmt =
   Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s)) fmt
@@ -1209,7 +1210,7 @@ and infer_dec_valdecs env dec : val_env =
 let check_prog scope prog : (scope * messages, messages) result =
   let env = env_of_scope scope in
   let r = recover_opt (check_block env T.unit prog.it) prog.at in
-  let msgs = !(env.msgs) in
+  let msgs = List.rev !(env.msgs) in
   match r with
   | Some scope when not (has_errors msgs) ->
     Ok (scope, msgs)
@@ -1218,7 +1219,7 @@ let check_prog scope prog : (scope * messages, messages) result =
 let infer_prog scope prog : (T.typ * scope * messages, messages) result =
   let env = env_of_scope scope in
   let r = recover_opt (infer_block env prog.it) prog.at in
-  let msgs = !(env.msgs) in
+  let msgs = List.rev !(env.msgs) in
   match r with
   | Some (t, scope) when not (has_errors msgs) ->
     Ok (t, scope, msgs)
