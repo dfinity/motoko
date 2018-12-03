@@ -13,16 +13,18 @@ type env = stat_env * dyn_env
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-type error = Source.region * string * string
+type message = Severity.t * Source.region * string * string
+type messages = message list
 
 let error at category msg =
-  Error (at, category, msg)
+  Error (Severity.Error, at, category, msg)
 
-let errors category errs =
-  Error (List.map (fun (at, msg) -> (at, category, msg)) errs)
+let print_message (sev, at, category, msg) =
+  match sev with
+  | Severity.Error -> eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
+  | Severity.Warning -> eprintf "%s: warning, %s\n%!" (Source.string_of_region at) msg
 
-let print_error (at, category, msg) =
-  eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
+let print_messages = List.iter print_message
 
 let print_ce =
   Con.Env.iter (fun c k ->
@@ -61,7 +63,7 @@ let print_val _senv v t =
 
 (* Parsing *)
 
-type parse_result = (Syntax.prog, error) result
+type parse_result = (Syntax.prog, message) result
 
 let dump_prog flag prog =
     if !flag then
@@ -108,20 +110,21 @@ let parse_files filenames =
 
 (* Checking *)
 
-type check_result = (Syntax.prog * Type.typ * Typing.scope, error list) result
+type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages) result
+
+let messages_of_typing_messages = List.map (fun (sev, at, msg) -> (sev, at, "type", msg))
 
 let check_prog infer senv name prog
-  : (Type.typ * Typing.scope, error list) result =
-  try
-    phase "Checking" name;
-    let t, scope = infer senv prog in
+  : ((Type.typ * Typing.scope) * messages, messages) result =
+  phase "Checking" name;
+  match infer senv prog with
+  | Ok ((t, scope), msgs) ->
     if !Flags.trace && !Flags.verbose then begin
       print_ce scope.Typing.con_env;
       print_stat_ve scope.Typing.val_env
     end;
-    Ok (t, scope)
-  with Typing.Error errs ->
-    errors "type" errs
+    Ok ((t, scope), messages_of_typing_messages msgs)
+  | Error msgs -> Error (messages_of_typing_messages msgs)
 
 let transform transform_name transform flag prog name  =
   if flag then
@@ -147,11 +150,13 @@ let check_with parse infer senv name : check_result =
   | Error e -> Error [e]
   | Ok prog ->
     match check_prog infer senv name prog with
-    | Error es -> Error es
-    | Ok (t, scope) ->
-       Ok (prog, t, scope)
+    | Error msgs -> Error msgs
+    | Ok ((t, scope), msgs) -> Ok (prog, t, scope, msgs)
 
-let infer_prog_unit senv prog = Type.unit, Typing.check_prog senv prog
+let infer_prog_unit senv prog =
+  match Typing.check_prog senv prog with
+  | Error msgs -> Error msgs
+  | Ok (scope, msgs) -> Ok ((Type.unit, scope), msgs)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
 let check_file senv n = check_with parse_file infer_prog_unit senv n
@@ -174,7 +179,7 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    print_error (Interpret.get_last_region (), "fatal", Printexc.to_string exn);
+    print_message (Severity.Error, Interpret.get_last_region (), "fatal", Printexc.to_string exn);
     eprintf "\nLast environment:\n%!";
     eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
     eprintf "\n";
@@ -184,10 +189,11 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
 
 let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
-  | Error es ->
-    List.iter print_error es;
+  | Error msgs ->
+    print_messages msgs;
     None
-  | Ok (prog, t, sscope) ->
+  | Ok (prog, t, sscope, msgs) ->
+    print_messages msgs;
     let prog = await_lowering (!Flags.await_lowering) prog name in
     let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
     match interpret_prog denv name prog with
@@ -206,8 +212,8 @@ let interpret_files env = function
 
 let prelude_name = "prelude"
 
-let prelude_error phase (at, _, msg) =
-  print_error (at, "fatal", phase ^ " prelude failed: " ^ msg);
+let prelude_error phase (sev, at, _, msg) =
+  print_message (sev, at, "fatal", phase ^ " prelude failed: " ^ msg);
   exit 1
 
 let check_prelude () : Syntax.prog * stat_env =
@@ -218,7 +224,7 @@ let check_prelude () : Syntax.prog * stat_env =
   | Ok prog ->
     match check_prog infer_prog_unit Typing.empty_scope prelude_name prog with
     | Error es -> prelude_error "checking" (List.hd es)
-    | Ok (_t, sscope) ->
+    | Ok ((_t, sscope), msgs) ->
       let senv = Typing.adjoin_scope Typing.empty_scope sscope in
       prog, senv
 
@@ -226,7 +232,7 @@ let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_env prelude_name prelude with
-  | None -> prelude_error "initializing" (Source.no_region, "", "crashed")
+  | None -> prelude_error "initializing" (Severity.Error, Source.no_region, "", "crashed")
   | Some (_v, dscope) ->
     Interpret.adjoin Interpret.empty_env dscope
 
@@ -283,12 +289,13 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (CustomModule.extended_module, error list) result
+type compile_result = (CustomModule.extended_module, messages) result
 
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
-  | Error es -> Error es
-  | Ok (prog, _t, _scope) ->
+  | Error msgs -> Error msgs
+  | Ok (prog, _t, _scope, msgs) ->
+    print_messages msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     let prog = tailcall_optimization true prog name in
