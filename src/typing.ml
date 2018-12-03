@@ -13,11 +13,11 @@ type messages = message list
 let has_errors : messages -> bool =
   List.fold_left (fun b (sev,_,_) -> b || sev == Severity.Error) false
 
-(* Aborting *)
+(* Recovering from errors *)
 
-exception Abort
+exception Recover
 
-let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Abort -> x
+let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
@@ -79,7 +79,7 @@ let add_err env e = env.msgs := e :: !(env.msgs)
 let local_error env at fmt =
   Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s)) fmt
 let error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s); raise Abort) fmt
+  Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s); raise Recover) fmt
 let warn env at fmt =
   Printf.ksprintf (fun s -> add_err env (Severity.Warning, at, s)) fmt
 
