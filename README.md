@@ -29,10 +29,6 @@ To update, just run the last two commands again.
 
 ## Development using Nix
 
-**Mac OS X note**: Currently, Nix on Mac cannot built V8. So pass `--arg v8` to
-any of the following `nix` commands.
-
-
 This is the command that should always pass on master is the following, which builds everything:
 ```
 $ nix-build
@@ -59,7 +55,10 @@ you maintain your Ocaml installation manually), run
 nix-env -i -f . -A wasm
 nix-env -i -f . -A dvm
 ```
-Repeat the last command after upgrading `dev/nix`.
+To update the `dev` checkout and install `dvm` in one go, run `./update-dvm.sh`.
+
+By default, `dvm` is built using the V8 engine. To build with the Haskell
+engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
 ## Installation and development without Nix
 
@@ -69,7 +68,7 @@ You do not have to use nix:
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
    ```
-   opam install num
+   opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild
    ```
  * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
    `make install` therein.
@@ -77,6 +76,19 @@ You do not have to use nix:
    the path to run the `run` tests.
  * Make sure `dvm` (a binary from the `hs-dfinity-dvm` package) is in the path
    to run the `run-dfinity` tests.
+
+## Create a coverage report
+
+Run
+
+    BISECT_COVERAGE=YES make -C src asc
+    make -C test coverage
+
+and open `test/coverage/index.html` in the browser, or run
+
+   nix-build -A coverage-report
+
+and open the path printed on the last line of that command.
 
 
 ## Introduction

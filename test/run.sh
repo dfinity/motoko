@@ -95,17 +95,20 @@ do
     then
       mv $base.wasm $base.wasm.map $out
 
-      if [ $DFINITY = 'yes' ];
+      if [ "$SKIP_RUNNING" != yes ]
       then
-        echo -n " [dvm]"
-        $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
-        diff_files="$diff_files $base.dvm-run"
-      else
-        echo -n " [wasm-run]"
-        $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
-        sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
-        mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
-        diff_files="$diff_files $base.wasm-run"
+        if [ $DFINITY = 'yes' ]
+        then
+          echo -n " [dvm]"
+          $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
+          diff_files="$diff_files $base.dvm-run"
+        else
+          echo -n " [wasm-run]"
+          $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
+          sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
+          mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
+          diff_files="$diff_files $base.wasm-run"
+        fi
       fi
     fi
   fi

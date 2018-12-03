@@ -50,7 +50,7 @@ let new_asyncT =
   )
   
 let new_asyncE =
-  idE ("new_async"@@no_region) new_asyncT
+  idE ("@new_async"@@no_region) new_asyncT
 
 let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore *)
              
