@@ -1,1 +1,3 @@
-ok1 ok1 dvm: user error (Uncaught RangeError: Maximum call stack size exceeded
+ok1 
+ok2 
+dvm: user error (Uncaught RangeError: Maximum call stack size exceeded

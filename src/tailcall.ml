@@ -8,20 +8,33 @@ open Syntaxops
    in a single linear pass *)
 
 (*
-    For each function f whose body[...]
-    has at least one self tailcall to f<Ts>, 
-    apply the transformation:
+This is simple tail call optimizer that replaces tail calls to the current function by jumps. 
+It can  easily be extended to non-self-tail calls.
 
+For each function `f` whose `body[...]` has at least one self tailcall to `f<Ts>(es)`, apply the transformation:
+```
     func f<Ts>(pat) = body[f<Ts>(es)+] 
     ~~>
     func f<Ts>(args) = {
        var temp = args;
-       loop 
-       label l {
-        let pat = temp
-        return body[{temp = es;break l;}+] 
-        }       
+       loop {
+         label l {
+           let pat = temp;
+           return body[{temp := es;break l;}+] 
+        }        
+      }
     }
+``` 
+
+
+It's implemented by a recursive traversal that maintains an environment recording whether the current term is in tail position, 
+and what its enclosing function (if any) is. 
+
+The enclosing function is forgotten when shadowed by a local binding (we don't assume all variables are distinct) and when
+entering a function, class or actor constructor.
+ 
+On little gotcha for functional programmers: the argument `e` to an early `return e` is *always* in tail position, 
+regardless of `return e`s own tail position.
 
 *)
 
@@ -96,10 +109,10 @@ and exp' env e  = match e.it with
   | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
   | LoopE (e1, None)    -> LoopE (exp env e1, None)
   | LoopE (e1, Some e2) -> LoopE (exp env e1, Some (exp env e2))
-  | ForE (p, e1, e2)    -> let env' = pat env p in
-                           ForE (p, exp env e1, exp env' e2)
-  | LabelE (i, t, e)    -> let env' = bind env i None in
-                           LabelE(i, t, exp env' e)
+  | ForE (p, e1, e2)    -> let env1 = pat env p in
+                           ForE (p, exp env e1, exp env1 e2)
+  | LabelE (i, t, e)    -> let env1 = bind env i None in
+                           LabelE(i, t, exp env1 e)
   | BreakE (i, e)       -> BreakE(i,exp env e)
   | RetE e              -> RetE (tailexp {env with tail_pos = true} e)
    (* NB:^ e is always in tailposition, regardless of fst env *)
@@ -108,11 +121,11 @@ and exp' env e  = match e.it with
   | AssertE e           -> AssertE (exp env e)
   | IsE (e, t)          -> IsE (exp env e, t)
   | AnnotE (e, t)       -> AnnotE (exp env e, t)
-  | DecE d              -> let mk_d, env' = dec env d in
-                           DecE ({mk_d with it = mk_d.it env'})
+  | DecE d              -> let mk_d, env1 = dec env d in
+                           DecE ({mk_d with it = mk_d.it env1})
   | OptE e              -> OptE (exp env e)
-  | DeclareE (i, t, e)  -> let env' = bind env i None in
-                           DeclareE (i, t, tailexp env' e)
+  | DeclareE (i, t, e)  -> let env1 = bind env i None in
+                           DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
   | NewObjE (s,is)      -> NewObjE (s, is)
                                    
@@ -125,8 +138,8 @@ and pat env p =
 and pat' env p = match p with
   | WildP          ->  env
   | VarP i        ->
-    let env' = bind env i None in
-    env'
+    let env1 = bind env i None in
+    env1
   | TupP ps       -> pats env ps 
   | AnnotP (p, t) -> pat env p 
   | LitP l        -> env
@@ -140,14 +153,14 @@ and pats env ps  =
   match ps with
   | [] -> env
   | p::ps ->
-    let env' = pat env p in
-    pats env' ps 
+    let env1 = pat env p in
+    pats env1 ps 
 
 and case env (c : case) =
   {c with it = case' env c.it}
 and case' env {pat=p;exp=e} =
-  let env' = pat env p in
-  let e' = tailexp env' e in
+  let env1 = pat env p in
+  let e' = tailexp env1 e in
   {pat=p; exp=e'}
   
 
@@ -159,7 +172,7 @@ and exp_field env (ef : exp_field) =
 
 and exp_field' env {name = n; id = i; exp = e; mut; priv} =
   let env = bind env i None in
-  ((fun env'-> {name = n; id = i; exp = exp env' e; mut; priv}),
+  ((fun env1-> {name = n; id = i; exp = exp env1 e; mut; priv}),
    env)            
 
 and exp_fields env efs  = 
@@ -174,37 +187,37 @@ and exp_fields env efs  =
   List.map (fun mk_ef -> {mk_ef with it = mk_ef.it env}) mk_efs
 
 and dec env d =
-  let (mk_d,env') = dec' env d in
-  ({d with it = mk_d}, env')
+  let (mk_d,env1) = dec' env d in
+  ({d with it = mk_d}, env1)
                  
 and dec' env d =
   match d.it with
   | ExpD e ->
-    (fun env -> ExpD (tailexp env e)),
+    (fun env1 -> ExpD (tailexp env1 e)),
     env
   | LetD (p, e) ->
     let env = pat env p in
-    (fun env' -> LetD(p,exp env' e)),
+    (fun env1 -> LetD(p,exp env1 e)),
     env              
   | VarD (i, e) ->
     let env = bind env i None in
-    (fun env' -> VarD(i,exp env' e)),
+    (fun env1 -> VarD(i,exp env1 e)),
     env
   | FuncD (({it=Local;_} as s), id, tbs, p, typT, exp0) ->
     let env = bind env id None in
-    (fun env' ->
+    (fun env1 ->
       let temp = fresh_id (Mut (typ p)) in
       let l = fresh_lab () in
       let tail_called = ref false in
-      let env'' = {tail_pos = true;
+      let env2 = {tail_pos = true;
                    info = Some {func = id;
                                 typ_binds = tbs;
                                 temp = temp;
                                 label = l;
                                 tail_called = tail_called}}
       in
-      let env''' = pat env'' p  in (* shadow id if necessary *)
-      let exp0' = tailexp env''' exp0 in
+      let env3 = pat env2 p  in (* shadow id if necessary *)
+      let exp0' = tailexp env3 exp0 in
       if !tail_called then
         let ids = match typ d with
           | Func(_,_,_,dom,_) -> List.map fresh_id dom         
@@ -227,9 +240,9 @@ and dec' env d =
     (* don't optimize self-tail calls for shared functions otherwise
        we won't go through the scheduler  *) 
     let env = bind env i None in
-    (fun env' ->
-      let env'' = pat {tail_pos = true; info = None} p in
-      let e' = tailexp env'' e in
+    (fun env1 ->
+      let env2 = pat {tail_pos = true; info = None} p in
+      let e' = tailexp env2 e in
       FuncD(s, i, tbs, p, t, e')),
     env
   | TypD (i, tbs, t) -> 
@@ -237,10 +250,10 @@ and dec' env d =
     env
   | ClassD (i, l, tbs, s, p, i2, efs) ->
     let env = bind env i None in
-    (fun env' ->
-      let env'' = pat {tail_pos = false; info = None}  p in
-      let env''' = bind env'' i2 None in
-      let efs' = exp_fields env''' efs in
+    (fun env1 ->
+      let env2 = pat {tail_pos = false; info = None}  p in
+      let env3 = bind env2 i2 None in
+      let efs' = exp_fields env3 efs in
       ClassD(i, l, tbs, s, p, i2, efs')),
     env
        
@@ -260,16 +273,16 @@ and decs env ds =
     match ds with
     | [] -> ([],env)
     | d::ds ->
-      let (mk_d,env') = dec env d in
-      let (mk_ds,env'') = decs_aux env' ds in
-      (mk_d::mk_ds,env'')
+      let (mk_d,env1) = dec env d in
+      let (mk_ds,env2) = decs_aux env1 ds in
+      (mk_d::mk_ds,env2)
   in
-  let mk_ds,env' = decs_aux env ds in                           
+  let mk_ds,env1 = decs_aux env ds in                           
   List.map2 (fun mk_d in_tail_pos ->
-      let env'' = if in_tail_pos
-                  then env'
-                  else {env' with tail_pos = false} in
-      {mk_d with it = mk_d.it env''}) mk_ds tail_posns
+      let env2 = if in_tail_pos
+                  then env1
+                  else {env1 with tail_pos = false} in
+      {mk_d with it = mk_d.it env2}) mk_ds tail_posns
 
  
 and prog p:prog = {p with it = decs {tail_pos = false; info = None;} p.it}
