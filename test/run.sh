@@ -114,9 +114,20 @@ do
   fi
   echo ""
 
+  # normalize files
+  for file in $diff_files
+  do
+    if [ -e "$out/$file" ]
+    then
+      grep -E -v '^Raised at|^Re-Raised at|^Called from' $out/$file > $out/$file.norm
+      mv $out/$file.norm $out/$file
+    fi
+  done
+
   if [ $ACCEPT = yes ]
   then
-    for outfile in $diff_files; do
+    for outfile in $diff_files
+    do
       if [ -s $out/$outfile ]
       then
         cp $out/$outfile $ok/$outfile.ok
@@ -125,7 +136,8 @@ do
       fi
     done
   else
-    for file in $diff_files; do
+    for file in $diff_files
+    do
       diff -u -N $ok/$file.ok $out/$file
       if [ $? != 0 ]; then failures=yes; fi
     done
