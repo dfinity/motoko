@@ -3340,7 +3340,7 @@ and actor_lit outer_env name fs =
 
     OrthogonalPersistence.register env start_fi;
 
-    let m = conclude_module env None in
+    let m = conclude_module env name.it None in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -3370,7 +3370,7 @@ and actor_fake_object_idx env name =
         ElemHeap.remember_reference env
       ]
 
-and conclude_module env start_fi_o =
+and conclude_module env module_name start_fi_o =
 
   Dfinity.default_exports env;
   GC.register env (E.get_end_of_static_memory env);
@@ -3433,11 +3433,12 @@ and conclude_module env start_fi_o =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
            ];
+    module_name;
     function_names = E.get_func_names env;
     locals_names = E.get_func_local_names env;
   }
 
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
+let compile mode module_name (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
   let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -3455,4 +3456,4 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
       None
     end else Some (nr start_fi) in
 
-  conclude_module env start_fi_o
+  conclude_module env module_name start_fi_o

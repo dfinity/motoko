@@ -299,15 +299,14 @@ let compile_with check mode name : compile_result =
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     phase "Compiling" name;
-    let module_ = Compile.compile mode prelude [prog] in
+    let module_ = Compile.compile mode name prelude [prog] in
     Ok module_
 
-let compile_string mode s =
-  compile_with (fun senv name -> check_string senv s name) mode
-let compile_file mode n = compile_with check_file mode n
-let compile_files mode = function
-  | [n] -> compile_file mode n
-  | ns -> compile_with (fun senv _name -> check_files senv ns) mode "all"
+let compile_string mode s name =
+  compile_with (fun senv name -> check_string senv s name) mode name
+let compile_file mode file name = compile_with check_file mode name
+let compile_files mode files name =
+  compile_with (fun senv _name -> check_files senv files) mode name
 
 
 (* Interactively *)
