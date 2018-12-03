@@ -4,7 +4,7 @@ type val_env = typ Env.t
 type typ_env = con Env.t
 type con_env = Type.con_env
 
-type message = Source.region * Severity.t * string
+type message = Severity.t * Source.region * string
 type messages = message list
 
 type scope =

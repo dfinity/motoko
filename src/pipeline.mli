@@ -2,7 +2,7 @@ type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-type message = Source.region * string * Severity.t * string
+type message = Severity.t * Source.region * string * string
 type messages = message list
 val print_messages : messages -> unit
 

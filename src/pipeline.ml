@@ -12,14 +12,14 @@ type env = stat_env * dyn_env
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-type message = Source.region * string * Severity.t * string
+type message = Severity.t * Source.region * string * string
 type messages = message list
 
 let error at category msg =
-  Error (at, category, Severity.Error, msg)
+  Error (Severity.Error, at, category, msg)
 
-let print_message (at, category, severity, msg) =
-  match severity with
+let print_message (sev, at, category, msg) =
+  match sev with
   | Severity.Error -> eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
   | Severity.Warning -> eprintf "%s: warning, %s\n%!" (Source.string_of_region at) msg
 
@@ -111,7 +111,7 @@ let parse_files filenames =
 
 type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages) result
 
-let messages_of_typing_messages = List.map (fun (at, sev, msg) -> (at, "type", sev, msg))
+let messages_of_typing_messages = List.map (fun (sev, at, msg) -> (sev, at, "type", msg))
 
 let check_prog infer senv name prog
   : (Type.typ * Typing.scope * messages, messages) result =
@@ -179,7 +179,7 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    print_message (Interpret.get_last_region (), "fatal", Severity.Error, Printexc.to_string exn);
+    print_message (Severity.Error, Interpret.get_last_region (), "fatal", Printexc.to_string exn);
     eprintf "\nLast environment:\n%!";
     eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
     eprintf "\n";
@@ -212,8 +212,8 @@ let interpret_files env = function
 
 let prelude_name = "prelude"
 
-let prelude_error phase (at, _, is_err, msg) =
-  print_message (at, "fatal", is_err, phase ^ " prelude failed: " ^ msg);
+let prelude_error phase (sev, at, _, msg) =
+  print_message (sev, at, "fatal", phase ^ " prelude failed: " ^ msg);
   exit 1
 
 let check_prelude () : Syntax.prog * stat_env =
@@ -232,7 +232,7 @@ let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_env prelude_name prelude with
-  | None -> prelude_error "initializing" (Source.no_region, "", Severity.Error, "crashed")
+  | None -> prelude_error "initializing" (Severity.Error, Source.no_region, "", "crashed")
   | Some (_v, dscope) ->
     Interpret.adjoin Interpret.empty_env dscope
 

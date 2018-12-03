@@ -7,11 +7,11 @@ module A = Effect
 
 (* Error bookkeeping *)
 
-type message = Source.region * Severity.t * string
+type message = Severity.t * Source.region * string
 type messages = message list
 
 let has_errors : messages -> bool =
-  List.fold_left (fun b (_,sev,_) -> b || sev == Severity.Error) false
+  List.fold_left (fun b (sev,_,_) -> b || sev == Severity.Error) false
 
 (* Aborting *)
 
@@ -77,11 +77,11 @@ let env_of_scope scope =
 let add_err env e = env.msgs := !(env.msgs) @ [e] (* TODO: Proper data structure *)
 
 let local_error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (at, Severity.Error, s)) fmt
+  Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s)) fmt
 let error env at fmt =
-  Printf.ksprintf (fun s -> add_err env (at, Severity.Error, s); abort ()) fmt
+  Printf.ksprintf (fun s -> add_err env (Severity.Error, at, s); abort ()) fmt
 let warn env at fmt =
-  Printf.ksprintf (fun s -> add_err env (at, Severity.Warning, s)) fmt
+  Printf.ksprintf (fun s -> add_err env (Severity.Warning, at, s)) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
