@@ -298,6 +298,8 @@ let compile_with check mode name : compile_result =
     print_messages msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
+    let prog = Desugar.prog prog in
+    let prelude = Desugar.prog prelude in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_
