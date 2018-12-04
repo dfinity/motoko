@@ -32,7 +32,6 @@ let rec exp e = match e.it with
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
-  | DecE d              -> "DecE"    $$ [dec d]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]

@@ -41,7 +41,6 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | IsE of exp * exp                           (* instance-of *)
-  | DecE of dec                                (* declaration *)
   | DeclareE of Syntax.id * Type.typ * exp     (* local promise (internal) *)
   | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment (internal) *)
   | NewObjE of Syntax.obj_sort * (Syntax.name * Syntax.id) list (* make an object, preserving mutable identity (internal) *)

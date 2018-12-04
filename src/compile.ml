@@ -2884,8 +2884,6 @@ and compile_exp (env : E.t) exp = match exp.it with
         ]
   | BlockE decs ->
      compile_decs env decs
-  | DecE dec ->
-     compile_decs env [dec]
   | LabelE (name, _ty, e) ->
       G.block_ [I32Type] (G.with_current_depth (fun depth ->
         let env1 = E.add_label env name depth in
@@ -3246,7 +3244,7 @@ and compile_private_actor_field pre_env (f : Ir.exp_field)  =
 and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (name, _, pat, _rt, exp) =
     let find_func exp = match exp.it with
-    | DecE {it = FuncD (s, name, ty_args, pat, rt, exp); _ } -> (name, ty_args, pat, rt, exp)
+    | BlockE [{it = FuncD (s, name, ty_args, pat, rt, exp); _ }] -> (name, ty_args, pat, rt, exp)
     | _ -> raise (Invalid_argument "public actor field not a function")
     in find_func f.it.exp in
 

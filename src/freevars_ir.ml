@@ -61,11 +61,10 @@ let rec exp e : f = match e.it with
   | AwaitE e            -> exp e
   | AssertE e           -> exp e
   | IsE (e, t)          -> exp e
-  | DecE d              -> close (dec d)
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> (id i) ++ exp e
-  | NewObjE (_,ids)    -> unions id (List.map (fun (lab,id) -> id) ids)                                        
+  | NewObjE (_,ids)    -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
 

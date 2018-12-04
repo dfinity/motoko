@@ -57,7 +57,7 @@ let
     | S.AssertE e -> I.AssertE (exp e)
     | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
     | S.AnnotE (e, _) -> exp' e.Source.it
-    | S.DecE d -> I.DecE (dec d)
+    | S.DecE d -> I.BlockE [dec d]
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp e)
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs)
