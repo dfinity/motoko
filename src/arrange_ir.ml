@@ -19,9 +19,6 @@ let rec exp e = match e.it with
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map Arrange.typ ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
-  | NotE e              -> "NotE"    $$ [exp e]
-  | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
-  | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]

@@ -1,6 +1,16 @@
 module S = Syntax
 module I = Ir
 
+
+(* Combinators used in the desguaring *) 
+
+let true_lit : Ir.exp =
+  Source.(I.LitE (ref (S.BoolLit true)) @@ no_region)
+let false_lit : Ir.exp =
+  Source.(I.LitE (ref (S.BoolLit false)) @@ no_region)
+
+
+
 let phrase f x = Source.(f x.it @@ x.at)
 
 let
@@ -23,9 +33,9 @@ let
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
     | S.CallE (e1, inst, e2) -> I.CallE (exp e1, inst, exp e2)
     | S.BlockE ds -> I.BlockE (decs ds)
-    | S.NotE e -> I.NotE (exp e)
-    | S.AndE (e1, e2) -> I.AndE (exp e1, exp e2)
-    | S.OrE (e1, e2) -> I.OrE (exp e1, exp e2)
+    | S.NotE e -> I.IfE (exp e, false_lit, true_lit)
+    | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, false_lit)
+    | S.OrE (e1, e2) -> I.IfE (exp e1, true_lit, exp e2)
     | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
     | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
     | S.WhileE (e1, e2) -> I.WhileE (exp e1, exp e2)

@@ -2828,10 +2828,6 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^
      BoxedInt.unbox env ^^
      G.if_ [I32Type] compile_unit (G.i (Unreachable @@ exp.at))
-  | NotE e ->
-     compile_exp env e ^^
-     BoxedInt.unbox env ^^
-     G.if_ [I32Type] (BoxedInt.lit_false env) (BoxedInt.lit_true env)
   | UnE (op, e1) ->
      compile_exp env e1 ^^
      compile_unop env op
@@ -2843,16 +2839,6 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^
      compile_exp env e2 ^^
      compile_relop env op
-  | OrE (e1, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox env ^^
-     G.if_ [I32Type] (BoxedInt.lit_true env) code2
-  | AndE (e1, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox env ^^
-     G.if_ [I32Type] code2 (BoxedInt.lit_false env)
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in

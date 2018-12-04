@@ -48,9 +48,6 @@ let rec exp e : f = match e.it with
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (e1, ts, e2)  -> exps [e1; e2]
   | BlockE ds           -> close (decs ds)
-  | NotE e              -> exp e
-  | AndE (e1, e2)       -> exps [e1; e2]
-  | OrE (e1, e2)        -> exps [e1; e2]
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | WhileE (e1, e2)     -> exps [e1; e2]
