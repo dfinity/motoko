@@ -214,7 +214,7 @@ and value =
   | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
-  | Func of class_ option * (func * call_conv)  
+  | Func of class_ option * call_conv * func 
   | Async of async
   | Mut of value ref
 
@@ -253,63 +253,63 @@ let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 let obj_of_array a =
   let get =
     Func (None,
-          ((fun v k ->
+          (T.Call T.Local, T.Returns, 1, 1),
+          fun v k ->
             let n = as_int v in
             if Nat.lt n (Nat.of_int (Array.length a)) then
               k (a.(Nat.to_int n))
             else
               raise (Invalid_argument "array index out of bounds")
-          ),
-          (T.Call T.Local, T.Returns, 1, 1)))
+      )
   in
   let set =
     Func (None,
-          ((fun v k ->
+          (T.Call T.Local,T.Returns, 1, 1),
+          fun v k ->
             let v1, v2 = as_pair v in
             let n = as_int v1 in
             if Nat.lt n (Nat.of_int (Array.length a)) then
               k (a.(Nat.to_int n) <- v2; Tup [])
             else
-              raise (Invalid_argument "array index out of bounds")),
-           (T.Call T.Local,T.Returns, 1, 1)))
+              raise (Invalid_argument "array index out of bounds")
+      )
   in
   let len =
     Func (None,
-          ((fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a)))),
-           (T.Call T.Local, T.Returns, 0, 1)))
+          (T.Call T.Local, T.Returns, 0, 1),
+          fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a))))
   in
   let keys =
     Func (None,
-          ((fun v k ->
+          (T.Call T.Local, T.Returns, 0, 1),
+          fun v k ->
             as_unit v;
             let i = ref 0 in
-            let next =
-              (fun v k' ->
+            let next_conv = (T.Call T.Local, T.Returns, 0, 1) in            
+            let next =fun v k' ->
                 if !i = Array.length a then k' Null else
-                  let v = Opt (Int (Nat.of_int !i)) in incr i; k' v),
-               (T.Call T.Local, T.Returns, 0, 1)
+                  let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
             in k (Obj (None, Env.singleton "next"
-                               (Func (None, next))))),
-            (T.Call T.Local, T.Returns, 0, 1)))
+                               (Func (None, next_conv, next))))
+      )
   in
   let vals =
     Func (None,
-          ((fun v k ->
+          (T.Call T.Local, T.Returns, 0, 1),
+          fun v k ->
             as_unit v;
             let i = ref 0 in
-            let next =
-              (fun v k' ->
+            let next_conv = (T.Call T.Local, T.Returns, 0, 1) in
+            let next = fun v k' ->
                 if !i = Array.length a then k' Null else
-                  let v = Opt (a.(!i)) in incr i; k' v),
-              (T.Call T.Local, T.Returns, 0, 1)                                        
-            in k (Obj (None, Env.singleton "next" (Func (None, next))))
-          ),
-          (T.Call T.Local, T.Returns, 0, 1)))
+                  let v = Opt (a.(!i)) in incr i; k' v
+            in k (Obj (None, Env.singleton "next" (Func (None, next_conv, next))))
+      )
   in
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
 let as_obj = function Obj (co, ve) -> co, ve | Array a -> None, obj_of_array a | _ -> invalid "as_obj"
-let as_func = function Func (co, f) -> co, f | _ -> invalid "as_func"
+let as_func = function Func (co, cc, f) -> co, cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
@@ -384,8 +384,8 @@ let rec string_of_val_nullary d = function
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val' d) (Array.to_list a)))
-  | Func (None, _) -> "func"
-  | Func (Some _, _) -> "class"
+  | Func (None, _, _) -> "func"
+  | Func (Some _, _, _) -> "class"
   | v -> "(" ^ string_of_val' d v ^ ")"
 
 and string_of_val' d = function

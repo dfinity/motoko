@@ -80,7 +80,7 @@ and value =
   | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
-  | Func of class_ option * (func * call_conv)
+  | Func of class_ option * call_conv * func
   | Async of async
   | Mut of value ref
 
@@ -112,7 +112,7 @@ val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> class_ option * value Env.t
-val as_func : value -> class_ option * (func * call_conv)
+val as_func : value -> class_ option *call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
 
