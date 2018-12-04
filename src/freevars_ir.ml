@@ -46,7 +46,7 @@ let rec exp e : f = match e.it with
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE es           -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (e1, ts, e2)  -> exps [e1; e2]
+  | CallE (_, e1, ts, e2) -> exps [e1; e2]
   | BlockE ds           -> close (decs ds)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
@@ -93,7 +93,7 @@ and dec d = match d.it with
   | ExpD e -> (exp e, S.empty)
   | LetD (p, e) -> pat p +++ exp e
   | VarD (i, e) -> (S.empty, S.singleton i.it) +++ exp e
-  | FuncD (s, i, tp, p, t, e) ->
+  | FuncD (cc, i, tp, p, t, e) ->
     (S.empty, S.singleton i.it) +++ (exp e /// pat p)
   | TypD (i, tp, t) -> (S.empty, S.empty)
   | ClassD (i, l, tp, s, p, i', efs) ->

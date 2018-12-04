@@ -225,9 +225,13 @@ and 'a cont = 'a -> unit
 
 (* Smart constructors *)
 
-let local_func n m f = Func (None, (T.Call T.Local, T.Returns, n, m), f)
-let message_func n f = Func (None, (T.Call T.Sharable, T.Returns, n, 0), f)
-let async_func n m f = Func (None, (T.Call T.Sharable, T.Promises, n, m), f)
+let local_cc n m = (T.Call T.Local, T.Returns, n, m)
+let message_cc n = (T.Call T.Sharable, T.Returns, n, 0)
+let async_cc n m = (T.Call T.Sharable, T.Promises, n, m)
+
+let local_func n m f = Func (None, local_cc n m, f)
+let message_func n f = Func (None, message_cc n, f)
+let async_func n m f = Func (None, async_cc n m, f)
 
 (* Classes *)
 

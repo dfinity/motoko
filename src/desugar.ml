@@ -19,6 +19,7 @@ let apply_sign op l = Syntax.(match op, l with
 
 
 let phrase f x = Source.(f x.it @@ x.at)
+let phrase' f x = Source.(f x.note x.it @@ x.at)
 
 let
   rec exps es = List.map exp es
@@ -38,7 +39,9 @@ let
     | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
     | S.ArrayE es -> I.ArrayE (exps es)
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-    | S.CallE (e1, inst, e2) -> I.CallE (exp e1, inst, exp e2)
+    | S.CallE (e1, inst, e2) ->
+      let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
+      I.CallE (cc, exp e1, inst, exp e2)
     | S.BlockE ds -> I.BlockE (decs ds)
     | S.NotE e -> I.IfE (exp e, false_lit, true_lit)
     | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, false_lit)
@@ -68,12 +71,14 @@ let
     S.{ I.name = f.name; I.id = f.id; I.exp = exp f.exp; I.mut = f.mut; I.priv = f.priv}
 
   and decs ds = List.map dec ds
-  and dec d = phrase dec' d
-  and dec' = function
+  and dec d = phrase' dec' d
+  and dec' n = function
     | S.ExpD e -> I.ExpD (exp e)
     | S.LetD (p, e) -> I.LetD (pat p, exp e)
     | S.VarD (i, e) -> I.VarD (i, exp e)
-    | S.FuncD (s, i, tp, p, ty, e) -> I.FuncD (s, i, tp, pat p, ty, exp e)
+    | S.FuncD (s, i, tp, p, ty, e) ->
+      let cc = Value.call_conv_of_typ n.S.note_typ in
+      I.FuncD (cc, i, tp, pat p, ty, exp e)
     | S.TypD (i, ty, t) -> I.TypD (i, ty, t)
     | S.ClassD (i1, i2, ty, s, p, i3, es) -> I.ClassD (i1, i2, ty, s, pat p, i3, exp_fields es)
 
