@@ -2,7 +2,7 @@ open Wasm.Ast
 open Wasm.Types
 
 open Source
-open Syntax
+open Ir
 
 open CustomModule
 
@@ -22,7 +22,6 @@ let (@@) x at =
   let at = { Wasm.Source.left = left; Wasm.Source.right = right } in
   { Wasm.Source.it = x; Wasm.Source.at = at }
 let nr_ x = { it = x; at = no_region; note = () }
-let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
 
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
@@ -1431,7 +1430,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit env1 None None
-              [ (nr_ "next", nr__ Public, fun _ -> get_ni) ]
+              [ (nr_ "next", nr_ Syntax.Public, fun _ -> get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -2710,7 +2709,7 @@ open PatCode
 
 (* The actual compiler code that looks at the AST *)
 
-let compile_lit env lit = match lit with
+let compile_lit env lit = Syntax.(match lit with
   | BoolLit false -> BoxedInt.lit_false env
   | BoolLit true ->  BoxedInt.lit_true env
   (* This maps int to int32, instead of a proper arbitrary precision library *)
@@ -2723,8 +2722,9 @@ let compile_lit env lit = match lit with
   | NullLit       -> compile_null
   | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) G.i_ Unreachable
+  )
 
-let compile_unop env op = match op with
+let compile_unop env op = Syntax.(match op with
   | NegOp -> BoxedInt.lift_unboxed_unary env (
       set_tmp env ^^
       compile_unboxed_zero ^^
@@ -2732,8 +2732,9 @@ let compile_unop env op = match op with
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
+  )
 
-let compile_binop env op = match op with
+let compile_binop env op = Syntax.(match op with
   | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)))
   | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
@@ -2741,8 +2742,9 @@ let compile_binop env op = match op with
   | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.RemU)))
   | CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
+  )
 
-let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
+let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
              G.if_ [I32Type] compile_unboxed_false compile_unboxed_true
@@ -2750,7 +2752,7 @@ let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS))
   | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-  )
+  ))
 
 
 (* compile_lexp is used for expressions on the left of an
@@ -2764,11 +2766,11 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^ (* idx *)
      BoxedInt.unbox env ^^
      Array.idx env
-  | DotE (e, {it = Name n;_}) ->
+  | DotE (e, {it = Syntax.Name n;_}) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env n
-  | _ -> todo "compile_lexp" (Arrange.exp exp) G.i_ Unreachable
+  | _ -> todo "compile_lexp" (Arrange_ir.exp exp) G.i_ Unreachable
 
 (* compile_exp returns an *value*.
 Currently, number (I32Type) are just repesented as such, but other
@@ -2781,7 +2783,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | IdxE _  ->
      compile_lexp env exp ^^
      load_ptr
-  | DotE (e, ({it = Name n;_} as id)) ->
+  | DotE (e, ({it = Syntax.Name n;_} as id)) ->
      compile_exp env e ^^
      Tagged.branch env [I32Type]
       ( [ Tagged.Object, Object.load_idx env n ] @
@@ -2794,24 +2796,24 @@ and compile_exp (env : E.t) exp = match exp.it with
       )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
-  |  CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, { it = TupE [e1;e2]; _}) ->
+  |  CallE ({ it = PrimE p; _} as pe, _, { it = TupE [e1;e2]; _}) ->
     begin
      compile_exp env e1 ^^
      compile_exp env e2 ^^
      match p with
       | "Array.init" -> Array.init env
       | "Array.tabulate" -> Array.tabulate env
-      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
+      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   (* Unary prims *)
-  | CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, e) ->
+  | CallE ({ it = PrimE p; _} as pe, _, e) ->
     begin
      compile_exp env e ^^
      match p with
       | "abs" -> Prim.prim_abs env
       | "printInt" -> Dfinity.prim_printInt env
       | "print" -> Dfinity.prim_print env
-      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
+      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   | VarE var ->
      Var.get_val env var.it
@@ -2929,7 +2931,6 @@ and compile_exp (env : E.t) exp = match exp.it with
        G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop
      ) ^^
      compile_unit
-  | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e ^^ G.i (Return @@ exp.at)
   | OptE e ->
      Opt.inject env (compile_exp env e)
@@ -2941,16 +2942,16 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
-      (fun (f : Syntax.exp_field) ->
+      (fun (f : Ir.exp_field) ->
         (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
       ) fs in
      Object.lit env (Some name) None fs'
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
-    let captured = Freevars.exp exp in
+    let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.S.is_empty (Freevars.S.diff captured prelude_names)
     then actor_lit env name fs
-    else todo "non-closed actor" (Arrange.exp exp) G.i_ Unreachable
+    else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
   | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_exp env e2 ^^
@@ -3019,16 +3020,15 @@ and compile_exp (env : E.t) exp = match exp.it with
       compile_unit
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
-      (fun ({ it = Name name; _}, id) -> (name, fun env ->
+      (fun ({ it = Syntax.Name name; _}, id) -> (name, fun env ->
         Var.get_payload_loc env id.it ^^
         load_ptr
       )) fs in
      Object.lit_raw env fs'
-  | _ -> todo "compile_exp" (Arrange.exp exp) (G.i_ Unreachable)
+  | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
 
 
 and isDirectCall env e = match e.it with
-  | AnnotE (e, _) -> isDirectCall env e
   | VarE var ->
     begin match E.lookup_var env var.it with
     | Some (Deferred d) -> d.is_direct_call
@@ -3066,21 +3066,21 @@ enabled mutual recursion.
 
 
 and compile_lit_pat env opo l = match opo, l with
-  | None, NullLit ->
+  | None, Syntax.NullLit ->
     compile_lit env l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, (NatLit _ | IntLit _ | BoolLit _) ->
+  | None, Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
     BoxedInt.unbox env ^^
     compile_lit env l ^^
     BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | Some uo, (NatLit _ | IntLit _) ->
+  | Some uo, Syntax.(NatLit _ | IntLit _) ->
     BoxedInt.unbox env ^^
     compile_lit env l ^^
     compile_unop env uo ^^
     BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, (TextLit t) ->
+  | None, Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
@@ -3095,7 +3095,6 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
   | WildP -> (env, G.nop, CannotFail (G.i_ Drop))
-  | AnnotP (p, _) -> compile_pat env p
   | OptP p ->
       let (env1, alloc_code1, code1) = compile_pat env p in
       let (set_i, get_i) = new_local env "opt_scrut" in
@@ -3197,18 +3196,18 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
 
   | FuncD (_, name, _, p, _rt, e) ->
       (* Get captured variables *)
-      let captured = Freevars.captured p e in
+      let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 _ = compile_exp env1 e in
       Closure.dec pre_env last name captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, _, typ_params, s, p, self, efs) ->
-      let captured = Freevars.captured_exp_fields p efs in
+      let captured = Freevars_ir.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 p in
       let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
-        let fs' = List.map (fun (f : Syntax.exp_field) ->
+        let fs' = List.map (fun (f : Ir.exp_field) ->
           (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
           ) efs in
         (* this is run within the function. The class id is the function
@@ -3247,7 +3246,7 @@ and find_prelude_names env =
   E.in_scope_set env2
 
 
-and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
+and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
@@ -3258,7 +3257,7 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
     go env1 progs
     )
 
-and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
+and compile_private_actor_field pre_env (f : Ir.exp_field)  =
   let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
   let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
   ( pre_env1, fun env ->
@@ -3270,10 +3269,9 @@ and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
     Var.store
   )
 
-and compile_public_actor_field pre_env (f : Syntax.exp_field) =
+and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (name, _, pat, _rt, exp) =
-    let rec find_func exp = match exp.it with
-    | AnnotE (exp, _) -> find_func exp
+    let find_func exp = match exp.it with
     | DecE {it = FuncD (s, name, ty_args, pat, rt, exp); _ } -> (name, ty_args, pat, rt, exp)
     | _ -> raise (Invalid_argument "public actor field not a function")
     in find_func f.it.exp in
@@ -3301,8 +3299,8 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
     G.nop
   )
 
-and compile_actor_field pre_env (f : Syntax.exp_field) =
-  if f.it.priv.it = Private
+and compile_actor_field pre_env (f : Ir.exp_field) =
+  if f.it.priv.it = Syntax.Private
   then compile_private_actor_field pre_env f
   else compile_public_actor_field pre_env f
 
@@ -3438,7 +3436,7 @@ and conclude_module env module_name start_fi_o =
     locals_names = E.get_func_local_names env;
   }
 
-let compile mode module_name (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
+let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
   let env = E.mk_global mode prelude ClosureTable.table_end in
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 
