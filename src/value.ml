@@ -1,5 +1,5 @@
 open Printf
-
+module T = Type
 
 (* Environments *)
 
@@ -190,7 +190,15 @@ end
 type unicode = int
 type class_ = int
 
-type func = value -> value cont -> unit
+type call_conv = Type.func_sort * Type.control * int * int
+
+let call_conv_of_typ typ =
+    match typ with
+    | Type.Func(s,c,tbds,dom,res) -> (s,c,List.length dom, List.length res)
+    | _ -> assert(false)
+           
+type func =
+  (value -> value cont -> unit)
 and value =
   | Null
   | Bool of bool
@@ -206,7 +214,7 @@ and value =
   | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
-  | Func of class_ option * func
+  | Func of class_ option * (func * call_conv)  
   | Async of async
   | Mut of value ref
 
@@ -244,46 +252,59 @@ let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 
 let obj_of_array a =
   let get =
-    Func (None, fun v k ->
-      let n = as_int v in
-      if Nat.lt n (Nat.of_int (Array.length a)) then
-        k (a.(Nat.to_int n))
-      else
-        raise (Invalid_argument "array index out of bounds")
-    )
+    Func (None,
+          ((fun v k ->
+            let n = as_int v in
+            if Nat.lt n (Nat.of_int (Array.length a)) then
+              k (a.(Nat.to_int n))
+            else
+              raise (Invalid_argument "array index out of bounds")
+          ),
+          (T.Call T.Local, T.Returns, 1, 1)))
   in
   let set =
-    Func (None, fun v k ->
-      let v1, v2 = as_pair v in
-      let n = as_int v1 in
-      if Nat.lt n (Nat.of_int (Array.length a)) then
-        k (a.(Nat.to_int n) <- v2; Tup [])
-      else
-        raise (Invalid_argument "array index out of bounds")
-    )
+    Func (None,
+          ((fun v k ->
+            let v1, v2 = as_pair v in
+            let n = as_int v1 in
+            if Nat.lt n (Nat.of_int (Array.length a)) then
+              k (a.(Nat.to_int n) <- v2; Tup [])
+            else
+              raise (Invalid_argument "array index out of bounds")),
+           (T.Call T.Local,T.Returns, 1, 1)))
   in
   let len =
-    Func (None, fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a))))
+    Func (None,
+          ((fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a)))),
+           (T.Call T.Local, T.Returns, 0, 1)))
   in
   let keys =
-    Func (None, fun v k ->
-      as_unit v;
-      let i = ref 0 in
-      let next = fun v k' ->
-        if !i = Array.length a then k' Null else
-        let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
-      in k (Obj (None, Env.singleton "next" (Func (None, next))))
-    )
+    Func (None,
+          ((fun v k ->
+            as_unit v;
+            let i = ref 0 in
+            let next =
+              (fun v k' ->
+                if !i = Array.length a then k' Null else
+                  let v = Opt (Int (Nat.of_int !i)) in incr i; k' v),
+               (T.Call T.Local, T.Returns, 0, 1)
+            in k (Obj (None, Env.singleton "next"
+                               (Func (None, next))))),
+            (T.Call T.Local, T.Returns, 0, 1)))
   in
   let vals =
-    Func (None, fun v k ->
-      as_unit v;
-      let i = ref 0 in
-      let next = fun v k' ->
-        if !i = Array.length a then k' Null else
-        let v = Opt (a.(!i)) in incr i; k' v
-      in k (Obj (None, Env.singleton "next" (Func (None, next))))
-    )
+    Func (None,
+          ((fun v k ->
+            as_unit v;
+            let i = ref 0 in
+            let next =
+              (fun v k' ->
+                if !i = Array.length a then k' Null else
+                  let v = Opt (a.(!i)) in incr i; k' v),
+              (T.Call T.Local, T.Returns, 0, 1)                                        
+            in k (Obj (None, Env.singleton "next" (Func (None, next))))
+          ),
+          (T.Call T.Local, T.Returns, 0, 1)))
   in
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
@@ -388,3 +409,13 @@ and string_of_def' d def =
 
 let string_of_val v = string_of_val' !Flags.print_depth v
 let string_of_def d = string_of_def' !Flags.print_depth d
+
+let string_of_call_conv (sort,control,args,results) =
+  sprintf "(%s %i %s %i)"
+    (T.string_of_func_sort sort)
+    args
+    (match control with
+     | T.Returns -> "->"
+     | T.Promises -> "@>")
+    results               
+    

@@ -138,20 +138,36 @@ let actor_msg id f v (k : V.value V.cont) =
   )
                   
 let make_unit_message id v =
-    let _, f = V.as_func v in
-    V.Func (None, fun v k -> actor_msg id f v (fun _ -> ()); k V.unit)
+  let _, (f,call_conv) = V.as_func v in
+  match call_conv with
+  |  (T.Call T.Sharable, _ , arg_c, 0) ->
+     V.Func (None,
+             ((fun v k -> actor_msg id f v (fun _ -> ()); k V.unit),
+              (T.Call T.Sharable, T.Returns, arg_c, 0)))
+  | _ ->
+    failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
+(* assert (false) *)
+             
 
 let make_async_message id v =
-    assert (not !Flags.async_lowering);
-    let _, f = V.as_func v in
-    V.Func (None, fun v k ->
-      let async = make_async () in
-      actor_msg id f v (fun v_async ->
-        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
-      );
-      k (V.Async async)
-    )
-
+  assert (not !Flags.async_lowering);
+  let _, (f,call_conv) = V.as_func v in
+  match call_conv with
+  |  (T.Call T.Sharable, T.Promises, arg_c,1) ->
+     V.Func (None,
+             ((fun v k ->
+               let async = make_async () in
+               actor_msg id f v (fun v_async ->
+                   get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
+                 );
+               k (V.Async async)
+             ),
+              (T.Call T.Sharable, T.Promises, arg_c, 1)))
+  | _ ->
+    failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
+    (*    assert (false) *)
+       
+       
 let make_message id t v : V.value =
   match t with
   | T.Func (_, _, _, _, []) ->
@@ -169,10 +185,13 @@ let extended_prim s at =
   | "@async" ->
      assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-     let (call,f) = V.as_func v in
+     let (call,(f,_)) = V.as_func v in
      async at
        (fun k' ->
-         let k' = V.Func(None,fun v _ -> k' v) in
+         let k' = V.Func(None,
+                         ((fun v _ -> k' v),
+                          (T.Call T.Local, T.Returns, 1,0))
+                         ) in
          f k' V.as_unit)
        k
   | "@await" ->
@@ -181,7 +200,7 @@ let extended_prim s at =
      begin
        match V.as_tup v with
       | [async; w] ->
-        let (_,f) = V.as_func w in
+        let (_,(f,_)) = V.as_func w in
         await at (V.as_async async) (fun v -> f v k) 
       | _ -> assert false
      end
@@ -208,6 +227,15 @@ let interpret_lit env lit : V.value =
 
 (* Expressions *)
 
+let check_call_conv exp ((func_sort,control,args,res) as call_conv) =
+  let ((exp_func_sort,exp_control,exp_args,exp_res) as exp_call_conv) = V.call_conv_of_typ exp.note.note_typ in
+  if not (exp_func_sort = func_sort) then
+    failwith (Printf.sprintf "call_conv mismatch: function %s expect %s, found %s"
+      (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (V.string_of_call_conv exp_call_conv)
+      (V.string_of_call_conv call_conv))
+
+  
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -217,7 +245,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   match exp.it with
   | PrimE s ->
     let at = exp.at in
-    k (V.Func (None, extended_prim s at))
+    k (V.Func (None, (extended_prim s at,
+                      V.call_conv_of_typ exp.note.note_typ)))
   | VarE id ->
     (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -281,7 +310,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
         interpret_exp env exp2 (fun v2 ->
-            let _, f = V.as_func v1 in f v2 k
+            let _, (f,call_conv) = V.as_func v1 in
+            check_call_conv exp1 call_conv;
+            f v2 k
                                     
 (*
         try     
@@ -338,7 +369,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ForE (pat, exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
-      let _, next = V.as_func (find "next" fs) in
+      let _, (next, _) = V.as_func (find "next" fs) in
       let rec k_continue = fun v ->
         V.as_unit v;
         next V.unit (fun v' ->
@@ -618,7 +649,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | FuncD (_sort, id, _typbinds, pat, _typ, exp) ->
     let f = interpret_func env id pat
       (fun env' -> interpret_exp env' exp) in
-    let v = V.Func (None, f) in
+    let v = V.Func (None, (f,V.call_conv_of_typ dec.note.note_typ)) in
     let v =
       match _sort.it with
       | T.Sharable ->
@@ -631,7 +662,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let c = V.new_class () in
     let f = interpret_func env id pat
       (fun env' k' -> interpret_obj env' sort id' (Some c) fields k') in
-    let v = V.Func (Some c, f) in
+    let v = V.Func (Some c, (f,V.call_conv_of_typ dec.note.note_typ)) in
     define_id env id v;
     k v
 

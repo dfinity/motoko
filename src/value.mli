@@ -59,8 +59,12 @@ module Env : Env.S with type key = string
 
 type unicode = int
 type class_
+ 
+type call_conv = Type.func_sort * Type.control * int * int
 
-type func = value -> value cont -> unit
+val call_conv_of_typ : Type.typ -> call_conv
+  
+type func = value -> value cont -> unit 
 and value =
   | Null
   | Bool of bool
@@ -76,7 +80,7 @@ and value =
   | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
-  | Func of class_ option * func
+  | Func of class_ option * (func * call_conv)
   | Async of async
   | Mut of value ref
 
@@ -108,7 +112,7 @@ val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> class_ option * value Env.t
-val as_func : value -> class_ option * (value -> value cont -> unit)
+val as_func : value -> class_ option * (func * call_conv)
 val as_async : value -> async
 val as_mut : value -> value ref
 
@@ -128,3 +132,4 @@ val compare : value -> value -> int
 
 val string_of_val : value -> string
 val string_of_def : def -> string
+val string_of_call_conv : call_conv -> string
