@@ -101,8 +101,9 @@ end
 module Promise :
 sig
   type 'a t
-  exception Promise
+  exception Promise of string
   val make : unit -> 'a t
+  val make_named : string -> 'a t
   val make_fulfilled : 'a -> 'a t
   val fulfill : 'a t -> 'a -> unit
   val is_fulfilled : 'a t -> bool
