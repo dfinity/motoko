@@ -6,7 +6,7 @@ let ($$) head inner = Node (head, inner)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
-  | LitE l              -> "LitE"    $$ [Arrange.lit !l]
+  | LitE l              -> "LitE"    $$ [Arrange.lit l]
   | UnE (uo, e)         -> "UnE"     $$ [Arrange.unop uo; exp e]
   | BinE (e1, bo, e2)   -> "BinE"    $$ [exp e1; Arrange.binop bo; exp e2]
   | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; Arrange.relop ro; exp e2]
@@ -44,8 +44,8 @@ and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
   | TupP ps       -> "TupP"       $$ List.map pat ps
-  | LitP l        -> "LitP"       $$ [ Arrange.lit !l ]
-  | SignP (uo, l) -> "SignP"      $$ [ Arrange.unop uo ; Arrange.lit !l ]
+  | LitP l        -> "LitP"       $$ [ Arrange.lit l ]
+  | SignP (uo, l) -> "SignP"      $$ [ Arrange.unop uo ; Arrange.lit l ]
   | OptP p        -> "OptP"       $$ [ pat p ]
   | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
 

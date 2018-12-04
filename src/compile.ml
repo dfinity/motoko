@@ -2822,8 +2822,8 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^
      store_ptr ^^
      compile_unit
-  | LitE l_ref ->
-     compile_lit env !l_ref
+  | LitE l ->
+     compile_lit env l
   | AssertE e1 ->
      compile_exp env e1 ^^
      BoxedInt.unbox env ^^
@@ -3098,12 +3098,12 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
       (env2, alloc_code1, code)
   | LitP l ->
       let code = CanFail (fun fail_code ->
-        compile_lit_pat env None !l ^^
+        compile_lit_pat env None l ^^
         G.if_ [] G.nop fail_code)
       in (env, G.nop, code)
   | SignP (op, l) ->
       let code = CanFail (fun fail_code ->
-        compile_lit_pat env (Some op) !l ^^
+        compile_lit_pat env (Some op) l ^^
         G.if_ [] G.nop fail_code)
       in (env, G.nop, code)
 

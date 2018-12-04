@@ -5,9 +5,9 @@ module I = Ir
 (* Combinators used in the desguaring *) 
 
 let true_lit : Ir.exp =
-  Source.(I.LitE (ref (S.BoolLit true)) @@ no_region)
+  Source.(I.LitE (S.BoolLit true) @@ no_region)
 let false_lit : Ir.exp =
-  Source.(I.LitE (ref (S.BoolLit false)) @@ no_region)
+  Source.(I.LitE (S.BoolLit false) @@ no_region)
 
 
 
@@ -19,7 +19,7 @@ let
   and exp' = function
     | S.PrimE p -> I.PrimE p
     | S.VarE i -> I.VarE i
-    | S.LitE l -> I.LitE l
+    | S.LitE l -> I.LitE !l
     | S.UnE (o, e) -> I.UnE (o, exp e)
     | S.BinE (e1, o, e2) -> I.BinE (exp e1, o, exp e2)
     | S.RelE (e1, o, e2) -> I.RelE (exp e1, o, exp e2)
@@ -80,8 +80,8 @@ let
   and pat' = function
     | S.VarP v -> I.VarP v
     | S.WildP -> I.WildP
-    | S.LitP l -> I.LitP l
-    | S.SignP (o, l) -> I.SignP (o, l)
+    | S.LitP l -> I.LitP !l
+    | S.SignP (o, l) -> I.SignP (o, !l)
     | S.TupP ps -> I.TupP (pats ps)
     | S.OptP p -> I.OptP (pat p)
     | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)

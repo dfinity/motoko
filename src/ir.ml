@@ -4,8 +4,8 @@ type pat = pat' Source.phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of Syntax.id                          (* variable *)
-  | LitP of Syntax.lit ref                     (* literal *)
-  | SignP of Syntax.unop * Syntax.lit ref      (* signed literal *)
+  | LitP of Syntax.lit                         (* literal *)
+  | SignP of Syntax.unop * Syntax.lit          (* signed literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
@@ -16,7 +16,7 @@ type exp = exp' Source.phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of Syntax.id                          (* variable *)
-  | LitE of Syntax.lit ref                     (* literal *)
+  | LitE of Syntax.lit                         (* literal *)
   | UnE of Syntax.unop * exp                   (* unary operator *)
   | BinE of exp * Syntax.binop * exp           (* binary operator *)
   | RelE of exp * Syntax.relop * exp           (* relational operator *)
