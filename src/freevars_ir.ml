@@ -74,7 +74,6 @@ and pat p : fb = match p.it with
   | VarP i        -> (S.empty, S.singleton i.it)
   | TupP ps       -> pats ps
   | LitP l        -> (S.empty, S.empty)
-  | SignP (uo, l) -> (S.empty, S.empty)
   | OptP p        -> pat p
   | AltP (p1, p2) -> pat p1 ++++ pat p2
 

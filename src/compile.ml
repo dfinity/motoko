@@ -3051,22 +3051,16 @@ enabled mutual recursion.
 *)
 
 
-and compile_lit_pat env opo l = match opo, l with
-  | None, Syntax.NullLit ->
+and compile_lit_pat env l = match l with
+  | Syntax.NullLit ->
     compile_lit env l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
+  | Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
     BoxedInt.unbox env ^^
     compile_lit env l ^^
     BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | Some uo, Syntax.(NatLit _ | IntLit _) ->
-    BoxedInt.unbox env ^^
-    compile_lit env l ^^
-    compile_unop env uo ^^
-    BoxedInt.unbox env ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, Syntax.(TextLit t) ->
+  | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
@@ -3098,15 +3092,9 @@ and compile_pat env pat : E.t * G.t * patternCode = match pat.it with
       (env2, alloc_code1, code)
   | LitP l ->
       let code = CanFail (fun fail_code ->
-        compile_lit_pat env None l ^^
+        compile_lit_pat env l ^^
         G.if_ [] G.nop fail_code)
       in (env, G.nop, code)
-  | SignP (op, l) ->
-      let code = CanFail (fun fail_code ->
-        compile_lit_pat env (Some op) l ^^
-        G.if_ [] G.nop fail_code)
-      in (env, G.nop, code)
-
   | VarP name ->
       let (env1,i) = Var.add_local env name.it; in
       let alloc_code =

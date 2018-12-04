@@ -45,7 +45,6 @@ and pat p = match p.it with
   | VarP i        -> "VarP"       $$ [ id i]
   | TupP ps       -> "TupP"       $$ List.map pat ps
   | LitP l        -> "LitP"       $$ [ Arrange.lit l ]
-  | SignP (uo, l) -> "SignP"      $$ [ Arrange.unop uo ; Arrange.lit l ]
   | OptP p        -> "OptP"       $$ [ pat p ]
   | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
 

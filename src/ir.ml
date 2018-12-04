@@ -5,7 +5,6 @@ and pat' =
   | WildP                                      (* wildcard *)
   | VarP of Syntax.id                          (* variable *)
   | LitP of Syntax.lit                         (* literal *)
-  | SignP of Syntax.unop * Syntax.lit          (* signed literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)

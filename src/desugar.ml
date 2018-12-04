@@ -10,6 +10,13 @@ let false_lit : Ir.exp =
   Source.(I.LitE (S.BoolLit false) @@ no_region)
 
 
+let apply_sign op l = Syntax.(match op, l with
+  | PosOp, l -> l
+  | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
+  | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | _, _ -> raise (Invalid_argument "Invalid signed pattern")
+  )
+
 
 let phrase f x = Source.(f x.it @@ x.at)
 
@@ -81,7 +88,7 @@ let
     | S.VarP v -> I.VarP v
     | S.WildP -> I.WildP
     | S.LitP l -> I.LitP !l
-    | S.SignP (o, l) -> I.SignP (o, !l)
+    | S.SignP (o, l) -> I.LitP (apply_sign o !l)
     | S.TupP ps -> I.TupP (pats ps)
     | S.OptP p -> I.OptP (pat p)
     | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
