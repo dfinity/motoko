@@ -225,12 +225,13 @@ end
 
 module Promise =
 struct
-  type 'a t = 'a option ref
+  type 'a t = ('a option ref * string)
 
-  let make () = ref None
-  let make_fulfilled x = ref (Some x)
-  let fulfill p x = if !p = None then p := Some x else failwith "fulfill"
-  let is_fulfilled p = !p <> None
-  let value_opt p = !p
-  let value p = match !p with None -> failwith "Promise.value" | Some x -> x
+  let make () = (ref None, "anonymous promise")
+  let make_named s = (ref None, s)
+  let make_fulfilled x = (ref (Some x), "anonymous promise")
+  let fulfill (p,s) x = if !p = None then p := Some x else failwith ("fulfill: " ^ s)
+  let is_fulfilled (p,_) = !p <> None
+  let value_opt (p,s) = !p
+  let value (p,s) = match !p with None -> failwith ("Promise.value: " ^ s) | Some x -> x
 end
