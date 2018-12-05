@@ -1,4 +1,2 @@
-asyncret2.as:1.63-1.66: type error, expression of type
-  async B/1
-cannot produce expected type
-  B/1
+asyncret2.as:1.36-1.38: type error, shared function has non-shared result type
+  async B
