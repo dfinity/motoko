@@ -1,2 +1,0 @@
-actor.as:68.35-68.65: type error, async type has non-shared parameter type
-  () -> (async Text)
