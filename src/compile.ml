@@ -1033,7 +1033,8 @@ module Object = struct
   (* Number of object fields *)
   let size_field = Int32.add Tagged.header_size 1l
 
-  let hash_field_name (name : string) = Int32.of_int (Hashtbl.hash name)
+  let hash_field_name ({it = Syntax.Name s; _}) =
+    Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
   let lit env this_name_opt class_option fs =
@@ -1043,7 +1044,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, priv, f) -> priv.it = Public) |>
       *)
-      List.map (fun (id,priv,_) -> (hash_field_name (id.it), id.it)) |>
+      List.map (fun ({it = Syntax.Name s;_} as n,_,_,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1071,16 +1072,18 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-    let hash_position env f =
-        let i = FieldEnv.find f.it name_pos_map in
+    let is_public_field {it = Syntax.Name n; _} =
+        FieldEnv.mem n name_pos_map in
+    let hash_position env {it = Syntax.Name n; _} =
+        let i = FieldEnv.find n name_pos_map in
         Int32.add header_size (Int32.mul 2l i) in
-    let field_position env f =
-        let i = FieldEnv.find f.it name_pos_map in
+    let field_position env {it = Syntax.Name n; _} =
+        let i = FieldEnv.find n name_pos_map in
         Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
      (* Bind the fields in the envrionment *)
-     let mk_field_ptr env (id, _, _) =
-      E.reuse_local_with_offset env id.it ri (field_position env id) in
+     let mk_field_ptr env (name, id, _, _) =
+       E.reuse_local_with_offset env id.it ri (field_position env name) in
      let env1 = List.fold_left mk_field_ptr env fs in
 
      (* An extra indirection for the 'this' pointer, if present *)
@@ -1092,18 +1095,18 @@ module Object = struct
      this_code ^^
 
      (* Write all the fields *)
-     let init_field (id, _, mk_is) : G.t =
-        match FieldEnv.find_opt id.it name_pos_map with
-        | None -> G.nop
-        | Some i ->
-          (* Write the hash *)
-          get_ri ^^
-          compile_unboxed_const (hash_field_name id.it) ^^
-          Heap.store_field (hash_position env id) ^^
-          (* Write the value *)
-          get_ri ^^
-          mk_is env2 ^^
-          Heap.store_field (field_position env id)
+     let init_field (name, _, _, mk_is) : G.t =
+       if is_public_field name
+       then
+         (* Write the hash *)
+         get_ri ^^
+         compile_unboxed_const (hash_field_name name) ^^
+         Heap.store_field (hash_position env name) ^^
+         (* Write the value *)
+         get_ri ^^
+         mk_is env2 ^^
+         Heap.store_field (field_position env name)
+       else G.nop
      in
      G.concat_map init_field fs ^^
 
@@ -1119,7 +1122,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, priv, f) -> priv.it = Public) |>
       *)
-      List.map (fun (id,_) -> (hash_field_name id, id)) |>
+      List.map (fun ({it = Syntax.Name s;_} as n,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1145,28 +1148,30 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-    let hash_position env f =
-        let i = FieldEnv.find f name_pos_map in
-        Int32.add header_size (Int32.mul 2l i) in
-    let field_position env f =
-        let i = FieldEnv.find f name_pos_map in
-        Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
+     let is_public_field {it = Syntax.Name n; _} =
+         FieldEnv.mem n name_pos_map in
+     let hash_position env {it = Syntax.Name n; _} =
+         let i = FieldEnv.find n name_pos_map in
+         Int32.add header_size (Int32.mul 2l i) in
+     let field_position env {it = Syntax.Name n; _} =
+         let i = FieldEnv.find n name_pos_map in
+         Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
      (* Write all the fields *)
-     let set_field (id, mk_is) : G.t =
-        match FieldEnv.find_opt id name_pos_map with
-        | None -> G.nop
-        | Some i ->
-          (* Write the hash *)
-          get_ri ^^
-          compile_unboxed_const (hash_field_name id) ^^
-          Heap.store_field (hash_position env id) ^^
-          (* Write the value *)
-          get_ri ^^
-          mk_is env ^^
-          Heap.store_field (field_position env id)
+     let init_field (name, mk_is) : G.t =
+       if is_public_field name
+       then
+         (* Write the hash *)
+         get_ri ^^
+         compile_unboxed_const (hash_field_name name) ^^
+         Heap.store_field (hash_position env name) ^^
+         (* Write the value *)
+         get_ri ^^
+         mk_is env ^^
+         Heap.store_field (field_position env name)
+       else G.nop
      in
-     G.concat_map set_field fs ^^
+     G.concat_map init_field fs ^^
 
      (* Return the pointer to the object *)
      get_ri
@@ -1204,7 +1209,7 @@ module Object = struct
       get_r
     )
 
-  let idx env (name : string) =
+  let idx env name =
     compile_unboxed_const (hash_field_name name) ^^
     idx_hash env
 
@@ -1430,7 +1435,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit env1 None None
-              [ (nr_ "next", nr_ Syntax.Public, fun _ -> get_ni) ]
+              [ (nr_ (Syntax.Name "next"), nr_ "next", nr_ Syntax.Public, fun _ -> get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -2766,7 +2771,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^ (* idx *)
      BoxedInt.unbox env ^^
      Array.idx env
-  | DotE (e, {it = Syntax.Name n;_}) ->
+  | DotE (e, n) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env n
@@ -2783,12 +2788,12 @@ and compile_exp (env : E.t) exp = match exp.it with
   | IdxE _  ->
      compile_lexp env exp ^^
      load_ptr
-  | DotE (e, ({it = Syntax.Name n;_} as id)) ->
+  | DotE (e, ({it = Syntax.Name n;_} as name)) ->
      compile_exp env e ^^
      Tagged.branch env [I32Type]
-      ( [ Tagged.Object, Object.load_idx env n ] @
+      ( [ Tagged.Object, Object.load_idx env name ] @
         (if E.mode env = DfinityMode
-         then [ Tagged.Reference, actor_fake_object_idx env {id with it = n} ]
+         then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
          else []) @
         match  Array.fake_object_idx env n with
           | None -> []
@@ -2927,7 +2932,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
       (fun (f : Ir.exp_field) ->
-        (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+        (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
       ) fs in
      Object.lit env (Some name) None fs'
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
@@ -2974,7 +2979,7 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      G.loop_ []
        ( get_i ^^
-         Object.load_idx env1 "next" ^^
+         Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
          compile_unit ^^
          Closure.call_indirect env1 Source.no_region ^^
          let (set_oi, get_oi) = new_local env "opt" in
@@ -3004,10 +3009,8 @@ and compile_exp (env : E.t) exp = match exp.it with
       compile_unit
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
-      (fun ({ it = Syntax.Name name; _}, id) -> (name, fun env ->
-        Var.get_payload_loc env id.it ^^
-        load_ptr
-      )) fs in
+      (fun (name, id) -> (name, fun env -> Var.get_val env id.it))
+      fs in
      Object.lit_raw env fs'
   | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
 
@@ -3180,7 +3183,7 @@ and compile_dec last pre_env dec : E.t * G.t * (E.t -> G.t) = match dec.it with
       let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
         let fs' = List.map (fun (f : Ir.exp_field) ->
-          (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+          (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
           ) efs in
         (* this is run within the function. The class id is the function
 	identifier, as provided by Func.dec:
