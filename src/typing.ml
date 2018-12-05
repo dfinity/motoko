@@ -190,9 +190,10 @@ let rec check_typ env typ : T.typ =
     T.Opt (check_typ env typ)
   | AsyncT typ ->
     let t = check_typ env typ in
-    if not (T.sub env.cons t T.Shared) then
+    let t' = T.promote env.cons t in
+    if t' <> T.Pre && not (T.sub env.cons t' T.Shared) then
       error env typ.at "async type has non-shared parameter type\n  %s"
-        (T.string_of_typ_expand env.cons t);
+        (T.string_of_typ_expand env.cons t');
     T.Async t
   | LikeT typ ->
     T.Like (check_typ env typ)
