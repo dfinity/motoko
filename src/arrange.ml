@@ -157,7 +157,15 @@ and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (s, i, tp, p, t, e) ->
-    "FuncD" $$ [Atom (Type.string_of_typ d.note.note_typ); Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+    "FuncD" $$ [
+      Atom (Type.string_of_typ d.note.note_typ);
+      Atom (sharing s.it);
+      id i] @
+      List.map typ_bind tp @ [
+      pat p;
+      typ t;
+      exp e
+    ]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, j, tp, s, p, i', efs) ->

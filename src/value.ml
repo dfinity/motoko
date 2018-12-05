@@ -3,7 +3,7 @@ module T = Type
 
 (* Environments *)
 
-module Env = Env.Make(String) 
+module Env = Env.Make(String)
 
 
 (* Numeric Representations *)
@@ -53,7 +53,7 @@ struct
   let neg i = inj (Rep.neg (proj i))
   let add i j = inj (Rep.add (proj i) (proj j))
   let sub i j = inj (Rep.sub (proj i) (proj j))
-  let mul i j = inj (Rep.mul (proj i) (proj j)) 
+  let mul i j = inj (Rep.mul (proj i) (proj j))
   let div i j = inj (Rep.div (proj i) (proj j))
   let rem i j = inj (Rep.rem (proj i) (proj j))
   let logand = Rep.logand
@@ -193,10 +193,10 @@ type class_ = int
 type call_conv = Type.func_sort * Type.control * int * int
 
 let call_conv_of_typ typ =
-    match typ with
-    | Type.Func(s,c,tbds,dom,res) -> (s,c,List.length dom, List.length res)
-    | _ -> assert(false)
-           
+  match typ with
+  | Type.Func(s,c,tbds,dom,res) -> (s, c, List.length dom, List.length res)
+  | _ -> raise (Invalid_argument "call_conv_of_typ")
+
 type func =
   (value -> value cont -> unit)
 and value =
@@ -214,7 +214,7 @@ and value =
   | Opt of value
   | Array of value array
   | Obj of class_ option * value Env.t
-  | Func of class_ option * call_conv * func 
+  | Func of class_ option * call_conv * func
   | Async of async
   | Mut of value ref
 
@@ -222,6 +222,12 @@ and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
+
+(* Smart constructors *)
+
+let local_func n m f = Func (None, (T.Call T.Local, T.Returns, n, m), f)
+let message_func n f = Func (None, (T.Call T.Sharable, T.Returns, n, 0), f)
+let async_func n m f = Func (None, (T.Call T.Sharable, T.Promises, n, m), f)
 
 (* Classes *)
 
@@ -251,61 +257,40 @@ let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 
 let obj_of_array a =
-  let get =
-    Func (None,
-          (T.Call T.Local, T.Returns, 1, 1),
-          fun v k ->
-            let n = as_int v in
-            if Nat.lt n (Nat.of_int (Array.length a)) then
-              k (a.(Nat.to_int n))
-            else
-              raise (Invalid_argument "array index out of bounds")
-      )
-  in
-  let set =
-    Func (None,
-          (T.Call T.Local,T.Returns, 1, 1),
-          fun v k ->
-            let v1, v2 = as_pair v in
-            let n = as_int v1 in
-            if Nat.lt n (Nat.of_int (Array.length a)) then
-              k (a.(Nat.to_int n) <- v2; Tup [])
-            else
-              raise (Invalid_argument "array index out of bounds")
-      )
-  in
-  let len =
-    Func (None,
-          (T.Call T.Local, T.Returns, 0, 1),
-          fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a))))
-  in
-  let keys =
-    Func (None,
-          (T.Call T.Local, T.Returns, 0, 1),
-          fun v k ->
-            as_unit v;
-            let i = ref 0 in
-            let next_conv = (T.Call T.Local, T.Returns, 0, 1) in            
-            let next =fun v k' ->
-                if !i = Array.length a then k' Null else
-                  let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
-            in k (Obj (None, Env.singleton "next"
-                               (Func (None, next_conv, next))))
-      )
-  in
-  let vals =
-    Func (None,
-          (T.Call T.Local, T.Returns, 0, 1),
-          fun v k ->
-            as_unit v;
-            let i = ref 0 in
-            let next_conv = (T.Call T.Local, T.Returns, 0, 1) in
-            let next = fun v k' ->
-                if !i = Array.length a then k' Null else
-                  let v = Opt (a.(!i)) in incr i; k' v
-            in k (Obj (None, Env.singleton "next" (Func (None, next_conv, next))))
-      )
-  in
+  let get = local_func 1 1 @@ fun v k ->
+    let n = as_int v in
+    if Nat.lt n (Nat.of_int (Array.length a)) then
+      k (a.(Nat.to_int n))
+    else
+      raise (Invalid_argument "array index out of bounds") in
+
+  let set = local_func 1 1 @@ fun v k ->
+    let v1, v2 = as_pair v in
+    let n = as_int v1 in
+    if Nat.lt n (Nat.of_int (Array.length a)) then
+      k (a.(Nat.to_int n) <- v2; Tup [])
+    else
+      raise (Invalid_argument "array index out of bounds") in
+
+  let len = local_func 0 1 @@ fun v k ->
+    as_unit v; k (Int (Nat.of_int (Array.length a))) in
+
+  let keys = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = Array.length a then k' Null else
+          let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
+    in k (Obj (None, Env.singleton "next" next)) in
+
+  let vals = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = Array.length a then k' Null else
+          let v = Opt (a.(!i)) in incr i; k' v
+    in k (Obj (None, Env.singleton "next" next)) in
+
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
 let as_obj = function Obj (co, ve) -> co, ve | Array a -> None, obj_of_array a | _ -> invalid "as_obj"
@@ -417,5 +402,4 @@ let string_of_call_conv (sort,control,args,results) =
     (match control with
      | T.Returns -> "->"
      | T.Promises -> "@>")
-    results               
-    
+    results

@@ -59,12 +59,12 @@ module Env : Env.S with type key = string
 
 type unicode = int
 type class_
- 
+
 type call_conv = Type.func_sort * Type.control * int * int
 
 val call_conv_of_typ : Type.typ -> call_conv
-  
-type func = value -> value cont -> unit 
+
+type func = value -> value cont -> unit
 and value =
   | Null
   | Bool of bool
@@ -94,6 +94,12 @@ and 'a cont = 'a -> unit
 val unit : value
 
 
+(* Smart constructors *)
+
+val local_func : int -> int -> func -> value
+val message_func : int -> func -> value
+val async_func : int -> int -> func -> value
+
 (* Projections *)
 
 val as_null : value -> unit
@@ -112,7 +118,7 @@ val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> class_ option * value Env.t
-val as_func : value -> class_ option *call_conv * func
+val as_func : value -> class_ option * call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
 
