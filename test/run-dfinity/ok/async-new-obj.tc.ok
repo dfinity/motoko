@@ -1,0 +1,2 @@
+async-new-obj.as:68.27-68.51: type error, async type has non-shared parameter type
+  () -> Text

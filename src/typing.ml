@@ -188,7 +188,11 @@ let rec check_typ env typ : T.typ =
   | OptT typ ->
     T.Opt (check_typ env typ)
   | AsyncT typ ->
-    T.Async (check_typ env typ)
+    let t = check_typ env typ in
+    if not (T.sub env.cons t T.Shared) then
+      error env typ.at "async type has non-shared parameter type\n  %s"
+        (T.string_of_typ_expand env.cons t);
+    T.Async t
   | LikeT typ ->
     T.Like (check_typ env typ)
   | ObjT (sort, fields) ->
@@ -558,6 +562,9 @@ and infer_exp' env exp : T.typ =
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
+    if not (T.sub env.cons t T.Shared) then
+      error env exp1.at "async type has non-shared parameter type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     T.Async t
   | AwaitE exp1 ->
     if not env.async then
