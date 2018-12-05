@@ -1,2 +1,0 @@
-issue71.as:2.14-2.24: type error, shared function has non-shared result type
-  async Text

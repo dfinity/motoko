@@ -1,2 +1,0 @@
-asyncreturn.as:3.36-3.38: type error, shared function has non-shared result type
-  async B

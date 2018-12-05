@@ -174,14 +174,15 @@ let rec check_typ env typ : T.typ =
       if not (T.sub env'.cons t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      let t2 = T.seq ts2 in
-      if not (T.sub env'.cons t2 T.Shared) then
-        error env typ1.at "shared function has non-shared result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      let t2' = T.promote env'.cons t2 in
-      if not (T.is_unit t2' || T.is_async t2') then
-        error env typ1.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
+      begin match ts2 with
+      | [] -> ()
+      | [T.Async t2] ->
+        if not (T.sub env'.cons t2 T.Shared) then
+          error env typ1.at "shared function has non-shared result type\n  %s"
+            (T.string_of_typ_expand env'.cons t2);
+      | _ -> error env typ1.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons (T.seq ts2))
+      end
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
@@ -1173,16 +1174,18 @@ and infer_dec_valdecs env dec : val_env =
       if not (T.sub env'.cons t1 T.Shared) then
         error env pat.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      if not (T.sub env'.cons t2 T.Shared) then
-        error env typ.at "shared function has non-shared result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      let t2' = T.promote env'.cons t2 in
-      if not (T.is_unit t2' || T.is_async t2') then
-        error env typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      if T.is_async t2' && (not (isAsyncE exp)) then
-        error env dec.at "shared function with async type has non-async body"
+      begin match t2 with
+      | T.Tup [] -> ()
+      | T.Async t2 ->
+        if not (T.sub env'.cons t2 T.Shared) then
+          error env typ.at "shared function has non-shared result type\n  %s"
+            (T.string_of_typ_expand env'.cons t2);
+        if not (isAsyncE exp) then
+          error env dec.at "shared function with async type has non-async body"
+      | _ -> error env typ.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
       end;
+    end;
     let ts1 = match pat.it with
       | TupP _ -> T.as_seq t1
       | _ -> [t1]

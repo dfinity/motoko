@@ -1,2 +1,1 @@
-asyncret3.as:1.43-1.45: type error, shared function has non-shared result type
-  async B
+asyncret3.as:1.1-1.73: type error, shared function with async type has non-async body

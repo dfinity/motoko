@@ -1,2 +1,0 @@
-actors.as:16.28-16.36: type error, shared function has non-shared result type
-  async ()

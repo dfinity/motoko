@@ -1,2 +1,0 @@
-counter.as:9.12-9.21: type error, shared function has non-shared result type
-  async Int
