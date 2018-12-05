@@ -401,7 +401,8 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
-    infer_obj env sort.it id fields
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    infer_obj env' sort.it id fields
   | DotE (exp1, {it = Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -638,7 +639,8 @@ and check_exp' env t exp =
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
-    ignore (check_obj env s tfs id fields exp.at)
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    ignore (check_obj env' s tfs id fields exp.at)
   | ArrayE exps, T.Array t' ->
     List.iter (check_exp env (T.as_immut t')) exps
   | AsyncE exp1, T.Async t' ->
