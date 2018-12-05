@@ -209,7 +209,7 @@ and check_typ_field env s typ_field : T.field =
     error env typ.at "actor field %s has non-function type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
-    error env typ.at "shared objext or actor field %s has non-shared type\n  %s"
+    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
