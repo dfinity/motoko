@@ -59,20 +59,3 @@ let e = async {
    print b;
    print "\n";
 };
-
-
-let f = async {
-   let o = new this {
-                  private a = "fe";
-                  private b = "fb";
-		  get_a = await (async (func get_a() : Text {a;}));
-		  get_b = await (async (func get_b() : Text {b;}));
-		  get_ab(): (Text,Text) {
-		    (this.get_a(),this.get_b());
-		  };
-		  };
-   let (a,b) = o.get_ab();
-   print a;
-   print b;
-   print "\n";
-};
