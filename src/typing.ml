@@ -562,7 +562,7 @@ and infer_exp' env exp : T.typ =
     T.Async t
   | AwaitE exp1 ->
     if not env.async then
-      local_error env exp.at "misplaced await";
+      error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
     (try
       T.as_async_sub env.cons t1
