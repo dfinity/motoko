@@ -60,6 +60,29 @@ let prelude_new_async t1 =
             note_eff = T.Triv};
     at = no_region;    
   }
+
+let letP p e =  {it = LetD(p,e);
+                 at = no_region;
+                 note = e.note}
+
+let new_nary_async t1 =   
+     let call_new_async = prelude_new_async t1 in
+     let p = fresh_id (typ call_new_async) in
+     let unary_async  = fresh_id (typ (projE p 0)) in
+     let fullfill = fresh_id (typ (projE p 1)) in
+     let v' = fresh_id t1 in
+     let seq_of_v' =
+       match T.as_seq t1 with
+       | [] -> tupE[]
+       | [t] ->  v'
+       | ts -> tupE (List.mapi (fun i _ -> projE v' i) ts) in
+     let k' = fresh_id (contT t1) in
+     let nary_async = (k' --> (unary_async -*- ([v'] -->* (k' -*- seq_of_v')))) in
+     let fst,snd = fresh_id (typ nary_async), fresh_id (typ fullfill) in
+     (fst,snd),blockE [letP (tupP [varP unary_async;varP fullfill])  call_new_async;
+                       expD (tupE [nary_async;fullfill]);]
+          
+
   
 (* let contTT t = funcT(localS,[],t,unitT) *)
 let replyTT t = funcT(sharableS,[],t,unitT)             
@@ -106,9 +129,6 @@ let extendTupT t1 t2 =
                  
 let extendTup ts t2 = ts @ [t2]
 
-let letP p e =  {it = LetD(p,e);
-                 at = no_region;
-                 note = e.note}
               
 let extendTupP p1 p2 =
   match typ p1 with
@@ -259,27 +279,12 @@ and t_exp' (exp:Syntax.exp) =
      let v1 = fresh_id t1 in
      let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
      let u = fresh_id T.unit in
-     let call_new_async = prelude_new_async t1 in
-     let p = fresh_id (typ call_new_async) in
-     let p_0 = projE p 0 in
-     let p_1 = projE p 1 in
-     let async  = fresh_id (typ p_0) in
-     let fullfill = fresh_id (typ p_1) in
-     let v' = fresh_id t1 in
-     let seq_of_v' =
-       match T.as_seq t1 with
-       | [] -> tupE[]
-       | [t] ->  v'
-       | ts -> tupE (List.mapi (fun i _ -> projE v' i) ts) in
-     let k' = fresh_id contT in
-     (blockE [letD p call_new_async;
-              letD async p_0;
-              letD fullfill p_1;
+     let ((nary_async,fullfill),def) = new_nary_async t1 in
+     (blockE [letP (tupP [varP nary_async; varP fullfill]) def;
               funcD k v1 (fullfill -*- v1);
               shared_funcD post u (t_exp exp2 -*- k);
               expD (post -*- tupE[]);
-              expD (k' --> (async -*- ([v'] -->* (k' -*- seq_of_v'))))
-     ])
+              expD nary_async])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
@@ -291,26 +296,11 @@ and t_exp' (exp:Syntax.exp) =
      let exp1 = t_exp exp1 in
      let exp2 = t_exp exp2 in
      let typs = List.map t_typT typs in
-     let call_new_async = prelude_new_async t2 in
-     let p = fresh_id (typ call_new_async) in
-     let p_0 = projE p 0 in
-     let p_1 = projE p 1 in
-     let async  = fresh_id (typ p_0) in
-     let fullfill = fresh_id (typ p_1) in
-     let (d,es) = extendTupE exp2 p_1 in
-     let v' = fresh_id t2 in
-     let seq_of_v' =
-       match T.as_seq t2 with
-       | [] -> tupE[]
-       | [t] ->  v'
-       | ts -> tupE (List.mapi (fun i _ -> projE v' i) ts) in
-     let k' = fresh_id (contT t2) in
-     (blockE ([letD p (call_new_async);
-               letD async p_0;
-               letD fullfill p_1]
-              @               
+     let ((nary_async,fullfill),def) = new_nary_async t2 in
+     let (d,es) = extendTupE exp2 fullfill in
+     (blockE (letP (tupP [varP nary_async; varP fullfill]) def::
               d [expD (callE exp1 typs es T.unit);
-                 expD (k' --> (async -*- ([v'] -->* (k' -*- seq_of_v'))))]))
+                 expD nary_async]))
        .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
