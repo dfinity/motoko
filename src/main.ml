@@ -33,7 +33,7 @@ let argspec = Arg.align
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
-  "-A", Arg.Clear Flags.async_lowering, " translate async<T> (implies -r)";
+  "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "-o", Arg.Set_string out_file, " output file";

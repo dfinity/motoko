@@ -213,6 +213,7 @@ let funcD f x e =
   | VarE _, VarE _ ->
      let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
                  note_eff = T.Triv} in
+     assert (f.note = note);
      {it=FuncD(T.Local @@ no_region, (id_of_exp f),
                [],
                {it=VarP (id_of_exp x);at=no_region;note=x.note},
@@ -220,9 +221,29 @@ let funcD f x e =
                e);
             at = no_region;
             note;}
-  | _ -> failwith "Impossible: funcD"
+  | _ -> failwith "Impossible: funcD"      
 
 
+(* mono-morphic, n-ary function declaration *)
+let nary_funcD f xs e =
+  match f.it with
+  | VarE _ ->
+     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ e));
+                 note_eff = T.Triv} in
+      assert (f.note = note);
+     {it=FuncD(T.Local @@ no_region,
+               id_of_exp f,
+               [],
+               (match xs with
+                | [] -> tupP []
+                | [x] -> varP x
+                | xs -> tupP (List.map varP xs)),
+               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               e);
+      at = no_region;
+      note;}
+  | _ -> failwith "Impossible: funcD"      
+       
 (* Continuation types *)
   
 let answerT = T.unit
@@ -243,7 +264,14 @@ let  (-->) x e =
      let f = idE ("$lambda"@@no_region) (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
-            
+
+       
+let (-->*) xs e =
+     let f = idE ("$lambda"@@no_region)
+                       (T.Func(T.Call T.Local, T.Returns, [],
+                               List.map typ xs, T.as_seq (typ e))) in
+     decE (nary_funcD f xs e)
+     
 (* Lambda application (monomorphic) *)
     
 let ( -*- ) exp1 exp2 =
@@ -270,4 +298,3 @@ let prim_async typ =
 
 let prim_await typ = 
   primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
-                       

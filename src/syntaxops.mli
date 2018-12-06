@@ -58,6 +58,7 @@ val letD : var -> exp -> dec
 val varD : id -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
+val nary_funcD : var  -> var list -> exp -> dec  
 
 (* Continuations *)
 
@@ -69,6 +70,7 @@ val fresh_cont : typ -> var
 (* Lambdas *)
 
 val (-->) : var -> exp -> exp
+val (-->*) : var list -> exp -> exp  
 val (-*-) : exp -> exp -> exp                            
                           
                           

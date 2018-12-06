@@ -168,9 +168,11 @@ let rec t_typ (t:T.typ) =
          begin
            match t2 with
            | [] ->
+              assert (c = T.Returns);
               Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
            | [Async t2] ->
-              Func (s, c, List.map t_bind tbs,
+              assert (c = T.Promises);
+              Func (s, T.Returns, List.map t_bind tbs,
                     extendTup (List.map t_typ t1) (replyT (* contT*) (t_typ t2)), [])
            | _ -> failwith "t_typ"
          end
@@ -263,19 +265,27 @@ and t_exp' (exp:Syntax.exp) =
      let p_1 = projE p 1 in
      let async  = fresh_id (typ p_0) in
      let fullfill = fresh_id (typ p_1) in
+     let v' = fresh_id t1 in
+     let seq_of_v' =
+       match T.as_seq t1 with
+       | [] -> tupE[]
+       | [t] ->  v'
+       | ts -> tupE (List.mapi (fun i _ -> projE v' i) ts) in
+     let k' = fresh_id contT in
      (blockE [letD p call_new_async;
               letD async p_0;
               letD fullfill p_1;
               funcD k v1 (fullfill -*- v1);
               shared_funcD post u (t_exp exp2 -*- k);
               expD (post -*- tupE[]);
-              expD async])
+              expD (k' --> (async -*- ([v'] -->* (k' -*- seq_of_v'))))
+     ])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
        match typ exp1 with
-       | T.Func (T.Call T.Sharable,T.Promises,tbs,t1,[T.Async t2]) ->
-          List.map t_typ t1, t_typ t2
+       | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
+           t_typ (T.seq ts1), t_typ t2
        | _ -> assert(false)
      in
      let exp1 = t_exp exp1 in
@@ -283,10 +293,24 @@ and t_exp' (exp:Syntax.exp) =
      let typs = List.map t_typT typs in
      let call_new_async = prelude_new_async t2 in
      let p = fresh_id (typ call_new_async) in
-     let (d,es) = extendTupE exp2 (projE p 1) in
-     (blockE (letD p (call_new_async)::
+     let p_0 = projE p 0 in
+     let p_1 = projE p 1 in
+     let async  = fresh_id (typ p_0) in
+     let fullfill = fresh_id (typ p_1) in
+     let (d,es) = extendTupE exp2 p_1 in
+     let v' = fresh_id t2 in
+     let seq_of_v' =
+       match T.as_seq t2 with
+       | [] -> tupE[]
+       | [t] ->  v'
+       | ts -> tupE (List.mapi (fun i _ -> projE v' i) ts) in
+     let k' = fresh_id (contT t2) in
+     (blockE ([letD p (call_new_async);
+               letD async p_0;
+               letD fullfill p_1]
+              @               
               d [expD (callE exp1 typs es T.unit);
-                 expD (projE p 0)]))
+                 expD (k' --> (async -*- ([v'] -->* (k' -*- seq_of_v'))))]))
        .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
