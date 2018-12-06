@@ -93,9 +93,7 @@ module E = struct
     (* Exports defined *)
     exports : export list ref;
     (* Function defined in this module *)
-    funcs : func Lib.Promise.t list ref;
-    func_names : (int32 * string) list ref;
-    func_locals : (int32 * local_names) list ref;
+    funcs : (func * string * local_names) Lib.Promise.t list ref;
     (* Function number and fill function for built-in functions *)
     built_in_funcs : lazy_built_in NameEnv.t ref;
     (* Types registered in this module *)
@@ -134,8 +132,6 @@ module E = struct
     imports = ref [];
     exports = ref [];
     funcs = ref [];
-    func_names = ref [];
-    func_locals = ref [];
     built_in_funcs = ref NameEnv.empty;
     func_types = ref [];
     dfinity_types = ref [];
@@ -214,35 +210,28 @@ module E = struct
 
   let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
 
-  let reserve_fun (env : t) n =
-    let (j, fill) = reserve_promise env.funcs n in
+  let reserve_fun (env : t) name =
+    let (j, fill) = reserve_promise env.funcs name in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     let fi = Int32.add j n in
-    let fill_ (f, local_names) =
-      fill f;
-      let _ = reg env.func_locals (fi, local_names) in () in
+    let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
 
-  let add_fun (env : t) (f, local_names) n =
-    let (fi, fill) = reserve_fun env n in
+  let add_fun (env : t) (f, local_names) name =
+    let (fi, fill) = reserve_fun env name in
     fill (f, local_names);
     fi
-
-  let add_fun_name (env : t) fi name =
-    let _ = reg env.func_names (fi, name) in ()
 
   let built_in (env : t) name : int32 =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
         let (fi, fill) = reserve_fun env name in
-        add_fun_name env fi name;
         env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
         fi
     | Some (Declared (fi, _)) -> fi
     | Some (Defined fi) -> fi
     | Some (Pending mk_fun) ->
         let (fi, fill) = reserve_fun env name in
-        add_fun_name env fi name;
         env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
         fill (mk_fun ());
         fi
@@ -261,9 +250,6 @@ module E = struct
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
-  let get_func_names (env : t) = !(env.func_names)
-
-  let get_func_local_names (env : t) = !(env.func_locals)
 
   let func_type (env : t) ty =
     let rec go i = function
@@ -810,7 +796,6 @@ module Closure = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
-      E.add_fun_name pre_env fi name.it;
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
@@ -876,7 +861,6 @@ module Closure = struct
         let mk_body' env = mk_body env load_the_closure in
         let f = compile_func env restore_env mk_pat mk_body' at in
         let fi = E.add_fun env f name.it in
-        E.add_fun_name env fi name.it;
 
         (* Store the tag *)
         get_li ^^
@@ -1778,7 +1762,6 @@ module Dfinity = struct
       G.i_ (Call (nr (E.built_in env "save_mem")))
       ) in
     let fi = E.add_fun env empty_f "start_stub" in
-    E.add_fun_name env fi "start_stub";
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
@@ -3272,7 +3255,6 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
      I have not reviewed/fixed the code below.
   *)
   let (fi, fill) = E.reserve_fun pre_env name.it in
-  E.add_fun_name pre_env fi name.it;
   E.add_dfinity_type pre_env (fi, [CustomSections.ElemBuf]);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
@@ -3324,7 +3306,6 @@ and actor_lit outer_env name fs =
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
     let start_fi = E.add_fun env start_fun "start" in
-    E.add_fun_name env start_fi "start";
 
     OrthogonalPersistence.register env start_fi;
 
@@ -3403,7 +3384,7 @@ and conclude_module env module_name start_fi_o =
 
   { module_ = nr {
       types = List.map nr (E.get_types env);
-      funcs = funcs;
+      funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
       elems = [ nr {
         index = nr 0l;
@@ -3422,8 +3403,10 @@ and conclude_module env module_name start_fi_o =
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
            ];
     module_name;
-    function_names = E.get_func_names env;
-    locals_names = E.get_func_local_names env;
+    function_names =
+	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+    locals_names =
+	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
   }
 
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
@@ -3436,7 +3419,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env start_fun "start" in
-  E.add_fun_name env start_fi "start";
   let start_fi_o =
     if E.mode env = DfinityMode
     then begin
