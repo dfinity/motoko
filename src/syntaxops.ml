@@ -227,7 +227,7 @@ let funcD f x e =
   
 let answerT = T.unit
 
-let contT typ = T.Func(T.Call T.Local, T.Returns, [], [typ], [])
+let contT typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq typ, [])
 let cpsT typ = T.Func(T.Call T.Local, T.Returns, [], [contT typ], [])
 
 let fresh_cont typ = fresh_id (contT typ)
