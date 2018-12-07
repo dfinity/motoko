@@ -1144,17 +1144,16 @@ and gather_dec_valdecs env ve dec : val_env =
 
 and check_block_use_before_define env ve decs : unit =
   let ua = NameRel.diag (List.map fst (T.Env.bindings ve)) in
-  let _ = List.fold_left (check_dec_use_before_define env) ua decs
-  in ()
+  ignore (List.fold_left (check_dec_use_before_define env) ua decs)
 
 and check_dec_use_before_define env (ua : NameRel.t) dec : NameRel.t =
   (* Consider let x = (y, func () { z } ) *)
   let (f,d) = Freevars.dec dec in
   (* First, report if y cannot be used yet *)
   Freevars.S.iter (fun v1 ->
-    List.iter (fun v2 ->
+    Freevars.S.iter (fun v2 ->
       local_error env dec.at "cannot use %s before %s has been defined" v1 v2
-    ) (Freevars.S.elements (NameRel.lookup v1 ua))
+    ) (NameRel.lookup v1 ua)
   ) (Freevars.eager_vars f);
   (* Next, what is x waiting on? Everything that z was waiting on *)
   let ua_add = NameRel.(comp (prod d (Freevars.delayed_vars f)) ua) in
