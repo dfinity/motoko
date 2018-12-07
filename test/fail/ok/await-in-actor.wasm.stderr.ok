@@ -1,1 +1,0 @@
-compile_exp: (NewObjE Actor getX getX@2 x x@1)
