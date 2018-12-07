@@ -27,7 +27,7 @@ function build_ref_to {
     echo "Building $2 asc from working copy.."
     nix-build -E '((import ./..) {}).native' \
       --option binary-caches '' \
-      -o $2-asc/
+      -o $2-asc/ |& tail -n1
   else
     echo "Building $2 asc (rev $1).."
     nix-build --argstr rev "$1" -E '
@@ -36,7 +36,7 @@ function build_ref_to {
       let checkout = (builtins.fetchGit {url = ".."; ref = rev; rev = rev; name = "old-asc";}).outPath; in
       ((import checkout) {}).native' \
       --option binary-caches '' \
-      -o $2-asc/
+      -o $2-asc/ |& tail -n1
   fi
 }
 build_ref_to "$old" old
