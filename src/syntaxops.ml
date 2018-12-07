@@ -226,12 +226,10 @@ let funcD f x e =
 
 (* mono-morphic, n-ary function declaration *)
 let nary_funcD f xs e =
-  match f.it with
-  | VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ e));
-                 note_eff = T.Triv} in
-      assert (f.note = note);
-     {it=FuncD(T.Local @@ no_region,
+  match f.it,f.note.note_typ with
+  | VarE _,
+    T.Func(T.Call sharing,_,_,_,_) ->
+      {it=FuncD(sharing @@ no_region,
                id_of_exp f,
                [],
                (match xs with
@@ -241,8 +239,8 @@ let nary_funcD f xs e =
                PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
                e);
       at = no_region;
-      note;}
-  | _ -> failwith "Impossible: funcD"      
+      note = f.note;}
+  | _,_ -> failwith "Impossible: funcD"      
        
 (* Continuation types *)
   
@@ -266,11 +264,18 @@ let  (-->) x e =
   | _ -> failwith "Impossible: -->"
 
        
-let (-->*) xs e =
+let (-->*) xs e  =
      let f = idE ("$lambda"@@no_region)
                        (T.Func(T.Call T.Local, T.Returns, [],
                                List.map typ xs, T.as_seq (typ e))) in
      decE (nary_funcD f xs e)
+
+let (-@>*) xs e  =
+     let f = idE ("$lambda"@@no_region)
+                       (T.Func(T.Call T.Sharable, T.Returns, [],
+                               List.map typ xs, T.as_seq (typ e))) in
+     decE (nary_funcD f xs e)
+     
      
 (* Lambda application (monomorphic) *)
     

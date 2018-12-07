@@ -70,7 +70,8 @@ val fresh_cont : typ -> var
 (* Lambdas *)
 
 val (-->) : var -> exp -> exp
-val (-->*) : var list -> exp -> exp  
+val (-->*) : var list -> exp -> exp
+val (-@>*) : var list -> exp -> exp  
 val (-*-) : exp -> exp -> exp                            
                           
                           
