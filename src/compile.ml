@@ -53,11 +53,13 @@ type 'env deferred_loc =
   }
 
 type 'env varloc =
-  (* A Wasm Local of the current function, directly pointing to a value *)
-  | Direct of int32
+  (* A Wasm Local of the current function, directly containing the value
+     (note that most values are pointers)
+  *)
+  | Local of int32
   (* A Wasm Local of the current function, that points to memory location,
-     with an offset to the actual data. *)
-  | Local of (int32 * int32)
+     with an offset (in words) to the actual data. *)
+  | HeapInd of (int32 * int32)
   (* A static memory location in the current module *)
   | Static of int32
   (* Dynamic code to allocate the expression, valid in the current module
@@ -151,8 +153,8 @@ module E = struct
 
 
   let is_non_local = function
-    | Direct _ -> false
     | Local _ -> false
+    | HeapInd _ -> false
     | Static _ -> true
     | Deferred _ -> true
 
@@ -184,7 +186,7 @@ module E = struct
       let _ = reg env.local_names (li, name) in ()
 
   let reuse_local_with_offset (env : t) name i off =
-      { env with local_vars_env = NameEnv.add name (Local (i, off)) env.local_vars_env }
+      { env with local_vars_env = NameEnv.add name (HeapInd (i, off)) env.local_vars_env }
 
   let add_local_with_offset (env : t) name off =
       let i = add_anon_local env I32Type in
@@ -200,7 +202,7 @@ module E = struct
   let add_direct_local (env : t) name =
       let i = add_anon_local env I32Type in
       add_local_name env i name;
-      ({ env with local_vars_env = NameEnv.add name (Direct i) env.local_vars_env }, i)
+      ({ env with local_vars_env = NameEnv.add name (Local i) env.local_vars_env }, i)
 
   let get_locals (env : t) = !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
@@ -674,9 +676,9 @@ module Var = struct
 
   (* Stores the payload *)
   let set_val env var = match E.lookup_var env var with
-    | Some (Direct i) ->
+    | Some (Local i) ->
       G.i_ (SetLocal (nr i))
-    | Some (Local (i, off)) ->
+    | Some (HeapInd (i, off)) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       G.i_ (GetLocal (nr i)) ^^
@@ -693,8 +695,8 @@ module Var = struct
 
   (* Returns the payload *)
   let get_val env var = match E.lookup_var env var with
-    | Some (Direct i)  -> G.i_ (GetLocal (nr i))
-    | Some (Local (i, off))  -> G.i_ (GetLocal (nr i)) ^^ Heap.load_field off
+    | Some (Local i)  -> G.i_ (GetLocal (nr i))
+    | Some (HeapInd (i, off))  -> G.i_ (GetLocal (nr i)) ^^ Heap.load_field off
     | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
     | Some (Deferred d) -> d.allocate env
     | None   -> G.i_ Unreachable
@@ -702,14 +704,14 @@ module Var = struct
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment *)
   let capture env var : G.t * (E.t -> (E.t * G.t)) = match E.lookup_var env var with
-    | Some (Direct i) ->
+    | Some (Local i) ->
       ( G.i_ (GetLocal (nr i))
       , fun env1 ->
         let (env2, j) = E.add_direct_local env1 var in
         let restore_code = G.i_ (SetLocal (nr j))
         in (env2, restore_code)
       )
-    | Some (Local (i, off)) ->
+    | Some (HeapInd (i, off)) ->
       ( G.i_ (GetLocal (nr i))
       , fun env1 ->
         let (env2, j) = E.add_local_with_offset env1 var off in
@@ -766,8 +768,7 @@ module AllocHow = struct
       | LocalImmut, LocalImmut -> LocalImmut
     ))
 
-  (* We need to do a fixed-point analysis, starting with everything being
-  static. TODO: Replace numbers with a nicely named lattice.
+  (* We need to do a fixed-point analysis, starting with everything being static.
   *)
 
   let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
@@ -785,25 +786,37 @@ module AllocHow = struct
 
   let dec env (seen, how0) dec =
     let (f,d) = Freevars_ir.dec dec in
+
     (* What allocation is required for the things defined here? *)
     let how1 = match dec.it with
+      (* Mutable variables are, well, mutable *)
       | VarD _ -> map_of_set LocalMut d
+      (* Messages cannot be static *)
       | FuncD ((Type.Call Type.Sharable, _, _, _), _, _, _, _, _) -> map_of_set LocalImmut d
+      (* Static functions and classes *)
       | FuncD _ when is_static env how0 f -> M.empty
       | ClassD _ when is_static env how0 f -> M.empty
+      (* Everything else needs at least a local *)
       | _ -> map_of_set LocalImmut d in
-    (* Do we capture anything unseen, but non-static? *)
+
+    (* Do we capture anything unseen, but non-static?
+       These need to be heap-allocated.
+    *)
     let how2 =
       map_of_set StoreHeap
         (S.inter
           (set_of_map how0)
           (S.diff (Freevars_ir.captured_vars f) seen)) in
-    (* Do we capture anything mutable? *)
+
+    (* Do we capture anything mutable?
+       These also need to be heap-allocated.
+    *)
     let how3 =
       map_of_set StoreHeap
         (S.inter
           (set_of_map (M.filter (fun _ h -> h = LocalMut) how0))
           (Freevars_ir.captured_vars f)) in
+
     let how = List.fold_left join M.empty [how0; how1; how2; how3] in
     let seen' = S.union seen d
     in (seen', how)
@@ -816,6 +829,8 @@ module AllocHow = struct
     go M.empty
 
 
+  (* Functions to extend the environment (and possibly allocate memory)
+     based on how we want to store them. *)
   let add_how env name = function
     | Some LocalImmut | Some LocalMut ->
       let (env1, i) = E.add_direct_local env name in
