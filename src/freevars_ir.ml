@@ -4,15 +4,12 @@ open Ir
 (* We collect a few things along the way *)
 
 (* We want to know:
-   Is this variable used (potentially) eager?
    Is this variable used (potentially) captured?
-   We actually need both, hence a product lattice.
 *)
-type usage_info = { eager: bool; captured : bool }
+type usage_info = { captured : bool }
 
 let join u1 u2 =
-  { eager = u1.eager || u2.eager ;
-    captured = u1.captured || u2.captured 
+  { captured = u1.captured || u2.captured 
   }
 
 module M = Env.Make(String)
@@ -47,40 +44,22 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 
 (* Usage tracking:
 
-   We distinguish between eager and delayed variables.
-   Initially variables are eager.
-   Eager variables become delayed
-   - inside lambda
-   Delayed variables may stay delayed
-   - when storing variables in data structures (tuples, objects, lists)
-   Delayed variables become eager again
-   - when used in an application
-   - when a block uses any of its own variables eagerly (see function `close`)
-
-   Additionally, we track which variables may be captured.
+   We track which variables may be captured.
    Initially, variables are not captured.
    All variables under a lambda become captured.
 *)
-let delayify : f -> f = M.map (fun _ -> { eager = false; captured = true })
-let eagerify : f -> f = M.map (fun u -> { eager = true; captured = u.captured })
+let under_lambda : f -> f = M.map (fun _ -> { captured = true })
 
-let eager_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.eager) (M.bindings f)))
-let delayed_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> not u.eager) (M.bindings f)))
 let captured_vars : f -> S.t =
   fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.captured) (M.bindings f)))
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
-let close (f,d) =
-  if S.is_empty (S.inter d (eager_vars f))
-  then diff f d
-  else eagerify (diff f d)
+let close (f,d) = diff f d
 
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
-  | VarE i              -> M.singleton i.it {eager = true; captured = false}
+  | VarE i              -> M.singleton i.it {captured = false}
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (uo, e)         -> exp e
@@ -93,7 +72,7 @@ let rec exp e : f = match e.it with
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE es           -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (_, e1, ts, e2) -> eagerify (exps [e1; e2])
+  | CallE (_, e1, ts, e2) -> exps [e1; e2]
   | BlockE ds           -> close (decs ds)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
@@ -134,7 +113,7 @@ and exp_field (ef : exp_field) : fd
 
 and exp_fields efs : fd = union_binders exp_field efs
 
-and id i = M.singleton i.it {eager = true; captured = false}
+and id i = M.singleton i.it {captured = false}
 
 and dec d = match d.it with
   | ExpD e -> (exp e, S.empty)
@@ -142,10 +121,10 @@ and dec d = match d.it with
   | VarD (i, e) ->
     (M.empty, S.singleton i.it) +++ exp e
   | FuncD (cc, i, tp, p, t, e) ->
-    (M.empty, S.singleton i.it) +++ delayify (exp e /// pat p)
+    (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, l, tp, s, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ delayify (close (exp_fields efs) /// pat p // i'.it)
+    (M.empty, S.singleton i.it) +++ under_lambda (close (exp_fields efs) /// pat p // i'.it)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =

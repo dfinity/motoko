@@ -223,7 +223,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
   let env' = add_typs env xs cs ks in
-  ignore (List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds);
+  let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   cs, ts, te, Con.Env.from_list2 cs ks
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
@@ -1062,7 +1062,6 @@ and infer_block_decs env decs : scope =
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
   let pre_ve' = gather_block_valdecs env decs in
-  check_block_use_before_define env pre_ve' decs;
   let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
   { scope with  val_env = ve; con_env = ce }
 
@@ -1140,26 +1139,7 @@ and gather_dec_valdecs env ve dec : val_env =
     T.Env.add id.it T.Pre ve
 
 
-(* Pass 5: check use-before-define *)
-
-and check_block_use_before_define env ve decs : unit =
-  let ua = NameRel.diag (List.map fst (T.Env.bindings ve)) in
-  let _ = List.fold_left (check_dec_use_before_define env) ua decs
-  in ()
-
-and check_dec_use_before_define env (ua : NameRel.t) dec : NameRel.t =
-  let (f,d) = Freevars.dec dec in
-  Freevars.S.iter (fun v1 ->
-    List.iter (fun v2 ->
-      local_error env dec.at "cannot use %s before %s has been defined" v1 v2
-    ) (Freevars.S.elements (NameRel.lookup v1 ua))
-  ) (Freevars.eager_vars f);
-  NameRel.remove_range d
-   (NameRel.union
-    ua
-    (NameRel.comp (NameRel.prod d (Freevars.delayed_vars f)) ua))
-
-(* Pass 6: infer value types *)
+(* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
   let _, ve =
     List.fold_left (fun (env, ve) dec ->

@@ -751,8 +751,8 @@ module AllocHow = struct
   We represent this as a lattice as follows:
   *)
 
-  module M = Freevars.M
-  module S = Freevars.S
+  module M = Freevars_ir.M
+  module S = Freevars_ir.S
 
   type nonStatic = LocalImmut | LocalMut | StoreHeap
   type allocHow = nonStatic M.t (* absent means static *)
@@ -3071,7 +3071,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
-    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
+    if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
   | CallE (_, e1, _, e2) when isDirectCall env e1 <> None ->
