@@ -223,7 +223,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
   let env' = add_typs env xs cs ks in
-  ignore (List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds);
+  let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   cs, ts, te, Con.Env.from_list2 cs ks
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
@@ -401,7 +401,8 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
-    infer_obj env sort.it id fields
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    infer_obj env' sort.it id fields
   | DotE (exp1, {it = Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -561,7 +562,7 @@ and infer_exp' env exp : T.typ =
     T.Async t
   | AwaitE exp1 ->
     if not env.async then
-      local_error env exp.at "misplaced await";
+      error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
     (try
       T.as_async_sub env.cons t1
@@ -638,7 +639,8 @@ and check_exp' env t exp =
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
-    ignore (check_obj env s tfs id fields exp.at)
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    ignore (check_obj env' s tfs id fields exp.at)
   | ArrayE exps, T.Array t' ->
     List.iter (check_exp env (T.as_immut t')) exps
   | AsyncE exp1, T.Async t' ->
