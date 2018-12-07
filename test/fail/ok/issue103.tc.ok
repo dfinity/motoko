@@ -1,0 +1,2 @@
+issue103.as:2.27-2.38: type error, shared function has non-shared parameter type
+  () -> Nat

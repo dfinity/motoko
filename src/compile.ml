@@ -2,7 +2,7 @@ open Wasm.Ast
 open Wasm.Types
 
 open Source
-open Syntax
+open Ir
 
 open CustomModule
 
@@ -22,10 +22,10 @@ let (@@) x at =
   let at = { Wasm.Source.left = left; Wasm.Source.right = right } in
   { Wasm.Source.it = x; Wasm.Source.at = at }
 let nr_ x = { it = x; at = no_region; note = () }
-let nr__ x = { it = x; at = no_region; note = {note_typ = Type.Any; note_eff = Type.Triv } }
 
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
+let _invalid fn se = raise (Invalid_argument (Printf.sprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se)))
 
 
 (* The compiler environment.
@@ -72,8 +72,8 @@ module E = struct
       ref := !ref @ [ x ];
       i
 
-  let reserve_promise (ref : 'a Lib.Promise.t list ref) : (int32 * ('a -> unit)) =
-      let p = Lib.Promise.make () in
+  let reserve_promise (ref : 'a Lib.Promise.t list ref) _s : (int32 * ('a -> unit)) =
+      let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
       let i = Wasm.I32.of_int_u (List.length !ref) in
       ref := !ref @ [ p ];
       (i, Lib.Promise.fulfill p)
@@ -95,9 +95,7 @@ module E = struct
     (* Exports defined *)
     exports : export list ref;
     (* Function defined in this module *)
-    funcs : func Lib.Promise.t list ref;
-    func_names : (int32 * string) list ref;
-    func_locals : (int32 * local_names) list ref;
+    funcs : (func * string * local_names) Lib.Promise.t list ref;
     (* Function number and fill function for built-in functions *)
     built_in_funcs : lazy_built_in NameEnv.t ref;
     (* Types registered in this module *)
@@ -136,8 +134,6 @@ module E = struct
     imports = ref [];
     exports = ref [];
     funcs = ref [];
-    func_names = ref [];
-    func_locals = ref [];
     built_in_funcs = ref NameEnv.empty;
     func_types = ref [];
     dfinity_types = ref [];
@@ -222,35 +218,28 @@ module E = struct
 
   let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
 
-  let reserve_fun (env : t) =
-    let (j, fill) = reserve_promise env.funcs in
+  let reserve_fun (env : t) name =
+    let (j, fill) = reserve_promise env.funcs name in
     let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
     let fi = Int32.add j n in
-    let fill_ (f, local_names) =
-      fill f;
-      let _ = reg env.func_locals (fi, local_names) in () in
+    let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
 
-  let add_fun (env : t) (f, local_names) =
-    let (fi, fill) = reserve_fun env in
+  let add_fun (env : t) (f, local_names) name =
+    let (fi, fill) = reserve_fun env name in
     fill (f, local_names);
     fi
-
-  let add_fun_name (env : t) fi name =
-    let _ = reg env.func_names (fi, name) in ()
 
   let built_in (env : t) name : int32 =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
-        let (fi, fill) = reserve_fun env in
-        add_fun_name env fi name;
+        let (fi, fill) = reserve_fun env name in
         env.built_in_funcs := NameEnv.add name (Declared (fi, fill)) !(env.built_in_funcs);
         fi
     | Some (Declared (fi, _)) -> fi
     | Some (Defined fi) -> fi
     | Some (Pending mk_fun) ->
-        let (fi, fill) = reserve_fun env in
-        add_fun_name env fi name;
+        let (fi, fill) = reserve_fun env name in
         env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
         fill (mk_fun ());
         fi
@@ -265,14 +254,10 @@ module E = struct
     | Some (Defined fi) ->  ()
     | Some (Pending mk_fun) -> ()
 
-
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
-  let get_func_names (env : t) = !(env.func_names)
-
-  let get_func_local_names (env : t) = !(env.func_locals)
 
   let func_type (env : t) ty =
     let rec go i = function
@@ -408,6 +393,12 @@ module Func = struct
 
   let define_built_in env name params retty mk_body =
     E.define_built_in env name (fun () -> of_body env params retty mk_body)
+
+  (* A variant that skips the body if not using --dfinity *)
+  let define_built_in_dfinity env name params retty mk_body =
+    if E.mode env = DfinityMode
+    then define_built_in env name params retty mk_body
+    else define_built_in env name params retty (fun _ -> G.i_ Unreachable)
 
   (* (Almost) transparently lift code into a function and call this function. *)
   let share_code env name params retty mk_body =
@@ -785,18 +776,19 @@ module AllocHow = struct
   let is_static env how f =
     (* Does this capture nothing from outside? *)
     (S.is_empty (S.inter
-      (Freevars.captured_vars f)
+      (Freevars_ir.captured_vars f)
       (set_of_map (M.filter (fun _ x -> not (E.is_non_local x)) (env.E.local_vars_env))))) &&
     (* Does this capture nothing non-static from here? *)
     (S.is_empty (S.inter
-      (Freevars.captured_vars f)
+      (Freevars_ir.captured_vars f)
       (set_of_map how)))
 
   let dec env (seen, how0) dec =
-    let (f,d) = Freevars.dec dec in
+    let (f,d) = Freevars_ir.dec dec in
     (* What allocation is required for the things defined here? *)
     let how1 = match dec.it with
       | VarD _ -> map_of_set LocalMut d
+      | FuncD ((Type.Call Type.Sharable, _, _, _), _, _, _, _, _) -> map_of_set LocalImmut d
       | FuncD _ when is_static env how0 f -> M.empty
       | ClassD _ when is_static env how0 f -> M.empty
       | _ -> map_of_set LocalImmut d in
@@ -805,13 +797,13 @@ module AllocHow = struct
       map_of_set StoreHeap
         (S.inter
           (set_of_map how0)
-          (S.diff (Freevars.captured_vars f) seen)) in
+          (S.diff (Freevars_ir.captured_vars f) seen)) in
     (* Do we capture anything mutable? *)
     let how3 =
       map_of_set StoreHeap
         (S.inter
           (set_of_map (M.filter (fun _ h -> h = LocalMut) how0))
-          (Freevars.captured_vars f)) in
+          (Freevars_ir.captured_vars f)) in
     let how = List.fold_left join M.empty [how0; how1; how2; how3] in
     let seen' = S.union seen d
     in (seen', how)
@@ -884,36 +876,30 @@ module Closure = struct
    G.i (Call (nr fi) @@ at)
 
   (* Expect the function closure and the argument on the stack *)
-  let call_indirect env at =
-    (* Pop the argument *)
-    let (set_i, get_i) = new_local env "call_arg" in
-    set_i ^^
+  let call_closure env at =
+    Func.share_code env "call_closure" ["clos"; "arg"] [I32Type] (fun env ->
+      let get_clos = G.i_ (GetLocal (nr 0l)) in
+      let get_arg = G.i_ (GetLocal (nr 1l)) in
 
-    (* Pop the closure pointer *)
-    let (set_fi, get_fi) = new_local env "callee" in
-    set_fi ^^
-
-    get_fi ^^
-    Tagged.branch env [I32Type] (
-      [ Tagged.Closure,
-        (* First arg: The closure pointer *)
-        (* already on the stack *)
-        (* Second arg: The argument *)
-        get_i ^^
-        (* And now get the table index *)
-        get_fi ^^
-        Heap.load_field funptr_field ^^
-        (* All done: Call! *)
-        G.i (CallIndirect (nr (ty env)) @@ at)
-      ] @ (
-      if E.mode env = DfinityMode
-      then [ Tagged.Reference, (* a funcref! *)
-             get_i ^^
-             G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
-             compile_unit
-           ]
-      else [])
+      (* First arg: The closure pointer *)
+      get_clos ^^
+      (* Second arg: The argument *)
+      get_arg ^^
+      (* And now get the table index *)
+      get_clos ^^
+      Heap.load_field funptr_field ^^
+      (* All done: Call! *)
+      G.i (CallIndirect (nr (ty env)) @@ at)
     )
+
+  (* Expect the function closure and the argument on the stack *)
+  let call_indirect env (cc : Value.call_conv) at =
+    match cc with
+    | (Type.Call Type.Local, _, _, _) | (Type.Construct, _, _, _) ->
+        call_closure env at
+    | (Type.Call Type.Sharable, _, _, _) ->
+        G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
+        compile_unit
 
    (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -939,8 +925,7 @@ module Closure = struct
 
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env last name mk_pat mk_body at =
-      let (fi, fill) = E.reserve_fun pre_env in
-      E.add_fun_name pre_env fi name.it;
+      let (fi, fill) = E.reserve_fun pre_env name.it in
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
@@ -950,18 +935,29 @@ module Closure = struct
         if last then d.allocate env else G.nop)
 
   (* Compile a closure declaration (has free variables) *)
-  let dec_closure pre_env h last name captured mk_pat mk_body at =
+  let dec_closure pre_env h last name is_local captured mk_pat mk_body at =
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
+      let (set_val, get_val) = new_local pre_env "func_value" in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
-        (* Allocate a heap object for the function *)
+        (* Allocate a heap object for the closure *)
         Heap.alloc (Int32.add header_size len) ^^
         set_li ^^
+
+        (* Possibly turn into a funcref *)
+        get_li ^^
+        begin
+          if is_local
+          then G.nop
+          else G.i_ (Call (nr (E.built_in pre_env "closure_to_funcref")))
+        end ^^
+        set_val ^^
+
         (* And store it *)
         alloc_code0 ^^
-        get_li ^^
+        get_val ^^
         Var.set_val pre_env1 name.it
       in
 
@@ -990,12 +986,11 @@ module Closure = struct
                 in (store_env, restore_env) in
           go 0 captured in
 
-	(* All functions are unary for now (arguments passed as heap-allocated tuples)
+        (* All functions are unary for now (arguments passed as heap-allocated tuples)
            with the closure itself passed as a first argument *)
         let mk_body' env = mk_body env load_the_closure in
         let f = compile_func env restore_env mk_pat mk_body' at in
-        let fi = E.add_fun env f in
-        E.add_fun_name env fi name.it;
+        let fi = E.add_fun env f name.it in
 
         (* Store the tag *)
         get_li ^^
@@ -1013,14 +1008,16 @@ module Closure = struct
 
         (* Store all captured values *)
         store_env ^^
-        if last then get_li  else G.nop)
+        if last then get_val else G.nop)
 
-
-  let dec pre_env how last name captured mk_pat mk_body at =
-      match AllocHow.M.find_opt name.it how with
-      | None -> dec_closed pre_env last name mk_pat mk_body at
-      | Some h ->
-        dec_closure pre_env (Some h) last name captured mk_pat mk_body at
+  let dec pre_env how last name cc captured mk_pat mk_body at =
+    let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
+    match AllocHow.M.find_opt name.it how with
+    | None ->
+      assert is_local;
+      dec_closed pre_env last name mk_pat mk_body at
+    | Some h ->
+      dec_closure pre_env (Some h) last name is_local captured mk_pat mk_body at
 
   let fixed_closure env fi fields =
       Tagged.obj env Tagged.Closure
@@ -1162,7 +1159,8 @@ module Object = struct
   (* Number of object fields *)
   let size_field = Int32.add Tagged.header_size 1l
 
-  let hash_field_name (name : string) = Int32.of_int (Hashtbl.hash name)
+  let hash_field_name ({it = Syntax.Name s; _}) =
+    Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
   let lit env this_name_opt class_option fs =
@@ -1172,7 +1170,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, priv, f) -> priv.it = Public) |>
       *)
-      List.map (fun (id,priv,_) -> (hash_field_name (id.it), id.it)) |>
+      List.map (fun ({it = Syntax.Name s;_} as n,_,_,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1200,16 +1198,18 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-    let hash_position env f =
-        let i = FieldEnv.find f.it name_pos_map in
+    let is_public_field {it = Syntax.Name n; _} =
+        FieldEnv.mem n name_pos_map in
+    let hash_position env {it = Syntax.Name n; _} =
+        let i = FieldEnv.find n name_pos_map in
         Int32.add header_size (Int32.mul 2l i) in
-    let field_position env f =
-        let i = FieldEnv.find f.it name_pos_map in
+    let field_position env {it = Syntax.Name n; _} =
+        let i = FieldEnv.find n name_pos_map in
         Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
      (* Bind the fields in the envrionment *)
-     let mk_field_ptr env (id, _, _) =
-      E.reuse_local_with_offset env id.it ri (field_position env id) in
+     let mk_field_ptr env (name, id, _, _) =
+       E.reuse_local_with_offset env id.it ri (field_position env name) in
      let env1 = List.fold_left mk_field_ptr env fs in
 
      (* An extra indirection for the 'this' pointer, if present *)
@@ -1221,18 +1221,18 @@ module Object = struct
      this_code ^^
 
      (* Write all the fields *)
-     let init_field (id, _, mk_is) : G.t =
-        match FieldEnv.find_opt id.it name_pos_map with
-        | None -> G.nop
-        | Some i ->
-          (* Write the hash *)
-          get_ri ^^
-          compile_unboxed_const (hash_field_name id.it) ^^
-          Heap.store_field (hash_position env id) ^^
-          (* Write the value *)
-          get_ri ^^
-          mk_is env2 ^^
-          Heap.store_field (field_position env id)
+     let init_field (name, _, _, mk_is) : G.t =
+       if is_public_field name
+       then
+         (* Write the hash *)
+         get_ri ^^
+         compile_unboxed_const (hash_field_name name) ^^
+         Heap.store_field (hash_position env name) ^^
+         (* Write the value *)
+         get_ri ^^
+         mk_is env2 ^^
+         Heap.store_field (field_position env name)
+       else G.nop
      in
      G.concat_map init_field fs ^^
 
@@ -1248,7 +1248,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, priv, f) -> priv.it = Public) |>
       *)
-      List.map (fun (id,_) -> (hash_field_name id, id)) |>
+      List.map (fun ({it = Syntax.Name s;_} as n,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1274,28 +1274,30 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-    let hash_position env f =
-        let i = FieldEnv.find f name_pos_map in
-        Int32.add header_size (Int32.mul 2l i) in
-    let field_position env f =
-        let i = FieldEnv.find f name_pos_map in
-        Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
+     let is_public_field {it = Syntax.Name n; _} =
+         FieldEnv.mem n name_pos_map in
+     let hash_position env {it = Syntax.Name n; _} =
+         let i = FieldEnv.find n name_pos_map in
+         Int32.add header_size (Int32.mul 2l i) in
+     let field_position env {it = Syntax.Name n; _} =
+         let i = FieldEnv.find n name_pos_map in
+         Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
      (* Write all the fields *)
-     let set_field (id, mk_is) : G.t =
-        match FieldEnv.find_opt id name_pos_map with
-        | None -> G.nop
-        | Some i ->
-          (* Write the hash *)
-          get_ri ^^
-          compile_unboxed_const (hash_field_name id) ^^
-          Heap.store_field (hash_position env id) ^^
-          (* Write the value *)
-          get_ri ^^
-          mk_is env ^^
-          Heap.store_field (field_position env id)
+     let init_field (name, mk_is) : G.t =
+       if is_public_field name
+       then
+         (* Write the hash *)
+         get_ri ^^
+         compile_unboxed_const (hash_field_name name) ^^
+         Heap.store_field (hash_position env name) ^^
+         (* Write the value *)
+         get_ri ^^
+         mk_is env ^^
+         Heap.store_field (field_position env name)
+       else G.nop
      in
-     G.concat_map set_field fs ^^
+     G.concat_map init_field fs ^^
 
      (* Return the pointer to the object *)
      get_ri
@@ -1333,7 +1335,7 @@ module Object = struct
       get_r
     )
 
-  let idx env (name : string) =
+  let idx env name =
     compile_unboxed_const (hash_field_name name) ^^
     idx_hash env
 
@@ -1559,7 +1561,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit env1 None None
-              [ (nr_ "next", nr__ Public, fun _ -> get_ni) ]
+              [ (nr_ (Syntax.Name "next"), nr_ "next", nr_ Syntax.Public, fun _ -> get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -1663,7 +1665,7 @@ module Array = struct
       get_f ^^
       get_i ^^
       BoxedInt.box env ^^
-      Closure.call_indirect env no_region ^^
+      Closure.call_closure env no_region ^^
       store_ptr
     ) ^^
     get_r
@@ -1694,6 +1696,21 @@ module Dfinity = struct
     let rec exp i l =
       if i < 0 then l else exp (i - 1) (Char.code s.[i] :: l) in
     exp (String.length s - 1) []
+
+  let common_funcs mod_env =
+    Func.define_built_in_dfinity mod_env "closure_to_funcref" ["clos"] [I32Type] (fun env ->
+      let get_clos = G.i_ (GetLocal (nr 0l)) in
+
+      Tagged.obj env Tagged.Reference [
+        (* Funcref *)
+        compile_unboxed_const (E.built_in env "invoke_closure") ^^
+        G.i_ (Call (nr (func_externalize_i env))) ^^
+        get_clos ^^
+        ClosureTable.remember_closure env ^^
+        G.i_ (Call (nr (func_bind_i env))) ^^
+        ElemHeap.remember_reference env
+      ]
+    )
 
   let system_imports env =
     let i = E.add_import env (nr {
@@ -1874,8 +1891,7 @@ module Dfinity = struct
       (* Save memory *)
       G.i_ (Call (nr (E.built_in env "save_mem")))
       ) in
-    let fi = E.add_fun env empty_f in
-    E.add_fun_name env fi "start_stub";
+    let fi = E.add_fun env empty_f "start_stub" in
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
@@ -2159,18 +2175,6 @@ module Serialization = struct
               ) ^^
               get_copy
             end
-          ; Tagged.Closure,
-            (* Closures are not copied. Instead, we create a funcref for them *)
-            G.i_ Drop ^^
-            Tagged.obj env Tagged.Reference [
-              (* Funcref *)
-              compile_unboxed_const (E.built_in env "invoke_closure") ^^
-              G.i_ (Call (nr (Dfinity.func_externalize_i env))) ^^
-              get_x ^^
-              ClosureTable.remember_closure env ^^
-              G.i_ (Call (nr (Dfinity.func_bind_i env))) ^^
-              ElemHeap.remember_reference env
-            ]
           ]
         )
     )
@@ -2236,7 +2240,7 @@ module Serialization = struct
           compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size
         ]
-	(* Indirections have unknown size. *)
+        (* Indirections have unknown size. *)
     )
 
   let walk_heap_from_to env compile_from compile_to mk_code =
@@ -2520,7 +2524,7 @@ module Serialization = struct
           get_start ^^
           G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
           get_start ^^
-          G.i_ (Call (nr (E.built_in env "shift_pointers"))) ^^
+          shift_pointers env ^^
 
           (* Load references *)
           G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
@@ -2695,7 +2699,7 @@ module Message = struct
 
 
   let system_funs mod_env =
-    Func.define_built_in mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
+    Func.define_built_in_dfinity mod_env "invoke_closure" ["clos";"arg"] [] (fun env ->
       (* This is the entry point for external closure invocation.
          The first argument is the index of the closure in the ClosureTable
          (bound using `i32.bind`).
@@ -2714,7 +2718,7 @@ module Message = struct
       Serialization.deserialize env ^^
 
       (* Invoke the call *)
-      Closure.call_indirect env no_region ^^
+      Closure.call_closure env no_region ^^
       G.i_ Drop ^^
 
       (* Collect garbage *)
@@ -2727,7 +2731,7 @@ module Message = struct
       (E.built_in mod_env "invoke_closure",
       [CustomSections.I32; CustomSections.ElemBuf]);
 
-    Func.define_built_in mod_env "call_funcref" ["ref";"arg"] [] (fun env ->
+    Func.define_built_in_dfinity mod_env "call_funcref" ["ref";"arg"] [] (fun env ->
       let get_ref = G.i_ (GetLocal (nr 0l)) in
       let get_arg = G.i_ (GetLocal (nr 1l)) in
 
@@ -2744,7 +2748,7 @@ module Message = struct
       G.i_ (CallIndirect (nr (message_ty env)))
     );
 
-    Func.define_built_in mod_env "export_self_message" ["name"] [I32Type] (fun env ->
+    Func.define_built_in_dfinity mod_env "export_self_message" ["name"] [I32Type] (fun env ->
       let get_name = G.i_ (GetLocal (nr 0l)) in
 
       Tagged.obj env Tagged.Reference [
@@ -2838,7 +2842,7 @@ open PatCode
 
 (* The actual compiler code that looks at the AST *)
 
-let compile_lit env lit = match lit with
+let compile_lit env lit = Syntax.(match lit with
   | BoolLit false -> BoxedInt.lit_false env
   | BoolLit true ->  BoxedInt.lit_true env
   (* This maps int to int32, instead of a proper arbitrary precision library *)
@@ -2851,8 +2855,9 @@ let compile_lit env lit = match lit with
   | NullLit       -> compile_null
   | TextLit t     -> Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) G.i_ Unreachable
+  )
 
-let compile_unop env op = match op with
+let compile_unop env op = Syntax.(match op with
   | NegOp -> BoxedInt.lift_unboxed_unary env (
       set_tmp env ^^
       compile_unboxed_zero ^^
@@ -2860,8 +2865,9 @@ let compile_unop env op = match op with
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
+  )
 
-let compile_binop env op = match op with
+let compile_binop env op = Syntax.(match op with
   | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)))
   | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
   | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
@@ -2869,8 +2875,9 @@ let compile_binop env op = match op with
   | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.RemU)))
   | CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
+  )
 
-let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
+let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
   | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
              G.if_ [I32Type] compile_unboxed_false compile_unboxed_true
@@ -2878,7 +2885,7 @@ let compile_relop env op = BoxedInt.lift_unboxed_binary env (match op with
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS))
   | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
-  )
+  ))
 
 
 (* compile_lexp is used for expressions on the left of an
@@ -2893,12 +2900,12 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      BoxedInt.unbox env ^^
      Array.idx env,
      store_ptr
-  | DotE (e, {it = Name n;_}) ->
+  | DotE (e, n) ->
      compile_exp env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env n,
      store_ptr
-  | _ -> todo "compile_lexp" (Arrange.exp exp) (G.i_ Unreachable, G.nop)
+  | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (G.i_ Unreachable, G.nop)
 
 (* compile_exp returns an *value*.
 Currently, number (I32Type) are just repesented as such, but other
@@ -2913,12 +2920,12 @@ and compile_exp (env : E.t) exp = match exp.it with
      BoxedInt.unbox env ^^
      Array.idx env ^^
      load_ptr
-  | DotE (e, ({it = Name n;_} as id)) ->
+  | DotE (e, ({it = Syntax.Name n;_} as name)) ->
      compile_exp env e ^^
      Tagged.branch env [I32Type]
-      ( [ Tagged.Object, Object.load_idx env n ] @
+      ( [ Tagged.Object, Object.load_idx env name ] @
         (if E.mode env = DfinityMode
-         then [ Tagged.Reference, actor_fake_object_idx env {id with it = n} ]
+         then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
          else []) @
         match  Array.fake_object_idx env n with
           | None -> []
@@ -2926,24 +2933,24 @@ and compile_exp (env : E.t) exp = match exp.it with
       )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
-  |  CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, { it = TupE [e1;e2]; _}) ->
+  | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
     begin
      compile_exp env e1 ^^
      compile_exp env e2 ^^
      match p with
       | "Array.init" -> Array.init env
       | "Array.tabulate" -> Array.tabulate env
-      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
+      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   (* Unary prims *)
-  | CallE ({ it = AnnotE ({ it = PrimE p; _} as pe, _); _}, _, e) ->
+  | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
     begin
      compile_exp env e ^^
      match p with
       | "abs" -> Prim.prim_abs env
       | "printInt" -> Dfinity.prim_printInt env
       | "print" -> Dfinity.prim_print env
-      | _ -> todo "compile_exp" (Arrange.exp pe) (G.i_ Unreachable)
+      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   | VarE var ->
      Var.get_val env var.it
@@ -2953,16 +2960,12 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e2 ^^
      store_code ^^
      compile_unit
-  | LitE l_ref ->
-     compile_lit env !l_ref
+  | LitE l ->
+     compile_lit env l
   | AssertE e1 ->
      compile_exp env e1 ^^
      BoxedInt.unbox env ^^
      G.if_ [I32Type] compile_unit (G.i (Unreachable @@ exp.at))
-  | NotE e ->
-     compile_exp env e ^^
-     BoxedInt.unbox env ^^
-     G.if_ [I32Type] (BoxedInt.lit_false env) (BoxedInt.lit_true env)
   | UnE (op, e1) ->
      compile_exp env e1 ^^
      compile_unop env op
@@ -2974,16 +2977,6 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^
      compile_exp env e2 ^^
      compile_relop env op
-  | OrE (e1, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox env ^^
-     G.if_ [I32Type] (BoxedInt.lit_true env) code2
-  | AndE (e1, e2) ->
-     let code1 = compile_exp env e1 in
-     let code2 = compile_exp env e2 in
-     code1 ^^ BoxedInt.unbox env ^^
-     G.if_ [I32Type] code2 (BoxedInt.lit_false env)
   | IfE (e1, e2, e3) ->
      let code1 = compile_exp env e1 in
      let code2 = compile_exp env e2 in
@@ -3029,8 +3022,6 @@ and compile_exp (env : E.t) exp = match exp.it with
         ]
   | BlockE decs ->
      compile_decs env decs
-  | DecE dec ->
-     compile_decs env [dec]
   | LabelE (name, _ty, e) ->
       G.block_ [I32Type] (G.with_current_depth (fun depth ->
         let env1 = E.add_label env name depth in
@@ -3062,7 +3053,6 @@ and compile_exp (env : E.t) exp = match exp.it with
        G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop
      ) ^^
      compile_unit
-  | AnnotE (e, t) -> compile_exp env e
   | RetE e -> compile_exp env e ^^ G.i (Return @@ exp.at)
   | OptE e ->
      Opt.inject env (compile_exp env e)
@@ -3074,24 +3064,24 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
-      (fun (f : Syntax.exp_field) ->
-        (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+      (fun (f : Ir.exp_field) ->
+        (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
       ) fs in
      Object.lit env (Some name) None fs'
   | ObjE ({ it = Type.Actor; _}, name, fs) ->
-    let captured = Freevars.exp exp in
+    let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env name fs
-    else todo "non-closed actor" (Arrange.exp exp) G.i_ Unreachable
-  | CallE (e1, _, e2) when isDirectCall env e1 <> None ->
+    else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
+  | CallE (_, e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_exp env e2 ^^
      Closure.call_direct env fi exp.at
-  | CallE (e1, _, e2) ->
+  | CallE (cc, e1, _, e2) ->
      compile_exp env e1 ^^
      compile_exp env e2 ^^
-     Closure.call_indirect env exp.at
+     Closure.call_indirect env cc exp.at
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -3122,9 +3112,9 @@ and compile_exp (env : E.t) exp = match exp.it with
 
      G.loop_ []
        ( get_i ^^
-         Object.load_idx env1 "next" ^^
+         Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
          compile_unit ^^
-         Closure.call_indirect env1 Source.no_region ^^
+         Closure.call_closure env1 Source.no_region ^^
          let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
@@ -3151,15 +3141,13 @@ and compile_exp (env : E.t) exp = match exp.it with
       compile_unit
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
-      (fun ({ it = Name name; _}, id) -> (name, fun env ->
-        Var.get_val env id.it
-      )) fs in
+      (fun (name, id) -> (name, fun env -> Var.get_val env id.it))
+      fs in
      Object.lit_raw env fs'
-  | _ -> todo "compile_exp" (Arrange.exp exp) (G.i_ Unreachable)
+  | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
 
 
 and isDirectCall env e = match e.it with
-  | AnnotE (e, _) -> isDirectCall env e
   | VarE var ->
     begin match E.lookup_var env var.it with
     | Some (Deferred d) -> d.is_direct_call
@@ -3196,29 +3184,22 @@ enabled mutual recursion.
 *)
 
 
-and compile_lit_pat env opo l = match opo, l with
-  | None, NullLit ->
+and compile_lit_pat env l = match l with
+  | Syntax.NullLit ->
     compile_lit env l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, (NatLit _ | IntLit _ | BoolLit _) ->
+  | Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
     BoxedInt.unbox env ^^
     compile_lit env l ^^
     BoxedInt.unbox env ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | Some uo, (NatLit _ | IntLit _) ->
-    BoxedInt.unbox env ^^
-    compile_lit env l ^^
-    compile_unop env uo ^^
-    BoxedInt.unbox env ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | None, (TextLit t) ->
+  | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
   | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i_ Unreachable)
 
 and fill_pat env pat : patternCode = match pat.it with
   | WildP -> CannotFail (G.i_ Drop)
-  | AnnotP (p, _) -> fill_pat env p
   | OptP p ->
       let code1 = fill_pat env p in
       let (set_i, get_i) = new_local env "opt_scrut" in
@@ -3235,11 +3216,7 @@ and fill_pat env pat : patternCode = match pat.it with
       )
   | LitP l ->
       CanFail (fun fail_code ->
-        compile_lit_pat env None !l ^^
-        G.if_ [] G.nop fail_code)
-  | SignP (op, l) ->
-      CanFail (fun fail_code ->
-        compile_lit_pat env (Some op) !l ^^
+        compile_lit_pat env l ^^
         G.if_ [] G.nop fail_code)
   | VarP name ->
       CannotFail (Var.set_val env name.it)
@@ -3254,7 +3231,6 @@ and fill_pat env pat : patternCode = match pat.it with
             code1 ^^^
             code2 ) in
       CannotFail set_i ^^^ go 0 ps env
-
   | AltP (p1, p2) ->
       let code1 = fill_pat env p1 in
       let code2 = fill_pat env p2 in
@@ -3264,7 +3240,7 @@ and fill_pat env pat : patternCode = match pat.it with
              (CannotFail get_i ^^^ code2)
 
 and alloc_pat env how pat =
-  let (_,d) = Freevars.pat pat in
+  let (_,d) = Freevars_ir.pat pat in
   AllocHow.S.fold (fun v (env,code0) ->
     let (env1, code1) = AllocHow.add_local_default env how AllocHow.LocalImmut v
     in (env1, code0 ^^ code1)
@@ -3314,28 +3290,28 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
         Var.set_val env name.it ^^
         if last then Var.get_val env name.it  else G.nop)
 
-  | FuncD (_, name, _, p, _rt, e) ->
+  | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
-      let captured = Freevars.captured p e in
+      let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
       let mk_body env1 _ = compile_exp env1 e in
-      Closure.dec pre_env how last name captured mk_pat mk_body dec.at
+      Closure.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (name, _, typ_params, s, p, self, efs) ->
-      let captured = Freevars.captured_exp_fields p efs in
+      let captured = Freevars_ir.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
       let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
-        let fs' = List.map (fun (f : Syntax.exp_field) ->
-          (f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
+        let fs' = List.map (fun (f : Ir.exp_field) ->
+          (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
           ) efs in
         (* this is run within the function. The class id is the function
-	identifier, as provided by Func.dec:
-	For closures it is the pointer to the closure.
-	For functions it is the function id (shifted to never class with pointers) *)
+        identifier, as provided by Func.dec:
+        For closures it is the pointer to the closure.
+        For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 (Some self) (Some compile_fun_identifier) fs' in
-      Closure.dec pre_env how last name captured mk_pat mk_body dec.at
+      Closure.dec pre_env how last name (Value.local_cc 1 1) captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
 
@@ -3367,7 +3343,7 @@ and find_prelude_names env =
   E.in_scope_set env2
 
 
-and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
+and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
@@ -3378,7 +3354,7 @@ and compile_start_func env (progs : Syntax.prog list) : E.func_with_names =
     go env1 progs
     )
 
-and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
+and compile_private_actor_field pre_env (f : Ir.exp_field)  =
   let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
   let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
   ( pre_env1, fun env ->
@@ -3390,11 +3366,10 @@ and compile_private_actor_field pre_env (f : Syntax.exp_field)  =
     Var.store
   )
 
-and compile_public_actor_field pre_env (f : Syntax.exp_field) =
+and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (name, _, pat, _rt, exp) =
-    let rec find_func exp = match exp.it with
-    | AnnotE (exp, _) -> find_func exp
-    | DecE {it = FuncD (s, name, ty_args, pat, rt, exp); _ } -> (name, ty_args, pat, rt, exp)
+    let find_func exp = match exp.it with
+    | BlockE [{it = FuncD (s, name, ty_args, pat, rt, exp); _ }] -> (name, ty_args, pat, rt, exp)
     | _ -> raise (Invalid_argument "public actor field not a function")
     in find_func f.it.exp in
 
@@ -3403,8 +3378,7 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
      They can differ after alpha-renaming of id due to CPS conversion, but are initially the same after the parsing
      I have not reviewed/fixed the code below.
   *)
-  let (fi, fill) = E.reserve_fun pre_env in
-  E.add_fun_name pre_env fi name.it;
+  let (fi, fill) = E.reserve_fun pre_env name.it in
   E.add_dfinity_type pre_env (fi, [CustomSections.ElemBuf]);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
@@ -3421,8 +3395,8 @@ and compile_public_actor_field pre_env (f : Syntax.exp_field) =
     G.nop
   )
 
-and compile_actor_field pre_env (f : Syntax.exp_field) =
-  if f.it.priv.it = Private
+and compile_actor_field pre_env (f : Ir.exp_field) =
+  if f.it.priv.it = Syntax.Private
   then compile_private_actor_field pre_env f
   else compile_public_actor_field pre_env f
 
@@ -3446,21 +3420,20 @@ and actor_lit outer_env name fs =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
-
+    Dfinity.common_funcs env;
     Array.common_funcs env;
-    if E.mode env = DfinityMode then Message.system_funs env;
+    Message.system_funs env;
 
     let start_fun = Func.of_body env [] [] (fun env3 ->
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
       let (env5, init_code )  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
-    let start_fi = E.add_fun env start_fun in
-    E.add_fun_name env start_fi "start";
+    let start_fi = E.add_fun env start_fun "start" in
 
     OrthogonalPersistence.register env start_fi;
 
-    let m = conclude_module env None in
+    let m = conclude_module env name.it None in
     let (_map, wasm) = CustomModule.encode m in
     wasm in
 
@@ -3490,7 +3463,7 @@ and actor_fake_object_idx env name =
         ElemHeap.remember_reference env
       ]
 
-and conclude_module env start_fi_o =
+and conclude_module env module_name start_fi_o =
 
   Dfinity.default_exports env;
   GC.register env (E.get_end_of_static_memory env);
@@ -3535,7 +3508,7 @@ and conclude_module env start_fi_o =
 
   { module_ = nr {
       types = List.map nr (E.get_types env);
-      funcs = funcs;
+      funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
       elems = [ nr {
         index = nr 0l;
@@ -3553,20 +3526,23 @@ and conclude_module env start_fi_o =
            [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
            ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
            ];
-    function_names = E.get_func_names env;
-    locals_names = E.get_func_local_names env;
+    module_name;
+    function_names =
+	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+    locals_names =
+	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
   }
 
-let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_module =
+let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
   let env = E.mk_global mode prelude ClosureTable.table_end in
-  if E.mode env = DfinityMode then Dfinity.system_imports env;
 
+  if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Dfinity.common_funcs env;
   Array.common_funcs env;
-  if E.mode env = DfinityMode then Message.system_funs env;
+  Message.system_funs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
-  let start_fi = E.add_fun env start_fun in
-  E.add_fun_name env start_fi "start";
+  let start_fi = E.add_fun env start_fun "start" in
   let start_fi_o =
     if E.mode env = DfinityMode
     then begin
@@ -3575,4 +3551,4 @@ let compile mode (prelude : Syntax.prog) (progs : Syntax.prog list) : extended_m
       None
     end else Some (nr start_fi) in
 
-  conclude_module env start_fi_o
+  conclude_module env module_name start_fi_o

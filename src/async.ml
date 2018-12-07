@@ -18,12 +18,11 @@ let localS =
    at=no_region;
    note=()}
 
-(*  
+
 let sharableS =
   {it=T.Call T.Sharable;
    at=no_region;
    note=()}
-*)
 
 let replyT typ = T.Func(T.Call T.Sharable, T.Returns, [], [typ], [])
               
@@ -62,7 +61,8 @@ let prelude_new_async t1 =
     at = no_region;    
   }
   
-let contTT t = funcT(localS,[],t,unitT)
+(* let contTT t = funcT(localS,[],t,unitT) *)
+let replyTT t = funcT(sharableS,[],t,unitT)             
             
  
 let shared_funcD f x e =
@@ -171,8 +171,8 @@ let rec t_typ (t:T.typ) =
               Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
            | [Async t2] ->
               Func (s, c, List.map t_bind tbs,
-                    extendTup (List.map t_typ t1) (contT (t_typ t2)), [])
-           | _ -> failwith "t_typT'"
+                    extendTup (List.map t_typ t1) (replyT (* contT*) (t_typ t2)), [])
+           | _ -> failwith "t_typ"
          end
        | _ ->
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
@@ -361,9 +361,9 @@ and t_dec' dec' =
            | T.Async res_typ ->
               let res_typ = t_typ res_typ in
               let pat = t_pat pat in
-              let cont_typ = contT res_typ in
+              let reply_typ = replyT res_typ in
               let typT' = tupT []  in
-              let k = fresh_id cont_typ in
+              let k = fresh_id reply_typ in
               let pat',d = extendTupP pat (varP k) in
               (* let pat' = tupP [pat;varP k] in *)
               let typbinds' = t_typbinds typbinds in                   
@@ -453,7 +453,7 @@ and t_typT' t =
               FuncT (s, t_typbinds tbs, t_typT t1, t_typT t2)
            | AsyncT t2 ->
               FuncT (localS, t_typbinds tbs,
-                     tupT [t_typT t1; contTT (t_typT t2)], unitT)
+                     tupT [t_typT t1; replyTT (t_typT t2)], unitT) 
            | _ -> failwith "t_typT'"
          end
        | _ ->
