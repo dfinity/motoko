@@ -74,7 +74,12 @@ let rec exp e : f = match e.it with
   | RelE (e1, ro, e2)   -> eagerify (exps [e1; e2])
   | TupE es             -> exps es
   | ProjE (e, i)        -> eagerify (exp e)
-  | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
+  | ObjE (s, i, efs)    ->
+    let f = close (exp_fields efs) // i.it in
+    begin match s.it with
+    | Type.Actor -> eagerify f
+    | Type.Object _ -> f
+    end
   | DotE (e, i)         -> eagerify (exp e)
   | AssignE (e1, e2)    -> eagerify (exps [e1; e2])
   | ArrayE es           -> exps es
