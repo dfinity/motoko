@@ -56,7 +56,6 @@ let seq ts =
 
 let as_seq t =
     match t with
-    | Tup [_] -> failwith "as_seq"
     | Tup ts -> ts
     | t -> [t]                
 

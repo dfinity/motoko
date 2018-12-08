@@ -51,7 +51,7 @@ let new_asyncT =
                           [{var = "T";
                             bound = T.Shared}],
                           [],
-                          new_async_ret as_seq (T.Var ("T", 0)))
+                          new_async_ret unary (T.Var ("T", 0)))
 
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
@@ -117,6 +117,12 @@ let shared_funcD f x e =
             note;}
   | _ -> failwith "Impossible: funcD"
 
+let letEta e scope =
+  match e.it with
+  | VarE _ -> scope e (* pure, so reduce *)
+  | _  -> let f = fresh_id (typ e) in
+          letD f e :: (scope f) (* maybe impure; sequence *)
+          
 
 let isAwaitableFunc exp =
   match typ exp with
@@ -149,8 +155,7 @@ let extendTupE e1 e2 =
     begin
      match ts with
      | [] ->
-        let x = fresh_id unit in
-        (fun d -> (letD x e1)::d),
+        (fun d -> (expD e1)::d),
         e2
      | _ ->
         match e1.it with
@@ -277,14 +282,16 @@ and t_exp' (exp:Syntax.exp) =
            t_typ (T.seq ts1), t_typ t2
        | _ -> assert(false)
      in
-     let exp1 = t_exp exp1 in
-     let exp2 = t_exp exp2 in
+     let exp1' = t_exp exp1 in
+     let exp2' = t_exp exp2 in
      let typs = List.map t_typT typs in
      let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
-     let (d,es) = extendTupE exp2 nary_reply in
+     let (d,es) = extendTupE exp2' nary_reply in
+     let _ = letEta in
      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
-              d [expD (callE exp1 typs es T.unit);
-                 expD nary_async]))
+              letEta exp1' (fun v1 ->
+              d [expD (callE v1 typs es T.unit);
+              expD nary_async])))
        .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
