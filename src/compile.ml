@@ -918,9 +918,6 @@ module Closure = struct
   (* First argument is a pointer to the closure *)
   let ty env = E.func_type env (FuncType ([I32Type; I32Type],[I32Type]))
 
-  let unary_of_body env mk_body =
-    Func.of_body env ["clos"; "param"] [I32Type] mk_body
-
   (* The argument on the stack *)
   let call_direct env fi at =
    (* Pop the argument *)
@@ -1394,7 +1391,7 @@ module Array = struct
     let get_second_arg =   Closure.load_argument ^^ load_n 1l in
 
     E.define_built_in env "array_get"
-      (fun () -> Closure.unary_of_body env (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
             get_array_object ^^
             get_single_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1402,7 +1399,7 @@ module Array = struct
             load_ptr
        ));
     E.define_built_in env "array_set"
-      (fun () -> Closure.unary_of_body env (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1412,13 +1409,13 @@ module Array = struct
             compile_unit
        ));
     E.define_built_in env "array_len"
-      (fun () -> Closure.unary_of_body env (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
             get_array_object ^^
             Heap.load_field len_field ^^
             BoxedInt.box env1
       ));
 
-    let mk_next_fun mk_code : E.func_with_names = Closure.unary_of_body env (fun env1 ->
+    let mk_next_fun mk_code : E.func_with_names = Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
@@ -1453,7 +1450,7 @@ module Array = struct
                 )
               )
        ) in
-    let mk_iterator next_funid = Closure.unary_of_body env (fun env1 ->
+    let mk_iterator next_funid = Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Closure.fixed_closure env1 next_funid
@@ -2655,7 +2652,7 @@ module FuncDec = struct
    the function will find in the closure. *)
 
   let compile_func env restore_env mk_pat mk_body at =
-    Closure.unary_of_body env (fun env1 ->
+    Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
       let get_closure = G.i (GetLocal (E.unary_closure_local env1) @@ at) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
