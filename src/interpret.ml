@@ -141,7 +141,7 @@ let make_unit_message id v =
   let _, call_conv, f = V.as_func v in
   match call_conv with
   | (T.Call T.Sharable, _ , arg_c, 0) ->
-    Value.message_func 0 (fun v k ->
+    Value.message_func arg_c (fun v k ->
       actor_msg id f v (fun _ -> ());
       k V.unit
     )
@@ -178,17 +178,21 @@ let make_message id t v : V.value =
      (*     assert false *)
 
 
-let extended_prim s at =
+let extended_prim s typ at =
   match s with
   | "@async" ->
      assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
-     let (call,_,f) = V.as_func v in
-     async at
-       (fun k' ->
-         let k' = Value.local_func 1 0 (fun v _ -> k' v) in
-         f k' V.as_unit)
-       k
+     (let (call,_,f) = V.as_func v in
+      match typ with
+      |  T.Func(_,_,_,[T.Func(_,_,_,[f_dom],_)],_) ->
+         let call_conv = Value.call_conv_of_typ f_dom in
+         async at
+           (fun k' ->
+             let k' = Value.Func(None,call_conv,(fun v _ -> k' v)) in
+             f k' V.as_unit)
+         k
+      | _ -> assert false)
   | "@await" ->
      assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
      fun v k ->
@@ -200,7 +204,7 @@ let extended_prim s at =
       | _ -> assert false
      end
   | _ -> Prelude.prim s
-
+       
 (* Literals *)
 
 let interpret_lit env lit : V.value =
@@ -221,12 +225,12 @@ let interpret_lit env lit : V.value =
 
 (* Expressions *)
 
-let check_call_conv exp ((func_sort,control,args,res) as call_conv) =
-  let ((exp_func_sort,exp_control,exp_args,exp_res) as exp_call_conv) = V.call_conv_of_typ exp.note.note_typ in
-  (* TODO: Check the full calling convention here *)
-  if not (exp_func_sort = func_sort) then
-    failwith (Printf.sprintf "call_conv mismatch: function %s expect %s, found %s"
+let check_call_conv exp call_conv =
+  let exp_call_conv = V.call_conv_of_typ exp.note.note_typ in
+  if not (exp_call_conv = call_conv) then
+    failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (T.string_of_typ exp.note.note_typ)        
       (V.string_of_call_conv exp_call_conv)
       (V.string_of_call_conv call_conv))
 
@@ -239,7 +243,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   match exp.it with
   | PrimE s ->
     let at = exp.at in
-    k (V.Func (None, V.call_conv_of_typ exp.note.note_typ, extended_prim s at))
+    k (V.Func (None, V.call_conv_of_typ exp.note.note_typ, extended_prim s exp.note.note_typ at))
   | VarE id ->
     (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v

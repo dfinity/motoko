@@ -1,9 +1,9 @@
 open Syntax
 open Source
-open Effect   
+open Effect
 module T = Type
 open T
-open Syntaxops   
+open Syntaxops
 
 (* lower the async type itself
    - adds a final callback argument to every awaitable shared function, replace the result by unit
@@ -18,18 +18,23 @@ let localS =
    at=no_region;
    note=()}
 
-
 let sharableS =
   {it=T.Call T.Sharable;
    at=no_region;
    note=()}
 
-let replyT typ = T.Func(T.Call T.Sharable, T.Returns, [], [typ], [])
-              
+let unary typ = [typ]
+
+let nary typ = T.as_seq typ
+
+let replyT as_seq typ = T.Func(T.Call T.Sharable, T.Returns, [], as_seq typ, [])
+
+let fullfillT as_seq typ = T.Func(T.Call T.Local, T.Returns, [], as_seq typ, [])
+
 let tupT ts = {it = TupT ts;
                at = no_region;
                note = ()}
-       
+
 let unitT = tupT []
 
 let funcT(s,bds,t1,t2) =
@@ -37,34 +42,67 @@ let funcT(s,bds,t1,t2) =
    at = no_region;
    note = ()}
 
-let t_async t =  T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],[t],[])], [])
-               
+let t_async as_seq t =
+  T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],as_seq t,[])], [])
+
+let new_async_ret as_seq t = [t_async as_seq t;fullfillT as_seq t]
 let new_asyncT =
-  (T.Func(T.Call T.Local,T.Returns,
+   T.Func(T.Call T.Local,T.Returns,
                           [{var = "T";
                             bound = T.Shared}],
                           [],
-                          [t_async (T.Var ("T",0));
-                           replyT (T.Var ("T",0))])
-  )
-  
+                          new_async_ret unary (T.Var ("T", 0)))
+
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
 
 let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore *)
-             
-let prelude_new_async t1 =
-  { it = CallE(new_asyncE,[bogusT],tupE []);
-    note = {note_typ = T.seq [t_async t1; 
-                               replyT t1];
-            note_eff = T.Triv};
-    at = no_region;    
-  }
-  
-(* let contTT t = funcT(localS,[],t,unitT) *)
-let replyTT t = funcT(sharableS,[],t,unitT)             
-            
- 
+
+let new_async t1 =
+  let call_new_async = callE new_asyncE [bogusT] (tupE[]) (T.seq (new_async_ret unary t1)) in
+  let async  = fresh_id (typ (projE call_new_async 0)) in
+  let fullfill = fresh_id (typ (projE call_new_async 1)) in
+  (async,fullfill),call_new_async
+
+let letP p e =  {it = LetD(p,e);
+                 at = no_region;
+                 note = e.note}
+
+let new_nary_async_reply t1 =
+  let (unary_async,unary_fullfill),call_new_async = new_async t1 in
+  let v' = fresh_id t1 in
+  let ts1 = T.as_seq t1 in
+  (* construct the n-ary async value, coercing the continuation, if necessary *)
+  let nary_async =
+    let k' = fresh_id (contT t1) in
+    match ts1 with
+    | [t] ->
+      unary_async
+    | ts ->
+      let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
+      k' --> (unary_async -*- ([v'] -->* (k' -*- seq_of_v')))
+  in
+  (* construct the n-ary reply message that sends a sequence of value to fullfill the async *)
+  let nary_reply =
+    let vs,seq_of_vs =
+      match ts1 with
+      | [t] ->
+        let v = fresh_id t in
+        [v],v
+      | ts ->
+        let vs = List.map fresh_id ts in
+        vs, tupE vs
+    in
+    vs -@>* (unary_fullfill -*-  seq_of_vs)
+  in
+  let async,reply = fresh_id (typ nary_async), fresh_id (typ nary_reply) in
+  (async,reply),blockE [letP (tupP [varP unary_async;varP unary_fullfill])  call_new_async;
+                    expD (tupE [nary_async;nary_reply])]
+
+
+let replyTT t = funcT(sharableS,[],t,unitT)
+
+
 let shared_funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
@@ -79,40 +117,23 @@ let shared_funcD f x e =
             note;}
   | _ -> failwith "Impossible: funcD"
 
+let letEta e scope =
+  match e.it with
+  | VarE _ -> scope e (* pure, so reduce *)
+  | _  -> let f = fresh_id (typ e) in
+          letD f e :: (scope f) (* maybe impure; sequence *)
+
 
 let isAwaitableFunc exp =
   match typ exp with
   | T.Func (T.Call T.Sharable,T.Promises,_,_,[T.Async _]) -> true
   | _ -> false
 
-
-(* control flattening of shared function args, default true *)
-let flattening() = true
-
-(* TBD                 
-let extendTupT t1 t2 =
-  match t1.it with
-  (* NB: this will introduce a bogus type when t1 is a type abbreviation or variable, 
-    but the syntactic type should not be used anymore anyway *)
-  | TupT ts when flattening() ->
-    begin
-     match ts with
-     | [] -> t2
-     | _ -> tupT (ts@[t2])
-    end
-  | VarT _ -> bogusT
-  | _ -> tupT [t1;t2]
- *)
-                 
 let extendTup ts t2 = ts @ [t2]
 
-let letP p e =  {it = LetD(p,e);
-                 at = no_region;
-                 note = e.note}
-              
 let extendTupP p1 p2 =
   match typ p1 with
-  | Tup ts when flattening() ->
+  | Tup ts ->
     begin
       match ts with
       | [] -> p2, fun d -> (letP p1 (tupE [])::d)
@@ -128,14 +149,21 @@ let extendTupP p1 p2 =
     end
   | _ -> tupP [p1;p2], fun d -> d
 
+(* Given expressions e1 and e2 return:
+   a function extending a declaration d with any components of e1, and
+   a manifest tuple containing (the components of) e1 extended with the component e2,
+   preserving evaluation and side-effects of e1.
+
+   (used to extend the calls to an awaitable function with argument(s) e1 with an additional reply argument, e2)
+*)
+
 let extendTupE e1 e2 =
   match typ e1 with
-  | Tup ts when flattening() ->
+  | Tup ts ->
     begin
      match ts with
      | [] ->
-        let x = fresh_id unit in
-        (fun d -> (letD x e1)::d),
+        (fun d -> (expD e1)::d),
         e2
      | _ ->
         match e1.it with
@@ -151,8 +179,8 @@ let extendTupE e1 e2 =
   | _ ->
      (fun d -> d),
      tupE [e1;e2]
-                              
-                              
+
+
 let rec t_typ (t:T.typ) =
   match t with
   | T.Prim _
@@ -168,17 +196,19 @@ let rec t_typ (t:T.typ) =
          begin
            match t2 with
            | [] ->
+              assert (c = T.Returns);
               Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
            | [Async t2] ->
-              Func (s, c, List.map t_bind tbs,
-                    extendTup (List.map t_typ t1) (replyT (* contT*) (t_typ t2)), [])
+              assert (c = T.Promises);
+              Func (s, T.Returns, List.map t_bind tbs,
+                    extendTup (List.map t_typ t1) (replyT nary (t_typ t2)), [])
            | _ -> failwith "t_typ"
          end
        | _ ->
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
      end
   | Opt t -> Opt (t_typ t)
-  | Async t -> t_async (t_typ t)
+  | Async t -> t_async nary (t_typ t)
   | Like t -> Like (t_typ t)
   | Obj (s, fs) -> Obj (s, List.map t_field  fs)
   | Mut t -> Mut (t_typ t)
@@ -191,17 +221,6 @@ let rec t_typ (t:T.typ) =
 and t_bind {var; bound} =
   {var; bound = t_typ bound}
 
-(* TBD   
-and bogus_typ_binds tbs =
-  List.map (fun tb -> { it = {Syntax.var =
-                                  {it = tb.T.var;
-                                   at = no_region;
-                                   note = ()};
-                              bound = bogusT};
-                        at = no_region;
-                        note = ()}) tbs
-*)
-  
 and t_field {name; typ} =
   {name; typ = t_typ typ}
 let rec t_exp (exp:Syntax.exp) =
@@ -229,7 +248,7 @@ and t_exp' (exp:Syntax.exp) =
   | ProjE (exp1, n) ->
     ProjE (t_exp exp1, n)
   | ObjE (sort, id, fields) ->
-    let fields' = t_fields fields in                    
+    let fields' = t_fields fields in
     ObjE (sort, id, fields')
   | DotE (exp1, id) ->
     DotE (t_exp exp1, id)
@@ -257,43 +276,37 @@ and t_exp' (exp:Syntax.exp) =
      let v1 = fresh_id t1 in
      let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
      let u = fresh_id T.unit in
-     let call_new_async = prelude_new_async t1 in
-     let p = fresh_id (typ call_new_async) in
-     let p_0 = projE p 0 in
-     let p_1 = projE p 1 in
-     let async  = fresh_id (typ p_0) in
-     let fullfill = fresh_id (typ p_1) in
-     (blockE [letD p call_new_async;
-              letD async p_0;
-              letD fullfill p_1;
-              funcD k v1 (fullfill -*- v1);
+     let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
+     (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
+              funcD k v1 (nary_reply -*- v1);
               shared_funcD post u (t_exp exp2 -*- k);
               expD (post -*- tupE[]);
-              expD async])
+              expD nary_async])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
      let t1,t2 =
        match typ exp1 with
-       | T.Func (T.Call T.Sharable,T.Promises,tbs,t1,[T.Async t2]) ->
-          List.map t_typ t1, t_typ t2
+       | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
+           t_typ (T.seq ts1), t_typ t2
        | _ -> assert(false)
      in
-     let exp1 = t_exp exp1 in
-     let exp2 = t_exp exp2 in
+     let exp1' = t_exp exp1 in
+     let exp2' = t_exp exp2 in
      let typs = List.map t_typT typs in
-     let call_new_async = prelude_new_async t2 in
-     let p = fresh_id (typ call_new_async) in
-     let (d,es) = extendTupE exp2 (projE p 1) in
-     (blockE (letD p (call_new_async)::
-              d [expD (callE exp1 typs es T.unit);
-                 expD (projE p 0)]))
+     let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
+     let (d,es) = extendTupE exp2' nary_reply in
+     let _ = letEta in
+     (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
+              letEta exp1' (fun v1 ->
+              d [expD (callE v1 typs es T.unit);
+                 expD nary_async])))
        .it
   | CallE (exp1, typs, exp2)  ->
-    CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)               
+    CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
   | BlockE decs ->
     BlockE (t_decs decs)
   | NotE exp1 ->
-    NotE (t_exp exp1)     
+    NotE (t_exp exp1)
   | AndE (exp1, exp2) ->
     AndE (t_exp exp1, t_exp exp2)
   | OrE (exp1, exp2) ->
@@ -319,12 +332,12 @@ and t_exp' (exp:Syntax.exp) =
     BreakE (id, t_exp exp1)
   | RetE exp1 ->
     RetE (t_exp exp1)
-  | AsyncE _ -> failwith "unexpected asyncE" 
-  | AwaitE _ -> failwith "unexpected awaitE" 
+  | AsyncE _ -> failwith "unexpected asyncE"
+  | AwaitE _ -> failwith "unexpected awaitE"
   | AssertE exp1 ->
     AssertE (t_exp exp1)
   | IsE (exp1, exp2) ->
-    IsE (t_exp exp1, t_exp exp2) 
+    IsE (t_exp exp1, t_exp exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp exp1, t_typT typ)
   | DecE dec ->
@@ -333,7 +346,7 @@ and t_exp' (exp:Syntax.exp) =
     DeclareE (id, t_typ typ, t_exp exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp exp1)
-  | NewObjE (sort, ids) -> exp' 
+  | NewObjE (sort, ids) -> exp'
 
 and t_dec dec =
   { it = t_dec' dec.it;
@@ -341,7 +354,7 @@ and t_dec dec =
              note_eff = dec.note.note_eff};
     at = dec.at
   }
- 
+
 and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)
@@ -361,12 +374,12 @@ and t_dec' dec' =
            | T.Async res_typ ->
               let res_typ = t_typ res_typ in
               let pat = t_pat pat in
-              let reply_typ = replyT res_typ in
+              let reply_typ = replyT nary res_typ in
               let typT' = tupT []  in
               let k = fresh_id reply_typ in
               let pat',d = extendTupP pat (varP k) in
               (* let pat' = tupP [pat;varP k] in *)
-              let typbinds' = t_typbinds typbinds in                   
+              let typbinds' = t_typbinds typbinds in
               let x = fresh_id res_typ in
               let exp' =
                 match exp.it with
@@ -388,12 +401,12 @@ and t_dec' dec' =
          end
     end
   | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
-     let fields' = t_fields fields in             
-     ClassD (id, lab, t_typbinds typbinds, sort, t_pat pat, id', fields')
+    let fields' = t_fields fields in
+    ClassD (id, lab, t_typbinds typbinds, sort, t_pat pat, id', fields')
 
-and t_decs decs = List.map t_dec decs           
+and t_decs decs = List.map t_dec decs
 
-and t_fields fields = 
+and t_fields fields =
   List.map (fun (field:exp_field) ->
       { field with it = { field.it with exp = t_exp field.it.exp }})
     fields
@@ -403,9 +416,9 @@ and t_pat pat =
              note = {note_typ = t_typ pat.note.note_typ;
                      note_eff = pat.note.note_eff}}
 
-and t_pat' pat = 
+and t_pat' pat =
   match pat with
-  | WildP 
+  | WildP
   | LitP _
   | SignP _
   | VarP _ ->
@@ -415,18 +428,18 @@ and t_pat' pat =
   | OptP pat1 ->
     OptP (t_pat pat1)
   | AltP (pat1, pat2) ->
-    AltP (t_pat pat1, t_pat pat2) 
+    AltP (t_pat pat1, t_pat pat2)
   | AnnotP (pat1, _typ) ->
     AnnotP (t_pat pat1, t_typT _typ)
 
 (* translate syntactic types *)
- 
+
 and t_asyncT t =
   FuncT (localS,
          [],
          funcT(localS,[],t,unitT),
          unitT)
-  
+
 and t_typT t =
   { t with it = t_typT' t.it }
 and t_typT' t =
@@ -453,7 +466,7 @@ and t_typT' t =
               FuncT (s, t_typbinds tbs, t_typT t1, t_typT t2)
            | AsyncT t2 ->
               FuncT (localS, t_typbinds tbs,
-                     tupT [t_typT t1; replyTT (t_typT t2)], unitT) 
+                     tupT [t_typT t1; replyTT (t_typT t2)], unitT)
            | _ -> failwith "t_typT'"
          end
        | _ ->
@@ -470,5 +483,5 @@ and t_typ_fieldT fld =
 and t_typ_bindT bnd =
    { bnd with it = {bnd.it with Syntax.bound = t_typT bnd.it.Syntax.bound}}
 
-and t_typbinds typbinds = List.map t_typ_bindT typbinds 
+and t_typbinds typbinds = List.map t_typ_bindT typbinds
 and t_prog prog:prog = {prog with it = t_decs prog.it}
