@@ -161,9 +161,6 @@ seplist1(X, SEP) :
     { fun sort sloc ->
       ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
 
-%inline var :
-  | VAR { Var @@ at $sloc }
-
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
