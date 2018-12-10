@@ -80,7 +80,9 @@ let
       let cc = Value.call_conv_of_typ n.S.note_typ in
       I.FuncD (cc, i, tp, pat p, ty, exp e)
     | S.TypD (i, ty, t) -> I.TypD (i, ty, t)
-    | S.ClassD (i1, i2, ty, s, p, i3, es) -> I.ClassD (i1, i2, ty, s, pat p, i3, exp_fields es)
+    | S.ClassD (i1, i2, ty, s, p, i3, es) ->
+      let cc = Value.call_conv_of_typ n.S.note_typ in
+      I.ClassD (cc, i1, i2, ty, s, pat p, i3, exp_fields es)
 
 
   and cases cs = List.map case cs

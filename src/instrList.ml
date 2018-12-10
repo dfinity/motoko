@@ -30,6 +30,7 @@ let i_ (instr : instr') = i (instr @@ Wasm.Source.no_region)
 (* map and concat *)
 let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
 let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
+let table n f = List.fold_right (^^) (Lib.List.table n f) nop
 
 (* Depths-managing combinators *)
 

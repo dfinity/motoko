@@ -126,7 +126,6 @@ module E = struct
   (* Indices of local variables *)
   let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
-  let unary_param_local env : var = nr 1l   (* second param *)
 
   (* The initial global environment *)
   let mk_global mode prelude dyn_mem : t = {
@@ -913,48 +912,61 @@ module Closure = struct
 
   let load_the_closure = G.i_ (GetLocal (nr 0l))
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
-  let load_argument  = G.i_ (GetLocal (nr 1l))
 
-  (* First argument is a pointer to the closure *)
-  let ty env = E.func_type env (FuncType ([I32Type; I32Type],[I32Type]))
+  let flatten_tuple env n_args =
+    if n_args = 1 then G.nop else
+    let (set_tup, get_tup) = new_local env "tup" in
+    set_tup ^^
+    G.table n_args (fun i -> get_tup ^^ Heap.load_field Int32.(add 2l (of_int i)))
+    (* This should be Array.load_n *)
 
   (* The argument on the stack *)
-  let call_direct env fi at =
-   (* Pop the argument *)
-   let (set_i, get_i) = new_local env "param" in
-   set_i ^^
+  let call_direct env cc fi at =
+    let (_, _, n_args, _) = cc in
+    (* Pop the argument *)
+    let (set_i, get_i) = new_local env "param" in
+    set_i ^^
 
-   (* First arg: The (unused) closure pointer *)
-   compile_null ^^
+    (* First arg: The (unused) closure pointer *)
+    compile_null ^^
 
-   (* Second arg: The argument *)
-   get_i ^^
+    (* Second arg: The argument *)
+    get_i ^^
+    flatten_tuple env n_args ^^
 
-   (* All done: Call! *)
-   G.i (Call (nr fi) @@ at)
+    (* All done: Call! *)
+    G.i (Call (nr fi) @@ at)
+
+  (* Calculate the wasm type for a given calling convention.
+     An extra first argument for the closure! *)
+  let ty env cc =
+    let (_, _, n_args, _) = cc in
+    E.func_type env (FuncType (I32Type :: Lib.List.make n_args I32Type,[I32Type]))
 
   (* Expect the function closure and the argument on the stack *)
-  let call_closure env at =
-    Func.share_code env "call_closure" ["clos"; "arg"] [I32Type] (fun env ->
-      let get_clos = G.i_ (GetLocal (nr 0l)) in
-      let get_arg = G.i_ (GetLocal (nr 1l)) in
+  let call_closure env cc at =
+    let (_, _, n_args, _) = cc in
+    let (set_clos, get_clos) = new_local env "clos" in
+    let (set_arg, get_arg) = new_local env "arg" in
+    set_arg ^^
+    set_clos ^^
 
-      (* First arg: The closure pointer *)
-      get_clos ^^
-      (* Second arg: The argument *)
-      get_arg ^^
-      (* And now get the table index *)
-      get_clos ^^
-      Heap.load_field funptr_field ^^
-      (* All done: Call! *)
-      G.i (CallIndirect (nr (ty env)) @@ at)
-    )
+    (* First arg: The closure pointer *)
+    get_clos ^^
+    (* Second arg: The argument *)
+    get_arg ^^
+    flatten_tuple env n_args ^^
+    (* And now get the table index *)
+    get_clos ^^
+    Heap.load_field funptr_field ^^
+    (* All done: Call! *)
+    G.i (CallIndirect (nr (ty env cc)) @@ at)
 
   (* Expect the function closure and the argument on the stack *)
   let call_indirect env (cc : Value.call_conv) at =
     match cc with
     | (Type.Call Type.Local, _, _, _) | (Type.Construct, _, _, _) ->
-        call_closure env at
+        call_closure env cc at
     | (Type.Call Type.Sharable, _, _, _) ->
         G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
         compile_unit
@@ -1386,20 +1398,19 @@ module Array = struct
 
   let common_funcs env =
     let get_array_object = Closure.load_closure 0l in
-    let get_single_arg =   Closure.load_argument in
-    let get_first_arg =    Closure.load_argument ^^ load_n 0l in
-    let get_second_arg =   Closure.load_argument ^^ load_n 1l in
+    let get_first_arg = G.i_ (GetLocal (nr 1l)) in
+    let get_second_arg = G.i_ (GetLocal (nr 2l)) in
 
     E.define_built_in env "array_get"
-      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "idx"] [I32Type] (fun env1 ->
             get_array_object ^^
-            get_single_arg ^^ (* the index *)
+            get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
             idx env ^^
             load_ptr
        ));
     E.define_built_in env "array_set"
-      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "idx"; "val"] [I32Type] (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
@@ -1409,13 +1420,13 @@ module Array = struct
             compile_unit
        ));
     E.define_built_in env "array_len"
-      (fun () -> Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+      (fun () -> Func.of_body env ["clos"] [I32Type] (fun env1 ->
             get_array_object ^^
             Heap.load_field len_field ^^
             BoxedInt.box env1
       ));
 
-    let mk_next_fun mk_code : E.func_with_names = Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+    let mk_next_fun mk_code : E.func_with_names = Func.of_body env ["clos"] [I32Type] (fun env1 ->
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
@@ -1450,7 +1461,7 @@ module Array = struct
                 )
               )
        ) in
-    let mk_iterator next_funid = Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+    let mk_iterator next_funid = Func.of_body env ["clos"] [I32Type] (fun env1 ->
             (* next function *)
             let (set_ni, get_ni) = new_local env1 "next" in
             Closure.fixed_closure env1 next_funid
@@ -1555,7 +1566,6 @@ module Array = struct
     Heap.store_field len_field ^^
 
     (* Write fields *)
-    (* Copy fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
       get_r ^^
@@ -1564,7 +1574,7 @@ module Array = struct
       get_f ^^
       get_i ^^
       BoxedInt.box env ^^
-      Closure.call_closure env no_region ^^
+      Closure.call_closure env (Value.local_cc 1 1) no_region ^^
       store_ptr
     ) ^^
     get_r
@@ -2647,12 +2657,22 @@ module FuncDec = struct
     (* should be different from any pointer *)
     Int32.add (Int32.mul fi Heap.word_size) 1l
 
-   (* Create a WebAssembly func from a pattern (for the argument) and the body.
+  let tup_from_args env n =
+    if n = 1
+    then
+      G.i_ (GetLocal (nr 1l))
+    else
+      Array.lit env (Lib.List.table n (
+        fun i -> G.i_ (GetLocal (nr (Int32.(add 1l (of_int i)))))
+      ))
+
+  (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
-
-  let compile_func env restore_env mk_pat mk_body at =
-    Func.of_body env ["clos"; "param"] [I32Type] (fun env1 ->
+  let compile_func env cc restore_env mk_pat mk_body at =
+    let (_, _, n_args, _) = cc in
+    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
+    Func.of_body env (["clos"] @ args) [I32Type] (fun env1 ->
       let get_closure = G.i (GetLocal (E.unary_closure_local env1) @@ at) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
@@ -2665,7 +2685,8 @@ module FuncDec = struct
 
       closure_code ^^
       alloc_args_code ^^
-      G.i (GetLocal (E.unary_param_local env3) @@ at ) ^^
+      tup_from_args env3 n_args ^^
+      (* Construct a tuple, as expected by the pattern. TODO: Optimize with PatP *)
       destruct_args_code ^^
       body_code)
 
@@ -2712,18 +2733,20 @@ module FuncDec = struct
     )
 
   (* Compile a closed function declaration (has no free variables) *)
-  let dec_closed pre_env last name mk_pat mk_body at =
+  let dec_closed pre_env cc last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
         let mk_body' env = mk_body env (compile_unboxed_const (static_function_id fi)) in
-        let f = compile_func env (fun env1 _ -> (env1, G.nop)) mk_pat mk_body' at in
+        let f = compile_func env cc (fun env1 _ -> (env1, G.nop)) mk_pat mk_body' at in
         fill f;
         if last then d.allocate env else G.nop)
 
   (* Compile a closure declaration (has free variables) *)
-  let dec_closure pre_env h last name is_local captured mk_pat mk_body at =
+  let dec_closure pre_env cc h last name captured mk_pat mk_body at =
+      let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
+
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
 
@@ -2768,7 +2791,7 @@ module FuncDec = struct
         let fi =
           if is_local
           then
-            let f = compile_func env restore_env mk_pat mk_body' at in
+            let f = compile_func env cc restore_env mk_pat mk_body' at in
             E.add_fun env f name.it
           else
             let f = compile_message env restore_env mk_pat mk_body' at in
@@ -2823,9 +2846,9 @@ module FuncDec = struct
     else match AllocHow.M.find_opt name.it how with
       | None ->
         assert is_local;
-        dec_closed pre_env last name mk_pat mk_body at
+        dec_closed pre_env cc last name mk_pat mk_body at
       | Some h ->
-        dec_closure pre_env (Some h) last name is_local captured mk_pat mk_body at
+        dec_closure pre_env cc (Some h) last name captured mk_pat mk_body at
 
 end (* FuncDec *)
 
@@ -3116,10 +3139,10 @@ and compile_exp (env : E.t) exp = match exp.it with
     if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
-  | CallE (_, e1, _, e2) when isDirectCall env e1 <> None ->
+  | CallE (cc, e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_exp env e2 ^^
-     Closure.call_direct env fi exp.at
+     Closure.call_direct env cc fi exp.at
   | CallE (cc, e1, _, e2) ->
      compile_exp env e1 ^^
      compile_exp env e2 ^^
@@ -3156,7 +3179,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        ( get_i ^^
          Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
          compile_unit ^^
-         Closure.call_closure env1 Source.no_region ^^
+         Closure.call_closure env1 (Value.local_cc 0 0) Source.no_region ^^
          let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
@@ -3340,7 +3363,7 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
-  | ClassD (name, _, typ_params, s, p, self, efs) ->
+  | ClassD (cc, name, _, typ_params, s, p, self, efs) ->
       let captured = Freevars_ir.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
       let mk_body env1 compile_fun_identifier =
@@ -3353,7 +3376,7 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
         For closures it is the pointer to the closure.
         For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 (Some self) (Some compile_fun_identifier) fs' in
-      FuncDec.dec pre_env how last name (Value.local_cc 1 1) captured mk_pat mk_body dec.at
+      FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
 
