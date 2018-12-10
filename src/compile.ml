@@ -1002,7 +1002,6 @@ module Closure = struct
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env h last name is_local captured mk_pat mk_body at =
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
-      let (set_val, get_val) = new_local pre_env "func_value" in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
@@ -1011,19 +1010,8 @@ module Closure = struct
         Heap.alloc pre_env (Int32.add header_size len) ^^
         set_li ^^
 
-        (* Possibly turn into a funcref *)
-        get_li ^^
-        begin
-          if is_local
-          then G.nop
-          else G.i_ (Call (nr (E.built_in pre_env "closure_to_funcref")))
-        end ^^
-        set_val ^^
-
-        (* And store it *)
-        alloc_code0 ^^
-        get_val ^^
-        Var.set_val pre_env1 name.it
+        (* Alloc space for the name of the function *)
+        alloc_code0
       in
 
       ( pre_env1, alloc_code, fun env ->
@@ -1073,7 +1061,18 @@ module Closure = struct
 
         (* Store all captured values *)
         store_env ^^
-        if last then get_val else G.nop)
+
+        (* Possibly turn into a funcref *)
+        get_li ^^
+        begin
+          if is_local
+          then G.nop
+          else G.i_ (Call (nr (E.built_in env "closure_to_funcref")))
+        end ^^
+
+        (* Store it *)
+        Var.set_val env name.it ^^
+        if last then Var.get_val env name.it else G.nop)
 
   let dec pre_env how last name cc captured mk_pat mk_body at =
     let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
