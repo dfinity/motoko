@@ -1,0 +1,2 @@
+const-var-array.as:1.17-1.22: type error, mutable array expression cannot produce expected type
+  Nat[]

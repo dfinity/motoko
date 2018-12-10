@@ -41,7 +41,7 @@ func cmpi(i : Int, j : Int) : Int = i - j;
 
 let qs = QS<Int>(cmpi);
 
-let a : var Int[] = [8, 3, 9, 5, 2];
+let a : var Int[] = [var 8, 3, 9, 5, 2];
 
 qs.quicksort(a, 0, 4);
 

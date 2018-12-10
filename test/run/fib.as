@@ -1,4 +1,4 @@
-let a : var Nat[] = [0,1,0,0,0,0,0,0,0,0,0];
+let a : var Nat[] = [var 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 var i : Nat = 1;
 while (i < 10) {
@@ -18,4 +18,3 @@ assert (a[7] == 13);
 assert (a[8] == 21);
 assert (a[9] == 34);
 assert (a[10] == 55);
-

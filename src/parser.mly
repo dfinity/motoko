@@ -353,8 +353,8 @@ exp_nullary :
 exp_post :
   | e=exp_nullary
     { e }
-  | LBRACKET es=seplist(exp, COMMA) RBRACKET
-    { ArrayE(es) @? at $sloc }
+  | LBRACKET m=var_opt es=seplist(exp_nonvar, COMMA) RBRACKET
+    { ArrayE(m, es) @? at $sloc }
   | e=exp_post QUEST
     { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
@@ -445,10 +445,16 @@ exp_nondec :
   | FOR LPAR p=pat IN e1=exp RPAR e2=exp
     { ForE(p, e1, e2) @? at $sloc }
 
-exp :
+exp_nonvar :
   | e=exp_nondec
     { e }
-  | d=dec_nonexp
+  | d=dec_nonvar
+    { DecE(d) @? at $sloc }
+
+exp :
+  | e=exp_nonvar
+    { e }
+  | d=dec_var
     { DecE(d) @? at $sloc }
       
     
@@ -518,7 +524,7 @@ return_typ_nullary :
 
 (* Declarations *)
 
-dec_nonexp :
+dec_var :
   | LET p=pat EQ e=exp
     { let p', e' =
         match p.it with
@@ -531,6 +537,8 @@ dec_nonexp :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
+
+dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fd=func_dec
     { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
@@ -544,8 +552,11 @@ dec_nonexp :
       in
       let id as tid = xf "class" $sloc in	
       ClassD(xf "class" $sloc, tid, tps, s, p, x, efs') @? at $sloc }
+
 dec :
-  | d=dec_nonexp
+  | d=dec_var
+    { d }
+  | d=dec_nonvar
     { d }
   | e=exp_nondec
     { ExpD e @? at $sloc }

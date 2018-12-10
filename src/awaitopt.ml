@@ -86,8 +86,8 @@ and t_exp' context exp' =
     DotE (t_exp context exp1, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp context exp1, t_exp context exp2)
-  | ArrayE exps ->
-    ArrayE (List.map (t_exp context) exps)
+  | ArrayE (mut, exps) ->
+    ArrayE (mut, List.map (t_exp context) exps)
   | IdxE (exp1, exp2) ->
     IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (exp1, typs, exp2) ->
@@ -409,8 +409,8 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DotE (v1, id))) exp1 
   | AssignE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (AssignE (v1, v2))) exp1 exp2
-  | ArrayE exps ->
-    nary context k (fun vs -> e (ArrayE vs)) exps
+  | ArrayE (mut, exps) ->
+    nary context k (fun vs -> e (ArrayE (mut, vs))) exps
   | IdxE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (exp1, typs, exp2) ->

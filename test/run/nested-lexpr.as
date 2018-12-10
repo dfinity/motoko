@@ -1,4 +1,4 @@
-let a : (var Int[])[] = [[1]];
+let a : (var Int[])[] = [[var 1]];
 assert (a[0][0] == 1);
 a[0][0] := 2;
 assert (a[0][0] == 2);

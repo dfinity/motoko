@@ -426,7 +426,7 @@ and infer_exp' env exp : T.typ =
         error env exp.at "expected mutable assignment target";
     end;
     T.unit
-  | ArrayE exps ->
+  | ArrayE (mut, exps) ->
     let ts = List.map (infer_exp env) exps in
     let t1 = List.fold_left (T.lub env.cons) T.Non ts in
     if
@@ -434,7 +434,7 @@ and infer_exp' env exp : T.typ =
     then
       warn env exp.at "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
-    T.Array t1
+    T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -641,7 +641,11 @@ and check_exp' env t exp =
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
     let env' = if sort.it = T.Actor then { env with async = false } else env in
     ignore (check_obj env' s tfs id fields exp.at)
-  | ArrayE exps, T.Array t' ->
+  | ArrayE (mut, exps), T.Array t' ->
+    if (mut.it = Var) <> T.is_mut t' then
+      local_error env exp.at "%smutable array expression cannot produce expected type\n  %s"
+        (if mut.it = Const then "im" else "")
+        (T.string_of_typ_expand env.cons (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps
   | AsyncE exp1, T.Async t' ->
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
