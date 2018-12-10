@@ -235,8 +235,8 @@ and t_exp' (exp:Syntax.exp) =
     DotE (t_exp exp1, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp exp1, t_exp exp2)
-  | ArrayE exps ->
-    ArrayE (List.map t_exp exps)
+  | ArrayE (mut, exps) ->
+    ArrayE (mut, List.map t_exp exps)
   | IdxE (exp1, exp2) ->
      IdxE (t_exp exp1, t_exp exp2)
   | CallE ({it=PrimE "@await";_}, typs, exp2) ->

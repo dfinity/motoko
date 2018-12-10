@@ -611,6 +611,10 @@ let rec string_of_typ_nullary vs = function
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_typ' vs) ts))
       (if List.length ts = 1 then "," else "")
+  | Array (Mut t) ->
+    sprintf "[var %s]" (string_of_typ_nullary vs t)
+  | Array t ->
+    sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
@@ -636,10 +640,6 @@ and string_of_cod c vs ts =
        
 and string_of_typ' vs t =
   match t with
-  | Array (Mut t) ->
-    sprintf "var %s[]" (string_of_typ_nullary vs t)
-  | Array t ->
-    sprintf "%s[]" (string_of_typ_nullary vs t)
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
       (string_of_dom vs ts1) 

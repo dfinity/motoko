@@ -3083,7 +3083,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ProjE (e1,n) ->
      compile_exp env e1 ^^ (* offset to tuple (an array) *)
      Array.load_n (Int32.of_int n)
-  | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
+  | ArrayE (m, es) -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
       (fun (f : Ir.exp_field) ->
