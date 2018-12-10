@@ -920,56 +920,21 @@ module Closure = struct
     G.table n_args (fun i -> get_tup ^^ Heap.load_field Int32.(add 2l (of_int i)))
     (* This should be Array.load_n *)
 
-  (* The argument on the stack *)
-  let call_direct env cc fi at =
-    let (_, _, n_args, _) = cc in
-    (* Pop the argument *)
-    let (set_i, get_i) = new_local env "param" in
-    set_i ^^
-
-    (* First arg: The (unused) closure pointer *)
-    compile_null ^^
-
-    (* Second arg: The argument *)
-    get_i ^^
-    flatten_tuple env n_args ^^
-
-    (* All done: Call! *)
-    G.i (Call (nr fi) @@ at)
-
   (* Calculate the wasm type for a given calling convention.
      An extra first argument for the closure! *)
   let ty env cc =
     let (_, _, n_args, _) = cc in
     E.func_type env (FuncType (I32Type :: Lib.List.make n_args I32Type,[I32Type]))
 
-  (* Expect the function closure and the argument on the stack *)
-  let call_closure env cc at =
-    let (_, _, n_args, _) = cc in
-    let (set_clos, get_clos) = new_local env "clos" in
-    let (set_arg, get_arg) = new_local env "arg" in
-    set_arg ^^
-    set_clos ^^
-
-    (* First arg: The closure pointer *)
-    get_clos ^^
-    (* Second arg: The argument *)
-    get_arg ^^
-    flatten_tuple env n_args ^^
-    (* And now get the table index *)
-    get_clos ^^
+  (* Expect on the stack
+     the function closure
+     and arguments (n-ary!)
+     the function closure again! *)
+  let call_closure env cc =
+    (* get the table index *)
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr (ty env cc)) @@ at)
-
-  (* Expect the function closure and the argument on the stack *)
-  let call_indirect env (cc : Value.call_conv) at =
-    match cc with
-    | (Type.Call Type.Local, _, _, _) | (Type.Construct, _, _, _) ->
-        call_closure env cc at
-    | (Type.Call Type.Sharable, _, _, _) ->
-        G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
-        compile_unit
+    G.i_ (CallIndirect (nr (ty env cc)))
 
   let fixed_closure env fi fields =
       Tagged.obj env Tagged.Closure
@@ -1568,13 +1533,14 @@ module Array = struct
     (* Write fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
-      get_r ^^
-      get_i ^^
-      idx env ^^
-      get_f ^^
-      get_i ^^
-      BoxedInt.box env ^^
-      Closure.call_closure env (Value.local_cc 1 1) no_region ^^
+      (* The closure *)
+      get_r ^^ get_i ^^ idx env ^^
+      (* The arg *)
+      get_f ^^ get_i ^^ BoxedInt.box env ^^
+      (* The closure again *)
+      get_r ^^ get_i ^^ idx env ^^
+      (* Call *)
+      Closure.call_closure env (Value.local_cc 1 1) ^^
       store_ptr
     ) ^^
     get_r
@@ -3140,13 +3106,28 @@ and compile_exp (env : E.t) exp = match exp.it with
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
   | CallE (cc, e1, _, e2) when isDirectCall env e1 <> None ->
+     let (_, _, n_args, _) = cc in
      let fi = Lib.Option.value (isDirectCall env e1) in
-     compile_exp env e2 ^^
-     Closure.call_direct env cc fi exp.at
+     compile_null ^^ (* A dummy closure *)
+     compile_exp_flat env n_args e2 ^^ (* the args *)
+     G.i (Call (nr fi) @@ exp.at)
   | CallE (cc, e1, _, e2) ->
-     compile_exp env e1 ^^
-     compile_exp env e2 ^^
-     Closure.call_indirect env cc exp.at
+     let (_, _, n_args, _) = cc in
+     begin match cc with
+      | (Type.Call Type.Local, _, _, _) | (Type.Construct, _, _, _) ->
+         let (set_clos, get_clos) = new_local env "clos" in
+         compile_exp env e1 ^^
+         set_clos ^^
+         get_clos ^^
+         compile_exp_flat env n_args e2 ^^
+         get_clos ^^
+         Closure.call_closure env cc
+      | (Type.Call Type.Sharable, _, _, _) ->
+         compile_exp env e1 ^^
+         compile_exp env e2 ^^
+         G.i_ (Call (nr (E.built_in env "call_funcref"))) ^^
+         compile_unit
+     end
   | SwitchE (e, cs) ->
     let code1 = compile_exp env e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -3178,8 +3159,9 @@ and compile_exp (env : E.t) exp = match exp.it with
      G.loop_ []
        ( get_i ^^
          Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
-         compile_unit ^^
-         Closure.call_closure env1 (Value.local_cc 0 0) Source.no_region ^^
+         get_i ^^
+         Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
+         Closure.call_closure env1 (Value.local_cc 0 0) ^^
          let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
@@ -3211,6 +3193,18 @@ and compile_exp (env : E.t) exp = match exp.it with
      Object.lit_raw env fs'
   | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
 
+(* Compiles an expression of tuple type of the given length, and
+   puts them on the stack individually.
+*)
+and compile_exp_flat env n e =
+  if n = 1 then compile_exp env e else
+  match e.it with
+  | TupE es ->
+    assert (List.length es = n);
+    G.concat_map (compile_exp env) es
+  | _ ->
+    compile_exp env e ^^
+    Closure.flatten_tuple env n
 
 and isDirectCall env e = match e.it with
   | VarE var ->
