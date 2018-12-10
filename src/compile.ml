@@ -25,8 +25,6 @@ let nr_ x = { it = x; at = no_region; note = () }
 
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
-let _invalid fn se = raise (Invalid_argument (Printf.sprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se)))
-
 
 (* The compiler environment.
 
@@ -214,7 +212,7 @@ module E = struct
   let add_import (env : t) i =
     if !(env.funcs) = []
     then reg env.imports i
-    else raise (Invalid_argument "add all imports before all functions!")
+    else assert false (* "add all imports before all functions!" *)
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
@@ -282,7 +280,7 @@ module E = struct
   let get_prelude (env : t) = env.prelude
 
   let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
+    if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -413,24 +411,52 @@ module Heap = struct
 
   (* General heap object functionalty (allocation, setting fields, reading fields) *)
 
-  (* Until we have GC, we simply keep track of the end of the used heap
-     in this global, and bump it if we allocate stuff.
+  (* We keep track of the end of the used heap in this global, and bump it if
+     we allocate stuff.
      Memory addresses are 32 bit (I32Type).
      *)
   let word_size = 4l
 
   let heap_ptr = 2l
 
-  let alloc_bytes (n : int32) : G.t =
-    (* returns the pointer to the allocate space on the heap *)
-    G.i_ (GetGlobal (nr heap_ptr)) ^^
-    G.i_ (GetGlobal (nr heap_ptr)) ^^
-    let aligned = Int32.logand (Int32.add n 3l) (Int32.lognot 3l) in
-    compile_add_const aligned  ^^
-    G.i_ (SetGlobal (nr heap_ptr))
+  (* Dynamic allocation *)
 
-  let alloc (n : int32) : G.t =
-    alloc_bytes (Wasm.I32.mul word_size n)
+  let dyn_alloc_words env =
+    Func.share_code env "alloc_words" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      (* expect the size (in words), returns the pointer *)
+      G.i_ (GetGlobal (nr heap_ptr)) ^^
+
+      (* Update heap pointer *)
+      get_n ^^
+      compile_mul_const word_size ^^
+
+      (* Add to old heap value *)
+      G.i_ (GetGlobal (nr heap_ptr)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (SetGlobal (nr heap_ptr))
+    )
+
+  let dyn_alloc_bytes env =
+    Func.share_code env "alloc_bytes" ["n"] [I32Type] (fun env ->
+      let get_n = G.i_ (GetLocal (nr 0l)) in
+
+      get_n ^^
+      (* Round up to next multiple of the word size and convert to words *)
+      compile_add_const 3l ^^
+      compile_divU_const word_size ^^
+      dyn_alloc_words env
+    )
+
+  (* Static allocation (always words)
+     (uses dynamic allocation for smaller and more readable code *)
+
+  let alloc env (n : int32) : G.t =
+    compile_unboxed_const n  ^^
+    dyn_alloc_words env
+
+  (* Heap objects *)
 
   let load_field (i : int32) : G.t =
     G.i_ (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
@@ -439,11 +465,11 @@ module Heap = struct
     G.i_ (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
-  let obj env element_instructions : G.t =
+    let obj env element_instructions : G.t =
     let n = List.length element_instructions in
 
     let (set_i, get_i) = new_local env "heap_object" in
-    alloc (Wasm.I32.of_int_u n) ^^
+    alloc env (Wasm.I32.of_int_u n) ^^
     set_i ^^
 
     let compile_self = get_i in
@@ -456,6 +482,30 @@ module Heap = struct
     G.concat_mapi init_elem element_instructions ^^
 
     compile_self
+
+  (* Convenience functions around memory *)
+
+  let memcpy env =
+    Func.share_code env "memcpy" ["from"; "two"; "n"] [] (fun env ->
+      let get_from = G.i_ (GetLocal (nr 0l)) in
+      let get_to = G.i_ (GetLocal (nr 1l)) in
+      let get_n = G.i_ (GetLocal (nr 2l)) in
+      get_n ^^
+      from_0_to_n env (fun get_i ->
+          get_to ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+
+          get_from ^^
+          get_i ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+
+          G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+      )
+    )
+
+
 
 end (* Heap *)
 
@@ -958,7 +1008,7 @@ module Closure = struct
       let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
         (* Allocate a heap object for the closure *)
-        Heap.alloc (Int32.add header_size len) ^^
+        Heap.alloc pre_env (Int32.add header_size len) ^^
         set_li ^^
 
         (* Possibly turn into a funcref *)
@@ -1041,58 +1091,6 @@ module Closure = struct
          fields)
 
 end (* Closure *)
-
-module RTS = struct
-  let memcpy env =
-    Func.share_code env "memcpy" ["from"; "two"; "n"] [] (fun env ->
-      let get_from = G.i_ (GetLocal (nr 0l)) in
-      let get_to = G.i_ (GetLocal (nr 1l)) in
-      let get_n = G.i_ (GetLocal (nr 2l)) in
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-
-          get_from ^^
-          get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-          G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-
-          G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
-      )
-    )
-
-  let alloc_bytes env =
-    Func.share_code env "alloc_bytes" ["n"] [I32Type] (fun env ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-
-      (* expect the size (in words), returns the pointer *)
-      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-      G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
-      get_n ^^
-      (* align *)
-      compile_add_const 3l ^^
-      compile_unboxed_const (-1l) ^^
-      compile_unboxed_const 3l ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Xor)) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.And)) ^^
-      (* add to old heap value *)
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (SetGlobal (nr Heap.heap_ptr))
-    )
-
-  let alloc_words env =
-    Func.share_code env "alloc_words" ["n"] [I32Type] (fun env ->
-      let get_n = G.i_ (GetLocal (nr 0l)) in
-
-      get_n ^^
-      compile_mul_const Heap.word_size ^^
-      alloc_bytes env
-    )
-
-
-end (* RTS *)
 
 module BoxedInt = struct
   (* We store large nats and ints in immutable boxed 32bit heap objects.
@@ -1194,7 +1192,7 @@ module Object = struct
 
      (* Allocate memory *)
      let (set_ri, get_ri, ri) = new_local_ env "obj" in
-     Heap.alloc (Int32.add header_size (Int32.mul 2l sz)) ^^
+     Heap.alloc env (Int32.add header_size (Int32.mul 2l sz)) ^^
      set_ri ^^
 
      (* Set tag *)
@@ -1272,7 +1270,7 @@ module Object = struct
 
      (* Allocate memory *)
      let (set_ri, get_ri, ri) = new_local_ env "obj" in
-     Heap.alloc (Int32.add header_size (Int32.mul 2l sz)) ^^
+     Heap.alloc env (Int32.add header_size (Int32.mul 2l sz)) ^^
      set_ri ^^
 
      (* Set tag *)
@@ -1399,7 +1397,7 @@ module Text = struct
       get_len2 ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      RTS.alloc_bytes env ^^
+      Heap.dyn_alloc_bytes env ^^
       set_z ^^
 
       (* Set tag *)
@@ -1421,7 +1419,7 @@ module Text = struct
 
       get_len1 ^^
 
-      RTS.memcpy env ^^
+      Heap.memcpy env ^^
 
       (* Copy second string *)
       get_y ^^
@@ -1434,7 +1432,7 @@ module Text = struct
 
       get_len2 ^^
 
-      RTS.memcpy env ^^
+      Heap.memcpy env ^^
 
       (* Done *)
       get_z
@@ -1484,12 +1482,20 @@ module Array = struct
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
-  (* Calculates a static offset *)
-  let field_of_idx n = Int32.add header_size n
-
+  (* Dynamic array access. Returns the address of the field.
+     Does bounds checking *)
   let idx env = Func.share_code env "Array.idx" ["array"; "idx"] [I32Type] (fun env ->
       let get_array = G.i_ (GetLocal (nr 0l)) in
       let get_idx = G.i_ (GetLocal (nr 1l)) in
+
+      (* No need to check the lower bound, we interpret is as unsigned *)
+      (* Check the upper bound *)
+      get_idx ^^
+      get_array ^^
+      Heap.load_field len_field ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.if_ [] G.nop (G.i_ Unreachable) ^^
+
       get_idx ^^
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
@@ -1498,6 +1504,8 @@ module Array = struct
     )
 
   (* Expects on the stack the pointer to the array. *)
+  (* Should only be used for Tuples, not Arrays, due to lack of bounds checking *)
+  let field_of_idx n = Int32.add header_size n
   let load_n n = Heap.load_field (field_of_idx n)
 
   let common_funcs env =
@@ -1628,7 +1636,7 @@ module Array = struct
     (* Allocate *)
     get_len ^^
     compile_add_const header_size ^^
-    RTS.alloc_words env ^^
+    Heap.dyn_alloc_words env ^^
     set_r ^^
 
     (* Write header *)
@@ -1660,7 +1668,7 @@ module Array = struct
     (* Allocate *)
     get_len ^^
     compile_add_const header_size ^^
-    RTS.alloc_words env ^^
+    Heap.dyn_alloc_words env ^^
     set_r ^^
 
     (* Write header *)
@@ -2054,15 +2062,15 @@ module Serialization = struct
         ( Tagged.branch env [I32Type]
           [ Tagged.Int,
             (* x still on the stack *)
-            Heap.alloc 2l ^^
+            Heap.alloc env 2l ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            RTS.memcpy env ^^
+            Heap.memcpy env ^^
             get_copy
           ; Tagged.Reference,
             (* x still on the stack *)
-            Heap.alloc 2l ^^
+            Heap.alloc env 2l ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            RTS.memcpy env ^^
+            Heap.memcpy env ^^
             get_copy
           ; Tagged.Some,
             G.i_ Drop ^^
@@ -2078,14 +2086,14 @@ module Serialization = struct
 
               get_len ^^
               compile_add_const Array.header_size ^^
-              RTS.alloc_words env ^^
+              Heap.dyn_alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
-              RTS.memcpy env ^^
+              Heap.memcpy env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2114,7 +2122,7 @@ module Serialization = struct
               set_len ^^
 
               get_len ^^
-              RTS.alloc_words env ^^
+              Heap.dyn_alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header and data *)
@@ -2122,7 +2130,7 @@ module Serialization = struct
               get_copy ^^
               get_len ^^
               compile_mul_const Heap.word_size ^^
-              RTS.memcpy env ^^
+              Heap.memcpy env ^^
 
               get_copy
             end
@@ -2135,14 +2143,14 @@ module Serialization = struct
               get_len ^^
               compile_mul_const 2l ^^
               compile_add_const Object.header_size ^^
-              RTS.alloc_words env ^^
+              Heap.dyn_alloc_words env ^^
               G.i_ Drop ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Object.header_size) ^^
-              RTS.memcpy env ^^
+              Heap.memcpy env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2429,7 +2437,7 @@ module Serialization = struct
            which will be recognized as such by its size.
         *)
         ( G.i_ Drop ^^
-          Heap.alloc 1l ^^
+          Heap.alloc env 1l ^^
           get_x ^^
           store_ptr ^^
 
@@ -2617,7 +2625,7 @@ module GC = struct
     (* Copy the referenced object to to space *)
     get_obj ^^ Serialization.object_size env ^^ set_len ^^
 
-    get_obj ^^ get_end_to_space ^^ get_len ^^ RTS.memcpy env ^^
+    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy env ^^
 
     (* Calculate new pointer *)
     get_end_to_space ^^
@@ -2690,7 +2698,7 @@ module GC = struct
     get_begin_to_space ^^
     get_begin_from_space ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-    RTS.memcpy env ^^
+    Heap.memcpy env ^^
 
     (* Reset the heap pointer *)
     get_begin_from_space ^^
@@ -3385,7 +3393,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (name, _, pat, _rt, exp) =
     let find_func exp = match exp.it with
     | BlockE [{it = FuncD (s, name, ty_args, pat, rt, exp); _ }] -> (name, ty_args, pat, rt, exp)
-    | _ -> raise (Invalid_argument "public actor field not a function")
+    | _ -> assert false (* "public actor field not a function" *)
     in find_func f.it.exp in
 
   (* Which name to use? f.it.id or name? Can they differ? *)

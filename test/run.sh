@@ -119,7 +119,7 @@ do
   do
     if [ -e "$out/$file" ]
     then
-      grep -E -v '^Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file > $out/$file.norm
+      grep -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file > $out/$file.norm
       mv $out/$file.norm $out/$file
     fi
   done

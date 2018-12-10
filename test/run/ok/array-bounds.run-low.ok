@@ -1,0 +1,15 @@
+array-bounds.as:5.17-5.18: fatal error, Invalid_argument("index out of bounds")
+
+Last environment:
+@new_async = func
+Array_init = func
+Array_tabulate = func
+a = [0, 1, 2, 3, 4]
+abs = func
+ignore = func
+n = 5
+print = func
+printInt = func
+range = class
+revrange = class
+
