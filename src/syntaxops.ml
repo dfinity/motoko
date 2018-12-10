@@ -71,7 +71,6 @@ let primE name typ =
 
 (* tuples *)
 
-
 let projE e n =
   match typ e with
   | T.Tup ts ->
@@ -196,7 +195,6 @@ let newObjE typ sort ids =
              note_eff = T.Triv}
   }
 
-
 (* Declarations *)
 
 let letD x exp = { exp with it = LetD (varP x,exp) }
@@ -216,7 +214,7 @@ let letE x exp1 exp2 =
   }
 
 
-(* mono-morphic function declaration *)
+(* Mono-morphic function declaration *)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
@@ -234,7 +232,7 @@ let funcD f x e =
 
 
 
-(* mono-morphic, n-ary function declaration *)
+(* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs e =
   match f.it,f.note.note_typ with
   | VarE _,
@@ -249,6 +247,8 @@ let nary_funcD f xs e =
       note = f.note;}
   | _,_ -> failwith "Impossible: funcD"
 
+
+
 (* Continuation types *)
 
 let answerT = T.unit
@@ -258,12 +258,23 @@ let cpsT typ = T.Func(T.Call T.Local, T.Returns, [], [contT typ], [])
 
 let fresh_cont typ = fresh_id (contT typ)
 
+(* Sequence expressions *)
+
+let seqE es =
+  match es with
+  | [e] -> e
+  | es -> tupE es
+
+let as_seqE e =
+  match e.it with
+  | TupE es -> es
+  | _ -> [e]
 
 (* Lambdas & continuations *)
 
 (* Lambda abstraction *)
 
-(* local lambda *)                   
+(* local lambda *)
 let  (-->) x e =
   match x.it with
   | VarE _ ->
@@ -271,13 +282,13 @@ let  (-->) x e =
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
 
-(* n-ary local lambda *)       
+(* n-ary local lambda *)
 let (-->*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Local, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
   decE (nary_funcD f xs e)
-  
+
 
 (* n-ary shared lambda *)
 let (-@>*) xs e  =
@@ -304,7 +315,7 @@ let ( -*- ) exp1 exp2 =
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
 
 
-(* intermediate, cps-based @async and @await primitives,
+(* Intermediate, cps-based @async and @await primitives,
    introduced by await(opt).ml, removed by async.ml
 *)
 
