@@ -1,4 +1,4 @@
-let Array_thaw = func <A>(xs : A[]) : var A[] {
+func Array_thaw<A>(xs : [A]) : [var A] {
   let xsLen = xs.len();
   if (xsLen == 0) {
     return [var];
@@ -11,10 +11,10 @@ let Array_thaw = func <A>(xs : A[]) : var A[] {
 };
 
 {
-  let xs : Int[] = [1, 2, 3];
+  let xs : [Int] = [1, 2, 3];
 
   let actual = Array_thaw<Int>(xs);
-  let expected : var Int[] = [var 1, 2, 3];
+  let expected : [var Int] = [var 1, 2, 3];
 
   assert(actual.len() == expected.len());
  

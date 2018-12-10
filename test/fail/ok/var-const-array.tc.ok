@@ -1,2 +1,2 @@
 var-const-array.as:1.21-1.23: type error, immutable array expression cannot produce expected type
-  var Nat[]
+  [var Nat]

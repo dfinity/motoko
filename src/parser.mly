@@ -200,14 +200,14 @@ typ_nullary :
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
+  | LBRACKET m=var_opt t=typ RBRACKET
+    { ArrayT(m, t) @@ at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @@ at $sloc }
 
 typ_post :
   | t=typ_nullary
     { t }
-  | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Const @@ no_region, t) @@ at $sloc }
   | t=typ_post QUEST
     { OptT(t) @@ at $sloc }
 
@@ -220,8 +220,6 @@ typ_pre :
     { AsyncT(t) @@ at $sloc }
   | LIKE t=typ_pre
     { LikeT(t) @@ at $sloc }
-  | mut=var t=typ_nullary LBRACKET RBRACKET
-    { ArrayT(mut, t) @@ at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Object Type.Local
@@ -349,6 +347,8 @@ exp_nullary :
         then efs
         else List.map share_expfield efs
       in ObjE(s, xf anon $sloc, efs') @? at $sloc }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
@@ -399,8 +399,6 @@ exp_bin :
 exp_pre :
   | e=exp_bin
     { e }
-  | PRIM s=TEXT
-    { PrimE(s) @? at $sloc }
   | RETURN eo=exp_pre?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       RetE(e) @? at $sloc }
