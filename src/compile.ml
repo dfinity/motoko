@@ -1482,12 +1482,20 @@ module Array = struct
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
-  (* Calculates a static offset *)
-  let field_of_idx n = Int32.add header_size n
-
+  (* Dynamic array access. Returns the address of the field.
+     Does bounds checking *)
   let idx env = Func.share_code env "Array.idx" ["array"; "idx"] [I32Type] (fun env ->
       let get_array = G.i_ (GetLocal (nr 0l)) in
       let get_idx = G.i_ (GetLocal (nr 1l)) in
+
+      (* No need to check the lower bound, we interpret is as unsigned *)
+      (* Check the upper bound *)
+      get_idx ^^
+      get_array ^^
+      Heap.load_field len_field ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.if_ [] G.nop (G.i_ Unreachable) ^^
+
       get_idx ^^
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
@@ -1496,6 +1504,8 @@ module Array = struct
     )
 
   (* Expects on the stack the pointer to the array. *)
+  (* Should only be used for Tuples, not Arrays, due to lack of bounds checking *)
+  let field_of_idx n = Int32.add header_size n
   let load_n n = Heap.load_field (field_of_idx n)
 
   let common_funcs env =
