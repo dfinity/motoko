@@ -695,6 +695,7 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env t_pat pat in
   recover (check_exp (adjoin_vals env ve) t) exp
 
+
 (* Patterns *)
 
 and gather_pat env ve0 pat : val_env =
@@ -713,7 +714,7 @@ and gather_pat env ve0 pat : val_env =
     | OptP pat1
     | AnnotP (pat1, _) ->
       go ve pat1
-   in T.Env.adjoin ve0 (go T.Env.empty pat)
+  in T.Env.adjoin ve0 (go T.Env.empty pat)
 
 
 
@@ -868,17 +869,29 @@ and infer_obj env s id fields : T.typ =
 
 and check_obj env s tfs id fields at : T.typ =
   let pre_ve = gather_exp_fields env id.it fields in
-  let pre_ve' = List.fold_left (fun ve {T.name; typ = t} ->
+  let pre_ve' = List.fold_left
+    (fun ve {T.name; typ = t} ->
       if not (T.Env.mem name ve) then
-        local_error env at "%s expression without field %s cannot produce expected type\n  %s"
+        error env at "%s expression without field %s cannot produce expected type\n  %s"
           (if s = T.Actor then "actor" else "object") name
           (T.string_of_typ_expand env.cons t);
       T.Env.add name t ve
     ) pre_ve tfs
   in
   let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs, ve = infer_exp_fields pre_env s id.it T.Pre fields in
-  let t = T.Obj (s, tfs) in
+  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
+(*
+  List.iter
+    (fun {T.name; typ = t} ->
+      let t' = T.Env.find name ve in
+      if not (T.sub env.cons t' t) then
+        local_error env at "field expression %s of type\n  %s\ncannot produce expected type\n  %s"
+          name
+          (T.string_of_typ_expand env.cons t')
+          (T.string_of_typ_expand env.cons t)
+    ) tfs;
+*)
+  let t = T.Obj (s, tfs') in
   let env' = adjoin_vals (add_val env id.it t) ve in
   ignore (infer_exp_fields env' s id.it t fields);
   t
@@ -920,8 +933,15 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
       infer_mut mut (infer_exp (adjoin_vals env ve) exp)
     | t ->
       (* When checking object in analysis mode *)
-      if not env.pre then
+      if not env.pre then begin
         check_exp (adjoin_vals env ve) (T.as_immut t) exp;
+        if (mut.it = Var) <> T.is_mut t then
+          local_error env field.at
+            "%smutable field %s cannot produce expected %smutable field of type\n  %s"
+            (if mut.it = Var then "" else "im") id.it
+            (if T.is_mut t then "" else "im")
+            (T.string_of_typ_expand env.cons (T.as_immut t))
+      end;
       t
   in
   if not env.pre then begin

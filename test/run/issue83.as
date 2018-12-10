@@ -5,7 +5,7 @@ func Array_thaw<A>(xs : [A]) : [var A] {
   };
   let ys = Array_init<A>(xsLen, xs[0]);
   for (i in ys.keys()) {
-    ys[i] := xs[i]; // Comment out this line to prevent the error
+    ys[i] := xs[i];
   };
   ys;
 };
