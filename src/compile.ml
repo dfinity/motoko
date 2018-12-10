@@ -25,8 +25,6 @@ let nr_ x = { it = x; at = no_region; note = () }
 
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
-let _invalid fn se = raise (Invalid_argument (Printf.sprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se)))
-
 
 (* The compiler environment.
 
@@ -214,7 +212,7 @@ module E = struct
   let add_import (env : t) i =
     if !(env.funcs) = []
     then reg env.imports i
-    else raise (Invalid_argument "add all imports before all functions!")
+    else assert false (* "add all imports before all functions!" *)
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
@@ -282,7 +280,7 @@ module E = struct
   let get_prelude (env : t) = env.prelude
 
   let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
+    if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
     let ptr = !(env.end_of_static_memory) in
     let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
     env.end_of_static_memory := Int32.add ptr aligned;
@@ -3385,7 +3383,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (name, _, pat, _rt, exp) =
     let find_func exp = match exp.it with
     | BlockE [{it = FuncD (s, name, ty_args, pat, rt, exp); _ }] -> (name, ty_args, pat, rt, exp)
-    | _ -> raise (Invalid_argument "public actor field not a function")
+    | _ -> assert false (* "public actor field not a function" *)
     in find_func f.it.exp in
 
   (* Which name to use? f.it.id or name? Can they differ? *)
