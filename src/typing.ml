@@ -880,17 +880,6 @@ and check_obj env s tfs id fields at : T.typ =
   in
   let pre_env = adjoin_vals {env with pre = true} pre_ve' in
   let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
-(*
-  List.iter
-    (fun {T.name; typ = t} ->
-      let t' = T.Env.find name ve in
-      if not (T.sub env.cons t' t) then
-        local_error env at "field expression %s of type\n  %s\ncannot produce expected type\n  %s"
-          name
-          (T.string_of_typ_expand env.cons t')
-          (T.string_of_typ_expand env.cons t)
-    ) tfs;
-*)
   let t = T.Obj (s, tfs') in
   let env' = adjoin_vals (add_val env id.it t) ve in
   ignore (infer_exp_fields env' s id.it t fields);
