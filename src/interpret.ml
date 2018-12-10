@@ -234,6 +234,20 @@ let check_call_conv exp call_conv =
       (V.string_of_call_conv exp_call_conv)
       (V.string_of_call_conv call_conv))
 
+let check_call_conv_arg v call_conv =
+  let (_, _, n_args, _) = call_conv in
+  if n_args <> 1 then
+  let es = try V.as_tup v
+    with Invalid_argument _ ->
+      failwith (Printf.sprintf "calling convention %s cannot handle non-tuple value %s"
+        (V.string_of_call_conv call_conv)
+        (V.string_of_val v)) in
+  if List.length es <> n_args then
+      failwith (Printf.sprintf "calling convention %s got tuple of wrong length %s"
+        (V.string_of_call_conv call_conv)
+        (V.string_of_val v))
+
+
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -309,6 +323,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         interpret_exp env exp2 (fun v2 ->
             let _, call_conv, f = V.as_func v1 in
             check_call_conv exp1 call_conv;
+            check_call_conv_arg v2 call_conv;
             f v2 k
                                     
 (*
