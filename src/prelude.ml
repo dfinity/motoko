@@ -18,7 +18,7 @@ type Text = prim "Text";
 
 type Iter<T_> = {next : () -> T_?};
 
-func abs(x : Int) : Nat { ((prim "abs") : Int -> Nat) x };
+func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 func ignore(_ : Any) {};
 
@@ -44,7 +44,6 @@ func Array_init<T>(len : Nat,  x : T) : [var T] {
 
 func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
-
 };
 
 type Cont<T <: Shared> = T -> () ;
@@ -56,23 +55,23 @@ func @new_async<T <: Shared>() : (Async<T>, shared T -> ()) {
   var ks : T -> () = empty;
   shared func fullfill(t : T) { 
     switch(result) {
-	    case null {
-	      result := t?;
-	      let ks_ = ks;
-	      ks := empty;
-	      ks_(t);
-	    };
-	    case (t?) { assert(false) };
-	  };
+      case null {
+        result := t?;
+        let ks_ = ks;
+        ks := empty;
+        ks_(t);
+      };
+      case (t?) { assert(false) };
+    };
   };
   func enqueue(k : Cont<T>) {
     switch(result) {
-	    case null {
-	      let ks_ = ks;
+      case null {
+        let ks_ = ks;
         ks := (func(t : T) { ks_(t); k(t) });
-	    };
-	    case (t?) { k(t) };
-	  };
+      };
+      case (t?) { k(t) };
+    };
   };
   (enqueue, fullfill)
 };
