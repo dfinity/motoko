@@ -225,11 +225,10 @@ let interpret_lit env lit : V.value =
 
 (* Expressions *)
 
-let check_call_conv exp ((func_sort,control,args,res) as call_conv) =
-  let ((exp_func_sort,exp_control,exp_args,exp_res) as exp_call_conv) = V.call_conv_of_typ exp.note.note_typ in
-  (* TODO: Check the full calling convention here *)
+let check_call_conv exp call_conv =
+  let exp_call_conv = V.call_conv_of_typ exp.note.note_typ in
   if not (exp_call_conv = call_conv) then
-    failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expect %s, found %s"
+    failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (T.string_of_typ exp.note.note_typ)        
       (V.string_of_call_conv exp_call_conv)

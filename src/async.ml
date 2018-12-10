@@ -95,8 +95,8 @@ let new_nary_async_reply t1 =
     in
     vs -@>* (unary_fullfill -*-  seq_of_vs)
   in
-  let fst,snd = fresh_id (typ nary_async), fresh_id (typ nary_reply) in
-  (fst,snd),blockE [letP (tupP [varP unary_async;varP unary_fullfill])  call_new_async;
+  let async,reply = fresh_id (typ nary_async), fresh_id (typ nary_reply) in
+  (async,reply),blockE [letP (tupP [varP unary_async;varP unary_fullfill])  call_new_async;
                     expD (tupE [nary_async;nary_reply])]
 
 
@@ -122,7 +122,7 @@ let letEta e scope =
   | VarE _ -> scope e (* pure, so reduce *)
   | _  -> let f = fresh_id (typ e) in
           letD f e :: (scope f) (* maybe impure; sequence *)
-          
+
 
 let isAwaitableFunc exp =
   match typ exp with
@@ -148,6 +148,14 @@ let extendTupP p1 p2 =
          end
     end
   | _ -> tupP [p1;p2], fun d -> d
+
+(* Given expressions e1 and e2 return:
+   a function extending a declaration d with any components of e1, and
+   a manifest tuple containing (the components of) e1 extended with the component e2,
+   preserving evaluation and side-effects of e1.
+
+   (used to extend the calls to an awaitable function with argument(s) e1 with an additional reply argument, e2)
+*)
 
 let extendTupE e1 e2 =
   match typ e1 with
@@ -291,7 +299,7 @@ and t_exp' (exp:Syntax.exp) =
      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
               letEta exp1' (fun v1 ->
               d [expD (callE v1 typs es T.unit);
-              expD nary_async])))
+                 expD nary_async])))
        .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
