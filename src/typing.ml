@@ -949,7 +949,7 @@ and infer_block_exps env decs : T.typ =
     recover_with T.Non (infer_block_exps env) decs'
 
 and infer_dec env dec : T.typ =
-  let t = 
+  let t =
   match dec.it with
   | ExpD exp ->
     infer_exp env exp
@@ -1176,14 +1176,16 @@ and infer_dec_valdecs env dec : val_env =
       if T.is_async t2' && (not (isAsyncE exp)) then
         error env dec.at "shared function with async type has non-async body"
       end;
+
     let ts1 = match pat.it with
-      | TupP _ -> T.as_seq t1
+      | TupP ps -> T.as_seq t1
       | _ -> [t1]
     in
     let ts2 = match typ.it with
       | TupT _ -> T.as_seq t2
       | _ -> [t2]
     in
+
     let c = match sort.it, typ.it with
       | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns

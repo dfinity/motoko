@@ -132,45 +132,33 @@ let isAwaitableFunc exp =
 let extendTup ts t2 = ts @ [t2]
 
 let extendTupP p1 p2 =
-  match typ p1 with
-  | Tup ts ->
+  match p1.it with
+  | TupP ps ->
     begin
-      match ts with
+      match ps with
       | [] -> p2, fun d -> (letP p1 (tupE [])::d)
-      | _ ->
-         begin
-           match p1.it with
-           | TupP ps -> tupP (ps@[p2]), fun d -> d
-           | _ -> let xs = List.map fresh_id ts in
-                  let pxs = List.map varP xs in
-                  tupP (pxs@[p2]),
-                  fun d -> letP p1 (tupE xs) :: d
-         end
+      | ps ->
+           tupP (ps@[p2]), fun d -> d
     end
   | _ -> tupP [p1;p2], fun d -> d
 
-(* bind (sequence) e to a sequence of expressions supplied to decs d_of_es, 
-   preserving effects of e when the sequence is empty.
+(* Given sequence type ts, bind e of type (seq ts) to a
+   sequence of expressions supplied to decs d_of_es,
+   preserving effects of e when the sequence type is empty.
    d_of_es must not duplicate or discard the evaluation of es.
  *)
-let letSeq e d_of_vs =
-  match typ e with
-  | Tup ts ->
-    begin
-     match ts with
-     | [] ->
-        (expD e)::d_of_vs []
-     | _ ->
-        match e.it with
-        | TupE es ->
-          d_of_vs es
-        | _ ->
-          let xs = List.map fresh_id ts in
-          let p = tupP (List.map varP xs) in
-          (letP p e)::d_of_vs (xs)
-    end
-   | _ ->
-    d_of_vs [e]
+let letSeq ts e d_of_vs =
+  match ts with
+  | [] ->
+    (expD e)::d_of_vs []
+  | [t] ->
+      let x = fresh_id t in
+      let p = varP x in
+      (letP p e)::d_of_vs [x]
+  | ts ->
+      let xs = List.map fresh_id ts in
+      let p = tupP (List.map varP xs) in
+      (letP p e)::d_of_vs (xs)
 
 let rec t_typ (t:T.typ) =
   match t with
@@ -275,10 +263,10 @@ and t_exp' (exp:Syntax.exp) =
               expD nary_async])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
-     let t1,t2 =
+     let ts1,t2 =
        match typ exp1 with
        | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
-           t_typ (T.seq ts1), t_typ t2
+           ts1, t_typ t2
        | _ -> assert(false)
      in
      let exp1' = t_exp exp1 in
@@ -288,7 +276,7 @@ and t_exp' (exp:Syntax.exp) =
      let _ = letEta in
      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
               letEta exp1' (fun v1 ->
-              letSeq exp2' (fun vs ->
+              letSeq ts1 exp2' (fun vs ->
                 [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
                  expD nary_async]))))
        .it
