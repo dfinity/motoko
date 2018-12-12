@@ -96,6 +96,10 @@ val unit : value
 
 (* Smart constructors *)
 
+val local_cc : int -> int -> call_conv
+val message_cc : int -> call_conv
+val async_cc : int -> int -> call_conv
+
 val local_func : int -> int -> func -> value
 val message_func : int -> func -> value
 val async_func : int -> int -> func -> value

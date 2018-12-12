@@ -27,7 +27,7 @@ function build_ref_to {
     echo "Building $2 asc from working copy.."
     nix-build -E '((import ./..) {}).native' \
       --option binary-caches '' \
-      -o $2-asc/
+      -o $2-asc/ |& tail -n1
   else
     echo "Building $2 asc (rev $1).."
     nix-build --argstr rev "$1" -E '
@@ -36,7 +36,7 @@ function build_ref_to {
       let checkout = (builtins.fetchGit {url = ".."; ref = rev; rev = rev; name = "old-asc";}).outPath; in
       ((import checkout) {}).native' \
       --option binary-caches '' \
-      -o $2-asc/
+      -o $2-asc/ |& tail -n1
   fi
 }
 build_ref_to "$old" old
@@ -64,13 +64,13 @@ do
   mkdir compare-out/$base.old
   old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
-  wasm2wat --no-check --enable-mutable-globals compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
+  wasm2wat --fold-exprs --no-check --enable-mutable-globals compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
   new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
-  wasm2wat --no-check --enable-mutable-globals compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
+  wasm2wat --fold-exprs --no-check --enable-mutable-globals compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 
   diff -r -N -u compare-out/$base.old compare-out/$base.new
 

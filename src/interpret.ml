@@ -305,13 +305,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         V.as_mut v1 := v2; k V.unit
       )
     )
-  | ArrayE exps ->
-    let t = exp.note.note_typ in
+  | ArrayE (mut, exps) ->
     interpret_exps env exps [] (fun vs ->
       let vs' =
-        match t with
-        | T.Array (T.Mut _) -> List.map (fun v -> V.Mut (ref v)) vs
-        | _ -> vs
+        match mut.it with
+        | Var -> List.map (fun v -> V.Mut (ref v)) vs
+        | Const -> vs
       in k (V.Array (Array.of_list vs'))
     )
   | IdxE (exp1, exp2) ->

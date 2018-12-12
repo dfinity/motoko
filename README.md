@@ -68,7 +68,7 @@ You do not have to use nix:
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
    ```
-   opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild
+   opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
  * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
    `make install` therein.

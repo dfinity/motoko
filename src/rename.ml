@@ -36,7 +36,7 @@ and exp' rho e  = match e with
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields rho efs)
   | DotE (e, i)         -> DotE (exp rho e, i)
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
-  | ArrayE es           -> ArrayE (exps rho es)
+  | ArrayE (m, es)      -> ArrayE (m, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
   | BlockE ds           -> BlockE (decs rho ds)
