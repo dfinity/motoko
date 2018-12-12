@@ -48,33 +48,33 @@ func Array_tabulate <T> (len : Nat,  gen : Nat -> T) : T[] {
 };
 
 type Cont<T <: Shared> = T -> () ;
-type Async<T <: Shared> = Cont<T> -> (); 
+type Async<T <: Shared> = Cont<T> -> ();
 
 func @new_async<T <: Shared>():(Async<T>, T->()) {
-    let empty = func k (t:T) = ();
-    var result : T ? = null;
-    var ks : T -> () = empty;
-    func fullfill(t:T):() { 
-    	 switch(result) {
-	 case null {
-	     result := t?;
-	     let ks_ = ks;
-	     ks := empty;
-	     ks_(t);
-	 };
-	 case (t?) (assert(false));
-	 };
+  let empty = func k (t:T) = ();
+  var result : T ? = null;
+  var ks : T -> () = empty;
+  func fullfill(t:T):() {
+    switch(result) {
+      case null {
+        result := t?;
+        let ks_ = ks;
+        ks := empty;
+        ks_(t);
+      };
+      case (t?) (assert(false));
+      };
     };
     func enqueue(k:Cont<T>):() {
-     	switch(result) {
-	case null {
-	    let ks_ = ks;
-            ks := (func (t:T) {ks_(t);k(t);});
-	};
-	case (t?) (k(t));
-	};
+      switch(result) {
+      case null {
+        let ks_ = ks;
+        ks := (func (t:T) {ks_(t);k(t);});
+      };
+      case (t?) (k(t));
     };
-    (enqueue,fullfill)
+  };
+  (enqueue,fullfill)
 };
 |}
 
