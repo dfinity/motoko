@@ -6,7 +6,7 @@ open Syntaxops
 
 (*
    a naive await translation
-   introduces many administriative reductions
+   introduces many administrative reductions
    superseded by awaitopt.ml but retained for debugging
 *)
 
@@ -129,7 +129,6 @@ and t_dec' context dec' =
   | FuncD (sh, id, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncD (sh, id, typbinds, pat, typ,t_exp context' exp)
-
   | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     let fields' = t_fields context' fields in
@@ -343,15 +342,20 @@ and c_obj context exp sort id fields =
   let rec c_fields fields decs nameids =
     match fields with
       | [] ->
-         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) :: decs in
-         {exp with it = BlockE (List.rev decs)}
+        let this = idE id (typ exp) in
+        let decs =
+          expD this ::
+          letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) ::
+          decs in
+         blockE (List.rev decs)
       | {it = {id; name; mut; priv; exp}; at; note}::fields ->
          let nameids = (name,id)::nameids in
          match mut.it with
          | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) nameids
          | Var -> c_fields fields (varD id exp::decs) nameids
   in
-  c_exp context (c_fields fields [] [])
+  (c_exp context (c_fields fields [] []))
+  
 
 
 and c_exp context exp =
@@ -379,7 +383,7 @@ and c_exp' context exp =
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ObjE (sort, id, fields) ->
-    c_obj context exp sort id fields
+    c_obj context exp sort id fields 
   | DotE (exp1, id) ->
     unary context k (fun v1 -> e (DotE (v1, id))) exp1
   | AssignE (exp1, exp2) ->
@@ -456,11 +460,11 @@ and c_exp' context exp =
      begin
        match eff exp1 with
        | T.Triv ->
-          k --> (prim_await (typ exp1) -*- (tupE [t_exp context exp1;k]))
+          k --> (prim_await (typ exp) -*- (tupE [t_exp context exp1;k]))
        | T.Await ->
           let v1 = fresh_id (typ exp1) in
           k --> ((c_exp context  exp1) -*-
-                 (v1 --> (prim_await (typ exp1) -*- (tupE [v1;k]))))
+                 (v1 --> (prim_await (typ exp) -*- (tupE [v1;k]))))
      end
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1
@@ -475,7 +479,7 @@ and c_exp' context exp =
      unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->
      unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
-  | NewObjE _ -> exp
+  | NewObjE _ -> exp 
 
 and c_block context k decs  =
    k --> declare_decs decs (c_decs context k decs)
@@ -493,16 +497,16 @@ and c_dec context dec =
      let k = fresh_cont T.unit in
      k --> (k -*- unitE)
   | LetD (pat,exp) ->
-     let k = fresh_cont (typ exp) in
+     let _ = if not (typ dec = T.unit)
+             then
+               (  Printf.printf "LetD has unexpected type: %s" (T.string_of_typ (typ dec))
+                ; assert (false))
+             else () in
+     let k = fresh_cont T.unit in
      let v = fresh_id (typ exp) in
      let patenv,pat' = rename_pat pat in
      let dec' = {dec with it = LetD(pat',v)} in
-     let block =
-       { it = BlockE ((dec'::define_pat patenv pat)@[{v with it = ExpD v}]);
-         at = no_region;
-         note = {note_typ = typ exp;
-                 note_eff = eff exp}
-       }
+     let block = blockE (dec'::define_pat patenv pat)
      in
      begin
      match eff exp with
@@ -512,7 +516,7 @@ and c_dec context dec =
      | T.Await ->
         k -->  ((c_exp context exp) -*- (v --> (k -*- block)))
      end
-  | VarD (id,exp) ->
+   | VarD (id,exp) ->
      let k = fresh_cont T.unit in
      begin
      match eff exp with

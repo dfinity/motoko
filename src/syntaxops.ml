@@ -197,22 +197,24 @@ let newObjE typ sort ids =
 
 (* Declarations *)
 
-let letD x exp = { exp with it = LetD (varP x,exp) }
+let letD x exp = { it = LetD (varP x,exp);
+                   at = no_region;
+                   note = { note_eff = eff exp;
+                            note_typ = T.unit;} (* ! *)
+                 }
 
-let varD x exp = { exp with it = VarD (x,exp) }
+let varD x exp = { it = VarD (x,exp);
+                   at = no_region;
+                   note = { note_eff = eff exp;
+                            note_typ = T.unit;} (* ! *)
+                 }
 
 let expD exp =  {exp with it = ExpD exp}
 
+
 (* let expressions (derived) *)
 
-let letE x exp1 exp2 =
-  { it = BlockE [letD x exp1;
-                 {exp2 with it = ExpD exp2}];
-    at = no_region;
-    note = {note_typ = typ exp2;
-            note_eff = max_eff (eff exp1) (eff exp2)}
-  }
-
+let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 
 (* Mono-morphic function declaration *)
 let funcD f x e =
@@ -302,12 +304,25 @@ let (-@>*) xs e  =
 
 let ( -*- ) exp1 exp2 =
   match exp1.note.note_typ with
-  | Type.Func(_, _, [], _, ts) ->
-     {it = CallE(exp1, [], exp2);
-      at = no_region;
-      note = {note_typ = T.seq ts;
+  | T.Func(_, _, [], ts1, ts2) ->
+(* for debugging bad applications, imprecisely
+    (if not ((T.seq ts1) = (typ exp2))
+     then
+       begin
+         (Printf.printf "\nBad -*- application: func:\n  %s \n arg:  %s\n, expected type: \n  %s: received type: \n  %s"
+            (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
+            (Wasm.Sexpr.to_string 80 (Arrange.exp exp2))
+            (T.string_of_typ (T.seq ts1))
+            (T.string_of_typ (typ exp2)));
+
+       end
+     else ());
+ *)
+    {it = CallE(exp1, [], exp2);
+     at = no_region;
+     note = {note_typ = T.seq ts2;
               note_eff = max_eff (eff exp1) (eff exp2)}
-     }
+    }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))

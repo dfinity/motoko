@@ -367,18 +367,20 @@ and c_for context k pat e1 e2 =
 and c_obj context exp sort id fields =
   let rec c_fields fields decs nameids =
     match fields with
-      | [] ->
-         let decs = letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids))::
-                    decs in
-         blockE (List.rev decs)
-      | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-         let ids = (name,id)::nameids in
-         match mut.it with
-         | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
-         | Var -> c_fields fields (varD id exp::decs) ids
+    | [] ->
+      let this = idE id (typ exp) in
+      let decs =
+        expD this ::
+        letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) ::
+        decs in
+      blockE (List.rev decs)
+    | {it = {id; name; mut; priv; exp}; at; note}::fields ->
+      let ids = (name,id)::nameids in
+      match mut.it with
+      | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
+      | Var -> c_fields fields (varD id exp::decs) ids
   in
   c_exp context (c_fields fields [] [])
-
 
 and c_exp context exp =
   c_exp' context exp
@@ -484,10 +486,10 @@ and c_exp' context exp k =
        (fun k ->
          match eff exp1 with
          | T.Triv ->
-            prim_await (typ exp1) -*- (tupE [t_exp context exp1;k])
+            prim_await (typ exp) -*- (tupE [t_exp context exp1;k])
          | T.Await ->
             c_exp context  exp1
-              (meta (typ exp1) (fun v1 -> (prim_await (typ exp1) -*- (tupE [v1;k]))))
+              (meta (typ exp1) (fun v1 -> (prim_await (typ exp) -*- (tupE [v1;k]))))
        )
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1
@@ -520,13 +522,10 @@ and c_dec context dec (k:kont) =
   | LetD (pat,exp) ->
     let patenv,pat' = rename_pat pat in
     let block exp =
-      let v = fresh_id (typ exp) in
-      let dec_w = letD v exp in
-      let dec_pat' = {dec with it = LetD(pat',v)} in
-      blockE ((dec_w::
-                  dec_pat'::
-                    define_pat patenv pat)
-              @[expD (k -@- v)])
+      let dec_pat' = {dec with it = LetD(pat',exp)} in
+      blockE ( dec_pat'::
+              (define_pat patenv pat)
+              @[expD (k -@- (tupE[]))])
     in
      begin
        match eff exp with
