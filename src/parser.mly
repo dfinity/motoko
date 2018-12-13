@@ -64,7 +64,7 @@ let share_typfield tf =
 let share_dec d =
   match d.it with
   | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-     FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
+    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
   | _ -> d
 
 let share_exp e =
@@ -89,7 +89,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
 %token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
 %token ARROW ASSIGN
-%token FUNC TYPE ACTOR CLASS PRIVATE NEW SHARED
+%token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
 %token ASSERT
@@ -167,6 +167,7 @@ seplist1(X, SEP) :
 
 %inline obj_sort :
   | NEW { Type.Object Type.Local @@ at $sloc }
+  | OBJECT { Type.Object Type.Local @@ at $sloc }
   | SHARED { Type.Object Type.Sharable @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
 
@@ -322,10 +323,6 @@ exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
-exp_obj :
-  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { efs }
-
 exp_nullary :
   | e=exp_block
     { e }
@@ -337,13 +334,6 @@ exp_nullary :
     { e }
   | LPAR es=seplist1(exp, COMMA) RPAR
     { TupE(es) @? at $sloc }
-  | s=obj_sort xf=id_opt efs=exp_obj
-    { let anon = if s.it = Type.Actor then "actor" else "object" in
-      let efs' =
-        if s.it = Type.Object Type.Local
-        then efs
-        else List.map share_expfield efs
-      in ObjE(s, xf anon $sloc, efs') @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
@@ -445,6 +435,14 @@ exp_nonvar :
     { e }
   | d=dec_nonvar
     { DecE(d) @? at $sloc }
+  (* TODO(andreas): hack, remove *)
+  | s=obj_sort xf=id_opt EQ? efs=obj_body
+    { let anon = if s.it = Type.Actor then "actor" else "object" in
+      let efs' =
+        if s.it = Type.Object Type.Local
+        then efs
+        else List.map share_expfield efs
+      in ObjE(s, xf anon $sloc, efs') @? at $sloc }
 
 exp :
   | e=exp_nonvar
@@ -545,7 +543,7 @@ dec_nonvar :
         then efs
         else List.map share_expfield efs
       in
-      let id as tid = xf "class" $sloc in	
+      let tid = xf "class" $sloc in
       ClassD(xf "class" $sloc, tid, tps, s, p, x, efs') @? at $sloc }
 
 dec :
@@ -555,6 +553,16 @@ dec :
     { d }
   | e=exp_nondec
     { ExpD e @? at $sloc }
+  (* TODO(andreas): move to dec_nonvar once other production is gone *)
+  | s=obj_sort xf=id_opt EQ? efs=obj_body
+    { let anon = if s.it = Type.Actor then "actor" else "object" in
+      let efs' =
+        if s.it = Type.Object Type.Local
+        then efs
+        else List.map share_expfield efs
+      in
+      let p = VarP(xf anon $sloc) @? at $sloc in
+      LetD(p, ObjE(s, xf anon $sloc, efs') @? at $sloc) @? at $sloc }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
@@ -574,9 +582,13 @@ func_body :
   | EQ e=exp { (false, e) }
   | e=exp_block { (true, e) }
 
+obj_body :
+  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
+    { efs }
+
 class_body :
-  | EQ xf=id_opt efs=exp_obj { xf "object" $sloc, efs }
-  | efs=exp_obj { ("anon-object-" ^ string_of_pos (at $sloc).left) @@ at $sloc, efs }
+  | EQ xf=id_opt efs=obj_body { xf "object" $sloc, efs }
+  | efs=obj_body { ("anon-object-" ^ string_of_pos (at $sloc).left) @@ at $sloc, efs }
 
 
 (* Programs *)
