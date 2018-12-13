@@ -202,7 +202,6 @@ let seqT ts =
 
 let as_seqT t =
   match t.Source.it with
-  | TupT [_] -> failwith "as_seqT"
   | TupT ts -> ts
   | _ -> [t]
            

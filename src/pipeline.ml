@@ -1,11 +1,10 @@
 open Printf
 
-module Await = Awaitopt   (* for more naive cps translation, use Await *)
-module Async = Async 
+module Await = Awaitopt  (* for more naive cps translation, use Await *)
+module Async = Async
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
-
 
 (* Diagnostics *)
 
