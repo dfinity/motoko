@@ -3326,8 +3326,7 @@ and compile_pat env how pat : E.t * G.t * patternCode =
 (* Used for mono patterns (let, function arguments) *)
 and compile_mono_pat env how pat =
   let (env1, alloc_code, code) = compile_pat env how pat in
-  let wrapped_code = set_tmp env ^^ orTrap (CannotFail (get_tmp env) ^^^ code) in
-  (env1, alloc_code, wrapped_code)
+  (env1, alloc_code, orTrap code)
 
 (* Used for function patterns
    The complication is that functions are n-ary, and we get the elements
