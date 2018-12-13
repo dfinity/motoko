@@ -1534,13 +1534,6 @@ module Array = struct
     ) ^^
     get_r
 
-  (* Takes the arguments, mangles them, and produces an argument tuple *)
-  let from_args env offset n mangle =
-    let get i = G.i_ (GetLocal (nr (Int32.(add offset (of_int i))))) in
-    if n = 1
-    then get 0 ^^ mangle
-    else lit env (Lib.List.table n (fun i -> get i ^^ mangle))
-
   (* Takes an argument tuple, and puts the elements on the stack,
      processing each with the mangling argument *)
   let to_args env n_args mangle =
@@ -2614,9 +2607,9 @@ module Message = struct
       let body_code = mk_body env2 in
 
       alloc_args_code ^^
-      (* Construct a tuple, as expected by the pattern. TODO: Optimize with PatP *)
-      Array.from_args env2 0l n_args (Serialization.deserialize env) ^^
-      destruct_args_code ^^
+      (* Construct a tuple, as expected by the pattern. *)
+      let get i = G.i_ (GetLocal (nr (Int32.(add 0l (of_int i))))) ^^ Serialization.deserialize env in
+      destruct_args_code get ^^
       body_code ^^
       G.i_ Drop ^^
 
@@ -2654,9 +2647,9 @@ module FuncDec = struct
 
       closure_code ^^
       alloc_args_code ^^
-      Array.from_args env3 1l n_args G.nop ^^
-      (* Construct a tuple, as expected by the pattern. TODO: Optimize with PatP *)
-      destruct_args_code ^^
+      (* Construct a tuple, as expected by the pattern. *)
+      let get i = G.i_ (GetLocal (nr (Int32.(add 1l (of_int i))))) in
+      destruct_args_code get ^^
       body_code)
 
   (* Similar, but for messages. Differences are:
@@ -2690,9 +2683,10 @@ module FuncDec = struct
 
       closure_code ^^
       alloc_args_code ^^
-      (* Construct a tuple, as expected by the pattern. TODO: Optimize with PatP *)
-      Array.from_args env3 1l n_args (Serialization.deserialize env) ^^
-      destruct_args_code ^^
+      let get i =
+        G.i_ (GetLocal (nr (Int32.(add 1l (of_int i))))) ^^
+        Serialization.deserialize env  in
+      destruct_args_code get ^^
       body_code ^^
       G.i_ Drop ^^
 
@@ -2756,8 +2750,6 @@ module FuncDec = struct
                 in (store_env, restore_env) in
           go 0 captured in
 
-        (* All functions are unary for now (arguments passed as heap-allocated tuples)
-           with the closure itself passed as a first argument *)
         let mk_body' env = mk_body env Closure.load_the_closure in
         let fi =
           if is_local
@@ -3337,6 +3329,35 @@ and compile_mono_pat env how pat =
   let wrapped_code = set_tmp env ^^ orTrap (CannotFail (get_tmp env) ^^^ code) in
   (env1, alloc_code, wrapped_code)
 
+(* Used for function patterns
+   The complication is that functions are n-ary, and we get the elements
+   separately.
+   If the function is unary, that’s great.
+   If the pattern is a tuple pattern, that is great as well.
+   But if not, we need to construct the tuple first.
+*)
+and compile_func_pat env cc pat =
+  let (env1, alloc_code) = alloc_pat env AllocHow.M.empty pat in
+  let fill_code get =
+    let (_, _, n_args, _) = cc in
+    if n_args = 1
+    then
+      (* Easy case: unary *)
+      get 0 ^^ orTrap (fill_pat env1 pat)
+    else
+      match pat.it with
+      (* Another easy case: Nothing to match *)
+      | WildP -> G.nop
+      (* The good case: We have a tuple pattern *)
+      | TupP ps ->
+        assert (List.length ps = n_args);
+        G.concat_mapi (fun i p -> get i ^^ orTrap (fill_pat env1 p)) ps
+      (* The general case: Construct the tuple, and apply the full pattern *)
+      | _ ->
+        Array.lit env (Lib.List.table n_args (fun i -> get i)) ^^
+        orTrap (fill_pat env1 pat) in
+  (env1, alloc_code, fill_code)
+
 and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
   | TypD _ ->
     (pre_env, G.nop, fun _ -> 
@@ -3367,14 +3388,14 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in
-      let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
+      let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 _ = compile_exp env1 e in
       FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
   (* Classes are desguared to functions and objects. *)
   | ClassD (cc, name, _, typ_params, s, p, self, efs) ->
       let captured = Freevars_ir.captured_exp_fields p efs in
-      let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
+      let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 compile_fun_identifier =
         (* TODO: This treats actors like any old object *)
         let fs' = List.map (fun (f : Ir.exp_field) ->
@@ -3463,7 +3484,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let pre_env1 = E.add_local_deferred pre_env name.it d in
 
   ( pre_env1, fun env ->
-    let mk_pat inner_env = compile_mono_pat inner_env AllocHow.M.empty pat in
+    let mk_pat inner_env = compile_func_pat inner_env cc pat in
     let mk_body inner_env = compile_exp inner_env exp in
     let f = Message.compile env cc mk_pat mk_body f.at in
     fill f;
