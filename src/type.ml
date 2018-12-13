@@ -474,8 +474,6 @@ let rec rel_typ env rel eq t1 t2 =
     true
   | Async t1', Async t2' ->
     rel_typ env rel eq t1' t2'
-  | Async t1', Shared ->
-    rel_typ env rel eq t1' Shared
   | Like t1', t2 ->
     rel_typ env rel eq (promote env t1') t2
   | t1, Like t2' ->
