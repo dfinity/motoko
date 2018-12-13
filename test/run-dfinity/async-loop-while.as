@@ -15,7 +15,7 @@ async {
 
 {
   var i = 0;
-  var j = 0;  
+  var j = 0;
   loop {
     printInt(j);
     assert(j == i);
@@ -57,8 +57,3 @@ async {
 };
 
 };
-
-
-
-
-
