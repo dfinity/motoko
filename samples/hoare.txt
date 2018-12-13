@@ -1,8 +1,8 @@
 -- Checking hoare.as:
-let a : var Int[]
-let partition : (var Int[], Nat, Nat) -> Nat
-let quicksort : (var Int[], Nat, Nat) -> ()
-let swap : (var Int[], Nat, Nat) -> ()
+let a : [var Int]
+let partition : ([var Int], Nat, Nat) -> Nat
+let quicksort : ([var Int], Nat, Nat) -> ()
+let swap : ([var Int], Nat, Nat) -> ()
 -- Interpreting hoare.as:
 quicksort([8, 3, 9, 5, 2], 0, 4)
   partition([8, 3, 9, 5, 2], 0, 4)
@@ -37,8 +37,8 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished hoare.as:
-let a : var Int[] = [2, 3, 5, 8, 9]
-let partition : (var Int[], Nat, Nat) -> Nat = func
-let quicksort : (var Int[], Nat, Nat) -> () = func
-let swap : (var Int[], Nat, Nat) -> () = func
+let a : [var Int] = [2, 3, 5, 8, 9]
+let partition : ([var Int], Nat, Nat) -> Nat = func
+let quicksort : ([var Int], Nat, Nat) -> () = func
+let swap : ([var Int], Nat, Nat) -> () = func
 

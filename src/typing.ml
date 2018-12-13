@@ -174,21 +174,27 @@ let rec check_typ env typ : T.typ =
       if not (T.sub env'.cons t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      let t2 = T.seq ts2 in
-      if not (T.sub env'.cons t2 T.Shared) then
-        error env typ1.at "shared function has non-shared result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      let t2' = T.promote env'.cons t2 in
-      if not (T.is_unit t2' || T.is_async t2') then
-        error env typ1.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
+      begin match ts2 with
+      | [] -> ()
+      | [T.Async t2] ->
+        if not (T.sub env'.cons t2 T.Shared) then
+          error env typ1.at "shared function has non-shared result type\n  %s"
+            (T.string_of_typ_expand env'.cons t2);
+      | _ -> error env typ1.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons (T.seq ts2))
+      end
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | AsyncT typ ->
-    T.Async (check_typ env typ)
+    let t = check_typ env typ in
+    let t' = T.promote env.cons t in
+    if t' <> T.Pre && not (T.sub env.cons t' T.Shared) then
+      error env typ.at "async type has non-shared parameter type\n  %s"
+        (T.string_of_typ_expand env.cons t');
+    T.Async t
   | LikeT typ ->
     T.Like (check_typ env typ)
   | ObjT (sort, fields) ->
@@ -205,7 +211,7 @@ and check_typ_field env s typ_field : T.field =
     error env typ.at "actor field %s has non-function type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
-    error env typ.at "shared objext or actor field %s has non-shared type\n  %s"
+    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
@@ -407,7 +413,8 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
-    infer_obj env sort.it id fields
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    infer_obj env' sort.it id fields
   | DotE (exp1, {it = Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -431,7 +438,7 @@ and infer_exp' env exp : T.typ =
         error env exp.at "expected mutable assignment target";
     end;
     T.unit
-  | ArrayE exps ->
+  | ArrayE (mut, exps) ->
     let ts = List.map (infer_exp env) exps in
     let t1 = List.fold_left (T.lub env.cons) T.Non ts in
     if
@@ -439,7 +446,7 @@ and infer_exp' env exp : T.typ =
     then
       warn env exp.at "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
-    T.Array t1
+    T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -564,10 +571,13 @@ and infer_exp' env exp : T.typ =
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
+    if not (T.sub env.cons t T.Shared) then
+      error env exp1.at "async type has non-shared parameter type\n  %s"
+        (T.string_of_typ_expand env.cons t);
     T.Async t
   | AwaitE exp1 ->
     if not env.async then
-      local_error env exp.at "misplaced await";
+      error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
     (try
       T.as_async_sub env.cons t1
@@ -644,8 +654,13 @@ and check_exp' env t exp =
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
-    ignore (check_obj env s tfs id fields exp.at)
-  | ArrayE exps, T.Array t' ->
+    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    ignore (check_obj env' s tfs id fields exp.at)
+  | ArrayE (mut, exps), T.Array t' ->
+    if (mut.it = Var) <> T.is_mut t' then
+      local_error env exp.at "%smutable array expression cannot produce expected type\n  %s"
+        (if mut.it = Const then "im" else "")
+        (T.string_of_typ_expand env.cons (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps
   | AsyncE exp1, T.Async t' ->
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
@@ -695,6 +710,7 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env t_pat pat in
   recover (check_exp (adjoin_vals env ve) t) exp
 
+
 (* Patterns *)
 
 and gather_pat env ve0 pat : val_env =
@@ -713,7 +729,7 @@ and gather_pat env ve0 pat : val_env =
     | OptP pat1
     | AnnotP (pat1, _) ->
       go ve pat1
-   in T.Env.adjoin ve0 (go T.Env.empty pat)
+  in T.Env.adjoin ve0 (go T.Env.empty pat)
 
 
 
@@ -868,17 +884,18 @@ and infer_obj env s id fields : T.typ =
 
 and check_obj env s tfs id fields at : T.typ =
   let pre_ve = gather_exp_fields env id.it fields in
-  let pre_ve' = List.fold_left (fun ve {T.name; typ = t} ->
+  let pre_ve' = List.fold_left
+    (fun ve {T.name; typ = t} ->
       if not (T.Env.mem name ve) then
-        local_error env at "%s expression without field %s cannot produce expected type\n  %s"
+        error env at "%s expression without field %s cannot produce expected type\n  %s"
           (if s = T.Actor then "actor" else "object") name
           (T.string_of_typ_expand env.cons t);
       T.Env.add name t ve
     ) pre_ve tfs
   in
   let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs, ve = infer_exp_fields pre_env s id.it T.Pre fields in
-  let t = T.Obj (s, tfs) in
+  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
+  let t = T.Obj (s, tfs') in
   let env' = adjoin_vals (add_val env id.it t) ve in
   ignore (infer_exp_fields env' s id.it t fields);
   t
@@ -920,8 +937,15 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
       infer_mut mut (infer_exp (adjoin_vals env ve) exp)
     | t ->
       (* When checking object in analysis mode *)
-      if not env.pre then
+      if not env.pre then begin
         check_exp (adjoin_vals env ve) (T.as_immut t) exp;
+        if (mut.it = Var) <> T.is_mut t then
+          local_error env field.at
+            "%smutable field %s cannot produce expected %smutable field of type\n  %s"
+            (if mut.it = Var then "" else "im") id.it
+            (if T.is_mut t then "" else "im")
+            (T.string_of_typ_expand env.cons (T.as_immut t))
+      end;
       t
   in
   if not env.pre then begin
@@ -1172,16 +1196,18 @@ and infer_dec_valdecs env dec : val_env =
       if not (T.sub env'.cons t1 T.Shared) then
         error env pat.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      if not (T.sub env'.cons t2 T.Shared) then
-        error env typ.at "shared function has non-shared result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      let t2' = T.promote env'.cons t2 in
-      if not (T.is_unit t2' || T.is_async t2') then
-        error env typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2);
-      if T.is_async t2' && (not (isAsyncE exp)) then
-        error env dec.at "shared function with async type has non-async body"
+      begin match t2 with
+      | T.Tup [] -> ()
+      | T.Async t2 ->
+        if not (T.sub env'.cons t2 T.Shared) then
+          error env typ.at "shared function has non-shared result type\n  %s"
+            (T.string_of_typ_expand env'.cons t2);
+        if not (isAsyncE exp) then
+          error env dec.at "shared function with async type has non-async body"
+      | _ -> error env typ.at "shared function has non-async result type\n  %s"
+          (T.string_of_typ_expand env'.cons t2)
       end;
+    end;
     let ts1 = match pat.it with
       | TupP _ -> T.as_seq t1
       | _ -> [t1]

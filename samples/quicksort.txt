@@ -1,5 +1,5 @@
 -- Checking quicksort.as:
-type Array<T> = var T[]
+type Array<T> = [var T]
 type QS<T> <: {quicksort : (Array<T>, Nat, Nat) -> ()}
 let QS : class <T>((T, T) -> Int) -> QS<T>
 let a : Array<Int>

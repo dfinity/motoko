@@ -2,6 +2,7 @@ _out
 
 new-asc
 old-asc
+compare-out
 
 coverage
 _coverage

@@ -162,9 +162,6 @@ seplist1(X, SEP) :
     { fun sort sloc ->
       ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
 
-%inline var :
-  | VAR { Var @@ at $sloc }
-
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
@@ -201,14 +198,14 @@ typ_nullary :
     { TupT(ts) @@ at $sloc }
   | x=id tso=typ_args?
     {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
+  | LBRACKET m=var_opt t=typ RBRACKET
+    { ArrayT(m, t) @@ at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @@ at $sloc }
 
 typ_post :
   | t=typ_nullary
     { t }
-  | t=typ_post LBRACKET RBRACKET
-    { ArrayT(Const @@ no_region, t) @@ at $sloc }
   | t=typ_post QUEST
     { OptT(t) @@ at $sloc }
 
@@ -221,8 +218,6 @@ typ_pre :
     { AsyncT(t) @@ at $sloc }
   | LIKE t=typ_pre
     { LikeT(t) @@ at $sloc }
-  | mut=var t=typ_nullary LBRACKET RBRACKET
-    { ArrayT(mut, t) @@ at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Object Type.Local
@@ -350,12 +345,14 @@ exp_nullary :
         then efs
         else List.map share_expfield efs
       in ObjE(s, xf anon $sloc, efs') @? at $sloc }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc }
 
 exp_post :
   | e=exp_nullary
     { e }
-  | LBRACKET es=seplist(exp, COMMA) RBRACKET
-    { ArrayE(es) @? at $sloc }
+  | LBRACKET m=var_opt es=seplist(exp_nonvar, COMMA) RBRACKET
+    { ArrayE(m, es) @? at $sloc }
   | e=exp_post QUEST
     { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
@@ -402,8 +399,6 @@ exp_bin :
 exp_pre :
   | e=exp_bin
     { e }
-  | PRIM s=TEXT
-    { PrimE(s) @? at $sloc }
   | RETURN eo=exp_pre?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       RetE(e) @? at $sloc }
@@ -448,10 +443,16 @@ exp_nondec :
   | FOR LPAR p=pat IN e1=exp RPAR e2=exp
     { ForE(p, e1, e2) @? at $sloc }
 
-exp :
+exp_nonvar :
   | e=exp_nondec
     { e }
-  | d=dec_nonexp
+  | d=dec_nonvar
+    { DecE(d) @? at $sloc }
+
+exp :
+  | e=exp_nonvar
+    { e }
+  | d=dec_var
     { DecE(d) @? at $sloc }
       
     
@@ -521,7 +522,7 @@ return_typ_nullary :
 
 (* Declarations *)
 
-dec_nonexp :
+dec_var :
   | LET p=pat EQ e=exp
     { let p', e' =
         match p.it with
@@ -534,6 +535,8 @@ dec_nonexp :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
+
+dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fd=func_dec
     { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=id tps=typ_params_opt EQ t=typ
@@ -547,8 +550,11 @@ dec_nonexp :
       in
       let id as tid = xf "class" $sloc in	
       ClassD(xf "class" $sloc, tid, tps, s, p, x, efs') @? at $sloc }
+
 dec :
-  | d=dec_nonexp
+  | d=dec_var
+    { d }
+  | d=dec_nonvar
     { d }
   | e=exp_nondec
     { ExpD e @? at $sloc }

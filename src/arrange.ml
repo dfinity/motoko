@@ -15,7 +15,7 @@ let rec exp e = match e.it with
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE es           -> "ArrayE"  $$ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map inst ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
@@ -158,7 +158,15 @@ and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (s, i, tp, p, t, e) ->
-    "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+    "FuncD" $$ [
+      Atom (Type.string_of_typ d.note.note_typ);
+      Atom (sharing s.it);
+      id i] @
+      List.map typ_bind tp @ [
+      pat p;
+      typ t;
+      exp e
+    ]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, j, tp, s, p, i', efs) ->
