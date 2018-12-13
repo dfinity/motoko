@@ -1,12 +1,13 @@
 open Printf
 
+
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async
-module Tailcall = Tailcall             
+module Tailcall = Tailcall
+
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
-
 
 (* Diagnostics *)
 
@@ -136,7 +137,7 @@ let transform transform_name transform flag prog name  =
       prog'
     end
   else prog
-       
+
 let await_lowering =
   transform "Await Lowering" Await.t_prog
 
@@ -144,7 +145,7 @@ let async_lowering =
   transform "Async Lowering" Async.t_prog
 
 let tailcall_optimization =
-  transform "Tailcall optimization" Tailcall.prog  
+  transform "Tailcall optimization" Tailcall.prog
 
 let check_with parse infer senv name : check_result =
   match parse name with

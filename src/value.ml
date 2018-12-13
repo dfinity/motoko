@@ -268,7 +268,7 @@ let obj_of_array a =
     else
       raise (Invalid_argument "array index out of bounds") in
 
-  let set = local_func 1 1 @@ fun v k ->
+  let set = local_func 2 0 @@ fun v k ->
     let v1, v2 = as_pair v in
     let n = as_int v1 in
     if Nat.lt n (Nat.of_int (Array.length a)) then
