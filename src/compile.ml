@@ -2821,11 +2821,12 @@ end (* FuncDec *)
 module PatCode = struct
   (* Pattern failure code on demand.
 
-  Patterns in general can fail, so we want a block around them with a jump-label
-  for the fail case. But many patterns cannot fail, in particular not function
-  arguments that are simple variables. In these cases, we do not want to create
-  the block and the (unused) jump label. So we first generate the code, either as plain code
-  (cannot fail) or as code with hole for code to fun in case of failure.
+  Patterns in general can fail, so we want a block around them with a
+  jump-label for the fail case. But many patterns cannot fail, in particular
+  function arguments that are simple variables. In these cases, we do not want
+  to create the block and the (unused) jump label. So we first generate the
+  code, either as plain code (CannotFail) or as code with hole for code to fun
+  in case of failure (CanFail).
   *)
 
   type patternCode =
