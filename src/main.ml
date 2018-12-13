@@ -35,6 +35,7 @@ let argspec = Arg.align
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
   "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "-o", Arg.Set_string out_file, " output file";
   "--version",

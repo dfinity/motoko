@@ -115,7 +115,7 @@ let shared_funcD f x e =
                e);
             at = no_region;
             note;}
-  | _ -> failwith "Impossible: funcD"
+  | _ -> assert false
 
 let letEta e scope =
   match e.it with
@@ -132,54 +132,33 @@ let isAwaitableFunc exp =
 let extendTup ts t2 = ts @ [t2]
 
 let extendTupP p1 p2 =
-  match typ p1 with
-  | Tup ts ->
+  match p1.it with
+  | TupP ps ->
     begin
-      match ts with
+      match ps with
       | [] -> p2, fun d -> (letP p1 (tupE [])::d)
-      | _ ->
-         begin
-           match p1.it with
-           | TupP ps -> tupP (ps@[p2]), fun d -> d
-           | _ -> let xs = List.map fresh_id ts in
-                  let pxs = List.map varP xs in
-                  tupP (pxs@[p2]),
-                  fun d -> letP p1 (tupE xs) :: d
-         end
+      | ps ->
+           tupP (ps@[p2]), fun d -> d
     end
   | _ -> tupP [p1;p2], fun d -> d
 
-(* Given expressions e1 and e2 return:
-   a function extending a declaration d with any components of e1, and
-   a manifest tuple containing (the components of) e1 extended with the component e2,
-   preserving evaluation and side-effects of e1.
-
-   (used to extend the calls to an awaitable function with argument(s) e1 with an additional reply argument, e2)
-*)
-
-let extendTupE e1 e2 =
-  match typ e1 with
-  | Tup ts ->
-    begin
-     match ts with
-     | [] ->
-        (fun d -> (expD e1)::d),
-        e2
-     | _ ->
-        match e1.it with
-        | TupE es ->
-           (fun d -> d),
-           tupE (es@[e2])
-        | _ ->
-          let xs = List.map fresh_id ts in
-          let p = tupP (List.map varP xs) in
-          (fun d -> (letP p e1)::d),
-          tupE (xs@[e2])
-    end
-  | _ ->
-     (fun d -> d),
-     tupE [e1;e2]
-
+(* Given sequence type ts, bind e of type (seq ts) to a
+   sequence of expressions supplied to decs d_of_es,
+   preserving effects of e when the sequence type is empty.
+   d_of_es must not duplicate or discard the evaluation of es.
+ *)
+let letSeq ts e d_of_vs =
+  match ts with
+  | [] ->
+    (expD e)::d_of_vs []
+  | [t] ->
+      let x = fresh_id t in
+      let p = varP x in
+      (letP p e)::d_of_vs [x]
+  | ts ->
+      let xs = List.map fresh_id ts in
+      let p = tupP (List.map varP xs) in
+      (letP p e)::d_of_vs (xs)
 
 let rec t_typ (t:T.typ) =
   match t with
@@ -202,7 +181,7 @@ let rec t_typ (t:T.typ) =
               assert (c = T.Promises);
               Func (s, T.Returns, List.map t_bind tbs,
                     extendTup (List.map t_typ t1) (replyT nary (t_typ t2)), [])
-           | _ -> failwith "t_typ"
+           | _ -> assert false
          end
        | _ ->
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
@@ -254,15 +233,15 @@ and t_exp' (exp:Syntax.exp) =
     DotE (t_exp exp1, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp exp1, t_exp exp2)
-  | ArrayE exps ->
-    ArrayE (List.map t_exp exps)
+  | ArrayE (mut, exps) ->
+    ArrayE (mut, List.map t_exp exps)
   | IdxE (exp1, exp2) ->
      IdxE (t_exp exp1, t_exp exp2)
   | CallE ({it=PrimE "@await";_}, typs, exp2) ->
     begin
      match exp2.it with
      | TupE [a;k] -> ((t_exp a) -*- (t_exp k)).it
-     | _ -> failwith "t_exp: @await"
+     | _ -> assert false
     end
   | CallE ({it=PrimE "@async";_}, typs, exp2) ->
      let t1, contT = match typ exp2 with
@@ -271,7 +250,7 @@ and t_exp' (exp:Syntax.exp) =
               [Func(_,_,[],ts1,[]) as contT],
               []) -> (* TBR, why isn't this []? *)
           (t_typ (T.seq ts1),t_typ contT)
-       | t -> failwith ("t_exp: @async " ^ (T.string_of_typ t)) in
+       | t -> assert false in
      let k = fresh_id contT in
      let v1 = fresh_id t1 in
      let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
@@ -284,23 +263,24 @@ and t_exp' (exp:Syntax.exp) =
               expD nary_async])
        .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
-     let t1,t2 =
+     let ts1,t2 =
        match typ exp1 with
        | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
-           t_typ (T.seq ts1), t_typ t2
+           ts1, t_typ t2
        | _ -> assert(false)
      in
      let exp1' = t_exp exp1 in
      let exp2' = t_exp exp2 in
      let typs = List.map t_typT typs in
      let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
-     let (d,es) = extendTupE exp2' nary_reply in
      let _ = letEta in
      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
               letEta exp1' (fun v1 ->
-              d [expD (callE v1 typs es T.unit);
-                 expD nary_async])))
+              letSeq ts1 exp2' (fun vs ->
+                [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
+                 expD nary_async]))))
        .it
+
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
   | BlockE decs ->
@@ -332,8 +312,8 @@ and t_exp' (exp:Syntax.exp) =
     BreakE (id, t_exp exp1)
   | RetE exp1 ->
     RetE (t_exp exp1)
-  | AsyncE _ -> failwith "unexpected asyncE"
-  | AwaitE _ -> failwith "unexpected awaitE"
+  | AsyncE _ -> assert false
+  | AwaitE _ -> assert false
   | AssertE exp1 ->
     AssertE (t_exp exp1)
   | IsE (exp1, exp2) ->
@@ -378,7 +358,6 @@ and t_dec' dec' =
               let typT' = tupT []  in
               let k = fresh_id reply_typ in
               let pat',d = extendTupP pat (varP k) in
-              (* let pat' = tupP [pat;varP k] in *)
               let typbinds' = t_typbinds typbinds in
               let x = fresh_id res_typ in
               let exp' =
@@ -389,15 +368,12 @@ and t_dec' dec' =
                      | PrimE("@async") ->
                         blockE
                           (d [expD ((t_exp cps) -*- (x --> (k -*- x)))])
-                     | _ -> failwith ("async.ml t_dec': funcD1"
-                                      ^ (Wasm.Sexpr.to_string 80 (Arrange.exp async)))
+                     | _ -> assert false
                    end
-                | _ ->
-                   failwith
-                     ("async.ml t_dec': funcD2" ^ (Wasm.Sexpr.to_string 80 (Arrange.exp exp)))
+                | _ -> assert false
               in
               FuncD (s, id, typbinds', pat', typT', exp')
-          | _ -> failwith "async.ml t_dec': funcD3"
+          | _ -> assert false
          end
     end
   | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
@@ -467,7 +443,7 @@ and t_typT' t =
            | AsyncT t2 ->
               FuncT (localS, t_typbinds tbs,
                      tupT [t_typT t1; replyTT (t_typT t2)], unitT)
-           | _ -> failwith "t_typT'"
+           | _ -> assert false
          end
        | _ ->
           FuncT (s, t_typbinds tbs, t_typT t1, t_typT t2)

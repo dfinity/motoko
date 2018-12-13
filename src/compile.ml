@@ -339,11 +339,6 @@ let new_local env name =
   let (set_i, get_i, _) = new_local_ env name
   in (set_i, get_i)
 
-(* Stack utilities *)
-
-(* duplicate top element *)
-let dup env : G.t = set_tmp env ^^ get_tmp env ^^ get_tmp env
-
 (* Some code combinators *)
 
 (* expects a number on the stack. Iterates from zero t below that number *)
@@ -3105,7 +3100,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ProjE (e1,n) ->
      compile_exp env e1 ^^ (* offset to tuple (an array) *)
      Array.load_n (Int32.of_int n)
-  | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
+  | ArrayE (m, es) -> Array.lit env (List.map (compile_exp env) es)
   | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
      let fs' = List.map
       (fun (f : Ir.exp_field) ->
@@ -3343,30 +3338,32 @@ and compile_mono_pat env how pat =
   (env1, alloc_code, wrapped_code)
 
 and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
-  | TypD _ -> (pre_env, G.nop, fun _ -> G.nop)
+  | TypD _ ->
+    (pre_env, G.nop, fun _ -> 
+      if last then compile_unit else G.nop
+    )
   | ExpD e ->
     (pre_env, G.nop, fun env ->
-      let code = compile_exp env e in
-      let drop = if last then G.nop else G.i_ Drop in
-      code ^^ drop
+      compile_exp env e ^^
+      if last then G.nop else G.i_ Drop
     )
   | LetD (p, e) ->
-    let (pre_env1, alloc_code, code2) = compile_mono_pat pre_env how p in
+    let (pre_env1, alloc_code, fill_code) = compile_mono_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      let code1 = compile_exp env e in
-      let stack_fix = if last then dup env else G.nop in
-      code1 ^^ stack_fix ^^ code2)
+      compile_exp env e ^^
+      fill_code ^^
+      if last then compile_unit else G.nop
+    )
   | VarD (name, e) ->
       assert (AllocHow.M.find_opt name.it how = Some AllocHow.LocalMut ||
               AllocHow.M.find_opt name.it how = Some AllocHow.StoreHeap);
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        let code1 = compile_exp env e in
-        code1 ^^
+        compile_exp env e ^^
         Var.set_val env name.it ^^
-        if last then Var.get_val env name.it  else G.nop)
-
+        if last then compile_unit else G.nop
+      )
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in

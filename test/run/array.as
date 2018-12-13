@@ -1,4 +1,5 @@
-let a : Nat[] = [1, 2, 42];
+let a = [1, 2, 42];
+let aa = a : [Nat];
 
 assert(a.len() == 3);
 
@@ -10,7 +11,8 @@ assert(a.get(0) == 1);
 assert(a.get(1) == 2);
 assert(a.get(2) == 42);
 
-let b : var Nat[] = [2, 3, 23];
+let b = [var 2, 3, 23];
+let bb = b : [var Nat];
 
 assert(b.len() == 3);
 
@@ -38,7 +40,7 @@ func opt_eq(x : Nat?, y : Nat) : Bool {
              case (i?) { i == y } }
 };
 
-var emptyit = ([]: Nat[]).keys();
+var emptyit = ([] : [Nat]).keys();
 switch (emptyit.next()) { case null {}; case _ {assert false} };
 
 var it = a.keys();

@@ -15,7 +15,7 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  incarray(a : Nat[]) : () {
+  incarray(a : [Nat]) : () {
     for (i in a.vals()) { c += i };
     printInt(c);
     print("\n");

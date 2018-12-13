@@ -70,6 +70,11 @@ val contT : typ -> typ
 val cpsT : typ -> typ
 val fresh_cont : typ -> var
 
+(* Sequence expressions *)
+
+val seqE : exp list -> exp
+val as_seqE : exp -> exp list
+  
 (* Lambdas *)
 
 val (-->) : var -> exp -> exp

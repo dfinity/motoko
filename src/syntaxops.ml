@@ -71,7 +71,6 @@ let primE name typ =
 
 (* tuples *)
 
-
 let projE e n =
   match typ e with
   | T.Tup ts ->
@@ -196,27 +195,28 @@ let newObjE typ sort ids =
              note_eff = T.Triv}
   }
 
-
 (* Declarations *)
 
-let letD x exp = { exp with it = LetD (varP x,exp) }
+let letD x exp = { it = LetD (varP x,exp);
+                   at = no_region;
+                   note = { note_eff = eff exp;
+                            note_typ = T.unit;} (* ! *)
+                 }
 
-let varD x exp = { exp with it = VarD (x,exp) }
+let varD x exp = { it = VarD (x,exp);
+                   at = no_region;
+                   note = { note_eff = eff exp;
+                            note_typ = T.unit;} (* ! *)
+                 }
 
 let expD exp =  {exp with it = ExpD exp}
 
+
 (* let expressions (derived) *)
 
-let letE x exp1 exp2 =
-  { it = BlockE [letD x exp1;
-                 {exp2 with it = ExpD exp2}];
-    at = no_region;
-    note = {note_typ = typ exp2;
-            note_eff = max_eff (eff exp1) (eff exp2)}
-  }
+let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 
-
-(* mono-morphic function declaration *)
+(* Mono-morphic function declaration *)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
@@ -234,7 +234,7 @@ let funcD f x e =
 
 
 
-(* mono-morphic, n-ary function declaration *)
+(* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs e =
   match f.it,f.note.note_typ with
   | VarE _,
@@ -249,6 +249,8 @@ let nary_funcD f xs e =
       note = f.note;}
   | _,_ -> failwith "Impossible: funcD"
 
+
+
 (* Continuation types *)
 
 let answerT = T.unit
@@ -258,12 +260,23 @@ let cpsT typ = T.Func(T.Call T.Local, T.Returns, [], [contT typ], [])
 
 let fresh_cont typ = fresh_id (contT typ)
 
+(* Sequence expressions *)
+
+let seqE es =
+  match es with
+  | [e] -> e
+  | es -> tupE es
+
+let as_seqE e =
+  match e.it with
+  | TupE es -> es
+  | _ -> [e]
 
 (* Lambdas & continuations *)
 
 (* Lambda abstraction *)
 
-(* local lambda *)                   
+(* local lambda *)
 let  (-->) x e =
   match x.it with
   | VarE _ ->
@@ -271,13 +284,13 @@ let  (-->) x e =
      decE (funcD f x e)
   | _ -> failwith "Impossible: -->"
 
-(* n-ary local lambda *)       
+(* n-ary local lambda *)
 let (-->*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Local, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
   decE (nary_funcD f xs e)
-  
+
 
 (* n-ary shared lambda *)
 let (-@>*) xs e  =
@@ -291,12 +304,25 @@ let (-@>*) xs e  =
 
 let ( -*- ) exp1 exp2 =
   match exp1.note.note_typ with
-  | Type.Func(_, _, [], _, ts) ->
-     {it = CallE(exp1, [], exp2);
-      at = no_region;
-      note = {note_typ = T.seq ts;
+  | T.Func(_, _, [], ts1, ts2) ->
+(* for debugging bad applications, imprecisely
+    (if not ((T.seq ts1) = (typ exp2))
+     then
+       begin
+         (Printf.printf "\nBad -*- application: func:\n  %s \n arg:  %s\n, expected type: \n  %s: received type: \n  %s"
+            (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
+            (Wasm.Sexpr.to_string 80 (Arrange.exp exp2))
+            (T.string_of_typ (T.seq ts1))
+            (T.string_of_typ (typ exp2)));
+
+       end
+     else ());
+ *)
+    {it = CallE(exp1, [], exp2);
+     at = no_region;
+     note = {note_typ = T.seq ts2;
               note_eff = max_eff (eff exp1) (eff exp2)}
-     }
+    }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
@@ -304,7 +330,7 @@ let ( -*- ) exp1 exp2 =
               (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
 
 
-(* intermediate, cps-based @async and @await primitives,
+(* Intermediate, cps-based @async and @await primitives,
    introduced by await(opt).ml, removed by async.ml
 *)
 

@@ -1,11 +1,10 @@
 open Printf
 
-module Await = Awaitopt   (* for more naive cps translation, use Await *)
-module Async = Async 
+module Await = Awaitopt  (* for more naive cps translation, use Await *)
+module Async = Async
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
-
 
 (* Diagnostics *)
 
@@ -122,6 +121,7 @@ let check_prog infer senv name prog
       print_ce scope.Typing.con_env;
       print_stat_ve scope.Typing.val_env
     end;
+    dump_prog Flags.dump_tc prog;
     Ok ((t, scope), messages_of_typing_messages msgs)
   | Error msgs -> Error (messages_of_typing_messages msgs)
 

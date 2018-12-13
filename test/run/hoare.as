@@ -1,11 +1,11 @@
 
-func swap(a : var Int[], i : Nat, j : Nat) {
+func swap(a : [var Int], i : Nat, j : Nat) {
   let temp = a[i];
   a[i] := a[j];
   a[j] := temp;
 };
 
-func partition(a : var Int[], lo : Nat, hi : Nat) : Nat {
+func partition(a : [var Int], lo : Nat, hi : Nat) : Nat {
   let pivot = a[lo];
   var i : Nat = lo;
   var j : Nat = hi;
@@ -18,7 +18,7 @@ func partition(a : var Int[], lo : Nat, hi : Nat) : Nat {
   };
 };
 
-func quicksort(a : var Int[], lo : Nat, hi : Nat) {
+func quicksort(a : [var Int], lo : Nat, hi : Nat) {
   if (lo < hi) {
     let p = partition(a, lo, hi);
 	  quicksort(a, lo, p);
@@ -26,7 +26,7 @@ func quicksort(a : var Int[], lo : Nat, hi : Nat) {
 	};
 };
 
-let a : var Int[] = [8, 3, 9, 5, 2];
+let a : [var Int] = [var 8, 3, 9, 5, 2];
 
 quicksort(a, 0, 4);
 
