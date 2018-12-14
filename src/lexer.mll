@@ -195,6 +195,7 @@ rule token mode = parse
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }
+  | "object" { OBJECT }
   | "or" { OR }
   | "let" { LET }
   | "loop" { LOOP }

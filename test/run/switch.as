@@ -26,13 +26,13 @@ let x4 = switch (null : {}?) {
 };
 assert (x4 == 1);
 
-let x5 = switch (new {}?) {
+let x5 = switch ((new {})?) {
   case null 0;
   case x 1;
 };
 assert (x5 == 1);
 
-let oo : {}? = new {}?;
+let oo : {}? = (new {})?;
 let x6 = switch oo {
   case null 0;
   case _ 1;

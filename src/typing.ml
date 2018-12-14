@@ -1033,7 +1033,7 @@ and check_dec env t dec =
     check_exp env t exp;
     dec.note <- exp.note;
 (* TBR: push in external type annotation;
-   unfortunately, this is enough, because of the earlier recursive phases
+   unfortunately, this isn't enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
     (* TBR: special-case unit? *)
     if T.eq env.cons t T.unit then
