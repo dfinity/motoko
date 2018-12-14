@@ -10,7 +10,7 @@ let bound:Int = 100000;
 	};
 	Loop(n+1);
     };
-    Loop(0);     
+    Loop(0);
 };
 
 {
@@ -24,7 +24,7 @@ let bound:Int = 100000;
 	else
          Loop(n+1);
     };
-    Loop(0);     
+    Loop(0);
 };
 
 
@@ -40,8 +40,8 @@ let bound:Int = 100000;
 	case _ assert(false);
 	};
     };
-    
-    Loop(0);     
+
+    Loop(0);
 };
 
 {
@@ -54,7 +54,7 @@ let bound:Int = 100000;
 	  Loop(m +1);
 	};
     };
-    Loop(0);     
+    Loop(0);
 };
 
 
@@ -66,7 +66,7 @@ let bound:Int = 100000;
 	};
 	let _ = (return Loop(n+1)) + 1;
     };
-    Loop(0);     
+    Loop(0);
 };
 
 
@@ -78,7 +78,7 @@ let bound:Int = 100000;
 	};
 	true and Loop(n+1);
     };
-    assert(Loop(0));     
+    assert(Loop(0));
 };
 
 {
@@ -89,5 +89,5 @@ let bound:Int = 100000;
 	};
 	false or Loop(n+1);
     };
-    assert(Loop(0));     
+    assert(Loop(0));
 };
