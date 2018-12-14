@@ -123,8 +123,6 @@ and dec d = match d.it with
   | FuncD (cc, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ActorClassD (cc, i, l, tp, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ under_lambda (close (exp_fields efs) /// pat p // i'.it)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =

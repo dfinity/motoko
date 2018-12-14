@@ -61,7 +61,6 @@ and dec' =
   | VarD of Syntax.id * exp                                   (* mutable *)
   | FuncD of Value.call_conv * Syntax.id * Syntax.typ_bind list * pat * Syntax.typ * exp (* function *)
   | TypD of Syntax.id * Syntax.typ_bind list * Syntax.typ                   (* type *)
-  | ActorClassD of Value.call_conv * Syntax.id (*term id*) * Syntax.id (*type id*) * Syntax.typ_bind list * pat * Syntax.id * exp_field list
 
 
 (* Program *)

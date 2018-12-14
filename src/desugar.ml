@@ -32,8 +32,7 @@ let
     | S.TupE es -> I.TupE (exps es)
     | S.ProjE (e, i) -> I.ProjE (exp e, i)
     | S.OptE e -> I.OptE (exp e)
-    | S.ObjE ({it = Type.Object _; _}, i, es) -> build_obj at None i es
-    | S.ObjE ({it = Type.Actor; _}, i, es) -> I.ActorE (i, exp_fields es)
+    | S.ObjE (s, i, es) -> obj at s None i es
     | S.DotE (e, n) -> I.DotE (exp e, n)
     | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
     | S.ArrayE (m, es) -> I.ArrayE (m, exps es)
@@ -74,6 +73,11 @@ let
     | S.Private -> []
     | S.Public -> [ (f.it.S.name, f.it.S.id) ]
 
+  and obj at s class_id self_id es =
+    match s.it with
+    | Type.Object _ -> build_obj at None self_id es
+    | Type.Actor -> I.ActorE (self_id, exp_fields es)
+
   and build_obj at class_id self_id es =
     I.BlockE (
       List.map field_to_dec es @
@@ -103,8 +107,7 @@ let
     | S.ClassD (fun_id, typ_id, tp, s, p, self_id, es) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
       I.FuncD (cc, fun_id, tp, pat p, S.PrimT "dummy" @@ at,
-        build_obj at (Some fun_id) self_id es @@ at)
-
+        obj at s (Some fun_id) self_id es @@ at)
 
   and cases cs = List.map case cs
   and case c = phrase case' c
