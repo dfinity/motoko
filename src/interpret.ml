@@ -100,11 +100,11 @@ let set_async async v =
 let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
-          
+
 let async at (f: (V.value V.cont) -> unit) (k:V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
-    let k' = fun v1 -> fulfill async v1 in 
+    let k' = fun v1 -> fulfill async v1 in
     if !Flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
       if !Flags.trace then trace "<- async %s" (string_of_region at);
@@ -141,7 +141,7 @@ let make_unit_message id v =
   let _, call_conv, f = V.as_func v in
   match call_conv with
   | (T.Call T.Sharable, _ , arg_c, 0) ->
-    Value.message_func 0 (fun v k ->
+    Value.message_func arg_c (fun v k ->
       actor_msg id f v (fun _ -> ());
       k V.unit
     )
@@ -178,25 +178,29 @@ let make_message id t v : V.value =
      (*     assert false *)
 
 
-let extended_prim s at =
+let extended_prim s typ at =
   match s with
   | "@async" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
+     assert(!Flags.await_lowering && not(!Flags.async_lowering));
      fun v k ->
-     let (call,_,f) = V.as_func v in
-     async at
-       (fun k' ->
-         let k' = Value.local_func 1 0 (fun v _ -> k' v) in
-         f k' V.as_unit)
-       k
+     (let (call,_,f) = V.as_func v in
+      match typ with
+      |  T.Func(_,_,_,[T.Func(_,_,_,[f_dom],_)],_) ->
+         let call_conv = Value.call_conv_of_typ f_dom in
+         async at
+           (fun k' ->
+             let k' = Value.Func(None,call_conv,(fun v _ -> k' v)) in
+             f k' V.as_unit)
+         k
+      | _ -> assert false)
   | "@await" ->
-     assert(!Flags.await_lowering && not(!Flags.async_lowering)); 
+     assert(!Flags.await_lowering && not(!Flags.async_lowering));
      fun v k ->
      begin
        match V.as_tup v with
       | [async; w] ->
         let (_,_,f) = V.as_func w in
-        await at (V.as_async async) (fun v -> f v k) 
+        await at (V.as_async async) (fun v -> f v k)
       | _ -> assert false
      end
   | _ -> Prelude.prim s
@@ -221,14 +225,30 @@ let interpret_lit env lit : V.value =
 
 (* Expressions *)
 
-let check_call_conv exp ((func_sort,control,args,res) as call_conv) =
-  let ((exp_func_sort,exp_control,exp_args,exp_res) as exp_call_conv) = V.call_conv_of_typ exp.note.note_typ in
-  (* TODO: Check the full calling convention here *)
-  if not (exp_func_sort = func_sort) then
-    failwith (Printf.sprintf "call_conv mismatch: function %s expect %s, found %s"
+let check_call_conv exp call_conv =
+  let exp_call_conv = V.call_conv_of_typ exp.note.note_typ in
+  if not (exp_call_conv = call_conv) then
+    failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (T.string_of_typ exp.note.note_typ)
       (V.string_of_call_conv exp_call_conv)
       (V.string_of_call_conv call_conv))
+
+let check_call_conv_arg exp v call_conv =
+  let (_, _, n_args, _) = call_conv in
+  if n_args <> 1 then
+  let es = try V.as_tup v
+    with Invalid_argument _ ->
+      failwith (Printf.sprintf "call %s: calling convention %s cannot handle non-tuple value %s"
+        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+        (V.string_of_call_conv call_conv)
+        (V.string_of_val v)) in
+  if List.length es <> n_args then
+    failwith (Printf.sprintf "call %s: calling convention %s got tuple of wrong length %s"
+        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+        (V.string_of_call_conv call_conv)
+        (V.string_of_val v))
+
 
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
@@ -239,7 +259,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   match exp.it with
   | PrimE s ->
     let at = exp.at in
-    k (V.Func (None, V.call_conv_of_typ exp.note.note_typ, extended_prim s at))
+    k (V.Func (None, V.call_conv_of_typ exp.note.note_typ, extended_prim s exp.note.note_typ at))
   | VarE id ->
     (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -285,13 +305,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         V.as_mut v1 := v2; k V.unit
       )
     )
-  | ArrayE exps ->
-    let t = exp.note.note_typ in
+  | ArrayE (mut, exps) ->
     interpret_exps env exps [] (fun vs ->
       let vs' =
-        match t with
-        | T.Array (T.Mut _) -> List.map (fun v -> V.Mut (ref v)) vs
-        | _ -> vs
+        match mut.it with
+        | Var -> List.map (fun v -> V.Mut (ref v)) vs
+        | Const -> vs
       in k (V.Array (Array.of_list vs'))
     )
   | IdxE (exp1, exp2) ->
@@ -305,10 +324,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         interpret_exp env exp2 (fun v2 ->
             let _, call_conv, f = V.as_func v1 in
             check_call_conv exp1 call_conv;
+            check_call_conv_arg exp v2 call_conv;
             f v2 k
-                                    
+
 (*
-        try     
+        try
           let _, f = V.as_func v1 in f v2 k
         with Invalid_argument s ->
           trap exp.at "%s" s
@@ -385,7 +405,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RetE exp1 ->
      interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
-    assert(not(!Flags.await_lowering)); 
+    assert(not(!Flags.await_lowering));
     async
       exp.at
       (fun k' -> let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
@@ -395,7 +415,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | AwaitE exp1 ->
     assert(not(!Flags.await_lowering));
     interpret_exp env exp1
-      (fun v1 -> await exp.at (V.as_async v1) k) 
+      (fun v1 -> await exp.at (V.as_async v1) k)
   | AssertE exp1 ->
     interpret_exp env exp1 (fun  v ->
       if V.as_bool v
@@ -438,7 +458,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
                 V.Env.empty ids
      in
      k (V.Obj (None, ve))
-     
+
 
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
@@ -464,7 +484,7 @@ and interpret_cases env cases at v (k : V.value V.cont) =
 
 and declare_id id =
   V.Env.singleton id.it (Lib.Promise.make ())
-    
+
 and declare_pat pat : val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  V.Env.empty
@@ -484,7 +504,7 @@ and declare_pats pats ve : val_env =
 
 and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
-    
+
 and define_pat env pat v =
   match pat.it with
   | WildP -> ()
@@ -524,7 +544,7 @@ and match_lit lit v : bool =
   | _ -> false
 
 and match_pat pat v : val_env option =
-  match pat.it with 
+  match pat.it with
   | WildP -> Some V.Env.empty
   | VarP id -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
   | LitP lit ->
@@ -554,7 +574,7 @@ and match_pats pats vs ve : val_env option =
   match pats, vs with
   | [], [] -> Some ve
   | pat::pats', v::vs' ->
-    (match match_pat pat v with 
+    (match match_pat pat v with
     | Some ve' -> match_pats pats' vs' (V.Env.adjoin ve ve')
     | None -> None
     )

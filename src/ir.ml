@@ -25,7 +25,7 @@ and exp' =
   | ActorE of Syntax.id * exp_field list       (* actor *)
   | DotE of exp * Syntax.name                  (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of exp list                         (* array *)
+  | ArrayE of Syntax.mut * exp list            (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of Value. call_conv * exp * Syntax.typ list * exp (* function call *)
   | BlockE of dec list                         (* block *)

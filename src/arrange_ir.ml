@@ -15,7 +15,7 @@ let rec exp e = match e.it with
   | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE es           -> "ArrayE"  $$ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"  $$ [Arrange.mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (cc, e1, ts, e2) -> "CallE" $$ [Atom (Value.string_of_call_conv cc); exp e1] @ List.map Arrange.typ ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds

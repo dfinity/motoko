@@ -340,11 +340,6 @@ let new_local env name =
   let (set_i, get_i, _) = new_local_ env name
   in (set_i, get_i)
 
-(* Stack utilities *)
-
-(* duplicate top element *)
-let dup env : G.t = set_tmp env ^^ get_tmp env ^^ get_tmp env
-
 (* Some code combinators *)
 
 (* expects a number on the stack. Iterates from zero t below that number *)
@@ -1013,7 +1008,6 @@ module Closure = struct
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env h last name is_local captured mk_pat mk_body at =
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
-      let (set_val, get_val) = new_local pre_env "func_value" in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
@@ -1022,19 +1016,8 @@ module Closure = struct
         Heap.alloc pre_env (Int32.add header_size len) ^^
         set_li ^^
 
-        (* Possibly turn into a funcref *)
-        get_li ^^
-        begin
-          if is_local
-          then G.nop
-          else G.i_ (Call (nr (E.built_in pre_env "closure_to_funcref")))
-        end ^^
-        set_val ^^
-
-        (* And store it *)
-        alloc_code0 ^^
-        get_val ^^
-        Var.set_val pre_env1 name.it
+        (* Alloc space for the name of the function *)
+        alloc_code0
       in
 
       ( pre_env1, alloc_code, fun env ->
@@ -1084,7 +1067,18 @@ module Closure = struct
 
         (* Store all captured values *)
         store_env ^^
-        if last then get_val else G.nop)
+
+        (* Possibly turn into a funcref *)
+        get_li ^^
+        begin
+          if is_local
+          then G.nop
+          else G.i_ (Call (nr (E.built_in env "closure_to_funcref")))
+        end ^^
+
+        (* Store it *)
+        Var.set_val env name.it ^^
+        if last then Var.get_val env name.it else G.nop)
 
   let dec pre_env how last name cc captured mk_pat mk_body at =
     let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
@@ -3028,7 +3022,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | ProjE (e1,n) ->
      compile_exp env e1 ^^ (* offset to tuple (an array) *)
      Array.load_n (Int32.of_int n)
-  | ArrayE es -> Array.lit env (List.map (compile_exp env) es)
+  | ArrayE (m, es) -> Array.lit env (List.map (compile_exp env) es)
   | ActorE (name, fs) ->
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
@@ -3227,30 +3221,32 @@ and compile_mono_pat env how pat =
   (env1, alloc_code, wrapped_code)
 
 and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
-  | TypD _ -> (pre_env, G.nop, fun _ -> G.nop)
+  | TypD _ ->
+    (pre_env, G.nop, fun _ -> 
+      if last then compile_unit else G.nop
+    )
   | ExpD e ->
     (pre_env, G.nop, fun env ->
-      let code = compile_exp env e in
-      let drop = if last then G.nop else G.i_ Drop in
-      code ^^ drop
+      compile_exp env e ^^
+      if last then G.nop else G.i_ Drop
     )
   | LetD (p, e) ->
-    let (pre_env1, alloc_code, code2) = compile_mono_pat pre_env how p in
+    let (pre_env1, alloc_code, fill_code) = compile_mono_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      let code1 = compile_exp env e in
-      let stack_fix = if last then dup env else G.nop in
-      code1 ^^ stack_fix ^^ code2)
+      compile_exp env e ^^
+      fill_code ^^
+      if last then compile_unit else G.nop
+    )
   | VarD (name, e) ->
       assert (AllocHow.M.find_opt name.it how = Some AllocHow.LocalMut ||
               AllocHow.M.find_opt name.it how = Some AllocHow.StoreHeap);
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        let code1 = compile_exp env e in
-        code1 ^^
+        compile_exp env e ^^
         Var.set_val env name.it ^^
-        if last then Var.get_val env name.it  else G.nop)
-
+        if last then compile_unit else G.nop
+      )
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in

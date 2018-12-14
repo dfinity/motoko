@@ -1,29 +1,18 @@
 open Printf
 
-module Await = Awaitopt   (* for more naive cps translation, use Await *)
-module Async = Async 
+module Await = Awaitopt  (* for more naive cps translation, use Await *)
+module Async = Async
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
-
 
 (* Diagnostics *)
 
 let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
-type message = Severity.t * Source.region * string * string
-type messages = message list
-
-let error at category msg =
-  Error (Severity.Error, at, category, msg)
-
-let print_message (sev, at, category, msg) =
-  match sev with
-  | Severity.Error -> eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
-  | Severity.Warning -> eprintf "%s: warning, %s\n%!" (Source.string_of_region at) msg
-
-let print_messages = List.iter print_message
+let error at cat text =
+  Error { Diag.sev = Diag.Error; at; cat; text }
 
 let print_ce =
   Con.Env.iter (fun c k ->
@@ -62,7 +51,7 @@ let print_val _senv v t =
 
 (* Parsing *)
 
-type parse_result = (Syntax.prog, message) result
+type parse_result = (Syntax.prog, Diag.message) result
 
 let dump_prog flag prog =
     if !flag then
@@ -109,21 +98,21 @@ let parse_files filenames =
 
 (* Checking *)
 
-type check_result = (Syntax.prog * Type.typ * Typing.scope * messages, messages) result
-
-let messages_of_typing_messages = List.map (fun (sev, at, msg) -> (sev, at, "type", msg))
+type check_result = (Syntax.prog * Type.typ * Typing.scope) Diag.result
 
 let check_prog infer senv name prog
-  : ((Type.typ * Typing.scope) * messages, messages) result =
+  : (Type.typ * Typing.scope) Diag.result =
   phase "Checking" name;
-  match infer senv prog with
-  | Ok ((t, scope), msgs) ->
-    if !Flags.trace && !Flags.verbose then begin
+  let r = infer senv prog in
+  if !Flags.trace && !Flags.verbose then begin
+    match r with
+    | Ok ((_, scope), _) ->
       print_ce scope.Typing.con_env;
-      print_stat_ve scope.Typing.val_env
-    end;
-    Ok ((t, scope), messages_of_typing_messages msgs)
-  | Error msgs -> Error (messages_of_typing_messages msgs)
+      print_stat_ve scope.Typing.val_env;
+      dump_prog Flags.dump_tc prog;
+    | Error _ -> ()
+  end;
+  r
 
 let await_lowering flag prog name =
   if flag then
@@ -149,14 +138,12 @@ let check_with parse infer senv name : check_result =
   match parse name with
   | Error e -> Error [e]
   | Ok prog ->
-    match check_prog infer senv name prog with
-    | Error msgs -> Error msgs
-    | Ok ((t, scope), msgs) -> Ok (prog, t, scope, msgs)
+    Diag.map_result (fun (t, scope) -> (prog, t, scope))
+      (check_prog infer senv name prog)
 
 let infer_prog_unit senv prog =
-  match Typing.check_prog senv prog with
-  | Error msgs -> Error msgs
-  | Ok (scope, msgs) -> Ok ((Type.unit, scope), msgs)
+  Diag.map_result (fun (scope) -> (Type.unit, scope))
+    (Typing.check_prog senv prog)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
 let check_file senv n = check_with parse_file infer_prog_unit senv n
@@ -179,7 +166,7 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    print_message (Severity.Error, Interpret.get_last_region (), "fatal", Printexc.to_string exn);
+    Diag.print_message (Diag.fatal_error (Interpret.get_last_region ()) (Printexc.to_string exn));
     eprintf "\nLast environment:\n%!";
     eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
     eprintf "\n";
@@ -190,10 +177,10 @@ let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
 let interpret_with check (senv, denv) name : interpret_result =
   match check senv name with
   | Error msgs ->
-    print_messages msgs;
+    Diag.print_messages msgs;
     None
-  | Ok (prog, t, sscope, msgs) ->
-    print_messages msgs;
+  | Ok ((prog, t, sscope), msgs) ->
+    Diag.print_messages msgs;
     let prog = await_lowering (!Flags.await_lowering) prog name in
     let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
     match interpret_prog denv name prog with
@@ -212,18 +199,19 @@ let interpret_files env = function
 
 let prelude_name = "prelude"
 
-let prelude_error phase (sev, at, _, msg) =
-  print_message (sev, at, "fatal", phase ^ " prelude failed: " ^ msg);
+let prelude_error phase (msgs : Diag.messages) =
+  Printf.eprintf "%s prelude failed\n" phase;
+  Diag.print_messages msgs;
   exit 1
 
 let check_prelude () : Syntax.prog * stat_env =
   let lexer = Lexing.from_string Prelude.prelude in
   let parser = Parser.parse_prog in
   match parse_with Lexer.Privileged lexer parser prelude_name with
-  | Error e -> prelude_error "parsing" e
+  | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
     match check_prog infer_prog_unit Typing.empty_scope prelude_name prog with
-    | Error es -> prelude_error "checking" (List.hd es)
+    | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), msgs) ->
       let senv = Typing.adjoin_scope Typing.empty_scope sscope in
       prog, senv
@@ -232,7 +220,7 @@ let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_env prelude_name prelude with
-  | None -> prelude_error "initializing" (Severity.Error, Source.no_region, "", "crashed")
+  | None -> prelude_error "initializing" []
   | Some (_v, dscope) ->
     Interpret.adjoin Interpret.empty_env dscope
 
@@ -289,13 +277,13 @@ let run_files env = function
 (* Compilation *)
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (CustomModule.extended_module, messages) result
+type compile_result = (CustomModule.extended_module, Diag.messages) result
 
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error msgs -> Error msgs
-  | Ok (prog, _t, _scope, msgs) ->
-    print_messages msgs;
+  | Ok ((prog, _t, _scope), msgs) ->
+    Diag.print_messages msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     let prog = Desugar.prog prog in

@@ -36,7 +36,7 @@ let
     | S.ObjE ({it = Type.Actor; _}, i, es) -> I.ActorE (i, exp_fields es)
     | S.DotE (e, n) -> I.DotE (exp e, n)
     | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
-    | S.ArrayE es -> I.ArrayE (exps es)
+    | S.ArrayE (m, es) -> I.ArrayE (m, exps es)
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
     | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.note.S.note_typ in

@@ -8,7 +8,7 @@ Productions marked * probably deferred to later versions.
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
   actor? { <typ-field>;* }                      object
-  var? <typ> [ ]                                array
+  [ var? <typ> ]                                array
   <typ> ?                                       option
   <class>? <typ-params>? <typ> -> <typ>         function
   async <typ>                                   future
@@ -60,7 +60,7 @@ Productions marked * probably deferred to later versions.
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
   <exp> <binop>= <exp>                           binary update
-  [ <exp>,* ]                                    array
+  [ var? <exp>,* ]                               array
   <exp> [ <exp> ]                                array indexing
   <exp> <typ-args>? <exp>                        function call
   { <dec>;* }                                    block

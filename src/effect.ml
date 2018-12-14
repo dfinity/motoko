@@ -50,7 +50,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let t2 = effect_exp exp2 in
     max_eff t1 t2
   | TupE exps 
-  | ArrayE exps ->
+  | ArrayE (_, exps) ->
     let es = List.map effect_exp exps in
     List.fold_left max_eff Type.Triv es
   | BlockE decs ->

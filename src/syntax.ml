@@ -137,7 +137,7 @@ and exp' =
   | ObjE of obj_sort * id * exp_field list     (* object *)
   | DotE of exp * name                         (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of exp list                         (* array *)
+  | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block *)
@@ -202,7 +202,6 @@ let seqT ts =
 
 let as_seqT t =
   match t.Source.it with
-  | TupT [_] -> failwith "as_seqT"
   | TupT ts -> ts
   | _ -> [t]
            
