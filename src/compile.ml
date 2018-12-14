@@ -839,13 +839,17 @@ module AllocHow = struct
     (* What allocation is required for the things defined here? *)
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
-      | VarD _ -> map_of_set LocalMut d
+      | VarD _ ->
+      map_of_set LocalMut d
       (* Messages cannot be static *)
-      | FuncD ((Type.Call Type.Sharable, _, _, _), _, _, _, _, _) -> map_of_set LocalImmut d
+      | FuncD (cc, _, _, _, _, _) when cc.Value.sort = Type.Call Type.Sharable ->
+      map_of_set LocalImmut d
       (* Static functions and classes *)
-      | FuncD _ when is_static env how0 f -> M.empty
+      | FuncD _ when is_static env how0 f ->
+      M.empty
       (* Everything else needs at least a local *)
-      | _ -> map_of_set LocalImmut d in
+      | _ ->
+      map_of_set LocalImmut d in
 
     (* Do we capture anything unseen, but non-static?
        These need to be heap-allocated.
@@ -916,8 +920,7 @@ module Closure = struct
   (* Calculate the wasm type for a given calling convention.
      An extra first argument for the closure! *)
   let ty env cc =
-    let (_, _, n_args, _) = cc in
-    E.func_type env (FuncType (I32Type :: Lib.List.make n_args I32Type,[I32Type]))
+    E.func_type env (FuncType (I32Type :: Lib.List.make cc.Value.n_args I32Type,[I32Type]))
 
   (* Expect on the stack
      the function closure
@@ -2498,8 +2501,7 @@ module FuncDec = struct
 
   (* The type of messages *)
   let message_ty env cc =
-    let (_, _, n_args, _) = cc in
-    E.func_type env (FuncType (Lib.List.make n_args I32Type,[]))
+    E.func_type env (FuncType (Lib.List.make cc.Value.n_args I32Type,[]))
 
   (* Expects all arguments on the stack, in serialized form. *)
   let call_funcref env cc get_ref =
@@ -2534,8 +2536,7 @@ module FuncDec = struct
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
   let compile_local_function env cc restore_env mk_pat mk_body at =
-    let (_, _, n_args, _) = cc in
-    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
+    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
     Func.of_body env (["clos"] @ args) [I32Type] (fun env1 ->
       let get_closure = G.i (GetLocal (E.unary_closure_local env1) @@ at) in
 
@@ -2559,8 +2560,7 @@ module FuncDec = struct
      - Fake orthogonal persistence
   *)
   let compile_message env cc restore_env mk_pat mk_body at =
-    let (_, _, n_args, _) = cc in
-    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
+    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
     Func.of_body env (["clos"] @ args) [] (fun env1 ->
       (* Restore memory *)
       OrthogonalPersistence.restore_mem env1 ^^
@@ -2595,8 +2595,7 @@ module FuncDec = struct
   (* A static message, from a public actor field *)
   (* Like compile__message, but no closure *)
   let compile_static_message env cc mk_pat mk_body at : E.func_with_names =
-    let (_, _, n_args, _) = cc in
-    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
+    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
     (* Messages take no closure, return nothing*)
     Func.of_body env args [] (fun env1 ->
       (* Set up memory *)
@@ -2634,7 +2633,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env cc h last name captured mk_pat mk_body at =
-      let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
+      let is_local = cc.Value.sort <> Type.Call Type.Sharable in
 
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
@@ -2682,9 +2681,8 @@ module FuncDec = struct
           else
             let f = compile_message env cc restore_env mk_pat mk_body at in
             let fi = E.add_fun env f name.it in
-            let (_, _, n_args, _) = cc in
             E.add_dfinity_type env (fi,
-              CustomSections.I32 :: Lib.List.make n_args CustomSections.ElemBuf
+              CustomSections.I32 :: Lib.List.make cc.Value.n_args CustomSections.ElemBuf
             );
             fi
           in
@@ -2726,7 +2724,7 @@ module FuncDec = struct
         if last then Var.get_val env name.it else G.nop)
 
   let dec pre_env how last name cc captured mk_pat mk_body at =
-    let is_local = match cc with (Type.Call Type.Sharable, _, _, _) -> false | _ -> true in
+    let is_local = cc.Value.sort <> Type.Call Type.Sharable in
 
     if not is_local && E.mode pre_env <> DfinityMode
     then
@@ -3024,27 +3022,25 @@ and compile_exp (env : E.t) exp = match exp.it with
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
   | CallE (cc, e1, _, e2) when isDirectCall env e1 <> None ->
-     let (_, _, n_args, _) = cc in
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_null ^^ (* A dummy closure *)
-     compile_exp_flat env n_args G.nop e2 ^^ (* the args *)
+     compile_exp_flat env cc.Value.n_args G.nop e2 ^^ (* the args *)
      G.i (Call (nr fi) @@ exp.at)
   | CallE (cc, e1, _, e2) ->
-     let (_, _, n_args, _) = cc in
-     begin match cc with
-      | (Type.Call Type.Local, _, _, _) | (Type.Construct, _, _, _) ->
+     begin match cc.Value.sort with
+      | Type.Call Type.Local | Type.Construct ->
          let (set_clos, get_clos) = new_local env "clos" in
          compile_exp env e1 ^^
          set_clos ^^
          get_clos ^^
-         compile_exp_flat env n_args G.nop e2 ^^
+         compile_exp_flat env cc.Value.n_args G.nop e2 ^^
          get_clos ^^
          Closure.call_closure env cc
-      | (Type.Call Type.Sharable, _, _, _) ->
+      | Type.Call Type.Sharable ->
          let (set_funcref, get_funcref) = new_local env "funcref" in
          compile_exp env e1 ^^
          set_funcref ^^
-         compile_exp_flat env n_args (Serialization.serialize env) e2 ^^
+         compile_exp_flat env cc.Value.n_args (Serialization.serialize env) e2 ^^
          FuncDec.call_funcref env cc get_funcref ^^
          compile_unit
      end
@@ -3256,8 +3252,7 @@ and compile_mono_pat env how pat =
 and compile_func_pat env cc pat =
   let (env1, alloc_code) = alloc_pat env AllocHow.M.empty pat in
   let fill_code get =
-    let (_, _, n_args, _) = cc in
-    if n_args = 1
+    if cc.Value.n_args = 1
     then
       (* Easy case: unary *)
       get 0 ^^ orTrap (fill_pat env1 pat)
@@ -3267,11 +3262,11 @@ and compile_func_pat env cc pat =
       | WildP -> G.nop
       (* The good case: We have a tuple pattern *)
       | TupP ps ->
-        assert (List.length ps = n_args);
+        assert (List.length ps = cc.Value.n_args);
         G.concat_mapi (fun i p -> get i ^^ orTrap (fill_pat env1 p)) ps
       (* The general case: Construct the tuple, and apply the full pattern *)
       | _ ->
-        Array.lit env (Lib.List.table n_args (fun i -> get i)) ^^
+        Array.lit env (Lib.List.table cc.Value.n_args (fun i -> get i)) ^^
         orTrap (fill_pat env1 pat) in
   (env1, alloc_code, fill_code)
 
@@ -3375,8 +3370,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
      I have not reviewed/fixed the code below.
   *)
   let (fi, fill) = E.reserve_fun pre_env name.it in
-  let (_, _, n_args, _) = cc in
-  E.add_dfinity_type pre_env (fi, Lib.List.make n_args CustomSections.ElemBuf);
+  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
