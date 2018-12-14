@@ -82,7 +82,8 @@ let
           I.NewObjE
             (Type.Object Type.Local @@ at,
              List.concat (List.map field_to_obj_entry es)) @@ at
-        ) @@ at ])
+        ) @@ at;
+	I.ExpD (I.VarE self_id @@ at) @@ at])
 
   and exp_fields fs = List.map exp_field fs
   and exp_field f = phrase exp_field' f
