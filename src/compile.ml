@@ -388,12 +388,6 @@ module Func = struct
   let define_built_in env name params retty mk_body =
     E.define_built_in env name (fun () -> of_body env params retty mk_body)
 
-  (* A variant that skips the body if not using --dfinity *)
-  let define_built_in_dfinity env name params retty mk_body =
-    if E.mode env = DfinityMode
-    then define_built_in env name params retty mk_body
-    else define_built_in env name params retty (fun _ -> G.i_ Unreachable)
-
   (* (Almost) transparently lift code into a function and call this function. *)
   let share_code env name params retty mk_body =
     define_built_in env name params retty mk_body;
@@ -1644,10 +1638,6 @@ module Dfinity = struct
       G.i_ (Call (nr (test_print_i env))) ^^
       _compile_static_print env "\n"
 
-  let static_self_message_pointer name env =
-    compile_databuf_of_bytes env name.it ^^
-    G.i_ (Call (nr (E.built_in env "export_self_message")))
-
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
@@ -2499,20 +2489,21 @@ module GC = struct
 end (* GC *)
 
 
-module Message = struct
+(* This comes late because it also deals with messages *)
+module FuncDec = struct
   (* We use the first table slot for calls to funcrefs *)
   (* This does not clash with slots for our functions as long as there
      is at least one imported function (which we do not add to the table) *)
   let tmp_table_slot = 0l
 
   (* The type of messages *)
-  let ty env cc =
+  let message_ty env cc =
     let (_, _, n_args, _) = cc in
     E.func_type env (FuncType (Lib.List.make n_args I32Type,[]))
 
   (* Expects all arguments on the stack, in serialized form. *)
   let call_funcref env cc get_ref =
-    if E.mode env <> DfinityMode then G.i_ Unreachable else 
+    if E.mode env <> DfinityMode then G.i_ Unreachable else
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
       get_ref ^^ (* the boxed funcref table id *)
       Heap.load_field 1l ^^
@@ -2520,10 +2511,10 @@ module Message = struct
       G.i_ (Call (nr (Dfinity.func_internalize_i env))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
-      G.i_ (CallIndirect (nr (ty env cc)))
+      G.i_ (CallIndirect (nr (message_ty env cc)))
 
-  let system_funs mod_env =
-    Func.define_built_in_dfinity mod_env "export_self_message" ["name"] [I32Type] (fun env ->
+  let export_self_message env =
+    Func.share_code env "export_self_message" ["name"] [I32Type] (fun env ->
       let get_name = G.i_ (GetLocal (nr 0l)) in
 
       Tagged.obj env Tagged.Reference [
@@ -2535,46 +2526,14 @@ module Message = struct
       ]
     )
 
-  let compile env cc mk_pat mk_body at : E.func_with_names =
-    let (_, _, n_args, _) = cc in
-    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
-    (* Messages take no closure, return nothing*)
-    Func.of_body env args [] (fun env1 ->
-      (* Set up memory *)
-      OrthogonalPersistence.restore_mem env ^^
-
-      (* Destruct the argument *)
-      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
-
-      (* Compile the body *)
-      let body_code = mk_body env2 in
-
-      alloc_args_code ^^
-      (* Construct a tuple, as expected by the pattern. *)
-      let get i = G.i_ (GetLocal (nr (Int32.(add 0l (of_int i))))) ^^ Serialization.deserialize env in
-      destruct_args_code get ^^
-      body_code ^^
-      G.i_ Drop ^^
-
-      (* Collect memory *)
-      G.i_ (Call (nr (E.built_in env "collect"))) ^^
-
-      (* Save memory *)
-      OrthogonalPersistence.save_mem env
-      )
-end (* Message *)
-
-(* This comes late because it also deals with messages *)
-module FuncDec = struct
-
-  let static_function_id fi =
-    (* should be different from any pointer *)
-    Int32.add (Int32.mul fi Heap.word_size) 1l
+  let static_self_message_pointer name env =
+    Dfinity.compile_databuf_of_bytes env name.it ^^
+    export_self_message env
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
-  let compile_func env cc restore_env mk_pat mk_body at =
+  let compile_local_function env cc restore_env mk_pat mk_body at =
     let (_, _, n_args, _) = cc in
     let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
     Func.of_body env (["clos"] @ args) [I32Type] (fun env1 ->
@@ -2585,17 +2544,13 @@ module FuncDec = struct
       (* Destruct the argument *)
       let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
 
-      (* Compile the body *)
-      let body_code = mk_body env3 in
-
       closure_code ^^
       alloc_args_code ^^
-      (* Construct a tuple, as expected by the pattern. *)
       let get i = G.i_ (GetLocal (nr (Int32.(add 1l (of_int i))))) in
       destruct_args_code get ^^
-      body_code)
+      mk_body env3)
 
-  (* Similar, but for messages. Differences are:
+  (* Similar, but for shared functions aka messages. Differences are:
      - The closure is actually an index into the closure table
      - The arguments need to be deserialized.
      - The return value ought to be discarded
@@ -2621,16 +2576,13 @@ module FuncDec = struct
       (* Destruct the argument *)
       let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
 
-      (* Compile the body *)
-      let body_code = mk_body env3 in
-
       closure_code ^^
       alloc_args_code ^^
       let get i =
         G.i_ (GetLocal (nr (Int32.(add 1l (of_int i))))) ^^
-        Serialization.deserialize env  in
+        Serialization.deserialize env in
       destruct_args_code get ^^
-      body_code ^^
+      mk_body env3 ^^
       G.i_ Drop ^^
 
       (* Collect garbage *)
@@ -2640,14 +2592,43 @@ module FuncDec = struct
       OrthogonalPersistence.save_mem env1
     )
 
+  (* A static message, from a public actor field *)
+  (* Like compile__message, but no closure *)
+  let compile_static_message env cc mk_pat mk_body at : E.func_with_names =
+    let (_, _, n_args, _) = cc in
+    let args = Lib.List.table n_args (fun i -> Printf.sprintf "arg%i" i) in
+    (* Messages take no closure, return nothing*)
+    Func.of_body env args [] (fun env1 ->
+      (* Set up memory *)
+      OrthogonalPersistence.restore_mem env ^^
+
+      (* Destruct the argument *)
+      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
+
+
+      alloc_args_code ^^
+      let get i =
+        G.i_ (GetLocal (nr (Int32.(add 0l (of_int i))))) ^^
+        Serialization.deserialize env in
+      destruct_args_code get ^^
+      mk_body env2 ^^
+      G.i_ Drop ^^
+
+      (* Collect memory *)
+      G.i_ (Call (nr (E.built_in env "collect"))) ^^
+
+      (* Save memory *)
+      OrthogonalPersistence.save_mem env
+      )
+
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env cc last name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
-        let mk_body' env = mk_body env (compile_unboxed_const (static_function_id fi)) in
-        let f = compile_func env cc (fun env1 _ -> (env1, G.nop)) mk_pat mk_body' at in
+        let restore_no_env env1 _ = (env1, G.nop) in
+        let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
         fill f;
         if last then d.allocate env else G.nop)
 
@@ -2693,14 +2674,13 @@ module FuncDec = struct
                 in (store_env, restore_env) in
           go 0 captured in
 
-        let mk_body' env = mk_body env Closure.load_the_closure in
         let fi =
           if is_local
           then
-            let f = compile_func env cc restore_env mk_pat mk_body' at in
+            let f = compile_local_function env cc restore_env mk_pat mk_body at in
             E.add_fun env f name.it
           else
-            let f = compile_message env cc restore_env mk_pat mk_body' at in
+            let f = compile_message env cc restore_env mk_pat mk_body at in
             let fi = E.add_fun env f name.it in
             let (_, _, n_args, _) = cc in
             E.add_dfinity_type env (fi,
@@ -3065,7 +3045,7 @@ and compile_exp (env : E.t) exp = match exp.it with
          compile_exp env e1 ^^
          set_funcref ^^
          compile_exp_flat env n_args (Serialization.serialize env) e2 ^^
-         Message.call_funcref env cc get_funcref ^^
+         FuncDec.call_funcref env cc get_funcref ^^
          compile_unit
      end
   | SwitchE (e, cs) ->
@@ -3326,7 +3306,7 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
-      let mk_body env1 _ = compile_exp env1 e in
+      let mk_body env1 = compile_exp env1 e in
       FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
@@ -3401,13 +3381,13 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
   });
-  let d = { allocate = Dfinity.static_self_message_pointer name; is_direct_call = None } in
+  let d = { allocate = FuncDec.static_self_message_pointer name; is_direct_call = None } in
   let pre_env1 = E.add_local_deferred pre_env name.it d in
 
   ( pre_env1, fun env ->
     let mk_pat inner_env = compile_func_pat inner_env cc pat in
     let mk_body inner_env = compile_exp inner_env exp in
-    let f = Message.compile env cc mk_pat mk_body f.at in
+    let f = FuncDec.compile_static_message env cc mk_pat mk_body f.at in
     fill f;
     G.nop
   )
@@ -3438,7 +3418,6 @@ and actor_lit outer_env name fs =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     Array.common_funcs env;
-    Message.system_funs env;
 
     let start_fun = Func.of_body env [] [] (fun env3 ->
       (* Compile stuff here *)
@@ -3554,7 +3533,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;
-  Message.system_funs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env start_fun "start" in
