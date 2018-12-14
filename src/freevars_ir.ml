@@ -67,7 +67,7 @@ let rec exp e : f = match e.it with
   | RelE (e1, ro, e2)   -> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
-  | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
+  | ActorE (i, efs)     -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, es)      -> exps es
@@ -123,8 +123,6 @@ and dec d = match d.it with
   | FuncD (cc, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, l, tp, s, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ under_lambda (close (exp_fields efs) /// pat p // i'.it)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =

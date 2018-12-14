@@ -12,12 +12,12 @@ let rec exp e = match e.it with
   | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, i, efs)    -> "ObjE"    $$ [Arrange.obj_sort s; id i] @ List.map exp_field efs
+  | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [Arrange.mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | CallE (cc, e1, ts, e2) -> "CallE" $$ [Atom (Value.string_of_call_conv cc); exp e1] @ List.map Arrange.typ ts @ [exp e2]
+  | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map Arrange.typ ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
@@ -39,6 +39,7 @@ let rec exp e = match e.it with
   | NewObjE (s, nameids)-> "NewObjE" $$ (Arrange.obj_sort s ::
                                               List.fold_left (fun flds (n,i) ->
                                                   (name n)::(id i):: flds) [] nameids)
+
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
@@ -58,15 +59,15 @@ and id i = Atom i.it
 
 and name n = Atom (Syntax.string_of_name n.it)
 
+and call_conv cc = Atom (Value.string_of_call_conv cc)
+
 and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (cc, i, tp, p, t, e) ->
-    "FuncD" $$ [Atom (Value.string_of_call_conv cc); id i] @ List.map Arrange.typ_bind tp @ [pat p; Arrange.typ t; exp e]
+    "FuncD" $$ [call_conv cc; id i] @ List.map Arrange.typ_bind tp @ [pat p; Arrange.typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [Arrange.typ t]
-  | ClassD (i, j, tp, s, p, i', efs) ->
-    "ClassD" $$ id i :: id j :: List.map Arrange.typ_bind tp @ [Arrange.obj_sort s; pat p; id i'] @ List.map exp_field efs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
+and prog prog = "BlockE"  $$ List.map dec prog.it

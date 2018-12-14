@@ -13,20 +13,20 @@ let range_of_region at =
     val _end = position_of_pos at.right
   end
 
-let diagnostics_of_error (sev, at, category, msg) =
-  object%js
-    val range = range_of_region at
-    val severity = match sev with Severity.Error -> 1 | Severity.Warning -> 2
+let diagnostics_of_error (msg : Diag.message) =
+  Diag.(object%js
     val source = Js.string "actorscript"
-    val message = Js.string msg
-  end
+    val severity = match msg.sev with Diag.Error -> 1 | Diag.Warning -> 2
+    val range = range_of_region msg.at
+    val message = Js.string msg.text
+  end)
 
 
 let js_check source =
   let msgs = match
     Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source) "js-input" with
     | Error msgs -> msgs
-    | Ok (_, _, _,  msgs) -> msgs in
+    | Ok (_,  msgs) -> msgs in
   object%js
     val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
     val code = Js.null

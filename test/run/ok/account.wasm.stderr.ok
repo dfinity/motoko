@@ -1,0 +1,203 @@
+non-closed actor: (ActorE
+  this
+  (balance balance (VarE initialBalance) Var Private)
+  (getBalance
+    getBalance
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        getBalance
+        (VarP $8)
+        (TupT)
+        (BlockE
+          (LetD (TupP) (TupE))
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $0)
+                  (PrimT Any)
+                  (CallE
+                    ( 1 -> 0)
+                    (VarE $0)
+                    (BlockE
+                      (ExpD (RetE (CallE ( 1 -> 0) (VarE $0) (VarE balance))))
+                    )
+                  )
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $9)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $8) (VarE $9))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (split
+    split
+    (BlockE
+      (FuncD
+        (shared  2 -> 0)
+        split
+        (TupP (VarP amount) (VarP $10))
+        (TupT)
+        (BlockE
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $1)
+                  (PrimT Any)
+                  (CallE
+                    ( 1 -> 0)
+                    (VarE $1)
+                    (BlockE
+                      (ExpD
+                        (AssignE
+                          (VarE balance)
+                          (BinE (VarE balance) SubOp (VarE amount))
+                        )
+                      )
+                      (ExpD
+                        (RetE
+                          (CallE
+                            ( 1 -> 0)
+                            (VarE $1)
+                            (CallE (class  1 -> 1) (VarE Account) (VarE amount))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $11)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $10) (VarE $11))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (join
+    join
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        join
+        (VarP account)
+        (TupT)
+        (BlockE
+          (ExpD (AssertE (IsE (VarE account) (VarE Account))))
+          (LetD (VarP amount) (VarE balance))
+          (ExpD (AssignE (VarE balance) (LitE (IntLit 0))))
+          (ExpD
+            (CallE
+              (shared  2 -> 0)
+              (DotE (VarE account) credit)
+              (TupE (VarE amount) (VarE Account))
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (credit
+    credit
+    (BlockE
+      (FuncD
+        (shared  2 -> 0)
+        credit
+        (TupP (VarP amount) (VarP caller))
+        (TupT)
+        (BlockE
+          (ExpD (AssertE (IsE (VarE this) (VarE caller))))
+          (ExpD
+            (AssignE (VarE balance) (BinE (VarE balance) AddOp (VarE amount)))
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (isCompatible
+    isCompatible
+    (BlockE
+      (FuncD
+        (shared  2 -> 0)
+        isCompatible
+        (TupP (VarP account) (VarP $12))
+        (TupT)
+        (BlockE
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $2)
+                  (PrimT Any)
+                  (CallE
+                    ( 1 -> 0)
+                    (VarE $2)
+                    (BlockE
+                      (ExpD
+                        (RetE
+                          (CallE
+                            ( 1 -> 0)
+                            (VarE $2)
+                            (IsE (VarE account) (VarE Account))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $13)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $12) (VarE $13))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)

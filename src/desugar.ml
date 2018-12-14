@@ -1,13 +1,11 @@
+open Source
 module S = Syntax
 module I = Ir
 
-
 (* Combinators used in the desguaring *) 
 
-let true_lit : Ir.exp =
-  Source.(I.LitE (S.BoolLit true) @@ no_region)
-let false_lit : Ir.exp =
-  Source.(I.LitE (S.BoolLit false) @@ no_region)
+let true_lit : Ir.exp = I.LitE (S.BoolLit true) @@ no_region
+let false_lit : Ir.exp = I.LitE (S.BoolLit false) @@ no_region
 
 
 let apply_sign op l = Syntax.(match op, l with
@@ -18,13 +16,13 @@ let apply_sign op l = Syntax.(match op, l with
   )
 
 
-let phrase f x = Source.(f x.it @@ x.at)
-let phrase' f x = Source.(f x.note x.it @@ x.at)
+let phrase f x = f x.it @@ x.at
+let phrase' f x = f x.at x.note x.it @@ x.at
 
 let
   rec exps es = List.map exp es
-  and exp e = phrase exp' e
-  and exp' = function
+  and exp e = phrase' exp' e
+  and exp' at note = function
     | S.PrimE p -> I.PrimE p
     | S.VarE i -> I.VarE i
     | S.LitE l -> I.LitE !l
@@ -34,15 +32,15 @@ let
     | S.TupE es -> I.TupE (exps es)
     | S.ProjE (e, i) -> I.ProjE (exp e, i)
     | S.OptE e -> I.OptE (exp e)
-    | S.ObjE (s, i, es) -> I.ObjE (s, i, exp_fields es)
+    | S.ObjE (s, i, es) -> obj at s None i es
     | S.DotE (e, n) -> I.DotE (exp e, n)
     | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
     | S.ArrayE (m, es) -> I.ArrayE (m, exps es)
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-    | S.CallE (e1, is, e2) ->
+    | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
-      let ts = List.map (fun is -> is.Source.it ) is in
-      I.CallE (cc, exp e1, ts, exp e2)
+      let inst = List.map (fun is -> is.Source.it ) is in
+      I.CallE (cc, exp e1, inst, exp e2)
     | S.BlockE ds -> I.BlockE (decs ds)
     | S.NotE e -> I.IfE (exp e, false_lit, true_lit)
     | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, false_lit)
@@ -60,11 +58,37 @@ let
     | S.AwaitE e -> I.AwaitE (exp e)
     | S.AssertE e -> I.AssertE (exp e)
     | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
-    | S.AnnotE (e, _) -> exp' e.Source.it
+    | S.AnnotE (e, _) -> exp' at note e.it
     | S.DecE d -> I.BlockE [dec d]
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp e)
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs)
+
+  and field_to_dec (f : S.exp_field) : Ir.dec =
+    match f.it.S.mut.it with
+    | S.Const -> I.LetD (I.VarP f.it.S.id @@ no_region, exp f.it.S.exp) @@ f.at
+    | S.Var   -> I.VarD (f.it.S.id, exp f.it.S.exp) @@ f.at
+
+  and field_to_obj_entry (f : S.exp_field) =
+    match f.it.S.priv.it with
+    | S.Private -> []
+    | S.Public -> [ (f.it.S.name, f.it.S.id) ]
+
+  and obj at s class_id self_id es =
+    match s.it with
+    | Type.Object _ -> build_obj at None self_id es
+    | Type.Actor -> I.ActorE (self_id, exp_fields es)
+
+  and build_obj at class_id self_id es =
+    I.BlockE (
+      List.map field_to_dec es @
+      [ I.LetD (
+          I.VarP self_id @@ at,
+          I.NewObjE
+            (Type.Object Type.Local @@ at,
+             List.concat (List.map field_to_obj_entry es)) @@ at
+        ) @@ at;
+	I.ExpD (I.VarE self_id @@ at) @@ at])
 
   and exp_fields fs = List.map exp_field fs
   and exp_field f = phrase exp_field' f
@@ -73,7 +97,7 @@ let
 
   and decs ds = List.map dec ds
   and dec d = phrase' dec' d
-  and dec' n = function
+  and dec' at n = function
     | S.ExpD e -> I.ExpD (exp e)
     | S.LetD (p, e) -> I.LetD (pat p, exp e)
     | S.VarD (i, e) -> I.VarD (i, exp e)
@@ -81,8 +105,10 @@ let
       let cc = Value.call_conv_of_typ n.S.note_typ in
       I.FuncD (cc, i, tp, pat p, ty, exp e)
     | S.TypD (i, ty, t) -> I.TypD (i, ty, t)
-    | S.ClassD (i1, i2, ty, s, p, i3, es) -> I.ClassD (i1, i2, ty, s, pat p, i3, exp_fields es)
-
+    | S.ClassD (fun_id, typ_id, tp, s, p, self_id, es) ->
+      let cc = Value.call_conv_of_typ n.S.note_typ in
+      I.FuncD (cc, fun_id, tp, pat p, S.PrimT "dummy" @@ at,
+        obj at s (Some fun_id) self_id es @@ at)
 
   and cases cs = List.map case cs
   and case c = phrase case' c
@@ -98,7 +124,7 @@ let
     | S.TupP ps -> I.TupP (pats ps)
     | S.OptP p -> I.OptP (pat p)
     | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
-    | S.AnnotP (p, _) -> pat' p.Source.it
+    | S.AnnotP (p, _) -> pat' p.it
 
   and prog p = phrase decs p
 
