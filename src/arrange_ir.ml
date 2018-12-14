@@ -66,7 +66,5 @@ and dec d = match d.it with
     "FuncD" $$ [Atom (Value.string_of_call_conv cc); id i] @ List.map Arrange.typ_bind tp @ [pat p; Arrange.typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [Arrange.typ t]
-  | ActorClassD (i, j, tp, p, i', efs) ->
-    "ActorClassD" $$ id i :: id j :: List.map Arrange.typ_bind tp @ [pat p; id i'] @ List.map exp_field efs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
+and prog prog = "BlockE"  $$ List.map dec prog.it

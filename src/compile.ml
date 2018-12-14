@@ -851,7 +851,6 @@ module AllocHow = struct
       | FuncD ((Type.Call Type.Sharable, _, _, _), _, _, _, _, _) -> map_of_set LocalImmut d
       (* Static functions and classes *)
       | FuncD _ when is_static env how0 f -> M.empty
-      | ActorClassD _ when is_static env how0 f -> M.empty
       (* Everything else needs at least a local *)
       | _ -> map_of_set LocalImmut d in
 
@@ -3253,25 +3252,6 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
       let mk_body env1 _ = compile_exp env1 e in
       Closure.dec pre_env how last name cc captured mk_pat mk_body dec.at
-
-  (* Should be desugared for object classes , but not for actor classes yet *)
-  (*
-  | ClassD (name, _, typ_params, s, p, self, efs) ->
-      let captured = Freevars_ir.captured_exp_fields p efs in
-      let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
-      let mk_body env1 compile_fun_identifier =
-        (* TODO: This treats actors like any old object *)
-        let fs' = List.map (fun (f : Ir.exp_field) ->
-          (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
-          ) efs in
-        (* this is run within the function. The class id is the function
-        identifier, as provided by Func.dec:
-        For closures it is the pointer to the closure.
-        For functions it is the function id (shifted to never class with pointers) *)
-        Object.lit env1 (Some self) (Some compile_fun_identifier) fs' in
-      Closure.dec pre_env how last name (Value.local_cc 1 1) captured mk_pat mk_body dec.at
-  *)
-  | _ -> todo "compile_dec" (Arrange_ir.dec dec) (pre_env, G.nop, fun _ -> G.i_ Unreachable)
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
 
