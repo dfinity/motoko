@@ -21,6 +21,7 @@ let positions_to_region position1 position2 =
 let at (startpos, endpos) = positions_to_region startpos endpos
 
 let (@?) it at = {it; at; note = empty_typ_note}
+let (@!) it at = {it; at; note = ref None}	       
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -251,9 +252,9 @@ typ_field :
 
 typ_bind :
   | x=id SUB t=typ
-    { {var = x; bound = t} @@ at $sloc }
+    { {var = x; bound = t} @! at $sloc }
   | x=id
-    { {var = x; bound = PrimT "Any" @@ at $sloc} @@ at $sloc }
+    { {var = x; bound = PrimT "Any" @@ at $sloc} @! at $sloc }
 
 
 
@@ -361,7 +362,9 @@ exp_post :
   | e=exp_post DOT x=id
     { DotE(e, {x with it = Name x.it}) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
-    { CallE(e1, Lib.Option.get tso [], e2) @? at $sloc }
+    { let typ_args = Lib.Option.get tso [] in
+      let typ_insts = List.map (fun typ_arg -> {it = typ_arg; at = typ_arg.at; note = ref Type.Pre}) typ_args in
+      CallE(e1, typ_insts, e2) @? at $sloc }
 
 exp_un :
   | e=exp_post

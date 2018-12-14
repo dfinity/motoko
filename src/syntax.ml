@@ -44,7 +44,7 @@ and typ' =
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
-and typ_bind = typ_bind' Source.phrase
+and typ_bind = (typ_bind', Con.t option ref) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}
 
 
@@ -123,6 +123,9 @@ and pat_field' = {id : id; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
+(* type instantiations *)                   
+type inst = (typ, Type.typ ref) Source.annotated_phrase
+          
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
@@ -139,7 +142,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | CallE of exp * typ list * exp              (* function call *)
+  | CallE of exp * inst list * exp             (* function call *)
   | BlockE of dec list                         (* block *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -194,7 +197,8 @@ and prog' = dec list
 
 
 (* n-ary arguments/result sequences *)
-          
+
+ 
 let seqT ts =
   match ts with
   | [t] -> t

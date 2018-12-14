@@ -1,7 +1,10 @@
 open Printf
 
-module Await = Awaitopt  (* for more naive cps translation, use Await *)
+
+module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async
+module Tailcall = Tailcall
+
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
@@ -114,25 +117,24 @@ let check_prog infer senv name prog
   end;
   r
 
-let await_lowering flag prog name =
+let transform transform_name transform flag prog name  =
   if flag then
     begin
-      phase "Await Lowering" name;
-      let prog' = Await.t_prog prog in
+      phase transform_name name;
+      let prog' = transform prog in
       dump_prog Flags.dump_lowering prog';
       prog'
     end
   else prog
 
-let async_lowering flag prog name =
-  if flag then
-    begin
-      phase "Async Lowering" name;
-      let prog' = Async.t_prog prog in
-      dump_prog Flags.dump_lowering prog';
-      prog'
-    end
-  else prog
+let await_lowering =
+  transform "Await Lowering" Await.t_prog
+
+let async_lowering =
+  transform "Async Lowering" Async.t_prog
+
+let tailcall_optimization =
+  transform "Tailcall optimization" Tailcall.prog
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -286,6 +288,7 @@ let compile_with check mode name : compile_result =
     Diag.print_messages msgs;
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
+    let prog = tailcall_optimization true prog name in
     let prog = Desugar.prog prog in
     let prelude = Desugar.prog prelude in
     phase "Compiling" name;

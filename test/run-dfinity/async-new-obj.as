@@ -3,7 +3,7 @@ let a = async {
    let o = new {private a = "aa" ;
                 private b = "ab";
 	        get_a():Text {a;};
-	        get_b():Text {b;};}; 
+	        get_b():Text {b;};};
    let (a,b) = (o.get_a(),o.get_b());
    print a;
    print b;
@@ -14,11 +14,11 @@ let b = async {
    let o = new {private a = await (async "ba") ;
                 private b = "bb";
 		get_a():Text {a;};
-		get_b():Text {b;};}; 
+		get_b():Text {b;};};
    let (a,b) = (o.get_a(),o.get_b());
    print a;
    print b;
-   print "\n";   
+   print "\n";
 };
 
 let c = async {
@@ -26,7 +26,7 @@ let c = async {
                 private b = await (async "cb");
 	        get_a():Text {a;};
 	        get_b():Text {b;};};
-   let (a,b) = (o.get_a(),o.get_b());		  
+   let (a,b) = (o.get_a(),o.get_b());
    print a;
    print b;
    print "\n";
@@ -37,7 +37,7 @@ let d = async {
                 private b = await (async "db");
                 get_a(): Text {a;};
 	  	get_b(): Text {b;};};
-   let (a,b) = (o.get_a(),o.get_b());		  
+   let (a,b) = (o.get_a(),o.get_b());
    print a;
    print b;
    print "\n";

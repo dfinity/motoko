@@ -35,11 +35,19 @@ let id_of_exp x =
 
 let id_stamp = ref 0
 
-let fresh_id typ =
+let fresh () =
   let name = Printf.sprintf "$%i" (!id_stamp) in
-  let exp = idE (name@@no_region) typ in
-  (id_stamp := !id_stamp + 1;
-   exp)
+  id_stamp := !id_stamp + 1;
+  name
+
+let fresh_lab () =
+  let name = fresh () in
+  name@@no_region
+
+let fresh_id typ =
+  let name = fresh () in
+  idE (name@@no_region) typ
+
 
 (* Patterns *)
 
@@ -175,6 +183,41 @@ let tupE exps =
            note_eff = eff}
   }
 
+let breakE l exp typ =
+  { it = BreakE (l, exp);
+    at = no_region;
+    note = {note_eff = eff exp;
+            note_typ = typ}
+  }
+
+let retE exp typ =
+  { it = RetE exp;
+    at = no_region;
+    note = {note_eff = eff exp;
+            note_typ = typ}
+  }
+
+let assignE exp1 exp2 =
+  { it = AssignE (exp1,exp2);
+    at = no_region;
+    note = {note_eff = Effect.max_eff (eff exp1) (eff exp2);
+            note_typ = Type.unit}
+  }
+
+let labelE l typT exp =
+  { exp with it = LabelE(l,typT,exp) }
+
+let loopE exp1 exp2Opt =
+  { it = LoopE(exp1,exp2Opt);
+    at = no_region;
+    note = {note_eff = Effect.max_eff (eff exp1)
+                         (match exp2Opt with
+                          | Some exp2 -> eff exp2
+                          | None -> Type.Triv);
+            note_typ = Type.unit}
+  }
+
+
 let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
@@ -197,6 +240,14 @@ let newObjE typ sort ids =
 
 (* Declarations *)
 
+
+let letP p e =
+  {it = LetD(p,e);
+   at = no_region;
+   note = { note_typ = T.unit; (* ! *)
+            note_eff = e.note.note_eff; }
+  }
+
 let letD x exp = { it = LetD (varP x,exp);
                    at = no_region;
                    note = { note_eff = eff exp;
@@ -208,8 +259,7 @@ let varD x exp = { it = VarD (x,exp);
                    note = { note_eff = eff exp;
                             note_typ = T.unit;} (* ! *)
                  }
-
-let expD exp =  {exp with it = ExpD exp}
+let expD exp =  { exp with it = ExpD exp}
 
 
 (* let expressions (derived) *)
@@ -233,7 +283,6 @@ let funcD f x e =
   | _ -> failwith "Impossible: funcD"
 
 
-
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs e =
   match f.it,f.note.note_typ with
@@ -248,7 +297,6 @@ let nary_funcD f xs e =
       at = no_region;
       note = f.note;}
   | _,_ -> failwith "Impossible: funcD"
-
 
 
 (* Continuation types *)
@@ -339,3 +387,4 @@ let prim_async typ =
 
 let prim_await typ =
   primE "@await" (T.Func(T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+
