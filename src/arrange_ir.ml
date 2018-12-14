@@ -12,7 +12,7 @@ let rec exp e = match e.it with
   | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, i, efs)    -> "ObjE"    $$ [Arrange.obj_sort s; id i] @ List.map exp_field efs
+  | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [Arrange.mut m] @ List.map exp es
@@ -66,7 +66,7 @@ and dec d = match d.it with
     "FuncD" $$ [Atom (Value.string_of_call_conv cc); id i] @ List.map Arrange.typ_bind tp @ [pat p; Arrange.typ t; exp e]
   | TypD (i, tp, t) ->
     "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [Arrange.typ t]
-  | ClassD (cc, i, j, tp, s, p, i', efs) ->
-    "ClassD" $$ Atom (Value.string_of_call_conv cc) :: id i :: id j :: List.map Arrange.typ_bind tp @ [Arrange.obj_sort s; pat p; id i'] @ List.map exp_field efs
+  | ActorClassD (cc, i, j, tp, p, i', efs) ->
+    "ActorClassD" $$ Atom (Value.string_of_call_conv cc) :: id i :: id j :: List.map Arrange.typ_bind tp @ [pat p; id i'] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

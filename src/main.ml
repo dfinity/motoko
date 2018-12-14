@@ -57,7 +57,7 @@ let exit_on_none = function
 let exit_on_failure = function
   | Ok x -> x
   | Error errs ->
-    Pipeline.print_messages errs;
+    Diag.print_messages errs;
     exit 1
 
 let process_files files : unit =
@@ -71,8 +71,8 @@ let process_files files : unit =
     let env = exit_on_none Pipeline.(run_files initial_env files) in
     Pipeline.run_stdin env
   | Check ->
-    let (_,_,_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env files) in
-    Pipeline.print_messages msgs
+    let (_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env files) in
+    Diag.print_messages msgs
   | Compile ->
     if !out_file = "" then begin
       match files with
