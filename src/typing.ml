@@ -212,6 +212,7 @@ and check_typ_field env s typ_field : T.field =
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun x -> Con.fresh x) xs in
+  List.iter2 (fun typ_bind c -> typ_bind.note := Some c) typ_binds cs;
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -242,7 +243,12 @@ and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   | [], _ -> local_error env at "too many type arguments"; []
   | _, [] -> error env at "too few type arguments"
 
-
+and check_inst_bounds env tbs (insts:inst list) at =
+  let typs = List.map (fun inst -> inst.it) insts in
+  let tys = check_typ_bounds env tbs typs at  in
+  List.iter2 (fun inst ty -> inst.note := ty) insts tys;
+  tys
+    
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -445,11 +451,11 @@ and infer_exp' env exp : T.typ =
       error env exp1.at "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-  | CallE (exp1, typs, exp2) ->
+  | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let tbs, t2, t = T.as_func_sub (List.length typs) env.cons t1 in
-      let ts = check_typ_bounds env tbs typs exp.at in
+      let tbs, t2, t = T.as_func_sub (List.length insts) env.cons t1 in
+      let ts = check_inst_bounds env tbs insts exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
     with Invalid_argument _ ->
@@ -1027,7 +1033,7 @@ and check_dec env t dec =
     check_exp env t exp;
     dec.note <- exp.note;
 (* TBR: push in external type annotation;
-   unfortunately, this is enough, because of the earlier recursive phases
+   unfortunately, this isn't enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
     (* TBR: special-case unit? *)
     if T.eq env.cons t T.unit then

@@ -22,10 +22,10 @@ assert(not ({} is C));
 assert(not ({} is G));
 assert(not ({} is A));
 assert(not ({} is H));
-assert(not (actor {} is C));
-assert(not (actor {} is G));
-assert(not (actor {} is A));
-assert(not (actor {} is H));
+assert(not ((actor {}) is C));
+assert(not ((actor {}) is G));
+assert(not ((actor {}) is A));
+assert(not ((actor {}) is H));
 
 assert(not (C() is A));
 assert(not (C() is G));

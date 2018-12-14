@@ -7,10 +7,10 @@ Productions marked * probably deferred to later versions.
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  actor? { <typ-field>;* }                      object
+  (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
   <typ> ?                                       option
-  <class>? <typ-params>? <typ> -> <typ>         function
+  (shared|class)? <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
   like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
@@ -43,10 +43,6 @@ Productions marked * probably deferred to later versions.
 
 ## Expressions
 ```
-<sort> ::=
-  new
-  actor
-
 <exp> ::=
   <id>                                           variable
   <lit>                                          literal
@@ -55,7 +51,6 @@ Productions marked * probably deferred to later versions.
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   <exp> ?                                        option injection
-  <sort> <id>? { <exp-field>;* }                 object
   <exp> . <id>                                   object projection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
@@ -113,12 +108,13 @@ Productions marked * probably deferred to later versions.
 ## Declarations
 ```
 <dec> ::=                                                 declaration
-  <exp>                                                     expression
-  let <pat> = <exp>                                         immutable
-  var <id> (: <typ>)? = <exp>                               mutable
-  func <id>? <typ-params>? <pat> (: <typ>)? = <exp>         function
-  type <id> <typ-params>? = <typ>                           type
-  actor? class <id> <typ-params>? <pat> (: <typ>)? = <exp>  class
+  <exp>                                                       expression
+  let <pat> = <exp>                                           immutable
+  var <id> (: <typ>)? = <exp>                                 mutable
+  (new|object|actor|shared) <id>? =? { <exp-field>;* }        object
+  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
+  type <id> <typ-params>? = <typ>                             type
+  actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
 ```
 
 ## Programs

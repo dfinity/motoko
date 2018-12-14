@@ -38,7 +38,8 @@ let
     | S.ArrayE (m, es) -> I.ArrayE (m, exps es)
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
     | S.CallE (e1, inst, e2) ->
-      let cc = Value.call_conv_of_typ e1.note.S.note_typ in
+      let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
+      let inst = List.map (fun t -> t.Source.it ) inst in
       I.CallE (cc, exp e1, inst, exp e2)
     | S.BlockE ds -> I.BlockE (decs ds)
     | S.NotE e -> I.IfE (exp e, false_lit, true_lit)

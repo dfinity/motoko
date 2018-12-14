@@ -23,9 +23,11 @@ val nextN : name
 
 (* Identifiers *)
 
+val fresh_lab : unit -> id
+val fresh_id : typ -> var
+
 val idE : id -> typ -> exp
 val id_of_exp : exp -> id
-val fresh_id : typ -> var
 
 (* Patterns *)
 
@@ -46,16 +48,26 @@ val letE : var -> exp -> exp -> exp
 
 val unitE : exp
 val boolE : bool -> exp
-val callE : exp -> Syntax.typ list -> exp -> typ -> exp
+
+val callE : exp -> Syntax.inst list -> exp -> typ -> exp
+
 val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> name -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val tupE : exp list -> exp
+val breakE: id -> exp -> typ -> exp
+val retE: exp -> typ -> exp
+val assignE : exp -> exp -> exp
+val labelE : id -> Syntax.typ -> exp -> exp
+val loopE: exp -> exp option -> exp
+
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : typ -> Syntax.obj_sort -> (name*id) list -> exp
 
 (* Declarations *)
+
+val letP : pat -> exp -> dec   (* TBR: replace letD? *)
 
 val letD : var -> exp -> dec
 val varD : id -> exp -> dec
@@ -74,7 +86,7 @@ val fresh_cont : typ -> var
 
 val seqE : exp list -> exp
 val as_seqE : exp -> exp list
-  
+
 (* Lambdas *)
 
 val (-->) : var -> exp -> exp
@@ -87,4 +99,6 @@ val (-*-) : exp -> exp -> exp       (* application *)
    introduced by await(opt).ml to be removed by async.ml *)
 
 val prim_async : typ -> exp
+
 val prim_await : typ -> exp
+
