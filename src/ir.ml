@@ -22,7 +22,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of Syntax.obj_sort * Syntax.id * exp_field list     (* object *)
+  | ActorE of Syntax.id * exp_field list       (* actor *)
   | DotE of exp * Syntax.name                  (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of Syntax.mut * exp list            (* array *)
@@ -61,7 +61,7 @@ and dec' =
   | VarD of Syntax.id * exp                                   (* mutable *)
   | FuncD of Value.call_conv * Syntax.id * Syntax.typ_bind list * pat * Syntax.typ * exp (* function *)
   | TypD of Syntax.id * Syntax.typ_bind list * Syntax.typ                   (* type *)
-  | ClassD of Syntax.id (*term id*) * Syntax.id (*type id*) * Syntax.typ_bind list * Syntax.obj_sort * pat * Syntax.id * exp_field list (* class *)
+  | ActorClassD of Syntax.id (*term id*) * Syntax.id (*type id*) * Syntax.typ_bind list * pat * Syntax.id * exp_field list
 
 
 (* Program *)

@@ -638,6 +638,7 @@ module Tagged = struct
 
   type tag =
     | Object
+    | ObjInd (* The indirection used in object *)
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
     | Int
@@ -650,14 +651,15 @@ module Tagged = struct
   (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
     | Object -> 1l
-    | Array -> 2l
-    | Reference -> 3l
-    | Int -> 4l
-    | MutBox -> 5l
-    | Closure -> 6l
-    | Some -> 7l
-    | Text -> 8l
-    | Indirection -> 9l
+    | ObjInd -> 2l
+    | Array -> 3l
+    | Reference -> 4l
+    | Int -> 5l
+    | MutBox -> 6l
+    | Closure -> 7l
+    | Some -> 8l
+    | Text -> 9l
+    | Indirection -> 10l
 
   (* The tag *)
   let header_size = 1l
@@ -706,6 +708,9 @@ module Var = struct
       compile_unboxed_const 0l (* number of parameters: none *)
     ]
 
+  let field_box env code =
+    Tagged.obj env Tagged.ObjInd [ code ]
+
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
      We tag this indirection using Tagged.MutBox.
@@ -716,7 +721,7 @@ module Var = struct
   let load = Heap.load_field mutbox_field
   let store = Heap.store_field mutbox_field
 
-  let add_local env name =
+  let _add_local env name =
     E.add_local_with_offset env name mutbox_field
 
   (* Stores the payload *)
@@ -769,6 +774,12 @@ module Var = struct
       ( compile_null , fun env1 -> (E.add_local_deferred env1 var d, G.i_ Drop))
     | None -> (G.i_ Unreachable, fun env1 -> (env1, G.i_ Unreachable))
 
+  (* Returns a pointer to a heap allocated box for this.
+     (either a mutbox, if already mutable, or a freshly allocated box
+  *)
+  let get_val_ptr env var = match E.lookup_var env var with
+    | Some (HeapInd (i, 1l)) -> G.i_ (GetLocal (nr i))
+    | _  -> field_box env (get_val env var)
 end (* Var *)
 
 module Opt = struct
@@ -840,7 +851,7 @@ module AllocHow = struct
       | FuncD ((Type.Call Type.Sharable, _, _, _), _, _, _, _, _) -> map_of_set LocalImmut d
       (* Static functions and classes *)
       | FuncD _ when is_static env how0 f -> M.empty
-      | ClassD _ when is_static env how0 f -> M.empty
+      | ActorClassD _ when is_static env how0 f -> M.empty
       (* Everything else needs at least a local *)
       | _ -> map_of_set LocalImmut d in
 
@@ -1170,84 +1181,8 @@ module Object = struct
     Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
-  let lit env this_name_opt class_option fs =
-    let name_pos_map =
-      fs |>
-      (* We could store only public fields in the object, but
-         then we need to allocate separate boxes for the non-public ones:
-         List.filter (fun (_, priv, f) -> priv.it = Public) |>
-      *)
-      List.map (fun ({it = Syntax.Name s;_} as n,_,_,_) -> (hash_field_name n, s)) |>
-      List.sort compare |>
-      List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
-      List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
-
-     let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
-
-     (* Allocate memory *)
-     let (set_ri, get_ri, ri) = new_local_ env "obj" in
-     Heap.alloc env (Int32.add header_size (Int32.mul 2l sz)) ^^
-     set_ri ^^
-
-     (* Set tag *)
-     get_ri ^^
-     Tagged.store Tagged.Object ^^
-
-     (* Write the class field *)
-     get_ri ^^
-     (match class_option with
-       | Some class_instrs -> class_instrs
-       | None -> compile_unboxed_const 1l ) ^^
-     Heap.store_field class_position ^^
-
-     (* Set size *)
-     get_ri ^^
-     compile_unboxed_const sz ^^
-     Heap.store_field size_field ^^
-
-    let is_public_field {it = Syntax.Name n; _} =
-        FieldEnv.mem n name_pos_map in
-    let hash_position env {it = Syntax.Name n; _} =
-        let i = FieldEnv.find n name_pos_map in
-        Int32.add header_size (Int32.mul 2l i) in
-    let field_position env {it = Syntax.Name n; _} =
-        let i = FieldEnv.find n name_pos_map in
-        Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
-
-     (* Bind the fields in the envrionment *)
-     let mk_field_ptr env (name, id, _, _) =
-       E.reuse_local_with_offset env id.it ri (field_position env name) in
-     let env1 = List.fold_left mk_field_ptr env fs in
-
-     (* An extra indirection for the 'this' pointer, if present *)
-     let (env2, this_code) = match this_name_opt with
-      | Some name -> let (env2, ti) = Var.add_local env1 name.it in
-                     (env2, Tagged.obj env1 Tagged.MutBox [ get_ri ] ^^
-                            G.i_ (SetLocal (nr ti)))
-      | None -> (env1, G.nop) in
-     this_code ^^
-
-     (* Write all the fields *)
-     let init_field (name, _, _, mk_is) : G.t =
-       if is_public_field name
-       then
-         (* Write the hash *)
-         get_ri ^^
-         compile_unboxed_const (hash_field_name name) ^^
-         Heap.store_field (hash_position env name) ^^
-         (* Write the value *)
-         get_ri ^^
-         mk_is env2 ^^
-         Heap.store_field (field_position env name)
-       else G.nop
-     in
-     G.concat_map init_field fs ^^
-
-     (* Return the pointer to the object *)
-     get_ri
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
-  (* TODO: Remove duplication with above *)
   let lit_raw env fs =
     let name_pos_map =
       fs |>
@@ -1281,8 +1216,6 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-     let is_public_field {it = Syntax.Name n; _} =
-         FieldEnv.mem n name_pos_map in
      let hash_position env {it = Syntax.Name n; _} =
          let i = FieldEnv.find n name_pos_map in
          Int32.add header_size (Int32.mul 2l i) in
@@ -1292,17 +1225,14 @@ module Object = struct
 
      (* Write all the fields *)
      let init_field (name, mk_is) : G.t =
-       if is_public_field name
-       then
-         (* Write the hash *)
-         get_ri ^^
-         compile_unboxed_const (hash_field_name name) ^^
-         Heap.store_field (hash_position env name) ^^
-         (* Write the value *)
-         get_ri ^^
-         mk_is env ^^
-         Heap.store_field (field_position env name)
-       else G.nop
+       (* Write the hash *)
+       get_ri ^^
+       compile_unboxed_const (hash_field_name name) ^^
+       Heap.store_field (hash_position env name) ^^
+       (* Write the pointer to the indirection *)
+       get_ri ^^
+       mk_is env ^^
+       Heap.store_field (field_position env name)
      in
      G.concat_map init_field fs ^^
 
@@ -1335,6 +1265,9 @@ module Object = struct
         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
         G.if_ []
           ( get_f ^^
+            compile_add_const Heap.word_size ^^
+            (* dereference the indirection *)
+            load_ptr ^^
             compile_add_const Heap.word_size ^^
             set_r
           ) G.nop
@@ -1577,8 +1510,9 @@ module Array = struct
               ] ^^
             set_ni ^^
 
-            Object.lit env1 None None
-              [ (nr_ (Syntax.Name "next"), nr_ "next", nr_ Syntax.Public, fun _ -> get_ni) ]
+            Object.lit_raw env1
+              [ (nr_ (Syntax.Name "next"),
+                fun _ -> Var.field_box env get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -2072,6 +2006,12 @@ module Serialization = struct
               get_x ^^ Opt.project ^^
               G.i_ (Call (nr (E.built_in env "serialize_go")))
             )
+          ; Tagged.ObjInd,
+            G.i_ Drop ^^
+            Tagged.obj env Tagged.ObjInd [
+              get_x ^^ Heap.load_field 1l ^^
+              G.i_ (Call (nr (E.built_in env "serialize_go")))
+            ]
           ; Tagged.Array,
             begin
               let (set_len, get_len) = new_local env "len" in
@@ -2230,6 +2170,9 @@ module Serialization = struct
         ; Tagged.Some,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
+        ; Tagged.ObjInd,
+          G.i_ Drop ^^
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.MutBox,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
@@ -2283,13 +2226,15 @@ module Serialization = struct
     get_x ^^
     Tagged.branch_default env [] G.nop
       [ Tagged.MutBox,
-        (* Adust pointer *)
         compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.Some,
-        (* Adust pointer *)
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.ObjInd,
+        compile_add_const (Int32.mul Heap.word_size 1l) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.Array,
@@ -2307,7 +2252,6 @@ module Serialization = struct
         (* x still on the stack *)
         Heap.load_field Object.size_field ^^
 
-        (* Adjust fields *)
         from_0_to_n env (fun get_i ->
           get_i ^^
           compile_mul_const 2l ^^
@@ -2322,7 +2266,7 @@ module Serialization = struct
       ; Tagged.Closure,
         (* x still on the stack *)
         Heap.load_field Closure.len_field ^^
-        (* Adjust fields *)
+
         from_0_to_n env (fun get_i ->
           get_i ^^
           compile_add_const Closure.header_size ^^
@@ -3079,13 +3023,7 @@ and compile_exp (env : E.t) exp = match exp.it with
      compile_exp env e1 ^^ (* offset to tuple (an array) *)
      Array.load_n (Int32.of_int n)
   | ArrayE (m, es) -> Array.lit env (List.map (compile_exp env) es)
-  | ObjE ({ it = Type.Object _ (*sharing*); _}, name, fs) -> (* TBR - really the same for local and shared? *)
-     let fs' = List.map
-      (fun (f : Ir.exp_field) ->
-        (f.it.name, f.it.id, f.it.priv, fun env -> compile_exp env f.it.exp)
-      ) fs in
-     Object.lit env (Some name) None fs'
-  | ObjE ({ it = Type.Actor; _}, name, fs) ->
+  | ActorE (name, fs) ->
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
@@ -3156,9 +3094,9 @@ and compile_exp (env : E.t) exp = match exp.it with
       compile_exp env e ^^
       Var.set_val env name.it ^^
       compile_unit
-  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) -> (* TBR - really the same for local and shared? *)
+  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) ->
      let fs' = List.map
-      (fun (name, id) -> (name, fun env -> Var.get_val env id.it))
+      (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))
       fs in
      Object.lit_raw env fs'
   | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
@@ -3316,7 +3254,8 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       let mk_body env1 _ = compile_exp env1 e in
       Closure.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
-  (* Classes are desguared to functions and objects. *)
+  (* Should be desugared for object classes , but not for actor classes yet *)
+  (*
   | ClassD (name, _, typ_params, s, p, self, efs) ->
       let captured = Freevars_ir.captured_exp_fields p efs in
       let mk_pat env1 = compile_mono_pat env1 AllocHow.M.empty p in
@@ -3331,6 +3270,8 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
         For functions it is the function id (shifted to never class with pointers) *)
         Object.lit env1 (Some self) (Some compile_fun_identifier) fs' in
       Closure.dec pre_env how last name (Value.local_cc 1 1) captured mk_pat mk_body dec.at
+  *)
+  | _ -> todo "compile_dec" (Arrange_ir.dec dec) (pre_env, G.nop, fun _ -> G.i_ Unreachable)
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
 
