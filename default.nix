@@ -49,7 +49,6 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
-  nixpkgs.wabt
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
 ]; in
@@ -101,7 +100,7 @@ rec {
 
     buildInputs =
       [ native
-        ocaml_wasm
+        nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
       ] ++
@@ -150,7 +149,7 @@ rec {
 
     buildInputs =
       [ native-coverage
-        ocaml_wasm
+        nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
         ocaml_bisect_ppx
