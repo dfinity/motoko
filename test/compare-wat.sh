@@ -9,7 +9,7 @@
 old="$(git rev-parse HEAD)"
 new=""
 
-WASM2WAT="wasm2wat --fold-exprs --no-check --enable-multi-value"
+WASM2WAT="wasm2wat --no-check --enable-multi-value"
 
 while getopts "f:t:" o; do
     case "${o}" in
@@ -74,7 +74,7 @@ do
   test ! -e compare-out/$base.new/$base.wasm ||
   $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 
-  diff -r -N -u compare-out/$base.old compare-out/$base.new
+  diff -r -N -u10 compare-out/$base.old compare-out/$base.new
 
   rm -rf compare-out/$base.old
   rm -rf compare-out/$base.new

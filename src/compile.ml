@@ -3080,9 +3080,12 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
          Serialization.serialize_n env cc.Value.n_args ^^
          FuncDec.call_funcref env cc get_funcref
      end ^^
-     if arity <> cc.Value.n_res
-     then (assert (arity = 1); Array.from_args env cc.Value.n_res)
-     else G.nop
+     begin match arity with
+     | _ when arity = cc.Value.n_res -> G.nop
+     | 0 -> G.table cc.Value.n_res (fun _ -> G.i_ Drop)
+     | 1 -> Array.from_args env cc.Value.n_res
+     | _ -> assert false
+     end
   | 1, SwitchE (e, cs) ->
     let code1 = compile_exp env 1 e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -3275,10 +3278,31 @@ and compile_pat env how pat : E.t * G.t * patternCode =
   let fill_code = fill_pat env1 pat in
   (env1, alloc_code, fill_code)
 
-(* Used for mono patterns (let, function arguments) *)
+(* Used for mono patterns (ForE) *)
 and compile_mono_pat env how pat =
   let (env1, alloc_code, code) = compile_pat env how pat in
   (env1, alloc_code, orTrap code)
+
+(* Used for let patterns: If the patterns is an n-ary tuple pattern,
+   we want to compile the expression accordingly, to avoid the reboxing.
+*)
+and compile_n_ary_pat env how pat =
+  let (env1, alloc_code) = alloc_pat env how pat in
+  let arity, fill_code =
+    match pat.it with
+    (* Nothing to match: Do not even put something on the stack *)
+    | WildP -> 0, G.nop
+    (* The good case: We have a tuple pattern *)
+    | TupP ps when List.length ps <> 1 ->
+      let arity = List.length ps in
+      (* We have to fill the pattern in reverse order, to take things off the
+         stack. This is only ok as long as patterns have no side effects.
+      *)
+      arity, G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
+    (* The general case: Create a single value, match that. *)
+    | _ ->
+      1, orTrap (fill_pat env1 pat)
+  in (env1, alloc_code, arity, fill_code)
 
 (* Used for function patterns
    The complication is that functions are n-ary, and we get the elements
@@ -3312,9 +3336,9 @@ and compile_dec pre_env arity how dec : E.t * G.t * (E.t -> G.t) = match dec.it 
   | TypD _ -> (pre_env, G.nop, fun _ -> compile_unit_nary arity)
   | ExpD e -> (pre_env, G.nop, fun env -> compile_exp env arity e)
   | LetD (p, e) ->
-    let (pre_env1, alloc_code, fill_code) = compile_mono_pat pre_env how p in
+    let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      compile_exp env 1 e ^^
+      compile_exp env pat_arity e ^^
       fill_code ^^
       compile_unit_nary arity
     )
