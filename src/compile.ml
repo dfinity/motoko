@@ -1649,8 +1649,7 @@ module Dfinity = struct
     then
       BoxedInt.unbox env ^^
       G.i_ (Call (nr (test_show_i32_i env))) ^^
-      G.i_ (Call (nr (test_print_i env))) ^^
-      compile_unit
+      G.i_ (Call (nr (test_print_i env)))
     else
       G.i_ Unreachable
 
@@ -1659,8 +1658,7 @@ module Dfinity = struct
     then
       compile_databuf_of_text env ^^
       (* Call print *)
-      G.i_ (Call (nr (test_print_i env))) ^^
-      compile_unit
+      G.i_ (Call (nr (test_print_i env)))
     else
       G.i_ Unreachable
 
@@ -2638,7 +2636,7 @@ module FuncDec = struct
       )
 
   (* Compile a closed function declaration (has no free variables) *)
-  let dec_closed pre_env cc last name mk_pat mk_body at =
+  let dec_closed pre_env cc name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
       let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
@@ -2646,10 +2644,11 @@ module FuncDec = struct
         let restore_no_env env1 _ = (env1, G.nop) in
         let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
         fill f;
-        if last then d.allocate env else G.nop)
+        G.nop
+      )
 
   (* Compile a closure declaration (has free variables) *)
-  let dec_closure pre_env cc h last name captured mk_pat mk_body at =
+  let dec_closure pre_env cc h name captured mk_pat mk_body at =
       let is_local = cc.Value.sort <> Type.Call Type.Sharable in
 
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
@@ -2737,10 +2736,9 @@ module FuncDec = struct
         end ^^
 
         (* Store it *)
-        Var.set_val env name.it ^^
-        if last then Var.get_val env name.it else G.nop)
+        Var.set_val env name.it)
 
-  let dec pre_env how last name cc captured mk_pat mk_body at =
+  let dec pre_env how name cc captured mk_pat mk_body at =
     let is_local = cc.Value.sort <> Type.Call Type.Sharable in
 
     if not is_local && E.mode pre_env <> DfinityMode
@@ -2750,9 +2748,9 @@ module FuncDec = struct
     else match AllocHow.M.find_opt name.it how with
       | None ->
         assert is_local;
-        dec_closed pre_env cc last name mk_pat mk_body at
+        dec_closed pre_env cc name mk_pat mk_body at
       | Some h ->
-        dec_closure pre_env cc (Some h) last name captured mk_pat mk_body at
+        dec_closure pre_env cc (Some h) name captured mk_pat mk_body at
 
 end (* FuncDec *)
 
@@ -2913,8 +2911,9 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
       )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
-  | 1, CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
+  | _, CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
     begin
+     assert (arity = 1);
      compile_exp env 1 e1 ^^
      compile_exp env 1 e2 ^^
      match p with
@@ -2923,13 +2922,19 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
       | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   (* Unary prims *)
-  | 1, CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
+  | _, CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
     begin
      compile_exp env 1 e ^^
      match p with
-      | "abs" -> Prim.prim_abs env
-      | "printInt" -> Dfinity.prim_printInt env
-      | "print" -> Dfinity.prim_print env
+      | "abs" ->
+        assert (arity = 1);
+        Prim.prim_abs env
+      | "printInt" ->
+        Dfinity.prim_printInt env ^^
+        compile_unit_nary arity
+      | "print" ->
+        Dfinity.prim_print env ^^
+        compile_unit_nary arity
       | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   | 1, VarE var ->
@@ -3001,8 +3006,8 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
             G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
           )
         ]
-  | 1, BlockE decs ->
-     compile_decs env decs
+  | _, BlockE decs ->
+     compile_decs env arity decs
   | _, LabelE (name, _ty, e) ->
       G.block_ (Lib.List.make arity I32Type) (G.with_current_depth (fun depth ->
         let env1 = E.add_label env name depth in
@@ -3142,13 +3147,15 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
       fs in
      Object.lit_raw env fs'
   (* We wanted a specialized arity, but no case matches. So we have
-     to try with the general (which should always succeed) *)
+     to use the general form (which should always succeed), and unpack the
+     resulting tuple
+  *)
   | 0, _ ->
     compile_exp env 1 exp ^^
     G.i_ Drop
   | n, _ when n > 1 ->
-    compile_exp env 1 exp ^^
     let (set_tup, get_tup) = new_local env "tup" in
+    compile_exp env 1 exp ^^
     set_tup ^^
     G.table n (fun i ->
       get_tup ^^
@@ -3301,22 +3308,15 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, alloc_code, fill_code)
 
-and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
-  | TypD _ ->
-    (pre_env, G.nop, fun _ -> 
-      if last then compile_unit else G.nop
-    )
-  | ExpD e ->
-    (pre_env, G.nop, fun env ->
-      compile_exp env 1 e ^^
-      if last then G.nop else G.i_ Drop
-    )
+and compile_dec pre_env arity how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
+  | TypD _ -> (pre_env, G.nop, fun _ -> compile_unit_nary arity)
+  | ExpD e -> (pre_env, G.nop, fun env -> compile_exp env arity e)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, fill_code) = compile_mono_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
       compile_exp env 1 e ^^
       fill_code ^^
-      if last then compile_unit else G.nop
+      compile_unit_nary arity
     )
   | VarD (name, e) ->
       assert (AllocHow.M.find_opt name.it how = Some AllocHow.LocalMut ||
@@ -3326,24 +3326,30 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       ( pre_env1, alloc_code, fun env ->
         compile_exp env 1 e ^^
         Var.set_val env name.it ^^
-        if last then compile_unit else G.nop
+        compile_unit_nary arity
       )
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp env1 cc.Value.n_res e in
-      FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
+      let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
+      let lookup_code env =
+        match arity with
+        | 0 -> G.nop
+        | 1 -> Var.get_val env name.it
+        | _ -> assert false in
+      (pre_env1, alloc_code, fun env -> mk_code env ^^ lookup_code env)
 
-and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
+and compile_decs env arity decs : G.t = snd (compile_decs_block env arity decs)
 
-and compile_decs_block env keep_last decs : (E.t * G.t) =
+and compile_decs_block env arity decs : (E.t * G.t) =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, G.nop, fun _ -> if keep_last then compile_unit else G.nop) (* empty declaration list? *)
-    | [dec]       -> compile_dec keep_last pre_env how dec
+    | []          -> (pre_env, G.nop, fun _ -> compile_unit_nary arity)
+    | [dec]       -> compile_dec pre_env arity how dec
     | (dec::decs) ->
-        let (pre_env1, alloc_code1, mk_code1) = compile_dec false pre_env how dec in
+        let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env 0 how dec in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
         (pre_env2, alloc_code1 ^^ alloc_code2, fun env -> mk_code1 env ^^ mk_code2 env) in
   let (env1, alloc_code, mk_code) = go env decs in
@@ -3351,7 +3357,7 @@ and compile_decs_block env keep_last decs : (E.t * G.t) =
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let (env1, code) = compile_decs_block env false (E.get_prelude env).it in
+  let (env1, code) = compile_decs_block env 0 (E.get_prelude env).it in
   (env1, code)
 
 (* Is this a hack? When determining whether an actor is closed,
@@ -3370,7 +3376,7 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
     let rec go env = function
       | [] -> G.nop
       | (prog::progs) ->
-          let (env1, code1) = compile_decs_block env false prog.it in
+          let (env1, code1) = compile_decs_block env 0 prog.it in
           let code2 = go env1 progs in
           code1 ^^ code2 in
     go env1 progs
