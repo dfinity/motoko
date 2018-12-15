@@ -73,7 +73,6 @@ let _ = charlie.go("charlie",Server);
      - we can't (synchronously) subscribe in the Client constructor as its async, need a separate 'go' method.
    tc: reordering IServer and IClient leads to a complaint that subscribe has non-sharable argument	  type - we probably need to normalize while checking.
    compiler:
-        - dvm can't hande this in Client actor;
         - parameterising Client on s:IServer argument complains about non-closed actor (possible I had a typo though)
 */
    
