@@ -102,6 +102,8 @@ module E = struct
     func_types : func_type list ref;
     (* Number of parameters in the current function, to calculate indices of locals *)
     n_param : int32;
+    (* Number of return values, to correctly compile calls to Return *)
+    n_res : int;
     (* Types of locals *)
     locals : value_type list ref;
     local_names : (int32 * string) list ref;
@@ -141,6 +143,7 @@ module E = struct
     local_names = ref [];
     local_vars_env = NameEnv.empty;
     n_param = 0l;
+    n_res = 0;
     ld = NameEnv.empty;
     prelude;
     end_of_static_memory = ref dyn_mem;
@@ -156,11 +159,12 @@ module E = struct
     | Deferred _ -> true
 
   (* Resetting the environment for a new function *)
-  let mk_fun_env env n_param =
+  let mk_fun_env env n_param n_res =
     { env with
       locals = ref [I32Type]; (* the first tmp local *)
       local_names = ref [ n_param , "tmp" ];
-      n_param = n_param;
+      n_param;
+      n_res;
       (* We keep all local vars that are bound to known functions or globals *)
       local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
       ld = NameEnv.empty;
@@ -252,6 +256,8 @@ module E = struct
         fill (mk_fun ());
     | Some (Defined fi) ->  ()
     | Some (Pending mk_fun) -> ()
+
+  let get_n_res (env : t) = env.n_res
 
   let get_imports (env : t) = !(env.imports)
   let get_exports (env : t) = !(env.exports)
@@ -376,7 +382,7 @@ let store_ptr : G.t =
 module Func = struct
 
   let of_body env params retty mk_body =
-    let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) in
+    let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) (List.length retty) in
     List.iteri (fun i n -> E.add_local_name env1 (Int32.of_int i) n) params;
     let ty = FuncType (List.map (fun _ -> I32Type) params, retty) in
     let body = G.to_instr_list (mk_body env1) in
@@ -920,7 +926,9 @@ module Closure = struct
   (* Calculate the wasm type for a given calling convention.
      An extra first argument for the closure! *)
   let ty env cc =
-    E.func_type env (FuncType (I32Type :: Lib.List.make cc.Value.n_args I32Type,[I32Type]))
+    E.func_type env (FuncType (
+      I32Type :: Lib.List.make cc.Value.n_args I32Type,
+      Lib.List.make cc.Value.n_res I32Type))
 
   (* Expect on the stack
      the function closure
@@ -1293,14 +1301,13 @@ module Array = struct
             load_ptr
        ));
     E.define_built_in env "array_set"
-      (fun () -> Func.of_body env ["clos"; "idx"; "val"] [I32Type] (fun env1 ->
+      (fun () -> Func.of_body env ["clos"; "idx"; "val"] [] (fun env1 ->
             get_array_object ^^
             get_first_arg ^^ (* the index *)
             BoxedInt.unbox env1 ^^
             idx env ^^
             get_second_arg ^^ (* the value *)
-            store_ptr ^^
-            compile_unit
+            store_ptr
        ));
     E.define_built_in env "array_len"
       (fun () -> Func.of_body env ["clos"] [I32Type] (fun env1 ->
@@ -1464,20 +1471,27 @@ module Array = struct
     ) ^^
     get_r
 
+  (* Takes n elements of the stack and produces an argument tuple *)
+  let from_args env n =
+    if n = 0 then compile_unit
+    else if n = 1 then G.nop
+    else
+      let name = Printf.sprintf "to_%i_tuple" n in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i) in
+      Func.share_code env name args [I32Type] (fun env ->
+        lit env (Lib.List.table n (fun i -> G.i_ (GetLocal (nr (Int32.of_int i)))))
+      )
+
   (* Takes an argument tuple, and puts the elements on the stack,
      processing each with the mangling argument *)
-  let to_args env n_args mangle =
-    if n_args = 1
-    then
-      mangle
-    else
-      let (set_tup, get_tup) = new_local env "tup" in
-      set_tup ^^
-      G.table n_args (fun i ->
-        get_tup ^^
-        load_n (Int32.of_int i) ^^
-        mangle
-      )
+  let to_args env n_args =
+    assert (n_args <> 1);
+    let (set_tup, get_tup) = new_local env "tup" in
+    set_tup ^^
+    G.table n_args (fun i ->
+      get_tup ^^
+      load_n (Int32.of_int i)
+    )
 
 end (* Array *)
 
@@ -2275,6 +2289,19 @@ module Serialization = struct
       G.i_ (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
+  let serialize_n env n = match n with
+    | 0 -> G.nop
+    | 1 -> serialize env
+    | _ ->
+      let name = Printf.sprintf "serialize_%i" n in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i) in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code env name args retty (fun env ->
+        G.table n (fun i ->
+          G.i_ (GetLocal (nr (Int32.of_int i))) ^^ serialize env
+        )
+      )
+
   let deserialize env =
     Func.share_code env "deserialize" ["ref"] [I32Type] (fun env ->
       let get_elembuf = G.i_ (GetLocal (nr 0l)) in
@@ -2537,7 +2564,8 @@ module FuncDec = struct
    the function will find in the closure. *)
   let compile_local_function env cc restore_env mk_pat mk_body at =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
-    Func.of_body env (["clos"] @ args) [I32Type] (fun env1 ->
+    let retty = Lib.List.make cc.Value.n_res I32Type in
+    Func.of_body env (["clos"] @ args) retty (fun env1 ->
       let get_closure = G.i (GetLocal (E.unary_closure_local env1) @@ at) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
@@ -2561,6 +2589,7 @@ module FuncDec = struct
   *)
   let compile_message env cc restore_env mk_pat mk_body at =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
+    assert (cc.Value.n_res = 0);
     Func.of_body env (["clos"] @ args) [] (fun env1 ->
       (* Restore memory *)
       OrthogonalPersistence.restore_mem env1 ^^
@@ -2583,7 +2612,6 @@ module FuncDec = struct
         Serialization.deserialize env in
       destruct_args_code get ^^
       mk_body env3 ^^
-      G.i_ Drop ^^
 
       (* Collect garbage *)
       G.i_ (Call (nr (E.built_in env3 "collect"))) ^^
@@ -2596,6 +2624,7 @@ module FuncDec = struct
   (* Like compile__message, but no closure *)
   let compile_static_message env cc mk_pat mk_body at : E.func_with_names =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i) in
+    assert (cc.Value.n_res = 0);
     (* Messages take no closure, return nothing*)
     Func.of_body env args [] (fun env1 ->
       (* Set up memory *)
@@ -2611,7 +2640,6 @@ module FuncDec = struct
         Serialization.deserialize env in
       destruct_args_code get ^^
       mk_body env2 ^^
-      G.i_ Drop ^^
 
       (* Collect memory *)
       G.i_ (Call (nr (E.built_in env "collect"))) ^^
@@ -3006,7 +3034,9 @@ and compile_exp (env : E.t) exp = match exp.it with
        G.if_ [] (code2 ^^ G.i_ Drop ^^ G.i_ (Br (nr 1l))) G.nop
      ) ^^
      compile_unit
-  | RetE e -> compile_exp env e ^^ G.i (Return @@ exp.at)
+  | RetE e ->
+    compile_exp_flat env (E.get_n_res env) e ^^
+    G.i (Return @@ exp.at)
   | OptE e ->
      Opt.inject env (compile_exp env e)
   | TupE [] -> compile_unit
@@ -3024,8 +3054,9 @@ and compile_exp (env : E.t) exp = match exp.it with
   | CallE (cc, e1, _, e2) when isDirectCall env e1 <> None ->
      let fi = Lib.Option.value (isDirectCall env e1) in
      compile_null ^^ (* A dummy closure *)
-     compile_exp_flat env cc.Value.n_args G.nop e2 ^^ (* the args *)
-     G.i (Call (nr fi) @@ exp.at)
+     compile_exp_flat env cc.Value.n_args e2 ^^ (* the args *)
+     G.i (Call (nr fi) @@ exp.at) ^^
+     Array.from_args env cc.Value.n_res
   | CallE (cc, e1, _, e2) ->
      begin match cc.Value.sort with
       | Type.Call Type.Local | Type.Construct ->
@@ -3033,14 +3064,16 @@ and compile_exp (env : E.t) exp = match exp.it with
          compile_exp env e1 ^^
          set_clos ^^
          get_clos ^^
-         compile_exp_flat env cc.Value.n_args G.nop e2 ^^
+         compile_exp_flat env cc.Value.n_args e2 ^^
          get_clos ^^
-         Closure.call_closure env cc
+         Closure.call_closure env cc ^^
+         Array.from_args env cc.Value.n_res
       | Type.Call Type.Sharable ->
          let (set_funcref, get_funcref) = new_local env "funcref" in
          compile_exp env e1 ^^
          set_funcref ^^
-         compile_exp_flat env cc.Value.n_args (Serialization.serialize env) e2 ^^
+         compile_exp_flat env cc.Value.n_args e2 ^^
+         Serialization.serialize_n env cc.Value.n_args ^^
          FuncDec.call_funcref env cc get_funcref ^^
          compile_unit
      end
@@ -3077,7 +3110,7 @@ and compile_exp (env : E.t) exp = match exp.it with
          Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
          get_i ^^
          Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
-         Closure.call_closure env1 (Value.local_cc 0 0) ^^
+         Closure.call_closure env1 (Value.local_cc 0 1) ^^
          let (set_oi, get_oi) = new_local env "opt" in
          set_oi ^^
 
@@ -3112,18 +3145,18 @@ and compile_exp (env : E.t) exp = match exp.it with
 (* Compiles an expression of tuple type of the given length, and
    puts them on the stack individually.
 *)
-and compile_exp_flat env n mangle e =
+and compile_exp_flat env n e =
   if n = 0
   then compile_exp env e ^^ G.i_ Drop
   else if n = 1
-  then compile_exp env e ^^ mangle
+  then compile_exp env e
   else match e.it with
     | TupE es ->
       assert (List.length es = n);
-      G.concat_map (fun e -> compile_exp env e ^^ mangle) es
+      G.concat_map (fun e -> compile_exp env e) es
     | _ ->
       compile_exp env e ^^
-      Array.to_args env n mangle
+      Array.to_args env n
 
 and isDirectCall env e = match e.it with
   | VarE var ->
@@ -3301,7 +3334,7 @@ and compile_dec last pre_env how dec : E.t * G.t * (E.t -> G.t) = match dec.it w
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
-      let mk_body env1 = compile_exp env1 e in
+      let mk_body env1 = compile_exp_flat env1 cc.Value.n_res e in
       FuncDec.dec pre_env how last name cc captured mk_pat mk_body dec.at
 
 and compile_decs env decs : G.t = snd (compile_decs_block env true decs)
@@ -3329,7 +3362,7 @@ prelude. So this function compiles the prelude, just to find out the bound names
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l in
+  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
 
@@ -3380,7 +3413,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
 
   ( pre_env1, fun env ->
     let mk_pat inner_env = compile_func_pat inner_env cc pat in
-    let mk_body inner_env = compile_exp inner_env exp in
+    let mk_body inner_env = compile_exp_flat inner_env cc.Value.n_res exp in
     let f = FuncDec.compile_static_message env cc mk_pat mk_body f.at in
     fill f;
     G.nop
