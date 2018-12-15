@@ -1,7 +1,6 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dvm ? true,
   dvm ? null,
-  v8 ? true,
 }:
 
 let stdenv = nixpkgs.stdenv; in
@@ -36,7 +35,7 @@ let real-dvm =
         throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
       else
         # Pass devel = true until the dev test suite runs on MacOS again
-        ((import ./nix/dev) { v8 = v8; devel = true; }).dvm
+        ((import ./nix/dev) { devel = true; }).dvm
     else null
   else dvm; in
 

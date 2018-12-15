@@ -1,10 +1,9 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dvm ? true,
-  v8 ? true,
 }:
 
 let stdenv = nixpkgs.stdenv; in
-let default = import ./default.nix { inherit nixpkgs test-dvm v8; }; in
+let default = import ./default.nix { inherit nixpkgs test-dvm; }; in
 
 #
 # Since building asc, and testing it, are two different derivation in default.nix
