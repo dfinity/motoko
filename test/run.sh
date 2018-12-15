@@ -72,20 +72,23 @@ do
 
   if [ "$tc_succeeded" -eq 0 ];
   then
-    # Interpret
-    echo -n " [run]"
-    $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
-    diff_files="$diff_files $base.run"
+    if [ "$SKIP_RUNNING" != yes ]
+    then
+      # Interpret
+      echo -n " [run]"
+      $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+      diff_files="$diff_files $base.run"
 
-    # Interpret with lowering
-    echo -n " [run-low]"
-    $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
-    diff_files="$diff_files $base.run-low"
+      # Interpret with lowering
+      echo -n " [run-low]"
+      $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
+      diff_files="$diff_files $base.run-low"
 
-    # Diff interpretations without/with lowering
-    echo -n " [diff-low]"
-    diff -u -N $out/$base.run $out/$base.run-low > $out/$base.diff-low 
-    diff_files="$diff_files $base.diff-low"
+      # Diff interpretations without/with lowering
+      echo -n " [diff-low]"
+      diff -u -N $out/$base.run $out/$base.run-low > $out/$base.diff-low
+      diff_files="$diff_files $base.diff-low"
+    fi
 
     # Compile
     echo -n " [wasm]"
