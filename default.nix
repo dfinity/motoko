@@ -50,6 +50,7 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  nixpkgs.wabt
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
 ]; in
@@ -197,6 +198,7 @@ rec {
 
   });
 
+  wabt = nixpkgs.wabt;
   wasm = ocaml_wasm;
   dvm = real-dvm;
 }

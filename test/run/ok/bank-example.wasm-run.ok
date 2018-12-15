@@ -1,1 +1,1 @@
-_out/bank-example.wasm:0x___: runtime trap: unreachable executed
+error running start function: unreachable executed

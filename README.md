@@ -48,11 +48,10 @@ To build `asc.js`, the JavaScript library, use
 nix-build -A js
 ```
 
-If you want to install `wasm` and `dvm` binaries with nix (for example because
-you maintain your Ocaml installation manually), run
+If you want to install `wabt` and `dvm` binaries with Nix, run
 
 ```
-nix-env -i -f . -A wasm
+nix-env -i -f . -A wabt
 nix-env -i -f . -A dvm
 ```
 To update the `dev` checkout and install `dvm` in one go, run `./update-dvm.sh`.

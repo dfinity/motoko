@@ -1,1 +1,1 @@
-_out/use-before-define2.wasm:0x___: runtime trap: unreachable executed
+error running start function: unreachable executed
