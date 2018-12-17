@@ -3078,17 +3078,22 @@ and compile_exp (env : E.t) exp = match exp.it with
   | BlockE decs ->
     compile_decs env decs
   | LabelE (name, _ty, e) ->
-    let sr, code = G.with_current_depth' (fun depth ->
-      let env1 = E.add_label env name depth in
-      compile_exp env1 e
-      ) in
-    sr,
-    G.block_ (StackRep.to_wasm_type sr) code
-  | BreakE (name, _ty) ->
+    (* The value here can come from many places -- the expression,
+       or any of the nested returns. Hard to tell which is the best
+       stack representation here. Also, our wasm encoder does not
+       handle multi-value stack returns yet, it seems.
+       So let’s go with Vanialla. *)
+    StackRep.Vanilla,
+    G.block_ (StackRep.to_wasm_type StackRep.Vanilla) (
+      G.with_current_depth (fun depth ->
+        let env1 = E.add_label env name depth in
+        compile_exp_vanilla env1 e
+      )
+    )
+  | BreakE (name, e) ->
     let d = E.get_label_depth env name in
     StackRep.Unreachable,
-    (* TODO: Is this properly typed? Write more tests! *)
-    compile_unit ^^
+    compile_exp_vanilla env e ^^
     G.branch_to_ d
   | LoopE (e, None) ->
     StackRep.Unreachable,

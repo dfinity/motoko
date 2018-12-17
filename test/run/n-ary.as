@@ -8,6 +8,8 @@ func foo_0_2_block () : (Int, Int) = { let x = 1; let y = 2; (x,y) };
 
 func foo_0_return_2 () : (Int, Int) {return (1,2); (3,4)};
 
+func foo_0_break_2 () : (Int, Int) { label exit  : (Int,Int) { break exit (1,2); (3,4) } };
+
 func foo_1_1 (x : Int) : Int {x + 1};
 
 func foo_1_2 (x : Int) : (Int, Int) {(x,x)};
@@ -20,8 +22,23 @@ foo_0_0();
 
 assert (foo_0_1() == 1);
 
+{
 let (x,y) = foo_0_2();
 assert (x == 1);
 assert (y == 2);
+};
+
+{
+let (x,y) = foo_0_return_2();
+assert (x == 1);
+assert (y == 2);
+};
+
+{
+let (x,y) = foo_0_break_2();
+assert (x == 1);
+assert (y == 2);
+};
+
 
 assert (foo_2_1(foo_1_2(5)) == 10);
