@@ -89,6 +89,11 @@ let with_current_depth (k : depth -> t) : t =
   let depth = new_depth_label () in
   remember_depth depth (k depth)
 
+let with_current_depth' (k : depth -> ('a * t)) : ('a * t) =
+  let depth = new_depth_label () in
+  let x, is = k depth in
+  (x, remember_depth depth is)
+
 let branch_to_ (p : depth) : t =
   fun d rest ->
     nr (Br (nr Int32.(sub d (Lib.Promise.value p)))) :: rest

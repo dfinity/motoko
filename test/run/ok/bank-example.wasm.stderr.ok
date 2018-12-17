@@ -1,4 +1,104 @@
 non-closed actor: (ActorE
+  anon-object-1.32
+  (issuer issuer (CallE (class  0 -> 1) (VarE Issuer) (TupE)) Const Private)
+  (reserve
+    reserve
+    (CallE (class  1 -> 1) (VarE Account) (VarE supply))
+    Const
+    Private
+  )
+  (getIssuer
+    getIssuer
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        getIssuer
+        (VarP $32)
+        (TupT)
+        (BlockE
+          (LetD (TupP) (TupE))
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $0)
+                  (PrimT Any)
+                  (CallE
+                    ( 1 -> 0)
+                    (VarE $0)
+                    (BlockE
+                      (ExpD (RetE (CallE ( 1 -> 0) (VarE $0) (VarE issuer))))
+                    )
+                  )
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $33)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $32) (VarE $33))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (getReserve
+    getReserve
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        getReserve
+        (VarP $34)
+        (TupT)
+        (BlockE
+          (LetD (TupP) (TupE))
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $1)
+                  (PrimT Any)
+                  (CallE
+                    ( 1 -> 0)
+                    (VarE $1)
+                    (BlockE
+                      (ExpD (RetE (CallE ( 1 -> 0) (VarE $1) (VarE reserve))))
+                    )
+                  )
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $35)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $34) (VarE $35))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
+non-closed actor: (ActorE
   self
   (balance balance (VarE initialBalance) Var Private)
   (getBalance
@@ -190,106 +290,6 @@ non-closed actor: (ActorE
                   (VarP $43)
                   (PrimT Any)
                   (CallE (shared  1 -> 0) (VarE $42) (VarE $43))
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    Const
-    Public
-  )
-)
-non-closed actor: (ActorE
-  anon-object-1.32
-  (issuer issuer (CallE (class  0 -> 1) (VarE Issuer) (TupE)) Const Private)
-  (reserve
-    reserve
-    (CallE (class  1 -> 1) (VarE Account) (VarE supply))
-    Const
-    Private
-  )
-  (getIssuer
-    getIssuer
-    (BlockE
-      (FuncD
-        (shared  1 -> 0)
-        getIssuer
-        (VarP $32)
-        (TupT)
-        (BlockE
-          (LetD (TupP) (TupE))
-          (ExpD
-            (CallE
-              ( 1 -> 0)
-              (BlockE
-                (FuncD
-                  ( 1 -> 0)
-                  $lambda
-                  (VarP $0)
-                  (PrimT Any)
-                  (CallE
-                    ( 1 -> 0)
-                    (VarE $0)
-                    (BlockE
-                      (ExpD (RetE (CallE ( 1 -> 0) (VarE $0) (VarE issuer))))
-                    )
-                  )
-                )
-              )
-              (BlockE
-                (FuncD
-                  ( 1 -> 0)
-                  $lambda
-                  (VarP $33)
-                  (PrimT Any)
-                  (CallE (shared  1 -> 0) (VarE $32) (VarE $33))
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    Const
-    Public
-  )
-  (getReserve
-    getReserve
-    (BlockE
-      (FuncD
-        (shared  1 -> 0)
-        getReserve
-        (VarP $34)
-        (TupT)
-        (BlockE
-          (LetD (TupP) (TupE))
-          (ExpD
-            (CallE
-              ( 1 -> 0)
-              (BlockE
-                (FuncD
-                  ( 1 -> 0)
-                  $lambda
-                  (VarP $1)
-                  (PrimT Any)
-                  (CallE
-                    ( 1 -> 0)
-                    (VarE $1)
-                    (BlockE
-                      (ExpD (RetE (CallE ( 1 -> 0) (VarE $1) (VarE reserve))))
-                    )
-                  )
-                )
-              )
-              (BlockE
-                (FuncD
-                  ( 1 -> 0)
-                  $lambda
-                  (VarP $35)
-                  (PrimT Any)
-                  (CallE (shared  1 -> 0) (VarE $34) (VarE $35))
                 )
               )
             )

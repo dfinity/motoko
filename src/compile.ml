@@ -1472,15 +1472,24 @@ module Array = struct
     get_r
 
   (* Takes n elements of the stack and produces an argument tuple *)
-  let from_args env n =
+  let from_stack env n =
     if n = 0 then compile_unit
-    else if n = 1 then G.nop
     else
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i) in
       Func.share_code env name args [I32Type] (fun env ->
         lit env (Lib.List.table n (fun i -> G.i_ (GetLocal (nr (Int32.of_int i)))))
       )
+
+  (* Takes an argument tuple and puts the elements on the stack: *)
+  let to_stack env n =
+    if n = 0 then G.i_ Drop else
+    let name = Printf.sprintf "from_%i_tuple" n in
+    let retty = Lib.List.make n I32Type in
+    Func.share_code env name ["tup"] retty (fun env ->
+      let get_tup = G.i_ (GetLocal (nr 0l)) in
+      G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
+    )
 
 end (* Array *)
 
@@ -2754,6 +2763,68 @@ module FuncDec = struct
 
 end (* FuncDec *)
 
+module StackRep = struct
+
+  (* Value representation on the stack:
+
+     Compiling an expression means putting its value on the stack. But
+     there are various ways of putting a value onto the stack -- unboxed,
+     tupled etc.
+   *)
+  type t = Vanilla  | UnboxedTuple of int | Unreachable
+
+  let unit = UnboxedTuple 0
+
+  (*
+     Most expression have a “preferred”, most optimal, form. Hence,
+     compile_exp put them on the stack in that form, and also returns
+     the form it chose.
+
+     But the users of compile_exp usually want a specific form as well.
+     So they use compile_exp_as, indicating the form they expect. compile_exp_as 
+     then does the necessary coercions.
+
+     So far, the stack representations is merely an integer, the arity:
+       arity = 0: Expression is of type () and nothing is put on the stack
+       arity = 1: The generic case. Returns a single value (pointer or unboxed
+                  scalar) on the stack
+       arity > 1: Expression is of tuple types. Puts elements on the stack
+     To add: Unreachable, Unboxed Int
+   *)
+
+  let of_arity n =
+    if n = 1 then Vanilla else UnboxedTuple n
+
+  let to_wasm_type = function
+    | Vanilla -> [I32Type]
+    | UnboxedTuple n -> Lib.List.make n I32Type
+    | Unreachable -> []
+
+  let to_string = function
+    | Vanilla -> "Vanilla"
+    | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
+    | Unreachable -> "Unreachable"
+
+  let drop env (sr_in : t) =
+    match sr_in with
+    | Vanilla -> G.i_ Drop
+    | UnboxedTuple n -> G.table n (fun _ -> G.i_ Drop)
+    | Unreachable -> G.nop
+
+  let adjust env (sr_in : t) sr_out =
+    if sr_in = sr_out
+    then G.nop
+    else match sr_in, sr_out with
+    | Unreachable, _ -> G.nop
+    | UnboxedTuple n, Vanilla -> Array.from_stack env n
+    | Vanilla, UnboxedTuple n -> Array.to_stack env n
+    | _, _ ->
+      Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
+        (to_string sr_in) (to_string sr_out);
+      G.nop
+end
+
+
 module PatCode = struct
   (* Pattern failure code on demand.
 
@@ -2863,231 +2934,235 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      G.nop,
      Var.set_val env var.it
   | IdxE (e1,e2) ->
-     compile_exp env 1 e1 ^^ (* offset to array *)
-     compile_exp env 1 e2 ^^ (* idx *)
+     compile_exp_vanilla env e1 ^^ (* offset to array *)
+     compile_exp_vanilla env e2 ^^ (* idx *)
      BoxedInt.unbox env ^^
      Array.idx env,
      store_ptr
   | DotE (e, n) ->
-     compile_exp env 1 e ^^
+     compile_exp_vanilla env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env n,
      store_ptr
   | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (G.i_ Unreachable, G.nop)
 
-and compile_unit_nary n =
-  match n with
-  | 0 -> G.nop
-  | 1 -> compile_unit
-  | _ -> assert false
-
-(* compile_exp returns an *value*.
-
-The manner in which it is returned depends on the argument arity:
- arity = 0: Expression is of type () and nothing is put on the stack
- arity = 1: The generic case. Returns a single value (pointer or unboxed scalar) on the stack
- arity > 1: Expression is of tuple types. Puts elements on the stack
-
-The function needs to be complete for (arity = 1), i.e. all expression forms
-need to be compilable as such. Others are just offered as an optimization.
- *)
-and compile_exp (env : E.t) arity exp = match arity, exp.it with
-  | 1, IdxE (e1, e2)  ->
-     compile_exp env 1 e1 ^^ (* offset to array *)
-     compile_exp env 1 e2 ^^ (* idx *)
-     BoxedInt.unbox env ^^
-     Array.idx env ^^
-     load_ptr
-  | 1, DotE (e, ({it = Syntax.Name n;_} as name)) ->
-     compile_exp env 1 e ^^
-     Tagged.branch env [I32Type]
-      ( [ Tagged.Object, Object.load_idx env name ] @
-        (if E.mode env = DfinityMode
-         then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
-         else []) @
-        match  Array.fake_object_idx env n with
-          | None -> []
-          | Some code -> [ Tagged.Array, code ]
-      )
+and compile_exp (env : E.t) exp = match exp.it with
+  | IdxE (e1, e2)  ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e1 ^^ (* offset to array *)
+    compile_exp_vanilla env e2 ^^ (* idx *)
+    BoxedInt.unbox env ^^
+    Array.idx env ^^
+    load_ptr
+  | DotE (e, ({it = Syntax.Name n;_} as name)) ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e ^^
+    Tagged.branch env [I32Type] (
+      [ Tagged.Object, Object.load_idx env name ] @
+      (if E.mode env = DfinityMode
+       then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
+       else []) @
+      match  Array.fake_object_idx env n with
+        | None -> []
+        | Some code -> [ Tagged.Array, code ]
+     )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
-  | _, CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
+  | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
+    StackRep.Vanilla,
     begin
-     assert (arity = 1);
-     compile_exp env 1 e1 ^^
-     compile_exp env 1 e2 ^^
+     compile_exp_vanilla env e1 ^^
+     compile_exp_vanilla env e2 ^^
      match p with
       | "Array.init" -> Array.init env
       | "Array.tabulate" -> Array.tabulate env
       | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
   (* Unary prims *)
-  | _, CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
+  | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
     begin
-     compile_exp env 1 e ^^
-     match p with
-      | "abs" ->
-        assert (arity = 1);
-        Prim.prim_abs env
-      | "printInt" ->
-        Dfinity.prim_printInt env ^^
-        compile_unit_nary arity
-      | "print" ->
-        Dfinity.prim_print env ^^
-        compile_unit_nary arity
-      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
+      match p with
+       | "abs" ->
+         StackRep.Vanilla,
+         compile_exp_vanilla env e ^^
+         Prim.prim_abs env
+       | "printInt" ->
+         StackRep.unit,
+         compile_exp_vanilla env e ^^
+         Dfinity.prim_printInt env
+       | "print" ->
+         StackRep.unit,
+         compile_exp_vanilla env e ^^
+         Dfinity.prim_print env
+       | _ ->
+         StackRep.Unreachable,
+         todo "compile_exp" (Arrange_ir.exp pe) (G.i_ Unreachable)
     end
-  | 1, VarE var ->
-     Var.get_val env var.it
-  | _, AssignE (e1,e2) ->
-     let (prepare_code, store_code) = compile_lexp env e1  in
-     prepare_code ^^
-     compile_exp env 1 e2 ^^
-     store_code ^^
-     compile_unit_nary arity
-  | 1, LitE l ->
-     compile_lit env l
-  | _, AssertE e1 ->
-     compile_exp env 1 e1 ^^
-     BoxedInt.unbox env ^^
-     G.if_ [] G.nop (G.i (Unreachable @@ exp.at)) ^^
-     compile_unit_nary arity
-  | 1, UnE (op, e1) ->
-     compile_exp env 1 e1 ^^
-     compile_unop env op
-  | 1, BinE (e1, op, e2) ->
-     compile_exp env 1 e1 ^^
-     compile_exp env 1 e2 ^^
-     compile_binop env op
-  | 1, RelE (e1, op, e2) ->
-     compile_exp env 1 e1 ^^
-     compile_exp env 1 e2 ^^
-     compile_relop env op
-  | _, IfE (e1, e2, e3) ->
-     let code1 = compile_exp env 1 e1 in
-     let code2 = compile_exp env arity e2 in
-     let code3 = compile_exp env arity e3 in
-     code1 ^^ BoxedInt.unbox env ^^
-     G.if_ (Lib.List.make arity I32Type) code2 code3
-  | 1, IsE (e1, e2) ->
-     let code1 = compile_exp env 1 e1 in
-     let code2 = compile_exp env 1 e2 in
-     let (set_i, get_i) = new_local env "is_lhs" in
-     let (set_j, get_j) = new_local env "is_rhs" in
-     code1 ^^
-     set_i ^^
-     code2 ^^
-     set_j ^^
+  | VarE var ->
+    StackRep.Vanilla,
+    Var.get_val env var.it
+  | AssignE (e1,e2) ->
+    StackRep.unit,
+    let (prepare_code, store_code) = compile_lexp env e1  in
+    prepare_code ^^
+    compile_exp_vanilla env e2 ^^
+    store_code
+  | LitE l ->
+    StackRep.Vanilla,
+    compile_lit env l
+  | AssertE e1 ->
+    StackRep.unit,
+    compile_exp_vanilla env e1 ^^
+    BoxedInt.unbox env ^^
+    G.if_ [] G.nop (G.i (Unreachable @@ exp.at))
+  | UnE (op, e1) ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e1 ^^
+    compile_unop env op
+  | BinE (e1, op, e2) ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e1 ^^
+    compile_exp_vanilla env e2 ^^
+    compile_binop env op
+  | RelE (e1, op, e2) ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e1 ^^
+    compile_exp_vanilla env e2 ^^
+    compile_relop env op
+  | IfE (e1, e2, e3) ->
+    (* Todo: Somehow “join” the stack representations *)
+    StackRep.Vanilla,
+    let code1 = compile_exp_vanilla env e1 in
+    let code2 = compile_exp_vanilla env e2 in
+    let code3 = compile_exp_vanilla env e3 in
+    code1 ^^ BoxedInt.unbox env ^^
+    G.if_ (Lib.List.make 1 I32Type) code2 code3
+  | IsE (e1, e2) ->
+    StackRep.Vanilla,
+    let code1 = compile_exp_vanilla env e1 in
+    let code2 = compile_exp_vanilla env e2 in
+    let (set_i, get_i) = new_local env "is_lhs" in
+    let (set_j, get_j) = new_local env "is_rhs" in
+    code1 ^^
+    set_i ^^
+    code2 ^^
+    set_j ^^
 
-     get_i ^^
-     Tagged.branch env [I32Type]
-      [ Tagged.Array,
-        G.i_ Drop ^^ BoxedInt.lit_false env
-      ; Tagged.Reference,
-        (* TODO: Implement IsE for actor references? *)
-        G.i_ Drop ^^ BoxedInt.lit_false env
-      ; Tagged.Object,
-        (* There are two cases: Either the class is a pointer to
-           the object on the RHS, or it is -- mangled -- the
-           function id stored therein *)
-        Heap.load_field Object.class_position ^^
-        (* Equal? *)
-        get_j ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-        G.if_ [I32Type]
-          (BoxedInt.lit_true env)
-          (* Static function id? *)
-          ( get_i ^^
-            Heap.load_field Object.class_position ^^
-            get_j ^^
-            Heap.load_field 0l ^^ (* get the function id *)
-            compile_mul_const Heap.word_size ^^
-            compile_add_const 1l ^^
-            G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-          )
-        ]
-  | _, BlockE decs ->
-     compile_decs env arity decs
-  | _, LabelE (name, _ty, e) ->
-      G.block_ (Lib.List.make arity I32Type) (G.with_current_depth (fun depth ->
-        let env1 = E.add_label env name depth in
-        compile_exp env1 arity e
-      ))
-  | _, BreakE (name, _ty) ->
-      let d = E.get_label_depth env name in
-      compile_unit ^^ G.branch_to_ d
-  | _, LoopE (e, None) ->
-     G.loop_ [] (
-       let code = compile_exp env 0 e in
-       code ^^ G.i_ (Br (nr 0l))
-     ) ^^
-     G.i_ Unreachable
-  | _, LoopE (e1, Some e2) ->
-     let code1 = compile_exp env 0 e1 in
-     let code2 = compile_exp env 1 e2 in
-     G.loop_ [] (
-       code1 ^^
-       code2 ^^ BoxedInt.unbox env ^^
-       G.if_ [] (G.i_ (Br (nr 1l))) G.nop
-     ) ^^
-     compile_unit_nary arity
-  | _, WhileE (e1, e2) ->
-     let code1 = compile_exp env 1 e1 in
-     let code2 = compile_exp env 0 e2 in
-     G.loop_ [] (
-       code1 ^^ BoxedInt.unbox env ^^
-       G.if_ [] (code2 ^^ G.i_ (Br (nr 1l))) G.nop
-     ) ^^
-     compile_unit_nary arity
-  | _, RetE e ->
-    compile_exp env (E.get_n_res env) e ^^
+    get_i ^^
+    Tagged.branch env [I32Type]
+     [ Tagged.Array,
+       G.i_ Drop ^^ BoxedInt.lit_false env
+     ; Tagged.Reference,
+       (* TODO: Implement IsE for actor references? *)
+       G.i_ Drop ^^ BoxedInt.lit_false env
+     ; Tagged.Object,
+       (* There are two cases: Either the class is a pointer to
+          the object on the RHS, or it is -- mangled -- the
+          function id stored therein *)
+       Heap.load_field Object.class_position ^^
+       (* Equal? *)
+       get_j ^^
+       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+       G.if_ [I32Type]
+         (BoxedInt.lit_true env)
+         (* Static function id? *)
+         ( get_i ^^
+           Heap.load_field Object.class_position ^^
+           get_j ^^
+           Heap.load_field 0l ^^ (* get the function id *)
+           compile_mul_const Heap.word_size ^^
+           compile_add_const 1l ^^
+           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+         )
+     ]
+  | BlockE decs ->
+    compile_decs env decs
+  | LabelE (name, _ty, e) ->
+    let sr, code = G.with_current_depth' (fun depth ->
+      let env1 = E.add_label env name depth in
+      compile_exp env1 e
+      ) in
+    sr,
+    G.block_ (StackRep.to_wasm_type sr) code
+  | BreakE (name, _ty) ->
+    let d = E.get_label_depth env name in
+    StackRep.Unreachable,
+    (* TODO: Is this properly typed? Write more tests! *)
+    compile_unit ^^
+    G.branch_to_ d
+  | LoopE (e, None) ->
+    StackRep.Unreachable,
+    G.loop_ [] (compile_exp_unit env e ^^ G.i_ (Br (nr 0l))
+    )
+    ^^
+   G.i_ Unreachable
+  | LoopE (e1, Some e2) ->
+    StackRep.unit,
+    G.loop_ [] (
+      compile_exp_unit env e1 ^^
+      compile_exp_vanilla env e2 ^^
+      BoxedInt.unbox env ^^
+      G.if_ [] (G.i_ (Br (nr 1l))) G.nop
+    )
+  | WhileE (e1, e2) ->
+    StackRep.unit,
+    G.loop_ [] (
+      compile_exp_vanilla env e1 ^^
+      BoxedInt.unbox env ^^
+      G.if_ [] (
+        compile_exp_unit env e2 ^^
+        G.i_ (Br (nr 1l))
+      ) G.nop
+    )
+  | RetE e ->
+    StackRep.Unreachable,
+    compile_exp_as env (StackRep.of_arity (E.get_n_res env)) e ^^
     G.i (Return @@ exp.at)
-  | 1, OptE e ->
-     Opt.inject env (compile_exp env 1 e)
-  | 1, TupE [] -> compile_unit
-  | _, TupE [] -> assert (arity = 0); G.nop
-  | 1, TupE es -> Array.lit env (List.map (compile_exp env 1) es)
-  | _, TupE es -> assert (arity == List.length es); G.concat_map (compile_exp env 1) es
-  | 1, ProjE (e1,n) ->
-     compile_exp env 1 e1 ^^ (* offset to tuple (an array) *)
-     Array.load_n (Int32.of_int n)
-  | 1, ArrayE (m, es) -> Array.lit env (List.map (compile_exp env 1) es)
-  | 1, ActorE (name, fs) ->
+  | OptE e ->
+    StackRep.Vanilla,
+    Opt.inject env (compile_exp_vanilla env e)
+  | TupE es ->
+    StackRep.UnboxedTuple (List.length es),
+    G.concat_map (compile_exp_vanilla env) es
+  | ProjE (e1,n) ->
+    StackRep.Vanilla,
+    compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
+    Array.load_n (Int32.of_int n)
+  | ArrayE (m, es) ->
+    StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
+  | ActorE (name, fs) ->
+    StackRep.Vanilla,
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
     then actor_lit env name fs
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i_ Unreachable
-  | _, CallE (cc, e1, _, e2) ->
-     begin match isDirectCall env e1, cc.Value.sort with
-      | Some fi, _ ->
-         compile_null ^^ (* A dummy closure *)
-         compile_exp env cc.Value.n_args e2 ^^ (* the args *)
-         G.i (Call (nr fi) @@ exp.at)
-      | None, (Type.Call Type.Local | Type.Construct) ->
-         let (set_clos, get_clos) = new_local env "clos" in
-         compile_exp env 1 e1 ^^
-         set_clos ^^
-         get_clos ^^
-         compile_exp env cc.Value.n_args e2 ^^
-         get_clos ^^
-         Closure.call_closure env cc
-      | None, Type.Call Type.Sharable ->
-         let (set_funcref, get_funcref) = new_local env "funcref" in
-         compile_exp env 1 e1 ^^
-         set_funcref ^^
-         compile_exp env cc.Value.n_args e2 ^^
-         Serialization.serialize_n env cc.Value.n_args ^^
-         FuncDec.call_funcref env cc get_funcref
-     end ^^
-     begin match arity with
-     | _ when arity = cc.Value.n_res -> G.nop
-     | 0 -> G.table cc.Value.n_res (fun _ -> G.i_ Drop)
-     | 1 -> Array.from_args env cc.Value.n_res
-     | _ -> assert false
-     end
-  | 1, SwitchE (e, cs) ->
-    let code1 = compile_exp env 1 e in
+  | CallE (cc, e1, _, e2) ->
+    StackRep.of_arity (cc.Value.n_res),
+    begin match isDirectCall env e1, cc.Value.sort with
+     | Some fi, _ ->
+        compile_null ^^ (* A dummy closure *)
+        compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^ (* the args *)
+        G.i (Call (nr fi) @@ exp.at)
+     | None, (Type.Call Type.Local | Type.Construct) ->
+        let (set_clos, get_clos) = new_local env "clos" in
+        compile_exp_vanilla env e1 ^^
+        set_clos ^^
+        get_clos ^^
+        compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
+        get_clos ^^
+        Closure.call_closure env cc
+     | None, Type.Call Type.Sharable ->
+        let (set_funcref, get_funcref) = new_local env "funcref" in
+        compile_exp_vanilla env e1 ^^
+        set_funcref ^^
+        compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
+        Serialization.serialize_n env cc.Value.n_args ^^
+        FuncDec.call_funcref env cc get_funcref
+    end
+  | SwitchE (e, cs) ->
+    StackRep.Vanilla,
+    let code1 = compile_exp_vanilla env e in
     let (set_i, get_i) = new_local env "switch_in" in
     let (set_j, get_j) = new_local env "switch_out" in
 
@@ -3099,72 +3174,60 @@ and compile_exp (env : E.t) arity exp = match arity, exp.it with
           let (env1, alloc_code, code) = compile_pat env AllocHow.M.empty pat in
           CannotFail alloc_code ^^^
           orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp env1 1 e) ^^^ CannotFail set_j)
+                   CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
                  (go env cs)
           in
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap code2 ^^ get_j
-  | _, ForE (p, e1, e2) ->
-     let code1 = compile_exp env 1 e1 in
-     let (env1, alloc_code, code2) = compile_mono_pat env AllocHow.M.empty p in
-     let code3 = compile_exp env1 0 e2 in
+  | ForE (p, e1, e2) ->
+    StackRep.unit,
+    let code1 = compile_exp_vanilla env e1 in
+    let (env1, alloc_code, code2) = compile_mono_pat env AllocHow.M.empty p in
+    let code3 = compile_exp_unit env1 e2 in
 
-     let (set_i, get_i) = new_local env "iter" in
-     (* Store the iterator *)
-     code1 ^^
-     set_i ^^
+    let (set_i, get_i) = new_local env "iter" in
+    (* Store the iterator *)
+    code1 ^^
+    set_i ^^
 
-     G.loop_ []
-       ( get_i ^^
-         Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
-         get_i ^^
-         Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
-         Closure.call_closure env1 (Value.local_cc 0 1) ^^
-         let (set_oi, get_oi) = new_local env "opt" in
-         set_oi ^^
+    G.loop_ [] (
+      get_i ^^
+      Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
+      get_i ^^
+      Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
+      Closure.call_closure env1 (Value.local_cc 0 1) ^^
+      let (set_oi, get_oi) = new_local env "opt" in
+      set_oi ^^
 
-         (* Check for null *)
-         get_oi ^^
-         compile_null ^^
-         G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
-         G.if_ []
-           G.nop
-           ( alloc_code ^^ get_oi ^^ Opt.project ^^
-             code2 ^^ code3 ^^ G.i_ (Br (nr 1l))
-           )
-     ) ^^
-     compile_unit_nary arity
+      (* Check for null *)
+      get_oi ^^
+      compile_null ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.if_ []
+        G.nop
+        ( alloc_code ^^ get_oi ^^ Opt.project ^^
+          code2 ^^ code3 ^^ G.i_ (Br (nr 1l))
+        )
+    )
   (* Async-wait lowering support features *)
-  | _, DeclareE (name, _, e) ->
-     let (env1, i) = E.add_local_with_offset env name.it 1l in
-     Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
-     G.i_ (SetLocal (nr i)) ^^
-     compile_exp env1 arity e
-  | _, DefineE (name, _, e) ->
-     compile_exp env 1 e ^^
-     Var.set_val env name.it ^^
-     compile_unit_nary arity
-  | 1, NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) ->
-     let fs' = List.map
+  | DeclareE (name, _, e) ->
+    let (env1, i) = E.add_local_with_offset env name.it 1l in
+    let sr, code = compile_exp env1 e in
+    sr,
+    Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
+    G.i_ (SetLocal (nr i)) ^^
+    code
+  | DefineE (name, _, e) ->
+    StackRep.unit,
+    compile_exp_vanilla env e ^^
+    Var.set_val env name.it
+  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) ->
+    StackRep.Vanilla,
+    let fs' = List.map
       (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))
       fs in
-     Object.lit_raw env fs'
-  (* We wanted a specialized arity, but no case matches. So we have
-     to use the general form (which should always succeed), and unpack the
-     resulting tuple
-  *)
-  | 0, _ ->
-    compile_exp env 1 exp ^^
-    G.i_ Drop
-  | n, _ when n > 1 ->
-    let (set_tup, get_tup) = new_local env "tup" in
-    compile_exp env 1 exp ^^
-    set_tup ^^
-    G.table n (fun i ->
-      get_tup ^^
-      Array.load_n (Int32.of_int i)
-    )
-  | _ -> todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
+    Object.lit_raw env fs'
+  | _ -> StackRep.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i_ Unreachable)
 
 and isDirectCall env e = match e.it with
   | VarE var ->
@@ -3173,6 +3236,16 @@ and isDirectCall env e = match e.it with
     | _ -> None
     end
   | _ -> None
+
+and compile_exp_as env sr_out e =
+  let sr_in, code = compile_exp env e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+and compile_exp_vanilla (env : E.t) exp =
+  compile_exp_as env StackRep.Vanilla exp
+
+and compile_exp_unit (env : E.t) exp =
+  compile_exp_as env StackRep.unit exp
 
 
 (*
@@ -3291,17 +3364,17 @@ and compile_n_ary_pat env how pat =
   let arity, fill_code =
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
-    | WildP -> 0, G.nop
+    | WildP -> StackRep.unit, G.nop
     (* The good case: We have a tuple pattern *)
     | TupP ps when List.length ps <> 1 ->
-      let arity = List.length ps in
+      let sr = StackRep.UnboxedTuple (List.length ps) in
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      arity, G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
+      sr, G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
     (* The general case: Create a single value, match that. *)
     | _ ->
-      1, orTrap (fill_pat env1 pat)
+      StackRep.Vanilla, orTrap (fill_pat env1 pat)
   in (env1, alloc_code, arity, fill_code)
 
 (* Used for function patterns
@@ -3332,15 +3405,15 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, alloc_code, fill_code)
 
-and compile_dec pre_env arity how dec : E.t * G.t * (E.t -> G.t) = match dec.it with
-  | TypD _ -> (pre_env, G.nop, fun _ -> compile_unit_nary arity)
-  | ExpD e -> (pre_env, G.nop, fun env -> compile_exp env arity e)
+and compile_dec pre_env how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) = match dec.it with
+  | TypD _ -> (pre_env, G.nop, fun _ -> StackRep.unit, G.nop)
+  | ExpD e -> (pre_env, G.nop, fun env -> compile_exp env e)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      compile_exp env pat_arity e ^^
-      fill_code ^^
-      compile_unit_nary arity
+      StackRep.unit,
+      compile_exp_as env pat_arity e ^^
+      fill_code
     )
   | VarD (name, e) ->
       assert (AllocHow.M.find_opt name.it how = Some AllocHow.LocalMut ||
@@ -3348,41 +3421,45 @@ and compile_dec pre_env arity how dec : E.t * G.t * (E.t -> G.t) = match dec.it 
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        compile_exp env 1 e ^^
-        Var.set_val env name.it ^^
-        compile_unit_nary arity
+        StackRep.unit,
+        compile_exp_vanilla env e ^^
+        Var.set_val env name.it
       )
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars_ir.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
-      let mk_body env1 = compile_exp env1 cc.Value.n_res e in
+      let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
-      let lookup_code env =
-        match arity with
-        | 0 -> G.nop
-        | 1 -> Var.get_val env name.it
-        | _ -> assert false in
-      (pre_env1, alloc_code, fun env -> mk_code env ^^ lookup_code env)
+      (pre_env1, alloc_code, fun env ->
+        StackRep.Vanilla, mk_code env ^^ Var.get_val env name.it
+      )
 
-and compile_decs env arity decs : G.t = snd (compile_decs_block env arity decs)
+and compile_decs env decs : StackRep.t * G.t = snd (compile_decs_block env decs)
 
-and compile_decs_block env arity decs : (E.t * G.t) =
+and compile_decs_block env decs : (E.t * (StackRep.t * G.t)) =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, G.nop, fun _ -> compile_unit_nary arity)
-    | [dec]       -> compile_dec pre_env arity how dec
+    | []          -> (pre_env, G.nop, fun _ -> (StackRep.unit, G.nop))
+    | [dec]       -> compile_dec pre_env how dec
     | (dec::decs) ->
-        let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env 0 how dec in
+        let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env how dec in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
-        (pre_env2, alloc_code1 ^^ alloc_code2, fun env -> mk_code1 env ^^ mk_code2 env) in
+        ( pre_env2,
+          alloc_code1 ^^ alloc_code2,
+          fun env ->
+            let (sr1, code1) = mk_code1 env in
+            let (sr2, code2) = mk_code2 env in
+            (sr2, code1 ^^ StackRep.drop env sr1 ^^ code2)
+         ) in
   let (env1, alloc_code, mk_code) = go env decs in
-  (env1, alloc_code ^^ mk_code env1)
+  let (sr, code) = mk_code env1 in
+  (env1, (sr, alloc_code ^^ code))
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let (env1, code) = compile_decs_block env 0 (E.get_prelude env).it in
-  (env1, code)
+  let (env1, (sr, code)) = compile_decs_block env (E.get_prelude env).it in
+  (env1, code ^^ StackRep.drop env sr)
 
 (* Is this a hack? When determining whether an actor is closed,
 we should disregard the prelude, because every actor is compiled with the
@@ -3400,9 +3477,9 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
     let rec go env = function
       | [] -> G.nop
       | (prog::progs) ->
-          let (env1, code1) = compile_decs_block env 0 prog.it in
+          let (env1, (sr, code1)) = compile_decs_block env prog.it in
           let code2 = go env1 progs in
-          code1 ^^ code2 in
+          code1 ^^ StackRep.drop env1 sr ^^ code2 in
     go env1 progs
     )
 
@@ -3414,7 +3491,7 @@ and compile_private_actor_field pre_env (f : Ir.exp_field)  =
     Tagged.store Tagged.MutBox ^^
 
     compile_unboxed_const ptr ^^
-    compile_exp env 1 f.it.exp ^^
+    compile_exp_vanilla env f.it.exp ^^
     Var.store
   )
 
@@ -3441,7 +3518,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
 
   ( pre_env1, fun env ->
     let mk_pat inner_env = compile_func_pat inner_env cc pat in
-    let mk_body inner_env = compile_exp inner_env cc.Value.n_res exp in
+    let mk_body inner_env = compile_exp_as inner_env (StackRep.of_arity cc.Value.n_res) exp in
     let f = FuncDec.compile_static_message env cc mk_pat mk_body f.at in
     fill f;
     G.nop
@@ -3477,7 +3554,7 @@ and actor_lit outer_env name fs =
     let start_fun = Func.of_body env [] [] (fun env3 ->
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
-      let (env5, init_code )  = compile_actor_fields env4 fs in
+      let (env5, init_code)  = compile_actor_fields env4 fs in
       prelude_code ^^ init_code) in
     let start_fi = E.add_fun env start_fun "start" in
 
