@@ -2,7 +2,7 @@
 type List<T> = {head: T; var tail: List<T>}?;
 
 type subscription = {
-  post : shared Text -> async (); /* revocable by Server */
+  post : shared Text -> async (); /* revokable by Server */
   cancel : shared () -> ();
 };
 
