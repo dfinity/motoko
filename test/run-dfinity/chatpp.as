@@ -2,7 +2,7 @@
 type List<T> = {head: T; var tail: List<T>}?;
 
 type subscription = {
-  post : shared Text -> async ();
+  post : shared Text -> async (); /* revocable by Server */
   cancel : shared () -> ();
 };
 
@@ -14,13 +14,12 @@ type IServer = actor {
   subscribe: IClient -> async subscription;
 };
 
+type client = {id:Nat; client:IClient; var revoked:Bool};
+
 actor Server = {
    private var nextId:Nat= 0;
-   private var clients:List<(Nat,IClient)> = null;
+   private var clients:List<client> = null;
    private broadcast(id:Nat,message:Text) : async () {
-      print "broadcast ";
-      print message;
-      print "\n";
       var next = clients;
       var replies : (List<async ()>) = null;
       label sends
@@ -28,8 +27,8 @@ actor Server = {
          switch (next) {
       	    case null break sends();
 	    case (n?) {
-              	if ( n.head.0 != id) {
- 	          let reply = n.head.1.send(message);
+              	if ( n.head.id != id) {
+ 	          let reply = (n.head.client).send(message);
 		  replies := (new { head = reply; var tail = replies})?;
 		};
 		next := n.tail;
@@ -46,26 +45,29 @@ actor Server = {
           };
       };
    };
-        
-   subscribe(client:IClient) : async subscription {
-     let id = nextId;
+
+   subscribe(iclient:IClient) : async subscription {
+     let c = new {id = nextId; client=iclient; var revoked = false;};
      nextId += 1;
-     let cs = new { head = (id,client); var tail = clients};
+     let cs = new { head = c; var tail = clients};
      clients := cs?;
      return (new {
-       post =  (shared func (message:Text) : async () { await broadcast(id, message);});
-       cancel = (shared func () {unsubscribe(id);});
+       post =  (shared func (message:Text) : async ()
+       	        { if (not (c.revoked))
+		    await broadcast(c.id, message);
+		});
+       cancel = (shared func () {unsubscribe(c.id);});
      });
    };
 
    private unsubscribe(id:Nat) {
-      var prev:List<(Nat,IClient)> = null;
+      var prev:List<client> = null;
       var next = clients;
       loop {
          switch (next) {
       	    case null return;
 	    case (n?) {
-	    	if ((n.head.0) == id)
+	    	if ((n.head.id) == id)
 		  { switch (prev) {
 		      case null clients := n.tail;
 		      case (p?) p.tail := n.tail;
@@ -81,7 +83,6 @@ actor Server = {
    };
 
 };
-
 
 actor class Client() = this {
    private var name : Text = "";
@@ -99,8 +100,6 @@ actor class Client() = this {
    };
 };
 
-
-
 let bob = Client();
 let alice = Client();
 let charlie = Client();
@@ -108,7 +107,3 @@ let _ = bob.go("bob",Server);
 let _ = alice.go("alice",Server);
 let _ = charlie.go("charlie",Server);
 
-
-/* features to add:
-   Client's 'do not disturb' that 'revokes' send by changing its behaviour.
-*/   
