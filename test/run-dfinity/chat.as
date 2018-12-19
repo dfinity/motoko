@@ -13,8 +13,8 @@ type IServer = actor {
 };
 
 actor Server = {
-   private var log:List<Text> = null;
    private var clients:List<IClient> = null;
+
    post(message:Text) : async () {
       var next = clients;
       loop {

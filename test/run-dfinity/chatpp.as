@@ -16,30 +16,44 @@ type IServer = actor {
 
 actor Server = {
    private var nextId:Nat= 0;
-   private var log:List<Text> = null;
    private var clients:List<(Nat,IClient)> = null;
    private broadcast(id:Nat,message:Text) : async () {
+      print "broadcast ";
+      print message;
+      print "\n";
       var next = clients;
+      var replies : (List<async ()>) = null;
+      label sends
       loop {
          switch (next) {
-      	    case null return;
+      	    case null break sends();
 	    case (n?) {
-	        if ( n.head.0 != id) {
-		  await (n.head.1).send(message);
+              	if ( n.head.0 != id) {
+ 	          let reply = n.head.1.send(message);
+		  replies := (new { head = reply; var tail = replies})?;
 		};
 		next := n.tail;
               };
            };
-        };
-     };
-
+       };
+      loop {
+         switch (replies) {
+      	    case null return;
+	    case (r?) {
+                await r.head;
+		replies := r.tail;
+              };
+          };
+      };
+   };
+        
    subscribe(client:IClient) : async subscription {
      let id = nextId;
      nextId += 1;
      let cs = new { head = (id,client); var tail = clients};
      clients := cs?;
      return (new {
-       post =  (shared func (message:Text) : async () { await broadcast(id,message);});
+       post =  (shared func (message:Text) : async () { await broadcast(id, message);});
        cancel = (shared func () {unsubscribe(id);});
      });
    };
