@@ -1,1 +1,1 @@
-val check_prog : Syntax.prog -> Diag.messages
+val check_prog : Diag.msg_store -> Syntax.prog -> unit

@@ -1237,12 +1237,12 @@ and infer_dec_valdecs env dec : val_env =
 
 let check_prog scope prog : scope Diag.result =
   Diag.with_message_store (fun msgs ->
-    Diag.add_msgs msgs (Definedness.check_prog prog);
+    Definedness.check_prog msgs prog;
     let env = env_of_scope msgs scope in
     recover_opt (check_block env T.unit prog.it) prog.at)
 
 let infer_prog scope prog : (T.typ * scope) Diag.result =
   Diag.with_message_store (fun msgs ->
-    Diag.add_msgs msgs (Definedness.check_prog prog);
+    Definedness.check_prog msgs prog;
     let env = env_of_scope msgs scope in
     recover_opt (infer_block env prog.it) prog.at)
