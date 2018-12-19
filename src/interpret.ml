@@ -140,8 +140,8 @@ let actor_msg id f v (k : V.value V.cont) =
 let make_unit_message id v =
   let _, call_conv, f = V.as_func v in
   match call_conv with
-  | (T.Call T.Sharable, _ , arg_c, 0) ->
-    Value.message_func arg_c (fun v k ->
+  | { V.sort = T.Call T.Sharable; V.n_res = 0; _} ->
+    Value.message_func call_conv.V.n_args (fun v k ->
       actor_msg id f v (fun _ -> ());
       k V.unit
     )
@@ -153,8 +153,8 @@ let make_async_message id v =
   assert (not !Flags.async_lowering);
   let _, call_conv, f = V.as_func v in
   match call_conv with
-  | (T.Call T.Sharable, T.Promises, arg_c,1) ->
-    Value.async_func arg_c 1 (fun v k ->
+  | { V.sort = T.Call T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
+    Value.async_func call_conv.V.n_args (fun v k ->
       let async = make_async () in
       actor_msg id f v (fun v_async ->
         get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
@@ -235,15 +235,14 @@ let check_call_conv exp call_conv =
       (V.string_of_call_conv call_conv))
 
 let check_call_conv_arg exp v call_conv =
-  let (_, _, n_args, _) = call_conv in
-  if n_args <> 1 then
+  if call_conv.V.n_args <> 1 then
   let es = try V.as_tup v
     with Invalid_argument _ ->
       failwith (Printf.sprintf "call %s: calling convention %s cannot handle non-tuple value %s"
         (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
         (V.string_of_call_conv call_conv)
         (V.string_of_val v)) in
-  if List.length es <> n_args then
+  if List.length es <> call_conv.V.n_args then
     failwith (Printf.sprintf "call %s: calling convention %s got tuple of wrong length %s"
         (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
         (V.string_of_call_conv call_conv)
