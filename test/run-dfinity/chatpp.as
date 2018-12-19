@@ -96,18 +96,5 @@ let _ = charlie.go("charlie",Server);
 
 
 /* features to add:
-   don't broadcast to sender
-   subscribe should also return unsubscribe capability (use actor identity (if we support that) or add a tag)
    Client's 'do not disturb' that 'revokes' send by changing its behaviour.
 */   
-
-/* runs fine in interpreter, crashes compiler
-   bugs observed:
-   design flaws:
-     - it's annoying you can't await in a ()-message, just an awaitable one (eg. Client.go()).
-     - we can't (synchronously) subscribe in the Client constructor as its async, need a separate 'go' method.
-   tc: reordering IServer and IClient leads to a complaint that subscribe has non-sharable argument	  type - we probably need to normalize while checking.
-   compiler:
-        - parameterising Client on s:IServer argument complains about non-closed actor (possible I had a typo though)
-*/
-   
