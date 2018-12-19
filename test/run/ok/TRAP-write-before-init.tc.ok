@@ -1,1 +1,1 @@
-TRAP-write-before-init.as:1.1-1.7: type error, cannot use x before x has been defined
+TRAP-write-before-init.as:1.1-1.7: definedness error, cannot use x before x has been defined

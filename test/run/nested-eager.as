@@ -18,7 +18,7 @@
   assert(foo() == 1);
 };
 
-// This is beyond the current code in freevars.ml
+// The second iteration of the use-before-define check even catches this one
 {
   func foo() : Int { bar () };
   let bar = {

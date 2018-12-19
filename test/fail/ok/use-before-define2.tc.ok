@@ -1,1 +1,1 @@
-use-before-define2.as:5.1-5.43: type error, cannot use x before x has been defined
+use-before-define2.as:5.1-5.43: definedness error, cannot use x before x has been defined

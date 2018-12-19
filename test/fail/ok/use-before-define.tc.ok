@@ -1,1 +1,1 @@
-use-before-define.as:2.1-2.12: type error, cannot use f before x has been defined
+use-before-define.as:2.1-2.12: definedness error, cannot use f before x has been defined
