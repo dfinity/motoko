@@ -2920,14 +2920,18 @@ let compile_unop env op = Syntax.(match op with
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
   )
 
+(* This returns a single StackRep, to be used for both arguments and the
+   result. One could imagine operators that require or produce different StackReps,
+   but none of these do, so a single value is fine.
+*)
 let compile_binop env op = Syntax.(match op with
-  | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)))
-  | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)))
-  | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Mul)))
-  | DivOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU)))
-  | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU)))
-  | CatOp -> Text.concat env
-  | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
+  | AddOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add))
+  | SubOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
+  | MulOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Mul))
+  | DivOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU))
+  | ModOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU))
+  | CatOp -> StackRep.Vanilla, Text.concat env
+  | _ -> todo "compile_binop" (Arrange.binop op) (StackRep.Unreachable, G.i_ Unreachable)
   )
 
 let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
@@ -3030,10 +3034,11 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_vanilla env e1 ^^
     compile_unop env op
   | BinE (e1, op, e2) ->
-    StackRep.Vanilla,
-    compile_exp_vanilla env e1 ^^
-    compile_exp_vanilla env e2 ^^
-    compile_binop env op
+    let (sr, code) = compile_binop env op in
+    sr,
+    compile_exp_as env sr e1 ^^
+    compile_exp_as env sr e2 ^^
+    code
   | RelE (e1, op, e2) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^
