@@ -2809,6 +2809,16 @@ module StackRep = struct
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
 
+  let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
+    | Unreachable, sr2 -> sr2
+    | sr1, Unreachable -> sr1
+    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
+    | UnboxedTuple n, UnboxedTuple m ->
+      Printf.eprintf "Invalid stack rep join (%s, %s)\n"
+        (to_string sr1) (to_string sr2); sr1
+    | _, Vanilla -> Vanilla
+    | Vanilla, _ -> Vanilla
+
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla -> G.i_ Drop
@@ -3033,14 +3043,17 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_vanilla env e1 ^^
     compile_exp_vanilla env e2 ^^
     compile_relop env op
-  | IfE (e1, e2, e3) ->
-    (* Todo: Somehow “join” the stack representations *)
-    StackRep.Vanilla,
-    let code1 = compile_exp_vanilla env e1 in
-    let code2 = compile_exp_vanilla env e2 in
-    let code3 = compile_exp_vanilla env e3 in
-    code1 ^^ BoxedInt.unbox env ^^
-    G.if_ (StackRep.to_block_type env StackRep.Vanilla) code2 code3
+  | IfE (scrut, e1, e2) ->
+    let code_scrut = compile_exp_vanilla env scrut in
+    let sr1, code1 = compile_exp env e1 in
+    let sr2, code2 = compile_exp env e2 in
+    let sr = StackRep.join sr1 sr2 in
+    sr,
+    code_scrut ^^ BoxedInt.unbox env ^^
+    G.if_
+      (StackRep.to_block_type env sr)
+      (code1 ^^ StackRep.adjust env sr1 sr)
+      (code2 ^^ StackRep.adjust env sr2 sr)
   | IsE (e1, e2) ->
     StackRep.Vanilla,
     let code1 = compile_exp_vanilla env e1 in
