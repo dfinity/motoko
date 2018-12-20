@@ -349,7 +349,9 @@ let new_local env name =
 
 (* expects a number on the stack. Iterates from zero t below that number *)
 let compile_while cond body =
-    G.loop_ [] ( cond ^^ G.if_ [] (body ^^ G.i_ (Br (nr 1l))) G.nop)
+    G.loop_ (ValBlockType None) (
+      cond ^^ G.if_ (ValBlockType None) (body ^^ G.i_ (Br (nr 1l))) G.nop
+    )
 
 let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
@@ -963,14 +965,14 @@ module BoxedInt = struct
       let get_n = G.i_ (GetLocal (nr 0l)) in
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 5)) ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
-      G.if_ [I32Type]
+      G.if_ (ValBlockType (Some I32Type))
         (get_n ^^ BitTagged.tag)
         (Tagged.obj env Tagged.Int [ G.i_ (GetLocal (nr 0l)) ])
     )
   let unbox env = Func.share_code env "unbox_int" ["n"] [I32Type] (fun env ->
       let get_n = G.i_ (GetLocal (nr 0l)) in
       get_n ^^
-      BitTagged.if_unboxed env [I32Type]
+      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         G.nop
         (Heap.load_field payload_field)
     )
@@ -1010,7 +1012,7 @@ module Prim = struct
     BoxedInt.unbox env ^^
     compile_unboxed_zero ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS)) ^^
-    G.if_ [I32Type]
+    G.if_ (ValBlockType (Some I32Type))
       ( compile_unboxed_zero ^^
         get_i ^^
         BoxedInt.unbox env ^^
@@ -1115,7 +1117,7 @@ module Object = struct
         Heap.load_field 0l ^^ (* the hash field *)
         get_hash ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-        G.if_ []
+        G.if_ (ValBlockType None)
           ( get_f ^^
             compile_add_const Heap.word_size ^^
             (* dereference the indirection *)
@@ -1230,7 +1232,7 @@ module Text = struct
       get_len1 ^^
       get_len2 ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-      G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return) ^^
+      G.if_ (ValBlockType None) G.nop (compile_unboxed_false ^^ G.i_ Return) ^^
 
       (* We could do word-wise comparisons if we know that the trailing bytes
          are zeroed *)
@@ -1249,7 +1251,7 @@ module Text = struct
         G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-        G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return)
+        G.if_ (ValBlockType None) G.nop (compile_unboxed_false ^^ G.i_ Return)
       ) ^^
       compile_unboxed_true
   )
@@ -1273,7 +1275,7 @@ module Array = struct
       get_array ^^
       Heap.load_field len_field ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
-      G.if_ [] G.nop (G.i_ Unreachable) ^^
+      G.if_ (ValBlockType None) G.nop (G.i_ Unreachable) ^^
 
       get_idx ^^
       compile_add_const header_size ^^
@@ -1334,7 +1336,7 @@ module Array = struct
             (* Get length *)
             Heap.load_field len_field ^^
             G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-            G.if_ [I32Type]
+            G.if_ (ValBlockType (Some I32Type))
               (* Then *)
               compile_null
               (* Else *)
@@ -1741,7 +1743,7 @@ module OrthogonalPersistence = struct
        get_i ^^
        compile_unboxed_const 0l ^^
        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-       G.if_[]
+       G.if_ (ValBlockType None)
          (* First run, call the start function *)
          ( G.i_ (Call (nr start_funid)) )
 
@@ -1833,11 +1835,11 @@ module Serialization = struct
       set_copy ^^
 
       get_x ^^
-      BitTagged.if_unboxed env [I32Type]
+      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         ( (* Tagged unboxed value, can be left alone *)
           G.i_ Drop ^^ get_x
         )
-        ( Tagged.branch env [I32Type]
+        ( Tagged.branch env (ValBlockType (Some I32Type))
           [ Tagged.Int,
             (* x still on the stack *)
             Heap.alloc env 2l ^^
@@ -1992,7 +1994,7 @@ module Serialization = struct
       let get_ptr_offset = G.i_ (GetLocal (nr 1l)) in
       get_loc ^^
       load_ptr ^^
-      BitTagged.if_unboxed env []
+      BitTagged.if_unboxed env (ValBlockType None)
         (* nothing to do *)
         ( G.i_ Drop )
         ( set_tmp env ^^
@@ -2010,7 +2012,7 @@ module Serialization = struct
     Func.share_code env "object_size" ["x"] [I32Type] (fun env ->
       let get_x = G.i_ (GetLocal (nr 0l)) in
       get_x ^^
-      Tagged.branch env [I32Type]
+      Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
           G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
@@ -2074,7 +2076,7 @@ module Serialization = struct
   let for_each_pointer env get_x mk_code =
     let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
     get_x ^^
-    Tagged.branch_default env [] G.nop
+    Tagged.branch_default env (ValBlockType None) G.nop
       [ Tagged.MutBox,
         compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
         set_ptr_loc ^^
@@ -2154,7 +2156,7 @@ module Serialization = struct
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
-        Tagged.branch_default env [] G.nop
+        Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
             (* x still on the stack *)
             G.i_ Drop ^^
@@ -2188,7 +2190,7 @@ module Serialization = struct
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
-        Tagged.branch_default env [] G.nop
+        Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
             (* x still on the stack *)
 
@@ -2222,7 +2224,7 @@ module Serialization = struct
 
       (* Copy data *)
       get_x ^^
-      BitTagged.if_unboxed env []
+      BitTagged.if_unboxed env (ValBlockType None)
         (* We have a bit-tagged raw value. Put this into a singleton databuf,
            which will be recognized as such by its size.
         *)
@@ -2336,7 +2338,7 @@ module Serialization = struct
       get_data_len ^^
       compile_unboxed_const Heap.word_size ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-      G.if_ [I32Type]
+      G.if_ (ValBlockType (Some I32Type))
         (* Yes, we got something unboxed. Return it, and do _not_ bump the heap pointer *)
         ( get_start ^^ load_ptr )
         (* No, it is actual heap-data *)
@@ -2403,17 +2405,17 @@ module GC = struct
 
     get_obj ^^
     (* If this is an unboxed scalar, ignore it *)
-    BitTagged.if_unboxed env [] (G.i_ Drop ^^ get_end_to_space ^^ G.i_ Return) (G.i_ Drop) ^^
+    BitTagged.if_unboxed env (ValBlockType None) (G.i_ Drop ^^ get_end_to_space ^^ G.i_ Return) (G.i_ Drop) ^^
 
     (* If this is static, ignore it *)
     get_obj ^^
     get_begin_from_space ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
-    G.if_ [] (get_end_to_space ^^ G.i_ Return) G.nop ^^
+    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i_ Return) G.nop ^^
 
     (* If this is an indirection, just use that value *)
     get_obj ^^
-    Tagged.branch_default env [] G.nop [
+    Tagged.branch_default env (ValBlockType None) G.nop [
       Tagged.Indirection,
       G.i_ Drop ^^
 
@@ -2795,10 +2797,12 @@ module StackRep = struct
   let of_arity n =
     if n = 1 then Vanilla else UnboxedTuple n
 
-  let to_wasm_type = function
-    | Vanilla -> [I32Type]
-    | UnboxedTuple n -> Lib.List.make n I32Type
-    | Unreachable -> []
+  let to_block_type env = function
+    | Vanilla -> ValBlockType (Some I32Type)
+    | UnboxedTuple 0 -> ValBlockType None
+    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
+    | Unreachable -> ValBlockType None
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -2862,14 +2866,14 @@ module PatCode = struct
       | CanFail is2 -> CanFail (fun fail_code ->
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
-          G.if_ [] G.nop (is2 fail_code)
+          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
+          G.if_ (ValBlockType None) G.nop (is2 fail_code)
         )
       | CannotFail is2 -> CannotFail (
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
-          G.if_ [] G.nop is2
+          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
+          G.if_ (ValBlockType None) G.nop is2
         )
 
   let orTrap : patternCode -> G.t = function
@@ -2919,7 +2923,7 @@ let compile_binop env op = Syntax.(match op with
 let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-             G.if_ [I32Type] compile_unboxed_false compile_unboxed_true
+             G.if_ (ValBlockType (Some I32Type)) compile_unboxed_false compile_unboxed_true
   | GeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GeS))
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LeS))
@@ -2957,7 +2961,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | DotE (e, ({it = Syntax.Name n;_} as name)) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e ^^
-    Tagged.branch env [I32Type] (
+    Tagged.branch env (ValBlockType (Some I32Type)) (
       [ Tagged.Object, Object.load_idx env name ] @
       (if E.mode env = DfinityMode
        then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
@@ -3014,7 +3018,7 @@ and compile_exp (env : E.t) exp = match exp.it with
     StackRep.unit,
     compile_exp_vanilla env e1 ^^
     BoxedInt.unbox env ^^
-    G.if_ [] G.nop (G.i (Unreachable @@ exp.at))
+    G.if_ (ValBlockType None) G.nop (G.i (Unreachable @@ exp.at))
   | UnE (op, e1) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^
@@ -3036,7 +3040,7 @@ and compile_exp (env : E.t) exp = match exp.it with
     let code2 = compile_exp_vanilla env e2 in
     let code3 = compile_exp_vanilla env e3 in
     code1 ^^ BoxedInt.unbox env ^^
-    G.if_ (Lib.List.make 1 I32Type) code2 code3
+    G.if_ (StackRep.to_block_type env StackRep.Vanilla) code2 code3
   | IsE (e1, e2) ->
     StackRep.Vanilla,
     let code1 = compile_exp_vanilla env e1 in
@@ -3049,7 +3053,7 @@ and compile_exp (env : E.t) exp = match exp.it with
     set_j ^^
 
     get_i ^^
-    Tagged.branch env [I32Type]
+    Tagged.branch env (ValBlockType (Some I32Type))
      [ Tagged.Array,
        G.i_ Drop ^^ BoxedInt.lit_false env
      ; Tagged.Reference,
@@ -3063,7 +3067,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        (* Equal? *)
        get_j ^^
        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-       G.if_ [I32Type]
+       G.if_ (ValBlockType (Some I32Type))
          (BoxedInt.lit_true env)
          (* Static function id? *)
          ( get_i ^^
@@ -3080,11 +3084,10 @@ and compile_exp (env : E.t) exp = match exp.it with
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
-       stack representation here. Also, our wasm encoder does not
-       handle multi-value stack returns yet, it seems.
+       stack representation here.
        So let’s go with Vanialla. *)
     StackRep.Vanilla,
-    G.block_ (StackRep.to_wasm_type StackRep.Vanilla) (
+    G.block_ (StackRep.to_block_type env StackRep.Vanilla) (
       G.with_current_depth (fun depth ->
         let env1 = E.add_label env name depth in
         compile_exp_vanilla env1 e
@@ -3097,24 +3100,24 @@ and compile_exp (env : E.t) exp = match exp.it with
     G.branch_to_ d
   | LoopE (e, None) ->
     StackRep.Unreachable,
-    G.loop_ [] (compile_exp_unit env e ^^ G.i_ (Br (nr 0l))
+    G.loop_ (ValBlockType None) (compile_exp_unit env e ^^ G.i_ (Br (nr 0l))
     )
     ^^
    G.i_ Unreachable
   | LoopE (e1, Some e2) ->
     StackRep.unit,
-    G.loop_ [] (
+    G.loop_ (ValBlockType None) (
       compile_exp_unit env e1 ^^
       compile_exp_vanilla env e2 ^^
       BoxedInt.unbox env ^^
-      G.if_ [] (G.i_ (Br (nr 1l))) G.nop
+      G.if_ (ValBlockType None) (G.i_ (Br (nr 1l))) G.nop
     )
   | WhileE (e1, e2) ->
     StackRep.unit,
-    G.loop_ [] (
+    G.loop_ (ValBlockType None) (
       compile_exp_vanilla env e1 ^^
       BoxedInt.unbox env ^^
-      G.if_ [] (
+      G.if_ (ValBlockType None) (
         compile_exp_unit env e2 ^^
         G.i_ (Br (nr 1l))
       ) G.nop
@@ -3195,7 +3198,7 @@ and compile_exp (env : E.t) exp = match exp.it with
     code1 ^^
     set_i ^^
 
-    G.loop_ [] (
+    G.loop_ (ValBlockType None) (
       get_i ^^
       Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
       get_i ^^
@@ -3208,7 +3211,7 @@ and compile_exp (env : E.t) exp = match exp.it with
       get_oi ^^
       compile_null ^^
       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-      G.if_ []
+      G.if_ (ValBlockType None)
         G.nop
         ( alloc_code ^^ get_oi ^^ Opt.project ^^
           code2 ^^ code3 ^^ G.i_ (Br (nr 1l))
@@ -3305,7 +3308,7 @@ and fill_pat env pat : patternCode = match pat.it with
         get_i ^^
         compile_null ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-        G.if_ [] fail_code
+        G.if_ (ValBlockType None) fail_code
           ( get_i ^^
             Opt.project ^^
             with_fail fail_code code1
@@ -3314,7 +3317,7 @@ and fill_pat env pat : patternCode = match pat.it with
   | LitP l ->
       CanFail (fun fail_code ->
         compile_lit_pat env l ^^
-        G.if_ [] G.nop fail_code)
+        G.if_ (ValBlockType None) G.nop fail_code)
   | VarP name ->
       CannotFail (Var.set_val env name.it)
   | TupP ps ->

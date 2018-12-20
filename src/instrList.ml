@@ -7,7 +7,6 @@ features are
  * Some simple peephole optimizations.
 *)
 
-open Wasm_copy.Types
 open Wasm_copy.Ast
 open Wasm.Source
 
@@ -65,15 +64,15 @@ let table n f = List.fold_right (^^) (Lib.List.table n f) nop
 
 (* Depths-managing combinators *)
 
-let if_ (ty : stack_type) (thn : t) (els : t) : t =
+let if_ (ty : block_type) (thn : t) (els : t) : t =
   fun d rest ->
     nr (If (ty, to_nested_list d thn, to_nested_list d els)) :: rest
 
-let block_ (ty : stack_type) (body : t) : t =
+let block_ (ty : block_type) (body : t) : t =
   fun d rest ->
     nr (Block (ty, to_nested_list d body)) :: rest
 
-let loop_ (ty : stack_type) (body : t) : t =
+let loop_ (ty : block_type) (body : t) : t =
   fun d rest ->
     nr (Loop (ty, to_nested_list d body)) :: rest
 
@@ -100,5 +99,5 @@ let branch_to_ (p : depth) : t =
 
 (* Convenience combinations *)
 
-let labeled_block_ (ty : stack_type) depth (body : t) : t =
+let labeled_block_ (ty : block_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
