@@ -606,20 +606,17 @@ module BitTagged = struct
      Otherwise, leaves it on the stack and executes the second sequence.
   *)
   let if_unboxed env retty is1 is2 =
-    let (set_i, get_i) = new_local env "bittagged" in
-    set_i ^^
-    (* Check bit *)
-    get_i ^^
+    (* Get bit *)
     compile_unboxed_const 1l ^^
     G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.And)) ^^
+    (* Check bit *)
     compile_unboxed_const 1l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-    G.if_ retty
-      ( get_i ^^
-        compile_unboxed_const 1l ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.ShrU)) ^^
-        is1)
-      ( get_i ^^ is2)
+    G.if_ retty is1 is2
+
+  let untag_scalar env =
+    compile_unboxed_const 1l ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.ShrU))
 
   let tag =
     compile_unboxed_const 1l ^^
@@ -677,18 +674,18 @@ module Tagged = struct
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
   let branch_default env retty def (cases : (tag * G.t) list) : G.t =
-    let (set_i, get_i) = new_local env "tagged" in
+    let (set_tag, get_tag) = new_local env "tag" in
 
     let rec go = function
       | [] -> def
       | ((tag, code) :: cases) ->
-        get_i ^^
-        load ^^
+        get_tag ^^
         compile_unboxed_const (int_of_tag tag) ^^
         G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-        G.if_ retty (get_i ^^ code) (go cases)
+        G.if_ retty code (go cases)
     in
-    set_i ^^
+    load ^^
+    set_tag ^^
     go cases
 
   let branch env retty (cases : (tag * G.t) list) : G.t =
@@ -696,7 +693,8 @@ module Tagged = struct
 
   let obj env tag element_instructions : G.t =
     Heap.obj env (compile_unboxed_const (int_of_tag tag) :: element_instructions)
-end
+
+end (* Tagged *)
 
 
 module Var = struct
@@ -973,8 +971,8 @@ module BoxedInt = struct
       let get_n = G.i_ (GetLocal (nr 0l)) in
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-        G.nop
-        (Heap.load_field payload_field)
+        (get_n ^^ BitTagged.untag_scalar env)
+        (get_n ^^ Heap.load_field payload_field)
     )
 
   let lit env n = compile_unboxed_const n ^^ box env
@@ -1815,30 +1813,26 @@ module Serialization = struct
 
       get_x ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-        ( (* Tagged unboxed value, can be left alone *)
-          G.i_ Drop ^^ get_x
-        )
-        ( Tagged.branch env (ValBlockType (Some I32Type))
+        ( get_x )
+        ( get_x ^^ Tagged.branch env (ValBlockType (Some I32Type))
           [ Tagged.Int,
-            (* x still on the stack *)
+            get_x ^^
             Heap.alloc env 2l ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
             Heap.memcpy env ^^
             get_copy
           ; Tagged.Reference,
-            (* x still on the stack *)
+            get_x ^^
             Heap.alloc env 2l ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
             Heap.memcpy env ^^
             get_copy
           ; Tagged.Some,
-            G.i_ Drop ^^
             Opt.inject env (
               get_x ^^ Opt.project ^^
               G.i_ (Call (nr (E.built_in env "serialize_go")))
             )
           ; Tagged.ObjInd,
-            G.i_ Drop ^^
             Tagged.obj env Tagged.ObjInd [
               get_x ^^ Heap.load_field 1l ^^
               G.i_ (Call (nr (E.built_in env "serialize_go")))
@@ -1846,6 +1840,7 @@ module Serialization = struct
           ; Tagged.Array,
             begin
               let (set_len, get_len) = new_local env "len" in
+              get_x ^^
               Heap.load_field Array.len_field ^^
               set_len ^^
 
@@ -1879,6 +1874,7 @@ module Serialization = struct
           ; Tagged.Text,
             begin
               let (set_len, get_len) = new_local env "len" in
+              get_x ^^
               Heap.load_field Text.len_field ^^
               (* get length in words *)
               compile_add_const 3l ^^
@@ -1902,6 +1898,7 @@ module Serialization = struct
           ; Tagged.Object,
             begin
               let (set_len, get_len) = new_local env "len" in
+              get_x ^^
               Heap.load_field Object.size_field ^^
               set_len ^^
 
@@ -1973,12 +1970,12 @@ module Serialization = struct
       let get_ptr_offset = G.i_ (GetLocal (nr 1l)) in
       get_loc ^^
       load_ptr ^^
+      set_tmp env ^^
+      get_tmp env ^^
       BitTagged.if_unboxed env (ValBlockType None)
         (* nothing to do *)
-        ( G.i_ Drop )
-        ( set_tmp env ^^
-
-          get_loc ^^
+        ( G.nop )
+        ( get_loc ^^
           get_tmp env ^^
           get_ptr_offset ^^
           G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
@@ -1993,40 +1990,35 @@ module Serialization = struct
       get_x ^^
       Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
-          G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Reference,
-          G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Some,
-          G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.ObjInd,
-          G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.MutBox,
-          G.i_ Drop ^^
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Array,
-          (* x still on the stack *)
+          get_x ^^
           Heap.load_field Array.len_field ^^
           compile_add_const Array.header_size ^^
           compile_mul_const Heap.word_size
         ; Tagged.Text,
-          (* x still on the stack *)
+          get_x ^^
           Heap.load_field Text.len_field ^^
           compile_add_const 3l ^^
           compile_divU_const Heap.word_size ^^
           compile_add_const Text.header_size ^^
           compile_mul_const Heap.word_size
         ; Tagged.Object,
-          (* x still on the stack *)
+          get_x ^^
           Heap.load_field Object.size_field ^^
           compile_mul_const 2l ^^
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size
         ; Tagged.Closure,
-          (* x still on the stack *)
+          get_x ^^
           Heap.load_field Closure.len_field ^^
           compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size
@@ -2057,19 +2049,22 @@ module Serialization = struct
     get_x ^^
     Tagged.branch_default env (ValBlockType None) G.nop
       [ Tagged.MutBox,
+        get_x ^^
         compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.Some,
+        get_x ^^
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.ObjInd,
+        get_x ^^
         compile_add_const (Int32.mul Heap.word_size 1l) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.Array,
-        (* x still on the stack *)
+        get_x ^^
         Heap.load_field Array.len_field ^^
         (* Adjust fields *)
         from_0_to_n env (fun get_i ->
@@ -2080,7 +2075,7 @@ module Serialization = struct
           mk_code get_ptr_loc
         )
       ; Tagged.Object,
-        (* x still on the stack *)
+        get_x ^^
         Heap.load_field Object.size_field ^^
 
         from_0_to_n env (fun get_i ->
@@ -2095,7 +2090,7 @@ module Serialization = struct
           mk_code get_ptr_loc
         )
       ; Tagged.Closure,
-        (* x still on the stack *)
+        get_x ^^
         Heap.load_field Closure.len_field ^^
 
         from_0_to_n env (fun get_i ->
@@ -2137,9 +2132,6 @@ module Serialization = struct
         get_x ^^
         Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
-            (* x still on the stack *)
-            G.i_ Drop ^^
-
             (* Adjust reference *)
             get_tbl_area ^^
             get_i ^^ compile_mul_const Heap.word_size ^^
@@ -2171,8 +2163,7 @@ module Serialization = struct
         get_x ^^
         Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
-            (* x still on the stack *)
-
+            get_x ^^
             (* Adjust reference *)
             get_x ^^
             Heap.load_field 1l ^^
@@ -2207,8 +2198,7 @@ module Serialization = struct
         (* We have a bit-tagged raw value. Put this into a singleton databuf,
            which will be recognized as such by its size.
         *)
-        ( G.i_ Drop ^^
-          Heap.alloc env 1l ^^
+        ( Heap.alloc env 1l ^^
           get_x ^^
           store_ptr ^^
 
@@ -2220,7 +2210,8 @@ module Serialization = struct
           compile_unboxed_const 0l ^^ set_tbl_size
         )
         (* We have real data on the heap. Copy.  *)
-        ( serialize_go env ^^
+        ( get_x ^^
+          serialize_go env ^^
           G.i_ Drop ^^
 
           (* Remember the end *)
@@ -2384,7 +2375,7 @@ module GC = struct
 
     get_obj ^^
     (* If this is an unboxed scalar, ignore it *)
-    BitTagged.if_unboxed env (ValBlockType None) (G.i_ Drop ^^ get_end_to_space ^^ G.i_ Return) (G.i_ Drop) ^^
+    BitTagged.if_unboxed env (ValBlockType None) (get_end_to_space ^^ G.i_ Return) G.nop ^^
 
     (* If this is static, ignore it *)
     get_obj ^^
@@ -2396,8 +2387,6 @@ module GC = struct
     get_obj ^^
     Tagged.branch_default env (ValBlockType None) G.nop [
       Tagged.Indirection,
-      G.i_ Drop ^^
-
       (* Update pointer *)
       get_ptr_loc ^^
       get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
@@ -2960,14 +2949,17 @@ and compile_exp (env : E.t) exp = match exp.it with
   | DotE (e, ({it = Syntax.Name n;_} as name)) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e ^^
+    let (set_o, get_o) = new_local env "o" in
+    set_o ^^
+    get_o ^^
     Tagged.branch env (ValBlockType (Some I32Type)) (
-      [ Tagged.Object, Object.load_idx env name ] @
+      [ Tagged.Object, get_o ^^ Object.load_idx env name ] @
       (if E.mode env = DfinityMode
-       then [ Tagged.Reference, actor_fake_object_idx env {name with it = n} ]
+       then [ Tagged.Reference, get_o ^^ actor_fake_object_idx env {name with it = n} ]
        else []) @
       match  Array.fake_object_idx env n with
         | None -> []
-        | Some code -> [ Tagged.Array, code ]
+        | Some code -> [ Tagged.Array, get_o ^^ code ]
      )
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
@@ -3057,14 +3049,15 @@ and compile_exp (env : E.t) exp = match exp.it with
     get_i ^^
     Tagged.branch env (ValBlockType (Some I32Type))
      [ Tagged.Array,
-       G.i_ Drop ^^ compile_unboxed_false
+       compile_unboxed_false
      ; Tagged.Reference,
        (* TODO: Implement IsE for actor references? *)
-       G.i_ Drop ^^ compile_unboxed_false
+       compile_unboxed_false
      ; Tagged.Object,
        (* There are two cases: Either the class is a pointer to
           the object on the RHS, or it is -- mangled -- the
           function id stored therein *)
+       get_i ^^
        Heap.load_field Object.class_position ^^
        (* Equal? *)
        get_j ^^

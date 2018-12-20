@@ -20,9 +20,6 @@ let optimize : instr list -> instr list = fun is ->
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
-    (* This can erase the arguments in a cascading manner. *)
-    | { it = Binary _; _} :: l', ({ it = Drop; _ } as i) :: r' ->
-      go l' (i :: i :: r')
     (* Introduce TeeLocal *)
     | { it = SetLocal n1; _} :: l', ({ it = GetLocal n2; _ } as i) :: r' when n1 = n2 ->
       go l' ({i with it = TeeLocal n2 } :: r')
