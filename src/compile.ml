@@ -2805,7 +2805,9 @@ module StackRep = struct
     if sr_in = sr_out
     then G.nop
     else match sr_in, sr_out with
-    | Unreachable, _ -> G.nop
+    | Unreachable, Unreachable -> G.nop
+    | Unreachable, _ -> G.i_ Unreachable
+
     | UnboxedTuple n, Vanilla -> Array.from_stack env n
     | Vanilla, UnboxedTuple n -> Array.to_stack env n
     | UnboxedInt, Vanilla -> BoxedInt.box env
