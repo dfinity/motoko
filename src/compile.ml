@@ -2762,8 +2762,8 @@ module StackRep = struct
      the form it chose.
 
      But the users of compile_exp usually want a specific form as well.
-     So they use compile_exp_as, indicating the form they expect. compile_exp_as 
-     then does the necessary coercions.
+     So they use compile_exp_as, indicating the form they expect.
+     compile_exp_as then does the necessary coercions.
    *)
 
   let of_arity n =
@@ -3247,6 +3247,13 @@ and compile_exp_as env sr_out e =
   let sr_in, code = compile_exp env e in
   code ^^ StackRep.adjust env sr_in sr_out
 
+and compile_exp_as_opt env sr_out_o e =
+  let sr_in, code = compile_exp env e in
+  code ^^
+  match sr_out_o with
+  | None -> StackRep.drop env sr_in
+  | Some sr_out -> StackRep.adjust env sr_in sr_out
+
 and compile_exp_vanilla (env : E.t) exp =
   compile_exp_as env StackRep.Vanilla exp
 
@@ -3369,17 +3376,18 @@ and compile_n_ary_pat env how pat =
   let arity, fill_code =
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
-    | WildP -> StackRep.unit, G.nop
+    | WildP -> None, G.nop
     (* The good case: We have a tuple pattern *)
     | TupP ps when List.length ps <> 1 ->
-      let sr = StackRep.UnboxedTuple (List.length ps) in
+      Some (StackRep.UnboxedTuple (List.length ps)),
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      sr, G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
     (* The general case: Create a single value, match that. *)
     | _ ->
-      StackRep.Vanilla, orTrap (fill_pat env1 pat)
+      Some StackRep.Vanilla,
+      orTrap (fill_pat env1 pat)
   in (env1, alloc_code, arity, fill_code)
 
 (* Used for function patterns
@@ -3417,7 +3425,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) = matc
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
       StackRep.unit,
-      compile_exp_as env pat_arity e ^^
+      compile_exp_as_opt env pat_arity e ^^
       fill_code
     )
   | VarD (name, e) ->
