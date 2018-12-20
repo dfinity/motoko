@@ -979,9 +979,6 @@ module BoxedInt = struct
 
   let lit env n = compile_unboxed_const n ^^ box env
 
-  let lit_false env = lit env 0l
-  let lit_true env = lit env 1l
-
   let lift_unboxed_unary env op_is =
     (* unbox argument *)
     unbox env ^^
@@ -3053,7 +3050,7 @@ and compile_exp (env : E.t) exp = match exp.it with
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
   | IsE (e1, e2) ->
-    StackRep.Vanilla,
+    StackRep.UnboxedInt,
     let code1 = compile_exp_vanilla env e1 in
     let code2 = compile_exp_vanilla env e2 in
     let (set_i, get_i) = new_local env "is_lhs" in
@@ -3066,10 +3063,10 @@ and compile_exp (env : E.t) exp = match exp.it with
     get_i ^^
     Tagged.branch env (ValBlockType (Some I32Type))
      [ Tagged.Array,
-       G.i_ Drop ^^ BoxedInt.lit_false env
+       G.i_ Drop ^^ compile_unboxed_false
      ; Tagged.Reference,
        (* TODO: Implement IsE for actor references? *)
-       G.i_ Drop ^^ BoxedInt.lit_false env
+       G.i_ Drop ^^ compile_unboxed_false
      ; Tagged.Object,
        (* There are two cases: Either the class is a pointer to
           the object on the RHS, or it is -- mangled -- the
@@ -3079,7 +3076,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        get_j ^^
        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
        G.if_ (ValBlockType (Some I32Type))
-         (BoxedInt.lit_true env)
+         compile_unboxed_true
          (* Static function id? *)
          ( get_i ^^
            Heap.load_field Object.class_position ^^
