@@ -29,8 +29,9 @@ let optimize : instr list -> instr list = fun is ->
     (* Eliminate TeeLocal followed by Drop (good for confluence) *)
     | ({ it = TeeLocal n; _} as i) :: l', { it = Drop; _ } :: r' ->
       go l' ({i with it = SetLocal n } :: r')
-    (* Code after Return is dead *)
-    | _, ({ it = Return; _ } as i) :: _ -> List.rev (i::l)
+    (* Code after Return, Br or Unreachable is dead *)
+    | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
+      List.rev (i::l)
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
