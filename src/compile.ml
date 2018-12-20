@@ -987,16 +987,6 @@ module BoxedInt = struct
     (* box result *)
     box env
 
-  let lift_unboxed_binary env op_is =
-    let (set_i, get_i) = new_local env "n" in
-    (* unbox both arguments *)
-    set_i ^^ unbox env ^^
-    get_i ^^ unbox env ^^
-    (* apply operator *)
-    op_is ^^
-    (* box result *)
-    box env
-
 end (* BoxedInt *)
 
 (* Primitive functions *)
@@ -2934,7 +2924,7 @@ let compile_binop env op = Syntax.(match op with
   | _ -> todo "compile_binop" (Arrange.binop op) (StackRep.Unreachable, G.i_ Unreachable)
   )
 
-let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
+let compile_relop env op = Syntax.(StackRep.UnboxedInt, match op with
   | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
              G.if_ (ValBlockType (Some I32Type)) compile_unboxed_false compile_unboxed_true
@@ -2942,7 +2932,7 @@ let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op wi
   | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GtS))
   | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LeS))
   | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS))
-  ))
+  )
 
 
 (* compile_lexp is used for expressions on the left of an
@@ -3040,10 +3030,11 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_as env sr e2 ^^
     code
   | RelE (e1, op, e2) ->
-    StackRep.Vanilla,
-    compile_exp_vanilla env e1 ^^
-    compile_exp_vanilla env e2 ^^
-    compile_relop env op
+    let (sr, code) = compile_relop env op in
+    StackRep.UnboxedInt,
+    compile_exp_as env sr e1 ^^
+    compile_exp_as env sr e2 ^^
+    code
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env StackRep.UnboxedInt scrut in
     let sr1, code1 = compile_exp env e1 in
