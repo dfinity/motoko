@@ -126,7 +126,6 @@ module E = struct
   let mode (e : t) = e.mode
 
   (* Indices of local variables *)
-  let tmp_local env : var = nr (env.n_param) (* first local after the params *)
   let unary_closure_local env : var = nr 0l (* first param *)
 
   (* The initial global environment *)
@@ -161,8 +160,8 @@ module E = struct
   (* Resetting the environment for a new function *)
   let mk_fun_env env n_param n_res =
     { env with
-      locals = ref [I32Type]; (* the first tmp local *)
-      local_names = ref [ n_param , "tmp" ];
+      locals = ref [];
+      local_names = ref [];
       n_param;
       n_res;
       (* We keep all local vars that are bound to known functions or globals *)
@@ -329,9 +328,6 @@ let compile_mul_const = compile_op_const Wasm_copy.Ast.I32Op.Mul
 let compile_divU_const = compile_op_const Wasm_copy.Ast.I32Op.DivU
 
 (* Locals *)
-
-let set_tmp env = G.i_ (SetLocal (E.tmp_local env))
-let get_tmp env = G.i_ (GetLocal (E.tmp_local env))
 
 let new_local_ env name =
   let i = E.add_anon_local env I32Type in
@@ -1341,7 +1337,7 @@ module Array = struct
 
             Object.lit_raw env1
               [ (nr_ (Syntax.Name "next"),
-                fun _ -> Var.field_box env get_ni) ]
+                fun _ -> Var.field_box env1 get_ni) ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -1355,7 +1351,7 @@ module Array = struct
       (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
               get_array ^^
               get_i ^^
-              idx env ^^
+              idx env1 ^^
               load_ptr
       ));
     E.define_built_in env "array_vals"
@@ -1968,15 +1964,16 @@ module Serialization = struct
     Func.share_code env "shift_pointer_at" ["loc";  "ptr_offset"] [] (fun env ->
       let get_loc = G.i_ (GetLocal (nr 0l)) in
       let get_ptr_offset = G.i_ (GetLocal (nr 1l)) in
+      let (set_ptr, get_ptr) = new_local env "ptr" in
       get_loc ^^
       load_ptr ^^
-      set_tmp env ^^
-      get_tmp env ^^
+      set_ptr ^^
+      get_ptr ^^
       BitTagged.if_unboxed env (ValBlockType None)
         (* nothing to do *)
         ( G.nop )
         ( get_loc ^^
-          get_tmp env ^^
+          get_ptr ^^
           get_ptr_offset ^^
           G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           store_ptr
@@ -2886,10 +2883,12 @@ let compile_lit_as env sr_out lit =
 let compile_unop env op = Syntax.(match op with
   | NegOp ->
       StackRep.UnboxedInt,
-      set_tmp env ^^
-      compile_unboxed_zero ^^
-      get_tmp env ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
+      Func.share_code env "neg" ["n"] [I32Type] (fun env ->
+        let get_n = G.i_ (GetLocal (nr 0l)) in
+        compile_unboxed_zero ^^
+        get_n ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
+      )
   | PosOp ->
       StackRep.UnboxedInt,
       G.nop
