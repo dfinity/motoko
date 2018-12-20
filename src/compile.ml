@@ -979,14 +979,6 @@ module BoxedInt = struct
 
   let lit env n = compile_unboxed_const n ^^ box env
 
-  let lift_unboxed_unary env op_is =
-    (* unbox argument *)
-    unbox env ^^
-    (* apply operator *)
-    op_is ^^
-    (* box result *)
-    box env
-
 end (* BoxedInt *)
 
 (* Primitive functions *)
@@ -2893,7 +2885,7 @@ let compile_lit env lit = Syntax.(match lit with
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
   | NullLit       -> StackRep.Vanilla, compile_null
   | TextLit t     -> StackRep.Vanilla, Text.lit env t
-  | _ -> todo "compile_lit" (Arrange.lit lit) (StackRep.Unreachable, G.i_ Unreachable)
+  | _ -> todo "compile_lit" (Arrange.lit lit) (StackRep.Vanilla, G.i_ Unreachable)
   )
 
 let compile_lit_as env sr_out lit =
@@ -2901,13 +2893,16 @@ let compile_lit_as env sr_out lit =
   code ^^ StackRep.adjust env sr_in sr_out
 
 let compile_unop env op = Syntax.(match op with
-  | NegOp -> BoxedInt.lift_unboxed_unary env (
+  | NegOp ->
+      StackRep.UnboxedInt,
       set_tmp env ^^
       compile_unboxed_zero ^^
       get_tmp env ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)))
-  | PosOp -> G.nop
-  | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
+  | PosOp ->
+      StackRep.UnboxedInt,
+      G.nop
+  | _ -> todo "compile_unop" (Arrange.unop op) (StackRep.Vanilla, G.i_ Unreachable)
   )
 
 (* This returns a single StackRep, to be used for both arguments and the
@@ -2921,7 +2916,7 @@ let compile_binop env op = Syntax.(match op with
   | DivOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU))
   | ModOp -> StackRep.UnboxedInt, G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU))
   | CatOp -> StackRep.Vanilla, Text.concat env
-  | _ -> todo "compile_binop" (Arrange.binop op) (StackRep.Unreachable, G.i_ Unreachable)
+  | _ -> todo "compile_binop" (Arrange.binop op) (StackRep.Vanilla, G.i_ Unreachable)
   )
 
 let compile_relop env op = Syntax.(StackRep.UnboxedInt, match op with
@@ -3020,17 +3015,18 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_as env StackRep.UnboxedInt e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i (Unreachable @@ exp.at))
   | UnE (op, e1) ->
-    StackRep.Vanilla,
-    compile_exp_vanilla env e1 ^^
-    compile_unop env op
+    let sr, code = compile_unop env op in
+    sr,
+    compile_exp_as env sr e1 ^^
+    code
   | BinE (e1, op, e2) ->
-    let (sr, code) = compile_binop env op in
+    let sr, code = compile_binop env op in
     sr,
     compile_exp_as env sr e1 ^^
     compile_exp_as env sr e2 ^^
     code
   | RelE (e1, op, e2) ->
-    let (sr, code) = compile_relop env op in
+    let sr, code = compile_relop env op in
     StackRep.UnboxedInt,
     compile_exp_as env sr e1 ^^
     compile_exp_as env sr e2 ^^
