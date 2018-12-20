@@ -2773,7 +2773,7 @@ module StackRep = struct
      there are various ways of putting a value onto the stack -- unboxed,
      tupled etc.
    *)
-  type t = Vanilla  | UnboxedTuple of int | Unreachable
+  type t = Vanilla  | UnboxedTuple of int | UnboxedInt | Unreachable
 
   let unit = UnboxedTuple 0
 
@@ -2785,13 +2785,6 @@ module StackRep = struct
      But the users of compile_exp usually want a specific form as well.
      So they use compile_exp_as, indicating the form they expect. compile_exp_as 
      then does the necessary coercions.
-
-     So far, the stack representations is merely an integer, the arity:
-       arity = 0: Expression is of type () and nothing is put on the stack
-       arity = 1: The generic case. Returns a single value (pointer or unboxed
-                  scalar) on the stack
-       arity > 1: Expression is of tuple types. Puts elements on the stack
-     To add: Unreachable, Unboxed Int
    *)
 
   let of_arity n =
@@ -2799,6 +2792,7 @@ module StackRep = struct
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
+    | UnboxedInt -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
@@ -2806,22 +2800,25 @@ module StackRep = struct
 
   let to_string = function
     | Vanilla -> "Vanilla"
+    | UnboxedInt -> "UnboxedInt"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
+    | UnboxedInt, UnboxedInt -> UnboxedInt
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
-    | UnboxedTuple n, UnboxedTuple m ->
-      Printf.eprintf "Invalid stack rep join (%s, %s)\n"
-        (to_string sr1) (to_string sr2); sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
+    | _, _ ->
+      Printf.eprintf "Invalid stack rep join (%s, %s)\n"
+        (to_string sr1) (to_string sr2); sr1
 
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla -> G.i_ Drop
+    | UnboxedInt -> G.i_ Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i_ Drop)
     | Unreachable -> G.nop
 
@@ -2832,6 +2829,8 @@ module StackRep = struct
     | Unreachable, _ -> G.nop
     | UnboxedTuple n, Vanilla -> Array.from_stack env n
     | Vanilla, UnboxedTuple n -> Array.to_stack env n
+    | UnboxedInt, Vanilla -> BoxedInt.box env
+    | Vanilla, UnboxedInt -> BoxedInt.unbox env
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -2896,19 +2895,23 @@ open PatCode
 (* The actual compiler code that looks at the AST *)
 
 let compile_lit env lit = Syntax.(match lit with
-  | BoolLit false -> BoxedInt.lit_false env
-  | BoolLit true ->  BoxedInt.lit_true env
+  | BoolLit false -> StackRep.UnboxedInt, compile_unboxed_false
+  | BoolLit true ->  StackRep.UnboxedInt, compile_unboxed_true
   (* This maps int to int32, instead of a proper arbitrary precision library *)
-  | IntLit n      ->
-    (try BoxedInt.lit env (Big_int.int32_of_big_int n)
+  | IntLit n      -> StackRep.UnboxedInt,
+    (try compile_unboxed_const (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
-  | NatLit n      ->
-    (try BoxedInt.lit env (Big_int.int32_of_big_int n)
+  | NatLit n      -> StackRep.UnboxedInt,
+    (try compile_unboxed_const (Big_int.int32_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i_ Unreachable)
-  | NullLit       -> compile_null
-  | TextLit t     -> Text.lit env t
-  | _ -> todo "compile_lit" (Arrange.lit lit) G.i_ Unreachable
+  | NullLit       -> StackRep.Vanilla, compile_null
+  | TextLit t     -> StackRep.Vanilla, Text.lit env t
+  | _ -> todo "compile_lit" (Arrange.lit lit) (StackRep.Unreachable, G.i_ Unreachable)
   )
+
+let compile_lit_as env sr_out lit =
+  let sr_in, code = compile_lit env lit in
+  code ^^ StackRep.adjust env sr_in sr_out
 
 let compile_unop env op = Syntax.(match op with
   | NegOp -> BoxedInt.lift_unboxed_unary env (
@@ -2949,8 +2952,7 @@ let rec compile_lexp (env : E.t) exp = match exp.it with
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_vanilla env e2 ^^ (* idx *)
-     BoxedInt.unbox env ^^
+     compile_exp_as env StackRep.UnboxedInt e2 ^^ (* idx *)
      Array.idx env,
      store_ptr
   | DotE (e, n) ->
@@ -2964,8 +2966,7 @@ and compile_exp (env : E.t) exp = match exp.it with
   | IdxE (e1, e2)  ->
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to array *)
-    compile_exp_vanilla env e2 ^^ (* idx *)
-    BoxedInt.unbox env ^^
+    compile_exp_as env StackRep.UnboxedInt e2 ^^ (* idx *)
     Array.idx env ^^
     load_ptr
   | DotE (e, ({it = Syntax.Name n;_} as name)) ->
@@ -3022,12 +3023,10 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_vanilla env e2 ^^
     store_code
   | LitE l ->
-    StackRep.Vanilla,
     compile_lit env l
   | AssertE e1 ->
     StackRep.unit,
-    compile_exp_vanilla env e1 ^^
-    BoxedInt.unbox env ^^
+    compile_exp_as env StackRep.UnboxedInt e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i (Unreachable @@ exp.at))
   | UnE (op, e1) ->
     StackRep.Vanilla,
@@ -3044,13 +3043,12 @@ and compile_exp (env : E.t) exp = match exp.it with
     compile_exp_vanilla env e2 ^^
     compile_relop env op
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_exp_vanilla env scrut in
+    let code_scrut = compile_exp_as env StackRep.UnboxedInt scrut in
     let sr1, code1 = compile_exp env e1 in
     let sr2, code2 = compile_exp env e2 in
     let sr = StackRep.join sr1 sr2 in
     sr,
-    code_scrut ^^ BoxedInt.unbox env ^^
-    G.if_
+    code_scrut ^^ G.if_
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
@@ -3121,15 +3119,13 @@ and compile_exp (env : E.t) exp = match exp.it with
     StackRep.unit,
     G.loop_ (ValBlockType None) (
       compile_exp_unit env e1 ^^
-      compile_exp_vanilla env e2 ^^
-      BoxedInt.unbox env ^^
+      compile_exp_as env StackRep.UnboxedInt e2 ^^
       G.if_ (ValBlockType None) (G.i_ (Br (nr 1l))) G.nop
     )
   | WhileE (e1, e2) ->
     StackRep.unit,
     G.loop_ (ValBlockType None) (
-      compile_exp_vanilla env e1 ^^
-      BoxedInt.unbox env ^^
+      compile_exp_as env StackRep.UnboxedInt e1 ^^
       G.if_ (ValBlockType None) (
         compile_exp_unit env e2 ^^
         G.i_ (Br (nr 1l))
@@ -3299,12 +3295,11 @@ enabled mutual recursion.
 
 and compile_lit_pat env l = match l with
   | Syntax.NullLit ->
-    compile_lit env l ^^
+    compile_lit_as env StackRep.Vanilla l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
     BoxedInt.unbox env ^^
-    compile_lit env l ^^
-    BoxedInt.unbox env ^^
+    compile_lit_as env StackRep.UnboxedInt l ^^
     G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
