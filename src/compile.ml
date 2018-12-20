@@ -1,10 +1,10 @@
-open Wasm.Ast
-open Wasm.Types
+open Wasm_copy.Ast
+open Wasm_copy.Types
 
 open Source
 open Ir
 
-open CustomModule
+open Wasm_copy.CustomModule
 
 module G = InstrList
 let (^^) = G.(^^) (* is this how we do that? *)
@@ -114,7 +114,7 @@ module E = struct
     (* The prelude. We need to re-use this when compiling actors *)
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
-    dfinity_types : (int32 * CustomSections.type_ list) list ref;
+    dfinity_types : (int32 * Wasm_copy.CustomSections.type_ list) list ref;
     (* Where does static memory end and dynamic memory begin? *)
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
@@ -311,7 +311,7 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_unboxed_const i = G.i_ (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
+let compile_unboxed_const i = G.i_ (Wasm_copy.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_unboxed_true =    compile_unboxed_const 1l
 let compile_unboxed_false =   compile_unboxed_const 0l
 let compile_unboxed_zero =    compile_unboxed_const 0l
@@ -323,10 +323,10 @@ let compile_null = compile_unboxed_const 3l
 let compile_op_const op i =
     compile_unboxed_const i ^^
     G.i_ (Binary (Wasm.Values.I32 op))
-let compile_add_const = compile_op_const Wasm.Ast.I32Op.Add
-let compile_sub_const = compile_op_const Wasm.Ast.I32Op.Sub
-let compile_mul_const = compile_op_const Wasm.Ast.I32Op.Mul
-let compile_divU_const = compile_op_const Wasm.Ast.I32Op.DivU
+let compile_add_const = compile_op_const Wasm_copy.Ast.I32Op.Add
+let compile_sub_const = compile_op_const Wasm_copy.Ast.I32Op.Sub
+let compile_mul_const = compile_op_const Wasm_copy.Ast.I32Op.Mul
+let compile_divU_const = compile_op_const Wasm_copy.Ast.I32Op.DivU
 
 (* Locals *)
 
@@ -361,7 +361,7 @@ let from_0_to_n env mk_body =
     compile_while
       ( get_i ^^
         get_n ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS))
       ) (
         mk_body get_i ^^
 
@@ -428,7 +428,7 @@ module Heap = struct
 
       (* Add to old heap value *)
       G.i_ (GetGlobal (nr heap_ptr)) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
       G.i_ (SetGlobal (nr heap_ptr))
     )
 
@@ -488,11 +488,11 @@ module Heap = struct
       from_0_to_n env (fun get_i ->
           get_to ^^
           get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
 
           get_from ^^
           get_i ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
           G.i_ (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
@@ -609,21 +609,21 @@ module BitTagged = struct
     (* Check bit *)
     get_i ^^
     compile_unboxed_const 1l ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.And)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.And)) ^^
     compile_unboxed_const 1l ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
     G.if_ retty
       ( get_i ^^
         compile_unboxed_const 1l ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.ShrU)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.ShrU)) ^^
         is1)
       ( get_i ^^ is2)
 
   let tag =
     compile_unboxed_const 1l ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Shl)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Shl)) ^^
     compile_unboxed_const 1l ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Or))
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Or))
 
 end (* BitTagged *)
 
@@ -683,7 +683,7 @@ module Tagged = struct
         get_i ^^
         load ^^
         compile_unboxed_const (int_of_tag tag) ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
         G.if_ retty (get_i ^^ code) (go cases)
     in
     set_i ^^
@@ -962,7 +962,7 @@ module BoxedInt = struct
   let box env = Func.share_code env "box_int" ["n"] [I32Type] (fun env ->
       let get_n = G.i_ (GetLocal (nr 0l)) in
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 5)) ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
       G.if_ [I32Type]
         (get_n ^^ BitTagged.tag)
         (Tagged.obj env Tagged.Int [ G.i_ (GetLocal (nr 0l)) ])
@@ -1009,12 +1009,12 @@ module Prim = struct
     get_i ^^
     BoxedInt.unbox env ^^
     compile_unboxed_zero ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS)) ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS)) ^^
     G.if_ [I32Type]
       ( compile_unboxed_zero ^^
         get_i ^^
         BoxedInt.unbox env ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
         BoxedInt.box env
       )
       ( get_i )
@@ -1108,13 +1108,13 @@ module Object = struct
         compile_add_const header_size ^^
         compile_mul_const Heap.word_size  ^^
         get_x ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
         set_f ^^
 
         get_f ^^
         Heap.load_field 0l ^^ (* the hash field *)
         get_hash ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
         G.if_ []
           ( get_f ^^
             compile_add_const Heap.word_size ^^
@@ -1174,8 +1174,8 @@ module Text = struct
       compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
       get_len1 ^^
       get_len2 ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
       Heap.dyn_alloc_bytes env ^^
       set_z ^^
 
@@ -1186,7 +1186,7 @@ module Text = struct
       get_z ^^
       get_len1 ^^
       get_len2 ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
       Heap.store_field len_field ^^
 
       (* Copy first string *)
@@ -1207,7 +1207,7 @@ module Text = struct
       get_z ^^
       compile_add_const (Int32.mul Heap.word_size header_size) ^^
       get_len1 ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
 
       get_len2 ^^
 
@@ -1229,7 +1229,7 @@ module Text = struct
 
       get_len1 ^^
       get_len2 ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
       G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return) ^^
 
       (* We could do word-wise comparisons if we know that the trailing bytes
@@ -1239,16 +1239,16 @@ module Text = struct
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size header_size) ^^
         get_i ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
         G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         get_y ^^
         compile_add_const (Int32.mul Heap.word_size header_size) ^^
         get_i ^^
-        G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+        G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
         G.i_ (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
         G.if_ [] G.nop (compile_unboxed_false ^^ G.i_ Return)
       ) ^^
       compile_unboxed_true
@@ -1272,14 +1272,14 @@ module Array = struct
       get_idx ^^
       get_array ^^
       Heap.load_field len_field ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
       G.if_ [] G.nop (G.i_ Unreachable) ^^
 
       get_idx ^^
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
       get_array ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add))
     )
 
   (* Expects on the stack the pointer to the array. *)
@@ -1333,7 +1333,7 @@ module Array = struct
             Closure.load_closure 1l ^^
             (* Get length *)
             Heap.load_field len_field ^^
-            G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+            G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
             G.if_ [I32Type]
               (* Then *)
               compile_null
@@ -1740,7 +1740,7 @@ module OrthogonalPersistence = struct
 
        get_i ^^
        compile_unboxed_const 0l ^^
-       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
        G.if_[]
          (* First run, call the start function *)
          ( G.i_ (Call (nr start_funid)) )
@@ -1776,7 +1776,7 @@ module OrthogonalPersistence = struct
        compile_unboxed_const ElemHeap.table_end ^^
        G.i_ (GetGlobal (nr Heap.heap_ptr)) ^^
        compile_unboxed_const ElemHeap.table_end ^^
-       G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+       G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
        G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
        G.i_ (SetGlobal (nr mem_global)) ^^
 
@@ -1945,14 +1945,14 @@ module Serialization = struct
                 compile_add_const Object.header_size ^^
                 compile_mul_const Heap.word_size ^^
                 get_copy ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
 
                 get_i ^^
                 compile_mul_const 2l ^^
                 compile_add_const Object.header_size ^^
                 compile_mul_const Heap.word_size ^^
                 get_x ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
 
 
                 load_ptr ^^
@@ -1965,7 +1965,7 @@ module Serialization = struct
                 compile_add_const Object.header_size ^^
                 compile_mul_const Heap.word_size ^^
                 get_copy ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
                 compile_add_const Heap.word_size ^^
 
                 get_i ^^
@@ -1973,7 +1973,7 @@ module Serialization = struct
                 compile_add_const Object.header_size ^^
                 compile_mul_const Heap.word_size ^^
                 get_x ^^
-                G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+                G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
                 compile_add_const Heap.word_size ^^
 
                 load_ptr ^^
@@ -2000,7 +2000,7 @@ module Serialization = struct
           get_loc ^^
           get_tmp env ^^
           get_ptr_offset ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           store_ptr
         )
     )
@@ -2060,12 +2060,12 @@ module Serialization = struct
         (* While we have not reached the end of the area *)
         ( get_x ^^
           compile_to ^^
-          G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+          G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS))
         )
         ( mk_code get_x ^^
           get_x ^^
           get_x ^^ object_size env ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           set_x
         )
 
@@ -2109,7 +2109,7 @@ module Serialization = struct
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size ^^
           get_x ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           set_ptr_loc ^^
           mk_code get_ptr_loc
         )
@@ -2122,7 +2122,7 @@ module Serialization = struct
           compile_add_const Closure.header_size ^^
           compile_mul_const Heap.word_size ^^
           get_x ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           set_ptr_loc ^^
           mk_code get_ptr_loc
         )
@@ -2162,7 +2162,7 @@ module Serialization = struct
             (* Adjust reference *)
             get_tbl_area ^^
             get_i ^^ compile_mul_const Heap.word_size ^^
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
             get_x ^^
             Heap.load_field 1l ^^
             ElemHeap.recall_reference env ^^
@@ -2197,7 +2197,7 @@ module Serialization = struct
             Heap.load_field 1l ^^
             compile_mul_const Heap.word_size ^^
             get_tbl_area ^^
-            G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+            G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
             load_ptr ^^
             ElemHeap.remember_reference env ^^
             Heap.store_field 1l
@@ -2249,7 +2249,7 @@ module Serialization = struct
           (* Adjust pointers *)
           get_start ^^
           get_end ^^
-          compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+          compile_unboxed_zero ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
           shift_pointers env ^^
 
           (* Extract references, and remember how many there were *)
@@ -2262,14 +2262,14 @@ module Serialization = struct
 
       (* Create databuf *)
       get_start ^^
-      get_end ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+      get_end ^^ get_start ^^ G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
       G.i_ (Call (nr (Dfinity.data_externalize_i env))) ^^
       set_databuf ^^
 
       (* Append this reference at the end of the extracted references *)
       get_end ^^
       get_tbl_size ^^ compile_mul_const Heap.word_size ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
       get_databuf ^^
       store_ptr ^^
       (* And bump table end *)
@@ -2335,7 +2335,7 @@ module Serialization = struct
       (* Check if we got something unboxed (data buf size 1 word) *)
       get_data_len ^^
       compile_unboxed_const Heap.word_size ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
       G.if_ [I32Type]
         (* Yes, we got something unboxed. Return it, and do _not_ bump the heap pointer *)
         ( get_start ^^ load_ptr )
@@ -2343,7 +2343,7 @@ module Serialization = struct
         ( (* update heap pointer *)
           get_start ^^
           get_data_len ^^
-          G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+          G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
           G.i_ (SetGlobal (nr Heap.heap_ptr)) ^^
 
           (* Fix pointers *)
@@ -2408,7 +2408,7 @@ module GC = struct
     (* If this is static, ignore it *)
     get_obj ^^
     get_begin_from_space ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtU)) ^^
+    G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtU)) ^^
     G.if_ [] (get_end_to_space ^^ G.i_ Return) G.nop ^^
 
     (* If this is an indirection, just use that value *)
@@ -2434,9 +2434,9 @@ module GC = struct
     (* Calculate new pointer *)
     get_end_to_space ^^
     get_begin_to_space ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
     get_begin_from_space ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
     set_new_ptr ^^
 
     (* Set indirection *)
@@ -2454,7 +2454,7 @@ module GC = struct
     (* Calculate new end of to space *)
     get_end_to_space ^^
     get_len ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add))
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add))
   )
 
   let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
@@ -2501,13 +2501,13 @@ module GC = struct
     (* Copy the to-space to the beginning of memory. *)
     get_begin_to_space ^^
     get_begin_from_space ^^
-    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
     Heap.memcpy env ^^
 
     (* Reset the heap pointer *)
     get_begin_from_space ^^
-    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)) ^^
-    G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)) ^^
+    get_end_to_space ^^ get_begin_to_space ^^ G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)) ^^
+    G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)) ^^
     G.i_ (SetGlobal (nr Heap.heap_ptr))
   )
 
@@ -2707,7 +2707,7 @@ module FuncDec = struct
             let f = compile_message env cc restore_env mk_pat mk_body at in
             let fi = E.add_fun env f name.it in
             E.add_dfinity_type env (fi,
-              CustomSections.I32 :: Lib.List.make cc.Value.n_args CustomSections.ElemBuf
+              Wasm_copy.CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
             );
             fi
           in
@@ -2901,29 +2901,29 @@ let compile_unop env op = Syntax.(match op with
       set_tmp env ^^
       compile_unboxed_zero ^^
       get_tmp env ^^
-      G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
+      G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)))
   | PosOp -> G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) G.i_ Unreachable
   )
 
 let compile_binop env op = Syntax.(match op with
-  | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Add)))
-  | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Sub)))
-  | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.Mul)))
-  | DivOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.DivU)))
-  | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm.Ast.I32Op.RemU)))
+  | AddOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add)))
+  | SubOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub)))
+  | MulOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Mul)))
+  | DivOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU)))
+  | ModOp -> BoxedInt.lift_unboxed_binary env (G.i_ (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU)))
   | CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) G.i_ Unreachable
   )
 
 let compile_relop env op = Syntax.(BoxedInt.lift_unboxed_binary env (match op with
-  | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
-  | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+  | EqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
+  | NeqOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
              G.if_ [I32Type] compile_unboxed_false compile_unboxed_true
-  | GeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GeS))
-  | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.GtS))
-  | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LeS))
-  | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.LtS))
+  | GeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GeS))
+  | GtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GtS))
+  | LeOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LeS))
+  | LtOp -> G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LtS))
   ))
 
 
@@ -3062,7 +3062,7 @@ and compile_exp (env : E.t) exp = match exp.it with
        Heap.load_field Object.class_position ^^
        (* Equal? *)
        get_j ^^
-       G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+       G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
        G.if_ [I32Type]
          (BoxedInt.lit_true env)
          (* Static function id? *)
@@ -3072,7 +3072,7 @@ and compile_exp (env : E.t) exp = match exp.it with
            Heap.load_field 0l ^^ (* get the function id *)
            compile_mul_const Heap.word_size ^^
            compile_add_const 1l ^^
-           G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+           G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
          )
      ]
   | BlockE decs ->
@@ -3207,7 +3207,7 @@ and compile_exp (env : E.t) exp = match exp.it with
       (* Check for null *)
       get_oi ^^
       compile_null ^^
-      G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+      G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
       G.if_ []
         G.nop
         ( alloc_code ^^ get_oi ^^ Opt.project ^^
@@ -3284,12 +3284,12 @@ enabled mutual recursion.
 and compile_lit_pat env l = match l with
   | Syntax.NullLit ->
     compile_lit env l ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+    G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
     BoxedInt.unbox env ^^
     compile_lit env l ^^
     BoxedInt.unbox env ^^
-    G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq))
+    G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
@@ -3304,7 +3304,7 @@ and fill_pat env pat : patternCode = match pat.it with
         set_i ^^
         get_i ^^
         compile_null ^^
-        G.i_ (Compare (Wasm.Values.I32 Wasm.Ast.I32Op.Eq)) ^^
+        G.i_ (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
         G.if_ [] fail_code
           ( get_i ^^
             Opt.project ^^
@@ -3513,7 +3513,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
      I have not reviewed/fixed the code below.
   *)
   let (fi, fill) = E.reserve_fun pre_env name.it in
-  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
+  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args Wasm_copy.CustomSections.ElemBuf);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
@@ -3566,7 +3566,7 @@ and actor_lit outer_env name fs =
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env name.it None in
-    let (_map, wasm) = CustomModule.encode m in
+    let (_map, wasm) = Wasm_copy.CustomModule.encode m in
     wasm in
 
   let code =
@@ -3655,8 +3655,8 @@ and conclude_module env module_name start_fi_o =
     };
     types = E.get_dfinity_types env;
     persist =
-           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
+           [ (OrthogonalPersistence.mem_global, Wasm_copy.CustomSections.DataBuf)
+           ; (OrthogonalPersistence.elem_global, Wasm_copy.CustomSections.ElemBuf)
            ];
     module_name;
     function_names =

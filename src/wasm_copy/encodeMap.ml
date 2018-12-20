@@ -128,7 +128,7 @@ let encode m =
 
     (* Types *)
 
-    open Wasm.Types
+    open Types
 
     let value_type = function
       | I32Type -> vs7 (-0x01)
@@ -168,7 +168,7 @@ let encode m =
     (* Expressions *)
 
     open Wasm.Source
-    open Wasm.Ast
+    open Ast
     open Wasm.Values
     open Wasm.Memory
 

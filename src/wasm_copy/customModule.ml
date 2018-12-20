@@ -3,7 +3,7 @@
 *)
 
 open Wasm.Source
-open Wasm.Ast
+open Ast
 
 type extended_module = {
   (* The non-custom sections *)

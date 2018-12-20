@@ -61,10 +61,12 @@ rec {
     src = sourceByRegex ./. [
       "src/"
       "src/Makefile.*"
+      "src/wasm_copy/"
       "src/.*.ml"
       "src/.*.mli"
       "src/.*.mly"
       "src/.*.mll"
+      "src/.*.mlpack"
       "src/_tags"
       "test/"
       "test/node-test.js"

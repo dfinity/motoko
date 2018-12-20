@@ -7,8 +7,8 @@ features are
  * Some simple peephole optimizations.
 *)
 
-open Wasm.Types
-open Wasm.Ast
+open Wasm_copy.Types
+open Wasm_copy.Ast
 open Wasm.Source
 
 (* Some simpl peephole optimizations, to make the output code look less stupid *)
