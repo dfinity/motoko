@@ -27,10 +27,21 @@ let d = actor {
     f();
   };
   hello() {
-    print("Hello World!\n");
+    print("Hello Universe!\n");
   };
   go() {
     say_hi(hello);
   }
 };
-d.go()
+d.go();
+
+// test passing a self to an actor
+let e = actor this {
+  hello() {
+    print("Hello Galaxy!\n");
+  };
+  send_to(f : shared (actor { hello : () -> () }) -> ()) {
+    f(this);
+  }
+};
+e.send_to(b.say_hi);

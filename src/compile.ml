@@ -1664,7 +1664,15 @@ module Dfinity = struct
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
-    });
+    })
+
+  let get_self_reference env =
+    Func.share_code env "get_self_reference" [] [I32Type] (fun env ->
+      Tagged.obj env Tagged.Reference [
+        G.i (Call (nr (actor_self_i env))) ^^
+        ElemHeap.remember_reference env
+      ]
+    )
 
 end (* Dfinity *)
 
@@ -3566,7 +3574,7 @@ and compile_actor_fields env fs =
 and actor_lit outer_env name fs at =
   if E.mode outer_env <> DfinityMode then G.i Unreachable else
 
-  let wasm =
+  let wasm_binary =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
@@ -3575,18 +3583,23 @@ and actor_lit outer_env name fs at =
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile stuff here *)
       let (env4, prelude_code) = compile_prelude env3 in
-      let (env5, init_code)  = compile_actor_fields env4 fs in
+
+      (* Bind the self pointer *)
+      let d = { allocate = Dfinity.get_self_reference; is_direct_call = None } in
+      let env5 = E.add_local_deferred env4 name.it d in
+      let (_env6, init_code)  = compile_actor_fields env5 fs in
+
       prelude_code ^^ init_code) in
     let start_fi = E.add_fun env start_fun "start" in
 
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env name.it None in
-    let (_map, wasm) = Wasm_copy.CustomModule.encode m in
-    wasm in
+    let (_map, wasm_binary) = Wasm_copy.CustomModule.encode m in
+    wasm_binary in
 
   let code = G.with_region at @@
-    Dfinity.compile_databuf_of_bytes outer_env wasm ^^
+    Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
 
     (* Create actorref *)
     G.i (Call (nr (Dfinity.module_new_i outer_env))) ^^
