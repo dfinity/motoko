@@ -11,7 +11,7 @@ non-closed actor: (ActorE
         (TupT)
         (BlockE
           (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
-          (ExpD (AssignE (VarE c) (BinE (VarE c) SubOp (LitE (IntLit 1)))))
+          (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
         )
       )
     )

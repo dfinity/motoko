@@ -15,6 +15,11 @@ let apply_sign op l = Syntax.(match op, l with
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
+let prim_of_type = function
+  | Type.Prim p -> p
+  | Type.Mut (Type.Prim p) -> p
+  | Type.Non -> Type.Nat (* dead code anyways *)
+  | t -> raise (Invalid_argument ("non-primitive operator type: " ^ Type.string_of_typ t))
 
 let phrase f x = f x.it @@ x.at
 let phrase' f x = f x.at x.note x.it @@ x.at
@@ -26,9 +31,15 @@ let
     | S.PrimE p -> I.PrimE p
     | S.VarE i -> I.VarE i
     | S.LitE l -> I.LitE !l
-    | S.UnE (o, e) -> I.UnE (o, exp e)
-    | S.BinE (e1, o, e2) -> I.BinE (exp e1, o, exp e2)
-    | S.RelE (e1, o, e2) -> I.RelE (exp e1, o, exp e2)
+    | S.UnE (o, e) ->
+      let p = prim_of_type (e.Source.note.S.note_typ) in
+      I.UnE (p , o, exp e)
+    | S.BinE (e1, o, e2) ->
+      let p = prim_of_type (e1.Source.note.S.note_typ) in
+      I.BinE (p, exp e1, o, exp e2)
+    | S.RelE (e1, o, e2) ->
+      let p = prim_of_type (e1.Source.note.S.note_typ) in
+      I.RelE (p, exp e1, o, exp e2)
     | S.TupE es -> I.TupE (exps es)
     | S.ProjE (e, i) -> I.ProjE (exp e, i)
     | S.OptE e -> I.OptE (exp e)

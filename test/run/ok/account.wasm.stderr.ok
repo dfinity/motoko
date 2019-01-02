@@ -71,7 +71,7 @@ non-closed actor: (ActorE
                       (ExpD
                         (AssignE
                           (VarE balance)
-                          (BinE (VarE balance) SubOp (VarE amount))
+                          (BinE Int (VarE balance) SubOp (VarE amount))
                         )
                       )
                       (ExpD
@@ -140,7 +140,10 @@ non-closed actor: (ActorE
         (BlockE
           (ExpD (AssertE (IsE (VarE this) (VarE caller))))
           (ExpD
-            (AssignE (VarE balance) (BinE (VarE balance) AddOp (VarE amount)))
+            (AssignE
+              (VarE balance)
+              (BinE Int (VarE balance) AddOp (VarE amount))
+            )
           )
         )
       )

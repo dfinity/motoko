@@ -595,7 +595,7 @@ let string_of_func_sort = function
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
-  | Non -> "None"
+  | Non -> "Non"
   | Shared -> "Shared"
   | Class -> "Class"
   | Prim p -> string_of_prim p

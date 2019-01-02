@@ -304,8 +304,6 @@ end
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
 let compile_unboxed_const i = G.i (Wasm_copy.Ast.Const (nr (Wasm.Values.I32 i)))
-let compile_unboxed_true =    compile_unboxed_const 1l
-let compile_unboxed_false =   compile_unboxed_const 0l
 let compile_unboxed_zero =    compile_unboxed_const 0l
 let compile_unit = compile_unboxed_const 1l
 (* This needs to be disjoint from all pointers *)
@@ -490,14 +488,16 @@ module Heap = struct
       )
     )
 
-
-
 end (* Heap *)
 
 module ElemHeap = struct
   let ref_counter = 3l
 
   let max_references = 1024l
+
+  (* By placing the ElemHeap at memory location 0, we incidentally make sure that
+     the 0l pointer is never a valid pointer.
+  *)
   let ref_location = 0l
 
   let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
@@ -588,19 +588,26 @@ end (* ClosureTable *)
 module BitTagged = struct
   (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
      Pointers are stored as is (and should be aligned to have a zero there).
+     Special case: The zero pointer is considered a pointer.
   *)
 
-  (* Expect a possibly bit-tagged pointer on the stack.
-     If taged, untags it and executes the first sequest.
-     Otherwise, leaves it on the stack and executes the second sequence.
-  *)
   let if_unboxed env retty is1 is2 =
-    (* Get bit *)
-    compile_unboxed_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.And)) ^^
-    (* Check bit *)
-    compile_unboxed_const 1l ^^
-    G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
+    Func.share_code env "is_unboxed" ["x"] [I32Type] (fun env ->
+      let get_x = G.i (GetLocal (nr 0l)) in
+      (* Get bit *)
+      get_x ^^
+      compile_unboxed_const 1l ^^
+      G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.And)) ^^
+      (* Check bit *)
+      compile_unboxed_const 1l ^^
+      G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
+      G.if_ (ValBlockType None)
+        (compile_unboxed_const 1l ^^ G.i Return) G.nop ^^
+      (* Also check if it is the null-pointer *)
+      get_x ^^
+      compile_unboxed_const 0l ^^
+      G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
+    ) ^^
     G.if_ retty is1 is2
 
   let untag_scalar env =
@@ -1103,6 +1110,19 @@ module Object = struct
 
 end (* Object *)
 
+module Bool = struct
+  (* Boolean literals are either 0 or 1
+     The 1 is recognized as a unboxed scalar anyways,
+     while the 0 is special. This allows us
+     to use the result of the WebAssembly comparison operators
+     directly.
+  *)
+  let lit = function
+    | false -> compile_unboxed_const 0l
+    | true -> compile_unboxed_const 1l
+
+end (* Bool *)
+
 module Text = struct
   let header_size = Int32.add Tagged.header_size 1l
 
@@ -1198,7 +1218,7 @@ module Text = struct
       get_len1 ^^
       get_len2 ^^
       G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-      G.if_ (ValBlockType None) G.nop (compile_unboxed_false ^^ G.i Return) ^^
+      G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return) ^^
 
       (* We could do word-wise comparisons if we know that the trailing bytes
          are zeroed *)
@@ -1217,9 +1237,9 @@ module Text = struct
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) G.nop (compile_unboxed_false ^^ G.i Return)
+        G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return)
       ) ^^
-      compile_unboxed_true
+      Bool.lit true
   )
 
 end (* String *)
@@ -1370,7 +1390,7 @@ module Array = struct
       | _ -> None
 
   (* The primitive operations *)
-  (* No need to wrap them in RTS functions: They occurr only once, in the prelude. *)
+  (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
   let init env =
     let (set_len, get_len) = new_local env "len" in
     let (set_x, get_x) = new_local env "x" in
@@ -2744,6 +2764,8 @@ module StackRep = struct
 
   let unit = UnboxedTuple 0
 
+  let bool = Vanilla
+
   (*
      Most expression have a “preferred”, most optimal, form. Hence,
      compile_exp put them on the stack in that form, and also returns
@@ -2756,6 +2778,14 @@ module StackRep = struct
 
   let of_arity n =
     if n = 1 then Vanilla else UnboxedTuple n
+
+  (* The stack rel of a primitive type, i.e. what the binary operators expect *)
+  let of_prim : Type.prim -> t = function
+    | Type.Bool -> bool
+    | Type.Nat -> UnboxedInt
+    | Type.Int -> UnboxedInt
+    | Type.Text -> Vanilla
+    | p -> todo "of_prim" (Arrange.prim p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
@@ -2843,14 +2873,14 @@ module PatCode = struct
     | CanFail is1 -> function
       | CanFail is2 -> CanFail (fun fail_code ->
           let inner_fail = G.new_depth_label () in
-          let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
+          let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
+          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
           G.if_ (ValBlockType None) G.nop (is2 fail_code)
         )
       | CannotFail is2 -> CannotFail (
           let inner_fail = G.new_depth_label () in
-          let inner_fail_code = compile_unboxed_false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ compile_unboxed_true) ^^
+          let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
+          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
           G.if_ (ValBlockType None) G.nop is2
         )
 
@@ -2868,8 +2898,9 @@ open PatCode
 (* The actual compiler code that looks at the AST *)
 
 let compile_lit env lit = Syntax.(match lit with
-  | BoolLit false -> StackRep.UnboxedInt, compile_unboxed_false
-  | BoolLit true ->  StackRep.UnboxedInt, compile_unboxed_true
+  (* Booleans are directly in Vanilla representation *)
+  | BoolLit false -> StackRep.bool, Bool.lit false
+  | BoolLit true ->  StackRep.bool, Bool.lit true
   (* This maps int to int32, instead of a proper arbitrary precision library *)
   | IntLit n      -> StackRep.UnboxedInt,
     (try compile_unboxed_const (Big_int.int32_of_big_int n)
@@ -2886,7 +2917,7 @@ let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-let compile_unop env op = Syntax.(match op with
+let compile_unop env t op = Syntax.(match op with
   | NegOp ->
       StackRep.UnboxedInt,
       Func.share_code env "neg" ["n"] [I32Type] (fun env ->
@@ -2905,20 +2936,25 @@ let compile_unop env op = Syntax.(match op with
    result. One could imagine operators that require or produce different StackReps,
    but none of these do, so a single value is fine.
 *)
-let compile_binop env op = Syntax.(match op with
-  | AddOp -> StackRep.UnboxedInt, G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add))
-  | SubOp -> StackRep.UnboxedInt, G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
-  | MulOp -> StackRep.UnboxedInt, G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Mul))
-  | DivOp -> StackRep.UnboxedInt, G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU))
-  | ModOp -> StackRep.UnboxedInt, G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU))
-  | CatOp -> StackRep.Vanilla, Text.concat env
-  | _ -> todo "compile_binop" (Arrange.binop op) (StackRep.Vanilla, G.i Unreachable)
+let compile_binop env t op =
+  StackRep.of_prim t,
+  Syntax.(match op with
+  | AddOp -> G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Add))
+  | SubOp -> G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Sub))
+  | MulOp -> G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Mul))
+  | DivOp -> G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.DivU))
+  | ModOp -> G.i (Binary (Wasm.Values.I32 Wasm_copy.Ast.I32Op.RemU))
+  | CatOp -> Text.concat env
+  | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
   )
 
-let compile_relop env op = Syntax.(StackRep.UnboxedInt, match op with
+let compile_relop env t op =
+  StackRep.of_prim t,
+  Syntax.(match op with
   | EqOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
   | NeqOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
-             G.if_ (ValBlockType (Some I32Type)) compile_unboxed_false compile_unboxed_true
+             G.if_ (StackRep.to_block_type env StackRep.bool)
+                   (Bool.lit false) (Bool.lit true)
   | GeOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GeS))
   | GtOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.GtS))
   | LeOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.LeS))
@@ -3018,27 +3054,27 @@ and compile_exp (env : E.t) exp =
     compile_lit env l
   | AssertE e1 ->
     StackRep.unit,
-    compile_exp_as env StackRep.UnboxedInt e1 ^^
+    compile_exp_as env StackRep.bool e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
-  | UnE (op, e1) ->
-    let sr, code = compile_unop env op in
+  | UnE (t, op, e1) ->
+    let sr, code = compile_unop env t op in
     sr,
     compile_exp_as env sr e1 ^^
     code
-  | BinE (e1, op, e2) ->
-    let sr, code = compile_binop env op in
+  | BinE (t, e1, op, e2) ->
+    let sr, code = compile_binop env t op in
     sr,
     compile_exp_as env sr e1 ^^
     compile_exp_as env sr e2 ^^
     code
-  | RelE (e1, op, e2) ->
-    let sr, code = compile_relop env op in
-    StackRep.UnboxedInt,
+  | RelE (t, e1, op, e2) ->
+    let sr, code = compile_relop env t op in
+    StackRep.bool,
     compile_exp_as env sr e1 ^^
     compile_exp_as env sr e2 ^^
     code
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_exp_as env StackRep.UnboxedInt scrut in
+    let code_scrut = compile_exp_as env StackRep.bool scrut in
     let sr1, code1 = compile_exp env e1 in
     let sr2, code2 = compile_exp env e2 in
     let sr = StackRep.join sr1 sr2 in
@@ -3048,7 +3084,7 @@ and compile_exp (env : E.t) exp =
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
   | IsE (e1, e2) ->
-    StackRep.UnboxedInt,
+    StackRep.bool,
     let code1 = compile_exp_vanilla env e1 in
     let code2 = compile_exp_vanilla env e2 in
     let (set_i, get_i) = new_local env "is_lhs" in
@@ -3061,10 +3097,10 @@ and compile_exp (env : E.t) exp =
     get_i ^^
     Tagged.branch env (ValBlockType (Some I32Type))
      [ Tagged.Array,
-       compile_unboxed_false
+       Bool.lit false
      ; Tagged.Reference,
        (* TODO: Implement IsE for actor references? *)
-       compile_unboxed_false
+       Bool.lit false
      ; Tagged.Object,
        (* There are two cases: Either the class is a pointer to
           the object on the RHS, or it is -- mangled -- the
@@ -3075,7 +3111,7 @@ and compile_exp (env : E.t) exp =
        get_j ^^
        G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
        G.if_ (ValBlockType (Some I32Type))
-         compile_unboxed_true
+         (Bool.lit true)
          (* Static function id? *)
          ( get_i ^^
            Heap.load_field Object.class_position ^^
@@ -3115,13 +3151,13 @@ and compile_exp (env : E.t) exp =
     StackRep.unit,
     G.loop_ (ValBlockType None) (
       compile_exp_unit env e1 ^^
-      compile_exp_as env StackRep.UnboxedInt e2 ^^
+      compile_exp_as env StackRep.bool e2 ^^
       G.if_ (ValBlockType None) (G.i (Br (nr 1l))) G.nop
     )
   | WhileE (e1, e2) ->
     StackRep.unit,
     G.loop_ (ValBlockType None) (
-      compile_exp_as env StackRep.UnboxedInt e1 ^^
+      compile_exp_as env StackRep.bool e1 ^^
       G.if_ (ValBlockType None) (
         compile_exp_unit env e2 ^^
         G.i (Br (nr 1l))
@@ -3305,7 +3341,12 @@ and compile_lit_pat env l =
   | Syntax.NullLit ->
     compile_lit_as env StackRep.Vanilla l ^^
     G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
-  | Syntax.(NatLit _ | IntLit _ | BoolLit _) ->
+  | Syntax.BoolLit true ->
+    G.nop
+  | Syntax.BoolLit false ->
+    Bool.lit false ^^
+    G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
+  | Syntax.(NatLit _ | IntLit _) ->
     BoxedInt.unbox env ^^
     compile_lit_as env StackRep.UnboxedInt l ^^
     G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))

@@ -7,9 +7,9 @@ let ($$) head inner = Node (head, inner)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [Arrange.lit l]
-  | UnE (uo, e)         -> "UnE"     $$ [Arrange.unop uo; exp e]
-  | BinE (e1, bo, e2)   -> "BinE"    $$ [exp e1; Arrange.binop bo; exp e2]
-  | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; Arrange.relop ro; exp e2]
+  | UnE (t, uo, e)      -> "UnE"     $$ [Arrange.prim t; Arrange.unop uo; exp e]
+  | BinE (t, e1, bo, e2)-> "BinE"    $$ [Arrange.prim t; exp e1; Arrange.binop bo; exp e2]
+  | RelE (t, e1, ro, e2)-> "RelE"    $$ [Arrange.prim t; exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs

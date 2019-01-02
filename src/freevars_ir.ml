@@ -62,9 +62,9 @@ let rec exp e : f = match e.it with
   | VarE i              -> M.singleton i.it {captured = false}
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
-  | UnE (uo, e)         -> exp e
-  | BinE (e1, bo, e2)   -> exps [e1; e2]
-  | RelE (e1, ro, e2)   -> exps [e1; e2]
+  | UnE (_, uo, e)      -> exp e
+  | BinE (_, e1, bo, e2)-> exps [e1; e2]
+  | RelE (_, e1, ro, e2)-> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | ActorE (i, efs)     -> close (exp_fields efs) // i.it
