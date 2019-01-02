@@ -3084,6 +3084,7 @@ and compile_exp (env : E.t) exp =
      )
   | ActorDotE (e, ({it = Syntax.Name n;_} as name)) ->
     StackRep.UnboxedReference,
+    if E.mode env <> DfinityMode then G.i Unreachable else
     compile_exp_as env StackRep.UnboxedReference e ^^
     actor_fake_object_idx env {name with it = n}
   (* We only allow prims of certain shapes, as they occur in the prelude *)

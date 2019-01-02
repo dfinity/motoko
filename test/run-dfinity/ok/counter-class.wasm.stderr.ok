@@ -1,4 +1,60 @@
-(unknown location): internal error, Invalid_argument("TODO: Con in dot operator")
-
-Last environment:
-
+non-closed actor: (ActorE
+  anon-object-1.30
+  (c c (VarE i) Var Private)
+  (dec
+    dec
+    (BlockE
+      (FuncD
+        (shared  0 -> 0)
+        dec
+        (TupP)
+        (TupT)
+        (BlockE
+          (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
+          (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
+        )
+      )
+    )
+    Const
+    Public
+  )
+  (read
+    read
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        read
+        (VarP $1)
+        (TupT)
+        (BlockE
+          (LetD (TupP) (TupE))
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $0)
+                  (PrimT Any)
+                  (CallE ( 1 -> 0) (VarE $0) (BlockE (ExpD (VarE c))))
+                )
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $2)
+                  (PrimT Any)
+                  (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    Const
+    Public
+  )
+)
