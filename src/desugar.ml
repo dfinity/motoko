@@ -32,10 +32,12 @@ let
     | S.VarE i -> I.VarE i
     | S.LitE l -> I.LitE !l
     | S.UnE (o, e) ->
-      let p = prim_of_type (e.Source.note.S.note_typ) in
+      (* Important: Use the type of the result (due to Nat <: Int subtyping *)
+      let p = prim_of_type (note.S.note_typ) in
       I.UnE (p , o, exp e)
     | S.BinE (e1, o, e2) ->
-      let p = prim_of_type (e1.Source.note.S.note_typ) in
+      (* Important: Use the type of the result (due to Nat <: Int subtyping *)
+      let p = prim_of_type (note.S.note_typ) in
       I.BinE (p, exp e1, o, exp e2)
     | S.RelE (e1, o, e2) ->
       let p = prim_of_type (e1.Source.note.S.note_typ) in
