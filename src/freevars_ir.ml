@@ -69,6 +69,7 @@ let rec exp e : f = match e.it with
   | ProjE (e, i)        -> exp e
   | ActorE (i, efs)     -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
+  | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, es)      -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]

@@ -46,7 +46,13 @@ let
     | S.ProjE (e, i) -> I.ProjE (exp e, i)
     | S.OptE e -> I.OptE (exp e)
     | S.ObjE (s, i, es) -> obj at s None i es
-    | S.DotE (e, n) -> I.DotE (exp e, n)
+    | S.DotE (e, n) ->
+      begin match e.Source.note.S.note_typ with
+      | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp e, n)
+      | Type.Obj (_,  _) | Type.Array _ -> I.DotE (exp e, n)
+      | Type.Con _ -> raise (Invalid_argument ("TODO: Con in dot operator"))
+      | _ -> raise (Invalid_argument ("non-object in dot operator"))
+      end
     | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
     | S.ArrayE (m, es) -> I.ArrayE (m, exps es)
     | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)

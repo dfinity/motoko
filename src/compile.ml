@@ -1719,13 +1719,22 @@ module Dfinity = struct
       edesc = nr (FuncExport (nr fi))
     })
 
-  let get_self_reference env =
-    Func.share_code env "get_self_reference" [] [I32Type] (fun env ->
+  let box_reference env =
+    Func.share_code env "box_reference" ["ref", I32Type] [I32Type] (fun env ->
+      let get_ref = G.i (GetLocal (nr 0l)) in
       Tagged.obj env Tagged.Reference [
-        G.i (Call (nr (actor_self_i env))) ^^
+        get_ref ^^
         ElemHeap.remember_reference env
       ]
     )
+
+  let unbox_reference env =
+    Heap.load_field 1l ^^
+    ElemHeap.recall_reference env
+
+  let get_self_reference env =
+    G.i (Call (nr (actor_self_i env))) ^^
+    box_reference env
 
 end (* Dfinity *)
 
@@ -2188,8 +2197,7 @@ module Serialization = struct
             get_i ^^ compile_mul_const Heap.word_size ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
             get_x ^^
-            Heap.load_field 1l ^^
-            ElemHeap.recall_reference env ^^
+            Dfinity.unbox_reference env ^^
             store_ptr ^^
 
             get_x ^^
@@ -2551,9 +2559,7 @@ module FuncDec = struct
   let call_funcref env cc get_ref =
     if E.mode env <> DfinityMode then G.i Unreachable else
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-      get_ref ^^ (* the boxed funcref table id *)
-      Heap.load_field 1l ^^
-      ElemHeap.recall_reference env ^^
+      get_ref ^^ (* the unboxed funcref *)
       G.i (Call (nr (Dfinity.func_internalize_i env))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
@@ -2793,7 +2799,12 @@ module StackRep = struct
      there are various ways of putting a value onto the stack -- unboxed,
      tupled etc.
    *)
-  type t = Vanilla  | UnboxedTuple of int | UnboxedInt | Unreachable
+  type t =
+    | Vanilla
+    | UnboxedTuple of int
+    | UnboxedInt
+    | UnboxedReference
+    | Unreachable
 
   let unit = UnboxedTuple 0
 
@@ -2823,6 +2834,7 @@ module StackRep = struct
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
     | UnboxedInt -> ValBlockType (Some I64Type)
+    | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
@@ -2831,6 +2843,7 @@ module StackRep = struct
   let to_string = function
     | Vanilla -> "Vanilla"
     | UnboxedInt -> "UnboxedInt"
+    | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
 
@@ -2838,6 +2851,7 @@ module StackRep = struct
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
     | UnboxedInt, UnboxedInt -> UnboxedInt
+    | UnboxedReference, UnboxedReference -> UnboxedReference
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
@@ -2849,6 +2863,7 @@ module StackRep = struct
     match sr_in with
     | Vanilla -> G.i Drop
     | UnboxedInt -> G.i Drop
+    | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Unreachable -> G.nop
 
@@ -2861,8 +2876,13 @@ module StackRep = struct
 
     | UnboxedTuple n, Vanilla -> Array.from_stack env n
     | Vanilla, UnboxedTuple n -> Array.to_stack env n
+
     | UnboxedInt, Vanilla -> BoxedInt.box env
     | Vanilla, UnboxedInt -> BoxedInt.unbox env
+
+    | UnboxedReference, Vanilla -> Dfinity.box_reference env
+    | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
+
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -3058,16 +3078,14 @@ and compile_exp (env : E.t) exp =
     get_o ^^
     Tagged.branch env (ValBlockType (Some I32Type)) (
       [ Tagged.Object, get_o ^^ Object.load_idx env name ] @
-      (if E.mode env = DfinityMode
-       then [ Tagged.Reference,
-              get_o ^^
-              actor_fake_object_idx env {name with it = n} exp.at
-            ]
-       else []) @
       match  Array.fake_object_idx env n with
         | None -> []
         | Some code -> [ Tagged.Array, get_o ^^ code ]
      )
+  | ActorDotE (e, ({it = Syntax.Name n;_} as name)) ->
+    StackRep.UnboxedReference,
+    compile_exp_as env StackRep.UnboxedReference e ^^
+    actor_fake_object_idx env {name with it = n}
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
@@ -3239,7 +3257,7 @@ and compile_exp (env : E.t) exp =
   | ArrayE (m, es) ->
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
   | ActorE (name, fs) ->
-    StackRep.Vanilla,
+    StackRep.UnboxedReference,
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
@@ -3262,7 +3280,7 @@ and compile_exp (env : E.t) exp =
         Closure.call_closure env cc
      | None, Type.Call Type.Sharable ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
-        compile_exp_vanilla env e1 ^^
+        compile_exp_as env StackRep.UnboxedReference e1 ^^
         set_funcref ^^
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
         Serialization.serialize_n env cc.Value.n_args ^^
@@ -3698,31 +3716,14 @@ and actor_lit outer_env name fs at =
     let (_map, wasm_binary) = Wasm_copy.CustomModule.encode m in
     wasm_binary in
 
-  let code = G.with_region at @@
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
-
     (* Create actorref *)
     G.i (Call (nr (Dfinity.module_new_i outer_env))) ^^
-    G.i (Call (nr (Dfinity.actor_new_i outer_env))) ^^
-    ElemHeap.remember_reference outer_env in
+    G.i (Call (nr (Dfinity.actor_new_i outer_env)))
 
-  (* Wrap it in a tagged heap object *)
-  Tagged.obj outer_env Tagged.Reference [ code ]
-
-and actor_fake_object_idx env name at = G.with_region at @@
-    let (set_i, get_i) = new_local env "ref" in
-    (* The wrapped actor table entry is on the stack *)
-    Heap.load_field 1l ^^
-    ElemHeap.recall_reference env ^^
-    set_i ^^
-
-    (* Export the methods and put it in a Reference object *)
-    Tagged.obj env Tagged.Reference
-      [ get_i ^^
-        Dfinity.compile_databuf_of_bytes env (name.it) ^^
-        G.i (Call (nr (Dfinity.actor_export_i env))) ^^
-        ElemHeap.remember_reference env
-      ]
+and actor_fake_object_idx env name =
+    Dfinity.compile_databuf_of_bytes env (name.it) ^^
+    G.i (Call (nr (Dfinity.actor_export_i env)))
 
 and conclude_module env module_name start_fi_o =
 

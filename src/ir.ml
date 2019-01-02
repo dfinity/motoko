@@ -24,6 +24,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | ActorE of Syntax.id * exp_field list       (* actor *)
   | DotE of exp * Syntax.name                  (* object projection *)
+  | ActorDotE of exp * Syntax.name             (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of Syntax.mut * exp list            (* array *)
   | IdxE of exp * exp                          (* array indexing *)
