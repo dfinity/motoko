@@ -2951,7 +2951,11 @@ let compile_binop env t op =
 let compile_relop env t op =
   StackRep.of_prim t,
   Syntax.(match op with
-  | EqOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
+  | EqOp ->
+    begin match t with
+    | Type.Text -> Text.compare env
+    | _ -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq))
+    end
   | NeqOp -> G.i (Compare (Wasm.Values.I32 Wasm_copy.Ast.I32Op.Eq)) ^^
              G.if_ (StackRep.to_block_type env StackRep.bool)
                    (Bool.lit false) (Bool.lit true)
