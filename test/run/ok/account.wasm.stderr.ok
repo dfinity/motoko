@@ -119,7 +119,7 @@ non-closed actor: (ActorE
           (ExpD
             (CallE
               (shared  2 -> 0)
-              (DotE (VarE account) credit)
+              (ActorDotE (VarE account) credit)
               (TupE (VarE amount) (VarE Account))
             )
           )

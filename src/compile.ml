@@ -3073,15 +3073,17 @@ and compile_exp (env : E.t) exp =
   | DotE (e, ({it = Syntax.Name n;_} as name)) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e ^^
-    let (set_o, get_o) = new_local env "o" in
-    set_o ^^
-    get_o ^^
-    Tagged.branch env (ValBlockType (Some I32Type)) (
-      [ Tagged.Object, get_o ^^ Object.load_idx env name ] @
-      match  Array.fake_object_idx env n with
-        | None -> []
-        | Some code -> [ Tagged.Array, get_o ^^ code ]
-     )
+    begin match Array.fake_object_idx env n with
+    | None -> Object.load_idx env name
+    | Some array_code ->
+      let (set_o, get_o) = new_local env "o" in
+      set_o ^^
+      get_o ^^
+      Tagged.branch env (ValBlockType (Some I32Type)) (
+        [ Tagged.Object, get_o ^^ Object.load_idx env name
+        ; Tagged.Array, get_o ^^ array_code ]
+       )
+    end
   | ActorDotE (e, ({it = Syntax.Name n;_} as name)) ->
     StackRep.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else
