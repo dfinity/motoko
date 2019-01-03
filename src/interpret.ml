@@ -311,7 +311,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (V.as_array v1).(V.Int.to_int (V.as_int v2))
+        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+           with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
   | CallE (exp1, typs, exp2) ->
