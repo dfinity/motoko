@@ -190,11 +190,17 @@ end
 type unicode = int
 type class_ = int
 
-type call_conv = Type.func_sort * Type.control * int * int
+type call_conv = {
+  sort: Type.func_sort;
+  control : Type.control;
+  n_args : int;
+  n_res : int;
+}
 
 let call_conv_of_typ typ =
   match typ with
-  | Type.Func(s,c,tbds,dom,res) -> (s, c, List.length dom, List.length res)
+  | Type.Func(sort, control, tbds, dom, res) ->
+    { sort; control; n_args = List.length dom; n_res = List.length res }
   | _ -> raise (Invalid_argument "call_conv_of_typ")
 
 type func =
@@ -225,13 +231,13 @@ and 'a cont = 'a -> unit
 
 (* Smart constructors *)
 
-let local_cc n m = (T.Call T.Local, T.Returns, n, m)
-let message_cc n = (T.Call T.Sharable, T.Returns, n, 0)
-let async_cc n m = (T.Call T.Sharable, T.Promises, n, m)
+let local_cc n m = { sort = T.Call T.Local; control = T.Returns; n_args = n; n_res = m}
+let message_cc n = { sort = T.Call T.Sharable; control = T.Returns; n_args = n; n_res = 0}
+let async_cc n = { sort = T.Call T.Sharable; control = T.Promises; n_args = n; n_res = 1}
 
 let local_func n m f = Func (None, local_cc n m, f)
 let message_func n f = Func (None, message_cc n, f)
-let async_func n m f = Func (None, async_cc n m, f)
+let async_func n f = Func (None, async_cc n, f)
 
 (* Classes *)
 
@@ -399,11 +405,11 @@ and string_of_def' d def =
 let string_of_val v = string_of_val' !Flags.print_depth v
 let string_of_def d = string_of_def' !Flags.print_depth d
 
-let string_of_call_conv (sort,control,args,results) =
+let string_of_call_conv {sort;control;n_args;n_res} =
   sprintf "(%s %i %s %i)"
     (T.string_of_func_sort sort)
-    args
+    n_args
     (match control with
      | T.Returns -> "->"
      | T.Promises -> "@>")
-    results
+    n_res

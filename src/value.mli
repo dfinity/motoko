@@ -60,7 +60,12 @@ module Env : Env.S with type key = string
 type unicode = int
 type class_
 
-type call_conv = Type.func_sort * Type.control * int * int
+type call_conv = {
+  sort: Type.func_sort;
+  control : Type.control;
+  n_args : int;
+  n_res : int;
+}
 
 val call_conv_of_typ : Type.typ -> call_conv
 
@@ -98,11 +103,11 @@ val unit : value
 
 val local_cc : int -> int -> call_conv
 val message_cc : int -> call_conv
-val async_cc : int -> int -> call_conv
+val async_cc : int -> call_conv
 
 val local_func : int -> int -> func -> value
 val message_func : int -> func -> value
-val async_func : int -> int -> func -> value
+val async_func : int -> func -> value
 
 (* Projections *)
 

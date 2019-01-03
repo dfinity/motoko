@@ -9,6 +9,8 @@
 old="$(git rev-parse HEAD)"
 new=""
 
+WASM2WAT="wasm2wat --fold-exprs --no-check --enable-multi-value"
+
 while getopts "f:t:" o; do
     case "${o}" in
         f)
@@ -64,13 +66,13 @@ do
   mkdir compare-out/$base.old
   old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
-  wasm2wat --fold-exprs --no-check --enable-mutable-globals compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
+  $WASM2WAT compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
   new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
-  wasm2wat --fold-exprs --no-check --enable-mutable-globals compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
+  $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 
   diff -r -N -u compare-out/$base.old compare-out/$base.new
 
