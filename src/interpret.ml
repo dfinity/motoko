@@ -266,23 +266,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
-  | UnE (op, exp1) ->
-    let t = T.as_immut exp.note.note_typ in
-    interpret_exp env exp1 (fun v1 -> k (Operator.unop t op v1))
-  | BinE (exp1, op, exp2) ->
-    let t = T.as_immut exp.note.note_typ in
+  | UnE (ot, op, exp1) ->
+    interpret_exp env exp1 (fun v1 -> k (Operator.unop !ot op v1))
+  | BinE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try Operator.binop t op v1 v2 with _ ->
+        k (try Operator.binop !ot op v1 v2 with _ ->
           trap exp.at "arithmetic overflow")
       )
     )
-  | RelE (exp1, op, exp2) ->
-    let t = T.lub Con.Env.empty (* both types are primitive *)
-      (T.as_immut exp1.note.note_typ) (T.as_immut exp2.note.note_typ) in
+  | RelE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (Operator.relop t op v1 v2)
+        k (Operator.relop !ot op v1 v2)
       )
     )
   | TupE exps ->

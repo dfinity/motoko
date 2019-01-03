@@ -79,9 +79,9 @@ and exp' env e  = match e.it with
   | VarE _
   | LitE _
   | PrimE _             -> e.it
-  | UnE (uo, e)         -> UnE (uo, exp env e)
-  | BinE (e1, bo, e2)   -> BinE (exp env e1, bo, exp env e2)
-  | RelE (e1, ro, e2)   -> RelE (exp env e1, ro, exp env e2)
+  | UnE (ot, uo, e)      -> UnE (ot, uo, exp env e)
+  | BinE (ot, e1, bo, e2)-> BinE (ot, exp env e1, bo, exp env e2)
+  | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields env efs)

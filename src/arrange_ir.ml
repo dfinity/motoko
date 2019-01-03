@@ -7,9 +7,9 @@ let ($$) head inner = Node (head, inner)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [Arrange.lit l]
-  | UnE (t, uo, e)      -> "UnE"     $$ [Arrange.prim t; Arrange.unop uo; exp e]
-  | BinE (t, e1, bo, e2)-> "BinE"    $$ [Arrange.prim t; exp e1; Arrange.binop bo; exp e2]
-  | RelE (t, e1, ro, e2)-> "RelE"    $$ [Arrange.prim t; exp e1; Arrange.relop ro; exp e2]
+  | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
+  | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
+  | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs
@@ -51,7 +51,7 @@ and pat p = match p.it with
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
-and prim p = Atom (Type.string_of_prim p)
+and typ t = Atom (Type.string_of_typ t)
 
 and exp_field (ef : exp_field)
   = (Syntax.string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; Arrange.mut ef.it.mut; Arrange.priv ef.it.priv]

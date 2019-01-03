@@ -2824,12 +2824,12 @@ module StackRep = struct
     if n = 1 then Vanilla else UnboxedTuple n
 
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
-  let of_prim : Type.prim -> t = function
-    | Type.Bool -> bool
-    | Type.Nat -> UnboxedInt
-    | Type.Int -> UnboxedInt
-    | Type.Text -> Vanilla
-    | p -> todo "of_prim" (Arrange.prim p) Vanilla
+  let of_type : Type.typ -> t = function
+    | Type.Prim Type.Bool -> bool
+    | Type.Prim Type.Nat -> UnboxedInt
+    | Type.Prim Type.Int -> UnboxedInt
+    | Type.Prim Type.Text -> Vanilla
+    | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
@@ -2990,10 +2990,10 @@ let compile_unop env t op = Syntax.(match op with
    but none of these do, so a single value is fine.
 *)
 let compile_binop env t op =
-  StackRep.of_prim t,
+  StackRep.of_type t,
   Syntax.(match t, op with
-  | Type.Nat, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Nat, SubOp ->
+  | Type.Prim Type.Nat, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.Prim Type.Nat, SubOp ->
     Func.share_code env "nat_sub" ["n1", I64Type; "n2", I64Type] [I64Type] (fun env ->
       let get_n1 = G.i (GetLocal (nr 0l)) in
       let get_n2 = G.i (GetLocal (nr 1l)) in
@@ -3002,39 +3002,39 @@ let compile_binop env t op =
         (G.i Unreachable)
         (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
     )
-  | Type.Nat, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.Nat, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.Nat, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
-  | Type.Int, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Int, SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  | Type.Int, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.Int, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.Int, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
-  | Type.Text, CatOp -> Text.concat env
+  | Type.Prim Type.Nat, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.Prim Type.Nat, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.Prim Type.Nat, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.Prim Type.Int, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.Prim Type.Int, SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.Prim Type.Int, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.Prim Type.Int, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.Prim Type.Int, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.Prim Type.Text, CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
   )
 
 let compile_eq env t = match t with
-  | Type.Text -> Text.compare env
-  | Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.Nat | Type.Int -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.Prim Type.Text -> Text.compare env
+  | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.Prim (Type.Nat | Type.Int) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | _ -> G.i Unreachable
 
 let compile_relop env t op =
-  StackRep.of_prim t,
+  StackRep.of_type t,
   Syntax.(match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
              G.if_ (StackRep.to_block_type env StackRep.bool)
                    (Bool.lit false) (Bool.lit true)
-  | Type.Nat, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeU))
-  | Type.Nat, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtU))
-  | Type.Nat, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeU))
-  | Type.Nat, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtU))
-  | Type.Int, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeS))
-  | Type.Int, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtS))
-  | Type.Int, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeS))
-  | Type.Int, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+  | Type.Prim Type.Nat, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeU))
+  | Type.Prim Type.Nat, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtU))
+  | Type.Prim Type.Nat, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeU))
+  | Type.Prim Type.Nat, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtU))
+  | Type.Prim Type.Int, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeS))
+  | Type.Prim Type.Int, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtS))
+  | Type.Prim Type.Int, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeS))
+  | Type.Prim Type.Int, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtS))
   | _ -> G.i Unreachable
   )
 
@@ -3429,7 +3429,7 @@ and compile_lit_pat env l =
   | Syntax.(NatLit _ | IntLit _) ->
     BoxedInt.unbox env ^^
     compile_lit_as env StackRep.UnboxedInt l ^^
-    compile_eq env Type.Nat
+    compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
