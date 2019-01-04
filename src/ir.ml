@@ -1,6 +1,8 @@
 (* Patterns *)
 
-type pat = pat' Source.phrase
+type 'a phrase = ('a,Syntax.typ_note) Source.annotated_phrase
+
+type pat = pat' phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of Syntax.id                          (* variable *)
@@ -11,7 +13,7 @@ and pat' =
 
 (* Expressions *)
 
-type exp = exp' Source.phrase
+type exp = exp' phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of Syntax.id                          (* variable *)
@@ -55,7 +57,7 @@ and case' = {pat : pat; exp : exp}
 
 (* Declarations *)
 
-and dec = dec' Source.phrase
+and dec = dec' phrase
 and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)

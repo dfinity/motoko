@@ -1,12 +1,19 @@
 open Source
 module S = Syntax
 module I = Ir
+module T = Type
 
-(* Combinators used in the desguaring *) 
+(* Combinators used in the desguaring *)
 
-let true_lit : Ir.exp = I.LitE (S.BoolLit true) @@ no_region
-let false_lit : Ir.exp = I.LitE (S.BoolLit false) @@ no_region
+let bool_lit b : Ir.exp =
+  {Source.it = I.LitE (S.BoolLit b);
+   Source.at = no_region;
+   Source.note = {S.note_typ = T.bool;
+                  S.note_eff = T.Triv}
+  }
 
+let true_lit : Ir.exp = bool_lit true
+let false_lit : Ir.exp = bool_lit false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
@@ -15,8 +22,8 @@ let apply_sign op l = Syntax.(match op, l with
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
-let phrase ce f x = f ce x.it @@ x.at
-let phrase' ce f x = f ce x.at x.note x.it @@ x.at
+let phrase ce f x =  {x with it = f ce x.it}
+let phrase' ce f x = {x with it = f ce x.at x.note x.it}
 
 let
   rec exps ce es = List.map (exp ce) es
@@ -34,7 +41,7 @@ let
     | S.TupE es -> I.TupE (exps ce es)
     | S.ProjE (e, i) -> I.ProjE (exp ce e, i)
     | S.OptE e -> I.OptE (exp ce e)
-    | S.ObjE (s, i, es) -> obj ce at s None i es
+    | S.ObjE (s, i, es) -> obj ce at s None i es note.S.note_typ
     | S.DotE (e, n) ->
       begin match Type.as_immut (Type.promote ce (e.Source.note.S.note_typ)) with
       | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp ce e, n)
@@ -74,29 +81,54 @@ let
 
   and field_to_dec ce (f : S.exp_field) : Ir.dec =
     match f.it.S.mut.it with
-    | S.Const -> I.LetD (I.VarP f.it.S.id @@ no_region, exp ce f.it.S.exp) @@ f.at
-    | S.Var   -> I.VarD (f.it.S.id, exp ce f.it.S.exp) @@ f.at
+    | S.Const ->
+      {it = I.LetD ({it = I.VarP f.it.S.id; at = no_region;
+                     note = {f.it.S.exp.note with S.note_eff = T.Triv}
+                    },
+                    exp ce f.it.S.exp);
+       at = f.at;
+       note = { f.it.S.exp.note with S.note_typ = T.unit}
+      }
+    | S.Var   ->
+      {it = I.VarD (f.it.S.id, exp ce f.it.S.exp);
+       at = f.at;
+       note = { f.it.S.exp.note with S.note_typ = T.unit}
+      }
 
   and field_to_obj_entry (f : S.exp_field) =
     match f.it.S.priv.it with
     | S.Private -> []
     | S.Public -> [ (f.it.S.name, f.it.S.id) ]
 
-  and obj ce at s class_id self_id es =
+  and obj ce at s class_id self_id es obj_typ =
     match s.it with
-    | Type.Object _ -> build_obj ce at None self_id es
+    | Type.Object _ -> build_obj ce at None self_id es obj_typ
     | Type.Actor -> I.ActorE (self_id, exp_fields ce es)
 
-  and build_obj ce at class_id self_id es =
+  and build_obj ce at class_id self_id es obj_typ =
     I.BlockE (
       List.map (field_to_dec ce) es @
-      [ I.LetD (
-          I.VarP self_id @@ at,
-          I.NewObjE
-            (Type.Object Type.Local @@ at,
-             List.concat (List.map field_to_obj_entry es)) @@ at
-        ) @@ at;
-	I.ExpD (I.VarE self_id @@ at) @@ at])
+        [ {it = I.LetD (
+                    {it = I.VarP self_id;
+                     at = at;
+                     note = {S.note_typ = obj_typ; S.note_eff = T.Triv}},
+                    {it = I.NewObjE
+                            (Type.Object Type.Local @@ at,
+                             List.concat (List.map field_to_obj_entry es));
+                     at = at;
+                     note = {S.note_typ = obj_typ; S.note_eff = T.Triv}}
+                  );
+           at = no_region;
+           note = {S.note_typ = T.unit;
+                   S.note_eff = T.Triv}};
+	  {it = I.ExpD {it = I.VarE self_id;
+                        at;
+                        note = {S.note_typ = obj_typ;
+                                S.note_eff = T.Triv}};
+           at = at;
+           note = {S.note_typ = obj_typ;
+                   S.note_eff = T.Triv}};
+        ])
 
   and exp_fields ce fs = List.map (exp_field ce) fs
   and exp_field ce f = phrase ce exp_field' f
@@ -115,8 +147,23 @@ let
     | S.TypD (i, ty, t) -> I.TypD (i, ty, t)
     | S.ClassD (fun_id, typ_id, tp, s, p, self_id, es) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
+      let inst = List.map
+                   (fun tp ->
+                     match !(tp.note) with
+                     | Some c -> T.Con(c,[])
+                     | None -> assert false)
+                   tp in
+      let obj_typ =
+        match n.S.note_typ with
+        | T.Func(s,c,bds,dom,[rng]) ->
+          assert(List.length inst = List.length bds);
+          T.open_ inst rng 
+        | _ -> assert false
+      in
       I.FuncD (cc, fun_id, tp, pat ce p, S.PrimT "dummy" @@ at,
-        obj ce at s (Some fun_id) self_id es @@ at)
+               {it = obj ce at s (Some fun_id) self_id es obj_typ;
+                at = at;
+                note = {S.note_typ = obj_typ; S.note_eff = T.Triv}})
 
   and cases ce cs = List.map (case ce) cs
   and case ce c = phrase ce case' c
