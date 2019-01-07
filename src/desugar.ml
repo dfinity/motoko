@@ -160,7 +160,7 @@ let
           T.open_ inst rng 
         | _ -> assert false
       in
-      I.FuncD (cc, fun_id, tp, pat ce p, S.PrimT "dummy" @@ at,
+      I.FuncD (cc, fun_id, tp, pat ce p, {it = S.PrimT "dummy"; at = at; note = S.empty_typ_note},
                {it = obj ce at s (Some fun_id) self_id es obj_typ;
                 at = at;
                 note = {S.note_typ = obj_typ; S.note_eff = T.Triv}})

@@ -4,7 +4,6 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
-
 (* Identifiers *)
 
 type id = string Source.phrase
@@ -24,7 +23,7 @@ type func_sort = Type.func_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
-type typ = typ' Source.phrase
+type typ = (typ',typ_note) Source.annotated_phrase
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
@@ -205,7 +204,10 @@ and prog' = dec list
 let seqT ts =
   match ts with
   | [t] -> t
-  | ts -> {Source.it = TupT ts; at = Source.no_region; Source.note = ()}
+  | ts -> {Source.it = TupT ts;
+           at = Source.no_region;
+           Source.note = {note_typ = Type.Tup (List.map (fun t -> t.Source.note.note_typ) ts);
+                          note_eff = Type.Triv}}
 
 let as_seqT t =
   match t.Source.it with

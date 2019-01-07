@@ -266,20 +266,20 @@ let expD exp =  { exp with it = ExpD exp}
 
 let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 
-(* Mono-morphic function declaration *)
+(* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
-                 note_eff = T.Triv} in
-     assert (f.note = note);
-     {it=FuncD(T.Local @@ no_region, (id_of_exp f),
+    let sharing = match f.note.note_typ with
+      | T.Func(T.Call sharing, _, _, _, _) -> sharing
+      | _ -> assert false in
+     {it=FuncD(sharing @@ no_region, (id_of_exp f),
                [],
-               {it=VarP (id_of_exp x);at=no_region;note=x.note},
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               {it = VarP (id_of_exp x); at = no_region; note = x.note},
+               {it = PrimT "Any"; at = no_region; note = empty_typ_note }, (* bogus,  but we shouldn't use it anymore *)
                e);
             at = no_region;
-            note;}
+            note = f.note}
   | _ -> failwith "Impossible: funcD"
 
 
@@ -292,7 +292,7 @@ let nary_funcD f xs e =
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               {it = PrimT "Any"; at = no_region; note = empty_typ_note }, (* bogus,  but we shouldn't use it anymore *)
                e);
       at = no_region;
       note = f.note;}

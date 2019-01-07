@@ -33,14 +33,14 @@ let fullfillT as_seq typ = T.Func(T.Call T.Local, T.Returns, [], as_seq typ, [])
 
 let tupT ts = {it = TupT ts;
                at = no_region;
-               note = ()}
+               note = empty_typ_note}
 
 let unitT = tupT []
 
 let funcT(s,bds,t1,t2) =
   {it = FuncT (s, bds, t1, t2);
    at = no_region;
-   note = ()}
+   note = empty_typ_note}
 
 let t_async as_seq t =
   T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],as_seq t,[])], [])
@@ -56,10 +56,13 @@ let new_asyncT =
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
 
-let bogusT = PrimT "BogusT"@@no_region (* bogus,  but we shouln't use it anymore *)
-
+let bogusT t=
+  { it = PrimT "BogusT" (* bogus,  but we shouln't use it anymore *);
+    at = no_region;
+    note = { note_typ = t; note_eff =  T.Triv};
+  }
 let new_async t1 =
-  let call_new_async = callE new_asyncE [{it = bogusT; at = no_region; note = ref t1} ] (tupE[]) (T.seq (new_async_ret unary t1)) in
+  let call_new_async = callE new_asyncE [{it = bogusT t1; at = no_region; note = ref t1} ] (tupE[]) (T.seq (new_async_ret unary t1)) in
   let async  = fresh_id (typ (projE call_new_async 0)) in
   let fullfill = fresh_id (typ (projE call_new_async 1)) in
   (async,fullfill),call_new_async
@@ -101,20 +104,6 @@ let new_nary_async_reply t1 =
 
 
 let replyTT t = funcT(sharableS,[],t,unitT)
-
-let shared_funcD f x e =
-  match f.it,x.it with
-  | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Sharable, T.Returns, [], as_seq (typ x), as_seq (typ e));
-                 note_eff = T.Triv} in
-     {it=FuncD(T.Sharable @@ no_region, (id_of_exp f),
-               [],
-               {it=VarP (id_of_exp x);at=no_region;note=x.note},
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
-               e);
-            at = no_region;
-            note;}
-  | _ -> assert false
 
 let letEta e scope =
   match e.it with
@@ -264,7 +253,7 @@ and t_exp' (exp:Syntax.exp) =
      let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
      (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
               funcD k v1 (nary_reply -*- v1);
-              shared_funcD post u (t_exp exp2 -*- k);
+              funcD post u (t_exp exp2 -*- k);
               expD (post -*- tupE[]);
               expD nary_async])
        .it

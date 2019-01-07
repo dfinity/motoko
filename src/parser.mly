@@ -54,9 +54,9 @@ let assign_op lhs rhs_f at =
 let share_typ t =
   match t.it with
   | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
-    ObjT ({s with it = Type.Object Type.Sharable}, tfs) @@ t.at
+    { t with it = ObjT ({s with it = Type.Object Type.Sharable}, tfs)}
   | FuncT ({it = Type.Call Type.Local; _} as s, tbs, t1, t2) ->
-    FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2) @@ t.at
+    { t with it = FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield tf =
@@ -194,43 +194,43 @@ typ_obj :
 
 typ_nullary :
   | LPAR t=typ RPAR
-    { ParT(t) @@ at $loc }
+    { ParT(t) @? at $loc }
   | LPAR ts=seplist1(typ_item, COMMA) RPAR
-    { TupT(ts) @@ at $sloc }
+    { TupT(ts) @? at $sloc }
   | x=id tso=typ_args?
-    {	VarT(x, Lib.Option.get tso []) @@ at $sloc }
+    {	VarT(x, Lib.Option.get tso []) @? at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
-    { ArrayT(m, t) @@ at $sloc }
+    { ArrayT(m, t) @? at $sloc }
   | tfs=typ_obj
-    { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @@ at $sloc }
+    { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @? at $sloc }
 
 typ_post :
   | t=typ_nullary
     { t }
   | t=typ_post QUEST
-    { OptT(t) @@ at $sloc }
+    { OptT(t) @? at $sloc }
 
 typ_pre :
   | t=typ_post
     { t }
   | PRIM s=TEXT
-    { PrimT(s) @@ at $sloc }
+    { PrimT(s) @? at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(t) @@ at $sloc }
+    { AsyncT(t) @? at $sloc }
   | LIKE t=typ_pre
-    { LikeT(t) @@ at $sloc }
+    { LikeT(t) @? at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Object Type.Local
         then tfs
         else List.map share_typfield tfs
-      in ObjT(s, tfs') @@ at $sloc }
+      in ObjT(s, tfs') @? at $sloc }
 
 typ :
   | t=typ_pre
     { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_post ARROW t2=typ
-    { FuncT(s, tps, t1, t2) @@ at $sloc }
+    { FuncT(s, tps, t1, t2) @? at $sloc }
 
 typ_item :
   | id COLON t=typ { t }
@@ -248,14 +248,14 @@ typ_field :
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
     { let t = FuncT(Type.Call Type.Local @@ no_region, tps, t1, t2)
-        @@ span x.at t2.at in
+              @? span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
     { {var = x; bound = t} @! at $sloc }
   | x=id
-    { {var = x; bound = PrimT "Any" @@ at $sloc} @! at $sloc }
+    { {var = x; bound = PrimT "Any" @? at $sloc} @! at $sloc }
 
 
 
@@ -404,7 +404,7 @@ exp_nondec :
     { e } 
   | LABEL x=id rt=return_typ_nullary? e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
-      let t = Lib.Option.get rt (TupT [] @@ at $sloc) in
+      let t = Lib.Option.get rt (TupT [] @? at $sloc) in
       let e' =
         match e.it with
         | WhileE (e1, e2) -> WhileE (e1, LabelE (x', t, e2) @? e2.at) @? e.at
@@ -569,7 +569,7 @@ dec :
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
-    { let t = Lib.Option.get rt (TupT([]) @@ no_region) in
+    { let t = Lib.Option.get rt (TupT([]) @? no_region) in
       (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
