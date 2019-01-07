@@ -133,6 +133,11 @@ let infer_mut mut : T.typ -> T.typ =
   | Var -> fun t -> T.Mut t
 
 let rec check_typ env typ : T.typ =
+  let t = check_typ' env typ in
+  typ.note <- {note_typ = t; note_eff = T.Triv};
+  t
+
+and check_typ' env typ : T.typ =
   match typ.it with
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it env.typs with

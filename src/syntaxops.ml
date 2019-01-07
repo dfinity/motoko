@@ -270,13 +270,13 @@ let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-    let sharing = match f.note.note_typ with
-      | T.Func(T.Call sharing, _, _, _, _) -> sharing
+    let sharing,t1,t2 = match f.note.note_typ with
+      | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing,T.seq ts1, T.seq ts2
       | _ -> assert false in
      {it=FuncD(sharing @@ no_region, (id_of_exp f),
                [],
-               {it = VarP (id_of_exp x); at = no_region; note = x.note},
-               {it = PrimT "Any"; at = no_region; note = empty_typ_note }, (* bogus,  but we shouldn't use it anymore *)
+               {it = VarP (id_of_exp x); at = no_region; note = {note_typ = t1; note_eff = T.Triv}},
+               {it = PrimT "Any"; at = no_region; note = {note_typ = t2; note_eff = T.Triv} }, (* bogus,  but we shouldn't use it anymore *)
                e);
             at = no_region;
             note = f.note}
@@ -287,12 +287,13 @@ let funcD f x e =
 let nary_funcD f xs e =
   match f.it,f.note.note_typ with
   | VarE _,
-    T.Func(T.Call sharing,_,_,_,_) ->
+    T.Func(T.Call sharing,_,_,_,ts2) ->
+    let t2 = T.seq ts2 in
       {it=FuncD(sharing @@ no_region,
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               {it = PrimT "Any"; at = no_region; note = empty_typ_note }, (* bogus,  but we shouldn't use it anymore *)
+               {it = PrimT "Any"; at = no_region; note = {note_typ = t2; note_eff = T.Triv} }, (* bogus,  but we shouldn't use it anymore *)
                e);
       at = no_region;
       note = f.note;}

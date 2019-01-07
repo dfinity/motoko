@@ -33,7 +33,9 @@ let fullfillT as_seq typ = T.Func(T.Call T.Local, T.Returns, [], as_seq typ, [])
 
 let tupT ts = {it = TupT ts;
                at = no_region;
-               note = empty_typ_note}
+               note =
+                 {note_typ = T.Tup (List.map (fun t -> t.note.note_typ) ts);
+                  note_eff = T.Triv}}
 
 let unitT = tupT []
 
@@ -61,8 +63,13 @@ let bogusT t=
     at = no_region;
     note = { note_typ = t; note_eff =  T.Triv};
   }
+  
 let new_async t1 =
-  let call_new_async = callE new_asyncE [{it = bogusT t1; at = no_region; note = ref t1} ] (tupE[]) (T.seq (new_async_ret unary t1)) in
+  let call_new_async =
+    callE new_asyncE
+      [{it = bogusT t1; at = no_region; note = ref t1}]
+      (tupE[])
+      (T.seq (new_async_ret unary t1)) in
   let async  = fresh_id (typ (projE call_new_async 0)) in
   let fullfill = fresh_id (typ (projE call_new_async 1)) in
   (async,fullfill),call_new_async

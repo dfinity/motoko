@@ -10,8 +10,8 @@ type id = string Source.phrase
 
 (* Names (not alpha-convertible), used for field and class names *)
 type name = name' Source.phrase
-and name' = Name of string                
-let string_of_name (Name s ) = s              
+and name' = Name of string
+let string_of_name (Name s ) = s
 
 
 (* Types *)

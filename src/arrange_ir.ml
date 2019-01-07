@@ -1,8 +1,11 @@
 open Source
+open Arrange_type (* currently not used *)  
 open Ir
 open Wasm.Sexpr
 
-let ($$) head inner = Node (head, inner)
+(* for concision, we shadow the imported definition of [Array_type.typ] and pretty print types instead *)
+  
+let typ t = Atom (Type.string_of_typ t)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
@@ -18,7 +21,7 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [Arrange.mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map Arrange.typ ts @ [exp e2]
+  | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map typ ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
@@ -26,7 +29,7 @@ let rec exp e = match e.it with
   | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
   | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
   | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
-  | LabelE (i, t, e)    -> "LabelE"  $$ [id i; Arrange.typ t; exp e]
+  | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
   | AsyncE e            -> "AsyncE"  $$ [exp e]
@@ -51,12 +54,8 @@ and pat p = match p.it with
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
-and typ t = Atom (Type.string_of_typ t)
-
 and exp_field (ef : exp_field)
   = (Syntax.string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; Arrange.mut ef.it.mut; Arrange.priv ef.it.priv]
-
-and id i = Atom i.it
 
 and name n = Atom (Syntax.string_of_name n.it)
 
@@ -67,8 +66,8 @@ and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (cc, i, tp, p, t, e) ->
-    "FuncD" $$ [call_conv cc; id i] @ List.map Arrange.typ_bind tp @ [pat p; Arrange.typ t; exp e]
+    "FuncD" $$ [call_conv cc; id i] @ List.map Arrange.typ_bind tp @ [pat p; typ t; exp e]
   | TypD (i, tp, t) ->
-    "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [Arrange.typ t]
+    "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [typ t]
 
 and prog prog = "BlockE"  $$ List.map dec prog.it
