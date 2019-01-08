@@ -100,7 +100,7 @@ let encode m =
     let vu32 i = vu64 Int64.(logand (of_int32 i) 0xffffffffL)
     let vs7 i = vs64 (Int64.of_int i)
     let vs32 i = vs64 (Int64.of_int32 i)
-    let vs33 i = vs64 (Wasm.I64_convert.extend_s_i32 i)
+    let vs33 i = vs64 (Wasm.I64_convert.extend_i32_s i)
     let f32 x = u32 (Wasm.F32.to_bits x)
     let f64 x = u64 (Wasm.F64.to_bits x)
 
