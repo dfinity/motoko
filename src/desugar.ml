@@ -54,7 +54,7 @@ let
     | S.IdxE (e1, e2) -> I.IdxE (exp ce e1, exp ce e2)
     | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
-      let inst = List.map (fun t -> !(t.Source.note)) inst in
+      let inst = List.map (fun t -> t.Source.note.S.note_typ) inst in
       I.CallE (cc, exp ce e1, inst, exp ce e2)
     | S.BlockE ds -> I.BlockE (decs ce ds)
     | S.NotE e -> I.IfE (exp ce e, false_lit, true_lit)

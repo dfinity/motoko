@@ -67,7 +67,7 @@ let bogusT t=
 let new_async t1 =
   let call_new_async =
     callE new_asyncE
-      [{it = bogusT t1; at = no_region; note = ref t1}]
+      [bogusT t1]
       (tupE[])
       (T.seq (new_async_ret unary t1)) in
   let async  = fresh_id (typ (projE call_new_async 0)) in
@@ -273,7 +273,7 @@ and t_exp' (exp:Syntax.exp) =
      in
      let exp1' = t_exp exp1 in
      let exp2' = t_exp exp2 in
-     let typs = List.map t_inst typs in
+     let typs = List.map t_typT typs in
      let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
      let _ = letEta in
      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
@@ -283,7 +283,7 @@ and t_exp' (exp:Syntax.exp) =
                  expD nary_async]))))
        .it
   | CallE (exp1, typs, exp2)  ->
-    CallE(t_exp exp1, List.map t_inst typs, t_exp exp2)
+    CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
   | BlockE decs ->
     BlockE (t_decs decs)
   | NotE exp1 ->
@@ -418,10 +418,6 @@ and t_asyncT t =
          unitT)
 
 
-and t_inst t : inst  =
-  { it = t_typT t.it;
-    at = t.at;
-    note = ref (t_typ (!(t.note)))}
   
 and t_typT t =
   { t with it = t_typT' t.it }

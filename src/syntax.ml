@@ -98,6 +98,7 @@ type relop =
 
 (* Patterns *)
 
+(* TODO: replace typ_note by typ (pats don't have effects *)
 type pat = (pat', typ_note) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
@@ -122,9 +123,6 @@ and pat_field' = {id : id; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-(* type instantiations *)
-type inst = (typ, Type.typ ref) Source.annotated_phrase
-
 (* Filled in for overloaded operators during type checking. Initially Type.Pre. *)
 type op_type = Type.typ ref
 
@@ -144,7 +142,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | CallE of exp * inst list * exp             (* function call *)
+  | CallE of exp * typ list * exp             (* function call *)
   | BlockE of dec list                         (* block *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)

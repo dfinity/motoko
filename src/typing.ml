@@ -248,10 +248,8 @@ and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   | [], _ -> local_error env at "too many type arguments"; []
   | _, [] -> error env at "too few type arguments"
 
-and check_inst_bounds env tbs (insts:inst list) at =
-  let typs = List.map (fun inst -> inst.it) insts in
+and check_inst_bounds env tbs typs at =
   let tys = check_typ_bounds env tbs typs at  in
-  List.iter2 (fun inst ty -> inst.note := ty) insts tys;
   tys
     
 (* Literals *)
