@@ -149,9 +149,9 @@ let
       let cc = Value.call_conv_of_typ n.S.note_typ in
       let inst = List.map
                    (fun tp ->
-                     match !(tp.note) with
-                     | Some c -> T.Con(c,[])
-                     | None -> assert false)
+                     match tp.note with
+                     | Type.Pre -> assert false
+                     | t -> t)
                    tp in
       let obj_typ =
         match n.S.note_typ with

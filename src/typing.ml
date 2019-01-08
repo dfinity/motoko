@@ -217,7 +217,7 @@ and check_typ_field env s typ_field : T.field =
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun x -> Con.fresh x) xs in
-  List.iter2 (fun typ_bind c -> typ_bind.note := Some c) typ_binds cs;
+  List.iter2 (fun typ_bind c -> typ_bind.note <- T.Con(c,[])) typ_binds cs;
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then

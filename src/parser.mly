@@ -21,7 +21,7 @@ let positions_to_region position1 position2 =
 let at (startpos, endpos) = positions_to_region startpos endpos
 
 let (@?) it at = {it; at; note = empty_typ_note}
-let (@!) it at = {it; at; note = ref None}	       
+let (@!) it at = {it; at; note = Type.Pre}
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
