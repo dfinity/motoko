@@ -30,7 +30,7 @@ let name_exp e =
   | VarE x -> [], e, dup_var x
   | _ ->
     let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
-    [LetD (VarP x @? x.at, e) @? e.at], dup_var x, dup_var x
+    [LetD (VarP x @! x.at, e) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
@@ -476,35 +476,35 @@ exp_field :
 
 pat_nullary :
   | UNDERSCORE
-    { WildP @? at $sloc }
+    { WildP @! at $sloc }
   | x=id
-    { VarP(x) @? at $sloc }
+    { VarP(x) @! at $sloc }
   | l=lit
-    { LitP(ref l) @? at $sloc }
+    { LitP(ref l) @! at $sloc }
   | LPAR p=pat RPAR
     { p }
   | LPAR ps=seplist1(pat_bin, COMMA) RPAR
-    { TupP(ps) @? at $sloc }
+    { TupP(ps) @! at $sloc }
 
 pat_post :
   | p=pat_nullary
     { p }
   | p=pat_post QUEST
-    { OptP(p) @? at $sloc }
+    { OptP(p) @! at $sloc }
 
 pat_un :
   | p=pat_post
     { p }
   | op=unop l=lit
-    { SignP(op, ref l) @? at $sloc }
+    { SignP(op, ref l) @! at $sloc }
 
 pat_bin :
   | p=pat_un
     { p }
   | p1=pat_bin OR p2=pat_bin
-    { AltP(p1, p2) @? at $sloc }
+    { AltP(p1, p2) @! at $sloc }
   | p=pat_bin COLON t=typ
-    { AnnotP(p, t) @? at $sloc }
+    { AnnotP(p, t) @! at $sloc }
 
 pat :
   | p=pat_bin
@@ -563,7 +563,7 @@ dec :
         then efs
         else List.map share_expfield efs
       in
-      let p = VarP(xf anon $sloc) @? at $sloc in
+      let p = VarP(xf anon $sloc) @! at $sloc in
       LetD(p, ObjE(s, xf anon $sloc, efs') @? at $sloc) @? at $sloc }
 
 func_dec :

@@ -63,7 +63,7 @@ let bogusT t=
     at = no_region;
     note = { note_typ = t; note_eff =  T.Triv};
   }
-  
+
 let new_async t1 =
   let call_new_async =
     callE new_asyncE
@@ -390,8 +390,7 @@ and t_fields fields =
 
 and t_pat pat =
   { pat with it = t_pat' pat.it;
-             note = {note_typ = t_typ pat.note.note_typ;
-                     note_eff = pat.note.note_eff}}
+             note = t_typ pat.note}
 
 and t_pat' pat =
   match pat with
@@ -417,8 +416,6 @@ and t_asyncT t =
          funcT(localS,[],t,unitT),
          unitT)
 
-
-  
 and t_typT t =
   { t with it = t_typT' t.it }
 

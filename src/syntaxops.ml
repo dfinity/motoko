@@ -51,11 +51,15 @@ let fresh_id typ =
 
 (* Patterns *)
 
-let varP x = {x with it=VarP (id_of_exp x)}
+let varP x =
+  { it=VarP (id_of_exp x);
+    at = x.at;
+    note = x.note.note_typ
+  }
+
 let tupP pats =
   {it = TupP pats;
-   note = {note_typ = T.Tup (List.map typ pats);
-           note_eff = T.Triv};
+   note = T.Tup (List.map (fun p -> p.note) pats);
    at = no_region}
 
 let seqP ps =
@@ -155,15 +159,13 @@ let switch_optE exp1 exp2 pat exp3 typ =
   { it = SwitchE (exp1,
                   [{it = {pat = {it = LitP (ref NullLit);
                                  at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
+                                 note = exp1.note.note_typ};
                           exp = exp2};
                     at = no_region;
                     note = ()};
                    {it = {pat = {it = OptP pat;
                                  at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
+                                 note = exp1.note.note_typ};
                           exp = exp3};
                     at = no_region;
                     note = ()}]
@@ -275,7 +277,7 @@ let funcD f x e =
       | _ -> assert false in
      {it=FuncD(sharing @@ no_region, (id_of_exp f),
                [],
-               {it = VarP (id_of_exp x); at = no_region; note = {note_typ = t1; note_eff = T.Triv}},
+               {it = VarP (id_of_exp x); at = no_region; note = t1},
                {it = PrimT "Any"; at = no_region; note = {note_typ = t2; note_eff = T.Triv} }, (* bogus,  but we shouldn't use it anymore *)
                e);
             at = no_region;

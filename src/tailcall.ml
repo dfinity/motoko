@@ -206,7 +206,7 @@ and dec' env d =
   | FuncD (({it=Local;_} as s), id, tbs, p, typT, exp0) ->
     let env = bind env id None in
     (fun env1 ->
-      let temp = fresh_id (Mut (typ p)) in
+      let temp = fresh_id (Mut p.note) in
       let l = fresh_lab () in
       let tail_called = ref false in
       let env2 = {tail_pos = true;

@@ -547,7 +547,7 @@ and match_pat pat v : val_env option =
     then Some V.Env.empty
     else None
   | SignP (op, lit) ->
-    let t = T.as_immut pat.note.note_typ in
+    let t = T.as_immut pat.note in
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty

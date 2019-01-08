@@ -746,10 +746,10 @@ and infer_pat_exhaustive env pat : T.typ * val_env =
   t, ve
 
 and infer_pat env pat : T.typ * val_env =
-  assert (pat.note.note_typ = T.Pre);
+  assert (pat.note = T.Pre);
   let t, ve = infer_pat' env pat in
   if not env.pre then
-    pat.note <- {note_typ = T.normalize env.cons t; note_eff = T.Triv};
+    pat.note <- T.normalize env.cons t;
   t, ve
 
 and infer_pat' env pat : T.typ * val_env =
@@ -802,11 +802,11 @@ and check_pat_exhaustive env t pat : val_env =
   ve
 
 and check_pat env t pat : val_env =
-  assert (pat.note.note_typ = T.Pre);
+  assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize env.cons t in
   let ve = check_pat' env t pat in
-  if not env.pre then pat.note <- {note_typ = t'; note_eff = T.Triv};
+  if not env.pre then pat.note <- t';
   ve
 
 and check_pat' env t pat : val_env =

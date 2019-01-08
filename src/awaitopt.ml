@@ -339,7 +339,7 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
   let v1 = fresh_id (typ e1) in
-  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
+  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt pat.note])) in
   let dotnext v = dotE v nextN next_typ -*- unitE in
   let loop = fresh_id (contT T.unit) in
   let v2 = fresh_id T.unit in
@@ -588,7 +588,7 @@ and declare_id id typ exp =
 and declare_pat pat exp : exp =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  exp
-  | VarP id -> declare_id id (pat.note.note_typ) exp
+  | VarP id -> declare_id id pat.note exp
   | TupP pats -> declare_pats pats exp
   | OptP pat1 -> declare_pat pat1 exp
   | AltP (pat1, pat2) -> declare_pat pat1 exp
@@ -609,7 +609,7 @@ and rename_pat' pat =
   | WildP -> (PatEnv.empty, pat.it)
   | LitP _ | SignP _ -> (PatEnv.empty, pat.it)
   | VarP id ->
-    let v = fresh_id pat.note.note_typ in
+    let v = fresh_id pat.note in
     (PatEnv.singleton id.it v,
      VarP (id_of_exp v))
   | TupP pats ->

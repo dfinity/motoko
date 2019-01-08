@@ -98,8 +98,7 @@ type relop =
 
 (* Patterns *)
 
-(* TODO: replace typ_note by typ (pats don't have effects *)
-type pat = (pat', typ_note) Source.annotated_phrase
+type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)

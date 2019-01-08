@@ -2,7 +2,7 @@
 
 type 'a phrase = ('a,Syntax.typ_note) Source.annotated_phrase
 
-type pat = pat' phrase
+type pat = (pat',Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of Syntax.id                          (* variable *)

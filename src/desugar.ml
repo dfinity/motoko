@@ -83,7 +83,7 @@ let
     match f.it.S.mut.it with
     | S.Const ->
       {it = I.LetD ({it = I.VarP f.it.S.id; at = no_region;
-                     note = {f.it.S.exp.note with S.note_eff = T.Triv}
+                     note = f.it.S.exp.note.S.note_typ
                     },
                     exp ce f.it.S.exp);
        at = f.at;
@@ -111,7 +111,8 @@ let
         [ {it = I.LetD (
                     {it = I.VarP self_id;
                      at = at;
-                     note = {S.note_typ = obj_typ; S.note_eff = T.Triv}},
+                     note = obj_typ
+                    },
                     {it = I.NewObjE
                             (Type.Object Type.Local @@ at,
                              List.concat (List.map field_to_obj_entry es));
