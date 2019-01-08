@@ -19,7 +19,7 @@ ACCEPT=no
 DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
-WASM=${WASM:-wasm-interp --enable-multi-value}
+WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 
 while getopts "ad" o; do

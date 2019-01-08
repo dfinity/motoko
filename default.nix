@@ -101,6 +101,7 @@ rec {
 
     buildInputs =
       [ native
+        ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -197,7 +198,6 @@ rec {
 
   });
 
-  wabt = nixpkgs.wabt;
   wasm = ocaml_wasm;
   dvm = real-dvm;
 }

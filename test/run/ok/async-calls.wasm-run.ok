@@ -1,1 +1,1 @@
-error running start function: unreachable executed
+_out/async-calls.wasm:0x___: runtime trap: unreachable executed
