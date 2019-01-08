@@ -23,7 +23,7 @@ type func_sort = Type.func_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
-type typ = (typ',typ_note) Source.annotated_phrase
+type typ = (typ',Type.typ) Source.annotated_phrase
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
@@ -197,17 +197,15 @@ and prog' = dec list
 
 (* n-ary arguments/result sequences *)
 
- 
 let seqT ts =
   match ts with
   | [t] -> t
   | ts -> {Source.it = TupT ts;
            at = Source.no_region;
-           Source.note = {note_typ = Type.Tup (List.map (fun t -> t.Source.note.note_typ) ts);
-                          note_eff = Type.Triv}}
+           Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts)}
 
 let as_seqT t =
   match t.Source.it with
   | TupT ts -> ts
   | _ -> [t]
-           
+

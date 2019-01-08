@@ -33,16 +33,14 @@ let fullfillT as_seq typ = T.Func(T.Call T.Local, T.Returns, [], as_seq typ, [])
 
 let tupT ts = {it = TupT ts;
                at = no_region;
-               note =
-                 {note_typ = T.Tup (List.map (fun t -> t.note.note_typ) ts);
-                  note_eff = T.Triv}}
+               note = T.Tup (List.map (fun t -> t.note) ts)}
 
 let unitT = tupT []
 
 let funcT(s,bds,t1,t2) =
   {it = FuncT (s, bds, t1, t2);
    at = no_region;
-   note = empty_typ_note}
+   note = T.Pre} (* TBR: try harder *)
 
 let t_async as_seq t =
   T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],as_seq t,[])], [])
@@ -61,7 +59,7 @@ let new_asyncE =
 let bogusT t=
   { it = PrimT "BogusT" (* bogus,  but we shouln't use it anymore *);
     at = no_region;
-    note = { note_typ = t; note_eff =  T.Triv};
+    note = t;
   }
 
 let new_async t1 =

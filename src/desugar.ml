@@ -54,7 +54,7 @@ let
     | S.IdxE (e1, e2) -> I.IdxE (exp ce e1, exp ce e2)
     | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
-      let inst = List.map (fun t -> t.Source.note.S.note_typ) inst in
+      let inst = List.map (fun t -> t.Source.note) inst in
       I.CallE (cc, exp ce e1, inst, exp ce e2)
     | S.BlockE ds -> I.BlockE (decs ce ds)
     | S.NotE e -> I.IfE (exp ce e, false_lit, true_lit)
@@ -66,7 +66,7 @@ let
     | S.LoopE (e1, None) -> I.LoopE (exp ce e1, None)
     | S.LoopE (e1, Some e2) -> I.LoopE (exp ce e1, Some (exp ce e2))
     | S.ForE (p, e1, e2) -> I.ForE (pat ce p, exp ce e1, exp ce e2)
-    | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note.S.note_typ, exp ce e)
+    | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note, exp ce e)
     | S.BreakE (l, e) -> I.BreakE (l, exp ce e)
     | S.RetE e -> I.RetE (exp ce e)
     | S.AsyncE e -> I.AsyncE (exp ce e)
@@ -144,8 +144,8 @@ let
     | S.VarD (i, e) -> I.VarD (i, exp ce e)
     | S.FuncD (s, i, tp, p, ty, e) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
-      I.FuncD (cc, i, tp, pat ce p, ty.note.S.note_typ, exp ce e)
-    | S.TypD (i, ty, t) -> I.TypD (i, ty, t.note.S.note_typ)
+      I.FuncD (cc, i, tp, pat ce p, ty.note, exp ce e)
+    | S.TypD (i, ty, t) -> I.TypD (i, ty, t.note)
     | S.ClassD (fun_id, typ_id, tp, s, p, self_id, es) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
       let inst = List.map

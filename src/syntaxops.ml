@@ -278,7 +278,7 @@ let funcD f x e =
      {it=FuncD(sharing @@ no_region, (id_of_exp f),
                [],
                {it = VarP (id_of_exp x); at = no_region; note = t1},
-               {it = PrimT "Any"; at = no_region; note = {note_typ = t2; note_eff = T.Triv} }, (* bogus,  but we shouldn't use it anymore *)
+               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
                e);
             at = no_region;
             note = f.note}
@@ -295,10 +295,10 @@ let nary_funcD f xs e =
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               {it = PrimT "Any"; at = no_region; note = {note_typ = t2; note_eff = T.Triv} }, (* bogus,  but we shouldn't use it anymore *)
+               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
                e);
       at = no_region;
-      note = f.note;}
+      note = f.note}
   | _,_ -> failwith "Impossible: funcD"
 
 

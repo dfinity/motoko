@@ -64,7 +64,7 @@ let bind env i info =
 
 let are_generic_insts tbs insts =
   List.for_all2 (fun tb inst ->
-      match tb.note,inst.note.note_typ with
+      match tb.note,inst.note with
       | Con(c1,[]), Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
       | Con(c1,[]), _ -> false
       | _,_ -> assert false) tbs insts
