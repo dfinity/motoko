@@ -134,7 +134,7 @@ let infer_mut mut : T.typ -> T.typ =
 
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
-  typ.note <- {note_typ = t; note_eff = T.Triv};
+  typ.note <- t;
   t
 
 and check_typ' env typ : T.typ =
