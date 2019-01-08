@@ -8,7 +8,7 @@ non-closed actor: (ActorE
         (shared  0 -> 0)
         dec
         (TupP)
-        (TupT)
+        ()
         (BlockE
           (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
           (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
@@ -25,7 +25,7 @@ non-closed actor: (ActorE
         (shared  1 -> 0)
         read
         (VarP $1)
-        (TupT)
+        ()
         (BlockE
           (LetD (TupP) (TupE))
           (ExpD
@@ -36,7 +36,7 @@ non-closed actor: (ActorE
                   ( 1 -> 0)
                   $lambda
                   (VarP $0)
-                  (PrimT Any)
+                  ()
                   (CallE ( 1 -> 0) (VarE $0) (BlockE (ExpD (VarE c))))
                 )
               )
@@ -45,7 +45,7 @@ non-closed actor: (ActorE
                   ( 1 -> 0)
                   $lambda
                   (VarP $2)
-                  (PrimT Any)
+                  ()
                   (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
                 )
               )
