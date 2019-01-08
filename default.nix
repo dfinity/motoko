@@ -61,7 +61,6 @@ rec {
     src = sourceByRegex ./. [
       "src/"
       "src/Makefile.*"
-      "src/wasm_copy/"
       "src/.*.ml"
       "src/.*.mli"
       "src/.*.mly"

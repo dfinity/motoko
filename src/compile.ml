@@ -1,12 +1,12 @@
-open Wasm_copy.Ast
-open Wasm_copy.Types
+open Wasm.Ast
+open Wasm.Types
 
 open Source
 open Ir
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
-open Wasm_copy.CustomModule
+open CustomModule
 
 module G = InstrList
 let (^^) = G.(^^) (* is this how we do that? *)
@@ -107,7 +107,7 @@ module E = struct
     (* The prelude. We need to re-use this when compiling actors *)
     prelude : prog;
     (* Exports that need a custom type for the hypervisor *)
-    dfinity_types : (int32 * Wasm_copy.CustomSections.type_ list) list ref;
+    dfinity_types : (int32 * CustomSections.type_ list) list ref;
     (* Where does static memory end and dynamic memory begin? *)
     end_of_static_memory : int32 ref;
     (* Static memory defined so far *)
@@ -303,8 +303,8 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
-let compile_unboxed_const i = G.i (Wasm_copy.Ast.Const (nr (Wasm.Values.I32 i)))
-let compile_const_64 i = G.i (Wasm_copy.Ast.Const (nr (Wasm.Values.I64 i)))
+let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
+let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
 let compile_unboxed_zero =    compile_unboxed_const 0l
 let compile_unit = compile_unboxed_const 1l
 (* This needs to be disjoint from all pointers *)
@@ -324,8 +324,8 @@ let compile_divU_const = compile_op_const I32Op.DivU
 let new_local_ env t name =
   let i = E.add_anon_local env t in
   E.add_local_name env i name;
-  ( G.i (SetLocal (nr i))
-  , G.i (GetLocal (nr i))
+  ( G.i (LocalSet (nr i))
+  , G.i (LocalGet (nr i))
   , i
   )
 
@@ -411,24 +411,24 @@ module Heap = struct
 
   let dyn_alloc_words env =
     Func.share_code env "alloc_words" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (GetLocal (nr 0l)) in
+      let get_n = G.i (LocalGet (nr 0l)) in
 
       (* expect the size (in words), returns the pointer *)
-      G.i (GetGlobal (nr heap_ptr)) ^^
+      G.i (GlobalGet (nr heap_ptr)) ^^
 
       (* Update heap pointer *)
       get_n ^^
       compile_mul_const word_size ^^
 
       (* Add to old heap value *)
-      G.i (GetGlobal (nr heap_ptr)) ^^
+      G.i (GlobalGet (nr heap_ptr)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      G.i (SetGlobal (nr heap_ptr))
+      G.i (GlobalSet (nr heap_ptr))
     )
 
   let dyn_alloc_bytes env =
     Func.share_code env "alloc_bytes" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (GetLocal (nr 0l)) in
+      let get_n = G.i (LocalGet (nr 0l)) in
 
       get_n ^^
       (* Round up to next multiple of the word size and convert to words *)
@@ -481,9 +481,9 @@ module Heap = struct
 
   let memcpy env =
     Func.share_code env "memcpy" ["from", I32Type; "two", I32Type; "n", I32Type] [] (fun env ->
-      let get_from = G.i (GetLocal (nr 0l)) in
-      let get_to = G.i (GetLocal (nr 1l)) in
-      let get_n = G.i (GetLocal (nr 2l)) in
+      let get_from = G.i (LocalGet (nr 0l)) in
+      let get_to = G.i (LocalGet (nr 1l)) in
+      let get_n = G.i (LocalGet (nr 2l)) in
       get_n ^^
       from_0_to_n env (fun get_i ->
           get_to ^^
@@ -517,28 +517,28 @@ module ElemHeap = struct
      reference table *)
   let remember_reference env : G.t =
     Func.share_code env "remember_reference" ["ref", I32Type] [I32Type] (fun env ->
-      let get_ref = G.i (GetLocal (nr 0l)) in
+      let get_ref = G.i (LocalGet (nr 0l)) in
 
       (* Return index *)
-      G.i (GetGlobal (nr ref_counter)) ^^
+      G.i (GlobalGet (nr ref_counter)) ^^
 
       (* Store reference *)
-      G.i (GetGlobal (nr ref_counter)) ^^
+      G.i (GlobalGet (nr ref_counter)) ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
       get_ref ^^
       store_ptr ^^
 
       (* Bump counter *)
-      G.i (GetGlobal (nr ref_counter)) ^^
+      G.i (GlobalGet (nr ref_counter)) ^^
       compile_add_const 1l ^^
-      G.i (SetGlobal (nr ref_counter))
+      G.i (GlobalSet (nr ref_counter))
     )
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
   let recall_reference env : G.t =
     Func.share_code env "recall_reference" ["ref_idx", I32Type] [I32Type] (fun env ->
-      let get_ref_idx = G.i (GetLocal (nr 0l)) in
+      let get_ref_idx = G.i (LocalGet (nr 0l)) in
       get_ref_idx ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
@@ -564,7 +564,7 @@ module ClosureTable = struct
      reference table *)
   let remember_closure env : G.t =
     Func.share_code env "remember_closure" ["ptr", I32Type] [I32Type] (fun env ->
-      let get_ptr = G.i (GetLocal (nr 0l)) in
+      let get_ptr = G.i (LocalGet (nr 0l)) in
 
       (* Return index *)
       get_counter ^^
@@ -587,7 +587,7 @@ module ClosureTable = struct
   (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
   let recall_closure env : G.t =
     Func.share_code env "recall_closure" ["closure_idx", I32Type] [I32Type] (fun env ->
-      let get_closure_idx = G.i (GetLocal (nr 0l)) in
+      let get_closure_idx = G.i (LocalGet (nr 0l)) in
       get_closure_idx ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const loc ^^
@@ -604,7 +604,7 @@ module BitTagged = struct
 
   let if_unboxed env retty is1 is2 =
     Func.share_code env "is_unboxed" ["x", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
       (* Get bit *)
       get_x ^^
       compile_unboxed_const 1l ^^
@@ -735,11 +735,11 @@ module Var = struct
   (* Stores the payload *)
   let set_val env var = match E.lookup_var env var with
     | Some (Local i) ->
-      G.i (SetLocal (nr i))
+      G.i (LocalSet (nr i))
     | Some (HeapInd (i, off)) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
-      G.i (GetLocal (nr i)) ^^
+      G.i (LocalGet (nr i)) ^^
       get_new_val ^^
       Heap.store_field off
     | Some (Static i) ->
@@ -753,8 +753,8 @@ module Var = struct
 
   (* Returns the payload *)
   let get_val env var = match E.lookup_var env var with
-    | Some (Local i)  -> G.i (GetLocal (nr i))
-    | Some (HeapInd (i, off))  -> G.i (GetLocal (nr i)) ^^ Heap.load_field off
+    | Some (Local i)  -> G.i (LocalGet (nr i))
+    | Some (HeapInd (i, off))  -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
     | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
     | Some (Deferred d) -> d.allocate env
     | None   -> G.i Unreachable
@@ -763,17 +763,17 @@ module Var = struct
      and code to restore it, including adding to the environment *)
   let capture env var : G.t * (E.t -> (E.t * G.t)) = match E.lookup_var env var with
     | Some (Local i) ->
-      ( G.i (GetLocal (nr i))
+      ( G.i (LocalGet (nr i))
       , fun env1 ->
         let (env2, j) = E.add_direct_local env1 var in
-        let restore_code = G.i (SetLocal (nr j))
+        let restore_code = G.i (LocalSet (nr j))
         in (env2, restore_code)
       )
     | Some (HeapInd (i, off)) ->
-      ( G.i (GetLocal (nr i))
+      ( G.i (LocalGet (nr i))
       , fun env1 ->
         let (env2, j) = E.add_local_with_offset env1 var off in
-        let restore_code = G.i (SetLocal (nr j))
+        let restore_code = G.i (LocalSet (nr j))
         in (env2, restore_code)
       )
     | Some (Static i) ->
@@ -786,7 +786,7 @@ module Var = struct
      (either a mutbox, if already mutable, or a freshly allocated box
   *)
   let get_val_ptr env var = match E.lookup_var env var with
-    | Some (HeapInd (i, 1l)) -> G.i (GetLocal (nr i))
+    | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
     | _  -> field_box env (get_val env var)
 end (* Var *)
 
@@ -906,7 +906,7 @@ module AllocHow = struct
       let (env1, i) = E.add_local_with_offset env name 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
-        G.i (SetLocal (nr i)) in
+        G.i (LocalSet (nr i)) in
       (env1, alloc_code)
     | _ -> (env, G.nop)
 
@@ -928,7 +928,7 @@ module Closure = struct
 
   let first_captured = header_size
 
-  let load_the_closure = G.i (GetLocal (nr 0l))
+  let load_the_closure = G.i (LocalGet (nr 0l))
   let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
 
 
@@ -977,7 +977,7 @@ module BoxedInt = struct
     get_i
 
   let box env = Func.share_code env "box_int" ["n", I64Type] [I32Type] (fun env ->
-      let get_n = G.i (GetLocal (nr 0l)) in
+      let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (ValBlockType (Some I32Type))
@@ -986,7 +986,7 @@ module BoxedInt = struct
     )
 
   let unbox env = Func.share_code env "unbox_int" ["n", I32Type] [I64Type] (fun env ->
-      let get_n = G.i (GetLocal (nr 0l)) in
+      let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I64Type))
         ( get_n ^^ BitTagged.untag_scalar env)
@@ -1091,8 +1091,8 @@ module Object = struct
   (* Returns a pointer to the object field *)
   let idx_hash env =
     Func.share_code env "obj_idx" ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
-      let get_hash = G.i (GetLocal (nr 1l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
+      let get_hash = G.i (LocalGet (nr 1l)) in
       let (set_f, get_f) = new_local env "f" in
       let (set_r, get_r) = new_local env "r" in
 
@@ -1171,8 +1171,8 @@ module Text = struct
 
   (* Two strings on stack *)
   let concat env = Func.share_code env "concat" ["x", I32Type; "y", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
-      let get_y = G.i (GetLocal (nr 1l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
+      let get_y = G.i (LocalGet (nr 1l)) in
       let (set_z, get_z) = new_local env "z" in
       let (set_len1, get_len1) = new_local env "len1" in
       let (set_len2, get_len2) = new_local env "len2" in
@@ -1229,8 +1229,8 @@ module Text = struct
 
   (* Two strings on stack *)
   let compare env = Func.share_code env "Text.compare" ["x", I32Type; "y", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
-      let get_y = G.i (GetLocal (nr 1l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
+      let get_y = G.i (LocalGet (nr 1l)) in
       let (set_len1, get_len1) = new_local env "len1" in
       let (set_len2, get_len2) = new_local env "len2" in
 
@@ -1274,8 +1274,8 @@ module Array = struct
   (* Dynamic array access. Returns the address of the field.
      Does bounds checking *)
   let idx env = Func.share_code env "Array.idx" ["array", I32Type; "idx", I32Type] [I32Type] (fun env ->
-      let get_array = G.i (GetLocal (nr 0l)) in
-      let get_idx = G.i (GetLocal (nr 1l)) in
+      let get_array = G.i (LocalGet (nr 0l)) in
+      let get_idx = G.i (LocalGet (nr 1l)) in
 
       (* No need to check the lower bound, we interpret is as unsigned *)
       (* Check the upper bound *)
@@ -1299,8 +1299,8 @@ module Array = struct
 
   let common_funcs env =
     let get_array_object = Closure.load_closure 0l in
-    let get_first_arg = G.i (GetLocal (nr 1l)) in
-    let get_second_arg = G.i (GetLocal (nr 2l)) in
+    let get_first_arg = G.i (LocalGet (nr 1l)) in
+    let get_second_arg = G.i (LocalGet (nr 2l)) in
 
     E.define_built_in env "array_get"
       (fun () -> Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
@@ -1498,7 +1498,7 @@ module Array = struct
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
       Func.share_code env name args [I32Type] (fun env ->
-        lit env (Lib.List.table n (fun i -> G.i (GetLocal (nr (Int32.of_int i)))))
+        lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -1507,7 +1507,7 @@ module Array = struct
     let name = Printf.sprintf "from_%i_tuple" n in
     let retty = Lib.List.make n I32Type in
     Func.share_code env name ["tup", I32Type] retty (fun env ->
-      let get_tup = G.i (GetLocal (nr 0l)) in
+      let get_tup = G.i (LocalGet (nr 0l)) in
       G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
     )
 
@@ -1648,7 +1648,7 @@ module Dfinity = struct
 
   let compile_databuf_of_text env  =
     Func.share_code env "databuf_of_text" ["string", I32Type] [I32Type] (fun env ->
-      let get_i = G.i (GetLocal (nr 0l)) in
+      let get_i = G.i (LocalGet (nr 0l)) in
 
       (* Calculate the offset *)
       get_i ^^
@@ -1721,7 +1721,7 @@ module Dfinity = struct
 
   let box_reference env =
     Func.share_code env "box_reference" ["ref", I32Type] [I32Type] (fun env ->
-      let get_ref = G.i (GetLocal (nr 0l)) in
+      let get_ref = G.i (LocalGet (nr 0l)) in
       Tagged.obj env Tagged.Reference [
         get_ref ^^
         ElemHeap.remember_reference env
@@ -1772,7 +1772,7 @@ module OrthogonalPersistence = struct
 
     Func.define_built_in env "restore_mem" [] [] (fun env1 ->
        let (set_i, get_i) = new_local env1 "len" in
-       G.i (GetGlobal (nr mem_global)) ^^
+       G.i (GlobalGet (nr mem_global)) ^^
        G.i (Call (nr (Dfinity.data_length_i env1))) ^^
        set_i ^^
 
@@ -1787,24 +1787,24 @@ module OrthogonalPersistence = struct
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
            compile_add_const ElemHeap.table_end ^^
-           G.i (SetGlobal (nr Heap.heap_ptr)) ^^
+           G.i (GlobalSet (nr Heap.heap_ptr)) ^^
 
            (* Load memory *)
            compile_unboxed_const ElemHeap.table_end ^^
            get_i ^^
-           G.i (GetGlobal (nr mem_global)) ^^
+           G.i (GlobalGet (nr mem_global)) ^^
            compile_unboxed_zero ^^
            G.i (Call (nr (Dfinity.data_internalize_i env1))) ^^
 
            (* Load reference counter *)
-           G.i (GetGlobal (nr elem_global)) ^^
+           G.i (GlobalGet (nr elem_global)) ^^
            G.i (Call (nr (Dfinity.elem_length_i env1))) ^^
-           G.i (SetGlobal (nr ElemHeap.ref_counter)) ^^
+           G.i (GlobalSet (nr ElemHeap.ref_counter)) ^^
 
            (* Load references *)
            compile_unboxed_const ElemHeap.ref_location ^^
-           G.i (GetGlobal (nr ElemHeap.ref_counter)) ^^
-           G.i (GetGlobal (nr elem_global)) ^^
+           G.i (GlobalGet (nr ElemHeap.ref_counter)) ^^
+           G.i (GlobalGet (nr elem_global)) ^^
            compile_unboxed_zero ^^
            G.i (Call (nr (Dfinity.elem_internalize_i env1)))
         )
@@ -1812,17 +1812,17 @@ module OrthogonalPersistence = struct
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
        compile_unboxed_const ElemHeap.table_end ^^
-       G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+       G.i (GlobalGet (nr Heap.heap_ptr)) ^^
        compile_unboxed_const ElemHeap.table_end ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
        G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
-       G.i (SetGlobal (nr mem_global)) ^^
+       G.i (GlobalSet (nr mem_global)) ^^
 
        (* Store references *)
        compile_unboxed_const ElemHeap.ref_location ^^
-       G.i (GetGlobal (nr ElemHeap.ref_counter)) ^^
+       G.i (GlobalGet (nr ElemHeap.ref_counter)) ^^
        G.i (Call (nr (Dfinity.elem_externalize_i env))) ^^
-       G.i (SetGlobal (nr elem_global))
+       G.i (GlobalSet (nr elem_global))
     )
 
   let save_mem env = G.i (Call (nr (E.built_in env "save_mem")))
@@ -1864,10 +1864,10 @@ module Serialization = struct
 
   let serialize_go env =
     Func.share_code env "serialize_go" ["x", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
 
-      G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
       set_copy ^^
 
       get_x ^^
@@ -2025,8 +2025,8 @@ module Serialization = struct
 
   let shift_pointer_at env =
     Func.share_code env "shift_pointer_at" ["loc", I32Type;  "ptr_offset", I32Type] [] (fun env ->
-      let get_loc = G.i (GetLocal (nr 0l)) in
-      let get_ptr_offset = G.i (GetLocal (nr 1l)) in
+      let get_loc = G.i (LocalGet (nr 0l)) in
+      let get_ptr_offset = G.i (LocalGet (nr 1l)) in
       let (set_ptr, get_ptr) = new_local env "ptr" in
       get_loc ^^
       load_ptr ^^
@@ -2046,7 +2046,7 @@ module Serialization = struct
   (* Returns the object size (in bytes) *)
   let object_size env =
     Func.share_code env "object_size" ["x", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
       get_x ^^
       Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
@@ -2166,9 +2166,9 @@ module Serialization = struct
 
   let shift_pointers env =
     Func.share_code env "shift_pointers" ["start", I32Type; "to", I32Type; "ptr_offset", I32Type] [] (fun env ->
-      let get_start = G.i (GetLocal (nr 0l)) in
-      let get_to = G.i (GetLocal (nr 1l)) in
-      let get_ptr_offset = G.i (GetLocal (nr 2l)) in
+      let get_start = G.i (LocalGet (nr 0l)) in
+      let get_to = G.i (LocalGet (nr 1l)) in
+      let get_ptr_offset = G.i (LocalGet (nr 2l)) in
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         for_each_pointer env get_x (fun get_ptr_loc ->
@@ -2181,9 +2181,9 @@ module Serialization = struct
 
   let extract_references env =
     Func.share_code env "extract_references" ["start", I32Type; "to", I32Type; "tbl_area", I32Type] [I32Type] (fun env ->
-      let get_start = G.i (GetLocal (nr 0l)) in
-      let get_to = G.i (GetLocal (nr 1l)) in
-      let get_tbl_area = G.i (GetLocal (nr 2l)) in
+      let get_start = G.i (LocalGet (nr 0l)) in
+      let get_to = G.i (LocalGet (nr 1l)) in
+      let get_tbl_area = G.i (LocalGet (nr 2l)) in
       let (set_i, get_i) = new_local env "i" in
 
       compile_unboxed_const 0l ^^ set_i ^^
@@ -2214,9 +2214,9 @@ module Serialization = struct
 
   let intract_references env =
     Func.share_code env "intract_references" ["start", I32Type; "to", I32Type; "tbl_area", I32Type] [] (fun env ->
-      let get_start = G.i (GetLocal (nr 0l)) in
-      let get_to = G.i (GetLocal (nr 1l)) in
-      let get_tbl_area = G.i (GetLocal (nr 2l)) in
+      let get_start = G.i (LocalGet (nr 0l)) in
+      let get_to = G.i (LocalGet (nr 1l)) in
+      let get_tbl_area = G.i (LocalGet (nr 2l)) in
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
@@ -2240,7 +2240,7 @@ module Serialization = struct
     if E.mode env <> DfinityMode
     then Func.share_code env "serialize" ["x", I32Type] [I32Type] (fun env -> G.i Unreachable)
     else Func.share_code env "serialize" ["x", I32Type] [I32Type] (fun env ->
-      let get_x = G.i (GetLocal (nr 0l)) in
+      let get_x = G.i (LocalGet (nr 0l)) in
 
       let (set_start, get_start) = new_local env "old_heap" in
       let (set_end, get_end) = new_local env "end" in
@@ -2248,7 +2248,7 @@ module Serialization = struct
       let (set_databuf, get_databuf) = new_local env "databuf" in
 
       (* Remember where we start to copy to *)
-      G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
       set_start ^^
 
       (* Copy data *)
@@ -2262,7 +2262,7 @@ module Serialization = struct
           store_ptr ^^
 
           (* Remember the end *)
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
           set_end ^^
 
           (* Empty table of references *)
@@ -2274,7 +2274,7 @@ module Serialization = struct
           G.i Drop ^^
 
           (* Remember the end *)
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
           set_end ^^
 
           (* Adjust pointers *)
@@ -2308,7 +2308,7 @@ module Serialization = struct
 
       (* Reset the heap counter, to free some space *)
       get_start ^^
-      G.i (SetGlobal (nr Heap.heap_ptr)) ^^
+      G.i (GlobalSet (nr Heap.heap_ptr)) ^^
 
       (* Finally, create elembuf *)
       get_end ^^
@@ -2325,20 +2325,20 @@ module Serialization = struct
       let retty = Lib.List.make n I32Type in
       Func.share_code env name args retty (fun env ->
         G.table n (fun i ->
-          G.i (GetLocal (nr (Int32.of_int i))) ^^ serialize env
+          G.i (LocalGet (nr (Int32.of_int i))) ^^ serialize env
         )
       )
 
   let deserialize env =
     Func.share_code env "deserialize" ["ref", I32Type] [I32Type] (fun env ->
-      let get_elembuf = G.i (GetLocal (nr 0l)) in
+      let get_elembuf = G.i (LocalGet (nr 0l)) in
       let (set_databuf, get_databuf) = new_local env "databuf" in
       let (set_start, get_start) = new_local env "start" in
       let (set_data_len, get_data_len) = new_local env "data_len" in
       let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
 
       (* new positions *)
-      G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
       set_start ^^
 
       get_elembuf ^^ G.i (Call (nr (Dfinity.elem_length_i env))) ^^
@@ -2375,16 +2375,16 @@ module Serialization = struct
           get_start ^^
           get_data_len ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (SetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalSet (nr Heap.heap_ptr)) ^^
 
           (* Fix pointers *)
           get_start ^^
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
           get_start ^^
           shift_pointers env ^^
 
           (* Load references *)
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
           get_tbl_size ^^ compile_sub_const 1l ^^
           get_elembuf ^^
           compile_unboxed_const 0l ^^
@@ -2393,8 +2393,8 @@ module Serialization = struct
           (* Fix references *)
           (* Extract references *)
           get_start ^^
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
-          G.i (GetGlobal (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
           intract_references env ^^
 
           (* return allocated thing *)
@@ -2423,10 +2423,10 @@ module GC = struct
      the object will be finally. *)
   (* Invariant: Must not be called on the same pointer twice. *)
   let evacuate env = Func.share_code env "evaucate" ["begin_from_space", I32Type; "begin_to_space", I32Type; "end_to_space", I32Type; "ptr_loc", I32Type] [I32Type] (fun env ->
-    let get_begin_from_space = G.i (GetLocal (nr 0l)) in
-    let get_begin_to_space = G.i (GetLocal (nr 1l)) in
-    let get_end_to_space = G.i (GetLocal (nr 2l)) in
-    let get_ptr_loc = G.i (GetLocal (nr 3l)) in
+    let get_begin_from_space = G.i (LocalGet (nr 0l)) in
+    let get_begin_to_space = G.i (LocalGet (nr 1l)) in
+    let get_end_to_space = G.i (LocalGet (nr 2l)) in
+    let get_ptr_loc = G.i (LocalGet (nr 3l)) in
     let (set_len, get_len) = new_local env "len" in
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
 
@@ -2493,8 +2493,8 @@ module GC = struct
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
     compile_unboxed_const end_of_static_space ^^ set_begin_from_space ^^
-    G.i (GetGlobal (nr Heap.heap_ptr)) ^^ set_begin_to_space ^^
-    G.i (GetGlobal (nr Heap.heap_ptr)) ^^ set_end_to_space ^^
+    G.i (GlobalGet (nr Heap.heap_ptr)) ^^ set_begin_to_space ^^
+    G.i (GlobalGet (nr Heap.heap_ptr)) ^^ set_end_to_space ^^
 
 
     (* Common arguments for evalcuate *)
@@ -2537,7 +2537,7 @@ module GC = struct
     get_begin_from_space ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    G.i (SetGlobal (nr Heap.heap_ptr))
+    G.i (GlobalSet (nr Heap.heap_ptr))
   )
 
 
@@ -2567,7 +2567,7 @@ module FuncDec = struct
 
   let export_self_message env =
     Func.share_code env "export_self_message" ["name", I32Type] [I32Type] (fun env ->
-      let get_name = G.i (GetLocal (nr 0l)) in
+      let get_name = G.i (LocalGet (nr 0l)) in
 
       Tagged.obj env Tagged.Reference [
         (* Create a funcref for the message *)
@@ -2589,7 +2589,7 @@ module FuncDec = struct
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     let retty = Lib.List.make cc.Value.n_res I32Type in
     Func.of_body env (["clos", I32Type] @ args) retty (fun env1 -> G.with_region at (
-      let get_closure = G.i (GetLocal (E.unary_closure_local env1)) in
+      let get_closure = G.i (LocalGet (E.unary_closure_local env1)) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
 
@@ -2598,7 +2598,7 @@ module FuncDec = struct
 
       closure_code ^^
       alloc_args_code ^^
-      let get i = G.i (GetLocal (nr (Int32.(add 1l (of_int i))))) in
+      let get i = G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) in
       destruct_args_code get ^^
       mk_body env3
     ))
@@ -2620,7 +2620,7 @@ module FuncDec = struct
 
       (* Look up closure *)
       let (set_closure, get_closure) = new_local env1 "closure" in
-      G.i (GetLocal (nr 0l)) ^^
+      G.i (LocalGet (nr 0l)) ^^
       ClosureTable.recall_closure env1 ^^
       set_closure ^^
 
@@ -2632,7 +2632,7 @@ module FuncDec = struct
       closure_code ^^
       alloc_args_code ^^
       let get i =
-        G.i (GetLocal (nr (Int32.(add 1l (of_int i))))) ^^
+        G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) ^^
         Serialization.deserialize env in
       destruct_args_code get ^^
       mk_body env3 ^^
@@ -2660,7 +2660,7 @@ module FuncDec = struct
 
       alloc_args_code ^^
       let get i =
-        G.i (GetLocal (nr (Int32.(add 0l (of_int i))))) ^^
+        G.i (LocalGet (nr (Int32.(add 0l (of_int i))))) ^^
         Serialization.deserialize env in
       destruct_args_code get ^^
       mk_body env2 ^^
@@ -2735,7 +2735,7 @@ module FuncDec = struct
             let f = compile_message env cc restore_env mk_pat mk_body at in
             let fi = E.add_fun env f name.it in
             E.add_dfinity_type env (fi,
-              Wasm_copy.CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
+              CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
             );
             fi
           in
@@ -2974,7 +2974,7 @@ let compile_unop env t op = Syntax.(match op with
   | NegOp ->
       StackRep.UnboxedInt,
       Func.share_code env "neg" ["n", I64Type] [I64Type] (fun env ->
-        let get_n = G.i (GetLocal (nr 0l)) in
+        let get_n = G.i (LocalGet (nr 0l)) in
         compile_const_64 0L ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -2995,8 +2995,8 @@ let compile_binop env t op =
   | Type.Prim Type.Nat, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.Prim Type.Nat, SubOp ->
     Func.share_code env "nat_sub" ["n1", I64Type; "n2", I64Type] [I64Type] (fun env ->
-      let get_n1 = G.i (GetLocal (nr 0l)) in
-      let get_n2 = G.i (GetLocal (nr 1l)) in
+      let get_n1 = G.i (LocalGet (nr 0l)) in
+      let get_n2 = G.i (LocalGet (nr 1l)) in
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (StackRep.to_block_type env StackRep.UnboxedInt)
         (G.i Unreachable)
@@ -3344,7 +3344,7 @@ and compile_exp (env : E.t) exp =
     let sr, code = compile_exp env1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
-    G.i (SetLocal (nr i)) ^^
+    G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
     StackRep.unit,
@@ -3660,7 +3660,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
     in find_func f.it.exp in
 
   let (fi, fill) = E.reserve_fun pre_env name.it in
-  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args Wasm_copy.CustomSections.ElemBuf);
+  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
   E.add_export pre_env (nr {
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
@@ -3716,7 +3716,7 @@ and actor_lit outer_env name fs at =
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env name.it None in
-    let (_map, wasm_binary) = Wasm_copy.CustomModule.encode m in
+    let (_map, wasm_binary) = CustomModule.encode m in
     wasm_binary in
 
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
@@ -3774,7 +3774,7 @@ and conclude_module env module_name start_fi_o =
   { module_ = nr {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
-      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, AnyFuncType) } ];
+      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
       elems = [ nr {
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
@@ -3788,8 +3788,8 @@ and conclude_module env module_name start_fi_o =
     };
     types = E.get_dfinity_types env;
     persist =
-           [ (OrthogonalPersistence.mem_global, Wasm_copy.CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, Wasm_copy.CustomSections.ElemBuf)
+           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
+           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
            ];
     module_name;
     function_names =

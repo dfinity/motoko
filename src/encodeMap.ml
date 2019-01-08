@@ -129,7 +129,7 @@ let encode m =
 
     (* Types *)
 
-    open Types
+    open Wasm.Types
 
     let value_type = function
       | I32Type -> vs7 (-0x01)
@@ -138,7 +138,7 @@ let encode m =
       | F64Type -> vs7 (-0x04)
 
     let elem_type = function
-      | AnyFuncType -> vs7 (-0x10)
+      | FuncRefType -> vs7 (-0x10)
 
     let stack_type = vec value_type
     let func_type = function
@@ -163,7 +163,7 @@ let encode m =
     (* Expressions *)
 
     open Wasm.Source
-    open Ast
+    open Wasm.Ast
     open Wasm.Values
     open Wasm.Memory
 
@@ -203,11 +203,11 @@ let encode m =
       | Drop -> op 0x1a
       | Select -> op 0x1b
 
-      | GetLocal x -> op 0x20; var x
-      | SetLocal x -> op 0x21; var x
-      | TeeLocal x -> op 0x22; var x
-      | GetGlobal x -> op 0x23; var x
-      | SetGlobal x -> op 0x24; var x
+      | LocalGet x -> op 0x20; var x
+      | LocalSet x -> op 0x21; var x
+      | LocalTee x -> op 0x22; var x
+      | GlobalGet x -> op 0x23; var x
+      | GlobalSet x -> op 0x24; var x
 
       | Load ({ty = I32Type; sz = None; _} as mo) -> op 0x28; memop mo
       | Load ({ty = I64Type; sz = None; _} as mo) -> op 0x29; memop mo

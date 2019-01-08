@@ -1,5 +1,0 @@
-wasm_copy/Types
-wasm_copy/Ast
-wasm_copy/CustomModule
-wasm_copy/CustomSections
-wasm_copy/EncodeMap
