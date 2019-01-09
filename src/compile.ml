@@ -1,61 +1,99 @@
+(*
+This module is the backend of the ActorScript compiler. It takes a program in
+the intermediate representation (ir.ml), and produces a WebAssembly module,
+with DFINITY extensions (customModule.ml). An important helper module is
+instrList.ml, which provides a more convenient way of assembling WebAssembly
+instruction lists, as it takes care of (1) source locations and (2) labels.
+
+This file is split up in a number of modules, purely for namespacing and
+grouping. Every module has a high-level prose comment explainin the concept;
+this keeps documentation close to the code (a lessen learned from Simon PJ).
+*)
+
+
 open Wasm.Ast
 open Wasm.Types
-
 open Source
 open Ir
+open CustomModule
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
-open CustomModule
-
 module G = InstrList
-let (^^) = G.(^^) (* is this how we do that? *)
+let (^^) = G.(^^) (* is this how we import a single operator from a module that we otherwise use qualified? *)
 
 
-(* Helper functions to produce annotated terms *)
+(* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
-(* Convert between region representations *)
+(* Dito, for the Source AST  *)
 let nr_ x = { it = x; at = no_region; note = () }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
-(* The compiler environment.
+(*
 
-It is almost immutable..
+** The compiler environment.
 
-The mutable parts (`ref`) are used to register things like locals and
-functions.  This should be monotone in the sense that entries are only added,
-and that the order should not matter in a significant way.
+Of course, as we go through the code we have to track a few things; these are
+put in the compiler environment, type `E.t`. Some fields are valid globally, some
+only make sense locally, i.e. within a single function (but we still put them
+in one big record, for convenience).
 
-*)
+The field fall into the following categories:
+
+ 1. Static global fields. Never change.
+    Example: whether we are compiling with --dfinity; the prelude code
+
+ 2. Immutable global fields. Change in a well-scoped manner.
+    Example: Mapping from ActorScrpit names to their location.
+
+ 3. Mutable global fields. Change only monotonously.
+    These are used to register things like functions. This should be monotone
+    in the sense that entries are only added, and that the order should not
+    matter in a significant way. In some instances, the list contains futures
+    so that we can reserve and know the _position_ of the thing before we have
+    to actually fill it in.
+
+ 4. Static local fields. Never change within a function.
+    Example: number of parameters and return values
+
+ 5. Immutable local fields. Change in a well-scoped manner.
+    Example: Jump label depth
+
+ 6. Mutable local fields. See above
+    Example: Name and type of locals.
+
+**)
+
+(* Before we can define the environment, we need some auxillary types *)
 
 type mode = WasmMode | DfinityMode
 
-(* Names can be referring to one of these things: *)
-(* Most names are stored in heap locations stored in Locals.
-   But some are special (static funcions, static messages of the current actor).
-   These have no location (yet), but we need to generate one on demand.
- *)
-
-type 'env deferred_loc =
-  { allocate : 'env -> G.t
-  ; is_direct_call : int32 option
-    (* a little backdoor. coul be expanded into a general 'call' field *)
-  }
-
+(* A type to record where ActorScript names are stored. *)
 type 'env varloc =
   (* A Wasm Local of the current function, directly containing the value
-     (note that most values are pointers)
-  *)
+     (note that most values are pointers, but not all)
+     Used for immutable and mutable, non-captured data *)
   | Local of int32
   (* A Wasm Local of the current function, that points to memory location,
-     with an offset (in words) to the actual data. *)
+     with an offset (in words) to value.
+     Used for mutable captured data *)
   | HeapInd of (int32 * int32)
   (* A static memory location in the current module *)
   | Static of int32
   (* Dynamic code to allocate the expression, valid in the current module
      (need not be captured) *)
   | Deferred of 'env deferred_loc
+
+(* Most names are stored in heap locations or in locals.
+   But some are special (static funcions, the current actor, static messages of
+   the current actor). These have no real location (yet), but we still need to
+   produce a value on demand:
+ *)
+and 'env deferred_loc =
+  { allocate : 'env -> G.t
+  ; is_direct_call : int32 option (* To optimize known calls. *)
+  }
 
 module E = struct
 
@@ -74,93 +112,92 @@ module E = struct
 
   (* The environment type *)
   module NameEnv = Env.Make(String)
-  type local_names = (int32 * string) list
+  type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
     | Declared of (int32 * (func_with_names -> unit))
     | Defined of int32
     | Pending of (unit -> func_with_names)
   type t = {
+    (* Global fields *)
+    (* Static *)
     mode : mode;
+    prelude : prog; (* The prelude. Re-used when compiling actors *)
 
-    (* Imports defined *)
-    imports : import list ref;
-    (* Exports defined *)
-    exports : export list ref;
-    (* Function defined in this module *)
-    funcs : (func * string * local_names) Lib.Promise.t list ref;
-    (* Function number and fill function for built-in functions *)
-    built_in_funcs : lazy_built_in NameEnv.t ref;
-    (* Types registered in this module *)
+    (* Immutable *)
+    local_vars_env : t varloc NameEnv.t; (* variables ↦ their location *)
+
+    (* Mutable *)
     func_types : func_type list ref;
-    (* Number of parameters in the current function, to calculate indices of locals *)
-    n_param : int32;
-    (* Number of return values, to correctly compile calls to Return *)
-    n_res : int;
-    (* Types of locals *)
-    locals : value_type list ref;
-    local_names : (int32 * string) list ref;
-    (* A mapping from jump label to their depth *)
-    ld : G.depth NameEnv.t;
-    (* Mapping ActorScript variables to WebAssembly locals, globals or functions *)
-    local_vars_env : t varloc NameEnv.t;
-    (* The prelude. We need to re-use this when compiling actors *)
-    prelude : prog;
-    (* Exports that need a custom type for the hypervisor *)
-    dfinity_types : (int32 * CustomSections.type_ list) list ref;
-    (* Where does static memory end and dynamic memory begin? *)
-    end_of_static_memory : int32 ref;
-    (* Static memory defined so far *)
-    static_memory : (int32 * string) list ref;
-    (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    imports : import list ref;
+    exports : export list ref;
+    dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
+    funcs : (func * string * local_names) Lib.Promise.t list ref;
+    built_in_funcs : lazy_built_in NameEnv.t ref;
+    end_of_static_memory : int32 ref; (* End of statically allocated memory *)
+    static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
+      (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+
+    (* Local fields (only valid/used inside a function) *)
+    (* Static *)
+    n_param : int32; (* Number of parameters (to calculate indices of locals) *)
+    n_res : int; (* Number of return values (for type of Return) *)
+
+    (* Immutable *)
+    ld : G.depth NameEnv.t; (* jump label ↦ their depth *)
+
+    (* Mutable *)
+    locals : value_type list ref; (* Types of locals *)
+    local_names : (int32 * string) list ref; (* Names of locals *)
   }
-
-  let mode (e : t) = e.mode
-
-  (* Indices of local variables *)
-  let unary_closure_local env : var = nr 0l (* first param *)
 
   (* The initial global environment *)
   let mk_global mode prelude dyn_mem : t = {
     mode;
+    prelude;
+    local_vars_env = NameEnv.empty;
+    func_types = ref [];
     imports = ref [];
     exports = ref [];
+    dfinity_types = ref [];
     funcs = ref [];
     built_in_funcs = ref NameEnv.empty;
-    func_types = ref [];
-    dfinity_types = ref [];
-    (* Actually unused outside mk_fun_env: *)
-    locals = ref [];
-    local_names = ref [];
-    local_vars_env = NameEnv.empty;
-    n_param = 0l;
-    n_res = 0;
-    ld = NameEnv.empty;
-    prelude;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
+    (* Actually unused outside mk_fun_env: *)
+    n_param = 0l;
+    n_res = 0;
+    ld = NameEnv.empty;
+    locals = ref [];
+    local_names = ref [];
   }
 
-
-  let is_non_local = function
+  (* Creating a local environment, resetting the local fields,
+     and removing bindings for local variables (unless they are at global locations)
+  *)
+  let is_non_local : 'env varloc -> bool = function
     | Local _ -> false
     | HeapInd _ -> false
     | Static _ -> true
     | Deferred _ -> true
-
-  (* Resetting the environment for a new function *)
   let mk_fun_env env n_param n_res =
     { env with
-      locals = ref [];
-      local_names = ref [];
       n_param;
       n_res;
+      ld = NameEnv.empty;
+      locals = ref [];
+      local_names = ref [];
       (* We keep all local vars that are bound to known functions or globals *)
       local_vars_env = NameEnv.filter (fun _ -> is_non_local) env.local_vars_env;
-      ld = NameEnv.empty;
       }
+
+  (* We avoid accessing the fields of t directly from outside of E, so here are a
+     bunch of accessors. *)
+
+  let mode (e : t) = e.mode
+
 
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
@@ -305,12 +342,9 @@ end
 
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
-let compile_unboxed_zero =    compile_unboxed_const 0l
-let compile_unit = compile_unboxed_const 1l
-(* This needs to be disjoint from all pointers *)
-let compile_null = compile_unboxed_const 3l
+let compile_unboxed_zero = compile_unboxed_const 0l
 
-(* Some common arithmetic *)
+(* Some common arithmetic, used for pointer and index arithmetic *)
 let compile_op_const op i =
     compile_unboxed_const i ^^
     G.i (Binary (Wasm.Values.I32 op))
@@ -337,7 +371,7 @@ let _new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
-(* Some code combinators *)
+(* Some common code macros *)
 
 (* expects a number on the stack. Iterates from zero t below that number *)
 let compile_while cond body =
@@ -365,7 +399,7 @@ let from_0_to_n env mk_body =
       )
 
 
-(* Heap and allocations *)
+(* Pointer reference and dereference  *)
 
 let load_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
@@ -374,6 +408,9 @@ let store_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
 module Func = struct
+  (* This module contains basic bookkeeping functionality to define functions,
+     in particular creating the environment, and finally adding it to the environment.
+  *)
 
   let of_body env params retty mk_body =
     let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) (List.length retty) in
@@ -396,34 +433,33 @@ module Func = struct
 end (* Func *)
 
 module Heap = struct
-
   (* General heap object functionalty (allocation, setting fields, reading fields) *)
 
-  (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff.
-     Memory addresses are 32 bit (I32Type).
-     *)
+  (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
 
-  let heap_ptr = 2l
+  (* We keep track of the end of the used heap in this global, and bump it if
+     we allocate stuff.  *)
+  let heap_global = 2l
+  let get_heap_ptr = G.i (GlobalGet (nr heap_global))
+  let set_heap_ptr = G.i (GlobalSet (nr heap_global))
 
   (* Dynamic allocation *)
-
   let dyn_alloc_words env =
     Func.share_code env "alloc_words" ["n", I32Type] [I32Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
 
       (* expect the size (in words), returns the pointer *)
-      G.i (GlobalGet (nr heap_ptr)) ^^
+      get_heap_ptr ^^
 
       (* Update heap pointer *)
       get_n ^^
       compile_mul_const word_size ^^
 
       (* Add to old heap value *)
-      G.i (GlobalGet (nr heap_ptr)) ^^
+      get_heap_ptr ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      G.i (GlobalSet (nr heap_ptr))
+      set_heap_ptr
     )
 
   let dyn_alloc_bytes env =
@@ -439,46 +475,45 @@ module Heap = struct
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code *)
-
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
     dyn_alloc_words env
 
   (* Heap objects *)
 
+  (* At this level of abstactions, heap objects are just flat arrays of words *)
+
   let load_field (i : int32) : G.t =
     G.i (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
-  let load_field64 (i : int32) : G.t =
-    G.i (Load {ty = I64Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
-
   let store_field (i : int32) : G.t =
     G.i (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
+
+  (* Although we occationally want to treat to of them as a 64 bit number *)
+
+  let load_field64 (i : int32) : G.t =
+    G.i (Load {ty = I64Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
   let store_field64 (i : int32) : G.t =
     G.i (Store {ty = I64Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
   let obj env element_instructions : G.t =
+    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
+
     let n = List.length element_instructions in
-
-    let (set_i, get_i) = new_local env "heap_object" in
     alloc env (Wasm.I32.of_int_u n) ^^
-    set_i ^^
-
-    let compile_self = get_i in
+    set_heap_obj ^^
 
     let init_elem idx instrs : G.t =
-      compile_self ^^
+      get_heap_obj ^^
       instrs ^^
       store_field (Wasm.I32.of_int_u idx)
     in
     G.concat_mapi init_elem element_instructions ^^
+    get_heap_obj
 
-    compile_self
-
-  (* Convenience functions around memory *)
-
+  (* Convenience functions related to memory *)
   let memcpy env =
     Func.share_code env "memcpy" ["from", I32Type; "two", I32Type; "n", I32Type] [] (fun env ->
       let get_from = G.i (LocalGet (nr 0l)) in
@@ -502,8 +537,20 @@ module Heap = struct
 end (* Heap *)
 
 module ElemHeap = struct
-  let ref_counter = 3l
+  (* The ElemHeap adds a level of indirection for references (elements, as in
+     ElemRef). This way, the fake orthogonal persistence code can easily
+     store all references an elembuf.
 
+     This could be done differently (e.g. traversing the heap and looking for tagged references), but
+     it predates the heap traversal code, and the whole thing goes away once we
+     target orthogonal persistence anyways.
+  *)
+
+  let ref_counter_global = 3l
+  let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
+  let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
+
+  (* For now, we allocate a fixed size range. This obviously cannot stay. *)
   let max_references = 1024l
 
   (* By placing the ElemHeap at memory location 0, we incidentally make sure that
@@ -520,19 +567,19 @@ module ElemHeap = struct
       let get_ref = G.i (LocalGet (nr 0l)) in
 
       (* Return index *)
-      G.i (GlobalGet (nr ref_counter)) ^^
+      get_ref_ctr ^^
 
       (* Store reference *)
-      G.i (GlobalGet (nr ref_counter)) ^^
+      get_ref_ctr ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
       get_ref ^^
       store_ptr ^^
 
       (* Bump counter *)
-      G.i (GlobalGet (nr ref_counter)) ^^
+      get_ref_ctr ^^
       compile_add_const 1l ^^
-      G.i (GlobalSet (nr ref_counter))
+      set_ref_ctr
     )
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
@@ -548,17 +595,26 @@ module ElemHeap = struct
 end (* ElemHeap *)
 
 module ClosureTable = struct
+  (*
+  Another fixed-size table at the beginning of memory: When we create a closure
+  that is bound to a funcref that we pass out, we need this level of indirection for
+  two reasons:
+  - we cannot just bind the address via i32.bind, because that is not stable, due
+    to our moving GC, and
+  - we need to remember that these closures are roots (and currenlty never freed!)
+
+  Therefore we maintain a static table from closure index to address of the closure
+  on the heap.
+  *)
+
   let max_entries = 1024l
   let loc = ElemHeap.table_end
   let table_end = Int32.(add loc (mul max_entries Heap.word_size))
 
+  (* For reasons I do not recall we use the first word of the table as the counter,
+     and not a global.
+  *)
   let get_counter = compile_unboxed_const loc ^^ load_ptr
-  let set_counter env =
-    let (set_i, get_i) = new_local env "new_counter" in
-    set_i ^^
-    compile_unboxed_const loc ^^
-    get_i ^^
-    store_ptr
 
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
@@ -579,9 +635,10 @@ module ClosureTable = struct
       store_ptr ^^
 
       (* Bump counter *)
+      compile_unboxed_const loc ^^
       get_counter ^^
       compile_add_const 1l ^^
-      set_counter env
+      store_ptr
     )
 
   (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
@@ -596,12 +653,26 @@ module ClosureTable = struct
 
 end (* ClosureTable *)
 
-module BitTagged = struct
-  (* Raw values x are stored as ( x << 1 | 1), i.e. with the LSB set.
-     Pointers are stored as is (and should be aligned to have a zero there).
-     Special case: The zero pointer is considered a pointer.
+module Bool = struct
+  (* Boolean literals are either 0 or 1
+     The 1 is recognized as a unboxed scalar anyways,
+     while the 0 is special (see below).
+     This allows us to use the result of the WebAssembly comparison operators
+     directly, and to use the booleans directly with WebAssembly’s If.
   *)
+  let lit = function
+    | false -> compile_unboxed_const 0l
+    | true -> compile_unboxed_const 1l
 
+end (* Bool *)
+
+
+module BitTagged = struct
+  (* This module takes care of pointer tagging: Pointer are always aligned, so they
+     have their LSB bit unset. We use that and store an unboxed scalar x
+     as (x << 1 | 1).
+     Special case: The zero pointer is considered a scalar.
+  *)
   let if_unboxed env retty is1 is2 =
     Func.share_code env "is_unboxed" ["x", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
@@ -613,7 +684,7 @@ module BitTagged = struct
       compile_unboxed_const 1l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ (ValBlockType None)
-        (compile_unboxed_const 1l ^^ G.i Return) G.nop ^^
+        (Bool.lit true ^^ G.i Return) G.nop ^^
       (* Also check if it is the null-pointer *)
       get_x ^^
       compile_unboxed_const 0l ^^
@@ -621,6 +692,7 @@ module BitTagged = struct
     ) ^^
     G.if_ retty is1 is2
 
+  (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
     compile_unboxed_const 1l ^^
     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
@@ -638,17 +710,20 @@ end (* BitTagged *)
 module Tagged = struct
   (* Tagged objects have, well, a tag to describe their runtime type.
      This tag is used to traverse the heap (serialization, GC), but also
-     for objectification of arrays and actorrefs and the like.
+     for objectification of arrays.
 
-     All tagged heap objects have a size of at least two words.
+     The tag is a word at the beginning of the object.
+
+     All tagged heap objects have a size of at least two words
+     (important for GC, which replaces them with an Indirection).
    *)
 
   type tag =
     | Object
-    | ObjInd (* The indirection used in object *)
+    | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
     | Reference (* Either arrayref or funcref, no need to distinguish here *)
-    | Int
+    | Int (* Contains a 64 bit number *)
     | MutBox (* used for local variables *)
     | Closure
     | Some (* For opt *)
@@ -701,12 +776,16 @@ module Tagged = struct
     branch_default env retty (G.i Unreachable) cases
 
   let obj env tag element_instructions : G.t =
-    Heap.obj env (compile_unboxed_const (int_of_tag tag) :: element_instructions)
+    Heap.obj env @@
+      compile_unboxed_const (int_of_tag tag) ::
+      element_instructions
 
 end (* Tagged *)
 
 
 module Var = struct
+  (* This module is all about looking up ActorScript variables in the environment,
+     and dealing with mutable variables *)
 
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
@@ -716,14 +795,9 @@ module Var = struct
       compile_unboxed_const 0l (* number of parameters: none *)
     ]
 
-  let field_box env code =
-    Tagged.obj env Tagged.ObjInd [ code ]
-
   (* Local variables may in general be mutable (or at least late-defined).
      So we need to add an indirection through the heap.
      We tag this indirection using Tagged.MutBox.
-     (Although I am not yet entirely sure that this needs to be tagged. Do these
-     ever show up in GC or serialization? I guess as part of closures.)
   *)
   let mutbox_field = Tagged.header_size
   let load = Heap.load_field mutbox_field
@@ -732,7 +806,7 @@ module Var = struct
   let add_local env name =
     E.add_local_with_offset env name mutbox_field
 
-  (* Stores the payload *)
+  (* Stores the payload (which is found on the stack) *)
   let set_val env var = match E.lookup_var env var with
     | Some (Local i) ->
       G.i (LocalSet (nr i))
@@ -760,7 +834,10 @@ module Var = struct
     | None   -> G.i Unreachable
 
   (* Returns the value to put in the closure,
-     and code to restore it, including adding to the environment *)
+     and code to restore it, including adding to the environment
+     This currently reserves an unused word in the closure even for static stuff,
+     could be improved at some point.
+  *)
   let capture env var : G.t * (E.t -> (E.t * G.t)) = match E.lookup_var env var with
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
@@ -777,25 +854,31 @@ module Var = struct
         in (env2, restore_code)
       )
     | Some (Static i) ->
-      ( compile_null , fun env1 -> (E.add_local_static env1 var i, G.i Drop))
+      ( compile_unboxed_zero, fun env1 -> (E.add_local_static env1 var i, G.i Drop))
     | Some (Deferred d) ->
-      ( compile_null , fun env1 -> (E.add_local_deferred env1 var d, G.i Drop))
+      ( compile_unboxed_zero, fun env1 -> (E.add_local_deferred env1 var d, G.i Drop))
     | None -> (G.i Unreachable, fun env1 -> (env1, G.i Unreachable))
 
   (* Returns a pointer to a heap allocated box for this.
-     (either a mutbox, if already mutable, or a freshly allocated box
+     (either a mutbox, if already mutable, or a freshly allocated box)
   *)
+  let field_box env code =
+    Tagged.obj env Tagged.ObjInd [ code ]
   let get_val_ptr env var = match E.lookup_var env var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
     | _  -> field_box env (get_val env var)
 end (* Var *)
 
 module Opt = struct
+  (* The Option type. Not much intereting to see here *)
 
-let payload_field = Tagged.header_size
+  let payload_field = Tagged.header_size
 
-let inject env e = Tagged.obj env Tagged.Some [e]
-let project = Heap.load_field Tagged.header_size
+  (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
+  let null = compile_unboxed_const 3l
+
+  let inject env e = Tagged.obj env Tagged.Some [e]
+  let project = Heap.load_field Tagged.header_size
 
 end (* Opt *)
 
@@ -809,7 +892,8 @@ module AllocHow = struct
   - functions are static, unless they capture something that is not a static function
   - everything that is captured before it is defined needs to be heap-allocated,
     unless it is a static function
-  - everything that is mutable and captures needs to be heap-allocated
+  - everything that is mutable and captured needs to be heap-allocated
+  - the rest can be local
 
   Immutable things are always pointers or unboxed scalars, and can be put into
   closures as such.
@@ -824,7 +908,7 @@ module AllocHow = struct
   type allocHow = nonStatic M.t (* absent means static *)
 
   let join : allocHow -> allocHow -> allocHow =
-    M.union (fun _ x y -> Some (match x, y with 
+    M.union (fun _ x y -> Some (match x, y with
       | _, StoreHeap -> StoreHeap
       | StoreHeap, _  -> StoreHeap
       | LocalMut, _ -> LocalMut
@@ -905,7 +989,7 @@ module AllocHow = struct
     | Some StoreHeap ->
       let (env1, i) = E.add_local_with_offset env name 1l in
       let alloc_code =
-        Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
+        Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
       (env1, alloc_code)
     | _ -> (env, G.nop)
@@ -921,16 +1005,24 @@ end (* AllocHow *)
 
 
 module Closure = struct
+  (* In this module, we deal with closures, i.e. functions that capture parts
+     of their environment.
+
+     The structure of a closure is:
+
+       ┌─────┬───────┬──────┬──────────────┐
+       │ tag │ funid │ size │ captured ... │
+       └─────┴───────┴──────┴──────────────┘
+
+  *)
   let header_size = Int32.add Tagged.header_size 2l
 
   let funptr_field = Tagged.header_size
   let len_field = Int32.add 1l Tagged.header_size
 
-  let first_captured = header_size
-
-  let load_the_closure = G.i (LocalGet (nr 0l))
-  let load_closure i = load_the_closure ^^ Heap.load_field (Int32.add first_captured i)
-
+  let get = G.i (LocalGet (nr 0l))
+  let load_data i = Heap.load_field (Int32.add header_size i)
+  let store_data i = Heap.store_field (Int32.add header_size i)
 
   (* Calculate the wasm type for a given calling convention.
      An extra first argument for the closure! *)
@@ -940,9 +1032,10 @@ module Closure = struct
       Lib.List.make cc.Value.n_res I32Type))
 
   (* Expect on the stack
-     the function closure
-     and arguments (n-ary!)
-     the function closure again! *)
+     * the function closure
+     * and arguments (n-ary!)
+     * the function closure again!
+  *)
   let call_closure env cc =
     (* get the table index *)
     Heap.load_field funptr_field ^^
@@ -962,8 +1055,8 @@ module BoxedInt = struct
   (* We store large nats and ints in immutable boxed 64bit heap objects.
      Eventually, this should contain the bigint implementation.
 
-     Small values (<2^5, so that both paths are tested) are stored unboxed,
-     tagged, see BitTagged.
+     Small values (just <2^5 for now, so that both code paths are well-tested)
+     are stored unboxed, tagged, see BitTagged.
   *)
 
   let payload_field = Int32.add Tagged.header_size 0l
@@ -1019,13 +1112,31 @@ module Prim = struct
 end (* Prim *)
 
 module Object = struct
+  (* An object has the following heap layout:
+
+    ┌─────┬───────┬──────────┬─────────────┬─────────────┬───┐
+    │ tag │ class │ n_fields │ field_hash1 │ field_data1 │ … │
+    └─────┴───────┴──────────┴─────────────┴─────────────┴───┘
+
+    The field_data are pointers to either an ObjInd, or a MutBox (they
+    have the same layout). This indirection is a consequence of how we
+    compile object literals with `await` instructions, as these mutable
+    fields need to be able to alias local mutal variables.
+
+    We could (and eventually should) use the type information to avoid this
+    indirection for immutable fields. Or switch to an allocate-first approach
+    in the await-translation of objects, and get rid of this indirection.
+  *)
+
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
   let header_size = Int32.add Tagged.header_size 2l
 
   let class_position = Int32.add Tagged.header_size 0l
+
   (* Number of object fields *)
   let size_field = Int32.add Tagged.header_size 1l
 
+  (* We use the same hashing function as Ocaml would *)
   let hash_field_name ({it = Syntax.Name s; _}) =
     Int32.of_int (Hashtbl.hash s)
 
@@ -1132,20 +1243,14 @@ module Object = struct
 
 end (* Object *)
 
-module Bool = struct
-  (* Boolean literals are either 0 or 1
-     The 1 is recognized as a unboxed scalar anyways,
-     while the 0 is special. This allows us
-     to use the result of the WebAssembly comparison operators
-     directly.
-  *)
-  let lit = function
-    | false -> compile_unboxed_const 0l
-    | true -> compile_unboxed_const 1l
-
-end (* Bool *)
-
 module Text = struct
+  (* The layout of a text object is
+
+     ┌─────┬─────────┬──────────────────┐
+     │ tag │ n_bytes │ bytes (padded) … │
+     └─────┴─────────┴──────────────────┘
+  *)
+
   let header_size = Int32.add Tagged.header_size 1l
 
   let len_field = Int32.add Tagged.header_size 0l
@@ -1169,7 +1274,7 @@ module Text = struct
     let ptr = E.add_static_bytes env data in
     compile_unboxed_const ptr
 
-  (* Two strings on stack *)
+  (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code env "concat" ["x", I32Type; "y", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
       let get_y = G.i (LocalGet (nr 1l)) in
@@ -1227,7 +1332,7 @@ module Text = struct
       get_z
     )
 
-  (* Two strings on stack *)
+  (* String comparison. Expects two strings on stack *)
   let compare env = Func.share_code env "Text.compare" ["x", I32Type; "y", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
       let get_y = G.i (LocalGet (nr 1l)) in
@@ -1267,11 +1372,20 @@ module Text = struct
 end (* String *)
 
 module Array = struct
+  (* Object layout:
+
+     ┌─────┬──────────┬────────┬───┐
+     │ tag │ n_fields │ field1 │ … │
+     └─────┴──────────┴────────┴───┘
+
+     No difference between mutable and immutable arrays.
+  *)
+
   let header_size = Int32.add Tagged.header_size 1l
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
-  (* Dynamic array access. Returns the address of the field.
+  (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env = Func.share_code env "Array.idx" ["array", I32Type; "idx", I32Type] [I32Type] (fun env ->
       let get_array = G.i (LocalGet (nr 0l)) in
@@ -1292,13 +1406,8 @@ module Array = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
-  (* Expects on the stack the pointer to the array. *)
-  (* Should only be used for Tuples, not Arrays, due to lack of bounds checking *)
-  let field_of_idx n = Int32.add header_size n
-  let load_n n = Heap.load_field (field_of_idx n)
-
   let common_funcs env =
-    let get_array_object = Closure.load_closure 0l in
+    let get_array_object = Closure.get ^^ Closure.load_data 0l in
     let get_first_arg = G.i (LocalGet (nr 1l)) in
     let get_second_arg = G.i (LocalGet (nr 2l)) in
 
@@ -1333,7 +1442,7 @@ module Array = struct
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
-            Closure.load_closure 0l ^^
+            Closure.get ^^ Closure.load_data 0l ^^
             (* Get current counter (boxed) *)
             Var.load ^^
             set_boxed_i ^^
@@ -1346,14 +1455,14 @@ module Array = struct
 
             get_i ^^
             (* Get length *)
-            Closure.load_closure 1l ^^ Heap.load_field len_field ^^
+            Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
             G.if_ (ValBlockType (Some I32Type))
               (* Then *)
-              compile_null
+              Opt.null
               (* Else *)
               ( (* Get point to counter from closure *)
-                Closure.load_closure 0l ^^
+                Closure.get ^^ Closure.load_data 0l ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_add_const 1l ^^
@@ -1362,7 +1471,7 @@ module Array = struct
                 Var.store ^^
                 (* Return stuff *)
                 Opt.inject env1 (
-                  mk_code env (Closure.load_closure 1l) get_boxed_i get_i
+                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_boxed_i get_i
                 )
               )
        ) in
@@ -1491,6 +1600,23 @@ module Array = struct
     ) ^^
     get_r
 
+end (* Array *)
+
+module Tuple = struct
+  (* Tuples use the same object representation (and same tag) as arrays.
+     Even though we know the size statically, we still need the size
+     information for the GC.
+
+     One could introduce tags for small tuples, to save one word.
+  *)
+
+  (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
+     number (but really anything is fine, we never look at this) *)
+  let compile_unit = compile_unboxed_const 1l
+
+  (* Expects on the stack the pointer to the array. *)
+  let load_n n = Heap.load_field (Int32.add Array.header_size n)
+
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
     if n = 0 then compile_unit
@@ -1498,7 +1624,7 @@ module Array = struct
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
       Func.share_code env name args [I32Type] (fun env ->
-        lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
+        Array.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -1510,10 +1636,10 @@ module Array = struct
       let get_tup = G.i (LocalGet (nr 0l)) in
       G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
     )
-
-end (* Array *)
+end (* Tuple *)
 
 module Dfinity = struct
+  (* Dfinity-specific stuff: System imports, databufs etc. *)
 
   (* function ids for imported stuff *)
   let test_print_i env = 0l
@@ -1787,7 +1913,7 @@ module OrthogonalPersistence = struct
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
            compile_add_const ElemHeap.table_end ^^
-           G.i (GlobalSet (nr Heap.heap_ptr)) ^^
+           Heap.set_heap_ptr ^^
 
            (* Load memory *)
            compile_unboxed_const ElemHeap.table_end ^^
@@ -1799,11 +1925,11 @@ module OrthogonalPersistence = struct
            (* Load reference counter *)
            G.i (GlobalGet (nr elem_global)) ^^
            G.i (Call (nr (Dfinity.elem_length_i env1))) ^^
-           G.i (GlobalSet (nr ElemHeap.ref_counter)) ^^
+           ElemHeap.set_ref_ctr ^^
 
            (* Load references *)
            compile_unboxed_const ElemHeap.ref_location ^^
-           G.i (GlobalGet (nr ElemHeap.ref_counter)) ^^
+           ElemHeap.get_ref_ctr ^^
            G.i (GlobalGet (nr elem_global)) ^^
            compile_unboxed_zero ^^
            G.i (Call (nr (Dfinity.elem_internalize_i env1)))
@@ -1812,7 +1938,7 @@ module OrthogonalPersistence = struct
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
        compile_unboxed_const ElemHeap.table_end ^^
-       G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+       Heap.get_heap_ptr ^^
        compile_unboxed_const ElemHeap.table_end ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
        G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
@@ -1820,7 +1946,7 @@ module OrthogonalPersistence = struct
 
        (* Store references *)
        compile_unboxed_const ElemHeap.ref_location ^^
-       G.i (GlobalGet (nr ElemHeap.ref_counter)) ^^
+       ElemHeap.get_ref_ctr ^^
        G.i (Call (nr (Dfinity.elem_externalize_i env))) ^^
        G.i (GlobalSet (nr elem_global))
     )
@@ -1858,16 +1984,14 @@ module Serialization = struct
       pointer.
     * We traverse this space and adjust all pointers.
       Same for indices into the reference table.
-
   *)
-
 
   let serialize_go env =
     Func.share_code env "serialize_go" ["x", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
       let (set_copy, get_copy) = new_local env "x" in
 
-      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+      Heap.get_heap_ptr ^^
       set_copy ^^
 
       get_x ^^
@@ -2248,7 +2372,7 @@ module Serialization = struct
       let (set_databuf, get_databuf) = new_local env "databuf" in
 
       (* Remember where we start to copy to *)
-      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+      Heap.get_heap_ptr ^^
       set_start ^^
 
       (* Copy data *)
@@ -2262,7 +2386,7 @@ module Serialization = struct
           store_ptr ^^
 
           (* Remember the end *)
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          Heap.get_heap_ptr ^^
           set_end ^^
 
           (* Empty table of references *)
@@ -2274,7 +2398,7 @@ module Serialization = struct
           G.i Drop ^^
 
           (* Remember the end *)
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          Heap.get_heap_ptr ^^
           set_end ^^
 
           (* Adjust pointers *)
@@ -2308,7 +2432,7 @@ module Serialization = struct
 
       (* Reset the heap counter, to free some space *)
       get_start ^^
-      G.i (GlobalSet (nr Heap.heap_ptr)) ^^
+      Heap.set_heap_ptr ^^
 
       (* Finally, create elembuf *)
       get_end ^^
@@ -2338,7 +2462,7 @@ module Serialization = struct
       let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
 
       (* new positions *)
-      G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+      Heap.get_heap_ptr ^^
       set_start ^^
 
       get_elembuf ^^ G.i (Call (nr (Dfinity.elem_length_i env))) ^^
@@ -2375,16 +2499,16 @@ module Serialization = struct
           get_start ^^
           get_data_len ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (GlobalSet (nr Heap.heap_ptr)) ^^
+          Heap.set_heap_ptr ^^
 
           (* Fix pointers *)
           get_start ^^
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          Heap.get_heap_ptr ^^
           get_start ^^
           shift_pointers env ^^
 
           (* Load references *)
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          Heap.get_heap_ptr ^^
           get_tbl_size ^^ compile_sub_const 1l ^^
           get_elembuf ^^
           compile_unboxed_const 0l ^^
@@ -2393,8 +2517,8 @@ module Serialization = struct
           (* Fix references *)
           (* Extract references *)
           get_start ^^
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
-          G.i (GlobalGet (nr Heap.heap_ptr)) ^^
+          Heap.get_heap_ptr ^^
+          Heap.get_heap_ptr ^^
           intract_references env ^^
 
           (* return allocated thing *)
@@ -2493,8 +2617,8 @@ module GC = struct
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
     compile_unboxed_const end_of_static_space ^^ set_begin_from_space ^^
-    G.i (GlobalGet (nr Heap.heap_ptr)) ^^ set_begin_to_space ^^
-    G.i (GlobalGet (nr Heap.heap_ptr)) ^^ set_end_to_space ^^
+    Heap.get_heap_ptr ^^ set_begin_to_space ^^
+    Heap.get_heap_ptr ^^ set_end_to_space ^^
 
 
     (* Common arguments for evalcuate *)
@@ -2537,7 +2661,7 @@ module GC = struct
     get_begin_from_space ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    G.i (GlobalSet (nr Heap.heap_ptr))
+    Heap.set_heap_ptr
   )
 
 
@@ -2589,7 +2713,7 @@ module FuncDec = struct
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     let retty = Lib.List.make cc.Value.n_res I32Type in
     Func.of_body env (["clos", I32Type] @ args) retty (fun env1 -> G.with_region at (
-      let get_closure = G.i (LocalGet (E.unary_closure_local env1)) in
+      let get_closure = G.i (LocalGet (nr 0l)) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
 
@@ -2712,14 +2836,14 @@ module FuncDec = struct
                 let store_env =
                   get_li ^^
                   store_this ^^
-                  Heap.store_field (Int32.add Closure.first_captured (Wasm.I32.of_int_u i)) ^^
+                  Closure.store_data (Wasm.I32.of_int_u i) ^^
                   store_rest in
                 let restore_env env1 get_env =
                   let (env2, code) = restore_this env1 in
                   let (env3, code_rest) = restore_rest env2 get_env in
                   (env3,
                    get_env ^^
-                   Heap.load_field (Int32.add Closure.first_captured (Wasm.I32.of_int_u i)) ^^
+                   Closure.load_data (Wasm.I32.of_int_u i) ^^
                    code ^^
                    code_rest
                   )
@@ -2874,8 +2998,8 @@ module StackRep = struct
     | Unreachable, Unreachable -> G.nop
     | Unreachable, _ -> G.i Unreachable
 
-    | UnboxedTuple n, Vanilla -> Array.from_stack env n
-    | Vanilla, UnboxedTuple n -> Array.to_stack env n
+    | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
+    | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
     | UnboxedInt, Vanilla -> BoxedInt.box env
     | Vanilla, UnboxedInt -> BoxedInt.unbox env
@@ -2961,7 +3085,7 @@ let compile_lit env lit = Syntax.(match lit with
   | NatLit n      -> StackRep.UnboxedInt,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | NullLit       -> StackRep.Vanilla, compile_null
+  | NullLit       -> StackRep.Vanilla, Opt.null
   | TextLit t     -> StackRep.Vanilla, Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) (StackRep.Vanilla, G.i Unreachable)
   )
@@ -3256,7 +3380,7 @@ and compile_exp (env : E.t) exp =
   | ProjE (e1,n) ->
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
-    Array.load_n (Int32.of_int n)
+    Tuple.load_n (Int32.of_int n)
   | ArrayE (m, es) ->
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
   | ActorE (name, fs) ->
@@ -3270,7 +3394,7 @@ and compile_exp (env : E.t) exp =
     StackRep.of_arity (cc.Value.n_res),
     begin match isDirectCall env e1, cc.Value.sort with
      | Some fi, _ ->
-        compile_null ^^ (* A dummy closure *)
+        compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^ (* the args *)
         G.i (Call (nr fi))
      | None, (Type.Call Type.Local | Type.Construct) ->
@@ -3330,7 +3454,7 @@ and compile_exp (env : E.t) exp =
 
       (* Check for null *)
       get_oi ^^
-      compile_null ^^
+      Opt.null ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ (ValBlockType None)
         G.nop
@@ -3445,7 +3569,7 @@ and fill_pat env pat : patternCode =
       CanFail (fun fail_code ->
         set_i ^^
         get_i ^^
-        compile_null ^^
+        Opt.null ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
         G.if_ (ValBlockType None) fail_code
           ( get_i ^^
@@ -3466,7 +3590,7 @@ and fill_pat env pat : patternCode =
         | (p::ps) ->
           let code1 = fill_pat env p in
           let code2 = go (i+1) ps env in
-          ( CannotFail (get_i ^^ Array.load_n (Int32.of_int i)) ^^^
+          ( CannotFail (get_i ^^ Tuple.load_n (Int32.of_int i)) ^^^
             code1 ^^^
             code2 ) in
       CannotFail set_i ^^^ go 0 ps env
