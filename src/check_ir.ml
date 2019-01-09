@@ -1,9 +1,11 @@
-open Syntax
 open Source
 
 module T = Type
 module A = Effect
 
+(* TODO: fix uses of List.sort compare etc on fields rather than field names *)
+(* TODO: annote DotE in checker for desugaring sans environments *)
+           
 
 (* Error bookkeeping *)
 
@@ -21,9 +23,9 @@ type val_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.con_env
 
-type scope =
+type scope = Typing.scope =
   { val_env : val_env;
-    typ_env : typ_env;
+    typ_env : typ_env; (* TODO: delete me *)
     con_env : con_env;
   }
 
@@ -35,7 +37,7 @@ let empty_scope : scope =
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
-    typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
+    typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env; (* TODO: delete me *)
     con_env = Con.Env.adjoin scope1.con_env scope2.con_env;
   }
 
@@ -46,7 +48,7 @@ type ret_env = T.typ option
 
 type env =
   { vals : val_env;
-    typs : typ_env;
+    typs : typ_env; (* TODO: remove me *)
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
@@ -57,7 +59,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.val_env;
-    typs = scope.typ_env;
+    typs = scope.typ_env; 
     cons = scope.con_env;
     labs = T.Env.empty;
     rets = None;
@@ -92,22 +94,22 @@ let add_typ c x con k =
 
 let add_typs c xs cs ks =
   { c with
-    typs = List.fold_right2 T.Env.add xs cs c.typs;
+    (* typs = List.fold_right2 T.Env.add xs cs c.typs; *)
     cons = List.fold_right2 Con.Env.add cs ks c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    typs = T.Env.adjoin c.typs scope.typ_env;
+    (*    typs = T.Env.adjoin c.typs scope.typ_env; *)
     cons = Con.Env.adjoin c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 let adjoin_cons c ce = {c with cons = Con.Env.adjoin c.cons ce}
-let adjoin_typs c te ce =
+let adjoin_typs c ce =
   { c with
-    typs = T.Env.adjoin c.typs te;
+    (*   typs = T.Env.adjoin c.typs te; *)
     cons = Con.Env.adjoin c.cons ce;
   }
 
@@ -121,99 +123,97 @@ let disjoint_union env at fmt env1 env2 =
 let check_ids env ids = ignore
   (List.fold_left
     (fun dom id ->
-      if List.mem id.it dom
-      then error env id.at "duplicate field name %s in object type" id.it
-      else id.it::dom
+      if List.mem id dom
+      then error env no_region "duplicate field name %s in object type" id
+      else id::dom
     ) [] ids
   )
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
-  | Const -> fun t -> t
-  | Var -> fun t -> T.Mut t
+  | Syntax.Const -> fun t -> t
+  | Syntax.Var -> fun t -> T.Mut t
 
-let rec check_typ env typ : T.typ =
-  let t = check_typ' env typ in
-  typ.note <- t;
-  t
-
-and check_typ' env typ : T.typ =
-  match typ.it with
-  | VarT (id, typs) ->
-    (match T.Env.find_opt id.it env.typs with
-    | Some c ->
-      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find c env.cons in
-      let ts = check_typ_bounds env tbs typs typ.at in
-	    T.Con (c, ts)
-    | None -> error env id.at "unbound type identifier %s" id.it
+let rec check_typ env typ : unit =
+  match typ with
+  | T.Pre ->
+    error env no_region "illegal T.Pre type"
+  | T.Var (s,i) ->
+    error env no_region "free type variable %s, index %i" s  i
+  | T.Con(c,typs) ->
+    (match Con.Env.find_opt c env.cons with
+    | Some (T.Def (tbs, t) | T.Abs (tbs, t))  ->
+      check_typ_bounds env tbs typs no_region
+    | None -> error env no_region "unbound type constructor %s" (Con.to_string c)
     )
-  | PrimT "Any" -> T.Any
-  | PrimT "None" -> T.Non
-  | PrimT "Shared" -> T.Shared
-  | PrimT "Class" -> T.Class
-  | PrimT s ->
-    (try T.Prim (T.prim s) with Invalid_argument _ ->
-      error env typ.at "unknown primitive type"
-    )
-  | ArrayT (mut, typ) ->
-    let t = check_typ env typ in
-    T.Array (infer_mut mut t)
-  | TupT typs ->
-    T.Tup (List.map (check_typ env) typs)
-  | FuncT (sort, binds, typ1, typ2) ->
-    let cs, ts, te, ce = check_typ_binds env binds in
-    let env' = adjoin_typs env te ce in
-    let typs1 = as_seqT typ1 in
-    let typs2 = as_seqT typ2 in
-    let ts1 = List.map (check_typ env') typs1 in
-    let ts2 = List.map (check_typ env') typs2 in
-    let c = match typs2 with [{it=AsyncT _;_}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Call T.Sharable then begin
+  | T.Any -> ()
+  | T.Non -> ()
+  | T.Shared -> ()
+  | T.Class -> ()
+  | T.Prim _  -> ()
+  | T.Array typ ->
+    check_typ env typ
+  | T.Tup typs ->
+    List.iter (check_typ env) typs
+  | T.Func (sort, control, binds, ts1, ts2) ->
+    let cs, ce = check_typ_binds env binds in
+    let env' = adjoin_typs env  ce in
+    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let ts1 = List.map (T.open_ ts) ts1 in
+    let ts2 = List.map (T.open_ ts) ts2 in
+    List.iter (check_typ env') ts1;
+    List.iter (check_typ env') ts2;
+    if (control = T.Promises) then begin
+      match ts2 with
+      | [T.Async _ ] -> ()
+      | _ ->
+        let t2 = T.seq ts2 in
+        error env no_region "promising function with non-async result type \n  %s"
+          (T.string_of_typ_expand env'.cons t2)
+    end;
+    if sort = T.Call T.Sharable then begin
       let t1 = T.seq ts1 in
       if not (T.sub env'.cons t1 T.Shared) then
-        error env typ1.at "shared function has non-shared parameter type\n  %s"
+        error env no_region "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
       begin match ts2 with
       | [] -> ()
       | [T.Async t2] ->
         if not (T.sub env'.cons t2 T.Shared) then
-          error env typ1.at "shared function has non-shared result type\n  %s"
+          error env no_region "shared function has non-shared result type\n  %s"
             (T.string_of_typ_expand env'.cons t2);
-      | _ -> error env typ1.at "shared function has non-async result type\n  %s"
+      | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons (T.seq ts2))
       end
-    end;
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
-    T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | OptT typ ->
-    T.Opt (check_typ env typ)
-  | AsyncT typ ->
-    let t = check_typ env typ in
-    let t' = T.promote env.cons t in
-    if t' <> T.Pre && not (T.sub env.cons t' T.Shared) then
-      error env typ.at "async type has non-shared parameter type\n  %s"
-        (T.string_of_typ_expand env.cons t');
-    T.Async t
-  | LikeT typ ->
-    T.Like (check_typ env typ)
-  | ObjT (sort, fields) ->
-    check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
-    let fs = List.map (check_typ_field env sort.it) fields in
-    T.Obj (sort.it, List.sort compare fs)
-  | ParT typ ->
+    end
+  | T.Opt typ ->
     check_typ env typ
+  | T.Async typ ->
+    let t' = T.promote env.cons typ in
+    if not (T.sub env.cons t' T.Shared) then
+      error env no_region "async type has non-shared parameter type\n  %s"
+        (T.string_of_typ_expand env.cons t')
+  | T.Like typ ->
+    check_typ env typ
+  | T.Obj (sort, fields) ->
+    check_ids env (List.map (fun (field : T.field) -> field.T.name) fields);
+    List.iter (check_typ_field env sort) fields
+    (* TODO: check fields are sorted, c.f. typecheck:ml: *)
+    (* T.Obj (sort.it, List.sort compare fs) *) (* IS THAT EVEN CORRECT? *)
+  | T.Mut typ ->
+    check_typ env typ
+    
+and check_typ_field env s typ_field : unit =
+  let {T.name; T.typ} = typ_field in
+  check_typ env typ;
+  if s = T.Actor && not (T.is_func (T.promote env.cons typ)) then
+    error env no_region "actor field %s has non-function type\n  %s"
+      name  (T.string_of_typ_expand env.cons typ);
+  if s <> T.Object T.Local && not (T.sub env.cons typ T.Shared) then
+    error env no_region "shared object or actor field %s has non-shared type\n  %s"
+      name (T.string_of_typ_expand env.cons typ)
 
-and check_typ_field env s typ_field : T.field =
-  let {id; mut; typ} = typ_field.it in
-  let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
-    error env typ.at "actor field %s has non-function type\n  %s"
-      id.it (T.string_of_typ_expand env.cons t);
-  if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
-    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
-      id.it (T.string_of_typ_expand env.cons t);
-  {T.name = id.it; typ = t}
-
+(*
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun x -> Con.fresh x) xs in
@@ -231,27 +231,45 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let env' = add_typs env xs cs ks in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   cs, ts, te, Con.Env.from_list2 cs ks
+ *)
+and check_typ_binds env typ_binds : T.con list * con_env =
+  let xs = List.map (fun typ_bind -> typ_bind.T.var) typ_binds in
+  let cs = List.map (fun x -> Con.fresh x) xs in
+  let _ (* te *) = List.fold_left2 (fun te typ_bind c ->
+      let id = typ_bind.T.var in
+      if T.Env.mem id te then
+        error env no_region "duplicate type name %s in type parameter list" id;
+      T.Env.add id c te
+    ) T.Env.empty typ_binds cs in
+  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
+  let pre_env' = add_typs {env with pre = true} xs cs pre_ks in
+  let ts = List.map (fun typ_bind -> let t = typ_bind.T.bound in
+                                     check_typ pre_env' t;
+                                     t) typ_binds in
+  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
+  let env' = add_typs env xs cs ks in
+  let _ = List.map (fun typ_bind -> check_typ env' typ_bind.T.bound) typ_binds in
+  cs, Con.Env.from_list2 cs ks
 
-and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
+and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
   | tb::tbs', typ::typs' ->
-    let t = check_typ env typ in
+    check_typ env typ;
     if not env.pre then begin
-      if not (T.sub env.cons t tb.T.bound) then
-        local_error env typ.at "type argument\n  %s\ndoes not match parameter bound\n  %s"
-          (T.string_of_typ_expand env.cons t)
+      if not (T.sub env.cons typ tb.T.bound) then
+        local_error env no_region "type argument\n  %s\ndoes not match parameter bound\n  %s"
+          (T.string_of_typ_expand env.cons typ)
           (T.string_of_typ_expand env.cons tb.T.bound)
     end;
-    let ts' = check_typ_bounds env tbs' typs' at in
-    t::ts'
-  | [], [] -> []
-  | [], _ -> local_error env at "too many type arguments"; []
+    check_typ_bounds env tbs' typs' at 
+  | [], [] -> ()
+  | [], _ -> local_error env at "too many type arguments"
   | _, [] -> error env at "too few type arguments"
 
 and check_inst_bounds env tbs typs at =
   let tys = check_typ_bounds env tbs typs at  in
   tys
-    
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -269,6 +287,7 @@ let check_float env = check_lit_val env T.Float Value.Float.of_string
 
 
 let infer_lit env lit at : T.prim =
+  Syntax.( (* yuck *)
   match !lit with
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
@@ -292,8 +311,10 @@ let infer_lit env lit at : T.prim =
     T.Float
   | PreLit _ ->
     assert false
+  )
 
 let check_lit env t lit at =
+  Syntax.(
   match T.normalize env.cons t, !lit with
   | T.Opt _, NullLit -> ()
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
@@ -315,8 +336,10 @@ let check_lit env t lit at =
     if not (T.sub env.cons t' t) then
       local_error env at "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
+  )
 
-
+(****  
+open Ir
 (* Expressions *)
 
 let isAsyncE exp =
@@ -1221,6 +1244,7 @@ and infer_dec_valdecs env dec : val_env =
       | TupT _ -> T.as_seq t2
       | _ -> [t2]
     in
+
     let c = match sort.it, typ.it with
       | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
@@ -1254,3 +1278,7 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
   Diag.with_message_store (fun msgs ->
     let env = env_of_scope msgs scope in
     recover_opt (infer_block env prog.it) prog.at)
+
+****)
+
+let check_prog scope prog : scope Diag.result = assert false
