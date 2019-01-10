@@ -1145,7 +1145,9 @@ and infer_dec_typdecs env dec : con_env =
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    Con.Env.singleton c (T.Def (tbs, T.close cs t))
+    let k = T.Def (tbs, T.close cs t) in
+    id.note <- Some (c,k);
+    Con.Env.singleton c k
   | ClassD (conid, id, binds, sort, pat, id', fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1153,6 +1155,8 @@ and infer_dec_typdecs env dec : con_env =
     let _, ve = infer_pat env' pat in
     let t = infer_obj (adjoin_vals env' ve) sort.it id' fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    let k = T.Abs (tbs, T.close cs t) in
+    id.note <- Some (c,k);              
     Con.Env.singleton c (T.Abs (tbs, T.close cs t))
 
 

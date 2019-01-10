@@ -150,6 +150,7 @@ and typ t = match t.it with
   | ParT t              -> "ParT" $$ [typ t]           
 
 and id i = Atom i.it
+and con_id i = Atom i.it         
 
 and name n = Atom (string_of_name n.it)
 
@@ -168,8 +169,8 @@ and dec d = match d.it with
       exp e
     ]
   | TypD (i, tp, t) ->
-    "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
+    "TypD" $$ [con_id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, j, tp, s, p, i', efs) ->
-    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+    "ClassD" $$ id i :: con_id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
+and prog prog = "BlockE"  $$ List.map dec prog.it

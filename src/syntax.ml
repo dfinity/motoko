@@ -7,7 +7,8 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 (* Identifiers *)
 
 type id = string Source.phrase
-
+type con_id = (string, (Type.con * Type.kind) option) Source.annotated_phrase
+          
 (* Names (not alpha-convertible), used for field and class names *)
 type name = name' Source.phrase
 and name' = Name of string
@@ -185,8 +186,8 @@ and dec' =
   | LetD of pat * exp                                  (* immutable *)
   | VarD of id * exp                                   (* mutable *)
   | FuncD of sharing * id * typ_bind list * pat * typ * exp (* function *)
-  | TypD of id * typ_bind list * typ                   (* type *)
-  | ClassD of id (*term id*) * id (*type id*) * typ_bind list * obj_sort * pat * id * exp_field list (* class *)
+  | TypD of con_id * typ_bind list * typ               (* type *)
+  | ClassD of id (*term id*) * con_id (*type id*) * typ_bind list * obj_sort * pat * id * exp_field list (* class *)
 
 
 (* Program *)

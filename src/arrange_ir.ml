@@ -6,6 +6,7 @@ open Wasm.Sexpr
 (* for concision, we shadow the imported definition of [Array_type.typ] and pretty print types instead *)
   
 let typ t = Atom (Type.string_of_typ t)
+let kind k = Atom (Type.string_of_kind k)          
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
@@ -66,8 +67,11 @@ and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (cc, i, tp, p, t, e) ->
-    "FuncD" $$ [call_conv cc; id i] @ List.map Arrange.typ_bind tp @ [pat p; typ t; exp e]
-  | TypD (i, tp, t) ->
-    "TypD" $$ [id i] @ List.map Arrange.typ_bind tp @ [typ t]
+    "FuncD" $$ [call_conv cc; id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+  | TypD (c,k) ->
+    "TypD" $$ [con c; kind k]
+
+and typ_bind (tb : typ_bind) =
+  tb.it.Type.var $$ [typ tb.it.Type.bound]
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

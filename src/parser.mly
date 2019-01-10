@@ -22,6 +22,7 @@ let at (startpos, endpos) = positions_to_region startpos endpos
 
 let (@?) it at = {it; at; note = empty_typ_note}
 let (@!) it at = {it; at; note = Type.Pre}
+let (@=) it at = {it; at; note = None}
 
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
@@ -154,6 +155,9 @@ seplist1(X, SEP) :
 
 %inline id :
   | id=ID { id @@ at $sloc }
+
+%inline con_id :
+  | id=ID { id @= at $sloc }
 
 %inline id_opt :
   | id=ID
@@ -536,7 +540,7 @@ dec_var :
 dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fd=func_dec
     { (fd s (xf "func" $sloc)).it @? at $sloc }
-  | TYPE x=id tps=typ_params_opt EQ t=typ
+  | TYPE x=con_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
     { let x, efs = xefs in
@@ -545,8 +549,9 @@ dec_nonvar :
         then efs
         else List.map share_expfield efs
       in
-      let tid = xf "class" $sloc in
-      ClassD(xf "class" $sloc, tid, tps, s, p, x, efs') @? at $sloc }
+      let id = xf "class" $sloc in
+      let con_id = id.it @= at $sloc in
+      ClassD(id, con_id, tps, s, p, x, efs') @? at $sloc }
 
 dec :
   | d=dec_var

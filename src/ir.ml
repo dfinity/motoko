@@ -1,6 +1,10 @@
 (* Patterns *)
 
+(* TODO: replace Syntax.typ_bind *)
+
 type 'a phrase = ('a,Syntax.typ_note) Source.annotated_phrase
+
+type typ_bind = (Type.bind, Type.typ) Source.annotated_phrase
 
 type pat = (pat',Type.typ) Source.annotated_phrase
 and pat' =
@@ -62,8 +66,8 @@ and dec' =
   | ExpD of exp                                        (* plain expression *)
   | LetD of pat * exp                                  (* immutable *)
   | VarD of Syntax.id * exp                                   (* mutable *)
-  | FuncD of Value.call_conv * Syntax.id * Syntax.typ_bind list * pat * Type.typ * exp (* function *)
-  | TypD of Syntax.id * Syntax.typ_bind list * Type.typ                   (* type *)
+  | FuncD of Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp (* function *)
+  | TypD of Type.con * Type.kind                   (* type *)
 
 
 (* Program *)

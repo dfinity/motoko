@@ -133,27 +133,34 @@ let
 
   and exp_fields ce fs = List.map (exp_field ce) fs
   and exp_field ce f = phrase ce exp_field' f
-  and exp_field' cd (f : S.exp_field') =
-    S.{ I.name = f.name; I.id = f.id; I.exp = exp cd f.exp; I.mut = f.mut; I.priv = f.priv}
+  and exp_field' ce (f : S.exp_field') =
+    S.{ I.name = f.name; I.id = f.id; I.exp = exp ce f.exp; I.mut = f.mut; I.priv = f.priv}
 
+
+  and typ_binds ce tbs = List.map (typ_bind ce) tbs
+  and typ_bind ce tb =
+    phrase' ce typ_bind' tb
+  and typ_bind' ce at n {S.var; S.bound} = {Type.var = var.it; Type.bound = bound.note}
   and decs ce ds = List.map (dec ce) ds
   and dec ce d = phrase' ce dec' d
   and dec' ce at n = function
     | S.ExpD e -> I.ExpD (exp ce e)
     | S.LetD (p, e) -> I.LetD (pat ce p, exp ce e)
     | S.VarD (i, e) -> I.VarD (i, exp ce e)
-    | S.FuncD (s, i, tp, p, ty, e) ->
+    | S.FuncD (s, i, tbs, p, ty, e) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
-      I.FuncD (cc, i, tp, pat ce p, ty.note, exp ce e)
-    | S.TypD (i, ty, t) -> I.TypD (i, ty, t.note)
-    | S.ClassD (fun_id, typ_id, tp, s, p, self_id, es) ->
+      I.FuncD (cc, i, typ_binds ce tbs, pat ce p, ty.note, exp ce e)
+    | S.TypD (con_id, typ_bind, t) ->
+      let (c,k) = Lib.Option.value con_id.note in
+      I.TypD (c,k)
+    | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
       let inst = List.map
-                   (fun tp ->
-                     match tp.note with
+                   (fun tb ->
+                     match tb.note with
                      | Type.Pre -> assert false
                      | t -> t)
-                   tp in
+                   tbs in
       let obj_typ =
         match n.S.note_typ with
         | T.Func(s,c,bds,dom,[rng]) ->
@@ -161,7 +168,7 @@ let
           T.open_ inst rng 
         | _ -> assert false
       in
-      I.FuncD (cc, fun_id, tp, pat ce p, obj_typ, (* TBR *)
+      I.FuncD (cc, fun_id, typ_binds ce tbs, pat ce p, obj_typ, (* TBR *)
                {it = obj ce at s (Some fun_id) self_id es obj_typ;
                 at = at;
                 note = {S.note_typ = obj_typ; S.note_eff = T.Triv}})
