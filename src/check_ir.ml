@@ -301,17 +301,19 @@ and infer_exp_promote env exp : T.typ =
 
 and infer_exp_mut env exp : T.typ =
   let t = infer_exp' env exp in
-  (* TODO: enable me one infer_effect works on Ir nodes...
-  let e = E.infer_effect_exp exp in 
-  assert (T.Triv < T.Await);
-  if not (e <= E.eff exp) then begin
-    error env exp.at "inferred effect not a subtype of expected effect" 
-  end;
-   *)
-  if not (Type.sub env.cons t (E.typ exp)) then begin
-    error env exp.at "inferred type %s not a subtype of expected type %s"
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons (E.typ exp));
+  if not env.pre then begin  
+      (* TODO: enable me one infer_effect works on Ir nodes...
+      let e = E.infer_effect_exp exp in 
+      assert (T.Triv < T.Await);
+      if not (e <= E.eff exp) then begin
+      error env exp.at "inferred effect not a subtype of expected effect" 
+      end;
+     *)
+      if not (Type.sub env.cons t (E.typ exp)) then begin
+          error env exp.at "inferred type %s not a subtype of expected type %s"
+            (T.string_of_typ_expand env.cons t)
+            (T.string_of_typ_expand env.cons (E.typ exp));
+        end
   end;
   E.typ exp;
 
@@ -332,21 +334,21 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (* Special case for subtyping *)
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
-    begin
-    if not (Operator.has_unop t op) then
-      error env exp.at "operator is not defined for operand type\n  %s"
-        (T.string_of_typ_expand env.cons t);
-    if not (T.eq env.cons ot t) then
-      error env exp.at "bad operator annotation, expecting  %s, found %s"
-        (T.string_of_typ_expand env.cons t)
-        (T.string_of_typ_expand env.cons ot);
+    if not env.pre then begin
+        if not (Operator.has_unop t op) then
+          error env exp.at "operator is not defined for operand type\n  %s"
+               (T.string_of_typ_expand env.cons t);
+        if not (T.eq env.cons ot t) then
+          error env exp.at "bad operator annotation, expecting  %s, found %s"
+            (T.string_of_typ_expand env.cons t)
+            (T.string_of_typ_expand env.cons ot);
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
-    begin
+    if not env.pre then begin
       if not (Operator.has_binop t op) then
         error env exp.at "operator not defined for operand types\n  %s and\n  %s"
           (T.string_of_typ_expand env.cons t1)
@@ -420,7 +422,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
          (T.string_of_typ_expand env.cons t1)
     )
   | AssignE (exp1, exp2) ->
-    begin
+    if not env.pre then begin
       let t1 = infer_exp_mut env exp1 in
       try
         let t2 = T.as_mut t1 in
@@ -507,7 +509,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.unit
   | LabelE (id, typ, exp1) ->
     let t = check_typ env typ;typ in
-    check_exp (add_lab env id.it typ) t exp1;
+    if not env.pre then  check_exp (add_lab env id.it typ) t exp1;
     t
   | BreakE (id, exp1) ->
     (match T.Env.find_opt id.it env.labs with

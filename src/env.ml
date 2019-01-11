@@ -22,4 +22,5 @@ struct
   let adjoin env1 env2 = union (fun _ x1 x2 -> Some x2) env1 env2
   let disjoint_union env1 env2 = union (fun k _ _ -> raise (Clash k)) env1 env2
   let disjoint_add k x env = disjoint_union env (singleton k x)
+                           
 end

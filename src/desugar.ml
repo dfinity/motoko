@@ -74,7 +74,7 @@ let
     | S.AssertE e -> I.AssertE (exp ce e)
     | S.IsE (e1, e2) -> I.IsE (exp ce e1, exp ce e2)
     | S.AnnotE (e, _) -> exp' ce at note e.it
-    | S.DecE d -> I.BlockE [dec ce d]
+    | S.DecE d -> I.BlockE (decs ce [d])
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp ce e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp ce e)
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs)
@@ -141,9 +141,20 @@ let
   and typ_bind ce tb =
     phrase' ce typ_bind' tb
   and typ_bind' ce at n {S.var; S.bound} = {Type.var = var.it; Type.bound = bound.note}
-  and decs ce ds = List.map (dec ce) ds
-  and dec ce d = phrase' ce dec' d
-  and dec' ce at n = function
+  and decs ce ds =
+      match ds with
+      | [] -> []
+      | d::ds ->
+        match d.it with
+        | S.ClassD(_,con_id,_,_,_,_,_) ->
+          let (c,k) = match con_id.note with Some p -> p | _ -> assert false in
+          let typD = {it = I.TypD (c,k);
+                      at = d.at;
+                      note = {S.note_typ = T.unit; S.note_eff = T.Triv}}
+          in
+          typD::(phrase' ce dec' d)::(decs ce ds)
+        | _ -> (phrase' ce dec' d)::(decs ce ds)
+  and dec' ce at n d = match d with
     | S.ExpD e -> I.ExpD (exp ce e)
     | S.LetD (p, e) -> I.LetD (pat ce p, exp ce e)
     | S.VarD (i, e) -> I.VarD (i, exp ce e)

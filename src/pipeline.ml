@@ -292,7 +292,9 @@ let compile_with check mode name : compile_result =
     let prog = tailcall_optimization true prog name in
     let scope' = Typing.adjoin_scope initial_stat_env scope in
     let prog = Desugar.prog scope'.Typing.con_env prog in
-    let _ = Check_ir.check_prog (Typing.adjoin_scope Typing.empty_scope scope) prog in 
+    match Check_ir.check_prog initial_stat_env prog with
+    | Error msgs -> Diag.print_messages msgs; assert (false)
+    | Ok _ -> ();
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_
