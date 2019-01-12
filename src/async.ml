@@ -74,7 +74,7 @@ let new_async t1 =
 
 let letP p e =  {it = LetD(p,e);
                  at = no_region;
-                 note = e.note}
+                 note = {e.note with note_typ = T.unit}}
 
 let new_nary_async_reply t1 =
   let (unary_async,unary_fullfill),call_new_async = new_async t1 in

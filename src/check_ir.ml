@@ -93,7 +93,7 @@ let add_typ c x con k =
   }
 *)
 
-let add_typs c xs cs ks =
+let add_typs c cs ks =
   { c with
     (* typs = List.fold_right2 T.Env.add xs cs c.typs; *)
     cons = List.fold_right2 Con.Env.add cs ks c.cons;
@@ -214,6 +214,7 @@ and check_typ_field env s typ_field : unit =
     error env no_region "shared object or actor field %s has non-shared type\n  %s"
       name (T.string_of_typ_expand env.cons typ)
 
+(*  
 and check_typ_binds env typ_binds : T.con list * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.T.var) typ_binds in
   let cs = List.map (fun x -> Con.fresh x) xs in
@@ -232,7 +233,21 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   let env' = add_typs env xs cs ks in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.T.bound) typ_binds in
   cs, Con.Env.from_list2 cs ks
-
+ *)
+and check_typ_binds env typ_binds : T.con list * con_env =
+  let ts,ce = Type.open_binds env.cons typ_binds in
+  let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
+  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
+  let _pre_env' = add_typs {env with pre = true} cs pre_ks in
+  let bds = List.map (fun typ_bind -> let t = T.open_ ts typ_bind.T.bound in
+                                     (* check_typ pre_env' t; *)
+                                     t) typ_binds in
+  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
+  let env' = add_typs env cs ks in
+  let _ = List.map (fun bd -> check_typ env' bd) bds in
+  cs, Con.Env.from_list2 cs ks
+  
+  
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
   | tb::tbs', typ::typs' ->
@@ -309,7 +324,7 @@ and infer_exp_mut env exp : T.typ =
       error env exp.at "inferred effect not a subtype of expected effect" 
       end;
      *)
-      if not (Type.sub env.cons t (E.typ exp)) then begin
+      if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp))  then begin (*TBR*)
           error env exp.at "inferred type %s not a subtype of expected type %s"
             (T.string_of_typ_expand env.cons t)
             (T.string_of_typ_expand env.cons (E.typ exp));
@@ -580,9 +595,11 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     end;
     T.unit
   | NewObjE (sort, labids) ->
-     T.Obj(sort.it, List.map (fun (name,id) ->
-                        {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)
-       
+    T.Non
+(*  TOFO: compare with
+    T.Obj(sort.it, List.sort compare (List.map (fun (name,id) ->
+                        {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids))
+ *)       
 and check_exp env t exp =
   let t' = T.normalize env.cons t in
   check_exp' env t' exp;
@@ -714,9 +731,11 @@ and infer_pat env pat : T.typ * val_env =
 and infer_pat' env pat : T.typ * val_env =
   match pat.it with
   | WildP ->
-    error env pat.at "cannot infer type of wildcard"
-  | VarP _ ->
-    error env pat.at "cannot infer type of variable"
+    (pat.note, T.Env.empty)
+  (*    error env pat.at "cannot infer type of wildcard" *)
+  | VarP id ->
+    (pat.note, T.Env.singleton id.it pat.note)
+  (*    error env pat.at "cannot infer type of variable" *)
   | LitP lit ->
     T.Prim (infer_lit env lit pat.at), T.Env.empty
   | TupP pats ->
@@ -971,7 +990,7 @@ and infer_dec env dec : T.typ =
      T.unit
   in
   if not (Type.sub env.cons t (E.typ dec)) then begin
-    error env dec.at "inferred type %s not a subtype of expected type %s"
+    error env dec.at "inferred dec type %s not a subtype of expected type %s"
       (T.string_of_typ_expand env.cons t)
       (T.string_of_typ_expand env.cons (E.typ dec));
   end;
@@ -1005,7 +1024,7 @@ and check_dec env t dec =
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
-    dec.note <- exp.note;
+  (*TODO     dec.note <- exp.note; *)
 (* TBR: push in external type annotation;
    unfortunately, this isn't enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -1097,8 +1116,9 @@ and infer_dec_typdecs env dec : con_env =
       | T.Def(binds,typ) -> (binds,typ)
     in
     let cs,ce = check_typ_binds env binds in
+    let ts = List.map (fun c -> T.Con(c,[])) cs in
     let env' = adjoin_typs env ce in
-    check_typ env' typ;
+    check_typ env' (T.open_ ts  typ); 
     Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
@@ -1160,13 +1180,13 @@ and infer_dec_valdecs env dec : val_env =
           (T.string_of_typ_expand env'.cons t2)
       end;
     end;
-    let ts1 = match pat.it with
-      | TupP ps -> T.as_seq t1
-      | _ -> [t1]
+    let ts1 = match call_conv.Value.n_args with
+      | 1 -> [t1]
+      | _ -> T.as_seq t1
     in
-    let ts2 = match t2 with
-      | T.Tup _ -> T.as_seq t2
-      | _ -> [t2]
+    let ts2 = match call_conv.Value.n_res  with
+      | 1 -> [t2]
+      | _ -> T.as_seq t2
     in
 
     let c = match func_sort, t2 with

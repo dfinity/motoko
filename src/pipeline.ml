@@ -294,7 +294,7 @@ let compile_with check mode name : compile_result =
     let prog = Desugar.prog scope'.Typing.con_env prog in
     match Check_ir.check_prog initial_stat_env prog with
     | Error msgs -> Diag.print_messages msgs; assert (false)
-    | Ok _ -> ();
+    | Ok (_,msgs) -> Diag.print_messages msgs;
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_
