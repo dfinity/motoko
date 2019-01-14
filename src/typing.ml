@@ -991,10 +991,10 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (sort, id, typbinds, pat, typ, exp) ->
+  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typbinds in
+      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
       let t2 = check_typ env' typ in
@@ -1003,10 +1003,10 @@ and infer_dec env dec : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp
     end;
     t
-  | ClassD (id, tid, typbinds, sort, pat, id', fields) ->
+  | ClassD (id, tid, typ_binds, sort, pat, id', fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typbinds in
+      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
@@ -1196,8 +1196,8 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (sort, id, typbinds, pat, typ, exp) ->
-    let cs, ts, te, ce = check_typ_binds env typbinds in
+  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
+    let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
@@ -1234,8 +1234,8 @@ and infer_dec_valdecs env dec : val_env =
       (T.Func (T.Call sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
-  | ClassD (conid, id, typbinds, sort, pat, id', fields) ->
-    let cs, ts, te, ce = check_typ_binds env typbinds in
+  | ClassD (conid, id, typ_binds, sort, pat, id', fields) ->
+    let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in

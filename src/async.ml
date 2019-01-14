@@ -206,10 +206,10 @@ and t_operator_type ot =
      it will be a pure value anyways. *)
   ref (t_typ !ot)
 
-and t_con_id conid =
-  { it = conid.it;
-    at = conid.at;
-    note = Lib.Option.map (fun (c,k) -> (c,t_kind k)) conid.note
+and t_con_id con_id =
+  { it = con_id.it;
+    at = con_id.at;
+    note = Lib.Option.map (fun (c,k) -> (c,t_kind k)) con_id.note
   }
 
 and t_field {name; typ} =
@@ -349,8 +349,8 @@ and t_dec dec =
 and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)
-  | TypD (conid, typbinds, typ) ->
-    TypD (t_con_id conid, t_typbinds typbinds, t_typT typ)
+  | TypD (con_id, typbinds, typ) ->
+    TypD (t_con_id con_id, t_typbinds typbinds, t_typT typ)
   | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
   | VarD (id,exp) -> VarD (id,t_exp exp)
   | FuncD (s, id, typbinds, pat, typT, exp) ->
@@ -388,9 +388,9 @@ and t_dec' dec' =
           | _ -> assert false
          end
     end
-  | ClassD (id, conid, typbinds, sort, pat, id', fields) ->
+  | ClassD (id, con_id, typbinds, sort, pat, id', fields) ->
     let fields' = t_fields fields in
-    ClassD (id, t_con_id conid, t_typbinds typbinds, sort, t_pat pat, id', fields')
+    ClassD (id, t_con_id con_id, t_typbinds typbinds, sort, t_pat pat, id', fields')
 
 and t_decs decs = List.map t_dec decs
 

@@ -961,10 +961,10 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (sort, id, typbinds, pat, typ, exp) ->
+  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs,ce = check_open_typ_binds env typbinds in
+      let _cs,ce = check_open_typ_binds env typ_binds in
       let env' = adjoin_typs env ce in
       let _, ve = infer_pat_exhaustive env' pat in
       check_typ env' typ;
@@ -974,10 +974,10 @@ and infer_dec env dec : T.typ =
     end;
     t
 (*    
-  | ClassD (id, tid, typbinds, sort, pat, id', fields) ->
+  | ClassD (id, tid, typ_binds, sort, pat, id', fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typbinds in
+      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
@@ -1157,9 +1157,9 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (call_conv, id, typbinds, pat, typ, exp) ->
+  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
     let func_sort = call_conv.Value.sort in
-    let cs, ce = check_open_typ_binds env typbinds in
+    let cs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_typs env ce in
     let t1, _ = infer_pat {env' with pre = true} pat in
     check_typ env' typ;
@@ -1193,15 +1193,15 @@ and infer_dec_valdecs env dec : val_env =
       | T.Call T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
-    let ts = List.map (fun typbind -> typbind.it.T.bound) typbinds in
+    let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
       (T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
 (*    
-  | ClassD (conid, id, typbinds, sort, pat, id', fields) ->
-    let cs, ts, te, ce = check_typ_binds env typbinds in
+  | ClassD (conid, id, typ_binds, sort, pat, id', fields) ->
+    let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
