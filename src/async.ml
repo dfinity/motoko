@@ -194,11 +194,23 @@ let rec t_typ (t:T.typ) =
 and t_bind {var; bound} =
   {var; bound = t_typ bound}
 
+and t_kind k = match k with
+  | T.Abs(tbs,t) ->
+    T.Abs(List.map t_bind tbs, t_typ t)
+  | T.Def(tbs,t) ->
+    T.Def(List.map t_bind tbs, t_typ t)
+
 and t_operator_type ot =
   (* We recreate the reference here. That is ok, because it
      we run after type inference. Once we move async past desugaring,
      it will be a pure value anyways. *)
   ref (t_typ !ot)
+
+and t_con_id conid =
+  { it = conid.it;
+    at = conid.at;
+    note = Lib.Option.map (fun (c,k) -> (c,t_kind k)) conid.note
+  }
 
 and t_field {name; typ} =
   {name; typ = t_typ typ}
@@ -236,7 +248,7 @@ and t_exp' (exp:Syntax.exp) =
   | ArrayE (mut, exps) ->
     ArrayE (mut, List.map t_exp exps)
   | IdxE (exp1, exp2) ->
-     IdxE (t_exp exp1, t_exp exp2)
+    IdxE (t_exp exp1, t_exp exp2)
   | CallE ({it=PrimE "@await";_}, typs, exp2) ->
     begin
      match exp2.it with
@@ -244,42 +256,42 @@ and t_exp' (exp:Syntax.exp) =
      | _ -> assert false
     end
   | CallE ({it=PrimE "@async";_}, typs, exp2) ->
-     let t1, contT = match typ exp2 with
-       | Func(_,_,
-              [],
-              [Func(_,_,[],ts1,[]) as contT],
-              []) -> (* TBR, why isn't this []? *)
-          (t_typ (T.seq ts1),t_typ contT)
-       | t -> assert false in
-     let k = fresh_id contT in
-     let v1 = fresh_id t1 in
-     let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
-     let u = fresh_id T.unit in
-     let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
-     (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
-              funcD k v1 (nary_reply -*- v1);
-              funcD post u (t_exp exp2 -*- k);
-              expD (post -*- tupE[]);
-              expD nary_async])
-       .it
+    let t1, contT = match typ exp2 with
+      | Func(_,_,
+             [],
+             [Func(_,_,[],ts1,[]) as contT],
+             []) -> (* TBR, why isn't this []? *)
+        (t_typ (T.seq ts1),t_typ contT)
+      | t -> assert false in
+    let k = fresh_id contT in
+    let v1 = fresh_id t1 in
+    let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
+    let u = fresh_id T.unit in
+    let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
+    (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
+             funcD k v1 (nary_reply -*- v1);
+             funcD post u (t_exp exp2 -*- k);
+             expD (post -*- tupE[]);
+             expD nary_async])
+      .it
   | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
-     let ts1,t2 =
-       match typ exp1 with
-       | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
-           ts1, t_typ t2
-       | _ -> assert(false)
-     in
-     let exp1' = t_exp exp1 in
-     let exp2' = t_exp exp2 in
-     let typs = List.map t_typT typs in
-     let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
-     let _ = letEta in
-     (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
-              letEta exp1' (fun v1 ->
-              letSeq ts1 exp2' (fun vs ->
-                [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
-                 expD nary_async]))))
-       .it
+    let ts1,t2 =
+      match typ exp1 with
+      | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
+           List.map t_typ ts1, t_typ t2
+      | _ -> assert(false)
+    in
+    let exp1' = t_exp exp1 in
+    let exp2' = t_exp exp2 in
+    let typs = List.map t_typT typs in
+    let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
+    let _ = letEta in
+    (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
+               letEta exp1' (fun v1 ->
+                   letSeq ts1 exp2' (fun vs ->
+                       [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
+                        expD nary_async]))))
+      .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
   | BlockE decs ->
@@ -337,7 +349,8 @@ and t_dec dec =
 and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)
-  | TypD _ -> dec'
+  | TypD (conid, typbinds, typ) ->
+    TypD (t_con_id conid, t_typbinds typbinds, t_typT typ)
   | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
   | VarD (id,exp) -> VarD (id,t_exp exp)
   | FuncD (s, id, typbinds, pat, typT, exp) ->
@@ -375,9 +388,9 @@ and t_dec' dec' =
           | _ -> assert false
          end
     end
-  | ClassD (id, lab, typbinds, sort, pat, id', fields) ->
+  | ClassD (id, conid, typbinds, sort, pat, id', fields) ->
     let fields' = t_fields fields in
-    ClassD (id, lab, t_typbinds typbinds, sort, t_pat pat, id', fields')
+    ClassD (id, t_con_id conid, t_typbinds typbinds, sort, t_pat pat, id', fields')
 
 and t_decs decs = List.map t_dec decs
 
@@ -415,7 +428,10 @@ and t_asyncT t =
          unitT)
 
 and t_typT t =
-  { t with it = t_typT' t.it }
+  { it = t_typT' t.it;
+    at  = t.at;
+    note = t_typ t.note;
+  }
 
 and t_typT' t =
   match t with

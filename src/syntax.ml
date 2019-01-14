@@ -8,7 +8,7 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 type id = string Source.phrase
 type con_id = (string, (Type.con * Type.kind) option) Source.annotated_phrase
-          
+
 (* Names (not alpha-convertible), used for field and class names *)
 type name = name' Source.phrase
 and name' = Name of string
