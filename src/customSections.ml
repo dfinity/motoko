@@ -28,6 +28,7 @@ let encode
     (module_name : string)
     (function_names : (int32 * string) list)
     (locals_names : (int32 * (int32 * string) list) list)
+    (source_mapping_url : string option)
     : string =
   let s = stream () in
 
@@ -81,6 +82,13 @@ let encode
       | DataBuf -> vu32 0x6cl
       | ElemBuf -> vu32 0x6bl in
 
+  let source_mapping_url_section = match source_mapping_url with
+    | Some url -> section 0 (fun _ ->
+        string "sourceMappingURL";
+        string url;
+      );
+    | None -> () in
+
   section 0 (fun _ ->
     string "types";
     (* We could deduplicate the types here *)
@@ -116,5 +124,5 @@ let encode
       assoc_list locals_names (fun locals -> assoc_list locals string)
     );
   );
+  source_mapping_url_section;
   to_string s
-

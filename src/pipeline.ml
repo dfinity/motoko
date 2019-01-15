@@ -281,7 +281,7 @@ let run_files env = function
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
 
-let compile_with check mode name : compile_result =
+let compile_with check mode name source_mapping_url : compile_result =
   match check initial_stat_env name with
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
@@ -293,14 +293,14 @@ let compile_with check mode name : compile_result =
     let scope' = Typing.adjoin_scope initial_stat_env scope in
     let prog = Desugar.prog scope'.Typing.con_env prog in
     phase "Compiling" name;
-    let module_ = Compile.compile mode name prelude [prog] in
+    let module_ = Compile.compile mode name source_mapping_url prelude [prog] in
     Ok module_
 
-let compile_string mode s name =
-  compile_with (fun senv name -> check_string senv s name) mode name
-let compile_file mode file name = compile_with check_file mode name
-let compile_files mode files name =
-  compile_with (fun senv _name -> check_files senv files) mode name
+let compile_string mode s name source_mapping_url =
+  compile_with (fun senv name -> check_string senv s name) mode name source_mapping_url
+let compile_file mode file name source_mapping_url = compile_with check_file mode name source_mapping_url
+let compile_files mode files name source_mapping_url =
+  compile_with (fun senv _name -> check_files senv files) mode name source_mapping_url
 
 
 (* Interactively *)

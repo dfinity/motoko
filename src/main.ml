@@ -80,13 +80,14 @@ let process_files files : unit =
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
     let module_name = Filename.remove_extension (Filename.basename !out_file) in
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
+    let source_map_file = !out_file ^ ".map" in
+    let source_mapping_url = if !Flags.source_map then Some source_map_file else None in (* TODO source map base ^ source_map_file *)
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name source_mapping_url) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin
-      let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end

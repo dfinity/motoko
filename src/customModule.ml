@@ -18,6 +18,8 @@ type extended_module = {
   function_names : (int32 * string) list;
   (* Names of locals *)
   locals_names : (int32 * (int32 * string) list) list;
+  (* Source mapping URL *)
+  source_mapping_url : string option;
   }
 
 let is_fun_import (i : import) = match i.it.idesc.it with
@@ -33,4 +35,5 @@ let encode m =
     m.module_name
     m.function_names
     m.locals_names
+    m.source_mapping_url
   in (map, wasm ^ custom_sections)

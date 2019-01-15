@@ -34,6 +34,6 @@ val run_stdin  : env -> unit
 
 type compile_mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
-val compile_file   : compile_mode -> string -> string -> compile_result
-val compile_files  : compile_mode -> string list -> string -> compile_result
-val compile_string : compile_mode -> string -> string -> compile_result
+val compile_file   : compile_mode -> string -> string -> string option -> compile_result
+val compile_files  : compile_mode -> string list -> string -> string option -> compile_result
+val compile_string : compile_mode -> string -> string -> string option -> compile_result

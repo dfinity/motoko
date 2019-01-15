@@ -150,10 +150,14 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+
+
+    (* Source mapping url *)
+    source_mapping_url : string option;
   }
 
   (* The initial global environment *)
-  let mk_global mode prelude dyn_mem : t = {
+  let mk_global mode prelude dyn_mem source_mapping_url : t = {
     mode;
     prelude;
     local_vars_env = NameEnv.empty;
@@ -172,6 +176,7 @@ module E = struct
     ld = NameEnv.empty;
     locals = ref [];
     local_names = ref [];
+    source_mapping_url;
   }
 
   (* Creating a local environment, resetting the local fields,
@@ -331,6 +336,8 @@ module E = struct
 
   let get_static_memory env =
     !(env.static_memory)
+
+  let get_source_mapping_url (env : t) = env.source_mapping_url
 end
 
 
@@ -3746,7 +3753,7 @@ prelude. So this function compiles the prelude, just to find out the bound names
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l 0 in
+  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l (E.get_source_mapping_url env)) 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
 
@@ -3820,7 +3827,7 @@ and actor_lit outer_env name fs at =
   if E.mode outer_env <> DfinityMode then G.i Unreachable else
 
   let wasm_binary =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
+    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end (E.get_source_mapping_url outer_env) in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     Array.common_funcs env;
@@ -3920,10 +3927,11 @@ and conclude_module env module_name start_fi_o =
 	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
     locals_names =
 	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+    source_mapping_url = E.get_source_mapping_url env;
   }
 
-let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
-  let env = E.mk_global mode prelude ClosureTable.table_end in
+let compile mode module_name source_mapping_url (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
+  let env = E.mk_global mode prelude ClosureTable.table_end source_mapping_url in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;
