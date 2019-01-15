@@ -77,7 +77,7 @@ let
     | S.DecE d -> I.BlockE (decs ce [d])
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp ce e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp ce e)
-    | S.NewObjE (s, fs) -> I.NewObjE (s, fs)
+    | S.NewObjE (s, fs) -> I.NewObjE (s, fs, note.S.note_typ)
 
   and field_to_dec ce (f : S.exp_field) : Ir.dec =
     match f.it.S.mut.it with
@@ -103,7 +103,7 @@ let
   and obj ce at s class_id self_id es obj_typ =
     match s.it with
     | Type.Object _ -> build_obj ce at None self_id es obj_typ
-    | Type.Actor -> I.ActorE (self_id, exp_fields ce es)
+    | Type.Actor -> I.ActorE (self_id, exp_fields ce es, obj_typ)
 
   and build_obj ce at class_id self_id es obj_typ =
     I.BlockE (
@@ -115,7 +115,9 @@ let
                     },
                     {it = I.NewObjE
                             (Type.Object Type.Local @@ at,
-                             List.concat (List.map field_to_obj_entry es));
+                             List.concat (List.map field_to_obj_entry es),
+                             obj_typ
+                            );
                      at = at;
                      note = {S.note_typ = obj_typ; S.note_eff = T.Triv}}
                   );

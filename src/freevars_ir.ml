@@ -67,7 +67,7 @@ let rec exp e : f = match e.it with
   | RelE (_, e1, ro, e2)-> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
-  | ActorE (i, efs)     -> close (exp_fields efs) // i.it
+  | ActorE (i, efs, _)  -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
@@ -91,7 +91,7 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
-  | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
+  | NewObjE (_, ids, _) -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
 

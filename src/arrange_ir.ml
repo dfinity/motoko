@@ -16,7 +16,7 @@ let rec exp e = match e.it with
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ActorE (i, efs)     -> "ActorE"  $$ [id i] @ List.map exp_field efs
+  | ActorE (i, efs, t)  -> "ActorE"  $$ [id i] @ List.map exp_field efs @ [typ t]
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
@@ -41,9 +41,9 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
-  | NewObjE (s, nameids)-> "NewObjE" $$ (Arrange.obj_sort s ::
+  | NewObjE (s, nameids, t)-> "NewObjE" $$ (Arrange.obj_sort s ::
                                               List.fold_left (fun flds (n,i) ->
-                                                  (name n)::(id i):: flds) [] nameids)
+                                                  (name n)::(id i):: flds) [typ t] nameids)
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"

@@ -82,6 +82,18 @@ let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 
+let unfold_obj env t =
+    match t with
+    | T.Obj (_,_) -> t
+    | T.Con (c,ts) ->
+      begin
+        match Con.Env.find_opt c env.cons with
+        | Some T.Abs (tbs, (T.Obj(_,_) as t2))  ->
+          T.open_ ts t2
+        | _ -> error env no_region "bad annotation %s (wrong kind)" (T.string_of_typ t)
+      end
+    | _ -> error env no_region "bad annotation %s (wrong form)" (T.string_of_typ t)
+
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
 (*
@@ -325,9 +337,10 @@ and infer_exp_mut env exp : T.typ =
       end;
      *)
       if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp))  then begin (*TBR*)
-          error env exp.at "inferred type %s not a subtype of expected type %s"
+          error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
             (T.string_of_typ_expand env.cons t)
-            (T.string_of_typ_expand env.cons (E.typ exp));
+            (T.string_of_typ_expand env.cons (E.typ exp))
+            (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
         end
   end;
   E.typ exp;
@@ -409,9 +422,16 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
 
-  | ActorE ( id, fields) ->
+  | ActorE ( id, fields, t) ->
     let env' = { env with async = false } in
-    infer_obj env' T.Actor id fields
+    let t1 = infer_obj env' T.Actor id fields in
+    let t2 = unfold_obj env t in
+    if T.sub env.cons t1 t2 then
+      t
+    else
+      error env no_region "expecting actor of type %s, but expression produces $s"
+        (T.string_of_typ_expand env.cons t2)
+        (T.string_of_typ_expand env.cons t1)
   | ActorDotE(exp1,{it = Syntax.Name n;_})
   | DotE (exp1, {it = Syntax.Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
@@ -594,12 +614,18 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
        | None -> error env id.at "unbound variable %s" id.it
     end;
     T.unit
-  | NewObjE (sort, labids) ->
-    T.Non
-(*  TOFO: compare with
-    T.Obj(sort.it, List.sort compare (List.map (fun (name,id) ->
-                        {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids))
- *)       
+  | NewObjE (sort, labids, t) ->
+    let t1 = 
+      T.Obj(sort.it, List.sort compare (List.map (fun (name,id) ->
+                                            {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)) in
+    let t2 = unfold_obj env t in
+    if T.sub env.cons t1 t2 then
+      t
+    else
+      error env no_region "expecting actor of type %s, but expression produces $s"
+        (T.string_of_typ_expand env.cons t2)
+        (T.string_of_typ_expand env.cons t1)
+    
 and check_exp env t exp =
   let t' = T.normalize env.cons t in
   check_exp' env t' exp;

@@ -3259,7 +3259,7 @@ and compile_exp (env : E.t) exp =
     Array.load_n (Int32.of_int n)
   | ArrayE (m, es) ->
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
-  | ActorE (name, fs) ->
+  | ActorE (name, fs, _) ->
     StackRep.UnboxedReference,
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
@@ -3350,7 +3350,7 @@ and compile_exp (env : E.t) exp =
     StackRep.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
-  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) ->
+  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
     StackRep.Vanilla,
     let fs' = List.map
       (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))

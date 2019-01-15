@@ -22,26 +22,30 @@ and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of Syntax.id                          (* variable *)
   | LitE of Syntax.lit                         (* literal *)
-  | UnE of Type.typ * Syntax.unop * exp                   (* unary operator *)
-  | BinE of Type.typ * exp * Syntax.binop * exp           (* binary operator *)
-  | RelE of Type.typ * exp * Syntax.relop * exp           (* relational operator *)
+  | UnE of Type.typ * Syntax.unop * exp        (* unary operator *)
+  | BinE of                                    (* binary operator *)
+      Type.typ * exp * Syntax.binop * exp
+  | RelE of                                    (* relational operator *)
+      Type.typ * exp * Syntax.relop * exp
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ActorE of Syntax.id * exp_field list       (* actor *)
+  | ActorE of                                  (* actor *)
+      Syntax.id * exp_field list * Type.typ 
   | DotE of exp * Syntax.name                  (* object projection *)
   | ActorDotE of exp * Syntax.name             (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of Syntax.mut * exp list            (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | CallE of Value. call_conv * exp * Type.typ list * exp (* function call *)
+  | CallE of                                   (* function call *)
+      Value. call_conv * exp * Type.typ list * exp
   | BlockE of dec list                         (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)
   | LoopE of exp * exp option                  (* do-while loop *)
   | ForE of pat * exp * exp                    (* iteration *)
-  | LabelE of Syntax.id * Type.typ * exp     (* label *)
+  | LabelE of Syntax.id * Type.typ * exp       (* label *)
   | BreakE of Syntax.id * exp                  (* break *)
   | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
@@ -50,7 +54,8 @@ and exp' =
   | IsE of exp * exp                           (* instance-of *)
   | DeclareE of Syntax.id * Type.typ * exp     (* local promise (internal) *)
   | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment (internal) *)
-  | NewObjE of Syntax.obj_sort * (Syntax.name * Syntax.id) list (* make an object, preserving mutable identity (internal) *)
+  | NewObjE of                                 (* make an object, preserving mutable identity (internal) *)
+      Syntax.obj_sort * (Syntax.name * Syntax.id) list * Type.typ
 
 and exp_field = exp_field' Source.phrase
 and exp_field' = {name : Syntax.name; id : Syntax.id; exp : exp; mut : Syntax.mut; priv : Syntax.priv}
