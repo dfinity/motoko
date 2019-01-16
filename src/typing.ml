@@ -355,36 +355,42 @@ and infer_exp' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
-  | UnE (op, exp1) ->
+  | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     (* Special case for subtyping *)
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not env.pre then begin
+      assert (!ot = Type.Pre);
       if not (Operator.has_unop t op) then
         error env exp.at "operator is not defined for operand type\n  %s"
-          (T.string_of_typ_expand env.cons t)
+          (T.string_of_typ_expand env.cons t);
+      ot := t;
     end;
     t
-  | BinE (exp1, op, exp2) ->
+  | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
+      assert (!ot = Type.Pre);
       if not (Operator.has_binop t op) then
         error env exp.at "operator not defined for operand types\n  %s and\n  %s"
           (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2)
+          (T.string_of_typ_expand env.cons t2);
+      ot := t
     end;
     t
-  | RelE (exp1, op, exp2) ->
+  | RelE (ot,exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
     if not env.pre then begin
+      assert (!ot = Type.Pre);
       if not (Operator.has_relop t op) then
         error env exp.at "operator not defined for operand types\n  %s and\n  %s"
           (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2)
+          (T.string_of_typ_expand env.cons t2);
+      ot := t;
     end;
     T.bool
   | TupE exps ->
@@ -638,9 +644,11 @@ and check_exp' env t exp =
     ()
   | LitE lit, _ ->
     check_lit env t lit exp.at
-  | UnE (op, exp1), t' when Operator.has_unop t' op ->
+  | UnE (ot, op, exp1), t' when Operator.has_unop t' op ->
+    ot := t';
     check_exp env t' exp1
-  | BinE (exp1, op, exp2), t' when Operator.has_binop t' op ->
+  | BinE (ot, exp1, op, exp2), t' when Operator.has_binop t' op ->
+    ot := t';
     check_exp env t' exp1;
     check_exp env t' exp2
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->

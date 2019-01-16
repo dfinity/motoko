@@ -65,6 +65,7 @@ rec {
       "src/.*.mli"
       "src/.*.mly"
       "src/.*.mll"
+      "src/.*.mlpack"
       "src/_tags"
       "test/"
       "test/node-test.js"
@@ -101,6 +102,7 @@ rec {
     buildInputs =
       [ native
         ocaml_wasm
+        nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
       ] ++
@@ -149,7 +151,7 @@ rec {
 
     buildInputs =
       [ native-coverage
-        ocaml_wasm
+        nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
         ocaml_bisect_ppx

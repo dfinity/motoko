@@ -7,9 +7,9 @@ let ($$) head inner = Node (head, inner)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit !l]
-  | UnE (uo, e)         -> "UnE"     $$ [unop uo; exp e]
-  | BinE (e1, bo, e2)   -> "BinE"    $$ [exp e1; binop bo; exp e2]
-  | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; relop ro; exp e2]
+  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
@@ -136,7 +136,9 @@ and exp_field (ef : exp_field)
   = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
 
 and inst t = typ t.it
-           
+
+and operator_type t = Atom (Type.string_of_typ t)
+
 and typ t = match t.it with
   | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]

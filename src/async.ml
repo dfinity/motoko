@@ -200,6 +200,12 @@ let rec t_typ (t:T.typ) =
 and t_bind {var; bound} =
   {var; bound = t_typ bound}
 
+and t_operator_type ot =
+  (* We recreate the reference here. That is ok, because it
+     we run after type inference. Once we move async past desugaring,
+     it will be a pure value anyways. *)
+  ref (t_typ !ot)
+
 and t_field {name; typ} =
   {name; typ = t_typ typ}
 let rec t_exp (exp:Syntax.exp) =
@@ -214,12 +220,12 @@ and t_exp' (exp:Syntax.exp) =
   | PrimE _
   | LitE _ -> exp'
   | VarE id -> exp'
-  | UnE (op, exp1) ->
-    UnE (op, t_exp exp1)
-  | BinE (exp1, op, exp2) ->
-    BinE (t_exp exp1, op, t_exp exp2)
-  | RelE (exp1, op, exp2) ->
-    RelE (t_exp exp1, op, t_exp exp2)
+  | UnE (ot, op, exp1) ->
+    UnE (t_operator_type ot, op, t_exp exp1)
+  | BinE (ot, exp1, op, exp2) ->
+    BinE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
+  | RelE (ot, exp1, op, exp2) ->
+    RelE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
   | TupE exps ->
     TupE (List.map t_exp exps)
   | OptE exp1 ->

@@ -92,12 +92,15 @@ do
 
     # Compile
     echo -n " [wasm]"
-    $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as 2> $out/$base.wasm.stderr
-    diff_files="$diff_files $base.wasm.stderr"
-    if [ -e $base.wasm ]
+    if [ $DFINITY = 'yes' ]
     then
-      mv $base.wasm $base.wasm.map $out
-
+      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as <(echo 'print("Top-level code done.\n")') -o $out/$base.wasm 2> $out/$base.wasm.stderr
+    else
+      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
+    fi
+    diff_files="$diff_files $base.wasm.stderr"
+    if [ -e $out/$base.wasm ]
+    then
       if [ "$SKIP_RUNNING" != yes ]
       then
         if [ $DFINITY = 'yes' ]

@@ -28,9 +28,9 @@ and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
   | PrimE _             -> e
-  | UnE (uo, e)         -> UnE (uo, exp rho e)
-  | BinE (e1, bo, e2)   -> BinE (exp rho e1, bo, exp rho e2)
-  | RelE (e1, ro, e2)   -> RelE (exp rho e1, ro, exp rho e2)
+  | UnE (ot, uo, e)      -> UnE (ot, uo, exp rho e)
+  | BinE (ot, e1, bo, e2)-> BinE (ot, exp rho e1, bo, exp rho e2)
+  | RelE (ot, e1, ro, e2)-> RelE (ot, exp rho e1, ro, exp rho e2)
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields rho efs)

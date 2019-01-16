@@ -360,23 +360,23 @@ exp_un :
   | e=exp_post
     { e } 
   | op=unop e=exp_un
-    { UnE(op, e) @? at $sloc }
+    { UnE(ref Type.Pre, op, e) @? at $sloc }
   | op=unassign e=exp_un
-    { assign_op e (fun e' -> UnE(op, e') @? at $sloc) (at $sloc) }
+    { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
 
 exp_bin :
   | e=exp_un
-    { e } 
+    { e }
   | e1=exp_bin op=binop e2=exp_bin
-    { BinE(e1, op, e2) @? at $sloc }
+    { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin op=relop e2=exp_bin
-    { RelE(e1, op, e2) @? at $sloc }
+    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin ASSIGN e2=exp_bin
     { AssignE(e1, e2) @? at $sloc}
   | e1=exp_bin op=binassign e2=exp_bin
-    { assign_op e1 (fun e1' -> BinE(e1', op, e2) @? at $sloc) (at $sloc) }
+    { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | e1=exp_bin AND e2=exp_bin
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin

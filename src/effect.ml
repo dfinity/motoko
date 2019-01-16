@@ -23,7 +23,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | VarE _ 
   | LitE _ ->
     T.Triv
-  | UnE (_, exp1)
+  | UnE (_, _, exp1)
   | ProjE (exp1, _)
   | OptE exp1
   | DotE (exp1, _)
@@ -35,10 +35,10 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | AnnotE (exp1, _) 
   | LoopE (exp1, None) ->  
     effect_exp exp1 
-  | BinE (exp1, _, exp2)
+  | BinE (_, exp1, _, exp2)
   | IdxE (exp1, exp2)
   | IsE (exp1, exp2) 
-  | RelE (exp1, _, exp2) 
+  | RelE (_, exp1, _, exp2) 
   | AssignE (exp1, exp2) 
   | CallE (exp1, _, exp2) 
   | AndE (exp1, exp2)

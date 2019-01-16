@@ -67,12 +67,12 @@ and t_exp' context exp' =
   | PrimE _
   | VarE _
   | LitE _ -> exp'
-  | UnE (op, exp1) ->
-    UnE (op, t_exp context exp1)
-  | BinE (exp1, op, exp2) ->
-    BinE (t_exp context exp1, op, t_exp context exp2)
-  | RelE (exp1, op, exp2) ->
-    RelE (t_exp context exp1, op, t_exp context exp2)
+  | UnE (ot, op, exp1) ->
+    UnE (ot, op, t_exp context exp1)
+  | BinE (ot, exp1, op, exp2) ->
+    BinE (ot, t_exp context exp1, op, t_exp context exp2)
+  | RelE (ot, exp1, op, exp2) ->
+    RelE (ot, t_exp context exp1, op, t_exp context exp2)
   | TupE exps ->
     TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
@@ -393,12 +393,12 @@ and c_exp' context exp k =
   | VarE _
   | LitE _ ->
     assert false
-  | UnE (op, exp1) ->
-    unary context k (fun v1 -> e (UnE(op, v1))) exp1
-  | BinE (exp1, op, exp2) ->
-    binary context k (fun v1 v2 -> e (BinE (v1, op, v2))) exp1 exp2
-  | RelE (exp1, op, exp2) ->
-    binary context k (fun v1 v2 -> e (RelE (v1, op, v2))) exp1 exp2
+  | UnE (ot, op, exp1) ->
+    unary context k (fun v1 -> e (UnE (ot, op, v1))) exp1
+  | BinE (ot, exp1, op, exp2) ->
+    binary context k (fun v1 v2 -> e (BinE (ot, v1, op, v2))) exp1 exp2
+  | RelE (ot, exp1, op, exp2) ->
+    binary context k (fun v1 v2 -> e (RelE (ot, v1, op, v2))) exp1 exp2
   | TupE exps ->
     nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->

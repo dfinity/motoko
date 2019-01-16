@@ -284,13 +284,14 @@ type compile_result = (CustomModule.extended_module, Diag.messages) result
 let compile_with check mode name : compile_result =
   match check initial_stat_env name with
   | Error msgs -> Error msgs
-  | Ok ((prog, _t, _scope), msgs) ->
+  | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
+    let prelude = Desugar.prog initial_stat_env.Typing.con_env prelude in
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
     let prog = tailcall_optimization true prog name in
-    let prog = Desugar.prog prog in
-    let prelude = Desugar.prog prelude in
+    let scope' = Typing.adjoin_scope initial_stat_env scope in
+    let prog = Desugar.prog scope'.Typing.con_env prog in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_

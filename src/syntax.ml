@@ -123,17 +123,20 @@ and pat_field' = {id : id; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-(* type instantiations *)                   
+(* type instantiations *)
 type inst = (typ, Type.typ ref) Source.annotated_phrase
-          
+
+(* Filled in for overloaded operators during type checking. Initially Type.Pre. *)
+type op_type = Type.typ ref
+
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
-  | UnE of unop * exp                          (* unary operator *)
-  | BinE of exp * binop * exp                  (* binary operator *)
-  | RelE of exp * relop * exp                  (* relational operator *)
+  | UnE of op_type * unop * exp                (* unary operator *)
+  | BinE of op_type * exp * binop * exp        (* binary operator *)
+  | RelE of op_type * exp * relop * exp        (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)

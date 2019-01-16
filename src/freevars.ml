@@ -36,9 +36,9 @@ let rec exp e : f = match e.it with
   | VarE i              -> S.singleton i.it
   | LitE l              -> S.empty
   | PrimE _             -> S.empty
-  | UnE (uo, e)         -> exp e
-  | BinE (e1, bo, e2)   -> exps [e1; e2]
-  | RelE (e1, ro, e2)   -> exps [e1; e2]
+  | UnE (_, uo, e)      -> exp e
+  | BinE (_, e1, bo, e2)-> exps [e1; e2]
+  | RelE (_, e1, ro, e2)-> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
