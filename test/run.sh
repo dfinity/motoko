@@ -125,7 +125,10 @@ do
   do
     if [ -e "$out/$file" ]
     then
-      grep -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file > $out/$file.norm
+      grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file |
+      sed 's/\x00//g' |
+      sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
+      sed 's/^.*W, hypervisor:/W, hypervisor:/g' > $out/$file.norm
       mv $out/$file.norm $out/$file
     fi
   done
@@ -144,7 +147,7 @@ do
   else
     for file in $diff_files
     do
-      diff -u -N $ok/$file.ok $out/$file
+      diff -a -u -N $ok/$file.ok $out/$file
       if [ $? != 0 ]; then failures=yes; fi
     done
   fi
