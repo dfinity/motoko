@@ -6,7 +6,7 @@ then
   exit 1
 fi
 
-name="$(basename $1 .wasm)/0"
+name="$(basename $1 .wasm)_0"
 
 export LANG=C
 function dvm_ () {
