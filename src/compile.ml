@@ -3257,7 +3257,7 @@ and compile_exp (env : E.t) exp =
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
     Array.load_n (Int32.of_int n)
-  | ArrayE (m, es) ->
+  | ArrayE (m, t, es) ->
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
   | ActorE (name, fs, _) ->
     StackRep.UnboxedReference,

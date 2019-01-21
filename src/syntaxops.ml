@@ -216,7 +216,7 @@ let loopE exp1 exp2Opt =
                          (match exp2Opt with
                           | Some exp2 -> eff exp2
                           | None -> Type.Triv);
-            note_typ = Type.unit}
+            note_typ = Type.Non}
   }
 
 

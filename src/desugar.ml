@@ -41,7 +41,18 @@ let
     | S.TupE es -> I.TupE (exps ce es)
     | S.ProjE (e, i) -> I.ProjE (exp ce e, i)
     | S.OptE e -> I.OptE (exp ce e)
-    | S.ObjE (s, i, es) -> obj ce at s None i es note.S.note_typ
+    | S.ObjE (s, i, es) ->
+      let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
+      let obj_typ =
+        T.Obj(s.it,
+              List.sort compare
+                (List.map (fun {it = {Syntax.name;exp;mut;priv;_};_} ->
+                     let t = exp.note.S.note_typ in
+                     let t = if mut.it = Syntax.Var then Type.Mut t else t in
+                     {Type.name = S.string_of_name name.it;
+                      Type.typ = t}) public_es))
+      in
+      obj ce at s None i es obj_typ
     | S.DotE (e, n) ->
       begin match Type.as_immut (Type.promote ce (e.Source.note.S.note_typ)) with
       | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp ce e, n)
@@ -50,7 +61,9 @@ let
       | _ -> raise (Invalid_argument ("non-object in dot operator"))
       end
     | S.AssignE (e1, e2) -> I.AssignE (exp ce e1, exp ce e2)
-    | S.ArrayE (m, es) -> I.ArrayE (m, exps ce es)
+    | S.ArrayE (m, es) ->
+      let t = Type.as_array note.S.note_typ in
+      I.ArrayE (m, Type.as_immut t, exps ce es)
     | S.IdxE (e1, e2) -> I.IdxE (exp ce e1, exp ce e2)
     | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in

@@ -218,18 +218,22 @@ and dec' env d =
       in
       let env3 = pat env2 p  in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
+      let cs = List.map (fun tb -> tb.note) tbs in
       if !tail_called then
         let ids = match typ d with
-          | Func(_,_,_,dom,_) -> List.map fresh_id dom
+          | Func(_,_,_,dom,_) -> List.map (fun t -> fresh_id (open_ cs t)) dom
           | _ -> assert false
         in
         let args = seqP (List.map varP ids) in
+        let l_typ =
+          {it = Syntax.TupT []; at = no_region; note = Type.unit} 
+        in
         let body =
           blockE [ varD (id_of_exp temp) (seqE ids);
                    expD (loopE
-                           (labelE l typT
+                           (labelE l l_typ 
                               (blockE [letP p temp;
-                                       expD (retE exp0' unit)])) None)
+                                       expD (retE exp0' Type.unit)])) None)
           ] in
         FuncD (s, id, tbs, args, typT, body)
       else

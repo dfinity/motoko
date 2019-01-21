@@ -71,7 +71,7 @@ let rec exp e : f = match e.it with
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
-  | ArrayE (m, es)      -> exps es
+  | ArrayE (m, t, es)      -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (_, e1, ts, e2) -> exps [e1; e2]
   | BlockE ds           -> close (decs ds)

@@ -82,7 +82,7 @@ let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 
-let unfold_obj env t =
+let unfold_obj env t at =
     match t with
     | T.Obj (_,_) -> t
     | T.Con (c,ts) ->
@@ -90,9 +90,9 @@ let unfold_obj env t =
         match Con.Env.find_opt c env.cons with
         | Some T.Abs (tbs, (T.Obj(_,_) as t2))  ->
           T.open_ ts t2
-        | _ -> error env no_region "bad annotation %s (wrong kind)" (T.string_of_typ t)
+        | _ -> error env at "bad annotation %s (wrong kind)" (T.string_of_typ t)
       end
-    | _ -> error env no_region "bad annotation %s (wrong form)" (T.string_of_typ t)
+    | _ -> error env at "bad annotation %s (wrong form)" (T.string_of_typ t)
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
@@ -425,11 +425,11 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | ActorE ( id, fields, t) ->
     let env' = { env with async = false } in
     let t1 = infer_obj env' T.Actor id fields in
-    let t2 = unfold_obj env t in
+    let t2 = unfold_obj env t exp.at in
     if T.sub env.cons t1 t2 then
       t
     else
-      error env no_region "expecting actor of type %s, but expression produces $s"
+      error env no_region "expecting actor of type %s, but expression produces %s"
         (T.string_of_typ_expand env.cons t2)
         (T.string_of_typ_expand env.cons t1)
   | ActorDotE(exp1,{it = Syntax.Name n;_})
@@ -466,9 +466,9 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
         error env exp.at "expected mutable assignment target";
     end;
     T.unit
-  | ArrayE (mut, exps) ->
+  | ArrayE (mut, t, exps) ->
     let ts = List.map (infer_exp env) exps in
-    let t1 = List.fold_left (T.lub env.cons) T.Non ts in
+    let t1 = List.fold_left (T.lub env.cons) t ts in
     T.Array (match mut.it with Syntax.Const -> t1 | Syntax.Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
@@ -618,11 +618,11 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     let t1 = 
       T.Obj(sort.it, List.sort compare (List.map (fun (name,id) ->
                                             {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)) in
-    let t2 = unfold_obj env t in
+    let t2 = unfold_obj env t exp.at in
     if T.sub env.cons t1 t2 then
       t
     else
-      error env no_region "expecting actor of type %s, but expression produces $s"
+      error env no_region "expecting object of type %s, but expression produces %s"
         (T.string_of_typ_expand env.cons t2)
         (T.string_of_typ_expand env.cons t1)
     
@@ -689,7 +689,8 @@ and check_exp' env t exp =
  *)
     let t' = infer_exp env exp in
     if not (T.sub env.cons t' t) then
-      local_error env exp.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+      local_error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
+        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
         (T.string_of_typ_expand env.cons t')
         (T.string_of_typ_expand env.cons t)
 

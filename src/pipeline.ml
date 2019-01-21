@@ -289,7 +289,7 @@ let compile_with check mode name : compile_result =
     let prelude = Desugar.prog initial_stat_env.Typing.con_env prelude in
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
-    let prog = tailcall_optimization true prog name in
+    let prog = tailcall_optimization true prog name in 
     let scope' = Typing.adjoin_scope initial_stat_env scope in
     let prog = Desugar.prog scope'.Typing.con_env prog in
     match Check_ir.check_prog initial_stat_env prog with

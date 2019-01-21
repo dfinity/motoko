@@ -35,7 +35,7 @@ and exp' =
   | DotE of exp * Syntax.name                  (* object projection *)
   | ActorDotE of exp * Syntax.name             (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of Syntax.mut * exp list            (* array *)
+  | ArrayE of Syntax.mut * Type.typ * exp list  (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
       Value. call_conv * exp * Type.typ list * exp
