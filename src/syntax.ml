@@ -123,7 +123,7 @@ and pat_field' = {id : id; pat : pat}
 type priv = priv' Source.phrase
 and priv' = Public | Private
 
-(* Filled in for overloaded operators during type checking. Initially Type.Pre. *)
+(* Filled in for overloaded operators and blocks during type checking. Initially Type.Pre. *)
 type op_type = Type.typ ref
 
 type exp = (exp', typ_note) Source.annotated_phrase
@@ -142,8 +142,8 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | CallE of exp * typ list * exp             (* function call *)
-  | BlockE of dec list                         (* block *)
+  | CallE of exp * typ list * exp              (* function call *)
+  | BlockE of dec list * op_type               (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -160,7 +160,7 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
-  | DecE of dec                                (* declaration *)
+  | DecE of dec * Type.typ ref                 (* declaration *)
   | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
   | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
   | NewObjE of obj_sort * (name * id) list     (* make an object, preserving mutable identity (internal) *)

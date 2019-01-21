@@ -100,7 +100,7 @@ and exp' env e  = match e.it with
                  expD (breakE label (tupE []) (typ e))]).it
       | _,_-> CallE(exp env e1, insts, exp env e2)
     end
-  | BlockE ds           -> BlockE (decs env ds)
+  | BlockE (ds,ot)      -> BlockE (decs env ds, ref (!ot))
   | NotE e              -> NotE (exp env e)
   | AndE (e1, e2)       -> AndE (exp env e1, tailexp env e2)
   | OrE (e1, e2)        -> OrE (exp env e1, tailexp env e2)
@@ -121,8 +121,8 @@ and exp' env e  = match e.it with
   | AssertE e           -> AssertE (exp env e)
   | IsE (e, t)          -> IsE (exp env e, t)
   | AnnotE (e, t)       -> AnnotE (exp env e, t)
-  | DecE d              -> let mk_d, env1 = dec env d in
-                           DecE ({mk_d with it = mk_d.it env1})
+  | DecE (d, ot)        -> let mk_d, env1 = dec env d in
+                           DecE ({mk_d with it = mk_d.it env1},ref (!ot))
   | OptE e              -> OptE (exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)

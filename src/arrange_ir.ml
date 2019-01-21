@@ -23,7 +23,7 @@ let rec exp e = match e.it with
   | ArrayE (m, t, es)      -> "ArrayE"  $$ [Arrange.mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE ds           -> "BlockE"  $$ List.map dec ds
+  | BlockE (ds, t)      -> "BlockE"  $$ List.map dec ds @ [typ t]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]

@@ -18,7 +18,7 @@ let rec exp e = match e.it with
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE ds           -> "BlockE"  $$ List.map dec ds
+  | BlockE (ds, ot)      -> "BlockE"  $$ List.map dec ds @ [operator_type (!ot)]
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
   | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
@@ -36,7 +36,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | DecE d              -> "DecE"    $$ [dec d]
+  | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot] 
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]

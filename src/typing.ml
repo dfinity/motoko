@@ -471,13 +471,15 @@ and infer_exp' env exp : T.typ =
       error env exp1.at "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-  | BlockE decs ->
+  | BlockE (decs,ot) ->
     let t, scope = infer_block env decs exp.at in
-    (try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-      error env exp.at "local class type %s is contained in inferred block type\n  %s"
-        (Con.to_string c)
-        (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
-    )
+    let t' = try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
+                error env exp.at "local class type %s is contained in inferred block type\n  %s"
+                  (Con.to_string c)
+                  (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
+    in
+    ot := t';
+    t'
   | NotE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.bool
@@ -602,12 +604,15 @@ and infer_exp' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
-  | DecE dec ->
+  | DecE (dec,ot) ->
     let t, scope = infer_block env [dec] exp.at in
-    (try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-      error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
-        (Con.to_string c) (T.string_of_typ_expand env.cons t)
-    )
+    let t' = 
+      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
+        error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
+          (Con.to_string c) (T.string_of_typ_expand env.cons t)
+    in
+    ot := t';
+    t'
   (* DeclareE and DefineE should not occur in source code *)
   | DeclareE (id, typ, exp1) ->
     let env' = adjoin_vals env (T.Env.singleton id.it typ) in
@@ -670,8 +675,9 @@ and check_exp' env t exp =
   | AsyncE exp1, T.Async t' ->
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1
-  | BlockE decs, _ ->
-    ignore (check_block env t decs exp.at)
+  | BlockE (decs, ot),_ ->
+    ignore (check_block env t decs exp.at);
+    ot := t
   | IfE (exp1, exp2, exp3), _ ->
     check_exp env T.bool exp1;
     check_exp env t exp2;
@@ -925,7 +931,7 @@ and infer_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | DecE dec -> is_func_dec dec
+  | DecE (dec, _) -> is_func_dec dec
   | AnnotE (exp, _) -> is_func_exp exp
   | _ -> Printf.printf "[1]%!"; false
 

@@ -330,7 +330,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 *)
       )
     )
-  | BlockE decs ->
+  | BlockE (decs, _)->
     interpret_block env decs None k
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
@@ -431,7 +431,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
-  | DecE dec ->
+  | DecE (dec, _) ->
     interpret_block env [dec] None k
   | DeclareE (id, typ, exp1) ->
     let env = adjoin_vals env (declare_id id) in

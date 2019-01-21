@@ -93,7 +93,7 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE exp = {exp with it = DecE exp}
+let decE dec = {dec with it = DecE (dec,ref dec.note.note_typ)}
 
 let rec typ_decs decs =
   match decs with
@@ -105,7 +105,7 @@ let blockE decs =
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE decs;
+  { it = BlockE (decs, ref typ);
     at = no_region;
     note = {note_typ = typ;
             note_eff = e}

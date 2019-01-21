@@ -294,8 +294,8 @@ and t_exp' (exp:Syntax.exp) =
       .it
   | CallE (exp1, typs, exp2)  ->
     CallE(t_exp exp1, List.map t_typT typs, t_exp exp2)
-  | BlockE decs ->
-    BlockE (t_decs decs)
+  | BlockE (decs, ot) ->
+    BlockE (t_decs decs, ref (t_typ (!ot)))
   | NotE exp1 ->
     NotE (t_exp exp1)
   | AndE (exp1, exp2) ->
@@ -331,8 +331,8 @@ and t_exp' (exp:Syntax.exp) =
     IsE (t_exp exp1, t_exp exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp exp1, t_typT typ)
-  | DecE dec ->
-    DecE (t_dec dec)
+  | DecE (dec, ot) ->
+    DecE (t_dec dec, ref (t_typ (!ot)))
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, t_typ typ, t_exp exp1)
   | DefineE (id, mut ,exp1) ->

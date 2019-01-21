@@ -92,8 +92,8 @@ and t_exp' context exp' =
     IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (exp1, typs, exp2) ->
     CallE (t_exp context exp1, typs, t_exp context exp2)
-  | BlockE decs ->
-    BlockE (t_decs context decs)
+  | BlockE (decs, ot) ->
+    BlockE (t_decs context decs, ref (!ot))
   | NotE exp1 ->
     NotE (t_exp context exp1)
   | AndE (exp1, exp2) ->
@@ -146,8 +146,8 @@ and t_exp' context exp' =
     IsE (t_exp context exp1, t_exp context exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp context exp1,typ)
-  | DecE dec ->
-    DecE (t_dec context dec)
+  | DecE (dec,ot) ->
+    DecE (t_dec context dec, ref (!ot))
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
@@ -417,7 +417,7 @@ and c_exp' context exp k =
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (exp1, typs, exp2) ->
     binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
-  | BlockE decs ->
+  | BlockE (decs,t) ->
     c_block context decs k
   | NotE exp1 ->
     unary context k (fun v1 -> e (NotE v1)) exp1
@@ -498,7 +498,7 @@ and c_exp' context exp k =
   | AnnotE (exp1, typ) ->
     (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1
-  | DecE dec ->
+  | DecE (dec, _) ->
     c_dec context dec k
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1

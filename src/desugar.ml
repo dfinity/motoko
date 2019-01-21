@@ -69,7 +69,7 @@ let
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
       let inst = List.map (fun t -> t.Source.note) inst in
       I.CallE (cc, exp ce e1, inst, exp ce e2)
-    | S.BlockE ds -> I.BlockE (decs ce ds)
+    | S.BlockE (ds, ot) -> I.BlockE (decs ce ds, !ot)
     | S.NotE e -> I.IfE (exp ce e, false_lit, true_lit)
     | S.AndE (e1, e2) -> I.IfE (exp ce e1, exp ce e2, false_lit)
     | S.OrE (e1, e2) -> I.IfE (exp ce e1, true_lit, exp ce e2)
@@ -87,7 +87,7 @@ let
     | S.AssertE e -> I.AssertE (exp ce e)
     | S.IsE (e1, e2) -> I.IsE (exp ce e1, exp ce e2)
     | S.AnnotE (e, _) -> exp' ce at note e.it
-    | S.DecE d -> I.BlockE (decs ce [d])
+    | S.DecE (d, ot) -> I.BlockE (decs ce [d], !ot)
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp ce e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp ce e)
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs, note.S.note_typ)
@@ -144,7 +144,8 @@ let
            at = at;
            note = {S.note_typ = obj_typ;
                    S.note_eff = T.Triv}};
-        ])
+        ],
+      obj_typ)
 
   and exp_fields ce fs = List.map (exp_field ce) fs
   and exp_field ce f = phrase ce exp_field' f

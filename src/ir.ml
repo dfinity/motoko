@@ -39,7 +39,7 @@ and exp' =
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
       Value. call_conv * exp * Type.typ list * exp
-  | BlockE of dec list                         (* block *)
+  | BlockE of dec list * Type.typ              (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)

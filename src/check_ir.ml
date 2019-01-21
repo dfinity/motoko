@@ -492,13 +492,16 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       error env exp1.at "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-  | BlockE decs ->
-    let t, scope = infer_block env decs exp.at in
-    (try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-      error env exp.at "local class type %s is contained in inferred block type\n  %s"
-        (Con.to_string c)
-        (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
-    )
+  | BlockE (decs, t) ->
+    let t1, scope = infer_block env decs exp.at in
+    (*  let _t2 = try T.avoid env.cons scope.con_env t1 with T.Unavoidable c -> assert false in *)
+    let env' = adjoin env scope in 
+    check_typ env t;
+    if not (T.eq env.cons t T.unit || T.eq env'.cons t1 t) then
+      error env exp.at "expected block type\n  %s, found declaration with inequivalent type\n  %s"
+        (T.string_of_typ t)
+        (T.string_of_typ t1);
+    t
   | IfE (exp1, exp2, exp3) ->
     if not env.pre then check_exp env T.bool exp1;
     let t2 = infer_exp env exp2 in
@@ -909,7 +912,7 @@ and infer_exp_fields env s id t fields : T.field list * val_env =
 and is_func_exp exp =
   match exp.it with
   (*   | DecE dec -> is_func_dec dec *)
-  | BlockE [dec] -> is_func_dec dec   
+  | BlockE ([dec],_)-> is_func_dec dec   
   | _ -> Printf.printf "[1]%!"; false
 
 and is_func_dec dec =

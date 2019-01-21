@@ -71,10 +71,10 @@ let rec exp e : f = match e.it with
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
-  | ArrayE (m, t, es)      -> exps es
+  | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (_, e1, ts, e2) -> exps [e1; e2]
-  | BlockE ds           -> close (decs ds)
+  | BlockE (ds, _)      -> close (decs ds)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | WhileE (e1, e2)     -> exps [e1; e2]

@@ -50,7 +50,7 @@ let assign_op lhs rhs_f at =
   let e = AssignE (lhs', rhs_f rhs') @? at in
   match ds with
   | [] -> e
-  | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
+  | ds -> BlockE (ds @ [ExpD e @? e.at], ref Type.Pre) @? at
 
 let share_typ t =
   match t.it with
@@ -73,8 +73,8 @@ let share_exp e =
   match e.it with
   | ObjE ({it = Type.Object Type.Local; _} as s, x, efs) ->
     ObjE ({s with it = Type.Object Type.Sharable}, x, efs) @? e.at
-  | DecE d ->
-    DecE (share_dec d) @? e.at
+  | DecE (d, ot) ->
+    DecE (share_dec d, ot) @? e.at
   | _ -> e
 
 let share_expfield (ef : exp_field) =
@@ -326,7 +326,7 @@ lit :
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds) @? at $sloc }
+    { BlockE(ds, ref Type.Pre) @? at $sloc }
 
 exp_nullary :
   | e=exp_block
@@ -440,7 +440,7 @@ exp_nonvar :
   | e=exp_nondec
     { e }
   | d=dec_nonvar
-    { DecE(d) @? at $sloc }
+    { DecE(d, ref Type.Pre) @? at $sloc }
   (* TODO(andreas): hack, remove *)
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let anon = if s.it = Type.Actor then "actor" else "object" in
@@ -454,7 +454,7 @@ exp :
   | e=exp_nonvar
     { e }
   | d=dec_var
-    { DecE(d) @? at $sloc }
+    { DecE(d, ref Type.Pre) @? at $sloc }
       
     
 case : 
@@ -473,7 +473,7 @@ exp_field :
       {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
   | priv=private_opt s=shared_opt x=id fd=func_dec
     { let d = fd s x in
-      let e = DecE(d) @? d.at in
+      let e = DecE(d, ref Type.Pre) @? d.at in
       {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
 
 (* Patterns *)
