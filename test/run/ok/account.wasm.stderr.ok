@@ -25,9 +25,11 @@ non-closed actor: (ActorE
                     (VarE $0)
                     (BlockE
                       (ExpD (RetE (CallE ( 1 -> 0) (VarE $0) (VarE balance))))
+                      Int
                     )
                   )
                 )
+                (Int -> ()) -> ()
               )
               (BlockE
                 (FuncD
@@ -37,11 +39,14 @@ non-closed actor: (ActorE
                   ()
                   (CallE (shared  1 -> 0) (VarE $8) (VarE $9))
                 )
+                Int -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (shared Int -> ()) -> ()
     )
     Const
     Public
@@ -83,9 +88,11 @@ non-closed actor: (ActorE
                           )
                         )
                       )
+                      Account
                     )
                   )
                 )
+                (Account -> ()) -> ()
               )
               (BlockE
                 (FuncD
@@ -95,11 +102,14 @@ non-closed actor: (ActorE
                   ()
                   (CallE (shared  1 -> 0) (VarE $10) (VarE $11))
                 )
+                Account -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (Int, shared Account -> ()) -> ()
     )
     Const
     Public
@@ -123,8 +133,10 @@ non-closed actor: (ActorE
               (TupE (VarE amount) (VarE Account))
             )
           )
+          ()
         )
       )
+      shared (like Account) -> ()
     )
     Const
     Public
@@ -145,8 +157,10 @@ non-closed actor: (ActorE
               (BinE Int (VarE balance) AddOp (VarE amount))
             )
           )
+          ()
         )
       )
+      shared (Int, Class) -> ()
     )
     Const
     Public
@@ -182,9 +196,11 @@ non-closed actor: (ActorE
                           )
                         )
                       )
+                      Bool
                     )
                   )
                 )
+                (Bool -> ()) -> ()
               )
               (BlockE
                 (FuncD
@@ -194,13 +210,17 @@ non-closed actor: (ActorE
                   ()
                   (CallE (shared  1 -> 0) (VarE $12) (VarE $13))
                 )
+                Bool -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (like Account, shared Bool -> ()) -> ()
     )
     Const
     Public
   )
+  Account
 )
