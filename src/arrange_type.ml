@@ -1,5 +1,5 @@
 open Source
-open Type   
+open Type
 open Wasm.Sexpr
 
 let ($$) head inner = Node (head, inner)
