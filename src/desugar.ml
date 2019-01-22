@@ -22,25 +22,25 @@ let apply_sign op l = Syntax.(match op, l with
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
-let phrase ce f x =  {x with it = f ce x.it}
-let phrase' ce f x = {x with it = f ce x.at x.note x.it}
+let phrase f x =  {x with it = f x.it}
+let phrase' f x = {x with it = f x.at x.note x.it}
 
 let
-  rec exps ce es = List.map (exp ce) es
-  and exp ce e = phrase' ce exp' e
-  and exp' ce at note = function
+  rec exps es = List.map (exp) es
+  and exp e = phrase' exp' e
+  and exp' at note = function
     | S.PrimE p -> I.PrimE p
     | S.VarE i -> I.VarE i
     | S.LitE l -> I.LitE !l
     | S.UnE (ot, o, e) ->
-      I.UnE (!ot, o, exp ce e)
+      I.UnE (!ot, o, exp e)
     | S.BinE (ot, e1, o, e2) ->
-      I.BinE (!ot, exp ce e1, o, exp ce e2)
+      I.BinE (!ot, exp e1, o, exp e2)
     | S.RelE (ot, e1, o, e2) ->
-      I.RelE (!ot, exp ce e1, o, exp ce e2)
-    | S.TupE es -> I.TupE (exps ce es)
-    | S.ProjE (e, i) -> I.ProjE (exp ce e, i)
-    | S.OptE e -> I.OptE (exp ce e)
+      I.RelE (!ot, exp e1, o, exp e2)
+    | S.TupE es -> I.TupE (exps es)
+    | S.ProjE (e, i) -> I.ProjE (exp e, i)
+    | S.OptE e -> I.OptE (exp e)
     | S.ObjE (s, i, es) ->
       let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
       let obj_typ =
@@ -52,56 +52,56 @@ let
                      {Type.name = S.string_of_name name.it;
                       Type.typ = t}) public_es))
       in
-      obj ce at s None i es obj_typ
+      obj at s None i es obj_typ
     | S.DotE (e, sr, n) ->
       begin match (!sr) with
-      | Type.Actor -> I.ActorDotE (exp ce e, n)
-      | _ -> I.DotE (exp ce e, n)
+      | Type.Actor -> I.ActorDotE (exp e, n)
+      | _ -> I.DotE (exp e, n)
       end
-    | S.AssignE (e1, e2) -> I.AssignE (exp ce e1, exp ce e2)
+    | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
     | S.ArrayE (m, es) ->
       let t = Type.as_array note.S.note_typ in
-      I.ArrayE (m, Type.as_immut t, exps ce es)
-    | S.IdxE (e1, e2) -> I.IdxE (exp ce e1, exp ce e2)
+      I.ArrayE (m, Type.as_immut t, exps es)
+    | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
     | S.CallE (e1, inst, e2) ->
       let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
       let inst = List.map (fun t -> t.Source.note) inst in
-      I.CallE (cc, exp ce e1, inst, exp ce e2)
-    | S.BlockE (ds, ot) -> I.BlockE (decs ce ds, !ot)
-    | S.NotE e -> I.IfE (exp ce e, false_lit, true_lit)
-    | S.AndE (e1, e2) -> I.IfE (exp ce e1, exp ce e2, false_lit)
-    | S.OrE (e1, e2) -> I.IfE (exp ce e1, true_lit, exp ce e2)
-    | S.IfE (e1, e2, e3) -> I.IfE (exp ce e1, exp ce e2, exp ce e3)
-    | S.SwitchE (e1, cs) -> I.SwitchE (exp ce e1, cases ce cs)
-    | S.WhileE (e1, e2) -> I.WhileE (exp ce e1, exp ce e2)
-    | S.LoopE (e1, None) -> I.LoopE (exp ce e1, None)
-    | S.LoopE (e1, Some e2) -> I.LoopE (exp ce e1, Some (exp ce e2))
-    | S.ForE (p, e1, e2) -> I.ForE (pat ce p, exp ce e1, exp ce e2)
-    | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note, exp ce e)
-    | S.BreakE (l, e) -> I.BreakE (l, exp ce e)
-    | S.RetE e -> I.RetE (exp ce e)
-    | S.AsyncE e -> I.AsyncE (exp ce e)
-    | S.AwaitE e -> I.AwaitE (exp ce e)
-    | S.AssertE e -> I.AssertE (exp ce e)
-    | S.IsE (e1, e2) -> I.IsE (exp ce e1, exp ce e2)
-    | S.AnnotE (e, _) -> exp' ce at note e.it
-    | S.DecE (d, ot) -> I.BlockE (decs ce [d], !ot)
-    | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp ce e)
-    | S.DefineE (i, m, e) -> I.DefineE (i, m, exp ce e)
+      I.CallE (cc, exp e1, inst, exp e2)
+    | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
+    | S.NotE e -> I.IfE (exp e, false_lit, true_lit)
+    | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, false_lit)
+    | S.OrE (e1, e2) -> I.IfE (exp e1, true_lit, exp e2)
+    | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
+    | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
+    | S.WhileE (e1, e2) -> I.WhileE (exp e1, exp e2)
+    | S.LoopE (e1, None) -> I.LoopE (exp e1, None)
+    | S.LoopE (e1, Some e2) -> I.LoopE (exp e1, Some (exp e2))
+    | S.ForE (p, e1, e2) -> I.ForE (pat p, exp e1, exp e2)
+    | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note, exp e)
+    | S.BreakE (l, e) -> I.BreakE (l, exp e)
+    | S.RetE e -> I.RetE (exp e)
+    | S.AsyncE e -> I.AsyncE (exp e)
+    | S.AwaitE e -> I.AwaitE (exp e)
+    | S.AssertE e -> I.AssertE (exp e)
+    | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
+    | S.AnnotE (e, _) -> exp' at note e.it
+    | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
+    | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)
+    | S.DefineE (i, m, e) -> I.DefineE (i, m, exp e)
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs, note.S.note_typ)
 
-  and field_to_dec ce (f : S.exp_field) : Ir.dec =
+  and field_to_dec (f : S.exp_field) : Ir.dec =
     match f.it.S.mut.it with
     | S.Const ->
       {it = I.LetD ({it = I.VarP f.it.S.id; at = no_region;
                      note = f.it.S.exp.note.S.note_typ
                     },
-                    exp ce f.it.S.exp);
+                    exp f.it.S.exp);
        at = f.at;
        note = { f.it.S.exp.note with S.note_typ = T.unit}
       }
     | S.Var   ->
-      {it = I.VarD (f.it.S.id, exp ce f.it.S.exp);
+      {it = I.VarD (f.it.S.id, exp f.it.S.exp);
        at = f.at;
        note = { f.it.S.exp.note with S.note_typ = T.unit}
       }
@@ -111,14 +111,14 @@ let
     | S.Private -> []
     | S.Public -> [ (f.it.S.name, f.it.S.id) ]
 
-  and obj ce at s class_id self_id es obj_typ =
+  and obj at s class_id self_id es obj_typ =
     match s.it with
-    | Type.Object _ -> build_obj ce at None self_id es obj_typ
-    | Type.Actor -> I.ActorE (self_id, exp_fields ce es, obj_typ)
+    | Type.Object _ -> build_obj at None self_id es obj_typ
+    | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
 
-  and build_obj ce at class_id self_id es obj_typ =
+  and build_obj at class_id self_id es obj_typ =
     I.BlockE (
-      List.map (field_to_dec ce) es @
+      List.map (field_to_dec) es @
         [ {it = I.LetD (
                     {it = I.VarP self_id;
                      at = at;
@@ -145,17 +145,17 @@ let
         ],
       obj_typ)
 
-  and exp_fields ce fs = List.map (exp_field ce) fs
-  and exp_field ce f = phrase ce exp_field' f
-  and exp_field' ce (f : S.exp_field') =
-    S.{ I.name = f.name; I.id = f.id; I.exp = exp ce f.exp; I.mut = f.mut; I.priv = f.priv}
+  and exp_fields fs = List.map (exp_field) fs
+  and exp_field f = phrase exp_field' f
+  and exp_field' (f : S.exp_field') =
+    S.{ I.name = f.name; I.id = f.id; I.exp = exp f.exp; I.mut = f.mut; I.priv = f.priv}
 
 
-  and typ_binds ce tbs = List.map (typ_bind ce) tbs
-  and typ_bind ce tb =
-    phrase' ce typ_bind' tb
-  and typ_bind' ce at n {S.var; S.bound} = {Type.var = var.it; Type.bound = bound.note}
-  and decs ce ds =
+  and typ_binds tbs = List.map (typ_bind) tbs
+  and typ_bind tb =
+    phrase' typ_bind' tb
+  and typ_bind' at n {S.var; S.bound} = {Type.var = var.it; Type.bound = bound.note}
+  and decs ds =
       match ds with
       | [] -> []
       | d::ds ->
@@ -166,15 +166,15 @@ let
                       at = d.at;
                       note = {S.note_typ = T.unit; S.note_eff = T.Triv}}
           in
-          typD::(phrase' ce dec' d)::(decs ce ds)
-        | _ -> (phrase' ce dec' d)::(decs ce ds)
-  and dec' ce at n d = match d with
-    | S.ExpD e -> I.ExpD (exp ce e)
-    | S.LetD (p, e) -> I.LetD (pat ce p, exp ce e)
-    | S.VarD (i, e) -> I.VarD (i, exp ce e)
+          typD::(phrase' dec' d)::(decs ds)
+        | _ -> (phrase' dec' d)::(decs ds)
+  and dec' at n d = match d with
+    | S.ExpD e -> I.ExpD (exp e)
+    | S.LetD (p, e) -> I.LetD (pat p, exp e)
+    | S.VarD (i, e) -> I.VarD (i, exp e)
     | S.FuncD (s, i, tbs, p, ty, e) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
-      I.FuncD (cc, i, typ_binds ce tbs, pat ce p, ty.note, exp ce e)
+      I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
     | S.TypD (con_id, typ_bind, t) ->
       let (c,k) = Lib.Option.value con_id.note in
       I.TypD (c,k)
@@ -193,26 +193,26 @@ let
           T.open_ inst rng 
         | _ -> assert false
       in
-      I.FuncD (cc, fun_id, typ_binds ce tbs, pat ce p, obj_typ, (* TBR *)
-               {it = obj ce at s (Some fun_id) self_id es obj_typ;
+      I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
+               {it = obj at s (Some fun_id) self_id es obj_typ;
                 at = at;
                 note = {S.note_typ = obj_typ; S.note_eff = T.Triv}})
 
-  and cases ce cs = List.map (case ce) cs
-  and case ce c = phrase ce case' c
-  and case' ce c = S.{ I.pat = pat ce c.pat; I.exp = exp ce c.exp}
+  and cases cs = List.map (case) cs
+  and case c = phrase case' c
+  and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp}
 
-  and pats ce ps = List.map (pat ce) ps
-  and pat ce p = phrase ce pat' p
-  and pat' ce = function
+  and pats ps = List.map (pat) ps
+  and pat p = phrase pat' p
+  and pat' = function
     | S.VarP v -> I.VarP v
     | S.WildP -> I.WildP
     | S.LitP l -> I.LitP !l
     | S.SignP (o, l) -> I.LitP (apply_sign o !l)
-    | S.TupP ps -> I.TupP (pats ce ps)
-    | S.OptP p -> I.OptP (pat ce p)
-    | S.AltP (p1, p2) -> I.AltP (pat ce p1, pat ce p2)
-    | S.AnnotP (p, _) -> pat' ce p.it
+    | S.TupP ps -> I.TupP (pats ps)
+    | S.OptP p -> I.OptP (pat p)
+    | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
+    | S.AnnotP (p, _) -> pat' p.it
 
-  and prog ce p = phrase ce decs p
+  and prog p = phrase decs p
 
