@@ -3,7 +3,7 @@ module T = Type
 module E = Effect
 
 (* TODO: fix uses of List.sort compare etc on fields rather than field names *)
-(* TODO: annotate DotE in checker for desugaring sans environments *)
+
 (* TODO: remove DecE from syntax, replace by BlockE [dec] *)
 (* TODO: check constraint matching supports recursive bounds *)
 
@@ -194,10 +194,18 @@ let rec check_typ env typ : unit =
   | T.Like typ ->
     check_typ env typ
   | T.Obj (sort, fields) ->
+    let rec sorted fields =
+      match fields with
+      | [] 
+      | [_] -> true
+      | f1::((f2::_) as fields') ->
+        T.compare_field f1 f2  < 0 && sorted fields'
+    in
     check_ids env (List.map (fun (field : T.field) -> field.T.name) fields);
-    List.iter (check_typ_field env sort) fields
-    (* TODO: check fields are sorted, c.f. typecheck:ml: *)
-    (* T.Obj (sort.it, List.sort compare fs) *) (* IS THAT EVEN CORRECT? *)
+    List.iter (check_typ_field env sort) fields;
+    if not (sorted fields) then
+      error env no_region "object type's fields are not sorted\n  %s"
+        (T.string_of_typ_expand env.cons typ);
   | T.Mut typ ->
     check_typ env typ
 
@@ -583,7 +591,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.unit
   | NewObjE (sort, labids, t) ->
     let t1 = 
-      T.Obj(sort.it, List.sort compare (List.map (fun (name,id) ->
+      T.Obj(sort.it, List.sort T.compare_field (List.map (fun (name,id) ->
                                             {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)) in
     let t2 = unfold_obj env t exp.at in
     if T.sub env.cons t1 t2 then
@@ -813,7 +821,7 @@ and infer_exp_fields env s id t fields : T.field list * val_env =
   let env' = add_val env id t in
   let tfs, ve =
     List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
-  List.sort compare tfs, ve
+  List.sort T.compare_field tfs, ve
 
 and is_func_exp exp =
   match exp.it with

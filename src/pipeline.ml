@@ -244,7 +244,14 @@ let output_scope (senv, _) t v sscope dscope =
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let run_with interpret output ((senv, denv) as env) name : run_result =
-  let result = interpret env name in
+  let result = interpret env name in      (*
+      begin match Type.as_immut (Type.promote ce (e.Source.note.S.note_typ)) with
+      | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp ce e, n)
+      | Type.Obj (_,  _) | Type.Array _ -> I.DotE (exp ce e, n)
+      | Type.Con _ -> raise (Invalid_argument ("Con in promoted type"))
+      | _ -> raise (Invalid_argument ("non-object in dot operator"))
+      end *)
+
   let env' =
     match result with
     | None ->
@@ -289,7 +296,7 @@ let compile_with check mode name : compile_result =
     let prelude = Desugar.prog prelude in
     let prog = await_lowering true prog name in
     let prog = async_lowering true prog name in
-    let prog = tailcall_optimization true prog name in 
+    let prog = tailcall_optimization true prog name in
     let prog = Desugar.prog prog in
     match Check_ir.check_prog initial_stat_env prog with
     | Error msgs -> Diag.print_messages msgs; assert (false)

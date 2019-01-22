@@ -45,7 +45,7 @@ let
       let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
       let obj_typ =
         T.Obj(s.it,
-              List.sort compare
+              List.sort T.compare_field
                 (List.map (fun {it = {Syntax.name;exp;mut;priv;_};_} ->
                      let t = exp.note.S.note_typ in
                      let t = if mut.it = Syntax.Var then Type.Mut t else t in

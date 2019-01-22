@@ -199,7 +199,7 @@ and check_typ' env typ : T.typ =
   | ObjT (sort, fields) ->
     check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
-    T.Obj (sort.it, List.sort compare fs)
+    T.Obj (sort.it, List.sort T.compare_field fs)
   | ParT typ ->
     check_typ env typ
 
@@ -928,7 +928,7 @@ and infer_exp_fields env s id t fields : T.field list * val_env =
   let env' = add_val env id t in
   let tfs, ve =
     List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
-  List.sort compare tfs, ve
+  List.sort T.compare_field tfs, ve
 
 and is_func_exp exp =
   match exp.it with

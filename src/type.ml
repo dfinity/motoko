@@ -43,6 +43,10 @@ and typ =
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+(* field ordering *)
+
+let compare_field {name=n;_} {name=m;_} = compare n m
+
 type kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -94,8 +98,8 @@ let array_obj t =
   let mut t = immut t @
     [ {name = "set"; typ = Func (Call Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
-  | Mut t' -> Obj (Object Local, List.sort compare (mut t'))
-  | t -> Obj (Object Local, List.sort compare (immut t))
+  | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
+  | t -> Obj (Object Local, List.sort compare_field (immut t))
 
 
 (* Shifting *)
@@ -491,7 +495,7 @@ and rel_fields env rel eq tfs1 tfs2 =
   | _, [] when rel != eq ->
     true
   | tf1::tfs1', tf2::tfs2' ->
-    (match compare tf1.name tf2.name with
+    (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ env rel eq tf1.typ tf2.typ &&
       rel_fields env rel eq tfs1' tfs2'
