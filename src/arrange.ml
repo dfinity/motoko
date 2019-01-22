@@ -13,7 +13,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
-  | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
+  | DotE (e, sr, n)         -> "DotE"    $$ [exp e; obj_sort' !sr; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
@@ -109,10 +109,12 @@ and sharing sh = match sh with
 and control c = match c with
   | Type.Returns -> "Returns"
   | Type.Promises -> "Promises"
-            
-and obj_sort s = match s.it with
+
+and obj_sort' s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
+
+and obj_sort s = obj_sort' s.it
 
 and func_sort s = match s.it with
   | Type.Call sh -> Atom ("Call " ^ sharing sh)

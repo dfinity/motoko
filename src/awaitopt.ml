@@ -82,8 +82,8 @@ and t_exp' context exp' =
   | ObjE (sort, id, fields) ->
     let fields' = t_fields context fields in
     ObjE (sort, id, fields')
-  | DotE (exp1, id) ->
-    DotE (t_exp context exp1, id)
+  | DotE (exp1, sr, id) ->
+    DotE (t_exp context exp1, ref (!sr), id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp context exp1, t_exp context exp2)
   | ArrayE (mut, exps) ->
@@ -407,8 +407,8 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ObjE (sort, id, fields) ->
     c_obj context exp sort id fields k
-  | DotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
+  | DotE (exp1, sr, id) ->
+    unary context k (fun v1 -> e (DotE (v1, ref (!sr), id))) exp1
   | AssignE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (AssignE (v1, v2))) exp1 exp2
   | ArrayE (mut, exps) ->

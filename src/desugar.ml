@@ -53,12 +53,10 @@ let
                       Type.typ = t}) public_es))
       in
       obj ce at s None i es obj_typ
-    | S.DotE (e, n) ->
-      begin match Type.as_immut (Type.promote ce (e.Source.note.S.note_typ)) with
-      | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp ce e, n)
-      | Type.Obj (_,  _) | Type.Array _ -> I.DotE (exp ce e, n)
-      | Type.Con _ -> raise (Invalid_argument ("Con in promoted type"))
-      | _ -> raise (Invalid_argument ("non-object in dot operator"))
+    | S.DotE (e, sr, n) ->
+      begin match (!sr) with
+      | Type.Actor -> I.ActorDotE (exp ce e, n)
+      | _ -> I.DotE (exp ce e, n)
       end
     | S.AssignE (e1, e2) -> I.AssignE (exp ce e1, exp ce e2)
     | S.ArrayE (m, es) ->

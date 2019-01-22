@@ -85,7 +85,7 @@ and exp' env e  = match e.it with
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields env efs)
-  | DotE (e, i)         -> DotE (exp env e, i)
+  | DotE (e, sr, i)     -> DotE (exp env e, ref (!sr), i)
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
   | ArrayE (m,es)          -> ArrayE (m,(exps env es))
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)

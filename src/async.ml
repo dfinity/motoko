@@ -241,8 +241,8 @@ and t_exp' (exp:Syntax.exp) =
   | ObjE (sort, id, fields) ->
     let fields' = t_fields fields in
     ObjE (sort, id, fields')
-  | DotE (exp1, id) ->
-    DotE (t_exp exp1, id)
+  | DotE (exp1, sr, id) ->
+    DotE (t_exp exp1, ref !sr, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp exp1, t_exp exp2)
   | ArrayE (mut, exps) ->

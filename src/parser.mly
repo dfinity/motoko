@@ -24,6 +24,7 @@ let (@?) it at = {it; at; note = empty_typ_note}
 let (@!) it at = {it; at; note = Type.Pre}
 let (@=) it at = {it; at; note = None}
 
+let dummy_obj_sort() = ref (Type.Object Type.Local)
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 let name_exp e =
@@ -37,9 +38,9 @@ let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
     match lhs.it with
     | VarE x -> [], lhs, dup_var x
-    | DotE (e1, x) ->
+    | DotE (e1, _, x) ->
       let ds, ex11, ex12 = name_exp e1 in
-      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
+      ds, DotE (ex11, dummy_obj_sort(), x) @? lhs.at, DotE (ex12, dummy_obj_sort(), x.it @@ x.at) @? lhs.at
     | IdxE (e1, e2) ->
       let ds1, ex11, ex12 = name_exp e1 in
       let ds2, ex21, ex22 = name_exp e2 in
@@ -354,7 +355,7 @@ exp_post :
   | e=exp_post DOT s=NAT
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
-    { DotE(e, {x with it = Name x.it}) @? at $sloc }
+    { DotE(e, dummy_obj_sort(), {x with it = Name x.it}) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { let typ_args = Lib.Option.get tso [] in
       CallE(e1, typ_args, e2) @? at $sloc }

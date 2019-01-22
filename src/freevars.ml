@@ -42,7 +42,7 @@ let rec exp e : f = match e.it with
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
-  | DotE (e, i)         -> exp e
+  | DotE (e, _, i)         -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, es)      -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]

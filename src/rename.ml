@@ -34,7 +34,7 @@ and exp' rho e  = match e with
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields rho efs)
-  | DotE (e, i)         -> DotE (exp rho e, i)
+  | DotE (e, sr, i)     -> DotE (exp rho e, ref (!sr), i)
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
   | ArrayE (m, es)      -> ArrayE (m, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)

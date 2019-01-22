@@ -289,7 +289,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
     interpret_obj env sort id None fields k
-  | DotE (exp1, {it = Name n;_}) ->
+  | DotE (exp1, _, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)

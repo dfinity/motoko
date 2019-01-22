@@ -149,7 +149,7 @@ let ifE exp1 exp2 exp3 typ =
   }
 
 let dotE exp name typ =
-  { it = DotE (exp,name);
+  { it = DotE (exp,ref (T.Object T.Local), name);
     at = no_region;
     note = {note_typ = typ;
             note_eff = eff exp}

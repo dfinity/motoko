@@ -3,11 +3,13 @@ module T = Type
 module E = Effect
 
 (* TODO: fix uses of List.sort compare etc on fields rather than field names *)
-(* TODO: annote DotE in checker for desugaring sans environments *)
-(* TODO: remove DecE from syntax, replace by BlockE [dec] *)         
-(* TODO: check constraint matching supports recursive bounds *)           
+(* TODO: annotate DotE in checker for desugaring sans environments *)
+(* TODO: remove DecE from syntax, replace by BlockE [dec] *)
+(* TODO: check constraint matching supports recursive bounds *)
 
-(* TODO: remove T.pre, simplify env, desugar ClassD to TypD + FuncD, make note immutable and remove remaining updates *)         
+(* TODO: remove T.pre, desugar ClassD to TypD + FuncD,
+   make note immutable and remove remaining updates *)
+
 (* Error bookkeeping *)
 
 (* Recovering from errors *)
@@ -23,7 +25,7 @@ let recover f y = recover_with () f y
 type val_env = T.typ T.Env.t
 type con_env = T.con_env
 
-type scope = 
+type scope =
   { val_env : val_env;
     con_env : con_env;
   }
@@ -286,16 +288,16 @@ let rec infer_exp env exp : T.typ =
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
-  T.promote env.cons t 
+  T.promote env.cons t
 
 and infer_exp_mut env exp : T.typ =
   let t = infer_exp' env exp in
-  if not env.pre then begin  
+  if not env.pre then begin
       (* TODO: enable me one infer_effect works on Ir nodes...
-      let e = E.infer_effect_exp exp in 
+      let e = E.infer_effect_exp exp in
       assert (T.Triv < T.Await);
       if not (e <= E.eff exp) then begin
-      error env exp.at "inferred effect not a subtype of expected effect" 
+      error env exp.at "inferred effect not a subtype of expected effect"
       end;
      *)
       if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp))  then begin (*TBR*)
@@ -457,7 +459,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | BlockE (decs, t) ->
     let t1, scope = infer_block env decs exp.at in
     (*  let _t2 = try T.avoid env.cons scope.con_env t1 with T.Unavoidable c -> assert false in *)
-    let env' = adjoin env scope in 
+    let env' = adjoin env scope in
     check_typ env t;
     if not (T.eq env.cons t T.unit || T.eq env'.cons t1 t) then
       error env exp.at "expected block type\n  %s, found declaration with inequivalent type\n  %s"
@@ -913,10 +915,10 @@ and infer_dec env dec : T.typ =
       (T.string_of_typ_expand env.cons (E.typ dec));
   end;
   (* TODO: enable me one infer_effect works on Ir nodes...
-  let e = E.infer_effect_dec dec in 
+  let e = E.infer_effect_dec dec in
   assert (T.Triv < T.Await);
   if not (e <= E.eff dec) then begin
-    error env dec.at "inferred effect not a subtype of expected effect" 
+    error env dec.at "inferred effect not a subtype of expected effect"
   end;
    *)
   E.typ dec
@@ -1027,7 +1029,7 @@ and infer_dec_typdecs env dec : con_env =
     let cs,ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con(c,[])) cs in
     let env' = adjoin_typs env ce in
-    check_typ env' (T.open_ ts  typ); 
+    check_typ env' (T.open_ ts  typ);
     Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
@@ -1061,7 +1063,7 @@ and infer_dec_valdecs env dec : val_env =
     T.Env.empty
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive env t pat in 
+    let ve' = check_pat_exhaustive env t pat in
     ve'
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
