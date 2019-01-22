@@ -1,3 +1,9 @@
 type mode = WasmMode | DfinityMode
 
-val compile : mode -> string -> string option -> Ir.prog -> Ir.prog list -> CustomModule.extended_module
+type config =
+  { mode : mode;
+    module_name : string;
+    source_mapping_url : string option;
+  }
+
+val compile : config -> Ir.prog -> Ir.prog list -> CustomModule.extended_module

@@ -3930,8 +3930,14 @@ and conclude_module env module_name start_fi_o =
     source_mapping_url = E.get_source_mapping_url env;
   }
 
-let compile mode module_name source_mapping_url (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
-  let env = E.mk_global mode prelude ClosureTable.table_end source_mapping_url in
+type config =
+  { mode : mode;
+    module_name : string;
+    source_mapping_url : string option;
+  }
+
+let compile (config : config) (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
+  let env = E.mk_global config.mode prelude ClosureTable.table_end config.source_mapping_url in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   Array.common_funcs env;
@@ -3946,4 +3952,4 @@ let compile mode module_name source_mapping_url (prelude : Ir.prog) (progs : Ir.
       None
     end else Some (nr start_fi) in
 
-  conclude_module env module_name start_fi_o
+  conclude_module env config.module_name start_fi_o

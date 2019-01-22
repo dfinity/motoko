@@ -32,8 +32,8 @@ val run_string : env -> string -> string -> run_result
 val run_lexer  : env -> Lexing.lexbuf -> string -> run_result
 val run_stdin  : env -> unit
 
-type compile_mode = WasmMode | DfinityMode
+type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
-val compile_file   : compile_mode -> string -> string -> string option -> compile_result
-val compile_files  : compile_mode -> string list -> string -> string option -> compile_result
-val compile_string : compile_mode -> string -> string -> string option -> compile_result
+val compile_file   : Compile.config -> string -> compile_result
+val compile_files  : Compile.config -> string list -> compile_result
+val compile_string : Compile.config -> string -> compile_result
