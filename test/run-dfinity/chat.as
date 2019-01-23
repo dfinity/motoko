@@ -1,58 +1,54 @@
 /* a simple data structure: mutable, singly linked list */
-type List<T> = {head : T; var tail : List<T>}?;
+type List<T> = {head: T; var tail: List<T>}?;
 
-type Post = shared Text -> async ();
+type post = shared Text -> async ();
 
 type IClient = actor {
-  send : Text -> async ();
+   send: shared Text -> async ();
 };
 
 type IServer = actor {
-  subscribe : IClient -> async Post;
+  post: Text -> async ();
+  subscribe: IClient -> async post;
 };
 
-actor Server {
-  private var clients : List<IClient> = null;
+actor Server = {
+   private var clients:List<IClient> = null;
 
-  private shared post(message : Text) : async () {
-    var next = clients;
-    loop {
-      switch next {
-        case null return;
-	      case (l?) {
-          await l.head.send(message);
-          next := l.tail;
+   post(message:Text) : async () {
+      var next = clients;
+      loop {
+         switch (next) {
+      	    case null return;
+	    case (l?) {
+	    	await l.head.send(message);
+		next := l.tail;
+              };
+           };
         };
-      };
-    };
-  };
+     };
 
-  subscribe(client : IClient) : async Post {
-    let cs = new {head = client; var tail = clients};
-    clients := cs?;
-    return post;
-  };
+   subscribe(client:IClient) : async post {
+     let cs = new { head = client; var tail = clients};
+     clients := cs?;
+     return post;
+   };
 };
 
 
 actor class Client() = this {
-  // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : IServer?  = null;
-
-  go(n : Text, s : IServer) {
-    name := n;
-    server := s?;
-    ignore(async {
-      let post = await s.subscribe(this);
-      await post("hello from " # name);
-      await post("goodbye from " # name);
-    });
-  };
-
-  send(msg : Text) : async () {
-    print(name # " received " # msg # "\n");
-  };
+   private var name : Text = "";
+   private var server: IServer?  = null;
+   go (n:Text,s:IServer) : async () {
+       name := n;
+       server := s?;
+       let post = await s.subscribe(this);
+       await post("hello from " # name);
+       await post("goodbye from " # name);
+   };
+   send(msg:Text) : async () {
+      print name; print " received "; print msg; print "\n";
+   };
 };
 
 
@@ -60,9 +56,9 @@ actor class Client() = this {
 let bob = Client();
 let alice = Client();
 let charlie = Client();
-bob.go("bob", Server);
-alice.go("alice", Server);
-charlie.go("charlie", Server);
+let _ = bob.go("bob",Server);
+let _ = alice.go("alice",Server);
+let _ = charlie.go("charlie",Server);
 
 /* features to add:
    don't broadcast to sender
