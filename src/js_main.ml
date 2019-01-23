@@ -39,7 +39,8 @@ let js_compile_with mode_string source_map source convert =
     | "dfinity" -> Pipeline.DfinityMode
     | _ -> Pipeline.WasmMode
   in
-  match Pipeline.compile_string mode (Js.to_string source) "js-input" with
+  let config = Compile.{ mode; module_name = "js-input"; source_mapping_url = None; } in
+  match Pipeline.compile_string config (Js.to_string source) with
   | Ok module_ ->
     let (code, map) = convert module_ in
     object%js
