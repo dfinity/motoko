@@ -75,19 +75,6 @@ let error env at fmt =
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
-
-let unfold_obj env t at =
-    match t with
-    | T.Obj (_,_) -> t
-    | T.Con (c,ts) ->
-      begin
-        match Con.Env.find_opt c env.cons with
-        | Some T.Abs (tbs, (T.Obj(_,_) as t2))  ->
-          T.open_ ts t2
-        | _ -> error env at "bad annotation %s (wrong kind)" (T.string_of_typ t)
-      end
-    | _ -> error env at "bad annotation %s (wrong form)" (T.string_of_typ t)
-
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
@@ -392,7 +379,9 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | ActorE ( id, fields, t) ->
     let env' = { env with async = false } in
     let t1 = infer_obj env' T.Actor id fields in
-    let t2 = unfold_obj env t exp.at in
+    let t2 = T.promote env.cons t in
+    if not (T.is_obj t2) then
+      error env exp.at "bad annotation %s (object type expected)" (T.string_of_typ t);
     if T.sub env.cons t1 t2 then
       t
     else
@@ -588,7 +577,9 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     let t1 = 
       T.Obj(sort.it, List.sort T.compare_field (List.map (fun (name,id) ->
                                             {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)) in
-    let t2 = unfold_obj env t exp.at in
+    let t2 = T.promote env.cons t in
+    if not (T.is_obj t2) then
+      error env  exp.at "bad annotation %s (object type expected)" (T.string_of_typ t);
     if T.sub env.cons t1 t2 then
       t
     else

@@ -70,7 +70,7 @@ and dec' =
   | LetD of pat * exp                          (* immutable *)
   | VarD of Syntax.id * exp                    (* mutable *)
   | FuncD of                                   (* function *)
-      Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp 
+      Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp
   | TypD of Type.con * Type.kind               (* type *)
 
 

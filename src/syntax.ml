@@ -187,7 +187,6 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | FuncD of                                   (* function *)
       sharing * id * typ_bind list * pat * typ * exp
-(* function *)
   | TypD of con_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       id * con_id * typ_bind list * obj_sort * pat * id * exp_field list
@@ -208,7 +207,7 @@ let seqT ts =
     {Source.it = TupT ts;
      at = Source.no_region;
      Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts)}
-    
+
 let as_seqT t =
   match t.Source.it with
   | TupT ts -> ts
