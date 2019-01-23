@@ -1,5 +1,5 @@
 /* a simple data structure: mutable, singly linked list */
-type List<T> = {head: T; var tail: List<T>}?;
+type List<T> = ?{head: T; var tail: List<T>};
 
 type subscription = {
   post : shared Text -> async (); /* revokable by Server */
@@ -25,22 +25,22 @@ actor Server = {
       label sends
       loop {
          switch (next) {
-      	    case null break sends();
-	    case (n?) {
-              	if ( n.head.id != id) {
- 	          let reply = (n.head.client).send(message);
-		  replies := (new { head = reply; var tail = replies})?;
-		};
-		next := n.tail;
+            case null break sends();
+            case (?n) {
+                if ( n.head.id != id) {
+                  let reply = (n.head.client).send(message);
+                  replies := ?(new { head = reply; var tail = replies});
+                };
+                next := n.tail;
               };
            };
        };
       loop {
          switch (replies) {
-      	    case null return;
-	    case (r?) {
+            case null return;
+            case (?r) {
                 await r.head;
-		replies := r.tail;
+                replies := r.tail;
               };
           };
       };
@@ -50,12 +50,12 @@ actor Server = {
      let c = new {id = nextId; client=iclient; var revoked = false;};
      nextId += 1;
      let cs = new { head = c; var tail = clients};
-     clients := cs?;
+     clients := ?cs;
      return (new {
        post =  (shared func (message:Text) : async ()
-       	        { if (not (c.revoked))
-		    await broadcast(c.id, message);
-		});
+                { if (not (c.revoked))
+                    await broadcast(c.id, message);
+                });
        cancel = (shared func () {unsubscribe(c.id);});
      });
    };
@@ -65,18 +65,18 @@ actor Server = {
       var next = clients;
       loop {
          switch (next) {
-      	    case null return;
-	    case (n?) {
-	    	if ((n.head.id) == id)
-		  { switch (prev) {
-		      case null clients := n.tail;
-		      case (p?) p.tail := n.tail;
-		    };
-		    print "(unsubscribe "; printInt id; print ")\n";
-		    return;
-		  };
-		prev := next;
-		next := n.tail;
+            case null return;
+            case (?n) {
+                if ((n.head.id) == id)
+                  { switch (prev) {
+                      case null clients := n.tail;
+                      case (?p) p.tail := n.tail;
+                    };
+                    print "(unsubscribe "; printInt id; print ")\n";
+                    return;
+                  };
+                prev := next;
+                next := n.tail;
               };
            };
         };
@@ -86,10 +86,10 @@ actor Server = {
 
 actor class Client() = this {
    private var name : Text = "";
-   private var server: IServer?  = null;
+   private var server: ?IServer  = null;
    go (n:Text,s:IServer) : async () {
        name := n;
-       server := s?;
+       server := ?s;
        let sub = await s.subscribe(this);
        await sub.post("hello from " # name);
        await sub.post("goodbye from " # name);

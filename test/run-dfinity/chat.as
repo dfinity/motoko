@@ -1,5 +1,5 @@
 /* a simple data structure: mutable, singly linked list */
-type List<T> = {head: T; var tail: List<T>}?;
+type List<T> = ?{head: T; var tail: List<T>};
 
 type post = shared Text -> async ();
 
@@ -20,7 +20,7 @@ actor Server = {
       loop {
          switch (next) {
       	    case null return;
-	    case (l?) {
+	    case (?l) {
 	    	await l.head.send(message);
 		next := l.tail;
               };
@@ -30,7 +30,7 @@ actor Server = {
 
    subscribe(client:IClient) : async post {
      let cs = new { head = client; var tail = clients};
-     clients := cs?;
+     clients := ?cs;
      return post;
    };
 };
@@ -38,10 +38,10 @@ actor Server = {
 
 actor class Client() = this {
    private var name : Text = "";
-   private var server: IServer?  = null;
+   private var server: ?IServer  = null;
    go (n:Text,s:IServer) : async () {
        name := n;
-       server := s?;
+       server := ?s;
        let post = await s.subscribe(this);
        await post("hello from " # name);
        await post("goodbye from " # name);
