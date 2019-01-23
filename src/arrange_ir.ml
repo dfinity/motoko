@@ -1,12 +1,12 @@
 open Source
-open Arrange_type (* currently not used *)  
+open Arrange_type (* currently not used *)
 open Ir
 open Wasm.Sexpr
 
-(* for concision, we shadow the imported definition of [Array_type.typ] and pretty print types instead *)
-  
+(* for concision, we shadow the imported definition of [Arrange_type.typ] and pretty print types instead *)
+
 let typ t = Atom (Type.string_of_typ t)
-let kind k = Atom (Type.string_of_kind k)          
+let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]

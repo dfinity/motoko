@@ -2,8 +2,6 @@ open Source
 module T = Type
 module E = Effect
 
-(* TODO: fix uses of List.sort compare etc on fields rather than field names *)
-
 (* TODO: remove DecE from syntax, replace by BlockE [dec] *)
 (* TODO: check constraint matching supports recursive bounds *)
 
@@ -161,7 +159,7 @@ let rec check_typ env typ : unit =
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
-    if (control = T.Promises) then begin
+    if control = T.Promises then begin
       match ts2 with
       | [T.Async _ ] -> ()
       | _ ->
@@ -254,7 +252,7 @@ and check_inst_bounds env tbs typs at =
 (* Literals *)
 
 let infer_lit env lit at : T.prim =
-  Syntax.( (* yuck *)
+  let open Syntax in
   match lit with
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
@@ -269,10 +267,9 @@ let infer_lit env lit at : T.prim =
   | TextLit _ -> T.Text
   | PreLit (s,p) ->
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
-  )
 
 let check_lit env t lit at =
-  Syntax.(
+  let open Syntax in
   match T.normalize env.cons t, lit with
   | T.Opt _, NullLit -> ()
   | t, _ ->
@@ -280,8 +277,6 @@ let check_lit env t lit at =
     if not (T.sub env.cons t' t) then
       error env at "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
-  )
-
 
 open Ir
 (* Expressions *)

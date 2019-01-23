@@ -1,12 +1,10 @@
 (* Patterns *)
 
-(* TODO: replace Syntax.typ_bind *)
-
-type 'a phrase = ('a,Syntax.typ_note) Source.annotated_phrase
+type 'a phrase = ('a, Syntax.typ_note) Source.annotated_phrase
 
 type typ_bind = (Type.bind, Type.typ) Source.annotated_phrase
 
-type pat = (pat',Type.typ) Source.annotated_phrase
+type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of Syntax.id                          (* variable *)
@@ -31,7 +29,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ActorE of                                  (* actor *)
-      Syntax.id * exp_field list * Type.typ 
+      Syntax.id * exp_field list * Type.typ
   | DotE of exp * Syntax.name                  (* object projection *)
   | ActorDotE of exp * Syntax.name             (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -52,9 +50,9 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | IsE of exp * exp                           (* instance-of *)
-  | DeclareE of Syntax.id * Type.typ * exp     (* local promise (internal) *)
-  | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment (internal) *)
-  | NewObjE of                                 (* make an object, preserving mutable identity (internal) *)
+  | DeclareE of Syntax.id * Type.typ * exp     (* local promise *)
+  | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment *)
+  | NewObjE of                                 (* make an object, preserving mutable identity *)
       Syntax.obj_sort * (Syntax.name * Syntax.id) list * Type.typ
 
 and exp_field = exp_field' Source.phrase
@@ -68,11 +66,12 @@ and case' = {pat : pat; exp : exp}
 
 and dec = dec' phrase
 and dec' =
-  | ExpD of exp                                        (* plain expression *)
-  | LetD of pat * exp                                  (* immutable *)
-  | VarD of Syntax.id * exp                                   (* mutable *)
-  | FuncD of Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp (* function *)
-  | TypD of Type.con * Type.kind                   (* type *)
+  | ExpD of exp                                (* plain expression *)
+  | LetD of pat * exp                          (* immutable *)
+  | VarD of Syntax.id * exp                    (* mutable *)
+  | FuncD of                                   (* function *)
+      Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp 
+  | TypD of Type.con * Type.kind               (* type *)
 
 
 (* Program *)

@@ -138,7 +138,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ObjE of obj_sort * id * exp_field list     (* object *)
-  | DotE of exp * Type.obj_sort ref * name          (* object projection *)
+  | DotE of exp * Type.obj_sort ref * name     (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
@@ -182,12 +182,15 @@ and case' = {pat : pat; exp : exp}
 
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
-  | ExpD of exp                                        (* plain expression *)
-  | LetD of pat * exp                                  (* immutable *)
-  | VarD of id * exp                                   (* mutable *)
-  | FuncD of sharing * id * typ_bind list * pat * typ * exp (* function *)
-  | TypD of con_id * typ_bind list * typ               (* type *)
-  | ClassD of id (*term id*) * con_id (*type id*) * typ_bind list * obj_sort * pat * id * exp_field list (* class *)
+  | ExpD of exp                                (* plain expression *)
+  | LetD of pat * exp                          (* immutable *)
+  | VarD of id * exp                           (* mutable *)
+  | FuncD of                                   (* function *)
+      sharing * id * typ_bind list * pat * typ * exp
+(* function *)
+  | TypD of con_id * typ_bind list * typ       (* type *)
+  | ClassD of                                  (* class *)
+      id * con_id * typ_bind list * obj_sort * pat * id * exp_field list
 
 
 (* Program *)
@@ -201,10 +204,11 @@ and prog' = dec list
 let seqT ts =
   match ts with
   | [t] -> t
-  | ts -> {Source.it = TupT ts;
-           at = Source.no_region;
-           Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts)}
-
+  | ts ->
+    {Source.it = TupT ts;
+     at = Source.no_region;
+     Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts)}
+    
 let as_seqT t =
   match t.Source.it with
   | TupT ts -> ts

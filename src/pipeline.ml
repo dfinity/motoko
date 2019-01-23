@@ -244,14 +244,7 @@ let output_scope (senv, _) t v sscope dscope =
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let run_with interpret output ((senv, denv) as env) name : run_result =
-  let result = interpret env name in      (*
-      begin match Type.as_immut (Type.promote ce (e.Source.note.S.note_typ)) with
-      | Type.Obj (Type.Actor, _) -> I.ActorDotE (exp ce e, n)
-      | Type.Obj (_,  _) | Type.Array _ -> I.DotE (exp ce e, n)
-      | Type.Con _ -> raise (Invalid_argument ("Con in promoted type"))
-      | _ -> raise (Invalid_argument ("non-object in dot operator"))
-      end *)
-
+  let result = interpret env name in
   let env' =
     match result with
     | None ->
