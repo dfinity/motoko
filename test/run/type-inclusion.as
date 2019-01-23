@@ -32,12 +32,12 @@ func f(x : Nat) : Int = x;
 
 {
 class C() {};
-func f1(x : Null) : C? = x;
-// func f2(x : C) : C? = x;
-func f3(x : Nat?) : Int? = x;
-// func f4(x : Nat) : Int? = x;
-func f5(x : Null) : Null? = x;
-// func f6(x : C?) : C?? = x;
+func f1(x : Null) : ?C = x;
+// func f2(x : C) : ?C = x;
+func f3(x : ?Nat) : ?Int = x;
+// func f4(x : Nat) : ?Int = x;
+func f5(x : Null) : ?Null = x;
+// func f6(x : ?C) : ??C = x;
 };
 
 // Object Types
