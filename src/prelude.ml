@@ -16,7 +16,7 @@ type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
 
-type Iter<T_> = {next : () -> T_?};
+type Iter<T_> = {next : () -> ?T_};
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
@@ -24,12 +24,12 @@ func ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
   private var i = x;
-  next() : Nat? { if (i > y) null else {let j = i; i += 1; j?} };
+  next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
 };
 
 class revrange(x : Nat, y : Nat) {
   private var i = x + 1;
-  next() : Nat? { if (i <= y) null else {i -= 1; i?} };
+  next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
@@ -51,17 +51,17 @@ type Async<T <: Shared> = Cont<T> -> ();
 
 func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
   let empty = func k (t:T) = ();
-  var result : T ? = null;
+  var result : ?T = null;
   var ks : T -> () = empty;
   func fullfill(t:T):() {
     switch(result) {
       case null {
-        result := t?;
+        result := ?t;
         let ks_ = ks;
         ks := empty;
         ks_(t);
       };
-      case (t?) (assert(false));
+      case (?t) (assert(false));
       };
     };
   func enqueue(k:Cont<T>):() {
@@ -70,7 +70,7 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
         let ks_ = ks;
         ks := (func (t:T) {ks_(t);k(t);});
       };
-      case (t?) (k(t));
+      case (?t) (k(t));
     };
   };
   (enqueue,fullfill)

@@ -35,9 +35,9 @@ let ob : {set : (Nat, Nat) -> ()} = b;
 assert(oa.get(2) == 42);
 ob.set(2, 22);
 
-func opt_eq(x : Nat?, y : Nat) : Bool {
+func opt_eq(x : ?Nat, y : Nat) : Bool {
   switch x { case null { false };
-             case (i?) { i == y } }
+             case (?i) { i == y } }
 };
 
 var emptyit = ([] : [Nat]).keys();

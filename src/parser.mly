@@ -204,14 +204,14 @@ typ_nullary :
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @@ at $sloc }
 
-typ_post :
+typ_un :
   | t=typ_nullary
     { t }
-  | t=typ_post QUEST
+  | QUEST t=typ_un
     { OptT(t) @@ at $sloc }
 
 typ_pre :
-  | t=typ_post
+  | t=typ_un
     { t }
   | PRIM s=TEXT
     { PrimT(s) @@ at $sloc }
@@ -229,7 +229,7 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_post ARROW t2=typ
+  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
     { FuncT(s, tps, t1, t2) @@ at $sloc }
 
 typ_item :
@@ -343,8 +343,6 @@ exp_post :
     { e }
   | LBRACKET m=var_opt es=seplist(exp_nonvar, COMMA) RBRACKET
     { ArrayE(m, es) @? at $sloc }
-  | e=exp_post QUEST
-    { OptE(e) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post DOT s=NAT
@@ -359,6 +357,8 @@ exp_post :
 exp_un :
   | e=exp_post
     { e } 
+  | QUEST e=exp_un
+    { OptE(e) @? at $sloc }
   | op=unop e=exp_un
     { UnE(ref Type.Pre, op, e) @? at $sloc }
   | op=unassign e=exp_un
@@ -487,15 +487,11 @@ pat_nullary :
   | LPAR ps=seplist1(pat_bin, COMMA) RPAR
     { TupP(ps) @? at $sloc }
 
-pat_post :
+pat_un :
   | p=pat_nullary
     { p }
-  | p=pat_post QUEST
+  | QUEST p=pat_un
     { OptP(p) @? at $sloc }
-
-pat_un :
-  | p=pat_post
-    { p }
   | op=unop l=lit
     { SignP(op, ref l) @? at $sloc }
 
