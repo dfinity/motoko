@@ -56,7 +56,6 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    pre : bool;
     msgs : Diag.msg_store;
   }
 
@@ -66,7 +65,6 @@ let env_of_scope msgs scope =
     labs = T.Env.empty;
     rets = None;
     async = false;
-    pre = false;
     msgs;
   }
 
@@ -214,26 +212,24 @@ and check_typ_field env s typ_field : unit =
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts,ce = Type.open_binds env.cons typ_binds in
   let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
-  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
-  let _pre_env' = add_typs {env with pre = true} cs pre_ks in
-  let bds = List.map (fun typ_bind -> let t = T.open_ ts typ_bind.T.bound in
-                                      check_typ _pre_env' t; 
-                                     t) typ_binds in
   let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
   let env' = add_typs env cs ks in
-  let _ = List.map (fun bd -> check_typ env' bd) bds in
+  let _ = List.map
+            (fun typ_bind ->
+              let bd = T.open_ ts typ_bind.T.bound  in
+              check_typ env' bd)
+            typ_binds
+  in
   cs, Con.Env.from_list2 cs ks
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
   | tb::tbs', typ::typs' ->
     check_typ env typ;
-    if not env.pre then begin
-      if not (T.sub env.cons typ tb.T.bound) then
+    if not (T.sub env.cons typ tb.T.bound) then
         local_error env no_region "type argument\n  %s\ndoes not match parameter bound\n  %s"
           (T.string_of_typ_expand env.cons typ)
-          (T.string_of_typ_expand env.cons tb.T.bound)
-    end;
+          (T.string_of_typ_expand env.cons tb.T.bound);
     check_typ_bounds env tbs' typs' at
   | [], [] -> ()
   | [], _ -> local_error env at "too many type arguments"
@@ -297,9 +293,12 @@ and infer_exp_mut env exp : T.typ =
       if not (e <= E.eff exp) then begin
       error env exp.at "inferred effect not a subtype of expected effect"
       end;
-     *)
+       *)
+    (*TBR: it's weird that we need to mask mutability, but I think there's an inconsistency
+           between the way the type checker annotates l-expressions in checking (never immutable) 
+           vs. inference mode (maybe mutable) *)
     if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp)) then
-      begin (*TBR*)
+      begin 
         error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
           (T.string_of_typ_expand env.cons t)
           (T.string_of_typ_expand env.cons (E.typ exp))
@@ -363,7 +362,6 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       error env exp1.at "expected tuple type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-
   | ActorE ( id, fields, t) ->
     let env' = { env with async = false } in
     let t1 = infer_obj env' T.Actor id t fields in
@@ -453,7 +451,6 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     t
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
-    (*    let t = infer_cases env t1 T.Non cases in *)
 (*    if not env.pre then
       if not (Coverage.check_cases env.cons cases t1) then
         warn env exp.at "the cases in this switch do not cover all possible values";
@@ -498,7 +495,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
         let name =
           match String.split_on_char ' ' id.it with
           | ["continue"; name] -> name
-        | _ -> id.it
+          | _ -> id.it
         in local_error env id.at "unbound label %s" name
     end;
     T.Non
@@ -543,7 +540,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.bool
   | DeclareE (id, typ, exp1) ->
     let env' = adjoin_vals env (T.Env.singleton id.it typ) in
-    infer_exp env' exp1 
+    infer_exp env' exp1
   | DefineE (id, mut, exp1) ->
      begin
        match T.Env.find_opt id.it env.vals with
@@ -673,7 +670,6 @@ and check_pat env t pat : val_env =
       (T.string_of_typ_expand env.cons t')
       (T.string_of_typ_expand env.cons pat.note);
   ve
-  
 
 (* Objects *)
 
