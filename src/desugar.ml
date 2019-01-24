@@ -3,6 +3,8 @@ module S = Syntax
 module I = Ir
 module T = Type
 
+(* TODO: clean me up when IrOps available, especially build_obj *)
+         
 (* Combinators used in the desguaring *)
 
 let bool_lit b : Ir.exp =
@@ -91,21 +93,20 @@ let
     | S.NewObjE (s, fs) -> I.NewObjE (s, fs, note.S.note_typ)
 
   and field_to_dec (f : S.exp_field) : Ir.dec =
-    match f.it.S.mut.it with
-    | S.Const ->
-      {it = I.LetD ({it = I.VarP f.it.S.id; at = no_region;
-                     note = f.it.S.exp.note.S.note_typ
-                    },
-                    exp f.it.S.exp);
-       at = f.at;
-       note = { f.it.S.exp.note with S.note_typ = T.unit}
-      }
-    | S.Var   ->
-      {it = I.VarD (f.it.S.id, exp f.it.S.exp);
-       at = f.at;
-       note = { f.it.S.exp.note with S.note_typ = T.unit}
-      }
-
+    let {it={S.id;S.exp=e;S.mut;_};at;note} = f in
+    let d = match mut.it with
+      |  S.Const -> I.LetD ({it = I.VarP id;
+                             at = no_region;
+                             note = e.note.S.note_typ
+                            },
+                            exp e)
+      | S.Var   ->
+        I.VarD (id, exp e)
+    in
+    { it = d;
+      at;
+      note = { e.note with S.note_typ = T.unit}
+    }
   and field_to_obj_entry (f : S.exp_field) =
     match f.it.S.priv.it with
     | S.Private -> []
