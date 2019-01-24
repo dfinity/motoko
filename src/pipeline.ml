@@ -291,9 +291,7 @@ let compile_with check mode name : compile_result =
     let prog = async_lowering true prog name in
     let prog = tailcall_optimization true prog name in
     let prog = Desugar.prog prog in
-    match Check_ir.check_prog initial_stat_env prog with
-    | Error msgs -> Diag.print_messages msgs; assert (false)
-    | Ok (_,msgs) -> Diag.print_messages msgs;
+    (*    ignore (Check_ir.check_prog initial_stat_env prog); *)
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_

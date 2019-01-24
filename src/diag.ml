@@ -22,11 +22,14 @@ let has_errors : messages -> bool =
 
 let fatal_error at text = { sev = Error; at; cat = "fatal"; text }
 
-let print_message msg =
+let string_of_message msg =
   let label = match msg.sev with
     | Error -> Printf.sprintf "%s error"  msg.cat
     | Warning -> "warning" in
-  Printf.eprintf "%s: %s, %s\n%!" (Source.string_of_region msg.at) label msg.text
+  Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
+
+let print_message msg =
+  Printf.eprintf "%s%!" (string_of_message msg)
 
 let print_messages = List.iter print_message
 

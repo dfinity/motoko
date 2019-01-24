@@ -5,25 +5,14 @@ module E = Effect
 (* TODO: remove DecE from syntax, replace by BlockE [dec] *)
 (* TODO: check constraint matching supports recursive bounds *)
 
-(* TODO: remove T.pre, desugar ClassD to TypD + FuncD,
-   make note immutable and remove remaining updates *)
-
-(* Error bookkeeping *)
+(* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
    open code review issues
-   place where we access Syntax.note_typ or pat.note are good places to considering 
-   add type info to IR.exp' constructors 
-   (e.g. identifier bindings and PrimE) so that we can remove the type notes altogether.
-   remove the many begin/ends; rework operators if nec.
- *)         
-(* Recovering from errors *)
-
-exception Recover
-
-let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
-let recover_opt f y = recover_with None (fun y -> Some (f y)) y
-let recover f y = recover_with () f y
+   place where we access Syntax.note_typ or pat.note are good places to considering
+   add type info to IR.exp' constructors
+   (e.g. identifier bindings, PrimE, branches) so that we can remove the type notes altogether.
+*)
 
 (* Scope (the external interface) *)
 
@@ -56,29 +45,23 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    msgs : Diag.msg_store;
   }
 
-let env_of_scope msgs scope =
+let env_of_scope scope =
   { vals = scope.Typing.val_env;
     cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
-    msgs;
   }
 
 (* More error bookkeeping *)
 
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
-let type_warning at text : Diag.message = Diag.{ sev = Diag.Warning; at; cat = "IR type"; text }
 
-let local_error env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
 let error env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
-let warn env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
+  Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
@@ -227,12 +210,12 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   | tb::tbs', typ::typs' ->
     check_typ env typ;
     if not (T.sub env.cons typ tb.T.bound) then
-        local_error env no_region "type argument\n  %s\ndoes not match parameter bound\n  %s"
+        error env no_region "type argument\n  %s\ndoes not match parameter bound\n  %s"
           (T.string_of_typ_expand env.cons typ)
           (T.string_of_typ_expand env.cons tb.T.bound);
     check_typ_bounds env tbs' typs' at
   | [], [] -> ()
-  | [], _ -> local_error env at "too many type arguments"
+  | [], _ -> error env at "too many type arguments"
   | _, [] -> error env at "too few type arguments"
 
 and check_inst_bounds env tbs typs at =
@@ -477,7 +460,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
         let ve = check_pat_exhaustive env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ ->
-        local_error env exp1.at "expected iterable type, but expression has type\n  %s"
+        error env exp1.at "expected iterable type, but expression has type\n  %s"
           (T.string_of_typ_expand env.cons t1)
       );
     end;
@@ -491,23 +474,19 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       match T.Env.find_opt id.it env.labs with
       | Some t ->
         check_exp env t exp1
-      | None -> (* TODO: fix me *)
-        let name =
-          match String.split_on_char ' ' id.it with
-          | ["continue"; name] -> name
-          | _ -> id.it
-        in local_error env id.at "unbound label %s" name
+      | None -> 
+        in error env id.at "unbound label %s" name
     end;
     T.Non
   | RetE exp1 ->
     begin
       match env.rets with
       | Some T.Pre ->
-        assert false; (* local_error env exp.at "cannot infer return type" *)
+        assert false; (* error env exp.at "cannot infer return type" *)
       | Some t ->
         check_exp env t exp1
       | None ->
-        local_error env exp.at "misplaced return"
+        error env exp.at "misplaced return"
     end;
     T.Non
   | AsyncE exp1 ->
@@ -572,7 +551,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
 and check_exp env t exp =
   let t' = infer_exp env exp in
   if not (T.sub env.cons t' t) then
-    local_error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
+    error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
       (T.string_of_typ_expand env.cons t')
       (T.string_of_typ_expand env.cons t)
@@ -585,7 +564,7 @@ and check_cases env t_pat t cases =
 
 and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env t_pat pat in
-  recover (check_exp (adjoin_vals env ve) t) exp
+  check_exp (adjoin_vals env ve) t exp
 
 (* Patterns *)
 
@@ -616,7 +595,7 @@ and infer_pat env pat : T.typ * val_env =
   assert (pat.note <> T.Pre);
   let t, ve = infer_pat' env pat in
   if not (T.sub env.cons pat.note t) then (* TBR: should we allow contra-variance ?*)
-    local_error env pat.at "pattern of type \n  %s\n cannot consume expected type \n  %s"
+    error env pat.at "pattern of type \n  %s\n cannot consume expected type \n  %s"
       (T.string_of_typ_expand env.cons t)
       (T.string_of_typ_expand env.cons pat.note);
   t, ve
@@ -666,7 +645,7 @@ and check_pat env t pat : val_env =
   let (t,ve) = infer_pat env pat in
   let t' = T.normalize env.cons t in
   if not (T.sub env.cons t t') then
-    local_error env pat.at "type of pattern \n  %s\n cannot consume expected type \n  %s"
+    error env pat.at "type of pattern \n  %s\n cannot consume expected type \n  %s"
       (T.string_of_typ_expand env.cons t')
       (T.string_of_typ_expand env.cons pat.note);
   ve
@@ -715,7 +694,7 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
       begin
         check_exp (adjoin_vals env ve) (T.as_immut t) exp;
         if (mut.it = Syntax.Var) <> T.is_mut t then
-          local_error env field.at
+          error env field.at
             "%smutable field %s cannot produce expected %smutable field of type\n  %s"
             (if mut.it = Syntax.Var then "" else "im") id.it
             (if T.is_mut t then "" else "im")
@@ -750,8 +729,8 @@ and infer_block_exps env decs : T.typ =
   | [] -> T.unit
   | [dec] -> infer_dec env dec
   | dec::decs' ->
-    recover (check_dec env T.unit) dec;
-    recover_with T.Non (infer_block_exps env) decs'
+    check_dec env T.unit dec;
+    infer_block_exps env decs'
 
 and cons_of_typ_binds typ_binds =
   let con_of_typ_bind tp =
@@ -822,19 +801,19 @@ and check_block_exps env t decs at =
   match decs with
   | [] ->
     if not (T.sub env.cons T.unit t) then
-      local_error env at "empty block cannot produce expected type\n  %s"
+      error env at "empty block cannot produce expected type\n  %s"
         (T.string_of_typ_expand env.cons t)
   | [dec] ->
     check_dec env t dec
   | dec::decs' ->
-    recover (check_dec env T.unit) dec;
-    recover (check_block_exps env t decs') at
+    check_dec env T.unit dec;
+    check_block_exps env t decs' at
 
 and check_dec env t dec =
      let t' = infer_dec env dec in
      (* TBR: special-case unit? *)
      if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+       error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
          (T.string_of_typ_expand env.cons t)
          (T.string_of_typ_expand env.cons t')
 
@@ -881,15 +860,12 @@ and gather_dec env scope dec : scope =
     let ce' = Con.Env.add c k scope.con_env in
     {scope with con_env = ce'}
 
-    
 (* Programs *)
 
-let check_prog scope prog : scope Diag.result =
-  Diag.with_message_store (fun msgs ->
-    let env = env_of_scope msgs scope in
-    recover_opt (check_block env T.unit prog.it) prog.at)
+let check_prog scope prog : scope =
+    let env = env_of_scope scope in
+    check_block env T.unit prog.it prog.at
 
-let infer_prog scope prog : (T.typ * scope) Diag.result =
-  Diag.with_message_store (fun msgs ->
-    let env = env_of_scope msgs scope in
-    recover_opt (infer_block env prog.it) prog.at)
+let infer_prog scope prog : (T.typ * scope) =
+    let env = env_of_scope scope in
+    infer_block env prog.it prog.at
