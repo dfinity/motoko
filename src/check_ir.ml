@@ -149,7 +149,7 @@ let rec check_typ env typ : unit =
       if not (T.sub env'.cons t1 T.Shared) then
         error env no_region "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      begin match ts2 with
+      match ts2 with
       | [] -> ()
       | [T.Async t2] ->
         if not (T.sub env'.cons t2 T.Shared) then
@@ -157,7 +157,6 @@ let rec check_typ env typ : unit =
             (T.string_of_typ_expand env'.cons t2);
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons (T.seq ts2))
-      end
     end
   | T.Opt typ ->
     check_typ env typ
@@ -223,7 +222,6 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
 and check_inst_bounds env tbs typs at =
   check_typ_bounds env tbs typs at
 
-
 (* Literals *)
 
 let infer_lit env lit at : T.prim =
@@ -261,26 +259,19 @@ and infer_exp_promote env exp : T.typ =
 
 and infer_exp_mut env exp : T.typ =
   let t = infer_exp' env exp in
-  begin
-      (* TODO: enable me one infer_effect works on Ir nodes...
-      let e = E.infer_effect_exp exp in
-      assert (T.Triv < T.Await);
-      if not (e <= E.eff exp) then begin
-      error env exp.at "inferred effect not a subtype of expected effect"
-      end;
-       *)
-    (*TBR: it's weird that we need to mask mutability, but I think there's an inconsistency
-           between the way the type checker annotates l-expressions in checking (never immutable)
-           vs. inference mode (maybe mutable) *)
-    if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp)) then
-      begin
-        error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
-          (T.string_of_typ_expand env.cons t)
-          (T.string_of_typ_expand env.cons (E.typ exp))
-          (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      end
-  end;
-  E.typ exp;
+  let e = E.Ir.infer_effect_exp exp in
+  assert (T.Triv < T.Await);
+  if not (e <= E.eff exp) then
+    error env exp.at "inferred effect not a subtype of expected effect";
+      (* TBR: it's weird that we need to mask mutability, but I think there's an inconsistency
+         between the way the type checker annotates l-expressions in checking (never immutable)
+         vs. inference mode (maybe mutable) *)
+  if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp)) then
+    error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
+      (T.string_of_typ_expand env.cons t)
+      (T.string_of_typ_expand env.cons (E.typ exp))
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
+      E.typ exp;
 
 and infer_exp' env (exp:Ir.exp) : T.typ =
   let t = E.typ exp in
@@ -326,17 +317,18 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.Opt t1
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let ts = T.as_tup_sub n env.cons t1 in
-      match List.nth_opt ts n with
-      | Some t -> t
-      | None ->
-        error env exp.at "tuple projection %n is out of bounds for type\n  %s"
-          n (T.string_of_typ_expand env.cons t1)
-    with Invalid_argument _ ->
-      error env exp1.at "expected tuple type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
-    )
+    begin
+      try
+        let ts = T.as_tup_sub n env.cons t1 in
+        match List.nth_opt ts n with
+        | Some t -> t
+        | None ->
+          error env exp.at "tuple projection %n is out of bounds for type\n  %s"
+            n (T.string_of_typ_expand env.cons t1)
+      with Invalid_argument _ ->
+        error env exp1.at "expected tuple type, but expression produces type\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+    end
   | ActorE ( id, fields, t) ->
     let env' = { env with async = false } in
     let t1 = infer_obj env' T.Actor id t fields in
@@ -352,29 +344,30 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | ActorDotE(exp1,{it = Syntax.Name n;_})
   | DotE (exp1, {it = Syntax.Name n;_}) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-       let sort, tfs = T.as_obj_sub n env.cons t1 in
-       begin
-         match exp.it with
-         | ActorDotE _ ->
-           if (sort <> T.Actor) then
-          error env exp.at "expected actor found object"
-         | DotE _ ->
-           if (sort == T.Actor) then
-          error env exp.at "expected object found actor"
-         | _ -> assert false
-       end;
-       match List.find_opt (fun {T.name; _} -> name = n) tfs with
-       | Some {T.typ = t; _} -> t
-       | None ->
-         error env exp1.at "field name %s does not exist in type\n  %s"
-           n (T.string_of_typ_expand env.cons t1)
-     with Invalid_argument _ ->
-       error env exp1.at "expected object type, but expression produces type\n  %s"
-         (T.string_of_typ_expand env.cons t1)
-    )
+    begin
+      try
+        let sort, tfs = T.as_obj_sub n env.cons t1 in
+        begin
+          match exp.it with
+          | ActorDotE _ ->
+            if (sort <> T.Actor) then
+              error env exp.at "expected actor found object"
+          | DotE _ ->
+            if (sort == T.Actor) then
+              error env exp.at "expected object found actor"
+          | _ -> assert false
+        end;
+        match List.find_opt (fun {T.name; _} -> name = n) tfs with
+        | Some {T.typ = t; _} -> t
+        | None ->
+          error env exp1.at "field name %s does not exist in type\n  %s"
+            n (T.string_of_typ_expand env.cons t1)
+      with Invalid_argument _ ->
+        error env exp1.at "expected object type, but expression produces type\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+    end
   | AssignE (exp1, exp2) ->
-     begin
+    begin
       let t1 = infer_exp_mut env exp1 in
       try
         let t2 = T.as_mut t1 in
@@ -389,14 +382,15 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.Array (match mut.it with Syntax.Const -> t1 | Syntax.Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let t = T.as_array_sub env.cons t1 in
-      check_exp env T.nat exp2;
-      t
-    with Invalid_argument _ ->
-      error env exp1.at "expected array type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
-    )
+    begin
+      try
+        let t = T.as_array_sub env.cons t1 in
+        check_exp env T.nat exp2;
+        t
+      with Invalid_argument _ ->
+        error env exp1.at "expected array type, but expression produces type\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+    end
   | CallE (call_conv, exp1, insts, exp2) ->
     (* TODO: check call_conv (assuming there's something to check) *)
     let t1 = infer_exp_promote env exp1 in
@@ -443,7 +437,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | ForE (pat, exp1, exp2) ->
     begin
       let t1 = infer_exp_promote env exp1 in
-      (try
+      try
         let _, tfs = T.as_obj_sub "next" env.cons t1 in
         let t = T.lookup_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub env.cons t in
@@ -454,7 +448,6 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       with Invalid_argument _ ->
         error env exp1.at "expected iterable type, but expression has type\n  %s"
           (T.string_of_typ_expand env.cons t1)
-      );
     end;
     T.unit
   | LabelE (id, typ, exp1) ->
@@ -493,21 +486,20 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     if not env.async then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
-    (try
-      T.as_async_sub env.cons t1
-    with Invalid_argument _ ->
-      error env exp1.at "expected async type, but expression has type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
-    )
+    begin
+      try
+        T.as_async_sub env.cons t1
+      with Invalid_argument _ ->
+        error env exp1.at "expected async type, but expression has type\n  %s"
+          (T.string_of_typ_expand env.cons t1)
+    end
   | AssertE exp1 ->
     check_exp env T.bool exp1;
     T.unit
   | IsE (exp1, exp2) ->
     (* TBR: restrict t1 to objects? *)
-    begin
-      let _t1 = infer_exp env exp1 in
-      check_exp env T.Class exp2
-    end;
+    let _t1 = infer_exp env exp1 in
+    check_exp env T.Class exp2
     T.bool
   | DeclareE (id, typ, exp1) ->
     let env' = adjoin_vals env (T.Env.singleton id.it typ) in
@@ -550,7 +542,6 @@ and check_exp env t exp =
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
       (T.string_of_typ_expand env.cons t')
       (T.string_of_typ_expand env.cons t)
-
 
 (* Cases *)
 
@@ -697,13 +688,11 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
       end;
       t
   in
-  begin
-    if s = T.Actor && priv.it = Syntax.Public && not (is_func_exp exp) then
-      error env field.at "public actor field is not a function";
-    if s <> T.Object T.Local && priv.it = Syntax.Public && not (T.sub env.cons t T.Shared) then
-      error env field.at "public shared object or actor field %s has non-shared type\n  %s"
-        (Syntax.string_of_name name.it) (T.string_of_typ_expand env.cons t)
-  end;
+  if s = T.Actor && priv.it = Syntax.Public && not (is_func_exp exp) then
+    error env field.at "public actor field is not a function";
+  if s <> T.Object T.Local && priv.it = Syntax.Public && not (T.sub env.cons t T.Shared) then
+    error env field.at "public shared object or actor field %s has non-shared type\n  %s"
+      (Syntax.string_of_name name.it) (T.string_of_typ_expand env.cons t);
   let ve' = T.Env.add id.it t ve in
   let tfs' =
     if priv.it = Syntax.Private
@@ -773,18 +762,14 @@ and infer_dec env dec : T.typ =
     check_typ env' (T.open_ ts  typ);
     T.unit
   in
-  if not (Type.sub env.cons t (E.typ dec)) then begin
+  if not (Type.sub env.cons t (E.typ dec)) then
     error env dec.at "inferred dec type %s not a subtype of expected type %s"
       (T.string_of_typ_expand env.cons t)
       (T.string_of_typ_expand env.cons (E.typ dec));
-  end;
-  (* TODO: enable me one infer_effect works on Ir nodes...
-  let e = E.infer_effect_dec dec in
+  let e = E.Ir.infer_effect_dec dec in
   assert (T.Triv < T.Await);
-  if not (e <= E.eff dec) then begin
-    error env dec.at "inferred effect not a subtype of expected effect"
-  end;
-   *)
+  if not (e <= E.eff dec) then
+    error env dec.at "inferred effect not a subtype of expected effect";
   E.typ dec
 
 and check_block env t decs at : scope =
