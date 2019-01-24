@@ -174,7 +174,7 @@ and open the path printed on the last line of that command.
   - `var T[]`
 
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
-  - `T?`
+  - `? T`
 
 * Async types: like futures/promises
   - `async T`
