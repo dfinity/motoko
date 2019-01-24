@@ -11,11 +11,10 @@ module E = Effect
 (* Error bookkeeping *)
 
 (* TODO:
-   check (type) environments well-formed before possible use
-   restore checks on functions, 
    open code review issues
-   place where we access Syntax.note_typ or .note are good places to consider add type info to 
-   IR.exp' constructor (e.g. identifier bindings and PrimE) so that we can remove the type notes.
+   place where we access Syntax.note_typ or pat.note are good places to considering 
+   add type info to IR.exp' constructors 
+   (e.g. identifier bindings and PrimE) so that we can remove the type notes altogether.
    remove the many begin/ends; rework operators if nec.
  *)         
 (* Recovering from errors *)
@@ -274,6 +273,7 @@ let check_lit env t lit at =
         (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
 
 open Ir
+
 (* Expressions *)
 
 let isAsyncE exp =
@@ -601,12 +601,12 @@ and check_exp env t exp =
   check_exp' env t' exp;
 
 and check_exp' env t exp =
-    let t' = infer_exp env exp in
-    if not (T.sub env.cons t' t) then
-      local_error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-        (T.string_of_typ_expand env.cons t')
-        (T.string_of_typ_expand env.cons t)
+  let t' = infer_exp env exp in
+  if not (T.sub env.cons t' t) then
+    local_error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
+      (T.string_of_typ_expand env.cons t')
+      (T.string_of_typ_expand env.cons t)
 
 
 (* Cases *)
@@ -719,65 +719,6 @@ and check_pat env t pat : val_env =
       (T.string_of_typ_expand env.cons pat.note);
   ve
   
-(*
-and check_pat env t pat : val_env =
-  assert (pat.note <> T.Pre);
-  (* if t = T.Pre then snd (infer_pat env pat) else *)
-  let t' = T.normalize env.cons t in
-  let ve = check_pat' env t pat in
-  if not (T.eq env.cons t' pat.note) then
-    local_error env pat.at "unequal type of pattern \n  %s\n and annotation \n  %s"
-      (T.string_of_typ_expand env.cons t')
-      (T.string_of_typ_expand env.cons pat.note);
-  ve
-
-and check_pat' env t pat : val_env =
-  assert (t <> T.Pre);
-  match pat.it with
-  | WildP ->
-    T.Env.empty
-  | VarP id ->
-    T.Env.singleton id.it t
-  | LitP lit ->
-    check_lit env t lit pat.at;
-    T.Env.empty
-  | TupP pats ->
-    (try
-      let ts = T.as_tup_sub (List.length pats) env.cons t in
-      check_pats env ts pats T.Env.empty pat.at
-    with Invalid_argument _ ->
-      error env pat.at "tuple pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | OptP pat1 ->
-    (try
-      let t1 = T.as_opt t in
-      check_pat env t1 pat1
-    with Invalid_argument _ ->
-      error env pat.at "option pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
-    )
-  | AltP (pat1, pat2) ->
-    let ve1 = check_pat env t pat1 in
-    let ve2 = check_pat env t pat2 in
-    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "variables are not allowed in pattern alternatives";
-    T.Env.empty
-
-and check_pats env ts pats ve at : val_env =
-  match pats, ts with
-  | [], [] -> ve
-  | pat::pats', t::ts ->
-    let ve1 = check_pat env t pat in
-    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-    check_pats env ts pats' ve' at
-  | [], ts ->
-    local_error env at "tuple pattern has %i fewer components than expected type"
-      (List.length ts); ve
-  | ts, [] ->
-    error env at "tuple pattern has %i more components than expected type"
-      (List.length ts)
- *)
 
 (* Objects *)
 
@@ -786,26 +727,6 @@ and infer_obj env s id t fields : T.typ =
   let env' = adjoin_vals env ve in
   let tfs, _ve = infer_exp_fields env' s id.it t fields in
   T.Obj(s,tfs)
-
-(*  TBD:
-and check_obj env s tfs id fields at : T.typ =
-  let pre_ve = gather_exp_fields env id.it fields in
-  let pre_ve' = List.fold_left
-    (fun ve {T.name; typ = t} ->
-      if not (T.Env.mem name ve) then
-        error env at "%s expression without field %s cannot produce expected type\n  %s"
-          (if s = T.Actor then "actor" else "object") name
-          (T.string_of_typ_expand env.cons t);
-      T.Env.add name t ve
-    ) pre_ve tfs
-  in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
-  let t = T.Obj (s, tfs') in
-  let env' = adjoin_vals (add_val env id.it t) ve in
-  ignore (infer_exp_fields env' s id.it t fields);
-  t
-*)
 
 and gather_exp_fields env id t fields : val_env =
   let ve0 = T.Env.singleton id t in
@@ -839,7 +760,7 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
   let t =
     match T.Env.find id.it env.vals with
     | T.Pre ->
-      assert false (* infer_mut mut (infer_exp (adjoin_vals env ve) exp) *)
+      assert false
     | t ->
       begin
         check_exp (adjoin_vals env ve) (T.as_immut t) exp;
@@ -870,7 +791,7 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
 (* Blocks and Declarations *)
 
 and infer_block env decs at : T.typ * scope =
-  let scope = infer_block_decs env decs in
+  let scope = gather_block_decs env decs in
   let t = infer_block_exps (adjoin env scope) decs in
   t, scope
 
@@ -883,11 +804,12 @@ and infer_block_exps env decs : T.typ =
     recover_with T.Non (infer_block_exps env) decs'
 
 and cons_of_typ_binds typ_binds =
-  List.map (fun tp -> match tp.note with
-                      | T.Con(c,[]) -> c
-                      | _ -> assert false (* TODO: remove me by tightening note to Con.t *)
-                           
-    ) typ_binds
+  let con_of_typ_bind tp =
+      match tp.note with
+      | T.Con(c,[]) -> c
+      | _ -> assert false (* TODO: remove me by tightening note to Con.t *)
+  in
+  List.map con_of_typ_bind typ_binds
 
 and check_open_typ_binds env typ_binds =
   let cs = cons_of_typ_binds typ_binds in
@@ -942,7 +864,7 @@ and infer_dec env dec : T.typ =
   E.typ dec
 
 and check_block env t decs at : scope =
-  let scope = infer_block_decs env decs in
+  let scope = gather_block_decs env decs in
   check_block_exps (adjoin env scope) t decs at;
   scope
 
@@ -966,74 +888,21 @@ and check_dec env t dec =
          (T.string_of_typ_expand env.cons t)
          (T.string_of_typ_expand env.cons t')
 
-and infer_block_decs env decs : scope =
-(* todo: unify gathering into single pass *)
-  let scope = gather_block_typdecs env decs in
-  let ve = gather_block_valdecs env decs in
-  { val_env = ve; con_env = scope.con_env }
+and gather_block_decs env decs =
+  List.fold_left (gather_dec env) empty_scope decs
 
-
-(* Pass 1: collect type identifiers and their arity *)
-and gather_block_typdecs env decs : scope =
-  List.fold_left (gather_dec_typdecs env) empty_scope decs
-
-
-and gather_dec_typdecs env scope dec : scope =
+and gather_dec env scope dec : scope =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ -> scope
-  | TypD (c, k) ->
-    if Con.Env.mem c scope.con_env then
-      error env dec.at "duplicate definition for type %s in block" (Con.to_string c);
-    let ce' = Con.Env.add c k scope.con_env in
-    {scope with con_env = ce'}
-
-(* TBD     
-(* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs : con_env =
-  let _env', ce =
-    List.fold_left (fun (env, ce) dec ->
-      let ce' = infer_dec_typdecs env dec in
-      adjoin_cons env ce', Con.Env.adjoin ce ce'
-    ) (env, Con.Env.empty) decs
-  in ce
-
-and infer_dec_typdecs env dec : con_env =
-  match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
-    Con.Env.empty
-  | TypD (c, k) ->
-    let (binds,typ) =
-      match k with
-      | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
-    in
-    let cs,ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
-    let env' = adjoin_typs env ce in
-    check_typ env' (T.open_ ts  typ);
-    Con.Env.singleton c k
-
- *)
-(* Pass 4: collect value identifiers *)
-and gather_block_valdecs env decs : val_env =
-  List.fold_left (gather_dec_valdecs env) T.Env.empty decs
-
-and gather_dec_valdecs env ve dec : val_env =
-  match dec.it with
-  | ExpD _ | TypD _ ->
-    ve
+  | ExpD _ ->
+    scope
   | LetD (pat, _) ->
-    gather_pat env ve pat
+    let ve = gather_pat env scope.val_env pat in
+    { scope with val_env = ve}
   | VarD (id, exp) ->
-    if T.Env.mem id.it ve then
+    if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for %s in block" id.it;
-    T.Env.add id.it (T.Mut exp.note.Syntax.note_typ) ve
-(*    
-  | FuncD (_, id, _, _, _, _) ->
-    if T.Env.mem id.it ve then
-      error env dec.at "duplicate definition for %s in block" id.it;
-    T.Env.add id.it dec.note.Syntax.note_typ ve
- *)
+    let ve =  T.Env.add id.it (T.Mut exp.note.Syntax.note_typ) scope.val_env in
+    { scope with val_env = ve}
   | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
     let func_sort = call_conv.Value.sort in
     let cs = cons_of_typ_binds typ_binds in
@@ -1054,74 +923,15 @@ and gather_dec_valdecs env ve dec : val_env =
     let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
-    T.Env.add id.it t ve
-(*    
-(* Pass 5: infer value types *)
-and infer_block_valdecs env decs : val_env =
-  let _, ve =
-    List.fold_left (fun (env, ve) dec ->
-      let ve' = infer_dec_valdecs env dec in
-      adjoin_vals env ve', T.Env.adjoin ve ve'
-    ) (env, T.Env.empty) decs
-  in ve
- *)
+    let ve' =  T.Env.add id.it t scope.val_env in
+    {scope with val_env = ve'}
+  | TypD (c, k) ->
+    if Con.Env.mem c scope.con_env then
+      error env dec.at "duplicate definition for type %s in block" (Con.to_string c);
+    let ce' = Con.Env.add c k scope.con_env in
+    {scope with con_env = ce'}
 
-(* TODO: restore some of these checks elsewhere then delete *)    
-and infer_dec_valdecs env dec : val_env =
-  match dec.it with
-  | ExpD _ ->
-    T.Env.empty
-  | LetD (pat, exp) ->
-    let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive env t pat in
-    ve'
-  | VarD (id, exp) ->
-    let t = infer_exp {env with pre = true} exp in
-    T.Env.singleton id.it (T.Mut t)
-  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
-    let func_sort = call_conv.Value.sort in
-    let cs, ce = check_open_typ_binds env typ_binds in
-    let env' = adjoin_typs env ce in
-    let t1, _ = infer_pat {env' with pre = true} pat in
-    check_typ env' typ;
-    let t2 = typ in
-    if not env.pre && func_sort = T.Call T.Sharable then begin
-      if not (T.sub env'.cons t1 T.Shared) then
-        error env pat.at "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand env'.cons t1);
-      begin match t2 with
-      | T.Tup [] -> ()
-      | T.Async t2 ->
-        if not (T.sub env'.cons t2 T.Shared) then
-          error env no_region "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand env'.cons t2);
-        if not (isAsyncE exp) then
-          error env dec.at "shared function with async type has non-async body"
-      | _ -> error env no_region "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
-      end;
-    end;
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
-    in
-    let ts2 = match call_conv.Value.n_res  with
-      | 1 -> [t2]
-      | _ -> T.as_seq t2
-    in
-
-    let c = match func_sort, t2 with
-      | T.Call T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it
-      (T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
-  | TypD _ ->
-    T.Env.empty
-
-
+    
 (* Programs *)
 
 let check_prog scope prog : scope Diag.result =
