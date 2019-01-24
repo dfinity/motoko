@@ -309,6 +309,7 @@ and infer_exp_mut env exp : T.typ =
   E.typ exp;
 
 and infer_exp' env (exp:Ir.exp) : T.typ =
+  let t = E.typ exp in
   match exp.it with
   | PrimE _ ->
     exp.note.Syntax.note_typ (* error env exp.at "cannot infer type of primitive"  *)
@@ -322,48 +323,26 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
   | UnE (ot, op, exp1) ->
-    let t1 = infer_exp_promote env exp1 in
-    (* Special case for subtyping *)
-    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
-    begin
-        if not (Operator.has_unop t op) then
-          error env exp.at "operator is not defined for operand type\n  %s"
-               (T.string_of_typ_expand env.cons t);
-        if not (T.eq env.cons ot t) then
-          error env exp.at "bad operator annotation, expecting  %s, found %s"
-            (T.string_of_typ_expand env.cons t)
-            (T.string_of_typ_expand env.cons ot);
-    end;
-    t
+    if not (Operator.has_unop ot op) then
+      error env exp.at "operator is not defined for operand type\n  %s"
+        (T.string_of_typ_expand env.cons ot);
+    check_exp env ot exp1;
+    ot
   | BinE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = T.lub env.cons t1 t2 in
-    begin
-      if not (Operator.has_binop t op) then
-        error env exp.at "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2);
-      if not (T.eq env.cons ot t) then
-        error env exp.at "bad operator annotation, expecting  %s, found %s"
-          (T.string_of_typ_expand env.cons t)
-          (T.string_of_typ_expand env.cons ot);
-    end;
-    t
+    if not (Operator.has_binop ot op) then
+      error env exp.at "operator not defined for operand types\n  %s and\n  %s"
+        (T.string_of_typ_expand env.cons ot)
+        (T.string_of_typ_expand env.cons ot);
+    check_exp env ot exp1;
+    check_exp env ot exp2;
+    ot
   | RelE (ot,exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = T.lub env.cons t1 t2 in
-    begin
-      if not (Operator.has_relop t op) then
-        error env exp.at "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2);
-      if not (T.eq env.cons ot t) then
-        error env exp.at "bad operator annotation, expecting  %s, found %s"
-          (T.string_of_typ_expand env.cons t)
-          (T.string_of_typ_expand env.cons ot);
-    end;
+    if not (Operator.has_relop ot op) then
+      error env exp.at "operator not defined for operand types\n  %s and\n  %s"
+        (T.string_of_typ_expand env.cons ot)
+        (T.string_of_typ_expand env.cons ot);
+    check_exp env ot exp1;
+    check_exp env ot exp2;
     T.bool
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
@@ -469,29 +448,25 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     t
   | IfE (exp1, exp2, exp3) ->
     check_exp env T.bool exp1;
-    let t2 = infer_exp env exp2 in
-    let t3 = infer_exp env exp3 in
-    let t = T.lub env.cons t2 t3 in
+    check_exp env t exp2;
+    check_exp env t exp3;
     t
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
-    let t = infer_cases env t1 T.Non cases in
+    (*    let t = infer_cases env t1 T.Non cases in *)
 (*    if not env.pre then
       if not (Coverage.check_cases env.cons cases t1) then
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
+    check_cases env t1 t cases;
     t
   | WhileE (exp1, exp2) ->
-    begin
-      check_exp env T.bool exp1;
-      check_exp env T.unit exp2
-    end;
+    check_exp env T.bool exp1;
+    check_exp env T.unit exp2;
     T.unit
   | LoopE (exp1, expo) ->
-    begin
-      check_exp env T.unit exp1;
-      Lib.Option.app (check_exp env T.bool) expo
-    end;
+    check_exp env T.unit exp1;
+    Lib.Option.app (check_exp env T.bool) expo;
     T.Non
   | ForE (pat, exp1, exp2) ->
     begin
@@ -515,16 +490,17 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     check_exp (add_lab env id.it typ) t exp1;
     t
   | BreakE (id, exp1) ->
-    (match T.Env.find_opt id.it env.labs with
-    | Some t ->
-      check_exp env t exp1
-    | None -> (* TODO: fix me *)
-      let name =
-        match String.split_on_char ' ' id.it with
-        | ["continue"; name] -> name
+    begin
+      match T.Env.find_opt id.it env.labs with
+      | Some t ->
+        check_exp env t exp1
+      | None -> (* TODO: fix me *)
+        let name =
+          match String.split_on_char ' ' id.it with
+          | ["continue"; name] -> name
         | _ -> id.it
-      in local_error env id.at "unbound label %s" name
-    );
+        in local_error env id.at "unbound label %s" name
+    end;
     T.Non
   | RetE exp1 ->
     begin
@@ -597,10 +573,6 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
         (T.string_of_typ_expand env.cons t1)
 
 and check_exp env t exp =
-  let t' = T.normalize env.cons t in
-  check_exp' env t' exp;
-
-and check_exp' env t exp =
   let t' = infer_exp env exp in
   if not (T.sub env.cons t' t) then
     local_error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
@@ -610,23 +582,6 @@ and check_exp' env t exp =
 
 
 (* Cases *)
-
-and infer_cases env t_pat t cases : T.typ =
-  List.fold_left (infer_case env t_pat) t cases
-
-and infer_case env t_pat t {it = {pat; exp}; at; _} =
-  let ve = check_pat env t_pat pat in
-  let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
-  let t'' = T.lub env.cons t t' in
-  if
-    t'' = T.Any &&
-    T.promote env.cons t <> T.Any && T.promote env.cons t' <> T.Any
-  then
-    warn env at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
-      (T.string_of_typ t'')
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons t');
-  t''
 
 and check_cases env t_pat t cases =
   List.iter (check_case env t_pat t) cases
@@ -733,11 +688,10 @@ and gather_exp_fields env id t fields : val_env =
   List.fold_left (gather_exp_field env) ve0 fields
 
 and gather_exp_field env ve field : val_env =
-  let {id; exp ; mut; priv;_} : exp_field' = field.it in
+  let {id; exp; mut; priv;_} : exp_field' = field.it in
   if T.Env.mem id.it ve then
     error env id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it (infer_mut mut exp.note.Syntax.note_typ) ve
-
 
 and infer_exp_fields env s id t fields : T.field list * val_env =
   let env' = add_val env id t in
