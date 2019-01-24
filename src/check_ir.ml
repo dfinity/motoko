@@ -171,7 +171,7 @@ let rec check_typ env typ : unit =
   | T.Obj (sort, fields) ->
     let rec sorted fields =
       match fields with
-      | [] 
+      | []
       | [_] -> true
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
@@ -270,10 +270,10 @@ and infer_exp_mut env exp : T.typ =
       end;
        *)
     (*TBR: it's weird that we need to mask mutability, but I think there's an inconsistency
-           between the way the type checker annotates l-expressions in checking (never immutable) 
+           between the way the type checker annotates l-expressions in checking (never immutable)
            vs. inference mode (maybe mutable) *)
     if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp)) then
-      begin 
+      begin
         error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
           (T.string_of_typ_expand env.cons t)
           (T.string_of_typ_expand env.cons (E.typ exp))
@@ -466,7 +466,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       match T.Env.find_opt id.it env.labs with
       | Some t ->
         check_exp env t exp1
-      | None -> 
+      | None ->
         in error env id.at "unbound label %s" name
     end;
     T.Non
@@ -805,12 +805,12 @@ and check_block_exps env t decs at =
     check_block_exps env t decs' at
 
 and check_dec env t dec =
-     let t' = infer_dec env dec in
-     (* TBR: special-case unit? *)
-     if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-       error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-         (T.string_of_typ_expand env.cons t)
-         (T.string_of_typ_expand env.cons t')
+  let t' = infer_dec env dec in
+  (* TBR: special-case unit? *)
+  if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
+    error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+      (T.string_of_typ_expand env.cons t)
+      (T.string_of_typ_expand env.cons t')
 
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
@@ -860,9 +860,9 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_prog scope prog : scope =
-    let env = env_of_scope scope in
-    check_block env T.unit prog.it prog.at
+  let env = env_of_scope scope in
+  check_block env T.unit prog.it prog.at
 
 let infer_prog scope prog : (T.typ * scope) =
-    let env = env_of_scope scope in
-    infer_block env prog.it prog.at
+  let env = env_of_scope scope in
+  infer_block env prog.it prog.at
