@@ -12,6 +12,8 @@ module E = Effect
    place where we access Syntax.note_typ or pat.note are good places to considering
    add type info to IR.exp' constructors
    (e.g. identifier bindings, PrimE, branches) so that we can remove the type notes altogether.
+   add type and term predicate to rule out constructs after passes, We could even compose these I guess....
+   restore effect inference
 *)
 
 (* Scope (the external interface) *)
@@ -240,16 +242,6 @@ let infer_lit env lit at : T.prim =
   | TextLit _ -> T.Text
   | PreLit (s,p) ->
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
-
-let check_lit env t lit at =
-  let open Syntax in
-  match T.normalize env.cons t, lit with
-  | T.Opt _, NullLit -> ()
-  | t, _ ->
-    let t' = T.Prim (infer_lit env lit at) in
-    if not (T.sub env.cons t' t) then
-      error env at "literal of type\n  %s\ndoes not have expected type\n  %s"
-        (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
 
 open Ir
 
@@ -536,8 +528,11 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
     T.unit
   | NewObjE (sort, labids, t) ->
     let t1 =
-      T.Obj(sort.it, List.sort T.compare_field (List.map (fun (name,id) ->
-                                            {T.name = Syntax.string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)) in
+      T.Obj(sort.it,
+            List.sort T.compare_field (List.map (fun (name,id) ->
+                                           {T.name = Syntax.string_of_name name.it;
+                                            T.typ = T.Env.find id.it env.vals}) labids))
+    in
     let t2 = T.promote env.cons t in
     if not (T.is_obj t2) then
       error env  exp.at "bad annotation %s (object type expected)" (T.string_of_typ t);
@@ -837,6 +832,8 @@ and gather_dec env scope dec : scope =
     let cs = cons_of_typ_binds typ_binds in
     let t1 = pat.note in
     let t2 = typ in
+    if Type.is_async t2 && not (isAsyncE exp) then
+       error env dec.at "shared function with async type has non-async body"
     let ts1 = match call_conv.Value.n_args with
       | 1 -> [t1]
       | _ -> T.as_seq t1
