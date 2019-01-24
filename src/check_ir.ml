@@ -882,14 +882,17 @@ and infer_block_exps env decs : T.typ =
     recover (check_dec env T.unit) dec;
     recover_with T.Non (infer_block_exps env) decs'
 
-and check_open_typ_binds env typ_binds =
-  let cs = List.map (fun tp -> match tp.note with
-                               | T.Con(c,[]) -> c
-                               | _ -> assert false (* TODO: remove me by tightening note to Con.t *)
+and cons_of_typ_binds typ_binds =
+  List.map (fun tp -> match tp.note with
+                      | T.Con(c,[]) -> c
+                      | _ -> assert false (* TODO: remove me by tightening note to Con.t *)
+                           
+    ) typ_binds
 
-             ) typ_binds in
+and check_open_typ_binds env typ_binds =
+  let cs = cons_of_typ_binds typ_binds in
   let ks = List.map (fun tp -> T.Abs([],tp.it.T.bound)) typ_binds in
-  let ce = List.fold_right2 Con.Env.add  cs ks Con.Env.empty in
+  let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
   let binds = T.close_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
   cs,ce
@@ -904,18 +907,25 @@ and infer_dec env dec : T.typ =
     T.unit
   | FuncD (sort, id, typ_binds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
-     begin
-      let _cs,ce = check_open_typ_binds env typ_binds in
-      let env' = adjoin_typs env ce in
-      let _, ve = infer_pat_exhaustive env' pat in
-      check_typ env' typ;
-      let env'' =
-        {env' with labs = T.Env.empty; rets = Some typ; async = false} in
-      check_exp (adjoin_vals env'' ve) typ exp
-    end;
+    let _cs,ce = check_open_typ_binds env typ_binds in
+    let env' = adjoin_typs env ce in
+    let t1, ve = infer_pat_exhaustive env' pat in
+    check_typ env' typ;
+    let env'' =
+      {env' with labs = T.Env.empty; rets = Some typ; async = false} in
+    check_exp (adjoin_vals env'' ve) typ exp;
     t
-  | TypD _ ->
-     T.unit
+  | TypD (c, k) ->
+    let (binds,typ) =
+      match k with
+      | T.Abs(binds,typ)
+      | T.Def(binds,typ) -> (binds,typ)
+    in
+    let cs,ce = check_typ_binds env binds in
+    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let env' = adjoin_typs env ce in
+    check_typ env' (T.open_ ts  typ);
+    T.unit
   in
   if not (Type.sub env.cons t (E.typ dec)) then begin
     error env dec.at "inferred dec type %s not a subtype of expected type %s"
@@ -949,39 +959,6 @@ and check_block_exps env t decs at =
     recover (check_block_exps env t decs') at
 
 and check_dec env t dec =
-(* TBD     
-  match dec.it with
-  | ExpD exp ->
-    check_exp env t exp;
-    if not (T.eq env.cons exp.note.Syntax.note_typ dec.note.Syntax.note_typ) then
-      local_error env dec.at "unequal type of expression \n  %s\n in declaration \n  %s"
-        (T.string_of_typ_expand env.cons exp.note.Syntax.note_typ)
-        (T.string_of_typ_expand env.cons dec.note.Syntax.note_typ)
-(* TBR: push in external type annotation;
-   unfortunately, this isn't enough, because of the earlier recursive phases
-  | FuncD (id, [], pat, typ, exp) ->
-    (* TBR: special-case unit? *)
-    if T.eq env.cons t T.unit then
-      ignore (infer_dec env dec)
-    else
-    (match T.nonopt env.cons t with
-    | T.Func ([], t1, t2)->
-      let ve = check_pat env t1 pat in
-      let t2' = check_typ env typ in
-      (* TBR: infer return type *)
-      if not (T.eq env.cons t2 t2') then
-        error dec.at "expected return type %s but found %s"
-          (T.string_of_typ t2) (T.string_of_typ t2');
-      let env' =
-        {env with labs = T.Env.empty; rets = Some t2; async = false} in
-      check_exp (adjoin_vals env' ve) t2 exp
-    | _ ->
-      error exp.at "function expression cannot produce expected type %s"
-        (T.string_of_typ t)
-    )
- *)
-   | _ ->
-*)    
      let t' = infer_dec env dec in
      (* TBR: special-case unit? *)
      if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
@@ -1051,11 +1028,33 @@ and gather_dec_valdecs env ve dec : val_env =
     if T.Env.mem id.it ve then
       error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it (T.Mut exp.note.Syntax.note_typ) ve
+(*    
   | FuncD (_, id, _, _, _, _) ->
     if T.Env.mem id.it ve then
       error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it dec.note.Syntax.note_typ ve
-
+ *)
+  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
+    let func_sort = call_conv.Value.sort in
+    let cs = cons_of_typ_binds typ_binds in
+    let t1 = pat.note in
+    let t2 = typ in
+    let ts1 = match call_conv.Value.n_args with
+      | 1 -> [t1]
+      | _ -> T.as_seq t1
+    in
+    let ts2 = match call_conv.Value.n_res  with
+      | 1 -> [t2]
+      | _ -> T.as_seq t2
+    in
+    let c = match func_sort, t2 with
+      | T.Call T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | _ -> T.Returns
+    in
+    let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
+    T.Env.add id.it t ve
 (*    
 (* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
