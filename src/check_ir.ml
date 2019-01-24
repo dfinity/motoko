@@ -13,8 +13,11 @@ module E = Effect
 (* TODO:
    check (type) environments well-formed before possible use
    restore checks on functions, 
-   remove redundant pat code, 
-   open code review issues *)         
+   open code review issues
+   place where we access Syntax.note_typ or .note are good places to consider add type info to 
+   IR.exp' constructor (e.g. identifier bindings and PrimE) so that we can remove the type notes.
+   remove the many begin/ends; rework operators if nec.
+ *)         
 (* Recovering from errors *)
 
 exception Recover
@@ -419,7 +422,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
          (T.string_of_typ_expand env.cons t1)
     )
   | AssignE (exp1, exp2) ->
-    if not env.pre then begin
+     begin
       let t1 = infer_exp_mut env exp1 in
       try
         let t2 = T.as_mut t1 in
@@ -660,8 +663,8 @@ and infer_pat_exhaustive env pat : T.typ * val_env =
 and infer_pat env pat : T.typ * val_env =
   assert (pat.note <> T.Pre);
   let t, ve = infer_pat' env pat in
-  if not (T.eq env.cons t pat.note) then
-    local_error env pat.at "unequal type of pattern \n  %s\n and annotation \n  %s"
+  if not (T.sub env.cons pat.note t) then (* TBR: should we allow contra-variance ?*)
+    local_error env pat.at "pattern of type \n  %s\n cannot consume expected type \n  %s"
       (T.string_of_typ_expand env.cons t)
       (T.string_of_typ_expand env.cons pat.note);
   t, ve
@@ -673,7 +676,12 @@ and infer_pat' env pat : T.typ * val_env =
   | VarP id ->
     (pat.note, T.Env.singleton id.it pat.note)
   | LitP lit ->
-    T.Prim (infer_lit env lit pat.at), T.Env.empty
+    let t = T.Prim (infer_lit env lit pat.at) in
+    if not (T.sub env.cons t pat.note) then (* TBR isn't this test the wrong way around? *)
+    error env pat.at "type of literal pattern \n  %s\n cannot produce expected type \n  %s"
+      (T.string_of_typ_expand env.cons t)
+      (T.string_of_typ_expand env.cons pat.note);
+    (pat.note, T.Env.empty)
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
@@ -703,6 +711,17 @@ and check_pat_exhaustive env t pat : val_env =
 
 and check_pat env t pat : val_env =
   assert (pat.note <> T.Pre);
+  let (t,ve) = infer_pat env pat in
+  let t' = T.normalize env.cons t in
+  if not (T.sub env.cons t t') then
+    local_error env pat.at "type of pattern \n  %s\n cannot consume expected type \n  %s"
+      (T.string_of_typ_expand env.cons t')
+      (T.string_of_typ_expand env.cons pat.note);
+  ve
+  
+(*
+and check_pat env t pat : val_env =
+  assert (pat.note <> T.Pre);
   (* if t = T.Pre then snd (infer_pat env pat) else *)
   let t' = T.normalize env.cons t in
   let ve = check_pat' env t pat in
@@ -720,7 +739,7 @@ and check_pat' env t pat : val_env =
   | VarP id ->
     T.Env.singleton id.it t
   | LitP lit ->
-    if not env.pre then check_lit env t lit pat.at;
+    check_lit env t lit pat.at;
     T.Env.empty
   | TupP pats ->
     (try
@@ -758,7 +777,7 @@ and check_pats env ts pats ve at : val_env =
   | ts, [] ->
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
-
+ *)
 
 (* Objects *)
 
@@ -860,7 +879,7 @@ and infer_block_exps env decs : T.typ =
   | [] -> T.unit
   | [dec] -> infer_dec env dec
   | dec::decs' ->
-    if not env.pre then recover (check_dec env T.unit) dec;
+    recover (check_dec env T.unit) dec;
     recover_with T.Non (infer_block_exps env) decs'
 
 and check_open_typ_binds env typ_binds =
@@ -881,7 +900,7 @@ and infer_dec env dec : T.typ =
   | ExpD exp ->
     infer_exp env exp
   | LetD (_, exp) | VarD (_, exp) ->
-    if not env.pre then ignore (infer_exp env exp);
+    ignore (infer_exp env exp);
     T.unit
   | FuncD (sort, id, typ_binds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
@@ -930,6 +949,7 @@ and check_block_exps env t decs at =
     recover (check_block_exps env t decs') at
 
 and check_dec env t dec =
+(* TBD     
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
@@ -960,7 +980,8 @@ and check_dec env t dec =
         (T.string_of_typ t)
     )
  *)
-  | _ ->
+   | _ ->
+*)    
      let t' = infer_dec env dec in
      (* TBR: special-case unit? *)
      if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
@@ -969,6 +990,7 @@ and check_dec env t dec =
          (T.string_of_typ_expand env.cons t')
 
 and infer_block_decs env decs : scope =
+(* todo: unify gathering into single pass *)
   let scope = gather_block_typdecs env decs in
   let ve = gather_block_valdecs env decs in
   { val_env = ve; con_env = scope.con_env }
@@ -977,6 +999,7 @@ and infer_block_decs env decs : scope =
 (* Pass 1: collect type identifiers and their arity *)
 and gather_block_typdecs env decs : scope =
   List.fold_left (gather_dec_typdecs env) empty_scope decs
+
 
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
