@@ -270,8 +270,8 @@ and infer_exp_mut env exp : T.typ =
     error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
       (T.string_of_typ_expand env.cons t)
       (T.string_of_typ_expand env.cons (E.typ exp))
-      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      E.typ exp;
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  E.typ exp;
 
 and infer_exp' env (exp:Ir.exp) : T.typ =
   let t = E.typ exp in
@@ -460,7 +460,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
       | Some t ->
         check_exp env t exp1
       | None ->
-        in error env id.at "unbound label %s" name
+        error env id.at "unbound label %s" id.it
     end;
     T.Non
   | RetE exp1 ->
@@ -499,7 +499,7 @@ and infer_exp' env (exp:Ir.exp) : T.typ =
   | IsE (exp1, exp2) ->
     (* TBR: restrict t1 to objects? *)
     let _t1 = infer_exp env exp1 in
-    check_exp env T.Class exp2
+    check_exp env T.Class exp2;
     T.bool
   | DeclareE (id, typ, exp1) ->
     let env' = adjoin_vals env (T.Env.singleton id.it typ) in
@@ -800,7 +800,7 @@ and check_dec env t dec =
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
 
-and gather_dec env scope dec : scope =
+and gather_dec env scope dec : scope = 
   match dec.it with
   | ExpD _ ->
     scope
@@ -818,7 +818,7 @@ and gather_dec env scope dec : scope =
     let t1 = pat.note in
     let t2 = typ in
     if Type.is_async t2 && not (isAsyncE exp) then
-       error env dec.at "shared function with async type has non-async body"
+       error env dec.at "shared function with async type has non-async body";
     let ts1 = match call_conv.Value.n_args with
       | 1 -> [t1]
       | _ -> T.as_seq t1
