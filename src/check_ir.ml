@@ -8,19 +8,17 @@ module E = Effect
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   open code review issues
-   place where we access Syntax.note_typ or pat.note are good places to considering
-   add type info to IR.exp' constructors
-   (e.g. identifier bindings, PrimE, branches) so that we can remove the type notes altogether.
    add type and term predicate to rule out constructs after passes, We could even compose these I guess....
-   restore effect inference
-*)
+ *)
 
-(* Scope (the external interface) *)
+(* helpers *)
 
 let typ = E.typ
 
 let immute_typ p = T.as_immut (typ p)
+
+
+(* Scope (the external interface) *)
 
 type val_env = T.typ T.Env.t
 type con_env = T.con_env
@@ -104,6 +102,15 @@ let check_ids env ids = ignore
       else id::dom
     ) [] ids
   )
+
+let check env at p =
+    if p then ignore
+    else fun fmt -> error env at fmt
+
+let check_sub env at t1 t2 =
+    if (T.sub env.cons t1 t2)
+    then ()
+    else error env at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -256,52 +263,14 @@ let isAsyncE exp =
   | AsyncE _ -> true
   | _ -> false
 
-(* TBD       
-let rec infer_exp env exp : T.typ =
-  T.as_immut (infer_exp_mut env exp)
-
-and infer_exp_promote env exp : T.typ =
-  let t = infer_exp env exp in
-  T.promote env.cons t
-
-and infer_exp_mut env exp : T.typ =
-  let t = infer_exp' env exp in
-  let e = E.Ir.infer_effect_exp exp in
-  assert (T.Triv < T.Await);
-  if not (e <= E.eff exp) then
-    error env exp.at "inferred effect not a subtype of expected effect";
-      (* TBR: it's weird that we need to mask mutability, but I think there's an inconsistency
-         between the way the type checker annotates l-expressions in checking (never immutable)
-         vs. inference mode (maybe mutable) *)
-  if not (Type.sub env.cons (if T.is_mut (E.typ exp) then t else T.as_immut t) (E.typ exp)) then
-    error env exp.at "inferred type %s not a subtype of expected type %s in \n %s"
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons (E.typ exp))
-      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
-  E.typ exp;
- *)
-let rec check_exp env exp : unit =
-    check_exp' env exp
-(*
-  let t' = infer_exp env exp in
-  if not (T.sub env.cons t' t) then
-    error env exp.at "expression\n  %s\n of type\n  %s\ncannot produce expected type\n  %s"
-      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      (T.string_of_typ_expand env.cons t')
-      (T.string_of_typ_expand env.cons t)
- *)
-
-and check_exp' env (exp:Ir.exp) : unit =
-  let check p =
-    if p then ignore
-    else fun fmt -> error env exp.at fmt
-  in
-  let (<:) t1 t2 =
-    if (T.sub env.cons t1 t2)
-    then ()
-    else error env exp.at "subtype violation in expression\n   %s\n   %s\n   %s"
-           (string_of_exp exp) (T.string_of_typ t1) (T.string_of_typ t2)
-  in
+let rec check_exp env (exp:Ir.exp) : unit =
+  (* helpers *)
+  let check p = check env exp.at p in
+  let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  (* check effect *)
+  check (E.Ir.infer_effect_exp exp <= E.eff exp)
+    "inferred effect not a subtype of expected effect";
+  (* check typing *)
   let t = E.typ exp in
   match exp.it with
   | PrimE _ -> ()
@@ -364,7 +333,7 @@ and check_exp' env (exp:Ir.exp) : unit =
   | ActorDotE(exp1,{it = Syntax.Name n;_})
   | DotE (exp1, {it = Syntax.Name n;_}) ->
     begin
-      check_exp env exp1;    
+      check_exp env exp1;
       let t1 = immute_typ exp1 in
       let sort, tfs =
         try T.as_obj_sub n env.cons t1 with
@@ -389,7 +358,6 @@ and check_exp' env (exp:Ir.exp) : unit =
   | AssignE (exp1, exp2) ->
     check_exp env exp1;
     check_exp env exp2;
-    (* let t1 = infer_exp_mut env exp1 in *)
     let t2 = try T.as_mut  (typ exp1) with
                Invalid_argument _ -> error env exp.at "expected mutable assignment target"
     in
@@ -769,17 +737,14 @@ and check_open_typ_binds env typ_binds =
   cs,ce
 
 and check_dec env dec  =
-  let check p =
-    if p then ignore
-    else fun fmt -> error env dec.at fmt
-  in
-  let (<:) t1 t2 =
-    if (T.sub env.cons t1 t2)
-    then ()
-    else error env dec.at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
-  in
+  (* helpers *)
+  let check p = check env dec.at p in
+  let (<:) t1 t2 = check_sub env dec.at t1 t2 in
+  (* check effect *)
+  check (E.Ir.infer_effect_dec dec <= E.eff dec)
+    "inferred effect not a subtype of expected effect";  
+  (* check typing *)
   let t = typ dec in
-  begin
   match dec.it with
   | ExpD exp ->
     check_exp env exp;
@@ -809,11 +774,6 @@ and check_dec env dec  =
     let env' = adjoin_typs env ce in
     check_typ env' (T.open_ ts  typ);
     T.unit <: t;
-  end;
-  let e = E.Ir.infer_effect_dec dec in
-  assert (T.Triv < T.Await);
-  if not (e <= E.eff dec) then
-    error env dec.at "inferred effect not a subtype of expected effect";
 
 and check_block env t decs at : scope =
   let scope = gather_block_decs env decs in
