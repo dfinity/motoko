@@ -9,6 +9,7 @@ module E = Effect
 
 (* TODO:
    add type and term predicate to rule out constructs after passes, We could even compose these I guess....
+   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as   part of desugaring.
  *)
 
 (* helpers *)
@@ -16,7 +17,6 @@ module E = Effect
 let typ = E.typ
 
 let immute_typ p = T.as_immut (typ p)
-
 
 (* Scope (the external interface) *)
 
@@ -112,7 +112,7 @@ let check_sub env at t1 t2 =
     then ()
     else error env at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
 
-let infer_mut mut : T.typ -> T.typ =
+let make_mut mut : T.typ -> T.typ =
   match mut.it with
   | Syntax.Const -> fun t -> t
   | Syntax.Var -> fun t -> T.Mut t
@@ -234,7 +234,7 @@ and check_inst_bounds env tbs typs at =
 
 (* Literals *)
 
-let infer_lit env lit at : T.prim =
+let  type_lit env lit at : T.prim =
   let open Syntax in
   match lit with
   | NullLit -> T.Null
@@ -283,7 +283,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     else
       T.as_immut t0 <: t
   | LitE lit ->
-    T.Prim (infer_lit env lit exp.at) <: t
+    T.Prim ( type_lit env lit exp.at) <: t
   | UnE (ot, op, exp1) ->
     check (Operator.has_unop ot op) "unary operator is not defined for operand type";
     check_exp env exp1;
@@ -325,7 +325,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     end
   | ActorE ( id, fields, t0) ->
     let env' = { env with async = false } in
-    let t1 = infer_obj env' T.Actor id t fields in
+    let t1 =  type_obj env' T.Actor id t fields in
     let t2 = T.promote env.cons t in
     check (T.is_obj t2) "bad annotation (object type expected)";
     t1 <: t2;
@@ -398,8 +398,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (immute_typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE (decs, t0) ->
-    let t1, scope = infer_block env decs exp.at in
-    (*  let _t2 = try T.avoid env.cons scope.con_env t1 with T.Unavoidable c -> assert false in *)
+    let t1, scope = type_block env decs exp.at in
     let env' = adjoin env scope in
     check_typ env t0;
     check (T.eq env.cons t T.unit || T.eq env'.cons t1 t0) "unexpected expected block type";
@@ -445,7 +444,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
         let t1, t2 = T.as_mono_func_sub env.cons t0 in
         T.unit <: t1;
         let t2' = T.as_opt_sub env.cons t2 in
-        let ve = check_pat_exhaustive env t2' pat in
+        let ve = check_pat_exhaustive env pat in
+        pat.note <: t2';
         check_exp (adjoin_vals env ve) exp2;
         immute_typ exp2 <: T.unit;
         T.unit <: t
@@ -547,7 +547,8 @@ and check_cases env t_pat t cases =
   List.iter (check_case env t_pat t) cases
 
 and check_case env t_pat t {it = {pat; exp}; _} =
-  let ve = check_pat env t_pat pat in
+  let ve = check_pat env pat in
+  check_sub env pat.at pat.note t_pat;
   check_exp (adjoin_vals env ve) exp;
   if not (T.sub env.cons (immute_typ exp)  t) then
     error env exp.at "bad case"
@@ -567,81 +568,59 @@ and gather_pat env ve0 pat : val_env =
     | TupP pats ->
       List.fold_left go ve pats
     | AltP (pat1, pat2) ->
-      go ve pat1
+      ve
     | OptP pat1 ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
-and infer_pat_exhaustive env pat : T.typ * val_env =
-  let t, ve = infer_pat env pat in
+and check_pat_exhaustive env pat : val_env =
+  let  ve = check_pat env pat in
   (* TODO: actually check exhaustiveness *)
-  t, ve
+  ve
 
-and infer_pat env pat : T.typ * val_env =
+and check_pat env pat : val_env =
   assert (pat.note <> T.Pre);
-  let t, ve = infer_pat' env pat in
-  if not (T.sub env.cons pat.note t) then (* TBR: should we allow contra-variance ?*)
-    error env pat.at "pattern of type \n  %s\n cannot consume expected type \n  %s"
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons pat.note);
-  t, ve
-
-and infer_pat' env pat : T.typ * val_env =
+  let (<:) = check_sub env pat.at in
+  let t = pat.note in
   match pat.it with
-  | WildP ->
-    (pat.note, T.Env.empty)
-  | VarP id ->
-    (pat.note, T.Env.singleton id.it pat.note)
+  | WildP -> T.Env.empty
+  | VarP id -> T.Env.singleton id.it pat.note
   | LitP lit ->
-    let t = T.Prim (infer_lit env lit pat.at) in
-    if not (T.sub env.cons t pat.note) then (* TBR isn't this test the wrong way around? *)
-    error env pat.at "type of literal pattern \n  %s\n cannot produce expected type \n  %s"
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons pat.note);
-    (pat.note, T.Env.empty)
+    let t1 = T.Prim ( type_lit env lit pat.at) in
+    t1 <: t;
+    T.Env.empty
   | TupP pats ->
-    let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
-    T.Tup ts, ve
+    let ve = check_pats pat.at env pats T.Env.empty in
+    let ts = List.map (fun pat -> pat.note) pats in
+    T.Tup ts <: t;
+    ve
   | OptP pat1 ->
-    let t1, ve = infer_pat env pat1 in
-    T.Opt t1, ve
+    let ve = check_pat env pat1 in
+    T.Opt pat1.note <: t;
+    ve
   | AltP (pat1, pat2) ->
-    let t1, ve1 = infer_pat env pat1 in
-    let t2, ve2 = infer_pat env pat2 in
-    let t = T.lub env.cons t1 t2 in
+    let ve1 = check_pat env pat1 in
+    let ve2 = check_pat env pat2 in
+    pat1.note <: t;
+    pat2.note <: t;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "variables are not allowed in pattern alternatives";
-    t, T.Env.empty
+    T.Env.empty
 
-and infer_pats at env pats ts ve : T.typ list * val_env =
+and check_pats at env pats ve : val_env =
   match pats with
-  | [] -> List.rev ts, ve
+  | [] -> ve
   | pat::pats' ->
-    let t, ve1 = infer_pat env pat in
+    let ve1 = check_pat env pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-    infer_pats at env pats' (t::ts) ve'
-
-
-and check_pat_exhaustive env t pat : val_env =
-  (* TODO: check exhaustiveness? *)
-  check_pat env t pat
-
-and check_pat env t pat : val_env =
-  assert (pat.note <> T.Pre);
-  let (t,ve) = infer_pat env pat in
-  let t' = T.normalize env.cons t in
-  if not (T.sub env.cons t t') then
-    error env pat.at "type of pattern \n  %s\n cannot consume expected type \n  %s"
-      (T.string_of_typ_expand env.cons t')
-      (T.string_of_typ_expand env.cons pat.note);
-  ve
+    check_pats at env pats' ve'
 
 (* Objects *)
 
-and infer_obj env s id t fields : T.typ =
+and type_obj env s id t fields : T.typ =
   let ve = gather_exp_fields env id.it t fields in
   let env' = adjoin_vals env ve in
-  let tfs, _ve = infer_exp_fields env' s id.it t fields in
+  let tfs, _ve =  type_exp_fields env' s id.it t fields in
   T.Obj(s,tfs)
 
 and gather_exp_fields env id t fields : val_env =
@@ -652,12 +631,12 @@ and gather_exp_field env ve field : val_env =
   let {id; exp; mut; priv;_} : exp_field' = field.it in
   if T.Env.mem id.it ve then
     error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it (infer_mut mut exp.note.Syntax.note_typ) ve
+  T.Env.add id.it ( make_mut mut (immute_typ exp)) ve
 
-and infer_exp_fields env s id t fields : T.field list * val_env =
+and type_exp_fields env s id t fields : T.field list * val_env =
   let env' = add_val env id t in
   let tfs, ve =
-    List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
+    List.fold_left (type_exp_field env' s) ([], T.Env.empty) fields in
   List.sort T.compare_field tfs, ve
 
 and is_func_exp exp =
@@ -670,7 +649,7 @@ and is_func_dec dec =
   | FuncD _ -> true
   | _ -> Printf.printf "[2]%!"; false
 
-and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
+and type_exp_field env s (tfs, ve) field : T.field list * val_env =
   let {id; name; exp; mut; priv} = field.it in
   let t =
     match T.Env.find id.it env.vals with
@@ -705,12 +684,12 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
 
 (* Blocks and Declarations *)
 
-and infer_block env decs at : T.typ * scope =
+and type_block env decs at : T.typ * scope =
   let scope = gather_block_decs env decs in
-  let t = infer_block_exps (adjoin env scope) decs in
+  let t = type_block_exps (adjoin env scope) decs in
   t, scope
 
-and infer_block_exps env decs : T.typ =
+and type_block_exps env decs : T.typ =
   match decs with
   | [] -> T.unit
   | [dec] ->
@@ -718,7 +697,7 @@ and infer_block_exps env decs : T.typ =
     immute_typ dec;
   | dec::decs' ->
     check_dec env dec;
-    infer_block_exps env decs'
+    type_block_exps env decs'
 
 and cons_of_typ_binds typ_binds =
   let con_of_typ_bind tp =
@@ -742,7 +721,7 @@ and check_dec env dec  =
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   (* check effect *)
   check (E.Ir.infer_effect_dec dec <= E.eff dec)
-    "inferred effect not a subtype of expected effect";  
+    "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = typ dec in
   match dec.it with
@@ -756,7 +735,7 @@ and check_dec env dec  =
     let t0 = T.Env.find id.it env.vals in
     let _cs,ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_typs env ce in
-    let t1, ve = infer_pat_exhaustive env' pat in
+    let ve = check_pat_exhaustive env' pat in
     check_typ env' t2;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some t2; async = false} in
@@ -794,21 +773,10 @@ and check_block_exps env t decs at =
     check_dec env dec;
     check_block_exps env t decs' at
 
-(*    
-and check_dec env t dec =
-  let t' = infer_dec env dec in
-  (* TBR: special-case unit? *)
-  if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-    error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons t')
- *)
-
-    
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
 
-and gather_dec env scope dec : scope = 
+and gather_dec env scope dec : scope =
   match dec.it with
   | ExpD _ ->
     scope
@@ -856,7 +824,6 @@ let check_prog scope prog : scope =
   let env = env_of_scope scope in
   check_block env T.unit prog.it prog.at
 
-let infer_prog scope prog : (T.typ * scope) =
+let type_prog scope prog : (T.typ * scope) =
   let env = env_of_scope scope in
-  infer_block env prog.it prog.at
- 
+  type_block env prog.it prog.at
