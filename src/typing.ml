@@ -308,7 +308,7 @@ let check_lit env t lit at =
     lit := Word32Lit (check_word32 env at s)
   | T.Prim T.Word64, PreLit (s, (T.Nat | T.Int)) ->
     lit := Word64Lit (check_word64 env at s)
-  | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) -> 
+  | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
     lit := FloatLit (check_float env at s)
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
@@ -325,7 +325,10 @@ let isAsyncE exp =
   | _ -> false
 
 let rec infer_exp env exp : T.typ =
-  T.as_immut (infer_exp_mut env exp)
+  let t = T.as_immut (infer_exp_mut env exp) in
+  if not env.pre then
+     exp.note <- {exp.note with note_typ = T.as_immut exp.note.note_typ};
+  t
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in

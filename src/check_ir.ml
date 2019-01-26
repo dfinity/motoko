@@ -16,7 +16,9 @@ module E = Effect
 
 let typ = E.typ
 
-let immute_typ p = T.as_immut (typ p)
+let immute_typ p =
+  assert (not (T.is_mut (typ p)));
+  (typ p)
 
 (* Scope (the external interface) *)
 
@@ -287,28 +289,28 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | UnE (ot, op, exp1) ->
     check (Operator.has_unop ot op) "unary operator is not defined for operand type";
     check_exp env exp1;
-    (immute_typ exp1) <: ot;
+    typ exp1 <: ot;
     ot <: t;
   | BinE (ot, exp1, op, exp2) ->
     check (Operator.has_binop ot op) "binary operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
-    immute_typ exp1 <: ot;
-    immute_typ exp2 <: ot;
+    typ exp1 <: ot;
+    typ exp2 <: ot;
     ot <: t;
   | RelE (ot,exp1, op, exp2) ->
     check (Operator.has_relop ot op) "relational operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
-    immute_typ exp1 <: ot;
-    immute_typ exp2 <: ot;
+    typ exp1 <: ot;
+    typ exp2 <: ot;
     T.bool <: t;
   | TupE exps ->
     List.iter (check_exp env) exps;
-    T.Tup (List.map immute_typ exps) <: t;
+    T.Tup (List.map typ exps) <: t;
   | OptE exp1 ->
     check_exp env exp1;
-    T.Opt (immute_typ exp1) <: t;
+    T.Opt (typ exp1) <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -334,7 +336,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | DotE (exp1, {it = Syntax.Name n;_}) ->
     begin
       check_exp env exp1;
-      let t1 = immute_typ exp1 in
+      let t1 = typ exp1 in
       let sort, tfs =
         try T.as_obj_sub n env.cons t1 with
         | Invalid_argument _ ->
@@ -361,23 +363,23 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t2 = try T.as_mut  (typ exp1) with
                Invalid_argument _ -> error env exp.at "expected mutable assignment target"
     in
-    immute_typ exp2 <: t2;
+    typ exp2 <: t2;
     T.unit <: t;
   | ArrayE (mut, t0, exps) ->
     List.iter (check_exp env) exps;
-    List.iter (fun e -> immute_typ e <: t0) exps;
+    List.iter (fun e -> typ e <: t0) exps;
     let t1 = T.Array (match mut.it with Syntax.Const -> t0 | Syntax.Var -> T.Mut t0) in
     t1 <: t;
   | IdxE (exp1, exp2) ->
     check_exp env exp1;
     check_exp env exp2;
-    let t1 = T.promote env.cons (immute_typ exp1) in
+    let t1 = T.promote env.cons (typ exp1) in
     let t2 = try T.as_array_sub env.cons t1 with
              | Invalid_argument _ ->
                error env exp1.at "expected array type, but expression produces type\n  %s"
                                        (T.string_of_typ_expand env.cons t1)
     in
-    immute_typ exp2 <: T.nat;
+    typ exp2 <: T.nat;
     if T.is_mut t then
       t2 <: t
     else
@@ -386,7 +388,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp1;
     check_exp env exp2;
     (* TODO: check call_conv (assuming there's something to check) *)
-    let t1 = T.promote env.cons (immute_typ exp1) in
+    let t1 = T.promote env.cons (typ exp1) in
     let tbs, t2, t3 =
       try T.as_func_sub (List.length insts) env.cons t1 with
       |  Invalid_argument _ ->
@@ -395,7 +397,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    (immute_typ exp2) <: T.open_ insts t2;
+    (typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE (decs, t0) ->
     let t1, scope = type_block env decs exp.at in
@@ -405,14 +407,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t0 <: t;
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
-    immute_typ exp1 <: T.bool;
+    typ exp1 <: T.bool;
     check_exp env exp2;
-    immute_typ exp2 <: t;
+    typ exp2 <: t;
     check_exp env exp3;
-    immute_typ exp3 <: t;
+    typ exp3 <: t;
   | SwitchE (exp1, cases) ->
     check_exp env exp1;
-    let t1 = T.promote env.cons (immute_typ exp1) in
+    let t1 = T.promote env.cons (typ exp1) in
 (*    if not env.pre then
       if not (Coverage.check_cases env.cons cases t1) then
         warn env exp.at "the cases in this switch do not cover all possible values";
@@ -420,24 +422,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_cases env t1 t cases;
   | WhileE (exp1, exp2) ->
     check_exp env exp1;
-    immute_typ exp1 <: T.bool;
+    typ exp1 <: T.bool;
     check_exp env exp2;
-    immute_typ exp2 <: T.unit;
+    typ exp2 <: T.unit;
     T.unit <: t;
   | LoopE (exp1, expo) ->
     check_exp env exp1;
-    immute_typ exp1 <: T.unit;
+    typ exp1 <: T.unit;
     begin match expo with
     | Some exp2 ->
       check_exp env exp2;
-      (immute_typ exp2) <: T.bool;
+      (typ exp2) <: T.bool;
     | _ -> ()
     end;
     T.Non <: t; (* redundant *)
   | ForE (pat, exp1, exp2) ->
     begin
       check_exp env exp1;
-      let t1 = T.promote env.cons (immute_typ exp1) in
+      let t1 = T.promote env.cons (typ exp1) in
       try
         let _, tfs = T.as_obj_sub "next" env.cons t1 in
         let t0 = T.lookup_field "next" tfs in
@@ -447,7 +449,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         let ve = check_pat_exhaustive env pat in
         pat.note <: t2';
         check_exp (adjoin_vals env ve) exp2;
-        immute_typ exp2 <: T.unit;
+        typ exp2 <: T.unit;
         T.unit <: t
       with Invalid_argument _ ->
         error env exp1.at "expected iterable type, but expression has type\n  %s"
@@ -457,7 +459,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     assert (t0 <> T.Pre);
     check_typ env t0;
     check_exp (add_lab env id.it t0) exp1;
-    immute_typ exp1 <: t0;
+    typ exp1 <: t0;
     t0 <: t;
   | BreakE (id, exp1) ->
     begin
@@ -466,7 +468,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         error env id.at "unbound label %s" id.it
       | Some t1 ->
         check_exp env exp1;
-        immute_typ exp1 <: t1;
+        typ exp1 <: t1;
         T.Non <: t1;
     end;
   | RetE exp1 ->
@@ -477,11 +479,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some t0 ->
         assert (t0 <> T.Pre);
         check_exp env exp1;
-        immute_typ exp1 <: t0;
+        typ exp1 <: t0;
         T.Non <: t;
     end;
   | AsyncE exp1 ->
-    let t1 = immute_typ exp1 in
+    let t1 = typ exp1 in
     let env' =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in
     check_exp env' exp1;
@@ -490,7 +492,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | AwaitE exp1 ->
     check env.async "misplaced await";
     check_exp env exp1;
-    let t1 = T.promote env.cons (immute_typ exp1) in
+    let t1 = T.promote env.cons (typ exp1) in
     let t2 = try T.as_async_sub env.cons t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
@@ -499,19 +501,19 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t2 <: t;
   | AssertE exp1 ->
     check_exp env exp1;
-    immute_typ exp1 <: T.bool;
+    typ exp1 <: T.bool;
     T.unit <: t;
   | IsE (exp1, exp2) ->
-    (* TBR: restrict immute_typ exp1 to objects? *)
+    (* TBR: restrict typ exp1 to objects? *)
     check_exp env exp1;
     check_exp env exp2;
-    immute_typ exp2 <: T.Class;
+    typ exp2 <: T.Class;
     T.bool <: t;
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id.it t0) in
     check_exp env' exp1;
-    (immute_typ exp1) <: t;
+    (typ exp1) <: t;
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
@@ -520,13 +522,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some t0 ->
         match mut.it with
         | Syntax.Const ->
-          immute_typ exp1 <: t0
+          typ exp1 <: t0
         | Syntax.Var ->
           let t0 = try T.as_mut t0 with
                    | Invalid_argument _ ->
                      error env exp.at "expected mutable %s" (T.string_of_typ t0)
           in
-          immute_typ exp1 <: t0
+          typ exp1 <: t0
     end;
     T.unit <: t
   | NewObjE (sort, labids, t0) ->
@@ -550,7 +552,7 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
   check_sub env pat.at pat.note t_pat;
   check_exp (adjoin_vals env ve) exp;
-  if not (T.sub env.cons (immute_typ exp)  t) then
+  if not (T.sub env.cons (typ exp)  t) then
     error env exp.at "bad case"
 
 (* Patterns *)
@@ -631,7 +633,7 @@ and gather_exp_field env ve field : val_env =
   let {id; exp; mut; priv;_} : exp_field' = field.it in
   if T.Env.mem id.it ve then
     error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it ( make_mut mut (immute_typ exp)) ve
+  T.Env.add id.it ( make_mut mut (typ exp)) ve
 
 and type_exp_fields env s id t fields : T.field list * val_env =
   let env' = add_val env id t in
@@ -658,7 +660,7 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
     | t ->
       begin
         check_exp (adjoin_vals env ve)  exp;
-        if not (T.sub env.cons (immute_typ exp) (T.as_immut t)) then
+        if not (T.sub env.cons (typ exp) (T.as_immut t)) then
           error env field.at "subtype violation";
         if (mut.it = Syntax.Var) <> T.is_mut t then
           error env field.at
@@ -694,7 +696,7 @@ and type_block_exps env decs : T.typ =
   | [] -> T.unit
   | [dec] ->
     check_dec env dec;
-    immute_typ dec;
+    typ dec;
   | dec::decs' ->
     check_dec env dec;
     type_block_exps env decs'
@@ -727,7 +729,7 @@ and check_dec env dec  =
   match dec.it with
   | ExpD exp ->
     check_exp env exp;
-    (immute_typ exp) <: t
+    (typ exp) <: t
   | LetD (_, exp) | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
@@ -767,7 +769,7 @@ and check_block_exps env t decs at =
         (T.string_of_typ_expand env.cons t)
   | [dec] ->
     check_dec env dec;
-    if not (T.is_unit t || T.sub env.cons (immute_typ dec) t) then
+    if not (T.is_unit t || T.sub env.cons (typ dec) t) then
       error env at "subtyp violation"
   | dec::decs' ->
     check_dec env dec;
@@ -786,7 +788,7 @@ and gather_dec env scope dec : scope =
   | VarD (id, exp) ->
     if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for %s in block" id.it;
-    let ve =  T.Env.add id.it (T.Mut (immute_typ exp)) scope.val_env in
+    let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
   | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
     let func_sort = call_conv.Value.sort in
