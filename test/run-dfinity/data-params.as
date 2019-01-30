@@ -20,10 +20,10 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  incopt(a : Nat?) : () {
+  incopt(a : ?Nat) : () {
     switch a {
       case null { c += 1000000 };
-      case (a?) { c += a };
+      case (?a) { c += a };
     };
     printInt(c);
     print("\n");
@@ -59,7 +59,7 @@ a.incnn(2000,3000);
 a.incnested(7,(8,9));
 a.incarray([10,11,12,13]);
 a.incopt(null);
-a.incopt(14?);
+a.incopt(?14);
 a.increcord(new {x = 15; y = 16});
 a.increcord(new {x = 17; y = 18; z = 19});
 a.printCounter();

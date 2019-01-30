@@ -1,3 +1,4 @@
+W, hypervisor: call failed with trap message: Uncaught RuntimeError: unreachable
 Top-level code done.
 This is reachable.
 This is reachable.

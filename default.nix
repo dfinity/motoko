@@ -61,7 +61,6 @@ rec {
     src = sourceByRegex ./. [
       "src/"
       "src/Makefile.*"
-      "src/wasm_copy/"
       "src/.*.ml"
       "src/.*.mli"
       "src/.*.mly"
@@ -102,6 +101,7 @@ rec {
 
     buildInputs =
       [ native
+        ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -198,7 +198,6 @@ rec {
 
   });
 
-  wabt = nixpkgs.wabt;
   wasm = ocaml_wasm;
   dvm = real-dvm;
 }

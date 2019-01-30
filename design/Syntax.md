@@ -9,7 +9,7 @@ Productions marked * probably deferred to later versions.
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
-  <typ> ?                                       option
+  ? <typ>                                       option
   (shared|class)? <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
   like <typ>                                    structural expansion
@@ -50,7 +50,7 @@ Productions marked * probably deferred to later versions.
   <exp> <binop> <exp>                            binary numeric operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
-  <exp> ?                                        option injection
+  ? <exp>                                        option injection
   <exp> . <id>                                   object projection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
@@ -94,7 +94,7 @@ Productions marked * probably deferred to later versions.
   <id>                                           variable
   <unop>? <lit>                                  literal
   ( <pat>,* )                                    tuple or brackets
-  <pat> ?                                        option
+  ? <pat>                                        option
   <pat> : <typ>                                  type annotation
   <pat> or <pat>                                 disjunctive pattern
 * <pat> and <pat>                                conjunctive pattern

@@ -82,7 +82,7 @@ let process_files files : unit =
     let module_name = Filename.remove_extension (Filename.basename !out_file) in
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
     let oc = open_out !out_file in
-    let (source_map, wasm) = Wasm_copy.CustomModule.encode module_ in
+    let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin

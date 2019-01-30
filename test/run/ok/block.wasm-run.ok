@@ -1,1 +1,1 @@
-error running start function: unreachable executed
+_out/block.wasm:0x___: runtime trap: unreachable executed

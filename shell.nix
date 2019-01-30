@@ -17,7 +17,7 @@ let default = import ./default.nix { inherit nixpkgs test-dvm; }; in
 nixpkgs.mkShell {
   buildInputs =
     default.native.buildInputs ++
-    default.native_test.buildInputs ++
+    builtins.filter (i: i != default.native) default.native_test.buildInputs ++
     [ nixpkgs.ncurses ];
 }
 

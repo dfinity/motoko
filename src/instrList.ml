@@ -7,7 +7,7 @@ features are
  * Some simple peephole optimizations.
 *)
 
-open Wasm_copy.Ast
+open Wasm.Ast
 open Wasm.Source
 
 (* Some simple peephole optimizations, to make the output code look less stupid *)
@@ -16,16 +16,16 @@ let optimize : instr list -> instr list = fun is ->
   let rec go l r = match l, r with
     (* Loading and dropping is pointless *)
     | { it = Const _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
-    | { it = GetLocal _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
+    | { it = LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
     (* Introduce TeeLocal *)
-    | { it = SetLocal n1; _} :: l', ({ it = GetLocal n2; _ } as i) :: r' when n1 = n2 ->
-      go l' ({i with it = TeeLocal n2 } :: r')
-    (* Eliminate TeeLocal followed by Drop (good for confluence) *)
-    | ({ it = TeeLocal n; _} as i) :: l', { it = Drop; _ } :: r' ->
-      go l' ({i with it = SetLocal n } :: r')
+    | { it = LocalSet n1; _} :: l', ({ it = LocalGet n2; _ } as i) :: r' when n1 = n2 ->
+      go l' ({i with it = LocalTee n2 } :: r')
+    (* Eliminate LocalTee followed by Drop (good for confluence) *)
+    | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
+      go l' ({i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
       List.rev (i::l)
