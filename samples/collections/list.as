@@ -5,6 +5,13 @@
  patterns.
 */
 
+// TODO-Matthew: Look at SML Basis Library; Look at OCaml List library.
+// Write:
+//  - iterator objects, for use in 'for ... in ...' patterns
+//  - standard list recursors: foldl, foldr, iter
+//  - standard higher-order combinators: map, filter, etc.
+//  - lists+pairs: zip, split, etc
+
 // polymorphic linked lists
 type List<T> = ?(T, List<T>);
 
