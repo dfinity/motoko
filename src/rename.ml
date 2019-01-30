@@ -34,12 +34,12 @@ and exp' rho e  = match e with
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields rho efs)
-  | DotE (e, i)         -> DotE (exp rho e, i)
+  | DotE (e, sr, i)     -> DotE (exp rho e, ref (!sr), i)
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
   | ArrayE (m, es)      -> ArrayE (m, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
-  | BlockE ds           -> BlockE (decs rho ds)
+  | BlockE (ds, ot)       -> BlockE (decs rho ds, ot)
   | NotE e              -> NotE (exp rho e)
   | AndE (e1, e2)       -> AndE (exp rho e1, exp rho e2)
   | OrE (e1, e2)        -> OrE (exp rho e1, exp rho e2)
@@ -59,8 +59,8 @@ and exp' rho e  = match e with
   | AssertE e           -> AssertE (exp rho e)
   | IsE (e, t)          -> IsE (exp rho e, t)
   | AnnotE (e, t)       -> AnnotE (exp rho e, t)
-  | DecE d              -> let mk_d, rho' = dec rho d in
-                           DecE ({mk_d with it = mk_d.it rho'})
+  | DecE (d,ot)         -> let mk_d, rho' = dec rho d in
+                           DecE ({mk_d with it = mk_d.it rho'}, ref (!ot))
   | OptE e              -> OptE (exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)

@@ -289,7 +289,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, id, fields) ->
     interpret_obj env sort id None fields k
-  | DotE (exp1, {it = Name n;_}) ->
+  | DotE (exp1, _, {it = Name n;_}) ->
     interpret_exp env exp1 (fun v1 ->
       let _, fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)
@@ -331,7 +331,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 *)
       )
     )
-  | BlockE decs ->
+  | BlockE (decs, _)->
     interpret_block env decs None k
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
@@ -432,7 +432,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
-  | DecE dec ->
+  | DecE (dec, _) ->
     interpret_block env [dec] None k
   | DeclareE (id, typ, exp1) ->
     let env = adjoin_vals env (declare_id id) in
@@ -548,7 +548,7 @@ and match_pat pat v : val_env option =
     then Some V.Env.empty
     else None
   | SignP (op, lit) ->
-    let t = T.as_immut pat.note.note_typ in
+    let t = T.as_immut pat.note in
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty

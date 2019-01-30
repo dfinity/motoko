@@ -43,6 +43,10 @@ and typ =
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+(* field ordering *)
+
+val compare_field : field -> field -> int
+
 type kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -50,7 +54,7 @@ type kind =
 type con_env = kind Con.Env.t
 
 (* n-ary argument/result sequences *)
-             
+
 val seq: typ list -> typ
 val as_seq : typ -> typ list
 

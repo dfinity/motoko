@@ -51,11 +51,15 @@ let fresh_id typ =
 
 (* Patterns *)
 
-let varP x = {x with it=VarP (id_of_exp x)}
+let varP x =
+  { it=VarP (id_of_exp x);
+    at = x.at;
+    note = x.note.note_typ
+  }
+
 let tupP pats =
   {it = TupP pats;
-   note = {note_typ = T.Tup (List.map typ pats);
-           note_eff = T.Triv};
+   note = T.Tup (List.map (fun p -> p.note) pats);
    at = no_region}
 
 let seqP ps =
@@ -89,7 +93,7 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE exp = {exp with it = DecE exp}
+let decE dec = {dec with it = DecE (dec,ref dec.note.note_typ)}
 
 let rec typ_decs decs =
   match decs with
@@ -101,7 +105,7 @@ let blockE decs =
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE decs;
+  { it = BlockE (decs, ref typ);
     at = no_region;
     note = {note_typ = typ;
             note_eff = e}
@@ -145,7 +149,7 @@ let ifE exp1 exp2 exp3 typ =
   }
 
 let dotE exp name typ =
-  { it = DotE (exp,name);
+  { it = DotE (exp,ref (T.Object T.Local), name);
     at = no_region;
     note = {note_typ = typ;
             note_eff = eff exp}
@@ -155,15 +159,13 @@ let switch_optE exp1 exp2 pat exp3 typ =
   { it = SwitchE (exp1,
                   [{it = {pat = {it = LitP (ref NullLit);
                                  at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
+                                 note = exp1.note.note_typ};
                           exp = exp2};
                     at = no_region;
                     note = ()};
                    {it = {pat = {it = OptP pat;
                                  at = no_region;
-                                 note = {note_typ = exp1.note.note_typ;
-                                         note_eff = T.Triv}};
+                                 note = exp1.note.note_typ};
                           exp = exp3};
                     at = no_region;
                     note = ()}]
@@ -214,7 +216,7 @@ let loopE exp1 exp2Opt =
                          (match exp2Opt with
                           | Some exp2 -> eff exp2
                           | None -> Type.Triv);
-            note_typ = Type.unit}
+            note_typ = Type.Non}
   }
 
 
@@ -266,20 +268,20 @@ let expD exp =  { exp with it = ExpD exp}
 
 let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 
-(* Mono-morphic function declaration *)
+(* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-     let note = {note_typ = T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e));
-                 note_eff = T.Triv} in
-     assert (f.note = note);
-     {it=FuncD(T.Local @@ no_region, (id_of_exp f),
+    let sharing,t1,t2 = match f.note.note_typ with
+      | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing,T.seq ts1, T.seq ts2
+      | _ -> assert false in
+     {it=FuncD(sharing @@ no_region, (id_of_exp f),
                [],
-               {it=VarP (id_of_exp x);at=no_region;note=x.note},
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               {it = VarP (id_of_exp x); at = no_region; note = t1},
+               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
                e);
             at = no_region;
-            note;}
+            note = f.note}
   | _ -> failwith "Impossible: funcD"
 
 
@@ -287,15 +289,16 @@ let funcD f x e =
 let nary_funcD f xs e =
   match f.it,f.note.note_typ with
   | VarE _,
-    T.Func(T.Call sharing,_,_,_,_) ->
+    T.Func(T.Call sharing,_,_,_,ts2) ->
+    let t2 = T.seq ts2 in
       {it=FuncD(sharing @@ no_region,
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               PrimT "Any"@@no_region, (* bogus,  but we shouldn't use it anymore *)
+               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
                e);
       at = no_region;
-      note = f.note;}
+      note = f.note}
   | _,_ -> failwith "Impossible: funcD"
 
 

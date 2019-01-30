@@ -3326,7 +3326,7 @@ and compile_exp (env : E.t) exp =
            G.i (Compare (Wasm.Values.I32 I32Op.Eq))
          )
      ]
-  | BlockE decs ->
+  | BlockE (decs,_) ->
     compile_decs env decs
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -3381,9 +3381,9 @@ and compile_exp (env : E.t) exp =
     StackRep.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
     Tuple.load_n (Int32.of_int n)
-  | ArrayE (m, es) ->
+  | ArrayE (m, t, es) ->
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
-  | ActorE (name, fs) ->
+  | ActorE (name, fs, _) ->
     StackRep.UnboxedReference,
     let captured = Freevars_ir.exp exp in
     let prelude_names = find_prelude_names env in
@@ -3474,7 +3474,7 @@ and compile_exp (env : E.t) exp =
     StackRep.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
-  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs) ->
+  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
     StackRep.Vanilla,
     let fs' = List.map
       (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))
@@ -3778,7 +3778,7 @@ and compile_private_actor_field pre_env (f : Ir.exp_field)  =
 and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (cc, name, _, pat, _rt, exp) =
     let find_func exp = match exp.it with
-    | BlockE [{it = FuncD (cc, name, ty_args, pat, rt, exp); _ }] ->
+    | BlockE ([{it = FuncD (cc, name, ty_args, pat, rt, exp); _ }],_) ->
       (cc, name, ty_args, pat, rt, exp)
     | _ -> assert false (* "public actor field not a function" *)
     in find_func f.it.exp in

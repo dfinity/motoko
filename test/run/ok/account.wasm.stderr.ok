@@ -8,7 +8,7 @@ non-closed actor: (ActorE
         (shared  1 -> 0)
         getBalance
         (VarP $8)
-        (TupT)
+        ()
         (BlockE
           (LetD (TupP) (TupE))
           (ExpD
@@ -19,29 +19,34 @@ non-closed actor: (ActorE
                   ( 1 -> 0)
                   $lambda
                   (VarP $0)
-                  (PrimT Any)
+                  ()
                   (CallE
                     ( 1 -> 0)
                     (VarE $0)
                     (BlockE
                       (ExpD (RetE (CallE ( 1 -> 0) (VarE $0) (VarE balance))))
+                      Int
                     )
                   )
                 )
+                (Int -> ()) -> ()
               )
               (BlockE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
                   (VarP $9)
-                  (PrimT Any)
+                  ()
                   (CallE (shared  1 -> 0) (VarE $8) (VarE $9))
                 )
+                Int -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (shared Int -> ()) -> ()
     )
     Const
     Public
@@ -53,7 +58,7 @@ non-closed actor: (ActorE
         (shared  2 -> 0)
         split
         (TupP (VarP amount) (VarP $10))
-        (TupT)
+        ()
         (BlockE
           (ExpD
             (CallE
@@ -63,7 +68,7 @@ non-closed actor: (ActorE
                   ( 1 -> 0)
                   $lambda
                   (VarP $1)
-                  (PrimT Any)
+                  ()
                   (CallE
                     ( 1 -> 0)
                     (VarE $1)
@@ -83,23 +88,28 @@ non-closed actor: (ActorE
                           )
                         )
                       )
+                      Account
                     )
                   )
                 )
+                (Account -> ()) -> ()
               )
               (BlockE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
                   (VarP $11)
-                  (PrimT Any)
+                  ()
                   (CallE (shared  1 -> 0) (VarE $10) (VarE $11))
                 )
+                Account -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (Int, shared Account -> ()) -> ()
     )
     Const
     Public
@@ -111,7 +121,7 @@ non-closed actor: (ActorE
         (shared  1 -> 0)
         join
         (VarP account)
-        (TupT)
+        ()
         (BlockE
           (ExpD (AssertE (IsE (VarE account) (VarE Account))))
           (LetD (VarP amount) (VarE balance))
@@ -123,8 +133,10 @@ non-closed actor: (ActorE
               (TupE (VarE amount) (VarE Account))
             )
           )
+          ()
         )
       )
+      shared (like Account) -> ()
     )
     Const
     Public
@@ -136,7 +148,7 @@ non-closed actor: (ActorE
         (shared  2 -> 0)
         credit
         (TupP (VarP amount) (VarP caller))
-        (TupT)
+        ()
         (BlockE
           (ExpD (AssertE (IsE (VarE this) (VarE caller))))
           (ExpD
@@ -145,8 +157,10 @@ non-closed actor: (ActorE
               (BinE Int (VarE balance) AddOp (VarE amount))
             )
           )
+          ()
         )
       )
+      shared (Int, Class) -> ()
     )
     Const
     Public
@@ -158,7 +172,7 @@ non-closed actor: (ActorE
         (shared  2 -> 0)
         isCompatible
         (TupP (VarP account) (VarP $12))
-        (TupT)
+        ()
         (BlockE
           (ExpD
             (CallE
@@ -168,7 +182,7 @@ non-closed actor: (ActorE
                   ( 1 -> 0)
                   $lambda
                   (VarP $2)
-                  (PrimT Any)
+                  ()
                   (CallE
                     ( 1 -> 0)
                     (VarE $2)
@@ -182,25 +196,31 @@ non-closed actor: (ActorE
                           )
                         )
                       )
+                      Bool
                     )
                   )
                 )
+                (Bool -> ()) -> ()
               )
               (BlockE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
                   (VarP $13)
-                  (PrimT Any)
+                  ()
                   (CallE (shared  1 -> 0) (VarE $12) (VarE $13))
                 )
+                Bool -> ()
               )
             )
           )
+          ()
         )
       )
+      shared (like Account, shared Bool -> ()) -> ()
     )
     Const
     Public
   )
+  Account
 )

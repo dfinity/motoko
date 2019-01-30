@@ -64,10 +64,10 @@ let bind env i info =
 
 let are_generic_insts tbs insts =
   List.for_all2 (fun tb inst ->
-      match !(tb.note),!(inst.note) with
-      | Some c1, Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
-      | Some c1, _ -> false
-      | None,_ -> assert false) tbs insts
+      match tb.note,inst.note with
+      | Con(c1,[]), Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
+      | Con(c1,[]), _ -> false
+      | _,_ -> assert false) tbs insts
 
 let rec tailexp env e =
     {e with it = exp' env e}
@@ -85,7 +85,7 @@ and exp' env e  = match e.it with
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields env efs)
-  | DotE (e, i)         -> DotE (exp env e, i)
+  | DotE (e, sr, i)     -> DotE (exp env e, ref (!sr), i)
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
   | ArrayE (m,es)          -> ArrayE (m,(exps env es))
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
@@ -100,7 +100,7 @@ and exp' env e  = match e.it with
                  expD (breakE label (tupE []) (typ e))]).it
       | _,_-> CallE(exp env e1, insts, exp env e2)
     end
-  | BlockE ds           -> BlockE (decs env ds)
+  | BlockE (ds,ot)      -> BlockE (decs env ds, ref (!ot))
   | NotE e              -> NotE (exp env e)
   | AndE (e1, e2)       -> AndE (exp env e1, tailexp env e2)
   | OrE (e1, e2)        -> OrE (exp env e1, tailexp env e2)
@@ -121,8 +121,8 @@ and exp' env e  = match e.it with
   | AssertE e           -> AssertE (exp env e)
   | IsE (e, t)          -> IsE (exp env e, t)
   | AnnotE (e, t)       -> AnnotE (exp env e, t)
-  | DecE d              -> let mk_d, env1 = dec env d in
-                           DecE ({mk_d with it = mk_d.it env1})
+  | DecE (d, ot)        -> let mk_d, env1 = dec env d in
+                           DecE ({mk_d with it = mk_d.it env1},ref (!ot))
   | OptE e              -> OptE (exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
@@ -206,7 +206,7 @@ and dec' env d =
   | FuncD (({it=Local;_} as s), id, tbs, p, typT, exp0) ->
     let env = bind env id None in
     (fun env1 ->
-      let temp = fresh_id (Mut (typ p)) in
+      let temp = fresh_id (Mut p.note) in
       let l = fresh_lab () in
       let tail_called = ref false in
       let env2 = {tail_pos = true;
@@ -218,18 +218,22 @@ and dec' env d =
       in
       let env3 = pat env2 p  in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
+      let cs = List.map (fun tb -> tb.note) tbs in
       if !tail_called then
         let ids = match typ d with
-          | Func(_,_,_,dom,_) -> List.map fresh_id dom
+          | Func(_,_,_,dom,_) -> List.map (fun t -> fresh_id (open_ cs t)) dom
           | _ -> assert false
         in
         let args = seqP (List.map varP ids) in
+        let l_typ =
+          {it = Syntax.TupT []; at = no_region; note = Type.unit} 
+        in
         let body =
           blockE [ varD (id_of_exp temp) (seqE ids);
                    expD (loopE
-                           (labelE l typT
+                           (labelE l l_typ 
                               (blockE [letP p temp;
-                                       expD (retE exp0' unit)])) None)
+                                       expD (retE exp0' Type.unit)])) None)
           ] in
         FuncD (s, id, tbs, args, typT, body)
       else

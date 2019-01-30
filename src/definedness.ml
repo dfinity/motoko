@@ -95,12 +95,12 @@ let rec exp msgs e : f = match e.it with
     | Type.Actor -> eagerify f
     | Type.Object _ -> f
     end
-  | DotE (e, i)         -> exp msgs e
+  | DotE (e, _t, i)     -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
-  | BlockE ds           -> decs msgs ds
+  | BlockE (ds, _)      -> decs msgs ds
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
@@ -118,7 +118,7 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | IsE (e, t)          -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
-  | DecE d              -> close (dec msgs d)
+  | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
   | DeclareE (i, t, e)  -> exp msgs e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp msgs e

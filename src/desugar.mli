@@ -1,1 +1,1 @@
-val prog : Typing.con_env -> Syntax.prog -> Ir.prog
+val prog : Syntax.prog -> Ir.prog
