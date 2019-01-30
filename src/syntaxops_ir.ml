@@ -14,7 +14,7 @@ let constM = S.Const@@no_region
 
 (* Field names *)
 
-let nameN s = (Name s)@@no_region
+let nameN s = (S.Name s)@@no_region
 
 let nextN = nameN "next"
 
@@ -23,8 +23,8 @@ let nextN = nameN "next"
 let idE id typ =
   {it = VarE id;
    at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
+   note = {S.note_typ = typ;
+           S.note_eff = T.Triv}
   }
 
 let id_of_exp x =
@@ -55,7 +55,7 @@ let fresh_id typ =
 let varP x =
   { it=VarP (id_of_exp x);
     at = x.at;
-    note = x.note.note_typ
+    note = x.note.S.note_typ
   }
 
 let tupP pats =
@@ -78,8 +78,8 @@ let as_seqP p =
 let primE name typ =
   {it = PrimE name;
    at = no_region;
-   note = {note_typ = typ;
-           note_eff = T.Triv}
+   note = {S.note_typ = typ;
+           S.note_eff = T.Triv}
   }
 
 (* tuples *)
@@ -88,13 +88,14 @@ let projE e n =
   match typ e with
   | T.Tup ts ->
      {it = ProjE(e,n);
-      note = {note_typ = List.nth ts n;
-              note_eff = T.Triv};
+      note = {S.note_typ = List.nth ts n;
+              S.note_eff = T.Triv};
       at = no_region;
      }
   | _ -> failwith "projE"
 
-let decE dec = {dec with it = DecE (dec,ref dec.note.note_typ)}
+(* ??? *)
+(* let decE dec = {dec with it = DecE (dec,ref dec.note.S.note_typ)} *)
 
 let rec typ_decs decs =
   match decs with
@@ -106,105 +107,105 @@ let blockE decs =
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE (decs, ref typ);
+  { it = BlockE (decs, typ);
     at = no_region;
-    note = {note_typ = typ;
-            note_eff = e}
+    note = {S.note_typ = typ;
+            S.note_eff = e}
   }
 
 let textE s =
-  { it = LitE (ref (TextLit s));
+  { it = LitE (S.TextLit s);
     at = no_region;
-    note = {note_typ = T.Prim T.Text;
-            note_eff = T.Triv;}
+    note = {S.note_typ = T.Prim T.Text;
+            S.note_eff = T.Triv;}
   }
 
 
 let unitE =
   { it = TupE [];
     at = no_region;
-    note = {note_typ = T.Tup [];
-            note_eff = T.Triv}
+    note = {S.note_typ = T.Tup [];
+            S.note_eff = T.Triv}
   }
 
 let boolE b =
-  { it = LitE (ref (BoolLit b));
+  { it = LitE (S.BoolLit b);
     at = no_region;
-    note = {note_typ = T.bool;
-            note_eff = T.Triv}
+    note = {S.note_typ = T.bool;
+            S.note_eff = T.Triv}
   }
 
 let callE e1 ts e2 t =
-  { it = CallE(e1,ts,e2);
+  { it = assert false (* CallE(e1,ts,e2); *) ;
     at = no_region;
-    note = {note_typ = t;
-            note_eff = T.Triv}
+    note = {S.note_typ = t;
+            S.note_eff = T.Triv}
   }
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
-    note = {note_typ = typ;
-            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+    note = {S.note_typ = typ;
+            S.note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
            }
   }
 
 let dotE exp name typ =
-  { it = DotE (exp,ref (T.Object T.Local), name);
+  { it = assert false (* DotE (exp, T.Object T.Local, name); *) ;
     at = no_region;
-    note = {note_typ = typ;
-            note_eff = eff exp}
+    note = {S.note_typ = typ;
+            S.note_eff = eff exp}
   }
 
 let switch_optE exp1 exp2 pat exp3 typ =
   { it = SwitchE (exp1,
-                  [{it = {pat = {it = LitP (ref NullLit);
+                  [{it = {pat = {it = LitP NullLit;
                                  at = no_region;
-                                 note = exp1.note.note_typ};
+                                 note = exp1.note.S.note_typ};
                           exp = exp2};
                     at = no_region;
                     note = ()};
                    {it = {pat = {it = OptP pat;
                                  at = no_region;
-                                 note = exp1.note.note_typ};
+                                 note = exp1.note.S.note_typ};
                           exp = exp3};
                     at = no_region;
                     note = ()}]
            );
     at = no_region;
-    note = {note_typ = typ;
-            note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+    note = {S.note_typ = typ;
+            S.note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
            }
   }
 
 let tupE exps =
-  let effs = List.map effect_exp exps in
+  let effs = assert false (* List.map effect_exp exps *) in
   let eff = List.fold_left max_eff Type.Triv effs in
   {it = TupE exps;
    at = no_region;
-   note = {note_typ = T.Tup (List.map typ exps);
-           note_eff = eff}
+   note = {S.note_typ = T.Tup (List.map typ exps);
+           S.note_eff = eff}
   }
 
 let breakE l exp typ =
   { it = BreakE (l, exp);
     at = no_region;
-    note = {note_eff = eff exp;
-            note_typ = typ}
+    note = {S.note_eff = eff exp;
+            S.note_typ = typ}
   }
 
 let retE exp typ =
   { it = RetE exp;
     at = no_region;
-    note = {note_eff = eff exp;
-            note_typ = typ}
+    note = {S.note_eff = eff exp;
+            S.note_typ = typ}
   }
 
 let assignE exp1 exp2 =
   { it = AssignE (exp1,exp2);
     at = no_region;
-    note = {note_eff = Effect.max_eff (eff exp1) (eff exp2);
-            note_typ = Type.unit}
+    note = {S.note_eff = Effect.max_eff (eff exp1) (eff exp2);
+            S.note_typ = Type.unit}
   }
 
 let labelE l typT exp =
@@ -213,11 +214,11 @@ let labelE l typT exp =
 let loopE exp1 exp2Opt =
   { it = LoopE(exp1,exp2Opt);
     at = no_region;
-    note = {note_eff = Effect.max_eff (eff exp1)
+    note = {S.note_eff = Effect.max_eff (eff exp1)
                          (match exp2Opt with
                           | Some exp2 -> eff exp2
                           | None -> Type.Triv);
-            note_typ = Type.Non}
+            S.note_typ = Type.Non}
   }
 
 
@@ -230,15 +231,15 @@ let declare_idE x typ exp1 =
 let define_idE x mut exp1 =
   { it = DefineE (x, mut, exp1);
     at = no_region;
-    note = { note_typ = T.unit;
-             note_eff =T.Triv}
+    note = { S.note_typ = T.unit;
+             S.note_eff =T.Triv}
   }
 
 let newObjE typ sort ids =
-  { it = NewObjE (sort, ids);
+  { it = assert false (* NewObjE (sort, ids); *) ;
     at = no_region;
-    note = { note_typ = typ;
-             note_eff = T.Triv}
+    note = { S.note_typ = typ;
+             S.note_eff = T.Triv}
   }
 
 (* Declarations *)
@@ -247,20 +248,20 @@ let newObjE typ sort ids =
 let letP p e =
   {it = LetD(p,e);
    at = no_region;
-   note = { note_typ = T.unit; (* ! *)
-            note_eff = e.note.note_eff; }
+   note = { S.note_typ = T.unit; (* ! *)
+            S.note_eff = e.note.S.note_eff; }
   }
 
 let letD x exp = { it = LetD (varP x,exp);
                    at = no_region;
-                   note = { note_eff = eff exp;
-                            note_typ = T.unit;} (* ! *)
+                   note = { S.note_eff = eff exp;
+                            S.note_typ = T.unit;} (* ! *)
                  }
 
 let varD x exp = { it = VarD (x,exp);
                    at = no_region;
-                   note = { note_eff = eff exp;
-                            note_typ = T.unit;} (* ! *)
+                   note = { S.note_eff = eff exp;
+                            S.note_typ = T.unit;} (* ! *)
                  }
 let expD exp =  { exp with it = ExpD exp}
 
@@ -273,13 +274,14 @@ let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-    let sharing,t1,t2 = match f.note.note_typ with
+    let sharing,t1,t2 = match f.note.S.note_typ with
       | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing,T.seq ts1, T.seq ts2
       | _ -> assert false in
-     {it=FuncD(sharing @@ no_region, (id_of_exp f),
+     {it=FuncD( assert false (* sharing @@ no_region *), (id_of_exp f),
                [],
                {it = VarP (id_of_exp x); at = no_region; note = t1},
-               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
+               assert false,
+               (* {it = S.PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *) *)
                e);
             at = no_region;
             note = f.note}
@@ -288,15 +290,18 @@ let funcD f x e =
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs e =
-  match f.it,f.note.note_typ with
+  match f.it,f.note.S.note_typ with
   | VarE _,
     T.Func(T.Call sharing,_,_,_,ts2) ->
     let t2 = T.seq ts2 in
-      {it=FuncD(sharing @@ no_region,
+      {it=FuncD( 
+              (* sharing @@ no_region, *) 
+              assert false,
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *)
+               (* {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *) *)
+               assert false,
                e);
       at = no_region;
       note = f.note}
@@ -333,7 +338,7 @@ let  (-->) x e =
   match x.it with
   | VarE _ ->
      let f = idE ("$lambda"@@no_region) (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
-     decE (funcD f x e)
+     (assert false) (* decE *) (funcD f x e)
   | _ -> failwith "Impossible: -->"
 
 (* n-ary local lambda *)
@@ -341,7 +346,7 @@ let (-->*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Local, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  decE (nary_funcD f xs e)
+  (assert false) (* decE *) (nary_funcD f xs e)
 
 
 (* n-ary shared lambda *)
@@ -349,13 +354,13 @@ let (-@>*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Sharable, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  decE (nary_funcD f xs e)
+  (assert false) (* decE *) (nary_funcD f xs e)
 
 
 (* Lambda application (monomorphic) *)
 
 let ( -*- ) exp1 exp2 =
-  match exp1.note.note_typ with
+  match exp1.note.S.note_typ with
   | T.Func(_, _, [], ts1, ts2) ->
 (* for debugging bad applications, imprecisely
     (if not ((T.seq ts1) = (typ exp2))
@@ -370,10 +375,10 @@ let ( -*- ) exp1 exp2 =
        end
      else ());
  *)
-    {it = CallE(exp1, [], exp2);
+    {it = assert false (* CallE(exp1, [], exp2); *);
      at = no_region;
-     note = {note_typ = T.seq ts2;
-              note_eff = max_eff (eff exp1) (eff exp2)}
+     note = {S.note_typ = T.seq ts2;
+              S.note_eff = max_eff (eff exp1) (eff exp2)}
     }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
