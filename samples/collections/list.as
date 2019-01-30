@@ -8,19 +8,23 @@
 // polymorphic linked lists
 type List<T> = ?(T, List<T>);
 
+// empty list
 func nil<T>() : List<T> = 
   null;
 
-func push<T>(x : T, l : List<T>) : List<T> = 
-  ?(x, l);
-
-func pop<T>(l : List<T>) : (?T, List<T>) = {
+// test for empty list
+func isnil<T>(l : List<T>) : Bool {
   switch l {
-    case null { (null, null) };
-    case (?(h, t)) { (?h, t) };
+    case null { true  };
+    case _    { false };
   }
 };
 
+// aka "list cons"
+func push<T>(x : T, l : List<T>) : List<T> = 
+  ?(x, l);
+
+// get head of list
 func hd<T>(l : List<T>) : ?T = {
   switch l {
     case null { null };
@@ -28,6 +32,7 @@ func hd<T>(l : List<T>) : ?T = {
   }
 };
 
+// get tail of list
 func tl<T>(l : List<T>) : ?List<T> = {
   switch l {
     case null { null };
@@ -35,18 +40,20 @@ func tl<T>(l : List<T>) : ?List<T> = {
   }
 };
 
+// treat the list as a stack; combines 'hd' and (non-failing) 'tl' into one operation
+func pop<T>(l : List<T>) : (?T, List<T>) = {
+  switch l {
+    case null { (null, null) };
+    case (?(h, t)) { (?h, t) };
+  }
+};
+
+// array-like list access, but in linear time
 func nth<T>(l : List<T>, n : Nat) : ?T = {
   switch (n, tl<T>(l)) {
     case (0, _)    { hd<T>(l) };
     case (m, null) { null };
     case (m, ?tl)  { nth<T>(tl, n - 1) };
-  }
-};
-
-func isnil<T>(l : List<T>) : Bool {
-  switch l {
-    case null { true  };
-    case _    { false };
   }
 };
 
