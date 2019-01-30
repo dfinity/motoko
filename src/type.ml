@@ -43,6 +43,10 @@ and typ =
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+(* field ordering *)
+
+let compare_field {name=n;_} {name=m;_} = compare n m
+
 type kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -57,7 +61,7 @@ let seq ts =
 let as_seq t =
     match t with
     | Tup ts -> ts
-    | t -> [t]                
+    | t -> [t]
 
 (* Short-hands *)
 
@@ -94,8 +98,8 @@ let array_obj t =
   let mut t = immut t @
     [ {name = "set"; typ = Func (Call Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
-  | Mut t' -> Obj (Object Local, List.sort compare (mut t'))
-  | t -> Obj (Object Local, List.sort compare (immut t))
+  | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
+  | t -> Obj (Object Local, List.sort compare_field (immut t))
 
 
 (* Shifting *)
@@ -389,7 +393,7 @@ let rec rel_typ env rel eq t1 t2 =
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
-  | Any, Any -> 
+  | Any, Any ->
     true
   | _, Any when rel != eq ->
     true
@@ -453,8 +457,8 @@ let rec rel_typ env rel eq t1 t2 =
     rel_list rel_typ env rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
      (* TODO: not all classes should be sharable *)
-    c1 = c2 && 
-    (s1 = s2 || rel != eq && s1 = Construct) && 
+    c1 = c2 &&
+    (s1 = s2 || rel != eq && s1 = Construct) &&
     (match rel_binds env rel eq tbs1 tbs2 with
     | Some (ts, env') ->
       rel_list rel_typ env' rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -491,7 +495,7 @@ and rel_fields env rel eq tfs1 tfs2 =
   | _, [] when rel != eq ->
     true
   | tf1::tfs1', tf2::tfs2' ->
-    (match compare tf1.name tf2.name with
+    (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ env rel eq tf1.typ tf2.typ &&
       rel_fields env rel eq tfs1' tfs2'
@@ -599,7 +603,7 @@ let rec string_of_typ_nullary vs = function
   | Shared -> "Shared"
   | Class -> "Class"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> string_of_var (List.nth vs i)
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con vs c)
@@ -622,25 +626,25 @@ and string_of_dom vs ts =
   | [Tup _] ->
      sprintf "(%s)" dom
   | _ -> dom
-         
+
 and string_of_cod c vs ts =
   let cod = string_of_typ' vs (seq ts) in
   match ts with
   | [Tup _] ->
     sprintf "(%s)" cod
-  | [Async _] ->       
+  | [Async _] ->
     (match c with
      | Returns -> sprintf "(%s)" cod
      | Promises -> sprintf "%s" cod
     )
   | _ -> cod
-       
+
 and string_of_typ' vs t =
   match t with
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom vs ts1) 
-      (string_of_cod c vs ts2) 
+      (string_of_dom vs ts1)
+      (string_of_cod c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = names_of_binds vs tbs in
     sprintf "%s%s%s -> %s"
@@ -712,4 +716,4 @@ let rec string_of_typ_expand env t =
 
 (* Environments *)
 
-module Env = Env.Make(String) 
+module Env = Env.Make(String)

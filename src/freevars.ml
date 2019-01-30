@@ -42,12 +42,12 @@ let rec exp e : f = match e.it with
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | ObjE (s, i, efs)    -> close (exp_fields efs) // i.it
-  | DotE (e, i)         -> exp e
+  | DotE (e, _, i)         -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, es)      -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (e1, ts, e2)  -> exps [e1; e2]
-  | BlockE ds           -> close (decs ds)
+  | BlockE (ds, _)      -> close (decs ds)
   | NotE e              -> exp e
   | AndE (e1, e2)       -> exps [e1; e2]
   | OrE (e1, e2)        -> exps [e1; e2]
@@ -65,7 +65,7 @@ let rec exp e : f = match e.it with
   | AssertE e           -> exp e
   | IsE (e, t)          -> exp e
   | AnnotE (e, t)       -> exp e
-  | DecE d              -> close (dec d)
+  | DecE (d, _ot)       -> close (dec d)
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> (id i) ++ exp e

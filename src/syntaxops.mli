@@ -49,7 +49,7 @@ val letE : var -> exp -> exp -> exp
 val unitE : exp
 val boolE : bool -> exp
 
-val callE : exp -> Syntax.inst list -> exp -> typ -> exp
+val callE : exp -> Syntax.typ list -> exp -> typ -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> name -> typ -> exp

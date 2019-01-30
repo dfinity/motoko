@@ -82,8 +82,8 @@ and t_exp' context exp' =
   | ObjE (sort, id, fields) ->
     let fields' = t_fields context fields in
     ObjE (sort, id, fields')
-  | DotE (exp1, id) ->
-    DotE (t_exp context exp1, id)
+  | DotE (exp1, sr, id) ->
+    DotE (t_exp context exp1, ref (!sr), id)
   | AssignE (exp1, exp2) ->
     AssignE (t_exp context exp1, t_exp context exp2)
   | ArrayE (mut, exps) ->
@@ -92,8 +92,8 @@ and t_exp' context exp' =
     IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (exp1, typs, exp2) ->
     CallE (t_exp context exp1, typs, t_exp context exp2)
-  | BlockE decs ->
-    BlockE (t_decs context decs)
+  | BlockE (decs, ot) ->
+    BlockE (t_decs context decs, ref (!ot))
   | NotE exp1 ->
     NotE (t_exp context exp1)
   | AndE (exp1, exp2) ->
@@ -146,8 +146,8 @@ and t_exp' context exp' =
     IsE (t_exp context exp1, t_exp context exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp context exp1,typ)
-  | DecE dec ->
-    DecE (t_dec context dec)
+  | DecE (dec,ot) ->
+    DecE (t_dec context dec, ref (!ot))
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
@@ -339,7 +339,7 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
   let v1 = fresh_id (typ e1) in
-  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt (typ pat)])) in
+  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt pat.note])) in
   let dotnext v = dotE v nextN next_typ -*- unitE in
   let loop = fresh_id (contT T.unit) in
   let v2 = fresh_id T.unit in
@@ -407,8 +407,8 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ObjE (sort, id, fields) ->
     c_obj context exp sort id fields k
-  | DotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
+  | DotE (exp1, sr, id) ->
+    unary context k (fun v1 -> e (DotE (v1, ref (!sr), id))) exp1
   | AssignE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (AssignE (v1, v2))) exp1 exp2
   | ArrayE (mut, exps) ->
@@ -417,7 +417,7 @@ and c_exp' context exp k =
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (exp1, typs, exp2) ->
     binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
-  | BlockE decs ->
+  | BlockE (decs,t) ->
     c_block context decs k
   | NotE exp1 ->
     unary context k (fun v1 -> e (NotE v1)) exp1
@@ -498,7 +498,7 @@ and c_exp' context exp k =
   | AnnotE (exp1, typ) ->
     (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1
-  | DecE dec ->
+  | DecE (dec, _) ->
     c_dec context dec k
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
@@ -588,7 +588,7 @@ and declare_id id typ exp =
 and declare_pat pat exp : exp =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  exp
-  | VarP id -> declare_id id (pat.note.note_typ) exp
+  | VarP id -> declare_id id pat.note exp
   | TupP pats -> declare_pats pats exp
   | OptP pat1 -> declare_pat pat1 exp
   | AltP (pat1, pat2) -> declare_pat pat1 exp
@@ -609,7 +609,7 @@ and rename_pat' pat =
   | WildP -> (PatEnv.empty, pat.it)
   | LitP _ | SignP _ -> (PatEnv.empty, pat.it)
   | VarP id ->
-    let v = fresh_id pat.note.note_typ in
+    let v = fresh_id pat.note in
     (PatEnv.singleton id.it v,
      VarP (id_of_exp v))
   | TupP pats ->

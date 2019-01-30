@@ -13,6 +13,7 @@ type messages = message list
 
 val fatal_error : Source.region -> string -> message
 
+val string_of_message : message -> string
 val print_message : message -> unit
 val print_messages : messages -> unit
 

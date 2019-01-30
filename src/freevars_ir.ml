@@ -67,14 +67,14 @@ let rec exp e : f = match e.it with
   | RelE (_, e1, ro, e2)-> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
-  | ActorE (i, efs)     -> close (exp_fields efs) // i.it
+  | ActorE (i, efs, _)  -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
-  | ArrayE (m, es)      -> exps es
+  | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (_, e1, ts, e2) -> exps [e1; e2]
-  | BlockE ds           -> close (decs ds)
+  | BlockE (ds, _)      -> close (decs ds)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | WhileE (e1, e2)     -> exps [e1; e2]
@@ -91,7 +91,7 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
-  | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
+  | NewObjE (_, ids, _) -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
 
@@ -123,7 +123,7 @@ and dec d = match d.it with
     (M.empty, S.singleton i.it) +++ exp e
   | FuncD (cc, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
-  | TypD (i, tp, t) -> (M.empty, S.empty)
+  | TypD (c,k) -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =
