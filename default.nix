@@ -200,4 +200,9 @@ rec {
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
+
+  all-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "all-systems-go";
+    constituents = [ native js native_test coverage-report ];
+  };
 }
