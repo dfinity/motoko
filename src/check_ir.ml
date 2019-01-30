@@ -261,10 +261,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   let (<~) t1 t2 =
-    if T.is_mut t2 then
-      t1 <: t2
-    else
-      T.as_immut t1 <: t2
+    (if T.is_mut t2 then t1 else T.as_immut t1) <: t2
   in
   (* check effect *)
   check (E.Ir.infer_effect_exp exp <= E.eff exp)
