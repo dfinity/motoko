@@ -9,6 +9,9 @@ type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
+(* TEMP *)
+module Syntaxops_ir = Syntaxops_ir
+
 (* Diagnostics *)
 
 let phase heading name =
