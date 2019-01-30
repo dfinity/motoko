@@ -1,16 +1,16 @@
 open Source
-(* open Syntax *)
 open Ir
 open Effect
 
+module S = Syntax
 module T = Type
 
 type var = exp
 
 (* Mutabilities *)
 
-let varM = Var@@no_region
-let constM = Const@@no_region
+let varM = S.Var@@no_region
+let constM = S.Const@@no_region
 
 (* Field names *)
 
