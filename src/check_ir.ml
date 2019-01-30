@@ -420,7 +420,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (typ exp2) <: T.bool;
     | _ -> ()
     end;
-    T.Non <: t; (* redundant *)
+    T.Non <: t; (* vacuously true *)
   | ForE (pat, exp1, exp2) ->
     begin
       check_exp env exp1;
@@ -454,7 +454,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some t1 ->
         check_exp env exp1;
         typ exp1 <: t1;
-        T.Non <: t1;
+        T.Non <: t1; (* vacuously true *)
     end;
   | RetE exp1 ->
     begin
@@ -465,7 +465,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         assert (t0 <> T.Pre);
         check_exp env exp1;
         typ exp1 <: t0;
-        T.Non <: t;
+        T.Non <: t; (* vacuously true *)
     end;
   | AsyncE exp1 ->
     let t1 = typ exp1 in
