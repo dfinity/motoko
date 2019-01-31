@@ -11,6 +11,7 @@ type env = stat_env * dyn_env
 
 (* TEMP *)
 module Syntaxops_ir = Syntaxops_ir
+let _ = Syntaxops_ir.fresh
 
 (* Diagnostics *)
 
