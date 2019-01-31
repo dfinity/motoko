@@ -1,3 +1,6 @@
+(* WIP translation of syntaxops to use IR in place of Source *)
+(* Search for 'XXX' and 'assert false' to find remaining issues *)
+
 open Source
 open Ir
 open Effect
@@ -94,8 +97,13 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-(* ??? *)
-(* let decE dec = {dec with it = DecE (dec,ref dec.note.S.note_typ)} *)
+(*
+  Note: after desugaring, 
+        there is no concept of `DecE` in IR.
+  
+  let decE dec = 
+  {dec with it = DecE (dec,ref dec.note.S.note_typ)}
+*)
 
 let rec typ_decs decs =
   match decs with
@@ -135,12 +143,17 @@ let boolE b =
             S.note_eff = T.Triv}
   }
 
-let callE e1 ts e2 t =
-  { it = assert false (* CallE(e1,ts,e2); *) ;
+(* Q: Take `cc` as a param, or regenerate it from `t`? *)
+let callE (* cc *) e1 ts e2 t =
+  (* XXX: Check use of `t` here; just a wild guess: *)
+  let cc = Value.call_conv_of_typ t in
+  { it = CallE(cc,e1,ts,e2);
     at = no_region;
     note = {S.note_typ = t;
             S.note_eff = T.Triv}
   }
+
+
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -151,7 +164,7 @@ let ifE exp1 exp2 exp3 typ =
   }
 
 let dotE exp name typ =
-  { it = assert false (* DotE (exp, T.Object T.Local, name); *) ;
+  { it = DotE (exp, name);
     at = no_region;
     note = {S.note_typ = typ;
             S.note_eff = eff exp}
@@ -159,7 +172,7 @@ let dotE exp name typ =
 
 let switch_optE exp1 exp2 pat exp3 typ =
   { it = SwitchE (exp1,
-                  [{it = {pat = {it = LitP NullLit;
+                  [{it = {pat = {it = LitP S.NullLit;
                                  at = no_region;
                                  note = exp1.note.S.note_typ};
                           exp = exp2};
@@ -179,7 +192,7 @@ let switch_optE exp1 exp2 pat exp3 typ =
   }
 
 let tupE exps =
-  let effs = assert false (* List.map effect_exp exps *) in
+  let effs = List.map (fun _ -> assert false) exps in
   let eff = List.fold_left max_eff Type.Triv effs in
   {it = TupE exps;
    at = no_region;
@@ -236,7 +249,9 @@ let define_idE x mut exp1 =
   }
 
 let newObjE typ sort ids =
-  { it = assert false (* NewObjE (sort, ids); *) ;
+  { it = 
+      (* XXX: Check use of typ here; just a guess: *)
+      NewObjE (sort, ids, typ); 
     at = no_region;
     note = { S.note_typ = typ;
              S.note_eff = T.Triv}
@@ -274,7 +289,7 @@ let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-    let sharing,t1,t2 = match f.note.S.note_typ with
+    let sharing,t1,_t2 = match f.note.S.note_typ with
       | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing,T.seq ts1, T.seq ts2
       | _ -> assert false in
      {it=FuncD( assert false (* sharing @@ no_region *), (id_of_exp f),
@@ -293,7 +308,7 @@ let nary_funcD f xs e =
   match f.it,f.note.S.note_typ with
   | VarE _,
     T.Func(T.Call sharing,_,_,_,ts2) ->
-    let t2 = T.seq ts2 in
+    let _t2 = T.seq ts2 in
       {it=FuncD( 
               (* sharing @@ no_region, *) 
               assert false,
@@ -338,7 +353,7 @@ let  (-->) x e =
   match x.it with
   | VarE _ ->
      let f = idE ("$lambda"@@no_region) (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
-     (assert false) (* decE *) (funcD f x e)
+     (* decE *) (funcD f x e)
   | _ -> failwith "Impossible: -->"
 
 (* n-ary local lambda *)
@@ -346,7 +361,7 @@ let (-->*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Local, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  (assert false) (* decE *) (nary_funcD f xs e)
+  (* decE *) (nary_funcD f xs e)
 
 
 (* n-ary shared lambda *)
@@ -354,7 +369,7 @@ let (-@>*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Sharable, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  (assert false) (* decE *) (nary_funcD f xs e)
+  (* decE *) (nary_funcD f xs e)
 
 
 (* Lambda application (monomorphic) *)
@@ -375,16 +390,21 @@ let ( -*- ) exp1 exp2 =
        end
      else ());
  *)
-    {it = assert false (* CallE(exp1, [], exp2); *);
+    (* XXX: Check these lines; they are mere guesses: *)    
+    let cc = 
+      let t  = exp1.note.S.note_typ in
+      Value.call_conv_of_typ t in
+
+    {it = CallE(cc, exp1, [], exp2);
      at = no_region;
      note = {S.note_typ = T.seq ts2;
               S.note_eff = max_eff (eff exp1) (eff exp2)}
     }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp1))
+              (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp1))
               (Type.string_of_typ typ1)
-              (Wasm.Sexpr.to_string 80 (Arrange.exp exp2)))
+              (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp2)))
 
 
 (* Intermediate, cps-based @async and @await primitives,
