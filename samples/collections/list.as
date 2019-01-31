@@ -107,6 +107,18 @@ func mapfilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
   rec(l)
 };
 
+// append; non-tail recursive
+// (Note: need mutable Cons tails for tail-recursive version)
+func append<T>(l : List<T>, m : List<T>) : List<T> = {
+  func rec(l : List<T>) : List<T> {
+    switch l {
+    case null     { m };
+    case (?(h,t)) {?(h,rec(l))};
+    }
+  };
+  rec(l)
+};
+
 // array-like list access, but in linear time
 func nth<T>(l : List<T>, n : Nat) : ?T = {
   switch (n, tl<T>(l)) {
