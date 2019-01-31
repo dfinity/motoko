@@ -1,6 +1,4 @@
-(* open Syntax *)
 open Ir
-open Source
 open Effect
 open Type
 open Syntaxops_ir
@@ -37,7 +35,7 @@ entering a function, class or actor constructor.
 On little gotcha for functional programmers: the argument `e` to an early `return e` is *always* in tail position,
 regardless of `return e`s own tail position.
 
-*)
+ *)
 
 
 type func_info = {func:S.id;
@@ -55,37 +53,36 @@ type env = {tail_pos:bool; (* is the expression in tail position *)
 let bind env i (info:func_info option) : env =
   match info with
   | Some _ ->
-     {env with info = info; }
+    {env with info = info; }
   | None ->
     match env.info with
-    | Some {func;_} when i.it = func.it ->
+    | Some {func;_} when i.Source.it = func.Source.it ->
       {env with info = None} (* remove shadowed func info *)
     | _ -> env         (* preserve existing, non-shadowed info *)
 
 
 let are_generic_insts tbs insts =
   List.for_all2 (fun tb inst ->
-      match tb.note, inst with
+      match tb.Source.note, inst with
       | Con(c1,[]), Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
       | Con(c1,[]), _ -> false
       | _,_ -> assert false) tbs insts
 
 let rec tailexp env e =
-    {e with it = exp' env e}
+  {e with Source.it = exp' env e}
 
 and exp env e  : exp =
-    {e with it = exp' {env with tail_pos = false}  e}
+  {e with Source.it = exp' {env with tail_pos = false}  e}
 
-and exp' env e  : exp' = match e.it with
+and exp' env e  : exp' = match e.Source.it with
   | VarE _
-  | LitE _
-  | PrimE _             -> e.it
+    | LitE _
+    | PrimE _             -> e.Source.it
   | UnE (ot, uo, e)      -> UnE (ot, uo, exp env e)
   | BinE (ot, e1, bo, e2)-> BinE (ot, exp env e1, bo, exp env e2)
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
-(*  | ObjE (s, i, efs)    -> ObjE (s, i, exp_fields env efs) *)
   | ActorE (i, es, t)   -> ActorE (i, exp_fields env es, t)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> DotE (exp env e, sn)
@@ -94,19 +91,16 @@ and exp' env e  : exp' = match e.it with
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
   | CallE (cc, e1, insts, e2)  ->
     begin
-      match e1.it, env with
+      match e1.Source.it, env with
       | VarE f1, {tail_pos = true;
                   info = Some {func; typ_binds; temp; label; tail_called}}
-          when f1.it = func.it && are_generic_insts typ_binds insts  ->
+           when f1.Source.it = func.Source.it && are_generic_insts typ_binds insts  ->
         tail_called := true;
         (blockE [expD (assignE temp (exp env e2));
-                 expD (breakE label (tupE []) (typ e))]).it
+                 expD (breakE label (tupE []) (typ e))]).Source.it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
   | BlockE (ds,ot)      -> BlockE (decs env ds, ot)
- (* | NotE e              -> NotE (exp env e) *)
- (* | AndE (e1, e2)       -> AndE (exp env e1, tailexp env e2)*)
- (* | OrE (e1, e2)        -> OrE (exp env e1, tailexp env e2) *)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
   | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
@@ -118,14 +112,11 @@ and exp' env e  : exp' = match e.it with
                            LabelE(i, t, exp env1 e)
   | BreakE (i, e)       -> BreakE(i,exp env e)
   | RetE e              -> RetE (tailexp {env with tail_pos = true} e)
-   (* NB:^ e is always in tailposition, regardless of fst env *)
+  (* NB:^ e is always in tailposition, regardless of fst env *)
   | AsyncE e            -> AsyncE (exp {tail_pos = true; info = None} e)
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
   | IsE (e, t)          -> IsE (exp env e, t)
-(*| AnnotE (e, t)       -> AnnotE (exp env e, t)*)
-(*| DecE (d, ot)        -> let mk_d, env1 = dec env d in
-                           DecE ({mk_d with it = mk_d.it env1},ref (!ot)) *)
   | OptE e              -> OptE (exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
@@ -135,8 +126,8 @@ and exp' env e  : exp' = match e.it with
 and exps env es  = List.map (exp env) es
 
 and pat env p =
-    let env = pat' env p.it in
-    env
+  let env = pat' env p.Source.it in
+  env
 
 and pat' env p = match p with
   | WildP          ->  env
@@ -144,9 +135,7 @@ and pat' env p = match p with
     let env1 = bind env i None in
     env1
   | TupP ps       -> pats env ps
-(*  | AnnotP (p, t) -> pat env p *)
   | LitP l        -> env
-(*  | SignP (uo, l) -> env *)
   | OptP p        -> pat env p
   | AltP (p1, p2) -> assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p1)));
                      assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p2)));
@@ -160,7 +149,7 @@ and pats env ps  =
     pats env1 ps
 
 and case env (c : case) =
-  {c with it = case' env c.it}
+  {c with Source.it = case' env c.Source.it}
 and case' env {pat=p;exp=e} =
   let env1 = pat env p in
   let e' = tailexp env1 e in
@@ -170,8 +159,8 @@ and case' env {pat=p;exp=e} =
 and cases env cs = List.map (case env) cs
 
 and exp_field env (ef : exp_field) =
-  let (mk_ef,env) = exp_field' env ef.it in
-  ({ef with it = mk_ef}, env)
+  let (mk_ef,env) = exp_field' env ef.Source.it in
+  ({ef with Source.it = mk_ef}, env)
 
 and exp_field' env {name = n; id = i; exp = e; mut; priv} =
   let env = bind env i None in
@@ -187,14 +176,14 @@ and exp_fields env efs  =
       let (mk_efs,env) = exp_fields_aux env efs in
       (mk_ef::mk_efs,env) in
   let mk_efs,env = exp_fields_aux env efs in
-  List.map (fun mk_ef -> {mk_ef with it = mk_ef.it env}) mk_efs
+  List.map (fun mk_ef -> {mk_ef with Source.it = mk_ef.Source.it env}) mk_efs
 
 and dec env d =
   let (mk_d,env1) = dec' env d in
-  ({d with it = mk_d}, env1)
+  ({d with Source.it = mk_d}, env1)
 
 and dec' env d =
-  match d.it with
+  match d.Source.it with
   | ExpD e ->
     (fun env1 -> ExpD (tailexp env1 e)),
     env
@@ -206,22 +195,22 @@ and dec' env d =
     let env = bind env i None in
     (fun env1 -> VarD(i,exp env1 e)),
     env
-  | FuncD (cc, id, tbs, p, typT, exp0) ->
+  | FuncD ({Value.sort=Call Local;_} as cc, id, tbs, p, typT, exp0) ->
     let env = bind env id None in
     (fun env1 ->
-      let temp = fresh_id (Mut p.note) in
+      let temp = fresh_id (Mut p.Source.note) in
       let l = fresh_lab () in
       let tail_called = ref false in
       let env2 = {tail_pos = true;
-                   info = Some {func = id;
-                                typ_binds = tbs;
-                                temp = temp;
-                                label = l;
-                                tail_called = tail_called}}
+                  info = Some {func = id;
+                               typ_binds = tbs;
+                               temp = temp;
+                               label = l;
+                               tail_called = tail_called}}
       in
       let env3 = pat env2 p  in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
-      let cs = List.map (fun tb -> tb.note) tbs in
+      let cs = List.map (fun tb -> tb.Source.note) tbs in
       if !tail_called then
         let ids = match typ d with
           | Func(_,_,_,dom,_) -> List.map (fun t -> fresh_id (open_ cs t)) dom
@@ -229,56 +218,40 @@ and dec' env d =
         in
         let args = seqP (List.map varP ids) in
         let l_typ =
-          {it = Syntax.TupT []; at = no_region; note = Type.unit} 
+          {Source.it = Syntax.TupT []; at = Source.no_region; note = Type.unit} 
         in
         let body =
           blockE [ varD (id_of_exp temp) (seqE ids);
                    expD (loopE
-                           (labelE l l_typ.note
+                           (labelE l l_typ.Source.note
                               (blockE [letP p temp;
                                        expD (retE exp0' Type.unit)])) None)
-          ] in
+            ] in
         FuncD (cc, id, tbs, args, typT, body)
       else
         FuncD (cc, id, tbs, p, typT, exp0'))
     ,
       env
-(* 
-  XXX: What happens to this special case?  
-  AFAIK, the `sharing` flag is gone in IR?
-  Are there *only* non-shareable (local) functions?
-  --Matt
 
   | FuncD (cc, i, tbs, p, t, e) ->
     (* don't optimize self-tail calls for shared functions otherwise
-       we won't go through the scheduler  *)
+       we won't go through the scheduler *)
     let env = bind env i None in
     (fun env1 ->
       let env2 = pat {tail_pos = true; info = None} p in
       let e' = tailexp env2 e in
       FuncD(cc, i, tbs, p, t, e')),
     env
-*)
 
   | TypD (_, _) ->
-    (fun env -> d.it),
+    (fun env -> d.Source.it),
     env
-(*
-  | ClassD (i, l, tbs, s, p, i2, efs) ->
-    let env = bind env i None in
-    (fun env1 ->
-      let env2 = pat {tail_pos = false; info = None}  p in
-      let env3 = bind env2 i2 None in
-      let efs' = exp_fields env3 efs in
-      ClassD(i, l, tbs, s, p, i2, efs')),
-    env
-*)
 
 and decs env ds =
   let rec tail_posns ds =
     match ds with
     | [] -> (true,[])
-    | {it=TypD _;_}::ds ->
+    | {Source.it=TypD _;_}::ds ->
       let (b,bs) = tail_posns ds in
       (b,b::bs)
     | d::ds ->
@@ -297,9 +270,9 @@ and decs env ds =
   let mk_ds,env1 = decs_aux env ds in
   List.map2 (fun mk_d in_tail_pos ->
       let env2 = if in_tail_pos
-                  then env1
-                  else {env1 with tail_pos = false} in
-      {mk_d with it = mk_d.it env2}) mk_ds tail_posns
+                 then env1
+                 else {env1 with tail_pos = false} in
+      {mk_d with Source.it = mk_d.Source.it env2}) mk_ds tail_posns
 
 
-and prog p:prog = {p with it = decs {tail_pos = false; info = None;} p.it}
+and prog p:prog = {p with Source.it = decs {tail_pos = false; info = None;} p.Source.it}

@@ -96,21 +96,13 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-(*
-  Note: after desugaring, 
-        there is no concept of `DecE` in IR.
-  
-  let decE dec = 
-  {dec with it = DecE (dec,ref dec.note.S.note_typ)}
-*)
-
-let rec typ_decs decs =
-  match decs with
-     | [] -> T.unit
-     | [dec] -> typ dec
-     | _::decs -> typ_decs decs
-
 let blockE decs =
+  let rec typ_decs decs =
+    match decs with
+    | [] -> T.unit
+    | [dec] -> typ dec
+    | _::decs -> typ_decs decs
+  in
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
@@ -168,20 +160,22 @@ let dotE exp name typ =
   }
 
 let switch_optE exp1 exp2 pat exp3 typ =
-  { it = SwitchE (exp1,
-                  [{it = {pat = {it = LitP S.NullLit;
-                                 at = no_region;
-                                 note = exp1.note.S.note_typ};
-                          exp = exp2};
-                    at = no_region;
-                    note = ()};
-                   {it = {pat = {it = OptP pat;
-                                 at = no_region;
-                                 note = exp1.note.S.note_typ};
-                          exp = exp3};
-                    at = no_region;
-                    note = ()}]
-           );
+  { it = 
+      SwitchE 
+        (exp1,
+         [{it = {pat = {it = LitP S.NullLit;
+                        at = no_region;
+                        note = exp1.note.S.note_typ};
+                 exp = exp2};
+           at = no_region;
+           note = ()};
+          {it = {pat = {it = OptP pat;
+                        at = no_region;
+                        note = exp1.note.S.note_typ};
+                 exp = exp3};
+           at = no_region;
+           note = ()}]
+        );
     at = no_region;
     note = {S.note_typ = typ;
             S.note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
