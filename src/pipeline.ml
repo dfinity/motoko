@@ -9,9 +9,11 @@ type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-(* TEMP *)
+(* TEMP --- include these modules in the build, even they they are unused: *)
 module Syntaxops_ir = Syntaxops_ir
-let _ = Syntaxops_ir.fresh
+let _ = Syntaxops_ir.fresh (* a "use" of the module, to suppress build errors *)
+module Tailcall_ir = Tailcall_ir
+let _ = Tailcall_ir.prog (* a "use" of the module, to suppress build errors *)
 
 (* Diagnostics *)
 
