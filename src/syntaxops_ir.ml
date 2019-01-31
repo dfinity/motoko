@@ -1,5 +1,4 @@
 (* WIP translation of syntaxops to use IR in place of Source *)
-(* Search for 'XXX' and 'assert false' to find remaining issues *)
 
 open Source
 open Ir
@@ -143,10 +142,8 @@ let boolE b =
             S.note_eff = T.Triv}
   }
 
-(* Q: Take `cc` as a param, or regenerate it from `t`? *)
-let callE (* cc *) e1 ts e2 t =
-  (* XXX: Check use of `t` here; just a wild guess: *)
-  let cc = Value.call_conv_of_typ t in
+(* Take `cc` as a param. *)
+let callE cc e1 ts e2 t =
   { it = CallE(cc,e1,ts,e2);
     at = no_region;
     note = {S.note_typ = t;
@@ -192,7 +189,7 @@ let switch_optE exp1 exp2 pat exp3 typ =
   }
 
 let tupE exps =
-  let effs = List.map (fun _ -> assert false) exps in
+  let effs = List.map eff exps in
   let eff = List.fold_left max_eff Type.Triv effs in
   {it = TupE exps;
    at = no_region;
@@ -249,9 +246,7 @@ let define_idE x mut exp1 =
   }
 
 let newObjE typ sort ids =
-  { it = 
-      (* XXX: Check use of typ here; just a guess: *)
-      NewObjE (sort, ids, typ); 
+  { it = NewObjE (sort, ids, typ); 
     at = no_region;
     note = { S.note_typ = typ;
              S.note_eff = T.Triv}
@@ -289,14 +284,15 @@ let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 let funcD f x e =
   match f.it,x.it with
   | VarE _, VarE _ ->
-    let sharing,t1,_t2 = match f.note.S.note_typ with
+    let sharing,t1,t2 = match typ f with
       | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing,T.seq ts1, T.seq ts2
       | _ -> assert false in
-     {it=FuncD( assert false (* sharing @@ no_region *), (id_of_exp f),
+    let cc = Value.call_conv_of_typ (typ f) in
+     {it=FuncD( cc, (id_of_exp f),
                [],
                {it = VarP (id_of_exp x); at = no_region; note = t1},
-               assert false,
-               (* {it = S.PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *) *)
+               (* TODO: Assert invariant: t2 has no free (unbound) DeBruijn indices -- Claudio *)
+               t2,
                e);
             at = no_region;
             note = f.note}
@@ -308,15 +304,14 @@ let nary_funcD f xs e =
   match f.it,f.note.S.note_typ with
   | VarE _,
     T.Func(T.Call sharing,_,_,_,ts2) ->
-    let _t2 = T.seq ts2 in
+    let cc = Value.call_conv_of_typ (typ f) in
+    let t2 = T.seq ts2 in
       {it=FuncD( 
-              (* sharing @@ no_region, *) 
-              assert false,
+               cc,
                id_of_exp f,
                [],
                seqP (List.map varP xs),
-               (* {it = PrimT "Any"; at = no_region; note = t2}, (* bogus,  but we shouldn't use it anymore *) *)
-               assert false,
+               t2,
                e);
       at = no_region;
       note = f.note}
@@ -390,7 +385,6 @@ let ( -*- ) exp1 exp2 =
        end
      else ());
  *)
-    (* XXX: Check these lines; they are mere guesses: *)    
     let cc = 
       let t  = exp1.note.S.note_typ in
       Value.call_conv_of_typ t in
