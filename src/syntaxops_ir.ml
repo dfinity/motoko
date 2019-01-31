@@ -91,7 +91,7 @@ let projE e n =
   | T.Tup ts ->
      {it = ProjE(e,n);
       note = {S.note_typ = List.nth ts n;
-              S.note_eff = T.Triv};
+              S.note_eff = eff e};
       at = no_region;
      }
   | _ -> failwith "projE"
