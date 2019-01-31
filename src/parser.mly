@@ -459,6 +459,7 @@ exp :
   | d=dec_var
     { DecE(d, ref Type.Pre) @? at $sloc }
 
+
 case :
   | CASE p=pat_nullary e=exp
     { {pat = p; exp = e} @@ at $sloc }
