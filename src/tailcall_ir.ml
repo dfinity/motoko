@@ -246,7 +246,7 @@ and dec' env d =
 (* 
   XXX: What happens to this special case?  
   AFAIK, the `sharing` flag is gone in IR?
-  Are there *only* shareable functions?
+  Are there *only* non-shareable (local) functions?
   --Matt
 
   | FuncD (cc, i, tbs, p, t, e) ->
