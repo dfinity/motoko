@@ -11,7 +11,6 @@ type env = stat_env * dyn_env
 
 (* TEMP *)
 module Syntaxops_ir = Syntaxops_ir
-let _fake = Syntaxops_ir.remove_me
 
 (* Diagnostics *)
 
