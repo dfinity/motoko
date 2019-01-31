@@ -78,6 +78,35 @@ func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
   rec(l)
 };
 
+// filter; non-tail recursive
+// (Note: need mutable Cons tails for tail-recursive version)
+func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
+  func rec(l : List<T>) : List<T> {
+    switch l {
+      case null     { null };
+      case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
+    }
+  };
+  rec(l)
+};
+
+// map-and-filter; non-tail recursive
+// (Note: need mutable Cons tails for tail-recursive version)
+func mapfilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
+  func rec(l : List<T>) : List<S> {
+    switch l {
+      case null     { null };
+      case (?(h,t)) {
+             switch (f(h)) {
+               case null { rec(t) };
+               case (?h_){ ?(h_,rec(t)) };
+             }
+           };
+    }
+  };
+  rec(l)
+};
+
 // array-like list access, but in linear time
 func nth<T>(l : List<T>, n : Nat) : ?T = {
   switch (n, tl<T>(l)) {
