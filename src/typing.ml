@@ -68,8 +68,8 @@ let env_of_scope msgs scope =
 
 (* More error bookkeeping *)
 
-let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "type"; text }
-let type_warning at text : Diag.message = Diag.{ sev = Diag.Warning; at; cat = "type"; text }
+let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"; text}
+let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
 let local_error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
@@ -167,13 +167,13 @@ and check_typ' env typ : T.typ =
     let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = match typs2 with [{it=AsyncT _;_}] -> T.Promises | _ -> T.Returns in
+    let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
     if sort.it = T.Call T.Sharable then begin
       let t1 = T.seq ts1 in
       if not (T.sub env'.cons t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand env'.cons t1);
-      begin match ts2 with
+      (match ts2 with
       | [] -> ()
       | [T.Async t2] ->
         if not (T.sub env'.cons t2 T.Shared) then
@@ -181,7 +181,7 @@ and check_typ' env typ : T.typ =
             (T.string_of_typ_expand env'.cons t2);
       | _ -> error env typ1.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand env'.cons (T.seq ts2))
-      end
+      )
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
@@ -217,7 +217,7 @@ and check_typ_field env s typ_field : T.field =
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun x -> Con.fresh x) xs in
-  List.iter2 (fun typ_bind c -> typ_bind.note <- T.Con(c,[])) typ_binds cs;
+  List.iter2 (fun typ_bind c -> typ_bind.note <- T.Con (c, [])) typ_binds cs;
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -251,7 +251,7 @@ and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
 and check_inst_bounds env tbs typs at =
   let tys = check_typ_bounds env tbs typs at  in
   tys
-    
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -327,7 +327,7 @@ let isAsyncE exp =
 let rec infer_exp env exp : T.typ =
   let t = T.as_immut (infer_exp_mut env exp) in
   if not env.pre then
-     exp.note <- {exp.note with note_typ = T.as_immut exp.note.note_typ};
+    exp.note <- {exp.note with note_typ = T.as_immut exp.note.note_typ};
   t
 
 and infer_exp_promote env exp : T.typ =
@@ -386,7 +386,7 @@ and infer_exp' env exp : T.typ =
       ot := t
     end;
     t
-  | RelE (ot,exp1, op, exp2) ->
+  | RelE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
     let t = T.lub env.cons t1 t2 in
@@ -419,13 +419,13 @@ and infer_exp' env exp : T.typ =
         (T.string_of_typ_expand env.cons t1)
     )
   | ObjE (sort, id, fields) ->
-    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it id fields
-  | DotE (exp1, sr, {it = Name n;_}) ->
+  | DotE (exp1, sr, {it = Name n; _}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
       let s, tfs = T.as_obj_sub n env.cons t1 in
-      sr := s; 
+      sr := s;
       match List.find_opt (fun {T.name; _} -> name = n) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
@@ -475,12 +475,13 @@ and infer_exp' env exp : T.typ =
       error env exp1.at "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
     )
-  | BlockE (decs,ot) ->
+  | BlockE (decs, ot) ->
     let t, scope = infer_block env decs exp.at in
-    let t' = try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-                error env exp.at "local class type %s is contained in inferred block type\n  %s"
-                  (Con.to_string c)
-                  (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
+    let t' =
+      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
+        error env exp.at "local class type %s is contained in inferred block type\n  %s"
+          (Con.to_string c)
+          (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
     in
     ot := t';
     t'
@@ -608,9 +609,9 @@ and infer_exp' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
-  | DecE (dec,ot) ->
+  | DecE (dec, ot) ->
     let t, scope = infer_block env [dec] exp.at in
-    let t' = 
+    let t' =
       try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
         error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
           (Con.to_string c) (T.string_of_typ_expand env.cons t)
@@ -620,27 +621,28 @@ and infer_exp' env exp : T.typ =
   (* DeclareE and DefineE should not occur in source code *)
   | DeclareE (id, typ, exp1) ->
     let env' = adjoin_vals env (T.Env.singleton id.it typ) in
-    infer_exp env' exp1 
+    infer_exp env' exp1
   | DefineE (id, mut, exp1) ->
-     begin
-       match T.Env.find_opt id.it env.vals with
-       | Some T.Pre ->
-          error env id.at "cannot infer type of forward variable %s" id.it
-       | Some t1 -> 
-          if not env.pre then begin
-              try
-                let t2 = match mut.it with | Var -> T.as_mut t1 | Const -> t1 in
-                check_exp env t2 exp1
-              with Invalid_argument _ ->
-                error env exp.at "expected mutable assignment target";
-            end;
-       | None -> error env id.at "unbound variable %s" id.it
-    end;
+    (match T.Env.find_opt id.it env.vals with
+    | Some T.Pre ->
+      error env id.at "cannot infer type of forward variable %s" id.it
+    | Some t1 ->
+      if not env.pre then begin
+        try
+          let t2 = match mut.it with Var -> T.as_mut t1 | Const -> t1 in
+          check_exp env t2 exp1
+        with Invalid_argument _ ->
+          error env exp.at "expected mutable assignment target"
+      end
+    | None -> error env id.at "unbound variable %s" id.it
+    );
     T.unit
   | NewObjE (sort, labids) ->
-     T.Obj(sort.it, List.map (fun (name,id) ->
-                        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals}) labids)
-       
+    T.Obj (sort.it,
+      List.map (fun (name, id) ->
+        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals})
+      labids)
+
 and check_exp env t exp =
   assert (not env.pre);
   assert (exp.note.note_typ = T.Pre);
@@ -668,7 +670,7 @@ and check_exp' env t exp =
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1
   | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
-    let env' = if sort.it = T.Actor then { env with async = false } else env in
+    let env' = if sort.it = T.Actor then {env with async = false} else env in
     ignore (check_obj env' s tfs id fields exp.at)
   | ArrayE (mut, exps), T.Array t' ->
     if (mut.it = Var) <> T.is_mut t' then
@@ -679,7 +681,7 @@ and check_exp' env t exp =
   | AsyncE exp1, T.Async t' ->
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1
-  | BlockE (decs, ot),_ ->
+  | BlockE (decs, ot), _ ->
     ignore (check_block env t decs exp.at);
     ot := t
   | IfE (exp1, exp2, exp3), _ ->
@@ -745,7 +747,6 @@ and gather_pat env ve0 pat : val_env =
     | AnnotP (pat1, _) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
-
 
 
 and infer_pat_exhaustive env pat : T.typ * val_env =
@@ -1025,7 +1026,7 @@ and infer_dec env dec : T.typ =
     end;
     t
   | TypD _ ->
-     T.unit
+    T.unit
   in
   let eff = A.infer_effect_dec dec in
   dec.note <- {note_typ = t; note_eff = eff};
@@ -1075,15 +1076,15 @@ and check_dec env t dec =
       error exp.at "function expression cannot produce expected type %s"
         (T.string_of_typ t)
     )
- *)
+*)
   | _ ->
-     let t' = infer_dec env dec in
-     (* TBR: special-case unit? *)
-     if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
-       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-         (T.string_of_typ_expand env.cons t)
-         (T.string_of_typ_expand env.cons t')
-  
+    let t' = infer_dec env dec in
+    (* TBR: special-case unit? *)
+    if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
+      local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand env.cons t')
+
 (*
 and print_ce =
   Con.Env.iter (fun c k ->
@@ -1100,13 +1101,13 @@ and infer_block_decs env decs : scope =
   let scope = gather_block_typdecs env decs in
   let env' = adjoin {env with pre = true} scope in
   let ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env { scope with con_env = ce } in
+  let env'' = adjoin env {scope with con_env = ce} in
   let _ce' = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
   let pre_ve' = gather_block_valdecs env decs in
   let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
-  { scope with  val_env = ve; con_env = ce }
+  {scope with val_env = ve; con_env = ce}
 
 
 (* Pass 1: collect type identifiers and their arity *)
@@ -1132,8 +1133,7 @@ and gather_dec_typdecs env scope dec : scope =
       | _ -> scope.val_env in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = Con.Env.add c pre_k scope.con_env in
-    { val_env = ve'; typ_env = te'; con_env = ce' }
-
+    {val_env = ve'; typ_env = te'; con_env = ce'}
 
 
 (* Pass 2 and 3: infer type definitions *)
@@ -1156,7 +1156,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    id.note <- Some (c,k);
+    id.note <- Some (c, k);
     Con.Env.singleton c k
   | ClassD (conid, id, binds, sort, pat, id', fields) ->
     let c = T.Env.find id.it env.typs in
@@ -1166,7 +1166,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it id' fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
-    id.note <- Some (c,k);              
+    id.note <- Some (c, k);
     Con.Env.singleton c (T.Abs (tbs, T.close cs t))
 
 
@@ -1201,7 +1201,7 @@ and infer_dec_valdecs env dec : val_env =
     T.Env.empty
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive env t pat in 
+    let ve' = check_pat_exhaustive env t pat in
     ve'
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
@@ -1227,15 +1227,10 @@ and infer_dec_valdecs env dec : val_env =
           (T.string_of_typ_expand env'.cons t2)
       end;
     end;
-    let ts1 = match pat.it with
-      | TupP ps -> T.as_seq t1
-      | _ -> [t1]
-    in
-    let ts2 = match typ.it with
-      | TupT _ -> T.as_seq t2
-      | _ -> [t2]
-    in
-    let c = match sort.it, typ.it with
+    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
+    let c =
+      match sort.it, typ.it with
       | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
@@ -1249,9 +1244,7 @@ and infer_dec_valdecs env dec : val_env =
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
-    let ts1 = match pat.it with
-      | TupP _ -> T.as_seq t1
-      | _ -> [t1] in
+    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton conid.it (T.Func (T.Construct, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
