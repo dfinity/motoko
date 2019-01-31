@@ -204,9 +204,9 @@ let seqT ts =
   match ts with
   | [t] -> t
   | ts ->
-    {Source.it = TupT ts;
-     at = Source.no_region;
-     Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts)}
+    { Source.it = TupT ts;
+      at = Source.no_region;
+      Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts) }
 
 let as_seqT t =
   match t.Source.it with
