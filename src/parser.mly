@@ -571,11 +571,11 @@ dec :
       match id_opt with
       | None ->
 	let sort = if s.it = Type.Actor then "actor" else "object" in
-	let x = anon sort r @@ r  in
-	ExpD(ObjE(s, x, efs') @? r) @? r
+        let x = anon sort r @@ r  in
+        ExpD(ObjE(s, x, efs') @? r) @? r
       | Some x ->
-	let p = VarP x @! r in
-	LetD(p, ObjE(s, x, efs') @? r) @? r }
+        let p = VarP x @! r in
+        LetD(p, ObjE(s, x, efs') @? r) @? r }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
