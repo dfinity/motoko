@@ -85,7 +85,7 @@ and exp' env e  : exp' = match e.Source.it with
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | ActorE (i, es, t)   -> ActorE (i, exp_fields env es, t)
   | DotE (e, sn)        -> DotE (exp env e, sn)
-  | ActorDotE (e, sn)   -> DotE (exp env e, sn)
+  | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
   | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
