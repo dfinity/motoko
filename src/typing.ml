@@ -1082,9 +1082,8 @@ and check_dec env t dec =
     (* TBR: special-case unit? *)
     if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
         (T.string_of_typ_expand env.cons t')
-
+        (T.string_of_typ_expand env.cons t)
 (*
 and print_ce =
   Con.Env.iter (fun c k ->
@@ -1167,8 +1166,7 @@ and infer_dec_typdecs env dec : con_env =
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
     id.note <- Some (c, k);
-    Con.Env.singleton c (T.Abs (tbs, T.close cs t))
-
+    Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =
@@ -1184,7 +1182,6 @@ and gather_dec_valdecs env ve dec : val_env =
     if T.Env.mem id.it ve then
       error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
-
 
 (* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
