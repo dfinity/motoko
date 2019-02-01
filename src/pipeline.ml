@@ -14,6 +14,8 @@ module Syntaxops_ir = Syntaxops_ir
 let _ = Syntaxops_ir.fresh (* a "use" of the module, to suppress build errors *)
 module Tailcall_ir = Tailcall_ir
 let _ = Tailcall_ir.prog (* a "use" of the module, to suppress build errors *)
+module Async_ir = Async_ir
+let _ = Async_ir.t_prog (* a "use" of the module, to suppress build errors *)
 
 (* Diagnostics *)
 

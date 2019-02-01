@@ -96,6 +96,8 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
+let decE dec = {dec with it = BlockE ([dec], dec.note.note_typ)}
+
 let blockE decs =
   let rec typ_decs decs =
     match decs with
@@ -246,8 +248,8 @@ let newObjE typ sort ids =
              S.note_eff = T.Triv}
   }
 
-(* Declarations *)
 
+(* Declarations *)
 
 let letP p e =
   {it = LetD(p,e);
@@ -342,7 +344,7 @@ let  (-->) x e =
   match x.it with
   | VarE _ ->
      let f = idE ("$lambda"@@no_region) (T.Func(T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ e))) in
-     (* decE *) (funcD f x e)
+     decE  (funcD f x e)
   | _ -> failwith "Impossible: -->"
 
 (* n-ary local lambda *)
@@ -350,7 +352,7 @@ let (-->*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Local, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  (* decE *) (nary_funcD f xs e)
+  decE (nary_funcD f xs e)
 
 
 (* n-ary shared lambda *)
@@ -358,7 +360,7 @@ let (-@>*) xs e  =
   let f = idE ("$lambda"@@no_region)
             (T.Func(T.Call T.Sharable, T.Returns, [],
                     List.map typ xs, T.as_seq (typ e))) in
-  (* decE *) (nary_funcD f xs e)
+  decE (nary_funcD f xs e)
 
 
 (* Lambda application (monomorphic) *)
