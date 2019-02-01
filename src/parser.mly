@@ -570,7 +570,7 @@ dec :
       (* desugar anonymous objects to ExpD, named ones to LetD. *)
       match id_opt with
       | None ->
-	let sort = if s.it = Type.Actor then "actor" else "object" in
+        let sort = if s.it = Type.Actor then "actor" else "object" in
         let x = anon sort r @@ r  in
         ExpD(ObjE(s, x, efs') @? r) @? r
       | Some x ->
