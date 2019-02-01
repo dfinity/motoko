@@ -27,11 +27,14 @@ let (@=) it at = {it; at; note = None}
 let dummy_obj_sort() = ref (Type.Object Type.Local)
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
+
+let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
+
 let name_exp e =
   match e.it with
   | VarE x -> [], e, dup_var x
   | _ ->
-    let x = ("anon-val-" ^ string_of_pos (e.at.left)) @@ e.at in
+    let x = anon "val" e.at @@ e.at in
     [LetD (VarP x @! x.at, e) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
@@ -164,8 +167,7 @@ seplist1(X, SEP) :
   | id=ID
     { fun _ _ -> id @@ at $sloc }
   | (* empty *)
-    { fun sort sloc ->
-      ("anon-" ^ sort ^ "-" ^ string_of_pos (at sloc).left) @@ at sloc }
+    { fun sort sloc -> anon sort (at sloc) @@ at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -456,9 +458,9 @@ exp :
     { e }
   | d=dec_var
     { DecE(d, ref Type.Pre) @? at $sloc }
-      
-    
-case : 
+
+
+case :
   | CASE p=pat_nullary e=exp
     { {pat = p; exp = e} @@ at $sloc }
 
@@ -558,15 +560,22 @@ dec :
   | e=exp_nondec
     { ExpD e @? at $sloc }
   (* TODO(andreas): move to dec_nonvar once other production is gone *)
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let anon = if s.it = Type.Actor then "actor" else "object" in
-      let efs' =
+  | s=obj_sort id_opt=id? EQ? efs=obj_body
+    { let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
       in
-      let p = VarP(xf anon $sloc) @! at $sloc in
-      LetD(p, ObjE(s, xf anon $sloc, efs') @? at $sloc) @? at $sloc }
+      let r = at $sloc in
+      (* desugar anonymous objects to ExpD, named ones to LetD. *)
+      match id_opt with
+      | None ->
+        let sort = if s.it = Type.Actor then "actor" else "object" in
+        let x = anon sort r @@ r  in
+        ExpD(ObjE(s, x, efs') @? r) @? r
+      | Some x ->
+        let p = VarP x @! r in
+        LetD(p, ObjE(s, x, efs') @? r) @? r }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
@@ -592,7 +601,7 @@ obj_body :
 
 class_body :
   | EQ xf=id_opt efs=obj_body { xf "object" $sloc, efs }
-  | efs=obj_body { ("anon-object-" ^ string_of_pos (at $sloc).left) @@ at $sloc, efs }
+  | efs=obj_body { anon "object" (at $sloc) @@ at $sloc, efs }
 
 
 (* Programs *)
