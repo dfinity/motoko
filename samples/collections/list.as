@@ -39,10 +39,18 @@ func hd<T>(l : List<T>) : ?T = {
   }
 };
 
-// get tail of list
-func tl<T>(l : List<T>) : ?List<T> = {
+// get tail of list, as a list
+func tl<T>(l : List<T>) : List<T> = {
   switch l {
-  case null { null };
+  case null      { null };
+  case (?(_, t)) { t };
+  }
+};
+
+// get tail of list, as an optional list
+func tlo<T>(l : List<T>) : ?List<T> = {
+  switch l {
+  case null      { null };
   case (?(_, t)) { ?t };
   }
 };
@@ -50,7 +58,7 @@ func tl<T>(l : List<T>) : ?List<T> = {
 // treat the list as a stack; combines 'hd' and (non-failing) 'tl' into one operation
 func pop<T>(l : List<T>) : (?T, List<T>) = {
   switch l {
-  case null { (null, null) };
+  case null      { (null, null) };
   case (?(h, t)) { (?h, t) };
   }
 };
@@ -64,6 +72,25 @@ func len<T>(l : List<T>) : Nat = {
     }
   };
   rec(l,0)
+};
+
+// array-like list access, but in linear time; tail recursive
+func nth<T>(l : List<T>, n : Nat) : ?T = {
+  switch (n, l) {
+  case (0, _)     { hd<T>(l) };
+  case (_, null)  { null };
+  // XXX
+  //case (_, ?cons) { nth<T>(tl<T>(cons), n - 1) };
+  }
+};
+
+// array-like list access, but in linear time; tail recursive
+func nth_<T>(l : List<T>, n : Nat) : ?T = {
+  switch (n, tlo<T>(l)) {
+  case (0, _)    { hd<T>(l) };
+  case (_, null) { null };
+  case (_, ?t)   { nth_<T>(t, n - 1) };
+  }
 };
 
 // map; non-tail recursive
@@ -97,11 +124,11 @@ func mapfilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
     switch l {
       case null     { null };
       case (?(h,t)) {
-             switch (f(h)) {
-               case null { rec(t) };
-               case (?h_){ ?(h_,rec(t)) };
-             }
-           };
+        switch (f(h)) {
+        case null { rec(t) };
+        case (?h_){ ?(h_,rec(t)) };
+        }
+      };
     }
   };
   rec(l)
@@ -119,14 +146,27 @@ func append<T>(l : List<T>, m : List<T>) : List<T> = {
   rec(l)
 };
 
-// array-like list access, but in linear time
-func nth<T>(l : List<T>, n : Nat) : ?T = {
-  switch (n, tl<T>(l)) {
-  case (0, _)    { hd<T>(l) };
-  case (m, null) { null };
-  case (m, ?tl)  { nth<T>(tl, n - 1) };
+// take; non-tail recursive
+// (Note: need mutable Cons tails for tail-recursive version)
+func take<T>(l : List<T>, n:Nat) : List<T> = {
+  switch (l, n) {
+  case (_, 0) { null };
+  case (null,_) { null };
+  // XXX: Compiler bug?
+  //case (?(h, t), m) {?(h, take<T>(t, m - 1))};
   }
 };
+
+// drop; tail recursive
+func drop<T>(l : List<T>, n:Nat) : List<T> = {
+  switch (l, n) {
+  case (l_,     0) { l_ };
+  case (null,   _) { null };
+  // XXX: Compiler bug?
+  //case ((?(h,t)), m) { drop<T>(t, m - 1) };
+  }
+};
+
 
 //////////////////////////////////////////////////////////////////
 
@@ -152,13 +192,23 @@ let l1 = nil<X>();
 let l2 = push<X>(2, l1);
 let l3 = push<X>(3, l2);
 
-// ## Projection
+// ## Projection -- use nth_
+assert (opnat_eq(nth_<X>(l3, 0), ?3));
+assert (opnat_eq(nth_<X>(l3, 1), ?2));
+assert (opnat_eq(nth_<X>(l3, 2), null));
+assert (opnat_eq (hd<X>(l3), ?3));
+assert (opnat_eq (hd<X>(l2), ?2));
+assert (opnat_isnull(hd<X>(l1)));
+
+/*
+// ## Projection -- use nth
 assert (opnat_eq(nth<X>(l3, 0), ?3));
 assert (opnat_eq(nth<X>(l3, 1), ?2));
 assert (opnat_eq(nth<X>(l3, 2), null));
 assert (opnat_eq (hd<X>(l3), ?3));
 assert (opnat_eq (hd<X>(l2), ?2));
 assert (opnat_isnull(hd<X>(l1)));
+*/
 
 // ## Deconstruction
 let (a1, t1) = pop<X>(l3);
