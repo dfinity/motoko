@@ -651,7 +651,7 @@ and string_of_typ' vs t =
       (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
       (string_of_dom (vs' @ vs) ts1) (string_of_cod c (vs' @ vs) ts2)
   | Opt t ->
-    sprintf "%s?"  (string_of_typ_nullary vs t)
+    sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async t ->
     sprintf "async %s" (string_of_typ_nullary vs t)
   | Like t ->
