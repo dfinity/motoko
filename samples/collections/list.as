@@ -77,10 +77,9 @@ func len<T>(l : List<T>) : Nat = {
 // array-like list access, but in linear time; tail recursive
 func nth<T>(l : List<T>, n : Nat) : ?T = {
   switch (n, l) {
-  case (0, _)     { hd<T>(l) };
-  case (_, null)  { null };
-  // XXX
-  //case (_, ?cons) { nth<T>(tl<T>(cons), n - 1) };
+  case (0, _)      { hd<T>(l) };
+  case (_, null)   { null };
+  case (_, ?(_,t)) { nth<T>(t, n - 1) };
   }
 };
 
@@ -152,8 +151,7 @@ func take<T>(l : List<T>, n:Nat) : List<T> = {
   switch (l, n) {
   case (_, 0) { null };
   case (null,_) { null };
-  // XXX: Compiler bug?
-  //case (?(h, t), m) {?(h, take<T>(t, m - 1))};
+  case (?(h, t), m) {?(h, take<T>(t, m - 1))};
   }
 };
 
@@ -162,8 +160,7 @@ func drop<T>(l : List<T>, n:Nat) : List<T> = {
   switch (l, n) {
   case (l_,     0) { l_ };
   case (null,   _) { null };
-  // XXX: Compiler bug?
-  //case ((?(h,t)), m) { drop<T>(t, m - 1) };
+  case ((?(h,t)), m) { drop<T>(t, m - 1) };
   }
 };
 
