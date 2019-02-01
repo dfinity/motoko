@@ -4,7 +4,7 @@ module I = Ir
 module T = Type
 
 (* TODO: clean me up when IrOps available, especially build_obj *)
-         
+
 (* Combinators used in the desguaring *)
 
 let bool_lit b : Ir.exp =
@@ -162,8 +162,8 @@ let
       | d::ds ->
         match d.it with
         | S.ClassD(_,con_id,_,_,_,_,_) ->
-          let (c,k) = match con_id.note with Some p -> p | _ -> assert false in
-          let typD = {it = I.TypD (c,k);
+          let (c, k) = match con_id.note with Some p -> p | _ -> assert false in
+          let typD = {it = I.TypD (c, k);
                       at = d.at;
                       note = {S.note_typ = T.unit; S.note_eff = T.Triv}}
           in
@@ -177,8 +177,8 @@ let
       let cc = Value.call_conv_of_typ n.S.note_typ in
       I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
     | S.TypD (con_id, typ_bind, t) ->
-      let (c,k) = Lib.Option.value con_id.note in
-      I.TypD (c,k)
+      let (c, k) = Lib.Option.value con_id.note in
+      I.TypD (c, k)
     | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
       let cc = Value.call_conv_of_typ n.S.note_typ in
       let inst = List.map
@@ -191,7 +191,7 @@ let
         match n.S.note_typ with
         | T.Func(s,c,bds,dom,[rng]) ->
           assert(List.length inst = List.length bds);
-          T.open_ inst rng 
+          T.open_ inst rng
         | _ -> assert false
       in
       I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)

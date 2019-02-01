@@ -1165,7 +1165,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it id' fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
-    id.note <- Some (c,k);
+    id.note <- Some (c, k);
     Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
