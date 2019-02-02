@@ -370,7 +370,7 @@ and t_pat' pat =
   | WildP
   | LitP _
   | VarP _ ->
-     pat
+    pat
   | TupP pats ->
     TupP (List.map t_pat pats)
   | OptP pat1 ->

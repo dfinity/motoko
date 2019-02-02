@@ -10,6 +10,9 @@ type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
+module Rename_ir = Rename_ir
+let _ = !Rename_ir.stamp
+                                          
 module Tailcall_ir = Tailcall_ir
 module Async_ir = Async_ir
 
