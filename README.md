@@ -48,21 +48,14 @@ To build `asc.js`, the JavaScript library, use
 nix-build -A js
 ```
 
-If you want to install `wasm` and `dvm` binaries with nix (for example because
-you maintain your Ocaml installation manually), run
-
-```
-nix-env -i -f . -A wasm
-nix-env -i -f . -A dvm
-```
-To update the `dev` checkout and install `dvm` in one go, run `./update-dvm.sh`.
 
 By default, `dvm` is built using the V8 engine. To build with the Haskell
 engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
-## Installation and development without Nix
+## Development without Nix
 
-You do not have to use nix:
+You can get a development environment that is independent of nix (although
+installing all required tools without nix is out of scope).
 
  * Use your system’s package manager to install `ocaml` and
    [`opam`](https://opam.ocaml.org/doc/Install.html)
@@ -70,12 +63,27 @@ You do not have to use nix:
    ```
    opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
- * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
-   `make install` therein.
- * Make sure `wasm` (a binary found in `vendor/wasm-spec/interpreter`) is in
-   the path to run the `run` tests.
- * Make sure `dvm` (a binary from the `hs-dfinity-dvm` package) is in the path
-   to run the `run-dfinity` tests.
+ * Install the `wasm` package. We use a newer version than is on opam, and a
+   fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
+   the precise repository and version. You can use `nix` to fetch the correct
+   source for you, and run the manual installation inside:
+   ```
+   cd $(nix-build -Q -A wasm.src)
+   make install
+   ```
+ * Install the `wasm` tool, using
+   ```
+   nix-env -i -f . -A wasm
+   ```
+ * Install the `dvm` tool, using
+   ```
+   nix-env -i -f . -A dvm
+   ```
+   or simply
+   ```
+   ./update-dvm.sh
+   ```
+   which also updates the `dev` checkout.
 
 ## Create a coverage report
 
