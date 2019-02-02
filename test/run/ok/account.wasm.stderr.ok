@@ -7,7 +7,7 @@ non-closed actor: (ActorE
       (FuncD
         (shared  1 -> 0)
         getBalance
-        (VarP $8)
+        (VarP $0)
         ()
         (BlockE
           (LetD (TupP) (TupE))
@@ -35,9 +35,9 @@ non-closed actor: (ActorE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
-                  (VarP $9)
+                  (VarP $1)
                   ()
-                  (CallE (shared  1 -> 0) (VarE $8) (VarE $9))
+                  (CallE (shared  1 -> 0) (VarE $0) (VarE $1))
                 )
                 Int -> ()
               )
@@ -57,7 +57,7 @@ non-closed actor: (ActorE
       (FuncD
         (shared  2 -> 0)
         split
-        (TupP (VarP amount) (VarP $10))
+        (TupP (VarP amount) (VarP $2))
         ()
         (BlockE
           (ExpD
@@ -98,9 +98,9 @@ non-closed actor: (ActorE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
-                  (VarP $11)
+                  (VarP $3)
                   ()
-                  (CallE (shared  1 -> 0) (VarE $10) (VarE $11))
+                  (CallE (shared  1 -> 0) (VarE $2) (VarE $3))
                 )
                 Account -> ()
               )
@@ -171,7 +171,7 @@ non-closed actor: (ActorE
       (FuncD
         (shared  2 -> 0)
         isCompatible
-        (TupP (VarP account) (VarP $12))
+        (TupP (VarP account) (VarP $4))
         ()
         (BlockE
           (ExpD
@@ -206,9 +206,9 @@ non-closed actor: (ActorE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
-                  (VarP $13)
+                  (VarP $5)
                   ()
-                  (CallE (shared  1 -> 0) (VarE $12) (VarE $13))
+                  (CallE (shared  1 -> 0) (VarE $4) (VarE $5))
                 )
                 Bool -> ()
               )

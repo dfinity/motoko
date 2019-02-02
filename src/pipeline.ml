@@ -3,19 +3,15 @@ open Printf
 
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async
-(*module Tailcall = Tailcall *)
+
+(* module Tailcall = Tailcall *)
 
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-(* TEMP --- include these modules in the build, even they they are unused: *)
-module Syntaxops_ir = Syntaxops_ir
-let _ = Syntaxops_ir.fresh (* a "use" of the module, to suppress build errors *)
 module Tailcall_ir = Tailcall_ir
-let _ = Tailcall_ir.prog (* a "use" of the module, to suppress build errors *)
 module Async_ir = Async_ir
-let _ = Async_ir.t_prog (* a "use" of the module, to suppress build errors *)
 
 (* Diagnostics *)
 
@@ -73,7 +69,6 @@ let dump_ir flag prog =
     if !flag then
       Wasm.Sexpr.print 80 (Arrange_ir.prog prog)
     else ()
-  
 
 let parse_with mode lexer parser name : parse_result =
   try
@@ -157,6 +152,9 @@ let await_lowering =
 
 let async_lowering =
   transform "Async Lowering" Async.t_prog
+
+let async_ir_lowering =
+  transform_ir "Async IR Lowering" Async_ir.t_prog
 
 let tailcall_optimization =
   transform_ir "Tailcall optimization" Tailcall_ir.prog
@@ -313,8 +311,9 @@ let compile_with check mode name : compile_result =
     Diag.print_messages msgs;
     let prelude = Desugar.prog prelude in
     let prog = await_lowering true prog name in
-    let prog = async_lowering true prog name in
     let prog = Desugar.prog prog in
+    ignore (Check_ir.check_prog initial_stat_env prog);
+    let prog = async_ir_lowering true prog name in
     ignore (Check_ir.check_prog initial_stat_env prog);
     let prog = tailcall_optimization true prog name in
     ignore (Check_ir.check_prog initial_stat_env prog);

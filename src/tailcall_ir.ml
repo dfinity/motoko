@@ -1,8 +1,9 @@
+
 open Ir
 open Effect
 open Type
 open Syntaxops_ir
-
+module S = Syntax
 (* Optimize (self) tail calls to jumps, avoiding stack overflow
    in a single linear pass *)
 
@@ -38,7 +39,7 @@ regardless of `return e`s own tail position.
  *)
 
 
-type func_info = {func:S.id;
+type func_info = {func: S.id;
                   typ_binds: typ_bind list;
                   temp: var;
                   label: S.id;

@@ -251,10 +251,15 @@ let string_of_dec exp =  Wasm.Sexpr.to_string 80 (Arrange_ir.dec exp)
 
 (* Expressions *)
 
+(* TODO: make this check phase dependent *)
 let isAsyncE exp =
   match exp.it with
-  | AsyncE _ -> true
-  | _ -> false
+  | AsyncE _ -> (* before async.ml *)
+    true
+  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* after async.ml *)
+    true
+  | _ ->
+    false
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
@@ -712,13 +717,14 @@ and check_dec env dec  =
   | LetD (_, exp) | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
-  | FuncD (sort, id, typ_binds, pat, t2, exp) ->
+  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
     let t0 = T.Env.find id.it env.vals in
     let _cs,ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_typs env ce in
     let ve = check_pat_exhaustive env' pat in
     check_typ env' t2;
-    check (Type.is_async t2 ==> isAsyncE exp)
+    check ((cc.Value.sort = T.Call T.Sharable && Type.is_async t2)
+           ==> isAsyncE exp)
       "shared function with async type has non-async body";
     let env'' =
       {env' with labs = T.Env.empty; rets = Some t2; async = false} in

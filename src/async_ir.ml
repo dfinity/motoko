@@ -15,18 +15,6 @@ open Syntaxops_ir
    (for debugging, the `flattening` function can be used to disable argument flattening and use uniform pairing instead)
  *)
 
-(*   
-let localS =
-  {it=T.Call T.Local;
-   at=no_region;
-   note=()}
-
-let sharableS =
-  {it=T.Call T.Sharable;
-   at=no_region;
-   note=()}
- *)
-
 let unary typ = [typ]
 
 let nary typ = T.as_seq typ
@@ -39,29 +27,28 @@ let t_async as_seq t =
   T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],as_seq t,[])], [])
 
 let new_async_ret as_seq t = [t_async as_seq t;fullfillT as_seq t]
+
 let new_asyncT =
    T.Func(T.Call T.Local,T.Returns,
-                          [{var = "T";
-                            bound = T.Shared}],
+                          [ { var = "T";
+                              bound = T.Shared } ],
                           [],
                           new_async_ret unary (T.Var ("T", 0)))
 
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
 
-let callE f = callE (Value.call_conv_of_typ  (typ f)) f
-
 let new_async t1 =
   let call_new_async =
     callE new_asyncE
       [t1]
-      (tupE[])
+      (tupE [])
       (T.seq (new_async_ret unary t1)) in
   let async  = fresh_id (typ (projE call_new_async 0)) in
   let fullfill = fresh_id (typ (projE call_new_async 1)) in
   (async,fullfill),call_new_async
 
-let letP p e =  {it = LetD(p,e);
+let letP p e =  {it = LetD(p, e);
                  at = no_region;
                  note = {e.note with note_typ = T.unit}}
 
@@ -103,14 +90,12 @@ let letEta e scope =
   | _  -> let f = fresh_id (typ e) in
           letD f e :: (scope f) (* maybe impure; sequence *)
 
-
 let isAwaitableFunc exp =
   match typ exp with
   | T.Func (T.Call T.Sharable,T.Promises,_,_,[T.Async _]) -> true
   | _ -> false
 
 let extendTup ts t2 = ts @ [t2]
-
 
 let extendTupP p1 p2 =
   match p1.it with
@@ -181,11 +166,14 @@ let rec t_typ (t:T.typ) =
 and t_bind {var; bound} =
   {var; bound = t_typ bound}
 
-and t_kind k = match k with
-  | T.Abs(tbs,t) ->
-    T.Abs(List.map t_bind tbs, t_typ t)
-  | T.Def(tbs,t) ->
-    T.Def(List.map t_bind tbs, t_typ t)
+and t_binds typbinds = List.map t_bind typbinds
+
+and t_kind k =
+  match k with
+  | T.Abs(typ_binds,typ) ->
+    T.Abs(t_binds typ_binds, t_typ typ)
+  | T.Def(typ_binds,typ) ->
+    T.Def(t_binds typ_binds, t_typ typ)
 
 and t_operator_type ot =
   (* We recreate the reference here. That is ok, because it
@@ -193,14 +181,8 @@ and t_operator_type ot =
      it will be a pure value anyways. *)
   t_typ ot
 
-and t_con_id con_id =
-  { it = con_id.it;
-    at = con_id.at;
-    note = Lib.Option.map (fun (c,k) -> (c,t_kind k)) con_id.note
-  }
-
 and t_field {name; typ} =
-  {name; typ = t_typ typ}
+  { name; typ = t_typ typ }
 let rec t_exp (exp: exp) =
   { it = t_exp' exp;
     note = { note_typ = t_typ exp.note.note_typ;
@@ -322,15 +304,8 @@ and t_exp' (exp:exp) =
 and t_dec dec =
   { it = t_dec' dec.it;
     note = { note_typ = t_typ dec.note.note_typ;
-             note_eff = dec.note.note_eff};
-    at = dec.at
-  }
-and t_kind k =
-  match k with
-  | T.Abs(typ_binds,typ) ->
-    T.Abs(t_binds typ_binds, t_typ typ)
-  | T.Def(typ_binds,typ) ->
-    T.Def(t_binds typ_binds, t_typ typ)
+             note_eff = dec.note.note_eff };
+    at = dec.at }
 
 and t_dec' dec' =
   match dec' with
@@ -352,28 +327,29 @@ and t_dec' dec' =
            | T.Tup [] ->
               FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
            | T.Async res_typ ->
-              let res_typ = t_typ res_typ in
-              let pat = t_pat pat in
-              let reply_typ = replyT nary res_typ in
-              let typ' = T.Tup []  in
-              let k = fresh_id reply_typ in
-              let pat',d = extendTupP pat (varP k) in
-              let typbinds' = t_typ_binds typbinds in
-              let x = fresh_id res_typ in
-              let exp' =
-                match exp.it with
-                | CallE(_, async,_,cps) ->
-                   begin
-                     match async.it with
-                     | PrimE("@async") ->
-                        blockE
+             let cc' = Value.message_cc (cc.Value.n_args + 1) in
+             let res_typ = t_typ res_typ in
+             let pat = t_pat pat in
+             let reply_typ = replyT nary res_typ in
+             let typ' = T.Tup []  in
+             let k = fresh_id reply_typ in
+             let pat',d = extendTupP pat (varP k) in
+             let typbinds' = t_typ_binds typbinds in
+             let x = fresh_id res_typ in
+             let exp' =
+               match exp.it with
+               | CallE(_, async,_,cps) ->
+                 begin
+                   match async.it with
+                   | PrimE("@async") ->
+                     blockE
                           (d [expD ((t_exp cps) -*- (x --> (k -*- x)))])
                      | _ -> assert false
-                   end
-                | _ -> assert false
-              in
-              FuncD (cc, id, typbinds', pat', typ', exp')
-          | _ -> assert false
+                 end
+               | _ -> assert false
+             in
+             FuncD (cc', id, typbinds', pat', typ', exp')
+           | _ -> assert false
          end
     end
 
@@ -381,12 +357,13 @@ and t_decs decs = List.map t_dec decs
 
 and t_fields fields =
   List.map (fun (field:exp_field) ->
-      { field with it = { field.it with exp = t_exp field.it.exp }})
+      { field with it = { field.it with exp = t_exp field.it.exp } })
     fields
 
 and t_pat pat =
-  { pat with it = t_pat' pat.it;
-             note = t_typ pat.note}
+  { pat with
+    it = t_pat' pat.it;
+    note = t_typ pat.note }
 
 and t_pat' pat =
   match pat with
@@ -401,14 +378,9 @@ and t_pat' pat =
   | AltP (pat1, pat2) ->
     AltP (t_pat pat1, t_pat pat2)
 
-and t_bind bind =
-  { bind with bound = t_typ bind.bound }
-
 and t_typ_bind typ_bind =
   { typ_bind with it = t_bind typ_bind.it }
 
-and t_binds typbinds = List.map t_bind typbinds
-
 and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-and t_prog prog:prog = {prog with it = t_decs prog.it}
+and t_prog prog:prog = { prog with it = t_decs prog.it }
