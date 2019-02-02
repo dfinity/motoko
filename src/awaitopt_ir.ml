@@ -1,18 +1,9 @@
 open Source
-module S = Syntax
 open Ir
 open Effect
 module R = Rename_ir
 module T = Type
 open Syntaxops_ir
-
-(*TBD*)
-
-(* TODO:
-- make async<T> non-shareable
-- consider using labels for (any) additional continuation arguments.
-- Our compilation of loops won't be stack efficient unless the compiler optimizes (self) tail calls- alternatively we could rejig the translation to compile loops as tail recursive functions that enter a loop, not just plain tail recursive functions.
-*)
 
 (* continuations, syntactic and meta-level *)
 
@@ -62,6 +53,7 @@ type label_sort = Cont of kont | Label
 
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
+
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp.it }
@@ -155,8 +147,8 @@ and t_dec' context dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp context exp)
   | TypD _ -> dec'
-  | LetD (pat,exp) -> LetD (pat,t_exp context exp)
-  | VarD (id,exp) -> VarD (id,t_exp context exp)
+  | LetD (pat, exp) -> LetD (pat, t_exp context exp)
+  | VarD (id, exp) -> VarD (id, t_exp context exp)
   | FuncD (s, id, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncD (s, id, typbinds, pat, typ,t_exp context' exp)
@@ -200,16 +192,16 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
        (* TBR: optimization - no need to name the last trivial argument *)
-       k -@- naryE (List.rev (e1::vs))
-    | e1::es ->
+       k -@- naryE (List.rev (e1 :: vs))
+    | e1 :: es ->
        match eff e1 with
        | T.Triv ->
           let v1 = fresh_id (typ e1) in
           letE v1 (t_exp context e1)
-            (nary_aux (v1::vs) es)
+            (nary_aux (v1 :: vs) es)
        | T.Await ->
           c_exp context e1
-            (meta (typ e1) (fun v1 -> nary_aux (v1::vs) es))
+            (meta (typ e1) (fun v1 -> nary_aux (v1 :: vs) es))
   in
   nary_aux [] es
 
@@ -316,29 +308,10 @@ and c_for context k pat e1 e2 =
       (body v1)
   | T.Await ->
     c_exp context e1 (meta (typ e1) (fun v1 -> body v1))
-    
-(* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object,
-   and continue as c_exp *)
-and c_obj context exp sort id fields =
-  let rec c_fields fields decs nameids =
-    match fields with
-    | [] ->
-      let this = idE id (typ exp) in
-      let decs =
-        expD this ::
-        letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) ::
-        decs in
-      blockE (List.rev decs)
-    | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-      let ids = (name,id)::nameids in
-      match mut.it with
-      | S.Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
-      | S.Var -> c_fields fields (varD id exp::decs) ids
-  in
-  c_exp context (c_fields fields [] [])
 
 and c_exp context exp =
   c_exp' context exp
+
 and c_exp' context exp k =
   let e exp' = {it=exp'; at = exp.at; note = exp.note} in
   match exp.it with
@@ -361,8 +334,7 @@ and c_exp' context exp k =
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ActorE (id, fields, t) ->
-    if true then assert false; (* ActorE cannot await *)
-    c_obj context exp (Type.Actor @@ exp.at) id fields k
+    assert false; (* ActorE fields cannot await *)
   | DotE (exp1, id) ->
     unary context k (fun v1 -> e (DotE (v1, id))) exp1
   | ActorDotE (exp1, id) ->
@@ -470,7 +442,7 @@ and c_dec context dec (k:kont) =
     let patenv,pat' = rename_pat pat in
     let block exp =
       let dec_pat' = {dec with it = LetD(pat',exp)} in
-      blockE ( dec_pat'::
+      blockE ( dec_pat' :: 
               (define_pat patenv pat)
               @[expD (k -@- (tupE[]))])
     in
@@ -506,7 +478,7 @@ and c_decs context decs k =
   | [] ->
     k -@- unitE
   | [dec] ->  c_dec context dec k
-  | (dec::decs) ->
+  | (dec :: decs) ->
      c_dec context dec (meta (typ dec) (fun v-> c_decs context decs k))
 
 (* Blocks and Declarations *)
@@ -522,7 +494,7 @@ and declare_dec dec exp : exp =
 and declare_decs decs exp : exp =
   match decs with
   | [] -> exp
-  | dec::decs' ->
+  | dec :: decs' ->
     declare_dec dec (declare_decs decs' exp)
 
 (* Patterns *)
@@ -541,12 +513,12 @@ and declare_pat pat exp : exp =
 and declare_pats pats exp : exp =
   match pats with
   | [] -> exp
-  | pat::pats' ->
+  | pat :: pats' ->
     declare_pat pat (declare_pats pats' exp)
 
 and rename_pat pat =
   let (patenv,pat') = rename_pat' pat in
-  (patenv,{pat with it = pat'})
+  (patenv, { pat with it = pat' })
 
 and rename_pat' pat =
   match pat.it with
@@ -570,10 +542,10 @@ and rename_pat' pat =
 and rename_pats pats =
   match pats with
   | [] -> (PatEnv.empty,[])
-  | (pat::pats) ->
-    let (patenv1,pat') = rename_pat pat in
-    let (patenv2,pats') = rename_pats pats in
-    (PatEnv.disjoint_union patenv1 patenv2, pat'::pats')
+  | (pat :: pats) ->
+    let (patenv1, pat') = rename_pat pat in
+    let (patenv2, pats') = rename_pats pats in
+    (PatEnv.disjoint_union patenv1 patenv2, pat' :: pats')
 
 and define_pat patenv pat : dec list =
   match pat.it with
@@ -592,4 +564,4 @@ and define_pat patenv pat : dec list =
 and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
 
-and t_prog prog:prog = {prog with it = t_decs LabelEnv.empty prog.it}
+and t_prog prog:prog = { prog with it = t_decs LabelEnv.empty prog.it }

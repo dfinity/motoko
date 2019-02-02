@@ -133,7 +133,7 @@ let transform transform_name transform flag prog name  =
     begin
       phase transform_name name;
       let prog' = transform prog in
-      dump_prog Flags.dump_lowering prog'; 
+      dump_prog Flags.dump_lowering prog';
       prog'
     end
   else prog
@@ -143,7 +143,7 @@ let transform_ir transform_name transform flag prog name  =
     begin
       phase transform_name name;
       let prog' = transform prog in
-      dump_ir Flags.dump_lowering prog'; 
+      dump_ir Flags.dump_lowering prog';
       prog'
     end
   else prog

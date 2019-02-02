@@ -5,12 +5,6 @@ module R = Rename
 module T = Type
 open Syntaxops
 
-(* TODO:
-- make async<T> non-shareable
-- consider using labels for (any) additional continuation arguments.
-- Our compilation of loops won't be stack efficient unless the compiler optimizes (self) tail calls- alternatively we could rejig the translation to compile loops as tail recursive functions that enter a loop, not just plain tail recursive functions.
-*)
-
 (* continuations, syntactic and meta-level *)
 
 type kont = ContVar of exp
@@ -361,7 +355,7 @@ and c_for context k pat e1 e2 =
       (body v1)
   | T.Await ->
     c_exp context e1 (meta (typ e1) (fun v1 -> body v1))
-    
+
 (* for object expression, we expand to a block that defines all recursive (actor) fields as locals and returns a constructed object,
    and continue as c_exp *)
 and c_obj context exp sort id fields =
