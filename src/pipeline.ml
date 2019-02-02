@@ -4,15 +4,14 @@ open Printf
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async
 
-(* module Tailcall = Tailcall *)
+(*TBD module Tailcall = Tailcall *)
 
 type stat_env = Typing.scope
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
-module Rename_ir = Rename_ir
-let _ = !Rename_ir.stamp
-                                          
+(*TBD*)
+module Await_ir = Awaitopt_ir
 module Tailcall_ir = Tailcall_ir
 module Async_ir = Async_ir
 
@@ -152,6 +151,9 @@ let transform_ir transform_name transform flag prog name  =
 
 let await_lowering =
   transform "Await Lowering" Await.t_prog
+
+let await_ir_lowering =
+  transform_ir "Await IR Lowering" Await_ir.t_prog
 
 let async_lowering =
   transform "Async Lowering" Async.t_prog
@@ -313,8 +315,9 @@ let compile_with check mode name : compile_result =
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
     let prelude = Desugar.prog prelude in
-    let prog = await_lowering true prog name in
     let prog = Desugar.prog prog in
+    ignore (Check_ir.check_prog initial_stat_env prog);
+    let prog = await_ir_lowering true prog name in
     ignore (Check_ir.check_prog initial_stat_env prog);
     let prog = async_ir_lowering true prog name in
     ignore (Check_ir.check_prog initial_stat_env prog);
