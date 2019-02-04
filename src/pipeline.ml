@@ -144,8 +144,8 @@ let await_lowering =
 let async_lowering =
   transform "Async Lowering" Async.t_prog
 
-(* ir transforms *)
-  
+(* IR transforms *)
+
 let transform_ir transform_name transform flag env prog name =
   if flag then
     begin
