@@ -55,6 +55,30 @@ func tlo<T>(l : List<T>) : ?List<T> = {
   }
 };
 
+/*
+// last element (SML Basis library); tail recursive
+func last<T>(l : List<T>) : T = {
+  switch l {
+  // XXX
+  // Q: What's the type of 'assert false'?
+  //    Shouldn't it be 'Any', and not '()'?
+  //
+  //case null        { assert false };
+    case (?(x,null)) { x };
+    case (?(_,t))    { last<T>(t) };
+  }
+};
+*/
+
+// last element, optionally; tail recursive
+func lasto<T>(l : List<T>) : ?T = {
+  switch l {
+    case null        { null };
+    case (?(x,null)) { ?x };
+    case (?(_,t))    { lasto<T>(t) };
+  }
+};
+
 // treat the list as a stack; combines 'hd' and (non-failing) 'tl' into one operation
 func pop<T>(l : List<T>) : (?T, List<T>) = {
   switch l {
@@ -90,6 +114,28 @@ func nth_<T>(l : List<T>, n : Nat) : ?T = {
   case (_, null) { null };
   case (_, ?t)   { nth_<T>(t, n - 1) };
   }
+};
+
+// reverse; tail recursive
+func rev<T>(l : List<T>) : List<T> = {
+  func rec(l : List<T>, r : List<T>) : List<T> {
+    switch l {
+      case null     { r };
+      case (?(h,t)) { rec(t,?(h,r)) };
+    }
+  };
+  rec(l, null)
+};
+
+// Called "app" in SML Basis, and "iter" in OCaml; tail recursive
+func iter<T>(l : List<T>, f:T -> ()) : () = {
+  func rec(l : List<T>) : () {
+    switch l {
+      case null     { () };
+      case (?(h,t)) { f(h) ; rec(t) };
+    }
+  };
+  rec(l)
 };
 
 // map; non-tail recursive
@@ -145,6 +191,14 @@ func append<T>(l : List<T>, m : List<T>) : List<T> = {
   rec(l)
 };
 
+// (See SML Basis library); tail recursive
+func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
+  switch l1 {
+    case null     { l2 };
+    case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
+  }
+};
+
 // take; non-tail recursive
 // (Note: need mutable Cons tails for tail-recursive version)
 func take<T>(l : List<T>, n:Nat) : List<T> = {
@@ -164,6 +218,70 @@ func drop<T>(l : List<T>, n:Nat) : List<T> = {
   }
 };
 
+// fold list left-to-right using f; tail recursive
+func foldl<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+  func rec(l:List<T>, a:S) : S = {
+    switch l {
+    case null     { a };
+    case (?(h,t)) { rec(t, f(h,a)) };
+    }
+  };
+  rec(l,a)
+};
+
+// fold list right-to-left using f; tail recursive
+func foldr<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+  func rec(l:List<T>) : S = {
+    switch l {
+    case null     { a };
+    case (?(h,t)) { f(h, rec(t)) };
+    }
+  };
+  rec(l)
+};
+
+// test if there exists list element for which given predicate is true
+func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
+  func rec(l:List<T>) : Bool {
+    switch l {
+      case null     { false };
+      // XXX/minor --- Missing parens on condition leads to unhelpful error:
+      //case (?(h,t)) { if f(h) { true } else { rec(t) } };
+      case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
+    }
+  };
+  rec(l)
+};
+
+// test if given predicate is true for all list elements
+func all<T>(l: List<T>, f:T -> Bool) : Bool = {
+  func rec(l:List<T>) : Bool {
+    switch l {
+      case null     { true };
+      case (?(h,t)) { if (f(h)) { false } else { rec(t) } };
+    }
+  };
+  rec(l)
+};
+
+// Called 'collate' in SML basis library
+// Here, we e use a 'less-than-or-eq' relation, not a 3-valued 'order' type.
+func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
+  func rec(l1: List<T>, l2: List<T>) : List<T> {
+    switch (l1, l2) {
+      case (null, _) { l2 };
+      case (_, null) { l1 };
+      case (?(h1,t1), ?(h2,t2)) {
+             if (lte(h1,h2)) {
+               ?(h1, rec(t1, ?(h2,t2)))
+             } else {
+               ?(h2, rec(?(h1,t1), t2))
+             }
+           };
+    }
+  };
+  rec(l1, l2)
+};
 
 //////////////////////////////////////////////////////////////////
 
@@ -221,6 +339,11 @@ assert (len<X>(l1) == 0);
 assert (len<X>(l2) == 1);
 assert (len<X>(l3) == 2);
 
+// ## List functions
+assert (len<X>(l1) == 0);
+assert (len<X>(l2) == 1);
+assert (len<X>(l3) == 2);
+
 
 ////////////////////////////////////////////////////////////////
 // For comparison:
@@ -231,32 +354,34 @@ assert (len<X>(l3) == 2);
 // datatype 'a list = nil | :: of 'a * 'a list
 // exception Empty
 //
-// val null : 'a list -> bool
-// val length : 'a list -> int
-// val @ : 'a list * 'a list -> 'a list
-// val hd : 'a list -> 'a
-// val tl : 'a list -> 'a list
-// val last : 'a list -> 'a
-// val getItem : 'a list -> ('a * 'a list) option
-// val nth : 'a list * int -> 'a
-// val take : 'a list * int -> 'a list
-// val drop : 'a list * int -> 'a list
-// val rev : 'a list -> 'a list
-// val concat : 'a list list -> 'a list
-// val revAppend : 'a list * 'a list -> 'a list
-// val app : ('a -> unit) -> 'a list -> unit
-// val map : ('a -> 'b) -> 'a list -> 'b list
-// val mapPartial : ('a -> 'b option) -> 'a list -> 'b list
-// val find : ('a -> bool) -> 'a list -> 'a option
-// val filter : ('a -> bool) -> 'a list -> 'a list
-// val partition : ('a -> bool)
-//                   -> 'a list -> 'a list * 'a list
-// val foldl : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
-// val foldr : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
-// val exists : ('a -> bool) -> 'a list -> bool
-// val all : ('a -> bool) -> 'a list -> bool
-// val tabulate : int * (int -> 'a) -> 'a list
-// val collate : ('a * 'a -> order)
-//                 -> 'a list * 'a list -> order
+// Done?
+// -----------------------------------------------------------------
+//   x     val null : 'a list -> bool
+//   x     val length : 'a list -> int
+//   x     val @ : 'a list * 'a list -> 'a list
+//   x     val hd : 'a list -> 'a
+//   x     val tl : 'a list -> 'a list
+//   x     val last : 'a list -> 'a
+//  ???    val getItem : 'a list -> ('a * 'a list) option
+//   x     val nth : 'a list * int -> 'a
+//   x     val take : 'a list * int -> 'a list
+//   x     val drop : 'a list * int -> 'a list
+//   x     val rev : 'a list -> 'a list
+//         val concat : 'a list list -> 'a list
+//   x     val revAppend : 'a list * 'a list -> 'a list
+//   x     val app : ('a -> unit) -> 'a list -> unit
+//   x     val map : ('a -> 'b) -> 'a list -> 'b list
+//   x     val mapPartial : ('a -> 'b option) -> 'a list -> 'b list
+//         val find : ('a -> bool) -> 'a list -> 'a option
+//   x     val filter : ('a -> bool) -> 'a list -> 'a list
+//         val partition : ('a -> bool)
+//                           -> 'a list -> 'a list * 'a list
+//   x     val foldl : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
+//   x     val foldr : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
+//   x     val exists : ('a -> bool) -> 'a list -> bool
+//   x     val all : ('a -> bool) -> 'a list -> bool
+//         val tabulate : int * (int -> 'a) -> 'a list
+//   x     val collate : ('a * 'a -> order)
+//                         -> 'a list * 'a list -> order
 //
 ////////////////////////////////////////////////////////////
