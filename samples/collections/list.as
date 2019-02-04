@@ -1,16 +1,26 @@
-/*
- This file represents a kind of "warm up" for creating more involved
- collections, such as hash tables (which use linked lists internally)
- and persistant maps, which will follow similar functional prog
- patterns.
+/* 
+ * Lists, a la functional programming, in ActorScript.
  */
 
-// TODO-Matthew: Look at SML Basis Library; Look at OCaml List library.
-// Write:
-//  - iterator objects, for use in 'for ... in ...' patterns
+// Done:
+//
+//  - standard list definition 
 //  - standard list recursors: foldl, foldr, iter
 //  - standard higher-order combinators: map, filter, etc.
+//  - (Every function here: http://sml-family.org/Basis/list.html)
+
+// TODO-Matthew: File issues:
+//
+//  - 'assert_unit' vs 'assert_any' (related note: 'any' vs 'none')
+//  - apply type args, but no actual args? (should be ok, and zero cost, right?)
+//  - unhelpful error message around conditional parens (search for XXX below)
+
+// TODO-Matthew: Write:
+//
+//  - iterator objects, for use in 'for ... in ...' patterns
 //  - lists+pairs: zip, split, etc
+//  - regression tests for everything that is below
+
 
 // polymorphic linked lists
 type List<T> = ?(T, List<T>);
@@ -191,6 +201,19 @@ func append<T>(l : List<T>, m : List<T>) : List<T> = {
   rec(l)
 };
 
+// concat (aka "list join"); tail recursive, but requires "two passes"
+func concat<T>(l : List<List<T>>) : List<T> = {
+  // 1/2: fold from left to right, reverse-appending the sublists...
+  // XXX -- I'd like to write this (shorter) version:
+  // let r = foldl<List<T>, List<T>>(l, null, revAppend<T>);
+  let r = 
+    { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
+      foldl<List<T>, List<T>>(l, null, f) 
+    };
+  // 2/2: ...re-reverse the elements, to their original order:
+  rev<T>(r)
+};
+
 // (See SML Basis library); tail recursive
 func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
   switch l1 {
@@ -241,6 +264,17 @@ func foldr<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
 };
 
 // test if there exists list element for which given predicate is true
+func find<T>(l: List<T>, f:T -> Bool) : ?T = {
+  func rec(l:List<T>) : ?T {
+    switch l {
+      case null     { null };
+      case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
+    }
+  };
+  rec(l)
+};
+
+// test if there exists list element for which given predicate is true
 func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
   func rec(l:List<T>) : Bool {
     switch l {
@@ -281,6 +315,34 @@ func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
     }
   };
   rec(l1, l2)
+};
+
+// using a predicate, create two lists from one: the "true" list, and the "false" list.
+// (See SML basis library); non-tail recursive
+func partition<T>(l: List<T>, f:T -> Bool) : (List<T>, List<T>) {
+  func rec(l: List<T>) : (List<T>, List<T>) {
+    switch l {
+      case null { (null, null) };
+      case (?(h,t)) {
+             let (pl,pr) = rec(t);
+             if (f(h)) {
+               (?(h, pl), pr)
+             } else {
+               (pl, ?(h, pr))
+             }
+           };
+    }
+  };
+  rec(l)
+};
+
+// generate a list based on a length, and a function from list index to list element;
+// (See SML basis library); non-tail recursive
+func tabulate<T>(n:Nat, f:Nat -> T) : List<T> {
+  func rec(i:Nat) : List<T> {
+    if (i == n) { null } else { ?(f(i), rec(i+1)) }
+  };
+  rec(0)
 };
 
 //////////////////////////////////////////////////////////////////
@@ -344,6 +406,9 @@ assert (len<X>(l1) == 0);
 assert (len<X>(l2) == 1);
 assert (len<X>(l3) == 2);
 
+//
+// TODO: Write list equaliy test; write tests for each function
+//
 
 ////////////////////////////////////////////////////////////////
 // For comparison:
@@ -354,7 +419,7 @@ assert (len<X>(l3) == 2);
 // datatype 'a list = nil | :: of 'a * 'a list
 // exception Empty
 //
-// Done?
+// Done in AS (marked "x"):
 // -----------------------------------------------------------------
 //   x     val null : 'a list -> bool
 //   x     val length : 'a list -> int
@@ -362,26 +427,24 @@ assert (len<X>(l3) == 2);
 //   x     val hd : 'a list -> 'a
 //   x     val tl : 'a list -> 'a list
 //   x     val last : 'a list -> 'a
-//  ???    val getItem : 'a list -> ('a * 'a list) option
+//  ???    val getItem : 'a list -> ('a * 'a list) option  --------- Q: What does this function "do"? Is it just witnessing a type isomorphism?
 //   x     val nth : 'a list * int -> 'a
 //   x     val take : 'a list * int -> 'a list
 //   x     val drop : 'a list * int -> 'a list
 //   x     val rev : 'a list -> 'a list
-//         val concat : 'a list list -> 'a list
+//   x     val concat : 'a list list -> 'a list
 //   x     val revAppend : 'a list * 'a list -> 'a list
 //   x     val app : ('a -> unit) -> 'a list -> unit
 //   x     val map : ('a -> 'b) -> 'a list -> 'b list
 //   x     val mapPartial : ('a -> 'b option) -> 'a list -> 'b list
-//         val find : ('a -> bool) -> 'a list -> 'a option
+//   x     val find : ('a -> bool) -> 'a list -> 'a option
 //   x     val filter : ('a -> bool) -> 'a list -> 'a list
-//         val partition : ('a -> bool)
-//                           -> 'a list -> 'a list * 'a list
+//   x     val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
 //   x     val foldl : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
 //   x     val foldr : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
 //   x     val exists : ('a -> bool) -> 'a list -> bool
 //   x     val all : ('a -> bool) -> 'a list -> bool
-//         val tabulate : int * (int -> 'a) -> 'a list
-//   x     val collate : ('a * 'a -> order)
-//                         -> 'a list * 'a list -> order
+//   x     val tabulate : int * (int -> 'a) -> 'a list
+//   x     val collate : ('a * 'a -> order) -> 'a list * 'a list -> order
 //
 ////////////////////////////////////////////////////////////
