@@ -67,3 +67,17 @@ func mapfilter<T,S>(l : Osh<T>, f:T -> ?S) : Osh<S> = {
   };
   rec(l)
 };
+
+// stream map; tail recursive. lazily.
+func map<T,S>(l : Osh<T>, f:T -> S) : Osh<S> = {
+  func rec(l : Osh<T>) : Osh<S> {
+    switch l {
+      case null     { null };
+      case (?(h,t)) {
+        let s = new{force():Osh<S>{ rec(t.force()) }};
+        ?(f(h),s)
+      };
+    }
+  };
+  rec(l)
+};
