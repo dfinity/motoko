@@ -8,9 +8,11 @@ module E = Effect
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   add type and term predicate to rule out constructs after passes, We could even compose these I guess....
    dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as   part of desugaring.
  *)
+
+(* TODO: enforce second-class nature of T.Mut? in check_typ *)
+(* TODO: check escape of free mutables via actors *)
 
 (* helpers *)
 let (==>) p q = not p || q
@@ -257,12 +259,11 @@ let string_of_dec exp =  Wasm.Sexpr.to_string 80 (Arrange_ir.dec exp)
 
 (* Expressions *)
 
-(* TODO: make this check phase dependent *)
 let isAsyncE exp =
   match exp.it with
-  | AsyncE _ -> (* before async.ml *)
+  | AsyncE _ -> (* pre await transformation *)
     true
-  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* after async.ml *)
+  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* post await transformation *)
     true
   | _ ->
     false
@@ -814,8 +815,6 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog env prog : scope =
-  check_block env T.unit prog.it prog.at
+let check_prog env prog : unit =
+  ignore (check_block env T.unit prog.it prog.at)
 
-let type_prog env prog : (T.typ * scope) =
-  type_block env prog.it prog.at

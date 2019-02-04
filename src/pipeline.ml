@@ -4,9 +4,7 @@ open Printf
 module Await = Awaitopt   (* for more naive cps translation, use Await *)
 module Async = Async
 
-(*TBD module Tailcall = Tailcall *)
-
-type stat_env = Typing.scope
+type stat_env = Typing.scope (* TBR: shouldn't this better be Typing.env? *)
 type dyn_env = Interpret.env
 type env = stat_env * dyn_env
 
@@ -317,8 +315,8 @@ let compile_with check mode name : compile_result =
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
-    let prelude = Desugar.prog Typing.empty_scope prelude in
-    let prog = Desugar.prog initial_stat_env prog in
+    let prelude = Desugar.transform Typing.empty_scope prelude in
+    let prog = Desugar.transform initial_stat_env prog in
     let prog = await_ir_lowering true initial_stat_env prog name in
     let prog = async_ir_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in

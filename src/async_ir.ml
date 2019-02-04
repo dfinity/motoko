@@ -405,6 +405,6 @@ let check_prog scope prog =
 
 let transform scope prog =
   let prog = t_prog prog in
-  ignore (check_prog scope prog);
+  check_prog scope prog;
   prog;
 

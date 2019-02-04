@@ -233,7 +233,7 @@ let define_idE x mut exp1 =
              note_eff =T.Triv}
   }
 
-let newObjE typ sort ids =
+let newObjE sort ids typ =
   { it = NewObjE (sort, ids);
     at = no_region;
     note = { note_typ = typ;

@@ -63,7 +63,7 @@ val loopE: exp -> exp option -> exp
 
 val declare_idE : Syntax.id -> typ -> exp -> exp
 val define_idE : Syntax.id -> Syntax.mut -> exp -> exp
-val newObjE : typ -> Syntax.obj_sort -> (Syntax.name * Syntax.id) list -> exp
+val newObjE : Syntax.obj_sort -> (Syntax.name * Syntax.id) list -> typ -> exp
 
 (* Declarations *)
 

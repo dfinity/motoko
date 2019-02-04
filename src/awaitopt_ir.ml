@@ -576,7 +576,7 @@ let check_prog scope prog =
   let env = { (Check_ir.env_of_scope scope) with
               Check_ir.check_exp = check_exp }
   in
-  ignore (Check_ir.check_prog env prog)
+  Check_ir.check_prog env prog
 
 let transform scope prog =
   let prog = t_prog prog in

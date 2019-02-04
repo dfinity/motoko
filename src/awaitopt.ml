@@ -203,16 +203,16 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
        (* TBR: optimization - no need to name the last trivial argument *)
-       k -@- naryE (List.rev (e1::vs))
-    | e1::es ->
+       k -@- naryE (List.rev (e1 :: vs))
+    | e1 :: es ->
        match eff e1 with
        | T.Triv ->
           let v1 = fresh_id (typ e1) in
           letE v1 (t_exp context e1)
-            (nary_aux (v1::vs) es)
+            (nary_aux (v1 :: vs) es)
        | T.Await ->
           c_exp context e1
-            (meta (typ e1) (fun v1 -> nary_aux (v1::vs) es))
+            (meta (typ e1) (fun v1 -> nary_aux (v1 :: vs) es))
   in
   nary_aux [] es
 
@@ -365,14 +365,14 @@ and c_obj context exp sort id fields =
       let this = idE id (typ exp) in
       let decs =
         expD this ::
-        letD (idE id (typ exp)) (newObjE (typ exp) sort (List.rev nameids)) ::
+        letD (idE id (typ exp)) (newObjE sort (List.rev nameids) (typ exp)) ::
         decs in
       blockE (List.rev decs)
-    | {it = {id; name; mut; priv; exp}; at; note}::fields ->
-      let ids = (name,id)::nameids in
+    | {it = {id; name; mut; priv; exp}; at; note} :: fields ->
+      let ids = (name,id) :: nameids in
       match mut.it with
-      | Const -> c_fields fields ((letD (idE id (typ exp)) exp)::decs) ids
-      | Var -> c_fields fields (varD id exp::decs) ids
+      | Const -> c_fields fields ((letD (idE id (typ exp)) exp) :: decs) ids
+      | Var -> c_fields fields (varD id exp :: decs) ids
   in
   c_exp context (c_fields fields [] [])
 
@@ -517,7 +517,7 @@ and c_dec context dec (k:kont) =
     let patenv,pat' = rename_pat pat in
     let block exp =
       let dec_pat' = {dec with it = LetD(pat',exp)} in
-      blockE ( dec_pat'::
+      blockE ( dec_pat' ::
               (define_pat patenv pat)
               @[expD (k -@- (tupE[]))])
     in
@@ -554,7 +554,7 @@ and c_decs context decs k =
   | [] ->
     k -@- unitE
   | [dec] ->  c_dec context dec k
-  | (dec::decs) ->
+  | (dec :: decs) ->
      c_dec context dec (meta (typ dec) (fun v-> c_decs context decs k))
 
 (* Blocks and Declarations *)
@@ -571,7 +571,7 @@ and declare_dec dec exp : exp =
 and declare_decs decs exp : exp =
   match decs with
   | [] -> exp
-  | dec::decs' ->
+  | dec :: decs' ->
     declare_dec dec (declare_decs decs' exp)
 
 (* Patterns *)
@@ -591,7 +591,7 @@ and declare_pat pat exp : exp =
 and declare_pats pats exp : exp =
   match pats with
   | [] -> exp
-  | pat::pats' ->
+  | pat :: pats' ->
     declare_pat pat (declare_pats pats' exp)
 
 and rename_pat pat =
@@ -623,10 +623,10 @@ and rename_pat' pat =
 and rename_pats pats =
   match pats with
   | [] -> (PatEnv.empty,[])
-  | (pat::pats) ->
+  | (pat :: pats) ->
     let (patenv1,pat') = rename_pat pat in
     let (patenv2,pats') = rename_pats pats in
-    (PatEnv.disjoint_union patenv1 patenv2, pat'::pats')
+    (PatEnv.disjoint_union patenv1 patenv2, pat' :: pats')
 
 and define_pat patenv pat : dec list =
   match pat.it with
