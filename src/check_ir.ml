@@ -51,14 +51,19 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
+    (* additional checks *)
+    check_exp : env -> Ir.exp -> unit;
+    check_typ : env -> Type.typ -> unit;
   }
 
-let env_of_scope scope =
+let env_of_scope scope : env =
   { vals = scope.Typing.val_env;
     cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
+    check_exp = (fun _ _ -> ());
+    check_typ = (fun _ _ -> ());
   }
 
 (* More error bookkeeping *)
@@ -66,7 +71,7 @@ let env_of_scope scope =
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
 
 let error env at fmt =
-  Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+    Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -120,6 +125,7 @@ let make_mut mut : T.typ -> T.typ =
   | Syntax.Var -> fun t -> T.Mut t
 
 let rec check_typ env typ : unit =
+  env.check_typ env typ; (* custom check *)
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
@@ -273,6 +279,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = E.typ exp in
+  env.check_exp env exp; (* custom check *)
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
@@ -807,10 +814,8 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope prog : scope =
-  let env = env_of_scope scope in
+let check_prog env prog : scope =
   check_block env T.unit prog.it prog.at
 
-let type_prog scope prog : (T.typ * scope) =
-  let env = env_of_scope scope in
+let type_prog env prog : (T.typ * scope) =
   type_block env prog.it prog.at

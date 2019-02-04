@@ -646,4 +646,7 @@ and define_pat patenv pat : dec list =
 and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
 
-and t_prog prog:prog = {prog with it = t_decs LabelEnv.empty prog.it}
+and t_prog prog:prog =
+  { prog with it = t_decs LabelEnv.empty prog.it }
+
+

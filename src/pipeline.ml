@@ -128,7 +128,9 @@ let check_prog infer senv name prog
   end;
   r
 
-let transform transform_name transform flag prog name  =
+(* syntax transforms (*TBD soon*) *)  
+
+let transform transform_name transform flag prog name =
   if flag then
     begin
       phase transform_name name;
@@ -138,31 +140,32 @@ let transform transform_name transform flag prog name  =
     end
   else prog
 
-let transform_ir transform_name transform flag prog name  =
+let await_lowering =
+  transform "Await Lowering" Await.t_prog
+
+let async_lowering =
+  transform "Async Lowering" Async.t_prog
+
+(* ir transforms *)
+  
+let transform_ir transform_name transform flag env prog name =
   if flag then
     begin
       phase transform_name name;
-      let prog' = transform prog in
+      let prog' = transform env prog in
       dump_ir Flags.dump_lowering prog';
       prog'
     end
   else prog
 
-
-let await_lowering =
-  transform "Await Lowering" Await.t_prog
-
 let await_ir_lowering =
-  transform_ir "Await IR Lowering" Await_ir.t_prog
-
-let async_lowering =
-  transform "Async Lowering" Async.t_prog
+  transform_ir "Await IR Lowering" Await_ir.transform
 
 let async_ir_lowering =
-  transform_ir "Async IR Lowering" Async_ir.t_prog
+  transform_ir "Async IR Lowering" Async_ir.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" Tailcall_ir.prog
+  transform_ir "Tailcall optimization" Tailcall_ir.transform
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -314,15 +317,11 @@ let compile_with check mode name : compile_result =
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
-    let prelude = Desugar.prog prelude in
-    let prog = Desugar.prog prog in
-    ignore (Check_ir.check_prog initial_stat_env prog);
-    let prog = await_ir_lowering true prog name in
-    ignore (Check_ir.check_prog initial_stat_env prog);
-    let prog = async_ir_lowering true prog name in
-    ignore (Check_ir.check_prog initial_stat_env prog);
-    let prog = tailcall_optimization true prog name in
-    ignore (Check_ir.check_prog initial_stat_env prog);
+    let prelude = Desugar.prog Typing.empty_scope prelude in
+    let prog = Desugar.prog initial_stat_env prog in
+    let prog = await_ir_lowering true initial_stat_env prog name in
+    let prog = async_ir_lowering true initial_stat_env prog name in
+    let prog = tailcall_optimization true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_

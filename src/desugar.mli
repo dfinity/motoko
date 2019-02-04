@@ -1,1 +1,1 @@
-val prog : Syntax.prog -> Ir.prog
+val prog : Typing.scope -> Syntax.prog -> Ir.prog

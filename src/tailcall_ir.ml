@@ -1,4 +1,3 @@
-
 open Ir
 open Effect
 open Type
@@ -277,3 +276,30 @@ and decs env ds =
 
 
 and prog p:prog = {p with Source.it = decs {tail_pos = false; info = None;} p.Source.it}
+
+
+(* validation *)
+
+open Source
+let check_exp env exp =
+  match exp.it with
+  | AwaitE _ -> Check_ir.error env exp.at "invalid await"
+  | AsyncE _ -> Check_ir.error env exp.at "invalid async"
+  | _ -> ()
+
+let check_typ env typ =
+  match typ with
+  | Type.Async _ -> Check_ir.error env no_region "invalid async type"
+  | _ -> ()
+
+let check_prog scope prog =
+  let env = { (Check_ir.env_of_scope scope) with
+              Check_ir.check_exp = check_exp;
+              Check_ir.check_typ = check_typ }
+  in
+  ignore (Check_ir.check_prog env prog)
+
+let transform scope p =
+  let p' = prog p in
+  check_prog scope p';
+  p'

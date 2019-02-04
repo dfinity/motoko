@@ -565,3 +565,21 @@ and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
 
 and t_prog prog:prog = { prog with it = t_decs LabelEnv.empty prog.it }
+
+let check_exp env exp =
+  match exp.it with
+  | AwaitE _ -> Check_ir.error env exp.at "invalid await"
+  | AsyncE _ -> Check_ir.error env exp.at "invalid async"
+  | _ -> ()
+
+let check_prog scope prog =
+  let env = { (Check_ir.env_of_scope scope) with
+              Check_ir.check_exp = check_exp }
+  in
+  ignore (Check_ir.check_prog env prog)
+
+let transform scope prog =
+  let prog = t_prog prog in
+  check_prog scope prog;
+  prog;
+

@@ -4,7 +4,7 @@ module I = Ir
 module T = Type
 
 (* TODO: clean me up when IrOps available, especially build_obj *)
-         
+
 (* Combinators used in the desguaring *)
 
 let bool_lit b : Ir.exp =
@@ -216,4 +216,15 @@ let
     | S.AnnotP (p, _) -> pat' p.it
 
   and prog p = phrase decs p
+
+(* validation *)
+
+let check_prog scope prog =
+  let env = Check_ir.env_of_scope scope  in
+  ignore (Check_ir.check_prog env prog)
+
+let prog scope p =
+  let p' = prog p in
+  check_prog scope p';
+  p'
 

@@ -1,4 +1,4 @@
 
 (* lower uses of async type appropriately *)
 
-val t_prog : Ir.prog -> Ir.prog
+val transform : Typing.scope -> Ir.prog -> Ir.prog
