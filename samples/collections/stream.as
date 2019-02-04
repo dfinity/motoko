@@ -10,11 +10,11 @@
 // Done:
 //
 //  - standard stream definition (well, two versions)
-//  - standard higher-order combinator: mapfilter
+//  - standard higher-order combinators: map, mapfilter, merge
 
 // TODO-Matthew: Write:
 //
-//  - standard stream combinators: take, drop, merge, sort, etc...
+//  - (more) stream combinators: take, drop, sort, etc...
 //  - iterator objects, for use in 'for ... in ...' patterns
 //  - streams+pairs: zip, split, etc
 //  - regression tests for everything that is below
@@ -42,33 +42,7 @@ type Osh<T> = ?(T, Thk<Osh<T>>);
 // Q: Which is more more "conventional?"
 //
 
-// map-and-filter; tail recursive.
-// acts eagerly when the predicate fails,
-// and lazily when it succeeds.
-func mapfilter<T,S>(l : Osh<T>, f:T -> ?S) : Osh<S> = {
-  func rec(l : Osh<T>) : Osh<S> {
-    switch l {
-      case null     { null };
-      case (?(h,t)) {
-        switch (f(h)) {
-        case null { rec(t.force()) };
-        case (?h_){
-            // XXX -- When we shadow `t` we get a strange/wrong type error:
-            //
-            //  let t = new{force():Osh<S>{ rec(t.force()) }};
-            //  ?(h_,t)
-            //
-            let s = new{force():Osh<S>{ rec(t.force()) }};
-            ?(h_,s)
-          };
-        }
-      };
-    }
-  };
-  rec(l)
-};
-
-// stream map; tail recursive. lazily.
+// stream map; tail recursive. lazy.
 func map<T,S>(l : Osh<T>, f:T -> S) : Osh<S> = {
   func rec(l : Osh<T>) : Osh<S> {
     switch l {
@@ -81,3 +55,55 @@ func map<T,S>(l : Osh<T>, f:T -> S) : Osh<S> = {
   };
   rec(l)
 };
+
+// stream merge (aka "collate"); tail recursive. lazy.
+func merge<T>(s1 : Osh<T>, s2 : Osh<T>, f:(T,T) -> Bool) : Osh<T> = {
+  func rec(s1 : Osh<T>, s2 : Osh<T>) : Osh<T> {
+    switch (s1, s2) {
+      case (null, _) { s2 };
+      case (_, null) { s1 };
+      case (?(h1,t1), ?(h2,t2)) {
+        if (f(h1,h2)) {
+          // case: h1 is "today", h2 is "later"...
+          let s = new{force():Osh<T>{ rec(t1.force(), s2) }};
+          ?(h1,s)
+        } else {
+          // case: h2 is "today", h2 is "later"...
+          let s = new{force():Osh<T>{ rec(s1, t2.force()) }};
+          ?(h2,s)
+        }
+      }
+    }
+  };
+  rec(s1, s2)
+};
+
+// stream map-and-filter; tail recursive.
+// acts eagerly when the predicate fails,
+// and lazily when it succeeds.
+func mapfilter<T,S>(l : Osh<T>, f:T -> ?S) : Osh<S> = {
+  func rec(s : Osh<T>) : Osh<S> {
+    switch s {
+    case null     { null };
+    case (?(h,t)) {
+        switch (f(h)) {
+        case null { rec(t.force()) };
+        case (?h_){
+          // XXX -- When we shadow `t` we get a strange/wrong type error:
+          //
+          // type error, expression of type
+          //    Osh<S/3> = ?(S/3, Thk<Osh<S/3>>)
+          // cannot produce expected type
+          //    ?(T/28, Thk<Osh<T/28>>)
+          //
+          // let t = new{force():Osh<S>{ rec(t.force()) }};
+          // ?(h_,t)
+          let s = new{force():Osh<S>{ rec(t.force()) }};
+          ?(h_,s)
+         };
+        }
+      };
+    }
+  };
+  rec(l)
+}
