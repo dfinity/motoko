@@ -293,6 +293,8 @@ let compile_with check mode name : compile_result =
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
+    (* TEMP-Matthew: next line here just to get this module to compile *)
+    let _ = Simploop.transform initial_stat_env prog in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_
