@@ -43,7 +43,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     effect_exp exp1
   | BinE (_, exp1, _, exp2)
   | IdxE (exp1, exp2)
-  | IsE (exp1, exp2)
   | RelE (_, exp1, _, exp2)
   | AssignE (exp1, exp2)
   | CallE (exp1, _, exp2)
@@ -139,7 +138,6 @@ module Ir =
         effect_exp exp1
       | BinE (_, exp1, _, exp2)
       | IdxE (exp1, exp2)
-      | IsE (exp1, exp2)
       | RelE (_, exp1, _, exp2)
       | AssignE (exp1, exp2)
       | CallE (_, exp1, _, exp2)

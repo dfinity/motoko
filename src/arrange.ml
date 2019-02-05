@@ -34,7 +34,6 @@ let rec exp e = match e.it with
   | AsyncE e            -> "AsyncE"  $$ [exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
-  | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot]
   | OptE e              -> "OptE"    $$ [exp e]
@@ -144,8 +143,7 @@ and typ t = match t.it with
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
-  | LikeT  t            -> "LikeT" $$ [typ t]
-  | ParT t              -> "ParT" $$ [typ t]           
+  | ParT t              -> "ParT" $$ [typ t]
 
 and id i = Atom i.it
 and con_id i = Atom i.it         

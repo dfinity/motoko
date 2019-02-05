@@ -32,7 +32,6 @@ and typ =
   | Func of func_sort * control *
             bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
-  | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
   | Shared                                    (* sharable *)
@@ -116,7 +115,6 @@ let rec shift i n t =
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
   | Async t -> Async (shift i n t)
-  | Like t -> Like (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Class -> Class
@@ -152,7 +150,6 @@ let rec subst sigma t =
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
-  | Like t -> Like (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Class -> Class
@@ -193,7 +190,6 @@ let rec open' i ts t =
     Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
-  | Like t -> Like (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Class -> Class
@@ -242,7 +238,6 @@ let rec promote env = function
     | Some (Def (tbs, t) | Abs (tbs, t)) -> promote env (reduce tbs t ts)
     | None -> assert false
     )
-  | Like t -> promote env t (*TBR*)
   | t -> t
 
 
@@ -324,7 +319,7 @@ let lookup_field name' tfs =
 
 let rec span env = function
   | Var _ | Pre -> assert false
-  | Con _ as t | Like t -> span env (promote env t)
+  | Con _ as t -> span env (promote env t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
   | Prim (Nat | Int | Float | Text) -> None
@@ -365,7 +360,6 @@ let rec avoid' env env' = function
           List.map (avoid' env env') ts1, List.map (avoid' env env') ts2)
   | Opt t -> Opt (avoid' env env' t)
   | Async t -> Async (avoid' env env' t)
-  | Like t -> avoid' env env' (promote env t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
   | Mut t -> Mut (avoid' env env' t)
 
@@ -478,10 +472,6 @@ let rec rel_typ env rel eq t1 t2 =
     true
   | Async t1', Async t2' ->
     rel_typ env rel eq t1' t2'
-  | Like t1', t2 ->
-    rel_typ env rel eq (promote env t1') t2
-  | t1, Like t2' ->
-    rel_typ env rel eq t1 (promote env t2')
   | Mut t1', Mut t2' ->
     eq_typ env rel eq t1' t2'
   | _, _ -> false
@@ -654,8 +644,6 @@ and string_of_typ' vs t =
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async t ->
     sprintf "async %s" (string_of_typ_nullary vs t)
-  | Like t ->
-    sprintf "like %s" (string_of_typ_nullary vs t)
   | Obj (Object Sharable, fs) ->
     sprintf "shared %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Actor, fs) ->

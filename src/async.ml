@@ -154,7 +154,6 @@ let rec t_typ (t:T.typ) =
      end
   | Opt t -> Opt (t_typ t)
   | Async t -> t_async nary (t_typ t)
-  | Like t -> Like (t_typ t)
   | Obj (s, fs) -> Obj (s, List.map t_field  fs)
   | Mut t -> Mut (t_typ t)
   | Class -> Class
@@ -292,8 +291,6 @@ and t_exp' (exp:exp) =
   | AwaitE _ -> assert false
   | AssertE exp1 ->
     AssertE (t_exp exp1)
-  | IsE (exp1, exp2) ->
-    IsE (t_exp exp1, t_exp exp2)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, t_typ typ, t_exp exp1)
   | DefineE (id, mut ,exp1) ->
@@ -407,4 +404,3 @@ let transform scope prog =
   let prog = t_prog prog in
   check_prog scope prog;
   prog;
-

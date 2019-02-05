@@ -50,7 +50,6 @@ and exp' =
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | IsE of exp * exp                           (* instance-of *)
   | DeclareE of Syntax.id * Type.typ * exp     (* local promise *)
   | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment *)
   | NewObjE of                                 (* make an object, preserving mutable identity *)

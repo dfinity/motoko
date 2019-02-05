@@ -93,7 +93,7 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
-%token IF IN IS ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -121,7 +121,6 @@ let share_expfield (ef : exp_field) =
 
 %right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %left COLON
-%left IS
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -224,8 +223,6 @@ typ_pre :
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(t) @! at $sloc }
-  | LIKE t=typ_pre
-    { LikeT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Object Type.Local
@@ -387,8 +384,6 @@ exp_bin :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin OR e2=exp_bin
     { OrE(e1, e2) @? at $sloc }
-  | e1=exp_bin IS e2=exp_bin
-    { IsE(e1, e2) @? at $sloc }
   | e=exp_bin COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 

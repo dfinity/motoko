@@ -943,7 +943,7 @@ module AllocHow = struct
       (* Messages cannot be static *)
       | FuncD (cc, _, _, _, _, _) when cc.Value.sort = Type.Call Type.Sharable ->
       map_of_set LocalImmut d
-      (* Static functions and classes *)
+      (* Static functions *)
       | FuncD _ when is_static env how0 f ->
       M.empty
       (* Everything else needs at least a local *)
@@ -1114,9 +1114,9 @@ end (* Prim *)
 module Object = struct
   (* An object has the following heap layout:
 
-    ┌─────┬───────┬──────────┬─────────────┬─────────────┬───┐
-    │ tag │ class │ n_fields │ field_hash1 │ field_data1 │ … │
-    └─────┴───────┴──────────┴─────────────┴─────────────┴───┘
+    ┌─────┬──────────┬─────────────┬─────────────┬───┐
+    │ tag │ n_fields │ field_hash1 │ field_data1 │ … │
+    └─────┴──────────┴─────────────┴─────────────┴───┘
 
     The field_data are pointers to either an ObjInd, or a MutBox (they
     have the same layout). This indirection is a consequence of how we
@@ -1129,12 +1129,10 @@ module Object = struct
   *)
 
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
-  let header_size = Int32.add Tagged.header_size 2l
-
-  let class_position = Int32.add Tagged.header_size 0l
+  let header_size = Int32.add Tagged.header_size 1l
 
   (* Number of object fields *)
-  let size_field = Int32.add Tagged.header_size 1l
+  let size_field = Int32.add Tagged.header_size 0l
 
   (* We use the same hashing function as Ocaml would *)
   let hash_field_name ({it = Syntax.Name s; _}) =
@@ -1165,11 +1163,6 @@ module Object = struct
      (* Set tag *)
      get_ri ^^
      Tagged.store Tagged.Object ^^
-
-     (* Write the class field *)
-     get_ri ^^
-     compile_unboxed_const 1l ^^
-     Heap.store_field class_position ^^
 
      (* Set size *)
      get_ri ^^
@@ -3287,45 +3280,6 @@ and compile_exp (env : E.t) exp =
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
-  | IsE (e1, e2) ->
-    StackRep.bool,
-    let code1 = compile_exp_vanilla env e1 in
-    let code2 = compile_exp_vanilla env e2 in
-    let (set_i, get_i) = new_local env "is_lhs" in
-    let (set_j, get_j) = new_local env "is_rhs" in
-    code1 ^^
-    set_i ^^
-    code2 ^^
-    set_j ^^
-
-    get_i ^^
-    Tagged.branch env (ValBlockType (Some I32Type))
-     [ Tagged.Array,
-       Bool.lit false
-     ; Tagged.Reference,
-       (* TODO: Implement IsE for actor references? *)
-       Bool.lit false
-     ; Tagged.Object,
-       (* There are two cases: Either the class is a pointer to
-          the object on the RHS, or it is -- mangled -- the
-          function id stored therein *)
-       get_i ^^
-       Heap.load_field Object.class_position ^^
-       (* Equal? *)
-       get_j ^^
-       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-       G.if_ (ValBlockType (Some I32Type))
-         (Bool.lit true)
-         (* Static function id? *)
-         ( get_i ^^
-           Heap.load_field Object.class_position ^^
-           get_j ^^
-           Heap.load_field 0l ^^ (* get the function id *)
-           compile_mul_const Heap.word_size ^^
-           compile_add_const 1l ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-         )
-     ]
   | BlockE (decs,_) ->
     compile_decs env decs
   | LabelE (name, _ty, e) ->

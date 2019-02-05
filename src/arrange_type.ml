@@ -47,7 +47,6 @@ let rec typ (t:Type.typ) = match t with
   | Tup ts                 -> "Tup" $$ List.map typ ts
   | Func (s, c, tbs, at, rt) -> "Func" $$ [func_sort s; Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]
-  | Like  t               -> "Like" $$ [typ t]
   | Mut t                 -> "Mut" $$ [typ t]
   | Class                 -> Atom "Class"
   | Shared                -> Atom "Shared"

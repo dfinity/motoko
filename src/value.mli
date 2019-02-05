@@ -58,7 +58,6 @@ module Env : Env.S with type key = string
 (* Types *)
 
 type unicode = int
-type class_
 
 type call_conv = {
   sort: Type.func_sort;
@@ -84,8 +83,8 @@ and value =
   | Tup of value list
   | Opt of value
   | Array of value array
-  | Obj of class_ option * value Env.t
-  | Func of class_ option * call_conv * func
+  | Obj of value Env.t
+  | Func of call_conv * func
   | Async of async
   | Mut of value ref
 
@@ -126,15 +125,10 @@ val as_tup : value -> value list
 val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
-val as_obj : value -> class_ option * value Env.t
-val as_func : value -> class_ option * call_conv * func
+val as_obj : value -> value Env.t
+val as_func : value -> call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
-
-
-(* Classes *)
-
-val new_class : unit -> class_
 
 
 (* Ordering *)

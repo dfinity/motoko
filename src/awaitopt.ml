@@ -133,8 +133,6 @@ and t_exp' context exp' =
   | AwaitE _ -> assert false (* an await never has effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
-  | IsE (exp1, exp2) ->
-    IsE (t_exp context exp1, t_exp context exp2)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
@@ -417,8 +415,6 @@ and c_exp' context exp k =
        )
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1
-  | IsE (exp1, exp2) ->
-    binary context k (fun v1 v2 -> e (IsE (v1,v2))) exp1 exp2
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->

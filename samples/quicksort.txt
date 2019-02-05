@@ -97,7 +97,7 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
     <= ()
   <= ()
 -- Finished quicksort.as:
-let QS : class <T>((T, T) -> Int) -> QS<T> = class
+let QS : class <T>((T, T) -> Int) -> QS<T> = func
 let a : [var Int] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func
 let qs : QS<Int> = {quicksort = func}

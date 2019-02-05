@@ -87,7 +87,6 @@ let rec exp e : f = match e.it with
   | AsyncE e            -> exp e
   | AwaitE e            -> exp e
   | AssertE e           -> exp e
-  | IsE (e, t)          -> exp e
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e

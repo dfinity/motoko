@@ -301,64 +301,62 @@ and open the path printed on the last line of that command.
 
 * Every declaration is a statement (and thereby an expression)
 
-
-
 ## Example
 
-Here is a variant of the bank account example.
 
-```
-actor class Bank(supply : Int) {
-  private issuer = Issuer();
-  private reserve = Account(supply);
-  getIssuer() : async Issuer { return issuer; };
-  getReserve() : async Account { return reserve; };
-};
+    /* a simple data structure: mutable, singly linked list */
+    type List<T> = ?{head: T; var tail: List<T>};
 
-actor class Issuer() {
-  hasIssued(account : like Account) : async Bool {
-    return (account is Account);
-  };
-};
+    type post = shared Text -> async ();
 
-actor class Account(initialBalance : Int) = this {
-  private var balance : Int = initialBalance;
+    type IClient = actor {
+       send: shared Text -> async ();
+    };
 
-  getBalance() : async Int {
-    return balance;
-  };
+    type IServer = actor {
+      post: Text -> async ();
+      subscribe: IClient -> async post;
+    };
 
-  split(amount : Int) : async Account {
-    balance -= amount;
-    return Account(amount);
-  };
+    actor Server = {
+       private var clients:List<IClient> = null;
 
-  join(account : like Account) {
-    assert(account is Account);
-    let amount = balance;
-    balance := 0;
-    account.credit(amount, Account);
-  };
+       post(message:Text) : async () {
+          var next = clients;
+          loop {
+             switch (next) {
+                case null return;
+                case (?l) {
+                    await l.head.send(message);
+                    next := l.tail;
+                  };
+               };
+            };
+         };
 
-  credit(amount : Int, caller : Class) {
-    assert(this is caller);
-    balance += amount;
-  };
+       subscribe(client:IClient) : async post {
+         let cs = new { head = client; var tail = clients};
+         clients := ?cs;
+         return post;
+       };
+    };
 
-  isCompatible(account : like Account) : async Bool {
-    return (account is Account);
-  };
-};
-```
 
-Example use:
+    actor class Client() = this {
+       private var name : Text = "";
+       private var server: ?IServer  = null;
+       go (n:Text,s:IServer) : async () {
+           name := n;
+           server := ?s;
+           let post = await s.subscribe(this);
+           await post("hello from " # name);
+           await post("goodbye from " # name);
+       };
+       send(msg:Text) : async () {
+          print name; print " received "; print msg; print "\n";
+       };
+    };
 
-```
-func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
-  let trx = await sender.split(amount);
-  trx.join(receiver);
-};
-```
 
 ## Syntax
 

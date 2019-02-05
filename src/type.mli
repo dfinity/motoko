@@ -32,7 +32,6 @@ and typ =
   | Func of func_sort * control *
             bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
-  | Like of typ                               (* expansion *)
   | Mut of typ                                (* mutable type *)
   | Class                                     (* class *)
   | Shared                                    (* sharable *)

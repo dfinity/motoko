@@ -117,7 +117,6 @@ and exp' env e  : exp' = match e.it with
   | AsyncE e            -> AsyncE (exp { tail_pos = true; info = None } e)
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
-  | IsE (e, t)          -> IsE (exp env e, t)
   | OptE e              -> OptE (exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)

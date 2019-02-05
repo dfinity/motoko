@@ -34,7 +34,6 @@ and typ' =
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of typ                                  (* future *)
-  | LikeT of typ                                   (* expansion *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 (*
   | UnionT of type * typ                           (* union *)
@@ -158,7 +157,6 @@ and exp' =
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
   | DecE of dec * Type.typ ref                 (* declaration *)
 (*

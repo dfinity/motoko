@@ -116,7 +116,6 @@ let rec exp msgs e : f = match e.it with
   | AsyncE e            -> exp msgs e
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
-  | IsE (e, t)          -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
