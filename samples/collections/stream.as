@@ -42,7 +42,7 @@ type Osh<T> = ?(T, Thk<Osh<T>>);
 // Q: Which is more more "conventional?"
 //
 
-// stream map; tail recursive. lazy.
+// stream map; trivially tail recursive. lazy.
 func map<T,S>(l : Osh<T>, f:T -> S) : Osh<S> = {
   func rec(l : Osh<T>) : Osh<S> {
     switch l {
@@ -56,7 +56,7 @@ func map<T,S>(l : Osh<T>, f:T -> S) : Osh<S> = {
   rec(l)
 };
 
-// stream merge (aka "collate"); tail recursive. lazy.
+// stream merge (aka "collate"); trivially tail recursive. lazy.
 func merge<T>(s1 : Osh<T>, s2 : Osh<T>, f:(T,T) -> Bool) : Osh<T> = {
   func rec(s1 : Osh<T>, s2 : Osh<T>) : Osh<T> {
     switch (s1, s2) {

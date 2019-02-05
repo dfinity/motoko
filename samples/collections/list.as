@@ -299,7 +299,7 @@ func all<T>(l: List<T>, f:T -> Bool) : Bool = {
 };
 
 // Called 'collate' in SML basis library
-// Here, we e use a 'less-than-or-eq' relation, not a 3-valued 'order' type.
+// (But we use a 'less-than-or-eq' relation, not a 3-valued 'order' type, as in SML).
 func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
   func rec(l1: List<T>, l2: List<T>) : List<T> {
     switch (l1, l2) {
