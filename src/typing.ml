@@ -609,30 +609,6 @@ and infer_exp' env exp : T.typ =
     in
     ot := t';
     t'
-  (* DeclareE and DefineE should not occur in source code *)
-  | DeclareE (id, typ, exp1) ->
-    let env' = adjoin_vals env (T.Env.singleton id.it typ) in
-    infer_exp env' exp1
-  | DefineE (id, mut, exp1) ->
-    (match T.Env.find_opt id.it env.vals with
-    | Some T.Pre ->
-      error env id.at "cannot infer type of forward variable %s" id.it
-    | Some t1 ->
-      if not env.pre then begin
-        try
-          let t2 = match mut.it with Var -> T.as_mut t1 | Const -> t1 in
-          check_exp env t2 exp1
-        with Invalid_argument _ ->
-          error env exp.at "expected mutable assignment target"
-      end
-    | None -> error env id.at "unbound variable %s" id.it
-    );
-    T.unit
-  | NewObjE (sort, labids) ->
-    T.Obj (sort.it,
-      List.map (fun (name, id) ->
-        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals})
-      labids)
 
 and check_exp env t exp =
   assert (not env.pre);

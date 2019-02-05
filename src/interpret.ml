@@ -156,10 +156,9 @@ let make_unit_message id v =
     )
   | _ ->
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
-(* assert (false) *)
+    (* assert (false) *)
 
 let make_async_message id v =
-  assert (not !Flags.async_lowering);
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Call T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
@@ -180,39 +179,10 @@ let make_message id t v : V.value =
   | T.Func (_, _, _, _, []) ->
     make_unit_message id.it v
   | T.Func (_, _, _, _, [T.Async _]) ->
-    assert (not !Flags.async_lowering);
     make_async_message id.it v
   | _ ->
     failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
     (* assert false *)
-
-
-let extended_prim s typ at =
-  match s with
-  | "@async" ->
-    assert (!Flags.await_lowering && not !Flags.async_lowering);
-    (fun v k ->
-      let (_, f) = V.as_func v in
-      match typ with
-      | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _)], _) ->
-        let call_conv = Value.call_conv_of_typ f_dom in
-        async at
-          (fun k' ->
-            let k' = Value.Func (call_conv, fun v _ -> k' v) in
-            f k' V.as_unit
-          ) k
-      | _ -> assert false
-    )
-  | "@await" ->
-    assert(!Flags.await_lowering && not !Flags.async_lowering);
-    fun v k ->
-      (match V.as_tup v with
-      | [async; w] ->
-        let (_, f) = V.as_func w in
-        await at (V.as_async async) (fun v -> f v k)
-      | _ -> assert false
-      )
-  | _ -> Prelude.prim s
 
 
 (* Literals *)
@@ -267,8 +237,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   match exp.it with
   | PrimE s ->
-    let at = exp.at in
-    k (V.Func (V.call_conv_of_typ exp.note.note_typ, extended_prim s exp.note.note_typ at))
+    k (V.Func (V.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
   | VarE id ->
     (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -413,7 +382,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
-    assert(not(!Flags.await_lowering));
     async
       exp.at
       (fun k' ->
@@ -422,7 +390,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       k
 
   | AwaitE exp1 ->
-    assert(not(!Flags.await_lowering));
     interpret_exp env exp1
       (fun v1 -> await exp.at (V.as_async v1) k)
   | AssertE exp1 ->
@@ -435,29 +402,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 k
   | DecE (dec, _) ->
     interpret_block env [dec] None k
-  | DeclareE (id, typ, exp1) ->
-    let env = adjoin_vals env (declare_id id) in
-    interpret_exp env exp1 k
-  | DefineE (id, mut, exp1) ->
-    interpret_exp env exp1 (fun v ->
-      let v' =
-        match mut.it with
-        | Const -> v
-        | Var -> V.Mut (ref v)
-      in
-      define_id env id v';
-      k V.unit
-      )
-  | NewObjE (sort, ids) ->
-    let ve =
-      List.fold_left
-        (fun ve (name, id) ->
-          V.Env.disjoint_add (string_of_name name.it)
-            (Lib.Promise.value (find id.it env.vals)) ve
-        ) V.Env.empty ids
-    in k (V.Obj ve)
-
-
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with

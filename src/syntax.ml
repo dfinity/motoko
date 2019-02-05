@@ -159,9 +159,6 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | DecE of dec * Type.typ ref                 (* declaration *)
-  | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
-  | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
-  | NewObjE of obj_sort * (name * id) list     (* make an object, preserving mutable identity (internal) *)
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)

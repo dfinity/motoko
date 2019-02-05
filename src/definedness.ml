@@ -119,9 +119,6 @@ let rec exp msgs e : f = match e.it with
   | AnnotE (e, t)       -> exp msgs e
   | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
-  | DeclareE (i, t, e)  -> exp msgs e  // i.it
-  | DefineE (i, m, e)   -> id i ++ exp msgs e
-  | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -145,8 +142,6 @@ and exp_field msgs (ef : exp_field) : fd
   = (exp msgs ef.it.exp, S.singleton ef.it.id.it)
 
 and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
-
-and id i = M.singleton i.it Eager
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)

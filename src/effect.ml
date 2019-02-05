@@ -78,12 +78,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Await
   | DecE (d, _) ->
      effect_dec d
-  | DeclareE (_, _, exp1) ->
-     effect_exp exp1
-  | DefineE (_, _, exp1) ->
-     effect_exp exp1
-  | NewObjE _ ->
-     T.Triv
 
 and effect_cases cases =
   match cases with
