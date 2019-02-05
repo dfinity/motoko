@@ -29,7 +29,11 @@ let phrase' f x = {x with it = f x.at x.note x.it}
 
 let
   rec exps es = List.map (exp) es
-  and exp e = phrase' exp' e
+  and exp e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> exp e
+    | _ -> phrase' exp' e
   and exp' at note = function
     | S.PrimE p -> I.PrimE p
     | S.VarE i -> I.VarE i
@@ -86,7 +90,7 @@ let
     | S.AwaitE e -> I.AwaitE (exp e)
     | S.AssertE e -> I.AssertE (exp e)
     | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
-    | S.AnnotE (e, _) -> exp' at note e.it
+    | S.AnnotE (_, _) -> assert false
     | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)
     | S.DefineE (i, m, e) -> I.DefineE (i, m, exp e)

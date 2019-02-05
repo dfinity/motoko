@@ -6,7 +6,7 @@ module Async = Async
 module Tailcall = Tailcall
 
 type stat_env = Typing.scope
-type dyn_env = Interpret.env
+type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
 (* Diagnostics *)
@@ -37,11 +37,6 @@ let print_dyn_ve scope =
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
       (Type.string_of_typ t') (Value.string_of_def d)
-  )
-
-let eprint_dyn_ve_untyped =
-  Value.Env.iter (fun x d ->
-    eprintf "%s = %s\n%!" x (Value.string_of_def d)
   )
 
 let print_scope senv scope dve =
@@ -162,18 +157,18 @@ type interpret_result =
 let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
   try
     phase "Interpreting" name;
-    let vo, scope = Interpret.interpret_prog denv prog in
+    let vo, scope =
+      if !Flags.interpret_ir
+      then
+        let prog_ir = Desugar.prog prog in
+        Interpret_ir.interpret_prog denv prog_ir
+      else Interpret.interpret_prog denv prog in
     match vo with
     | None -> None
     | Some v -> Some (v, scope)
   with exn ->
     (* For debugging, should never happen. *)
-    Diag.print_message (Diag.fatal_error (Interpret.get_last_region ()) (Printexc.to_string exn));
-    eprintf "\nLast environment:\n%!";
-    eprint_dyn_ve_untyped Interpret.((get_last_env ()).vals);
-    eprintf "\n";
-    Printexc.print_backtrace stderr;
-    eprintf "%!";
+    Interpret.print_exn exn;
     None
 
 let interpret_with check (senv, denv) name : interpret_result =
@@ -221,10 +216,10 @@ let check_prelude () : Syntax.prog * stat_env =
 let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
-  match interpret_prog Interpret.empty_env prelude_name prelude with
+  match interpret_prog Interpret.empty_scope prelude_name prelude with
   | None -> prelude_error "initializing" []
   | Some (_v, dscope) ->
-    Interpret.adjoin Interpret.empty_env dscope
+    Interpret.adjoin_scope Interpret.empty_scope dscope
 
 let initial_dyn_env = run_prelude ()
 let initial_env = (initial_stat_env, initial_dyn_env)
@@ -253,7 +248,7 @@ let run_with interpret output ((senv, denv) as env) name : run_result =
     | Some (prog, t, v, sscope, dscope) ->
       phase "Finished" name;
       let senv' = Typing.adjoin_scope senv sscope in
-      let denv' = Interpret.adjoin denv dscope in
+      let denv' = Interpret.adjoin_scope denv dscope in
       let env' = (senv', denv') in
       (* TBR: hack *)
       let t', v' =

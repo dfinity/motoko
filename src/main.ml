@@ -34,6 +34,7 @@ let argspec = Arg.align
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
   "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
+  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
@@ -98,12 +99,4 @@ let () =
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
     process_files !args
   with exn ->
-    printf "%!";
-    let at = Source.string_of_region (Interpret.get_last_region ()) in
-    eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
-    eprintf "\nLast environment:\n";
-    Value.Env.iter (fun x d -> eprintf "%s = %s\n" x (Value.string_of_def d))
-      Interpret.((get_last_env ()).vals);
-    eprintf "\n";
-    Printexc.print_backtrace stderr;
-    eprintf "%!"
+    Interpret.print_exn exn
