@@ -12,7 +12,6 @@ Productions marked * probably deferred to later versions.
   ? <typ>                                       option
   (shared|class)? <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
-  like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom

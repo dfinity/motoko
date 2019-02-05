@@ -34,7 +34,6 @@ and typ' =
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of typ                                  (* future *)
-  | LikeT of typ                                   (* expansion *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 (*
   | UnionT of type * typ                           (* union *)

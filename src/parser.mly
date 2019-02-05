@@ -93,7 +93,7 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
-%token IF IN ELSE SWITCH LOOP WHILE FOR LIKE RETURN 
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN 
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -223,8 +223,6 @@ typ_pre :
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(t) @! at $sloc }
-  | LIKE t=typ_pre
-    { LikeT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Object Type.Local

@@ -194,8 +194,6 @@ and check_typ' env typ : T.typ =
       error env typ.at "async type has non-shared parameter type\n  %s"
         (T.string_of_typ_expand env.cons t');
     T.Async t
-  | LikeT typ ->
-    T.Like (check_typ env typ)
   | ObjT (sort, fields) ->
     check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in

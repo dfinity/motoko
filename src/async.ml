@@ -182,7 +182,6 @@ let rec t_typ (t:T.typ) =
      end
   | Opt t -> Opt (t_typ t)
   | Async t -> t_async nary (t_typ t)
-  | Like t -> Like (t_typ t)
   | Obj (s, fs) -> Obj (s, List.map t_field  fs)
   | Mut t -> Mut (t_typ t)
   | Class -> Class
@@ -463,8 +462,6 @@ and t_typT' t =
      end
   | AsyncT t ->
      t_asyncT (t_typT t)
-  | LikeT  t ->
-     LikeT (t_typT t)
   | ParT t ->
      ParT (t_typT t)
 and t_typ_fieldT fld =

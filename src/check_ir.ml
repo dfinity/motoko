@@ -171,8 +171,6 @@ let rec check_typ env typ : unit =
   | T.Async typ ->
     let t' = T.promote env.cons typ in
     check_sub env no_region t' T.Shared
-  | T.Like typ ->
-    check_typ env typ
   | T.Obj (sort, fields) ->
     let rec sorted fields =
       match fields with
