@@ -8,9 +8,11 @@ module E = Effect
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   add type and term predicate to rule out constructs after passes, We could even compose these I guess....
    dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as   part of desugaring.
  *)
+
+(* TODO: enforce second-class nature of T.Mut? in check_typ *)
+(* TODO: check escape of free mutables via actors *)
 
 (* helpers *)
 let (==>) p q = not p || q
@@ -51,14 +53,19 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
+    (* additional checks *)
+    check_exp : env -> Ir.exp -> unit;
+    check_typ : env -> Type.typ -> unit;
   }
 
-let env_of_scope scope =
+let env_of_scope scope : env =
   { vals = scope.Typing.val_env;
     cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
+    check_exp = (fun _ _ -> ());
+    check_typ = (fun _ _ -> ());
   }
 
 (* More error bookkeeping *)
@@ -66,7 +73,7 @@ let env_of_scope scope =
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
 
 let error env at fmt =
-  Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+    Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -120,6 +127,7 @@ let make_mut mut : T.typ -> T.typ =
   | Syntax.Var -> fun t -> T.Mut t
 
 let rec check_typ env typ : unit =
+  env.check_typ env typ; (* custom check *)
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
@@ -253,8 +261,12 @@ let string_of_dec exp =  Wasm.Sexpr.to_string 80 (Arrange_ir.dec exp)
 
 let isAsyncE exp =
   match exp.it with
-  | AsyncE _ -> true
-  | _ -> false
+  | AsyncE _ -> (* pre await transformation *)
+    true
+  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* post await transformation *)
+    true
+  | _ ->
+    false
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
@@ -268,6 +280,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = E.typ exp in
+  env.check_exp env exp; (* custom check *)
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
@@ -712,13 +725,14 @@ and check_dec env dec  =
   | LetD (_, exp) | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
-  | FuncD (sort, id, typ_binds, pat, t2, exp) ->
+  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
     let t0 = T.Env.find id.it env.vals in
     let _cs,ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_typs env ce in
     let ve = check_pat_exhaustive env' pat in
     check_typ env' t2;
-    check (Type.is_async t2 ==> isAsyncE exp)
+    check ((cc.Value.sort = T.Call T.Sharable && Type.is_async t2)
+           ==> isAsyncE exp)
       "shared function with async type has non-async body";
     let env'' =
       {env' with labs = T.Env.empty; rets = Some t2; async = false} in
@@ -801,10 +815,6 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope prog : scope =
-  let env = env_of_scope scope in
-  check_block env T.unit prog.it prog.at
+let check_prog env prog : unit =
+  ignore (check_block env T.unit prog.it prog.at)
 
-let type_prog scope prog : (T.typ * scope) =
-  let env = env_of_scope scope in
-  type_block env prog.it prog.at

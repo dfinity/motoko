@@ -901,8 +901,8 @@ module AllocHow = struct
   We represent this as a lattice as follows:
   *)
 
-  module M = Freevars_ir.M
-  module S = Freevars_ir.S
+  module M = Freevars.M
+  module S = Freevars.S
 
   type nonStatic = LocalImmut | LocalMut | StoreHeap
   type allocHow = nonStatic M.t (* absent means static *)
@@ -925,15 +925,15 @@ module AllocHow = struct
   let is_static env how f =
     (* Does this capture nothing from outside? *)
     (S.is_empty (S.inter
-      (Freevars_ir.captured_vars f)
+      (Freevars.captured_vars f)
       (set_of_map (M.filter (fun _ x -> not (E.is_non_local x)) (env.E.local_vars_env))))) &&
     (* Does this capture nothing non-static from here? *)
     (S.is_empty (S.inter
-      (Freevars_ir.captured_vars f)
+      (Freevars.captured_vars f)
       (set_of_map how)))
 
   let dec env (seen, how0) dec =
-    let (f,d) = Freevars_ir.dec dec in
+    let (f,d) = Freevars.dec dec in
 
     (* What allocation is required for the things defined here? *)
     let how1 = match dec.it with
@@ -957,7 +957,7 @@ module AllocHow = struct
       map_of_set StoreHeap
         (S.inter
           (set_of_map how0)
-          (S.diff (Freevars_ir.captured_vars f) seen)) in
+          (S.diff (Freevars.captured_vars f) seen)) in
 
     (* Do we capture anything mutable?
        These also need to be heap-allocated.
@@ -966,7 +966,7 @@ module AllocHow = struct
       map_of_set StoreHeap
         (S.inter
           (set_of_map (M.filter (fun _ h -> h = LocalMut) how0))
-          (Freevars_ir.captured_vars f)) in
+          (Freevars.captured_vars f)) in
 
     let how = List.fold_left join M.empty [how0; how1; how2; how3] in
     let seen' = S.union seen d
@@ -3385,9 +3385,9 @@ and compile_exp (env : E.t) exp =
     StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
   | ActorE (name, fs, _) ->
     StackRep.UnboxedReference,
-    let captured = Freevars_ir.exp exp in
+    let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
-    if Freevars_ir.M.is_empty (Freevars_ir.diff captured prelude_names)
+    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env name fs exp.at
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
   | CallE (cc, e1, _, e2) ->
@@ -3604,7 +3604,7 @@ and fill_pat env pat : patternCode =
 
 and alloc_pat env how pat =
   (fun (env,code) -> (env, G.with_region pat.at code)) @@
-  let (_,d) = Freevars_ir.pat pat in
+  let (_,d) = Freevars.pat pat in
   AllocHow.S.fold (fun v (env,code0) ->
     let (env1, code1) = AllocHow.add_local_default env how AllocHow.LocalImmut v
     in (env1, code0 ^^ code1)
@@ -3706,7 +3706,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) =
       )
   | FuncD (cc, name, _, p, _rt, e) ->
       (* Get captured variables *)
-      let captured = Freevars_ir.captured p e in
+      let captured = Freevars.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
