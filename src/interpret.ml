@@ -415,29 +415,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 k
   | DecE (dec, _) ->
     interpret_block env [dec] None k
-  | DeclareE (id, typ, exp1) ->
-    let env = adjoin_vals env (declare_id id) in
-    interpret_exp env exp1 k
-  | DefineE (id, mut, exp1) ->
-    interpret_exp env exp1 (fun v ->
-      let v' =
-        match mut.it with
-        | Const -> v
-        | Var -> V.Mut (ref v)
-      in
-      define_id env id v';
-      k V.unit
-      )
-  | NewObjE (sort, ids) ->
-    let ve =
-      List.fold_left
-        (fun ve (name, id) ->
-          V.Env.disjoint_add (string_of_name name.it)
-            (Lib.Promise.value (find id.it env.vals)) ve
-        ) V.Env.empty ids
-    in k (V.Obj (None, ve))
-
-
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with

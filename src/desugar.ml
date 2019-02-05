@@ -86,9 +86,6 @@ and exp' at note = function
   | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
   | S.AnnotE (e, _) -> assert false
   | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
-  | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)
-  | S.DefineE (i, m, e) -> I.DefineE (i, m, exp e)
-  | S.NewObjE (s, fs) -> I.NewObjE (s, fs, note.S.note_typ)
 
 and field_to_dec (f : S.exp_field) : Ir.dec =
   let {it={S.id;S.exp=e;S.mut;_};at;note} = f in
