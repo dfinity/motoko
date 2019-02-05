@@ -16,18 +16,9 @@ func app<T,S>(f:T->S, x:Thk<T>) : Thk<S> {
 };
 
 // pair two thunks' values
-/*
- // XXX I don't understand this type error:
- //
- // type error, expression of type
- // () -> (T/23, S/4)
- // cannot produce expected type
- // () -> ((T/23, S/4))
-
 func pair<T,S>(x:Thk<T>, y:Thk<S>) : Thk<(T,S)> {
-  new { force() : (T,S) { (x.force(), y.force()) } }
+  new { force() : ((T,S)) { (x.force(), y.force()) } }
 };
-*/
 
 // project first from a pair-valued thunk
 func fst<T,S>(x:Thk<(T,S)>) : Thk<T> {
