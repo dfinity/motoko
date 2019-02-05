@@ -3,7 +3,6 @@ open Printf
 
 type stat_env = Typing.scope
 type dyn_env = Interpret.scope
-
 type env = stat_env * dyn_env
 
 module Await = Awaitopt
