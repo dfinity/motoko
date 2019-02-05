@@ -74,7 +74,6 @@ Productions marked * probably deferred to later versions.
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
-  <exp> is <exp>                                 instance-of
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
