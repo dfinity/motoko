@@ -2,7 +2,7 @@ open Source
 module S = Syntax
 module I = Ir
 module T = Type
-open Syntaxops_ir
+open Construct
 
 (* Combinators used in the desguaring *)
 

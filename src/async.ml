@@ -5,8 +5,8 @@ open Ir
 open Effect
 module T = Type
 open T
-open Syntaxops_ir
-
+open Construct
+   
 (* lower the async type itself
    - adds a final callback argument to every awaitable shared function, replace the result by unit
    - transforms types, introductions and eliminations awaitable shared functions only, leaving non-awaitable shared functions unchanged.

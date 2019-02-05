@@ -1,9 +1,9 @@
 open Source
 open Ir
 open Effect
-module R = Rename_ir
+module R = Rename
 module T = Type
-open Syntaxops_ir
+open Construct
 
 (* continuations, syntactic and meta-level *)
 
@@ -535,8 +535,8 @@ and rename_pat' pat =
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, OptP pat1)
   | AltP (pat1,pat2) ->
-    assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat pat1)));
-    assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat pat2)));
+    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
+    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
     (PatEnv.empty,pat.it)
 
 and rename_pats pats =
@@ -557,8 +557,8 @@ and define_pat patenv pat : dec list =
   | TupP pats -> define_pats patenv pats
   | OptP pat1 -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
-    assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat pat1)));
-    assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat pat2)));
+    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
+    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
     []
 
 and define_pats patenv (pats : pat list) : dec list =

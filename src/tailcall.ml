@@ -2,7 +2,7 @@ open Source
 open Ir
 open Effect
 open Type
-open Syntaxops_ir
+open Construct
 module S = Syntax
 
 (* Optimize (self) tail calls to jumps, avoiding stack overflow
@@ -138,8 +138,8 @@ and pat' env p = match p with
   | TupP ps       -> pats env ps
   | LitP l        -> env
   | OptP p        -> pat env p
-  | AltP (p1, p2) -> assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p1)));
-                     assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p2)));
+  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
+                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      env
 
 and pats env ps  =

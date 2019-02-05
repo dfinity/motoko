@@ -79,8 +79,8 @@ and pat' rho p = match p with
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
-  | AltP (p1, p2) -> assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p1)));
-                     assert(Freevars_ir.S.is_empty (snd (Freevars_ir.pat p2)));
+  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
+                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      let (p1', _) = pat rho p1 in
                      let (p2' ,_) = pat rho p2 in
                      (AltP (p1', p2'), rho)

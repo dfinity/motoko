@@ -1,5 +1,4 @@
 (* WIP translation of syntaxops to use IR in place of Source *)
-(* TODO: add .mli *)
 open Source
 open Ir
 open Effect
