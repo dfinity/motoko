@@ -1,9 +1,6 @@
 open Printf
 
 
-module Await = Awaitopt   (* for more naive cps translation, use Await *)
-module Async = Async
-
 type stat_env = Typing.scope
 type dyn_env = Interpret.scope
 
@@ -122,24 +119,6 @@ let check_prog infer senv name prog
   end;
   r
 
-(* syntax transforms (*TBD soon*) *)  
-
-let transform transform_name transform flag prog name =
-  if flag then
-    begin
-      phase transform_name name;
-      let prog' = transform prog in
-      dump_prog Flags.dump_lowering prog';
-      prog'
-    end
-  else prog
-
-let await_lowering =
-  transform "Await Lowering" Await.t_prog
-
-let async_lowering =
-  transform "Async Lowering" Async.t_prog
-
 (* IR transforms *)
 
 let transform_ir transform_name transform flag env prog name =
@@ -152,11 +131,11 @@ let transform_ir transform_name transform flag env prog name =
     end
   else prog
 
-let await_ir_lowering =
-  transform_ir "Await IR Lowering" Await_ir.transform
+let await_lowering =
+  transform_ir "Await Lowering" Await_ir.transform
 
-let async_ir_lowering =
-  transform_ir "Async IR Lowering" Async_ir.transform
+let async_lowering =
+  transform_ir "Async Lowering" Async_ir.transform
 
 let tailcall_optimization =
   transform_ir "Tailcall optimization" Tailcall_ir.transform
@@ -184,13 +163,15 @@ let check_files senv = function
 type interpret_result =
   (Syntax.prog * Type.typ * Value.value * Typing.scope * Interpret.scope) option
 
-let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
+let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) option =
   try
     phase "Interpreting" name;
     let vo, scope =
       if !Flags.interpret_ir
       then
-        let prog_ir = Desugar.prog prog in
+        let prog_ir = Desugar.transform senv prog in
+        let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
+        let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in 
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
     match vo with
@@ -208,9 +189,9 @@ let interpret_with check (senv, denv) name : interpret_result =
     None
   | Ok ((prog, t, sscope), msgs) ->
     Diag.print_messages msgs;
-    let prog = await_lowering (!Flags.await_lowering) prog name in
-    let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in
-    match interpret_prog denv name prog with
+(*  let prog = await_lowering (!Flags.await_lowering) prog name in
+    let prog = async_lowering (!Flags.await_lowering && !Flags.async_lowering) prog name in *)
+    match interpret_prog (senv,denv) name prog with
     | None -> None
     | Some (v, dscope) -> Some (prog, t, v, sscope, dscope)
 
@@ -246,7 +227,7 @@ let check_prelude () : Syntax.prog * stat_env =
 let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
-  match interpret_prog Interpret.empty_scope prelude_name prelude with
+  match interpret_prog (Typing.empty_scope,Interpret.empty_scope) prelude_name prelude with
   | None -> prelude_error "initializing" []
   | Some (_v, dscope) ->
     Interpret.adjoin_scope Interpret.empty_scope dscope
@@ -313,8 +294,8 @@ let compile_with check mode name : compile_result =
     Diag.print_messages msgs;
     let prelude = Desugar.transform Typing.empty_scope prelude in
     let prog = Desugar.transform initial_stat_env prog in
-    let prog = await_ir_lowering true initial_stat_env prog name in
-    let prog = async_ir_lowering true initial_stat_env prog name in
+    let prog = await_lowering true initial_stat_env prog name in
+    let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
