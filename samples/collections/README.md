@@ -14,6 +14,6 @@ These modules _may_ be useful in the collections library:
 Other modules
 ==================
 These modules are merely exercises (toys/examples), and _not_ essential to the collections library:
-[ ] **Thunk**: Type def and some operations are done; XXX: see `pair` function for a strange type error.
+[ ] **Thunk**: Type def and some operations are done.
 
 
