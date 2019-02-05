@@ -85,9 +85,17 @@ do
       diff_files="$diff_files $base.run-low"
 
       # Diff interpretations without/with lowering
-      echo -n " [diff-low]"
-      diff -u -N $out/$base.run $out/$base.run-low > $out/$base.diff-low
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
       diff_files="$diff_files $base.diff-low"
+
+      # Interpret IR
+      echo -n " [run-ir]"
+      $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
+      diff_files="$diff_files $base.run-ir"
+
+      # Diff interpretations without/with lowering
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+      diff_files="$diff_files $base.diff-ir"
     fi
 
     # Compile
@@ -147,7 +155,7 @@ do
   else
     for file in $diff_files
     do
-      diff -a -u -N $ok/$file.ok $out/$file
+      diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
       if [ $? != 0 ]; then failures=yes; fi
     done
   fi

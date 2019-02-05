@@ -36,14 +36,10 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot] 
+  | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
-  | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
-  | NewObjE (s, nameids)-> "NewObjE" $$ (obj_sort s ::
-                                              List.fold_left (fun flds (n,i) ->
-                                                  (name n)::(id i):: flds) [] nameids)
+
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
