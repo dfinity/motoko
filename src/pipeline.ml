@@ -157,7 +157,12 @@ type interpret_result =
 let interpret_prog denv name prog : (Value.value * Interpret.scope) option =
   try
     phase "Interpreting" name;
-    let vo, scope = Interpret.interpret_prog denv prog in
+    let vo, scope =
+      if !Flags.interpret_ir
+      then
+        let prog_ir = Desugar.prog prog in
+        Interpret_ir.interpret_prog denv prog_ir
+      else Interpret.interpret_prog denv prog in
     match vo with
     | None -> None
     | Some v -> Some (v, scope)

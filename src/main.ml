@@ -34,6 +34,7 @@ let argspec = Arg.align
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
   "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
+  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
