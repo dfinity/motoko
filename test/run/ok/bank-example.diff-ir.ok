@@ -1,4 +1,4 @@
---- _out/bank-example.run	2019-02-05 12:15:09.010731583 +0100
-+++ _out/bank-example.run-ir	2019-02-05 12:15:09.046731683 +0100
+--- bank-example.run
++++ bank-example.run-ir
 @@ -0,0 +1 @@
 +bank-example.as:28.5-28.31: execution error, assertion failure
