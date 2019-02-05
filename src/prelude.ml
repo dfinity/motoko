@@ -95,7 +95,7 @@ let prim = function
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
-      let (_, _, g') = Value.as_func g in
+      let (_, g') = Value.as_func g in
       let rec go prefix k i =
         if i == len_nat
         then k (Array (Array.of_list (prefix [])))

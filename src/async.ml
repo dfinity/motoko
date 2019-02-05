@@ -327,8 +327,6 @@ and t_exp' (exp:Syntax.exp) =
   | AwaitE _ -> assert false
   | AssertE exp1 ->
     AssertE (t_exp exp1)
-  | IsE (exp1, exp2) ->
-    IsE (t_exp exp1, t_exp exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp exp1, t_typT typ)
   | DecE (dec, ot) ->

@@ -598,13 +598,6 @@ and infer_exp' env exp : T.typ =
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.unit
-  | IsE (exp1, exp2) ->
-    (* TBR: restrict t1 to objects? *)
-    if not env.pre then begin
-      let _t1 = infer_exp env exp1 in
-      check_exp env T.Class exp2
-    end;
-    T.bool
   | AnnotE (exp1, typ) ->
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;

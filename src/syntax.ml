@@ -158,7 +158,6 @@ and exp' =
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
   | DecE of dec * Type.typ ref                 (* declaration *)
   | DeclareE of id * Type.typ * exp            (* local promise (internal) *)

@@ -488,12 +488,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp1;
     typ exp1 <: T.bool;
     T.unit <: t;
-  | IsE (exp1, exp2) ->
-    (* TBR: restrict typ exp1 to objects? *)
-    check_exp env exp1;
-    check_exp env exp2;
-    typ exp2 <: T.Class;
-    T.bool <: t;
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id.it t0) in

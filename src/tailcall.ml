@@ -119,7 +119,6 @@ and exp' env e  = match e.it with
   | AsyncE e            -> AsyncE (exp {tail_pos = true; info = None} e)
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
-  | IsE (e, t)          -> IsE (exp env e, t)
   | AnnotE (e, t)       -> AnnotE (exp env e, t)
   | DecE (d, ot)        -> let mk_d, env1 = dec env d in
                            DecE ({mk_d with it = mk_d.it env1},ref (!ot))

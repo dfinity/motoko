@@ -89,7 +89,6 @@ let
     | S.AsyncE e -> I.AsyncE (exp e)
     | S.AwaitE e -> I.AwaitE (exp e)
     | S.AssertE e -> I.AssertE (exp e)
-    | S.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
     | S.AnnotE (_, _) -> assert false
     | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
     | S.DeclareE (i, t, e) -> I.DeclareE (i, t, exp e)

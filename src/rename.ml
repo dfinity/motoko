@@ -57,7 +57,6 @@ and exp' rho e  = match e with
   | AsyncE e            -> AsyncE (exp rho e)
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
-  | IsE (e, t)          -> IsE (exp rho e, t)
   | AnnotE (e, t)       -> AnnotE (exp rho e, t)
   | DecE (d,ot)         -> let mk_d, rho' = dec rho d in
                            DecE ({mk_d with it = mk_d.it rho'}, ref (!ot))

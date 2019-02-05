@@ -34,7 +34,6 @@ let rec exp e = match e.it with
   | AsyncE e            -> "AsyncE"  $$ [exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
-  | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot] 
   | OptE e              -> "OptE"    $$ [exp e]

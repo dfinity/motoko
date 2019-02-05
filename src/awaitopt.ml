@@ -142,8 +142,6 @@ and t_exp' context exp' =
   | AwaitE _ -> assert false (* an await never has effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
-  | IsE (exp1, exp2) ->
-    IsE (t_exp context exp1, t_exp context exp2)
   | AnnotE (exp1, typ) ->
     AnnotE (t_exp context exp1,typ)
   | DecE (dec,ot) ->
@@ -493,8 +491,6 @@ and c_exp' context exp k =
        )
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1
-  | IsE (exp1, exp2) ->
-    binary context k (fun v1 v2 -> e (IsE (v1,v2))) exp1 exp2
   | AnnotE (exp1, typ) ->
     (* TBR just erase the annotation instead? *)
     unary context k (fun v1 -> e (AnnotE (v1,typ))) exp1
