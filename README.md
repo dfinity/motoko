@@ -5,14 +5,6 @@
 A simple language for writing Dfinity actors.
 
 
-## Git submodules
-
-Note: The `vendor/wasm-spec/` directory is empty until you issue this command:
-
-```
-git submodule update --init --recursive
-```
-
 ## Installation using Nix
 
 To install the `asc` binary into your nix environment, use
