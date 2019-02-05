@@ -6,10 +6,7 @@ type dyn_env = Interpret.scope
 
 type env = stat_env * dyn_env
 
-(*TBD*)
-module Await_ir = Awaitopt_ir
-module Tailcall_ir = Tailcall_ir
-module Async_ir = Async_ir
+module Await = Awaitopt
 
 (* Diagnostics *)
 
@@ -132,13 +129,13 @@ let transform_ir transform_name transform flag env prog name =
   else prog
 
 let await_lowering =
-  transform_ir "Await Lowering" Await_ir.transform
+  transform_ir "Await Lowering" Await.transform
 
 let async_lowering =
-  transform_ir "Async Lowering" Async_ir.transform
+  transform_ir "Async Lowering" Async.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" Tailcall_ir.transform
+  transform_ir "Tailcall optimization" Tailcall.transform
 
 let check_with parse infer senv name : check_result =
   match parse name with
