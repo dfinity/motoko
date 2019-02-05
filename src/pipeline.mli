@@ -1,5 +1,5 @@
 type stat_env = Typing.scope
-type dyn_env = Interpret.env
+type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
 val initial_stat_env : stat_env

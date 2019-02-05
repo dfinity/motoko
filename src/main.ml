@@ -98,12 +98,4 @@ let () =
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
     process_files !args
   with exn ->
-    printf "%!";
-    let at = Source.string_of_region (Interpret.get_last_region ()) in
-    eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
-    eprintf "\nLast environment:\n";
-    Value.Env.iter (fun x d -> eprintf "%s = %s\n" x (Value.string_of_def d))
-      Interpret.((get_last_env ()).vals);
-    eprintf "\n";
-    Printexc.print_backtrace stderr;
-    eprintf "%!"
+    Interpret.print_exn exn

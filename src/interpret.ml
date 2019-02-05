@@ -20,11 +20,13 @@ type env =
     async : bool
   }
 
-let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
-let adjoin = adjoin_vals
+let adjoin_scope s ve = V.Env.adjoin s ve
+let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
 
-let empty_env =
-  { vals = V.Env.empty;
+let empty_scope = V.Env.empty
+
+let env_of_scope ve =
+  { vals = ve;
     labs = V.Env.empty;
     rets = None;
     async = false;
@@ -42,7 +44,6 @@ let find id env =
   with Not_found ->
     trap no_region "unbound identifier %s" id
 
-
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -59,12 +60,19 @@ let string_of_arg = function
 
 (* Debugging aids *)
 
-let last_env = ref empty_env
+let last_env = ref (env_of_scope empty_scope)
 let last_region = ref Source.no_region
 
-let get_last_env () = !last_env
-let get_last_region () = !last_region
-
+let print_exn exn =
+  Printf.printf "%!";
+  let at = Source.string_of_region !last_region in
+  Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
+  Printf.eprintf "\nLast environment:\n";
+  Value.Env.iter (fun x d -> Printf.eprintf "%s = %s\n" x (Value.string_of_def d))
+    (!last_env.vals);
+  Printf.eprintf "\n";
+  Printexc.print_backtrace stderr;
+  Printf.eprintf "%!"
 
 (* Scheduling *)
 
@@ -713,7 +721,8 @@ and interpret_func env id pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog env p : V.value option * scope =
+let interpret_prog scope p : V.value option * scope =
+  let env = env_of_scope scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
