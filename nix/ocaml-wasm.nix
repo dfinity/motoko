@@ -6,16 +6,10 @@ if !stdenv.lib.versionAtLeast ocaml.version "4.02"
 then throw "wasm is not available for OCaml ${ocaml.version}"
 else
 
-# Lets use fetch from git, this way nix has to cache less
-# if !builtins.pathExists ../vendor/wasm-spec/interpreter
-# then throw "submodule in vendor/wasm-spec missing. Run git submodule update --init"
-# else
-
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
   version = "1.0";
 
-  #src = ../vendor/wasm-spec;
   src = fetchFromGitHub {
     owner = "WebAssembly";
     repo = "multi-value";

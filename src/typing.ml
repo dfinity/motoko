@@ -816,7 +816,7 @@ and check_pat env t pat : val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize env.cons t in
-  let ve = check_pat' env t pat in
+  let ve = check_pat' env t' pat in
   if not env.pre then pat.note <- t';
   ve
 
@@ -872,10 +872,10 @@ and check_pat' env t pat : val_env =
 and check_pats env ts pats ve at : val_env =
   match pats, ts with
   | [], [] -> ve
-  | pat::pats', t::ts ->
+  | pat::pats', t::ts' ->
     let ve1 = check_pat env t pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-    check_pats env ts pats' ve' at
+    check_pats env ts' pats' ve' at
   | [], ts ->
     local_error env at "tuple pattern has %i fewer components than expected type"
       (List.length ts); ve
@@ -1082,9 +1082,8 @@ and check_dec env t dec =
     (* TBR: special-case unit? *)
     if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
         (T.string_of_typ_expand env.cons t')
-
+        (T.string_of_typ_expand env.cons t)
 (*
 and print_ce =
   Con.Env.iter (fun c k ->
@@ -1167,8 +1166,7 @@ and infer_dec_typdecs env dec : con_env =
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
     id.note <- Some (c, k);
-    Con.Env.singleton c (T.Abs (tbs, T.close cs t))
-
+    Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =
@@ -1184,7 +1182,6 @@ and gather_dec_valdecs env ve dec : val_env =
     if T.Env.mem id.it ve then
       error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
-
 
 (* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
