@@ -30,7 +30,7 @@ func nil<T>() : List<T> =
   null;
 
 // test for empty list
-func isnil<T>(l : List<T>) : Bool {
+func isNil<T>(l : List<T>) : Bool {
   switch l {
   case null { true  };
   case _    { false };
@@ -41,51 +41,28 @@ func isnil<T>(l : List<T>) : Bool {
 func push<T>(x : T, l : List<T>) : List<T> =
   ?(x, l);
 
-// get head of list
-func hd<T>(l : List<T>) : ?T = {
+// XXX: deprecated (use pattern matching instead)
+func head<T>(l : List<T>) : ?T = {
   switch l {
   case null { null };
   case (?(h, _)) { ?h };
   }
 };
 
-// get tail of list, as a list
-func tl<T>(l : List<T>) : List<T> = {
+// XXX: deprecated (use pattern matching instead)
+func tail<T>(l : List<T>) : List<T> = {
   switch l {
   case null      { null };
   case (?(_, t)) { t };
   }
 };
 
-// get tail of list, as an optional list
-func tlo<T>(l : List<T>) : ?List<T> = {
-  switch l {
-  case null      { null };
-  case (?(_, t)) { ?t };
-  }
-};
-
-/*
-// last element (SML Basis library); tail recursive
-func last<T>(l : List<T>) : T = {
-  switch l {
-  // XXX
-  // Q: What's the type of 'assert false'?
-  //    Shouldn't it be 'Any', and not '()'?
-  //
-  //case null        { assert false };
-    case (?(x,null)) { x };
-    case (?(_,t))    { last<T>(t) };
-  }
-};
-*/
-
 // last element, optionally; tail recursive
-func lasto<T>(l : List<T>) : ?T = {
+func last<T>(l : List<T>) : ?T = {
   switch l {
     case null        { null };
     case (?(x,null)) { ?x };
-    case (?(_,t))    { lasto<T>(t) };
+    case (?(_,t))    { last<T>(t) };
   }
 };
 
@@ -111,18 +88,9 @@ func len<T>(l : List<T>) : Nat = {
 // array-like list access, but in linear time; tail recursive
 func nth<T>(l : List<T>, n : Nat) : ?T = {
   switch (n, l) {
-  case (0, _)      { hd<T>(l) };
   case (_, null)   { null };
+  case (0, ?(h,t)) { ?h };
   case (_, ?(_,t)) { nth<T>(t, n - 1) };
-  }
-};
-
-// array-like list access, but in linear time; tail recursive
-func nth_<T>(l : List<T>, n : Nat) : ?T = {
-  switch (n, tlo<T>(l)) {
-  case (0, _)    { hd<T>(l) };
-  case (_, null) { null };
-  case (_, ?t)   { nth_<T>(t, n - 1) };
   }
 };
 
@@ -174,7 +142,7 @@ func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
 
 // map-and-filter; non-tail recursive
 // (Note: need mutable Cons tails for tail-recursive version)
-func mapfilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
+func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
   func rec(l : List<T>) : List<S> {
     switch l {
       case null     { null };
@@ -204,11 +172,9 @@ func append<T>(l : List<T>, m : List<T>) : List<T> = {
 // concat (aka "list join"); tail recursive, but requires "two passes"
 func concat<T>(l : List<List<T>>) : List<T> = {
   // 1/2: fold from left to right, reverse-appending the sublists...
-  // XXX -- I'd like to write this (shorter) version:
-  // let r = foldl<List<T>, List<T>>(l, null, revAppend<T>);
   let r = 
     { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
-      foldl<List<T>, List<T>>(l, null, f) 
+      foldLeft<List<T>, List<T>>(l, null, f) 
     };
   // 2/2: ...re-reverse the elements, to their original order:
   rev<T>(r)
@@ -242,7 +208,7 @@ func drop<T>(l : List<T>, n:Nat) : List<T> = {
 };
 
 // fold list left-to-right using f; tail recursive
-func foldl<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+func foldLeft<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
   func rec(l:List<T>, a:S) : S = {
     switch l {
     case null     { a };
@@ -252,8 +218,8 @@ func foldl<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
   rec(l,a)
 };
 
-// fold list right-to-left using f; tail recursive
-func foldr<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+// fold list right-to-left using f; non-tail recursive
+func foldRight<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
   func rec(l:List<T>) : S = {
     switch l {
     case null     { a };
@@ -298,8 +264,7 @@ func all<T>(l: List<T>, f:T -> Bool) : Bool = {
   rec(l)
 };
 
-// Called 'collate' in SML basis library
-// (But we use a 'less-than-or-eq' relation, not a 3-valued 'order' type, as in SML).
+// Given two ordered lists, merge them into a single ordered list
 func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
   func rec(l1: List<T>, l2: List<T>) : List<T> {
     switch (l1, l2) {
@@ -310,6 +275,46 @@ func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
                ?(h1, rec(t1, ?(h2,t2)))
              } else {
                ?(h2, rec(?(h1,t1), t2))
+             }
+           };
+    }
+  };
+  rec(l1, l2)
+};
+
+// Compare two lists lexicographic` ordering. tail recursive.
+// XXX: Eventually, follow `collate` design from SML Basis, with real sum types, use 3-valued `order` type here.
+//
+func lessThanEq<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
+  func rec(l1: List<T>, l2: List<T>) : Bool {
+    switch (l1, l2) {
+      case (null, _) { true };
+      case (_, null) { false };
+      case (?(h1,t1), ?(h2,t2)) {
+             if (lte(h1,h2)) {
+               rec(t1, t2)
+             } else {
+               false
+             }
+           };
+    }
+  };
+  rec(l1, l2)
+};
+
+// Compare two lists for equality. tail recursive.
+// `isEq(l1, l2)` =equiv= `lessThanEq(l1,l2) && lessThanEq(l2,l1)`, but the former is more efficient.
+func isEq<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
+  func rec(l1: List<T>, l2: List<T>) : Bool {
+    switch (l1, l2) {
+      case (null, null) { true };
+      case (null, _)    { false };
+      case (_,    null) { false };
+      case (?(h1,t1), ?(h2,t2)) {
+             if (eq(h1,h2)) {
+               rec(t1, t2)
+             } else {
+               false
              }
            };
     }
@@ -350,7 +355,7 @@ func tabulate<T>(n:Nat, f:Nat -> T) : List<T> {
 // # Example usage
 
 type X = Nat;
-func opnat_eq(a : ?Nat, b : ?Nat) : Bool {
+func opnatEq(a : ?Nat, b : ?Nat) : Bool {
   switch (a, b) {
   case (null, null) { true };
   case (?aaa, ?bbb) { aaa == bbb };
@@ -369,32 +374,32 @@ let l1 = nil<X>();
 let l2 = push<X>(2, l1);
 let l3 = push<X>(3, l2);
 
-// ## Projection -- use nth_
-assert (opnat_eq(nth_<X>(l3, 0), ?3));
-assert (opnat_eq(nth_<X>(l3, 1), ?2));
-assert (opnat_eq(nth_<X>(l3, 2), null));
-assert (opnat_eq (hd<X>(l3), ?3));
-assert (opnat_eq (hd<X>(l2), ?2));
-assert (opnat_isnull(hd<X>(l1)));
+// ## Projection -- use nth
+assert (opnatEq(nth<X>(l3, 0), ?3));
+assert (opnatEq(nth<X>(l3, 1), ?2));
+assert (opnatEq(nth<X>(l3, 2), null));
+//assert (opnatEq (hd<X>(l3), ?3));
+//assert (opnatEq (hd<X>(l2), ?2));
+//assert (opnat_isnull(hd<X>(l1)));
 
 /*
 // ## Projection -- use nth
-assert (opnat_eq(nth<X>(l3, 0), ?3));
-assert (opnat_eq(nth<X>(l3, 1), ?2));
-assert (opnat_eq(nth<X>(l3, 2), null));
-assert (opnat_eq (hd<X>(l3), ?3));
-assert (opnat_eq (hd<X>(l2), ?2));
+assert (opnatEq(nth<X>(l3, 0), ?3));
+assert (opnatEq(nth<X>(l3, 1), ?2));
+assert (opnatEq(nth<X>(l3, 2), null));
+assert (opnatEq (hd<X>(l3), ?3));
+assert (opnatEq (hd<X>(l2), ?2));
 assert (opnat_isnull(hd<X>(l1)));
 */
 
 // ## Deconstruction
 let (a1, t1) = pop<X>(l3);
-assert (opnat_eq(a1, ?3));
+assert (opnatEq(a1, ?3));
 let (a2, t2) = pop<X>(l2);
-assert (opnat_eq(a2, ?2));
+assert (opnatEq(a2, ?2));
 let (a3, t3) = pop<X>(l1);
-assert (opnat_eq(a3, null));
-assert (isnil<X>(t3));
+assert (opnatEq(a3, null));
+assert (isNil<X>(t3));
 
 // ## List functions
 assert (len<X>(l1) == 0);
