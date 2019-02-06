@@ -452,8 +452,8 @@ let rec rel_typ env rel eq t1 t2 =
       rel_list rel_typ env' rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Func (s1, _,  _, _, _), Shared when rel != eq ->
-    s1 <> Local
+  | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
+    true
   | Shared, Shared ->
     true
   | Async t1', Async t2' ->

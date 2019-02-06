@@ -189,7 +189,6 @@ seplist1(X, SEP) :
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED { Type.Sharable @@ at $sloc }
-  | CLASS { Type.Local @@ at $sloc }
 
 
 (* Types *)
