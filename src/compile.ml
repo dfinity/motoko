@@ -438,11 +438,38 @@ module Heap = struct
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
 
+  (* WebAssembly pages are 64kb. *)
+  let page_size = Int32.of_int (64*1024)
+
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff.  *)
   let heap_global = 2l
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
+
+  (* Page allocation. Ensures that the memory up to the heap pointer is allocated. *)
+  let grow_memory env =
+    Func.share_code env "grow_memory" [] [] (fun env ->
+      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+      get_heap_ptr ^^ compile_divU_const page_size ^^
+      compile_add_const 1l ^^
+      G.i MemorySize ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      (* Check that the new heap pointer is within the memory *)
+      get_pages_needed ^^
+      compile_unboxed_const 0l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+      G.if_ (ValBlockType None)
+        ( get_pages_needed ^^
+          G.i MemoryGrow ^^
+          (* Check result *)
+          compile_unboxed_const 0l ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          G.if_ (ValBlockType None) (G.i Unreachable) G.nop
+        ) G.nop
+      )
 
   (* Dynamic allocation *)
   let dyn_alloc_words env =
@@ -453,13 +480,11 @@ module Heap = struct
       get_heap_ptr ^^
 
       (* Update heap pointer *)
-      get_n ^^
-      compile_mul_const word_size ^^
-
-      (* Add to old heap value *)
       get_heap_ptr ^^
+      get_n ^^ compile_mul_const word_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_heap_ptr
+      set_heap_ptr ^^
+      grow_memory env
     )
 
   let dyn_alloc_bytes env =
@@ -1907,6 +1932,7 @@ module OrthogonalPersistence = struct
            get_i ^^
            compile_add_const ElemHeap.table_end ^^
            Heap.set_heap_ptr ^^
+           Heap.grow_memory env ^^
 
            (* Load memory *)
            compile_unboxed_const ElemHeap.table_end ^^
@@ -2426,6 +2452,7 @@ module Serialization = struct
       (* Reset the heap counter, to free some space *)
       get_start ^^
       Heap.set_heap_ptr ^^
+      Heap.grow_memory env ^^
 
       (* Finally, create elembuf *)
       get_end ^^
@@ -2461,7 +2488,12 @@ module Serialization = struct
       get_elembuf ^^ G.i (Call (nr (Dfinity.elem_length_i env))) ^^
       set_tbl_size ^^
 
-      (* First load databuf (last entry) at the heap position somehow *)
+      (* Get scratch space (one word) *)
+      Heap.alloc env 1l ^^ G.i Drop ^^
+      get_start ^^ Heap.set_heap_ptr ^^
+
+      (* First load databuf reference (last entry) at the heap position somehow *)
+      (* now load the databuf *)
       get_start ^^
       compile_unboxed_const 1l ^^
       get_elembuf ^^
@@ -2472,6 +2504,10 @@ module Serialization = struct
 
       get_databuf ^^ G.i (Call (nr (Dfinity.data_length_i env)))  ^^
       set_data_len ^^
+
+      (* Get some scratch space *)
+      get_data_len ^^ Heap.dyn_alloc_bytes env ^^ G.i Drop ^^
+      get_start ^^ Heap.set_heap_ptr ^^
 
       (* Load data from databuf *)
       get_start ^^
@@ -2493,6 +2529,7 @@ module Serialization = struct
           get_data_len ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           Heap.set_heap_ptr ^^
+          Heap.grow_memory env ^^
 
           (* Fix pointers *)
           get_start ^^
@@ -3858,6 +3895,8 @@ and conclude_module env module_name start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
+  let mem_size = Int32.(add (div (E.get_end_of_static_memory env) Heap.page_size) 1l) in
+
   { module_ = nr {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
@@ -3868,7 +3907,7 @@ and conclude_module env module_name start_fi_o =
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
       start = start_fi_o;
       globals = globals;
-      memories = [nr {mtype = MemoryType {min = 1024l; max = None}} ];
+      memories = [nr {mtype = MemoryType {min = mem_size; max = None}} ];
       imports;
       exports = E.get_exports env;
       data
