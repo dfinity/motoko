@@ -177,9 +177,9 @@ and open the path printed on the last line of that command.
 
     The fields of an actor are all of function type with a return type of `async t` or `()`.
 
-* Array types: Java-like, but elements can be mutable or immutable
-  - `T[]`
-  - `var T[]`
+* Array types: elements can be mutable or immutable
+  - `[T]`
+  - `[var T]`
 
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
   - `? T`
