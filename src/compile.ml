@@ -3281,7 +3281,7 @@ and compile_exp (env : E.t) exp =
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs,_) ->
-    compile_decs env decs
+    compile_decs env false decs
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -3634,13 +3634,16 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, alloc_code, fill_code)
 
-and compile_dec pre_env how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) =
+and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) =
   (fun (pre_env,alloc_code,mk_code) ->
        (pre_env, G.with_region dec.at alloc_code, fun env ->
          (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
   match dec.it with
   | TypD _ -> (pre_env, G.nop, fun _ -> StackRep.unit, G.nop)
-  | ExpD e -> (pre_env, G.nop, fun env -> compile_exp env e)
+  | ExpD e -> (pre_env, G.nop, fun env ->
+    if as_unit
+    then StackRep.unit, compile_exp_unit env e
+    else compile_exp env e)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
@@ -3665,23 +3668,27 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) =
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
       (pre_env1, alloc_code, fun env ->
-        StackRep.Vanilla, mk_code env ^^ Var.get_val env name.it
+        if as_unit
+        then StackRep.unit, mk_code env
+        else StackRep.Vanilla, mk_code env ^^ Var.get_val env name.it
       )
 
-and compile_decs env decs : StackRep.t * G.t = snd (compile_decs_block env decs)
+and compile_decs env as_unit decs : StackRep.t * G.t =
+  snd (compile_decs_block env as_unit decs)
 
-and compile_decs_block env decs : (E.t * (StackRep.t * G.t)) =
+and compile_decs_block env as_unit decs : (E.t * (StackRep.t * G.t)) =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
     | []          -> (pre_env, G.nop, fun _ -> (StackRep.unit, G.nop))
-    | [dec]       -> compile_dec pre_env how dec
+    | [dec]       -> compile_dec pre_env as_unit how dec
     | (dec::decs) ->
-        let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env how dec in
+        let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env true how dec in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
         ( pre_env2,
           alloc_code1 ^^ alloc_code2,
           fun env ->
             let (sr1, code1) = mk_code1 env in
+            assert (sr1 = StackRep.unit);
             let (sr2, code2) = mk_code2 env in
             (sr2, code1 ^^ StackRep.drop env sr1 ^^ code2)
          ) in
@@ -3691,7 +3698,8 @@ and compile_decs_block env decs : (E.t * (StackRep.t * G.t)) =
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let (env1, (sr, code)) = compile_decs_block env (E.get_prelude env).it in
+  let (env1, (sr, code)) = compile_decs_block env true (E.get_prelude env).it in
+  assert (sr = StackRep.unit);
   (env1, code ^^ StackRep.drop env sr)
 
 (* Is this a hack? When determining whether an actor is closed,
@@ -3711,8 +3719,9 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
       | [] -> G.nop
       | (prog::progs) ->
         G.with_region prog.at @@
-        let (env1, (sr, code1)) = compile_decs_block env prog.it in
+        let (env1, (sr, code1)) = compile_decs_block env true prog.it in
         let code2 = go env1 progs in
+        assert (sr = StackRep.unit);
         code1 ^^ StackRep.drop env1 sr ^^ code2 in
     go env1 progs
     )
