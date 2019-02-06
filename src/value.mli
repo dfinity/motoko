@@ -60,7 +60,7 @@ module Env : Env.S with type key = string
 type unicode = int
 
 type call_conv = {
-  sort: Type.func_sort;
+  sort: Type.sharing;
   control : Type.control;
   n_args : int;
   n_res : int;

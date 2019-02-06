@@ -167,7 +167,7 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Call T.Sharable then begin
+    if sort.it = T.Sharable then begin
       let t1 = T.seq ts1 in
       if not (T.sub env'.cons t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
@@ -1097,7 +1097,7 @@ and gather_dec_typdecs env scope dec : scope =
       match dec.it with
       | ClassD (id, _, _ , _, _, _, _) ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add id.it (T.Func (T.Construct, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
+        T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
     let te' = T.Env.add con_id.it c scope.typ_env in
     let ce' = Con.Env.add c pre_k scope.con_env in
@@ -1203,7 +1203,7 @@ and infer_dec_valdecs env dec : val_env =
     in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
-      (T.Func (T.Call sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
+      (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, con_id, typ_binds, sort, pat, self_id, fields) ->
@@ -1214,7 +1214,7 @@ and infer_dec_valdecs env dec : val_env =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (T.Construct, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
+    T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
 
 
 (* Programs *)

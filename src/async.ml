@@ -19,21 +19,23 @@ let unary typ = [typ]
 
 let nary typ = T.as_seq typ
 
-let replyT as_seq typ = T.Func(T.Call T.Sharable, T.Returns, [], as_seq typ, [])
+let replyT as_seq typ = T.Func(T.Sharable, T.Returns, [], as_seq typ, [])
 
-let fullfillT as_seq typ = T.Func(T.Call T.Local, T.Returns, [], as_seq typ, [])
+let fullfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let t_async as_seq t =
-  T.Func (T.Call T.Local, T.Returns, [], [T.Func(T.Call T.Local, T.Returns, [],as_seq t,[])], [])
+  T.Func (T.Local, T.Returns, [], [T.Func(T.Local, T.Returns, [],as_seq t,[])], [])
 
 let new_async_ret as_seq t = [t_async as_seq t;fullfillT as_seq t]
 
 let new_asyncT =
-   T.Func(T.Call T.Local,T.Returns,
-                          [ { var = "T";
-                              bound = T.Shared } ],
-                          [],
-                          new_async_ret unary (T.Var ("T", 0)))
+  T.Func (
+    T.Local,
+    T.Returns,
+    [ { var = "T"; bound = T.Shared } ],
+    [],
+    new_async_ret unary (T.Var ("T", 0))
+  )
 
 let new_asyncE =
   idE ("@new_async"@@no_region) new_asyncT
@@ -92,7 +94,7 @@ let letEta e scope =
 
 let isAwaitableFunc exp =
   match typ exp with
-  | T.Func (T.Call T.Sharable,T.Promises,_,_,[T.Async _]) -> true
+  | T.Func (T.Sharable,T.Promises,_,_,[T.Async _]) -> true
   | _ -> false
 
 let extendTup ts t2 = ts @ [t2]
@@ -137,7 +139,7 @@ let rec t_typ (t:T.typ) =
   | Func (s, c, tbs, t1, t2) ->
      begin
        match s with
-       |  T.Call T.Sharable ->
+       |  T.Sharable ->
          begin
            match t2 with
            | [] ->
@@ -234,7 +236,7 @@ and t_exp' (exp:exp) =
       | t -> assert false in
     let k = fresh_id contT in
     let v1 = fresh_id t1 in
-    let post = fresh_id (T.Func(T.Call T.Sharable,T.Returns,[],[],[])) in
+    let post = fresh_id (T.Func(T.Sharable,T.Returns,[],[],[])) in
     let u = fresh_id T.unit in
     let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
     (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
@@ -246,7 +248,7 @@ and t_exp' (exp:exp) =
   | CallE (cc,exp1, typs, exp2) when isAwaitableFunc exp1 ->
     let ts1,t2 =
       match typ exp1 with
-      | T.Func (T.Call T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
+      | T.Func (T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
            List.map t_typ ts1, t_typ t2
       | _ -> assert(false)
     in
@@ -314,10 +316,9 @@ and t_dec' dec' =
     let s = cc.Value.sort in
     begin
       match s with
-      | T.Construct
-      | T.Call T.Local  ->
+      | T.Local  ->
          FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
-      | T.Call T.Sharable ->
+      | T.Sharable ->
          begin
            match typ exp with
            | T.Tup [] ->

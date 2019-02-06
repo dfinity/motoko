@@ -279,7 +279,7 @@ let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
     let sharing, t1, t2 = match typ f with
-      | T.Func(T.Call sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
+      | T.Func(sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
       | _ -> assert false in
     let cc = Value.call_conv_of_typ (typ f) in
     { it = FuncD (cc,
@@ -298,7 +298,7 @@ let funcD f x exp =
 let nary_funcD f xs exp =
   match f.it, typ f with
   | VarE _,
-    T.Func(T.Call sharing,_,_,_,ts2) ->
+    T.Func(sharing,_,_,_,ts2) ->
     let cc = Value.call_conv_of_typ (typ f) in
     let t2 = T.seq ts2 in
     { it = FuncD (cc,
@@ -317,8 +317,8 @@ let nary_funcD f xs exp =
 
 let answerT = T.unit
 
-let contT typ = T.Func (T.Call T.Local, T.Returns, [], T.as_seq typ, [])
-let cpsT typ = T.Func (T.Call T.Local, T.Returns, [], [contT typ], [])
+let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
+let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
 let fresh_cont typ = fresh_id (contT typ)
 
@@ -343,7 +343,7 @@ let  (-->) x exp =
   match x.it with
   | VarE _ ->
     let f = idE ("$lambda" @@ no_region)
-              (T.Func (T.Call T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)))
+              (T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)))
     in
     decE  (funcD f x exp)
   | _ -> failwith "Impossible: -->"
@@ -351,7 +351,7 @@ let  (-->) x exp =
 (* n-ary local lambda *)
 let (-->*) xs exp =
   let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Call T.Local, T.Returns, [],
+            (T.Func (T.Local, T.Returns, [],
                      List.map typ xs, T.as_seq (typ exp))) in
   decE (nary_funcD f xs exp)
 
@@ -359,7 +359,7 @@ let (-->*) xs exp =
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
   let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Call T.Sharable, T.Returns, [],
+            (T.Func (T.Sharable, T.Returns, [],
                      List.map typ xs, T.as_seq (typ exp))) in
   decE (nary_funcD f xs exp)
 
@@ -387,8 +387,8 @@ let ( -*- ) exp1 exp2 =
 *)
 
 let prim_async typ =
-  primE "@async" (T.Func (T.Call T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
+  primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ =
-  primE "@await" (T.Func (T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+  primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
 

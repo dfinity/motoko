@@ -195,7 +195,7 @@ and dec' env d =
     let env = bind env i None in
     (fun env1 -> VarD(i,exp env1 e)),
     env
-  | FuncD ({ Value.sort = Call Local; _} as cc, id, tbs, p, typT, exp0) ->
+  | FuncD ({ Value.sort = Local; _} as cc, id, tbs, p, typT, exp0) ->
     let env = bind env id None in
     (fun env1 ->
       let temp = fresh_id (Mut p.note) in

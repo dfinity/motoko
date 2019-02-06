@@ -4,7 +4,6 @@ type con = Con.t
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
-type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
 type prim =
@@ -29,7 +28,7 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * control *
+  | Func of sharing * control *
             bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
@@ -87,7 +86,7 @@ val as_opt : typ -> typ
 val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
-val as_func : typ -> func_sort * control * bind list * typ list * typ list
+val as_func : typ -> sharing * control * bind list * typ list * typ list
 val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
@@ -143,7 +142,7 @@ module Env : Env.S with type key = string
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
-val string_of_func_sort: func_sort -> string  
+val string_of_sharing: sharing -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string

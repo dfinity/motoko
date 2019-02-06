@@ -60,8 +60,8 @@ let share_typ t =
   match t.it with
   | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
     { t with it = ObjT ({s with it = Type.Object Type.Sharable}, tfs)}
-  | FuncT ({it = Type.Call Type.Local; _} as s, tbs, t1, t2) ->
-    { t with it = FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2)}
+  | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
+    { t with it = FuncT ({s with it = Type.Sharable}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield tf =
@@ -187,9 +187,9 @@ seplist1(X, SEP) :
   | SHARED { Type.Sharable @@ at $sloc }
 
 %inline func_sort_opt :
-  | (* empty *) { Type.Call Type.Local @@ no_region }
-  | SHARED { Type.Call Type.Sharable @@ at $sloc }
-  | CLASS { Type.Construct @@ at $sloc }
+  | (* empty *) { Type.Local @@ no_region }
+  | SHARED { Type.Sharable @@ at $sloc }
+  | CLASS { Type.Local @@ at $sloc }
 
 
 (* Types *)
@@ -251,7 +251,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
-    { let t = FuncT(Type.Call Type.Local @@ no_region, tps, t1, t2)
+    { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 

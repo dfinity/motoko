@@ -163,7 +163,7 @@ let rec check_typ env typ : unit =
         error env no_region "promising function with non-async result type \n  %s"
           (T.string_of_typ_expand env'.cons t2)
     end;
-    if sort = T.Call T.Sharable then begin
+    if sort = T.Sharable then begin
       let t1 = T.seq ts1 in
       check_sub env' no_region t1 T.Shared;
       match ts2 with
@@ -722,7 +722,7 @@ and check_dec env dec  =
     let env' = adjoin_typs env ce in
     let ve = check_pat_exhaustive env' pat in
     check_typ env' t2;
-    check ((cc.Value.sort = T.Call T.Sharable && Type.is_async t2)
+    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
     let env'' =
@@ -789,7 +789,7 @@ and gather_dec env scope dec : scope =
       | _ -> T.as_seq t2
     in
     let c = match func_sort, t2 with
-      | T.Call T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
     let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
