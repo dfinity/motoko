@@ -864,15 +864,15 @@ and check_pats env ts pats ve at : val_env =
 
 and infer_obj env s id t_opt fields : T.typ =
   let pre_ve = gather_exp_fields env id.it fields in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve in
-  let tfs, ve = infer_exp_fields pre_env s id.it T.Pre fields in
+  let pre_env = adjoin_vals (add_val {env with pre = true} id.it T.Pre) pre_ve in
+  let tfs, ve = infer_exp_fields pre_env s fields in
   let t = T.Obj (s, tfs) in
   if not env.pre then begin
     let id_t = match t_opt with
       | None -> t
       | Some t' -> t' in
     let env' = adjoin_vals (add_val env id.it id_t) ve in
-    ignore (infer_exp_fields env' s id.it id_t fields)
+    ignore (infer_exp_fields env' s fields)
   end;
   t
 
@@ -888,11 +888,11 @@ and check_obj env s tfs id fields at : T.typ =
       T.Env.add name t ve
     ) pre_ve tfs
   in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
+  let pre_env = adjoin_vals (add_val {env with pre = true} id.it T.Pre) pre_ve' in
+  let tfs', ve = infer_exp_fields pre_env s fields in
   let t = T.Obj (s, tfs') in
   let env' = adjoin_vals (add_val env id.it t) ve in
-  ignore (infer_exp_fields env' s id.it t fields);
+  ignore (infer_exp_fields env' s fields);
   t
 
 
@@ -907,10 +907,9 @@ and gather_exp_field env ve field : val_env =
   T.Env.add id.it T.Pre ve
 
 
-and infer_exp_fields env s id t fields : T.field list * val_env =
-  let env' = add_val env id t in
+and infer_exp_fields env s fields : T.field list * val_env =
   let tfs, ve =
-    List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
+    List.fold_left (infer_exp_field env s) ([], T.Env.empty) fields in
   List.sort T.compare_field tfs, ve
 
 and is_func_exp exp =
