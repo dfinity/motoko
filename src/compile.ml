@@ -895,9 +895,11 @@ module Var = struct
   *)
   let field_box env code =
     Tagged.obj env Tagged.ObjInd [ code ]
+
   let get_val_ptr env var = match E.lookup_var env var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
     | _  -> field_box env (get_val env var)
+
 end (* Var *)
 
 module Opt = struct
@@ -1149,14 +1151,15 @@ module Object = struct
     │ tag │ n_fields │ field_hash1 │ field_data1 │ … │
     └─────┴──────────┴─────────────┴─────────────┴───┘
 
-    The field_data are pointers to either an ObjInd, or a MutBox (they
-    have the same layout). This indirection is a consequence of how we
-    compile object literals with `await` instructions, as these mutable
+    The field_data for immutable fields simply point to the value.
+
+    The field_data for mutable fields are pointers to either an ObjInd, or a
+    MutBox (they have the same layout). This indirection is a consequence of
+    how we compile object literals with `await` instructions, as these mutable
     fields need to be able to alias local mutal variables.
 
-    We could (and eventually should) use the type information to avoid this
-    indirection for immutable fields. Or switch to an allocate-first approach
-    in the await-translation of objects, and get rid of this indirection.
+    We could alternatively switch to an allocate-first approach in the
+    await-translation of objects, and get rid of this indirection.
   *)
 
   (* First word: Class pointer (0x1, an invalid pointer, when none) *)
@@ -1172,6 +1175,7 @@ module Object = struct
   module FieldEnv = Env.Make(String)
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
+  (* The instructions in the field already create the indirection if needed *)
   let lit_raw env fs =
     let name_pos_map =
       fs |>
@@ -1224,8 +1228,9 @@ module Object = struct
      get_ri
 
   (* Returns a pointer to the object field *)
-  let idx_hash env =
-    Func.share_code env "obj_idx" ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
+  let idx_hash env indirect =
+    let rts_fun_name = if indirect then "obj_idx_mut" else "obj_idx" in
+    Func.share_code env rts_fun_name ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
       let get_hash = G.i (LocalGet (nr 1l)) in
       let (set_f, get_f) = new_local env "f" in
@@ -1251,19 +1256,32 @@ module Object = struct
           ( get_f ^^
             compile_add_const Heap.word_size ^^
             (* dereference the indirection *)
-            load_ptr ^^
-            compile_add_const Heap.word_size ^^
+            ( if indirect
+              then load_ptr ^^ compile_add_const Heap.word_size
+              else G.nop) ^^
             set_r
           ) G.nop
       ) ^^
       get_r
     )
 
-  let idx env name =
-    compile_unboxed_const (hash_field_name name) ^^
-    idx_hash env
+  let is_mut_field env obj_type ({it = Syntax.Name s; _}) =
+    let _, fields = Type.as_obj_sub "" (E.con_env env) obj_type in
+    let field_typ = Type.lookup_field s fields in
+    let mut = Type.is_mut field_typ in
+    mut
 
-  let load_idx env f = idx env f ^^ load_ptr
+  let idx env obj_type name =
+    compile_unboxed_const (hash_field_name name) ^^
+    idx_hash env (is_mut_field env obj_type name)
+
+  let load_idx env obj_type f =
+    idx env obj_type f ^^ load_ptr
+
+  let load_idx_immut env name =
+    compile_unboxed_const (hash_field_name name) ^^
+    idx_hash env false ^^
+    load_ptr
 
 end (* Object *)
 
@@ -1509,8 +1527,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit_raw env1
-              [ (nr_ (Syntax.Name "next"),
-                fun _ -> Var.field_box env1 get_ni) ]
+              [ nr_ (Syntax.Name "next"), fun _ -> get_ni ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -3216,7 +3233,7 @@ let rec compile_lexp (env : E.t) exp =
   | DotE (e, n) ->
      compile_exp_vanilla env e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env n,
+     Object.idx env e.note.note_typ n,
      store_ptr
   | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (G.i Unreachable, G.nop)
 
@@ -3234,13 +3251,13 @@ and compile_exp (env : E.t) exp =
     StackRep.Vanilla,
     compile_exp_vanilla env e ^^
     begin match Array.fake_object_idx env n with
-    | None -> Object.load_idx env name
+    | None -> Object.load_idx env e.note.note_typ name
     | Some array_code ->
       let (set_o, get_o) = new_local env "o" in
       set_o ^^
       get_o ^^
       Tagged.branch env (ValBlockType (Some I32Type)) (
-        [ Tagged.Object, get_o ^^ Object.load_idx env name
+        [ Tagged.Object, get_o ^^ Object.load_idx env e.note.note_typ name
         ; Tagged.Array, get_o ^^ array_code ]
        )
     end
@@ -3442,9 +3459,9 @@ and compile_exp (env : E.t) exp =
 
     G.loop_ (ValBlockType None) (
       get_i ^^
-      Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
+      Object.load_idx_immut env1 (nr_ (Syntax.Name "next")) ^^
       get_i ^^
-      Object.load_idx env1 (nr_ (Syntax.Name "next")) ^^
+      Object.load_idx_immut env1 (nr_ (Syntax.Name "next")) ^^
       Closure.call_closure env1 (Value.local_cc 0 1) ^^
       let (set_oi, get_oi) = new_local env "opt" in
       set_oi ^^
@@ -3473,9 +3490,11 @@ and compile_exp (env : E.t) exp =
     Var.set_val env name.it
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
     StackRep.Vanilla,
-    let fs' = List.map
-      (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))
-      fs in
+    let fs' = fs |> List.map
+      (fun (name, id) -> (name, fun env ->
+        if Object.is_mut_field env exp.note.note_typ name
+        then Var.get_val_ptr env id.it
+        else Var.get_val env id.it)) in
     Object.lit_raw env fs'
   | _ -> StackRep.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i Unreachable)
 
