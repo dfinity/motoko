@@ -156,7 +156,6 @@ let rec t_typ (t:T.typ) =
   | Async t -> t_async nary (t_typ t)
   | Obj (s, fs) -> Obj (s, List.map t_field  fs)
   | Mut t -> Mut (t_typ t)
-  | Class -> Class
   | Shared -> Shared
   | Any -> Any
   | Non -> Non

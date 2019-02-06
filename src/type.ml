@@ -33,7 +33,6 @@ and typ =
             bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
-  | Class                                     (* class *)
   | Shared                                    (* sharable *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
@@ -117,7 +116,6 @@ let rec shift i n t =
   | Async t -> Async (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
-  | Class -> Class
   | Shared -> Shared
   | Any -> Any
   | Non -> Non
@@ -152,7 +150,6 @@ let rec subst sigma t =
   | Async t -> Async (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
-  | Class -> Class
   | Shared -> Shared
   | Any -> Any
   | Non -> Non
@@ -192,7 +189,6 @@ let rec open' i ts t =
   | Async t -> Async (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
-  | Class -> Class
   | Shared -> Shared
   | Any -> Any
   | Non -> Non
@@ -327,7 +323,7 @@ let rec span env = function
   | Prim Word16 -> Some 0x10000
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
-  | Array _ | Func _ | Class | Shared | Any -> None
+  | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
   | Mut t -> span env t
   | Non -> Some 0
@@ -338,7 +334,7 @@ let rec span env = function
 exception Unavoidable of con
 
 let rec avoid' env env' = function
-  | (Prim _ | Var _ | Any | Non | Shared | Class | Pre) as t -> t
+  | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
     (match Con.Env.find_opt c env' with
     | Some (Abs _) -> raise (Unavoidable c)
@@ -459,15 +455,9 @@ let rec rel_typ env rel eq t1 t2 =
       rel_list rel_typ env' rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Func (Construct, _, _, _, _), Class when rel != eq ->
-    true
   | Func (s1, _,  _, _, _), Shared when rel != eq ->
     (* TODO: not all classes should be sharable *)
     s1 <> Call Local
-  | Class, Class ->
-    true
-  | Class, Shared ->
-    true
   | Shared, Shared ->
     true
   | Async t1', Async t2' ->
@@ -591,7 +581,6 @@ let rec string_of_typ_nullary vs = function
   | Any -> "Any"
   | Non -> "Non"
   | Shared -> "Shared"
-  | Class -> "Class"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con vs c
@@ -696,7 +685,7 @@ let rec string_of_typ_expand env t =
     | Abs _ -> s
     | Def _ ->
       match normalize env t with
-      | Prim _ | Any | Non | Class -> s
+      | Prim _ | Any | Non -> s
       | t' -> s ^ " = " ^ string_of_typ_expand env t'
     )
   | _ -> s

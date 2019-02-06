@@ -150,7 +150,6 @@ and check_typ' env typ : T.typ =
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
-  | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "unknown primitive type"

@@ -3,7 +3,6 @@ let prelude =
 type Any = prim "Any";
 type None = prim "None";
 type Shared = prim "Shared";
-type Class = prim "Class";
 type Null = prim "Null";
 type Bool = prim "Bool";
 type Nat = prim "Nat";

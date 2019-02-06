@@ -33,7 +33,6 @@ and typ =
             bind list * typ list * typ list   (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
-  | Class                                     (* class *)
   | Shared                                    (* sharable *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)

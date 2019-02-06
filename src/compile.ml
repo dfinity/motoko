@@ -1128,7 +1128,6 @@ module Object = struct
     in the await-translation of objects, and get rid of this indirection.
   *)
 
-  (* First word: Class pointer (0x1, an invalid pointer, when none) *)
   let header_size = Int32.add Tagged.header_size 1l
 
   (* Number of object fields *)

@@ -142,7 +142,6 @@ let rec check_typ env typ : unit =
   | T.Any -> ()
   | T.Non -> ()
   | T.Shared -> ()
-  | T.Class -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
     check_typ env typ
