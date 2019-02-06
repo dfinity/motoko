@@ -150,7 +150,7 @@ func insert<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:V) : (Trie<K,V>, ?V) {
   replace<K,V>(t, k, k_hash, ?v)
 };
 
-// insert the given key's value in the trie; return the new trie
+// remove the given key's value in the trie; return the new trie
 func remove<K,V>(t : Trie<K,V>, k:K, k_hash:Hash) : (Trie<K,V>, ?V) {
   replace<K,V>(t, k, k_hash, null)
 };
