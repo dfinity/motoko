@@ -126,6 +126,7 @@ module E = struct
 
     (* Immutable *)
     local_vars_env : t varloc NameEnv.t; (* variables ↦ their location *)
+    con_env : Type.con_env;
 
     (* Mutable *)
     func_types : func_type list ref;
@@ -157,6 +158,7 @@ module E = struct
     mode;
     prelude;
     local_vars_env = NameEnv.empty;
+    con_env = Con.Env.empty;
     func_types = ref [];
     imports = ref [];
     exports = ref [];
@@ -196,8 +198,12 @@ module E = struct
   (* We avoid accessing the fields of t directly from outside of E, so here are a
      bunch of accessors. *)
 
-  let mode (e : t) = e.mode
+  let mode (env : t) = env.mode
 
+  let con_env (env : t) = env.con_env
+
+  let add_con (env : t) c k =
+    { env with con_env = Con.Env.add c k env.con_env }
 
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
@@ -3676,7 +3682,9 @@ and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)
        (pre_env, G.with_region dec.at alloc_code, fun env ->
          (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
   match dec.it with
-  | TypD _ -> (pre_env, G.nop, fun _ -> StackRep.unit, G.nop)
+  | TypD (c,k) ->
+    let pre_env1 = E.add_con pre_env c k in
+    (pre_env1, G.nop, fun _ -> StackRep.unit, G.nop)
   | ExpD e -> (pre_env, G.nop, fun env ->
     if as_unit
     then StackRep.unit, compile_exp_unit env e
