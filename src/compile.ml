@@ -941,7 +941,7 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
       (* Messages cannot be static *)
-      | FuncD (cc, _, _, _, _, _) when cc.Value.sort = Type.Call Type.Sharable ->
+      | FuncD (cc, _, _, _, _, _) when cc.Value.sort = Type.Sharable ->
       map_of_set LocalImmut d
       (* Static functions *)
       | FuncD _ when is_static env how0 f ->
@@ -1128,7 +1128,6 @@ module Object = struct
     in the await-translation of objects, and get rid of this indirection.
   *)
 
-  (* First word: Class pointer (0x1, an invalid pointer, when none) *)
   let header_size = Int32.add Tagged.header_size 1l
 
   (* Number of object fields *)
@@ -2803,7 +2802,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (has free variables) *)
   let dec_closure pre_env cc h name captured mk_pat mk_body at =
-      let is_local = cc.Value.sort <> Type.Call Type.Sharable in
+      let is_local = cc.Value.sort <> Type.Sharable in
 
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
       let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
@@ -2893,7 +2892,7 @@ module FuncDec = struct
         Var.set_val env name.it)
 
   let dec pre_env how name cc captured mk_pat mk_body at =
-    let is_local = cc.Value.sort <> Type.Call Type.Sharable in
+    let is_local = cc.Value.sort <> Type.Sharable in
 
     if not is_local && E.mode pre_env <> DfinityMode
     then
@@ -3351,7 +3350,7 @@ and compile_exp (env : E.t) exp =
         compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^ (* the args *)
         G.i (Call (nr fi))
-     | None, (Type.Call Type.Local | Type.Construct) ->
+     | None, Type.Local ->
         let (set_clos, get_clos) = new_local env "clos" in
         compile_exp_vanilla env e1 ^^
         set_clos ^^
@@ -3359,7 +3358,7 @@ and compile_exp (env : E.t) exp =
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
         get_clos ^^
         Closure.call_closure env cc
-     | None, Type.Call Type.Sharable ->
+     | None, Type.Sharable ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
         compile_exp_as env StackRep.UnboxedReference e1 ^^
         set_funcref ^^

@@ -10,7 +10,7 @@ Productions marked * probably deferred to later versions.
   (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  (shared|class)? <typ-params>? <typ> -> <typ>  function
+  shared <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top

@@ -187,9 +187,6 @@ and open the path printed on the last line of that command.
 * Async types: like futures/promises
   - `async T`
 
-* Class types: the identity of a class (essentially, a modref)
-  - `class`
-
 * Like types: structural expansions of nominal types
   - `like T`
 

@@ -190,7 +190,7 @@ end
 type unicode = int
 
 type call_conv = {
-  sort: Type.func_sort;
+  sort: Type.sharing;
   control : Type.control;
   n_args : int;
   n_res : int;
@@ -230,9 +230,9 @@ and 'a cont = 'a -> unit
 
 (* Smart constructors *)
 
-let local_cc n m = { sort = T.Call T.Local; control = T.Returns; n_args = n; n_res = m}
-let message_cc n = { sort = T.Call T.Sharable; control = T.Returns; n_args = n; n_res = 0}
-let async_cc n = { sort = T.Call T.Sharable; control = T.Promises; n_args = n; n_res = 1}
+let local_cc n m = { sort = T.Local; control = T.Returns; n_args = n; n_res = m}
+let message_cc n = { sort = T.Sharable; control = T.Returns; n_args = n; n_res = 0}
+let async_cc n = { sort = T.Sharable; control = T.Promises; n_args = n; n_res = 1}
 
 let local_func n m f = Func (local_cc n m, f)
 let message_func n f = Func (message_cc n, f)
@@ -395,7 +395,7 @@ let string_of_def d = string_of_def' !Flags.print_depth d
 
 let string_of_call_conv {sort;control;n_args;n_res} =
   sprintf "(%s %i %s %i)"
-    (T.string_of_func_sort sort)
+    (T.string_of_sharing sort)
     n_args
     (match control with
      | T.Returns -> "->"

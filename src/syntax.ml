@@ -19,7 +19,6 @@ let string_of_name (Name s ) = s
 
 type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
-type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
@@ -32,7 +31,7 @@ and typ' =
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | TupT of typ list                               (* tuple *)
-  | FuncT of func_sort * typ_bind list * typ * typ (* function *)
+  | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 (*
