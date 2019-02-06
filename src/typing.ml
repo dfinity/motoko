@@ -150,7 +150,6 @@ and check_typ' env typ : T.typ =
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
-  | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "unknown primitive type"
@@ -168,7 +167,7 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Call T.Sharable then begin
+    if sort.it = T.Sharable then begin
       let t1 = T.seq ts1 in
       if not (T.sub env'.cons t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
@@ -418,7 +417,7 @@ and infer_exp' env exp : T.typ =
     )
   | ObjE (sort, id, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
-    infer_obj env' sort.it id fields
+    infer_obj env' sort.it id None fields
   | DotE (exp1, sr, {it = Name n; _}) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -853,14 +852,17 @@ and check_pats env ts pats ve at : val_env =
 
 (* Objects *)
 
-and infer_obj env s id fields : T.typ =
+and infer_obj env s id t_opt fields : T.typ =
   let pre_ve = gather_exp_fields env id.it fields in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve in
-  let tfs, ve = infer_exp_fields pre_env s id.it T.Pre fields in
+  let pre_env = adjoin_vals (add_val {env with pre = true} id.it T.Pre) pre_ve in
+  let tfs, ve = infer_exp_fields pre_env s fields in
   let t = T.Obj (s, tfs) in
   if not env.pre then begin
-    let env' = adjoin_vals (add_val env id.it t) ve in
-    ignore (infer_exp_fields env' s id.it t fields)
+    let id_t = match t_opt with
+      | None -> t
+      | Some t' -> t' in
+    let env' = adjoin_vals (add_val env id.it id_t) ve in
+    ignore (infer_exp_fields env' s fields)
   end;
   t
 
@@ -876,11 +878,11 @@ and check_obj env s tfs id fields at : T.typ =
       T.Env.add name t ve
     ) pre_ve tfs
   in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
+  let pre_env = adjoin_vals (add_val {env with pre = true} id.it T.Pre) pre_ve' in
+  let tfs', ve = infer_exp_fields pre_env s fields in
   let t = T.Obj (s, tfs') in
   let env' = adjoin_vals (add_val env id.it t) ve in
-  ignore (infer_exp_fields env' s id.it t fields);
+  ignore (infer_exp_fields env' s fields);
   t
 
 
@@ -895,10 +897,9 @@ and gather_exp_field env ve field : val_env =
   T.Env.add id.it T.Pre ve
 
 
-and infer_exp_fields env s id t fields : T.field list * val_env =
-  let env' = add_val env id t in
+and infer_exp_fields env s fields : T.field list * val_env =
   let tfs, ve =
-    List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
+    List.fold_left (infer_exp_field env s) ([], T.Env.empty) fields in
   List.sort T.compare_field tfs, ve
 
 and is_func_exp exp =
@@ -981,15 +982,16 @@ and infer_dec env dec : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp
     end;
     t
-  | ClassD (id, tid, typ_binds, sort, pat, id', fields) ->
+  | ClassD (id, con_id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
+      let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
         {env' with labs = T.Env.empty; rets = None; async = false} in
-      ignore (infer_obj (adjoin_vals env'' ve) sort.it id' fields)
+      let self_typ = T.Con(T.Env.find con_id.it env.typs, List.map (fun c -> T.Con (c, [])) cs) in
+      ignore (infer_obj (adjoin_vals env'' ve) sort.it self_id (Some self_typ) fields)
     end;
     t
   | TypD _ ->
@@ -1083,21 +1085,21 @@ and gather_block_typdecs env decs : scope =
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> scope
-  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _) ->
-    if T.Env.mem id.it scope.typ_env then
-      error env dec.at "duplicate definition for type %s in block" id.it;
+  | TypD (con_id, binds, _) | ClassD (_, con_id, binds, _, _, _, _) ->
+    if T.Env.mem con_id.it scope.typ_env then
+      error env dec.at "duplicate definition for type %s in block" con_id.it;
     let cs =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
     let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
-    let c = Con.fresh id.it in
+    let c = Con.fresh con_id.it in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let ve' =
       match dec.it with
-      | ClassD (conid, _, _ , _, _, _, _) ->
+      | ClassD (id, _, _ , _, _, _, _) ->
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add conid.it (T.Func (T.Construct, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
+        T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
-    let te' = T.Env.add id.it c scope.typ_env in
+    let te' = T.Env.add con_id.it c scope.typ_env in
     let ce' = Con.Env.add c pre_k scope.con_env in
     {val_env = ve'; typ_env = te'; con_env = ce'}
 
@@ -1115,24 +1117,25 @@ and infer_dec_typdecs env dec : con_env =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ ->
     Con.Env.empty
-  | TypD (id, binds, typ) ->
-    let c = T.Env.find id.it env.typs in
+  | TypD (con_id, binds, typ) ->
+    let c = T.Env.find con_id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    id.note <- Some (c, k);
+    con_id.note <- Some (c, k);
     Con.Env.singleton c k
-  | ClassD (conid, id, binds, sort, pat, id', fields) ->
-    let c = T.Env.find id.it env.typs in
+  | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
+    let c = T.Env.find con_id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
-    let t = infer_obj (adjoin_vals env' ve) sort.it id' fields in
+    let self_typ = T.Con(c, List.map (fun c -> T.Con (c, [])) cs) in
+    let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
-    id.note <- Some (c, k);
+    con_id.note <- Some (c, k);
     Con.Env.singleton c k
 
 (* Pass 4: collect value identifiers *)
@@ -1200,18 +1203,18 @@ and infer_dec_valdecs env dec : val_env =
     in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
-      (T.Func (T.Call sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
+      (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
-  | ClassD (conid, id, typ_binds, sort, pat, id', fields) ->
+  | ClassD (id, con_id, typ_binds, sort, pat, self_id, fields) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let c = T.Env.find id.it env.typs in
+    let c = T.Env.find con_id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton conid.it (T.Func (T.Construct, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
+    T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
 
 
 (* Programs *)

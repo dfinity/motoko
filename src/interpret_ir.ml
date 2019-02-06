@@ -149,7 +149,7 @@ let actor_msg id f v (k : V.value V.cont) =
 let make_unit_message id v =
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {V.sort = T.Call T.Sharable; V.n_res = 0; _} ->
+  | {V.sort = T.Sharable; V.n_res = 0; _} ->
     Value.message_func call_conv.V.n_args (fun v k ->
       actor_msg id f v (fun _ -> ());
       k V.unit
@@ -162,7 +162,7 @@ let make_async_message id v =
   assert (not !Flags.async_lowering);
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {V.sort = T.Call T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
+  | {V.sort = T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
     Value.async_func call_conv.V.n_args (fun v k ->
       let async = make_async () in
       actor_msg id f v (fun v_async ->
@@ -640,8 +640,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let v = V.Func (V.call_conv_of_typ dec.note.Syntax.note_typ, f) in
     let v =
       match cc.Value.sort with
-      | T.Call T.Sharable ->
-        make_message id dec.note.Syntax.note_typ v
+      | T.Sharable -> make_message id dec.note.Syntax.note_typ v
       | _-> v
     in
     define_id env id v;

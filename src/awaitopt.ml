@@ -284,7 +284,7 @@ and c_loop_some context k e1 e2 =
 
 and c_for context k pat e1 e2 =
   let v1 = fresh_id (typ e1) in
-  let next_typ = (T.Func(T.Call T.Local, T.Returns, [], [], [T.Opt pat.note])) in
+  let next_typ = (T.Func(T.Local, T.Returns, [], [], [T.Opt pat.note])) in
   let dotnext v = dotE v nextN next_typ -*- unitE in
   let loop = fresh_id (contT T.unit) in
   let v2 = fresh_id T.unit in

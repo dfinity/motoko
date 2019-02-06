@@ -111,10 +111,6 @@ and obj_sort' s = match s with
 
 and obj_sort s = obj_sort' s.it
 
-and func_sort s = match s.it with
-  | Type.Call sh -> Atom ("Call " ^ sharing sh)
-  | Type.Construct -> Atom "Construct"
-
 and mut m = match m.it with
   | Const -> Atom "Const"
   | Var   -> Atom "Var"
@@ -141,7 +137,7 @@ and typ t = match t.it with
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | TupT ts             -> "TupT" $$ List.map typ ts
-  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
 
