@@ -1,7 +1,8 @@
-(* 
+(*
    Simplify loop constructs.
 
    Mapping each occurence of a looping construct to an infinite loop.
+
  *)
 
 open Source
@@ -50,9 +51,62 @@ and exp' at note = function
   | I.ActorE(i, fs, t) -> I.ActorE(i, exp_fields fs, t)
   (*--- "Interesting" cases: The looping constructs. ---*)
   | I.LoopE (e1, None) -> I.LoopE (exp e1, None) (* <-- This form is simplest, and preferred *)
-  | I.LoopE (e1, Some e2) -> I.LoopE (exp e1, Some (exp e2)) (* TODO: Transform this form to LoopE(_,None) *)
-  | I.WhileE (e1, e2) -> I.WhileE (exp e1, exp e2) (* TODO: Transform this form to LoopE(_,None) *)
-  | I.ForE (p, e1, e2) -> I.ForE (p, exp e1, exp e2) (* TODO: Transform this form to LoopE(_,None) *)
+
+  (* Questions about the target of each transformation case below:
+
+     1. Do we need the loop { } expression _and_ the label; does the
+     label alone suffice?  (Can we label any subexpression and make it
+     a jump target, or only loops?)
+
+     2. Related to 1, if we do need the loop constructs and the
+     labels, do we also need to use explicit "continue" expressions?
+
+     3. The rewrite for for-loops is the most involved, and involves a
+     subexpression with nontrivial (non-unit, non-boolean) type;
+     namely, the first subexpression of the for-loop must be an
+     iterator object.  Doing this rewrite without first doing this
+     check would be wrong, but assuming the AST is typed, no extra
+     type information seems required to inform or guide the
+     transformation; it is "fully parametric" in all of the
+     sub-expressions, it seems.
+
+     Hence, all of these rewrites could probably happen in the desugar
+     module, though they should only happen on a well-typed source
+     AST.
+   *)
+
+  (* Transformation from loop-while to loop: *)
+  | I.LoopE (e1, Some e2) ->
+    (*
+        loop e1 while e2
+        ~~>
+        label l: loop { e1 ; if e2 then break l else continue l }
+     *)
+    I.LoopE (exp e1, Some (exp e2)) (* TODO *)
+
+  (* Transformation from while to loop: *)
+  | I.WhileE (e1, e2) ->
+    (*
+        while e1 e2
+        ~~>
+        label l: loop { if e1 then { e2 ; continue l } else break l }
+     *)
+    I.WhileE (exp e1, exp e2) (* TODO *)
+
+  (* Transformation from for to loop: *)
+  | I.ForE (p, e1, e2) ->
+    (*
+        for x in e1 e2
+        ~~>
+        label l: loop {
+                   switch e1.next() {
+                     case null { break l };
+                     case x    { e2 ; continue l };
+                   }
+                 }
+     *)
+    I.ForE (p, exp e1, exp e2) (* TODO *)
+
 
 and exp_fields fs = List.map exp_field fs
 
@@ -72,7 +126,7 @@ and dec' at n d = match d with
   | I.VarD (i, e) -> I.VarD (i, exp e)
   | I.FuncD (cc, i, tbs, p, ty, e) ->
     I.FuncD (cc, i, tbs, p, ty, exp e)
-  | I.TypD (c,k) -> 
+  | I.TypD (c,k) ->
     I.TypD (c,k)
 
 and cases cs = List.map case cs
