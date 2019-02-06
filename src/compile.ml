@@ -3428,7 +3428,7 @@ and compile_exp (env : E.t) exp =
     StackRep.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
-  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
+  | NewObjE ({ it = Type.Object; _}, fs, _) ->
     StackRep.Vanilla,
     let fs' = List.map
       (fun (name, id) -> (name, fun env -> Var.get_val_ptr env id.it))

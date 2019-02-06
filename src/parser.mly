@@ -24,7 +24,7 @@ let (@?) it at = {it; at; note = empty_typ_note}
 let (@!) it at = {it; at; note = Type.Pre}
 let (@=) it at = {it; at; note = None}
 
-let dummy_obj_sort() = ref (Type.Object Type.Local)
+let dummy_obj_sort() = ref Type.Object
 
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
@@ -58,8 +58,6 @@ let assign_op lhs rhs_f at =
 
 let share_typ t =
   match t.it with
-  | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
-    { t with it = ObjT ({s with it = Type.Object Type.Sharable}, tfs)}
   | FuncT ({it = Type.Call Type.Local; _} as s, tbs, t1, t2) ->
     { t with it = FuncT ({s with it = Type.Call Type.Sharable}, tbs, t1, t2)}
   | _ -> t
@@ -75,8 +73,6 @@ let share_dec d =
 
 let share_exp e =
   match e.it with
-  | ObjE ({it = Type.Object Type.Local; _} as s, x, efs) ->
-    ObjE ({s with it = Type.Object Type.Sharable}, x, efs) @? e.at
   | DecE (d, ot) ->
     DecE (share_dec d, ot) @? e.at
   | _ -> e
@@ -173,13 +169,12 @@ seplist1(X, SEP) :
   | VAR { Var @@ at $sloc }
 
 %inline obj_sort :
-  | NEW { Type.Object Type.Local @@ at $sloc }
-  | OBJECT { Type.Object Type.Local @@ at $sloc }
-  | SHARED { Type.Object Type.Sharable @@ at $sloc }
+  | NEW { Type.Object @@ at $sloc }
+  | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object Type.Local @@ no_region }
+  | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
 %inline shared_opt :
@@ -208,7 +203,7 @@ typ_nullary :
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
-    { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
+    { ObjT(Type.Object @@ at $sloc, tfs) @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -225,7 +220,7 @@ typ_pre :
     { AsyncT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object
         then tfs
         else List.map share_typfield tfs
       in ObjT(s, tfs') @! at $sloc }
@@ -443,7 +438,7 @@ exp_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let anon = if s.it = Type.Actor then "actor" else "object" in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object
         then efs
         else List.map share_expfield efs
       in ObjE(s, xf anon $sloc, efs') @? at $sloc }
@@ -539,7 +534,7 @@ dec_nonvar :
   | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
     { let x, efs = xefs in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object
         then efs
         else List.map share_expfield efs
       in
@@ -557,7 +552,7 @@ dec :
   (* TODO(andreas): move to dec_nonvar once other production is gone *)
   | s=obj_sort id_opt=id? EQ? efs=obj_body
     { let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object
         then efs
         else List.map share_expfield efs
       in

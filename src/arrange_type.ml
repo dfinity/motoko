@@ -15,7 +15,7 @@ and control c = match c with
   | Type.Promises -> "Promises"
 
 and obj_sort s = match s with
-  | Type.Object sh -> Atom ("Object " ^ sharing sh)
+  | Type.Object -> Atom "Object"
   | Type.Actor -> Atom "Actor"
 
 and func_sort s = match s with

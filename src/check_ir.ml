@@ -200,8 +200,8 @@ and check_typ_field env s typ_field : unit =
      (s <> T.Actor || T.is_func (T.promote env.cons typ))
     "actor field has non-function type";
   check env no_region
-     (s = T.Object T.Local || T.sub env.cons typ T.Shared)
-    "shared object or actor field has non-shared type"
+     (s <> T.Actor || T.sub env.cons typ T.Shared)
+    "actor field has non-shared type"
 
 
 and check_typ_binds env typ_binds : T.con list * con_env =
@@ -656,10 +656,9 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
        is_func_exp exp)
     "public actor field is not a function";
   check env field.at
-    (if (s <> T.Object T.Local && priv.it = Syntax.Public)
-     then T.sub env.cons t T.Shared
-     else true)
-    "public shared object or actor field has non-shared type";
+    ((s = T.Actor && priv.it = Syntax.Public) ==>
+       T.sub env.cons t T.Shared)
+    "public actor field has non-shared type";
   let ve' = T.Env.add id.it t ve in
   let tfs' =
     if priv.it = Syntax.Private

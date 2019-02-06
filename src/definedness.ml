@@ -93,7 +93,7 @@ let rec exp msgs e : f = match e.it with
     let f = close (exp_fields msgs efs) // i.it in
     begin match s.it with
     | Type.Actor -> eagerify f
-    | Type.Object _ -> f
+    | Type.Object -> f
     end
   | DotE (e, _t, i)     -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]

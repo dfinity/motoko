@@ -207,8 +207,8 @@ and check_typ_field env s typ_field : T.field =
   if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
     error env typ.at "actor field %s has non-function type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
-  if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
-    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
+  if s = T.Actor && not (T.sub env.cons t T.Shared) then
+    error env typ.at "actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand env.cons t);
   {T.name = id.it; typ = t}
 
@@ -934,8 +934,8 @@ and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
   if not env.pre then begin
     if s = T.Actor && priv.it = Public && not (is_func_exp exp) then
       error env field.at "public actor field is not a function";
-    if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
-      error env field.at "public shared object or actor field %s has non-shared type\n  %s"
+    if s = T.Actor && priv.it = Public && not (T.sub env.cons t T.Shared) then
+      error env field.at "public actor field %s has non-shared type\n  %s"
         (string_of_name name.it) (T.string_of_typ_expand env.cons t)
   end;
   let ve' = T.Env.add id.it t ve in

@@ -104,7 +104,7 @@ and field_to_obj_entry (f : S.exp_field) =
 
 and obj at s class_id self_id es obj_typ =
   match s.it with
-  | Type.Object _ -> build_obj at None s self_id es obj_typ
+  | Type.Object -> build_obj at None s self_id es obj_typ
   | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
 
 and build_obj at class_id s self_id es obj_typ =

@@ -3,7 +3,7 @@
 type con = Con.t
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
-type obj_sort = Object of sharing | Actor
+type obj_sort = Object | Actor
 type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
@@ -84,7 +84,7 @@ let prim = function
   | _ -> raise (Invalid_argument "Type.prim")
 
 let iter_obj t =
-  Obj (Object Local,
+  Obj (Object,
     [{name = "next"; typ = Func (Call Local, Returns, [], [], [Opt t])}])
 
 let array_obj t =
@@ -97,8 +97,8 @@ let array_obj t =
   let mut t = immut t @
     [ {name = "set"; typ = Func (Call Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
-  | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
-  | t -> Obj (Object Local, List.sort compare_field (immut t))
+  | Mut t' -> Obj (Object, List.sort compare_field (mut t'))
+  | t -> Obj (Object, List.sort compare_field (immut t))
 
 
 (* Shifting *)
@@ -275,7 +275,7 @@ let as_prim_sub p env t = match promote env t with
 let rec as_obj_sub name env t = match promote env t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub name env (array_obj t)
-  | Non -> Object Sharable, [{name; typ = Non}]
+  | Non -> Object, [{name; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub env t = match promote env t with
   | Array t -> t
@@ -431,8 +431,9 @@ let rec rel_typ env rel eq t1 t2 =
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields env rel eq tfs1 tfs2
-  | Obj (s, _), Shared when rel != eq ->
-    s != Object Local
+  | Obj (s, tfs1), Shared when rel != eq ->
+    s = Actor ||
+    rel_fields env rel eq tfs1 (List.map (fun f  -> { f with typ = Shared }) tfs1)
   | Array t1', Array t2' ->
     rel_typ env rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
@@ -606,7 +607,7 @@ let rec string_of_typ_nullary vs = function
     sprintf "[var %s]" (string_of_typ_nullary vs t)
   | Array t ->
     sprintf "[%s]" (string_of_typ_nullary vs t)
-  | Obj (Object Local, fs) ->
+  | Obj (Object, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
@@ -644,10 +645,8 @@ and string_of_typ' vs t =
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async t ->
     sprintf "async %s" (string_of_typ_nullary vs t)
-  | Obj (Object Sharable, fs) ->
-    sprintf "shared %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Actor, fs) ->
-    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
+    sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object, fs)))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t

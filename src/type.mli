@@ -3,7 +3,7 @@
 type con = Con.t
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
-type obj_sort = Object of sharing | Actor
+type obj_sort = Object | Actor
 type func_sort = Call of sharing | Construct
 type eff = Triv | Await
 
