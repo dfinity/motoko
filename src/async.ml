@@ -298,31 +298,17 @@ and t_exp' (exp:exp) =
     DefineE (id, mut, t_exp exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t_typ t)
-
-and t_dec dec =
-  { it = t_dec' dec.it;
-    note = { note_typ = t_typ dec.note.note_typ;
-             note_eff = dec.note.note_eff };
-    at = dec.at }
-
-and t_dec' dec' =
-  match dec' with
-  | ExpD exp -> ExpD (t_exp exp)
-  | TypD (con_id, k) ->
-    TypD (con_id, t_kind k)
-  | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
-  | VarD (id,exp) -> VarD (id,t_exp exp)
-  | FuncD (cc, id, typbinds, pat, typT, exp) ->
+  | FuncE (cc, typbinds, pat, typT, exp) ->
     let s = cc.Value.sort in
     begin
       match s with
       | T.Local  ->
-         FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+         FuncE (cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
       | T.Sharable ->
          begin
            match typ exp with
            | T.Tup [] ->
-              FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+              FuncE (cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
            | T.Async res_typ ->
              let cc' = Value.message_cc (cc.Value.n_args + 1) in
              let res_typ = t_typ res_typ in
@@ -345,10 +331,24 @@ and t_dec' dec' =
                  end
                | _ -> assert false
              in
-             FuncD (cc', id, typbinds', pat', typ', exp')
+             FuncE (cc', typbinds', pat', typ', exp')
            | _ -> assert false
          end
     end
+
+and t_dec dec =
+  { it = t_dec' dec.it;
+    note = { note_typ = t_typ dec.note.note_typ;
+             note_eff = dec.note.note_eff };
+    at = dec.at }
+
+and t_dec' dec' =
+  match dec' with
+  | ExpD exp -> ExpD (t_exp exp)
+  | TypD (con_id, k) ->
+    TypD (con_id, t_kind k)
+  | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
+  | VarD (id,exp) -> VarD (id,t_exp exp)
 
 and t_decs decs = List.map t_dec decs
 

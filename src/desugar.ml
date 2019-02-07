@@ -154,7 +154,10 @@ and dec' at n d = match d with
   | S.VarD (i, e) -> I.VarD (i, exp e)
   | S.FuncD (s, i, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ n.S.note_typ in
-    I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
+    let t = n.S.note_typ in
+    (* NB: This is not yet correct; FuncD returns the value, but LetD does not *)
+    I.LetD ({ it = I.VarP i; at = at; note = t},
+            { it = I.FuncE (cc, typ_binds tbs, pat p, ty.note, exp e); at = at; note = n})
   | S.TypD (con_id, typ_bind, t) ->
     let (c,k) = Lib.Option.value con_id.note in
     I.TypD (c,k)
@@ -173,10 +176,13 @@ and dec' at n d = match d with
         T.open_ inst rng
       | _ -> assert false
     in
-    I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some fun_id) self_id es obj_typ;
-               at = at;
-               note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
+    let f =
+      I.FuncE (cc, typ_binds tbs, pat p, obj_typ, (* TBR *)
+               { it = obj at s (Some fun_id) self_id es obj_typ;
+                 at = at;
+                 note = { S.note_typ = obj_typ; S.note_eff = T.Triv } }) in
+    I.LetD ({ it = I.VarP fun_id; at = at; note = obj_typ},
+            { it = f; at = at; note = n})
 
 and cases cs = List.map case cs
 

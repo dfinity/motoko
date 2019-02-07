@@ -138,34 +138,34 @@ let await at async k =
     )
 (*;  Scheduler.yield () *)
 
-let actor_msg id f v (k : V.value V.cont) =
-  if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
+let actor_msg f v (k : V.value V.cont) =
+  if !Flags.trace then trace "-> message %s" (string_of_arg v);
   Scheduler.queue (fun () ->
-    if !Flags.trace then trace "<- message %s%s" id (string_of_arg v);
+    if !Flags.trace then trace "<- message %s" (string_of_arg v);
     incr trace_depth;
     f v k
   )
 
-let make_unit_message id v =
+let make_unit_message v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.n_res = 0; _} ->
     Value.message_func call_conv.V.n_args (fun v k ->
-      actor_msg id f v (fun _ -> ());
+      actor_msg f v (fun _ -> ());
       k V.unit
     )
   | _ ->
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
 (* assert (false) *)
 
-let make_async_message id v =
+let make_async_message v =
   assert (not !Flags.async_lowering);
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
     Value.async_func call_conv.V.n_args (fun v k ->
       let async = make_async () in
-      actor_msg id f v (fun v_async ->
+      actor_msg f v (fun v_async ->
         get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
       );
       k (V.Async async)
@@ -175,15 +175,15 @@ let make_async_message id v =
     (* assert (false) *)
 
 
-let make_message id t v : V.value =
+let make_message t v : V.value =
   match t with
   | T.Func (_, _, _, _, []) ->
-    make_unit_message id.it v
+    make_unit_message v
   | T.Func (_, _, _, _, [T.Async _]) ->
     assert (not !Flags.async_lowering);
-    make_async_message id.it v
+    make_async_message v
   | _ ->
-    failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
+    failwith (Printf.sprintf "actorfield: %s"  (T.string_of_typ t))
     (* assert false *)
 
 
@@ -442,6 +442,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             (Lib.Promise.value (find id.it env.vals)) ve
         ) V.Env.empty ids
     in k (V.Obj ve)
+  | FuncE (cc,  _typbinds, pat, _typ, exp) ->
+    let f = interpret_func env pat
+      (fun env' -> interpret_exp env' exp) in
+    let v = V.Func (V.call_conv_of_typ exp.note.Syntax.note_typ, f) in
+    let v =
+      match cc.Value.sort with
+      | T.Sharable -> make_message exp.note.Syntax.note_typ v
+      | _-> v
+    in
+    k v
 
 
 
@@ -608,7 +618,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _ | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
-  | VarD (id, _) | FuncD (_, id, _, _, _, _) -> declare_id id
+  | VarD (id, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -634,17 +644,6 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | FuncD (cc, id, _typbinds, pat, _typ, exp) ->
-    let f = interpret_func env id pat
-      (fun env' -> interpret_exp env' exp) in
-    let v = V.Func (V.call_conv_of_typ dec.note.Syntax.note_typ, f) in
-    let v =
-      match cc.Value.sort with
-      | T.Sharable -> make_message id dec.note.Syntax.note_typ v
-      | _-> v
-    in
-    define_id env id v;
-    k v
 
 and interpret_decs env decs (k : V.value V.cont) =
   match decs with
@@ -654,8 +653,7 @@ and interpret_decs env decs (k : V.value V.cont) =
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
 
-and interpret_func env id pat f v (k : V.value V.cont) =
-  if !Flags.trace then trace "%s%s" id.it (string_of_arg v);
+and interpret_func env pat f v (k : V.value V.cont) =
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list"

@@ -175,6 +175,8 @@ module Ir =
         effect_exp exp1
       | NewObjE _ ->
         T.Triv
+      | FuncE _ ->
+        T.Triv
 
     and effect_cases cases =
       match cases with
@@ -197,7 +199,5 @@ module Ir =
       | VarD (_, e) ->
         effect_exp e
       | TypD (c,k) ->
-        T.Triv
-      | FuncD (s, v, tps, p, t, e) ->
         T.Triv
 end

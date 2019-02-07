@@ -43,6 +43,8 @@ let rec exp e = match e.it with
   | NewObjE (s, nameids, t)-> "NewObjE" $$ (Arrange.obj_sort s ::
                                               List.fold_left (fun flds (n,i) ->
                                                   (name n)::(id i):: flds) [typ t] nameids)
+  | FuncE (cc, tp, p, t, e) ->
+    "FuncE" $$ [call_conv cc] @ List.map typ_bind tp @ [pat p; typ t; exp e]
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
@@ -65,8 +67,6 @@ and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | FuncD (cc, i, tp, p, t, e) ->
-    "FuncD" $$ [call_conv cc; id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD (c,k) ->
     "TypD" $$ [con c; kind k]
 

@@ -138,6 +138,9 @@ and t_exp' context exp' =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | NewObjE (sort, ids, typ) -> exp'
+  | FuncE (s, typbinds, pat, typ, exp) ->
+    let context' = LabelEnv.add id_ret Label LabelEnv.empty in
+    FuncE (s, typbinds, pat, typ,t_exp context' exp)
 
 and t_dec context dec =
   {dec with it = t_dec' context dec.it}
@@ -147,9 +150,6 @@ and t_dec' context dec' =
   | TypD _ -> dec'
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, exp) -> VarD (id, t_exp context exp)
-  | FuncD (s, id, typbinds, pat, typ, exp) ->
-    let context' = LabelEnv.add id_ret Label LabelEnv.empty in
-    FuncD (s, id, typbinds, pat, typ,t_exp context' exp)
 
 and t_decs context decs = List.map (t_dec context) decs
 
@@ -420,6 +420,7 @@ and c_exp' context exp k =
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
+  | FuncE _ -> exp
 
 and c_block context decs k =
   declare_decs decs (c_decs context decs k)
@@ -460,13 +461,6 @@ and c_dec context dec (k:kont) =
           (meta (typ exp)
              (fun v -> k -@- define_idE id varM v))
     end
-  | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) ->
-    let func_typ = typ dec in
-    let v = fresh_id func_typ in
-    let u = fresh_id T.unit in
-    blockE [letD v (decE (t_dec context dec));
-            letD u (define_idE id constM v);
-            expD (k -@- v)]
 
 
 and c_decs context decs k =
@@ -485,7 +479,6 @@ and declare_dec dec exp : exp =
   | TypD _ -> exp
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
-  | FuncD (_, id, _, _, _, _) -> declare_id id (typ dec) exp
 
 and declare_decs decs exp : exp =
   match decs with

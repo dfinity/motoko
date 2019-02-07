@@ -282,13 +282,20 @@ let funcD f x exp =
       | T.Func(sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
       | _ -> assert false in
     let cc = Value.call_conv_of_typ (typ f) in
-    { it = FuncD (cc,
-                  (id_of_exp f),
+    { it = LetD
+      ({ it = VarP (id_of_exp f);
+         at = no_region;
+         note = f.note.note_typ
+       },
+       { it = FuncE (cc,
                   [],
                   { it = VarP (id_of_exp x); at = no_region; note = t1 },
                   (* TODO: Assert invariant: t2 has no free (unbound) DeBruijn indices -- Claudio *)
                   t2,
                   exp);
+         at = no_region;
+         note = f.note
+        });
       at = no_region;
       note = f.note
     }
@@ -301,14 +308,20 @@ let nary_funcD f xs exp =
     T.Func(sharing,_,_,_,ts2) ->
     let cc = Value.call_conv_of_typ (typ f) in
     let t2 = T.seq ts2 in
-    { it = FuncD (cc,
-                  id_of_exp f,
+    { it = LetD
+      ({ it = VarP (id_of_exp f);
+         at = no_region;
+         note = f.note.note_typ}
+      ,{ it = FuncE (cc,
                   [],
                   seqP (List.map varP xs),
                   t2,
                   exp);
-      at = no_region;
-      note = f.note
+         at = no_region;
+         note = f.note
+       });
+     at = no_region;
+     note = f.note
     }
   | _,_ -> failwith "Impossible: funcD"
 

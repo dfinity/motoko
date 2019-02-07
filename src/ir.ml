@@ -54,6 +54,8 @@ and exp' =
   | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment *)
   | NewObjE of                                 (* make an object, preserving mutable identity *)
       Syntax.obj_sort * (Syntax.name * Syntax.id) list * Type.typ
+  | FuncE of                                   (* function *)
+      Value.call_conv * typ_bind list * pat * Type.typ * exp
 
 and exp_field = exp_field' Source.phrase
 and exp_field' = {name : Syntax.name; id : Syntax.id; exp : exp; mut : Syntax.mut; priv : Syntax.priv}
@@ -69,8 +71,6 @@ and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of Syntax.id * exp                    (* mutable *)
-  | FuncD of                                   (* function *)
-      Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp
   | TypD of Type.con * Type.kind               (* type *)
 
 

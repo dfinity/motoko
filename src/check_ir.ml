@@ -531,6 +531,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check (T.is_obj t2) "bad annotation (object type expected)";
     t1 <: t2;
     t0 <: t;
+  | FuncE (cc, typ_binds, pat, t2, exp) ->
+    let _cs,ce = check_open_typ_binds env typ_binds in
+    let env' = adjoin_typs env ce in
+    let ve = check_pat_exhaustive env' pat in
+    check_typ env' t2;
+    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
+           ==> isAsyncE exp)
+      "shared function with async type has non-async body";
+    let env'' =
+      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
+    check_exp (adjoin_vals env'' ve) exp;
+    check_sub env' exp.at (typ exp) t2;
 
 (* Cases *)
 
@@ -632,12 +644,7 @@ and type_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | BlockE ([dec],_)-> is_func_dec dec
-  | _ -> false
-
-and is_func_dec dec =
-  match dec.it with
-  | FuncD _ -> true
+  | FuncE _ -> true
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
@@ -716,20 +723,6 @@ and check_dec env dec  =
   | LetD (_, exp) | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
-  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
-    let t0 = T.Env.find id.it env.vals in
-    let _cs,ce = check_open_typ_binds env typ_binds in
-    let env' = adjoin_typs env ce in
-    let ve = check_pat_exhaustive env' pat in
-    check_typ env' t2;
-    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
-           ==> isAsyncE exp)
-      "shared function with async type has non-async body";
-    let env'' =
-      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-    check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' dec.at (typ exp) t2;
-    t0 <: t;
   | TypD (c, k) ->
     let (binds,typ) =
       match k with
@@ -775,28 +768,6 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
-  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
-    let func_sort = call_conv.Value.sort in
-    let cs = cons_of_typ_binds typ_binds in
-    let t1 = pat.note in
-    let t2 = typ in
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
-    in
-    let ts2 = match call_conv.Value.n_res  with
-      | 1 -> [t2]
-      | _ -> T.as_seq t2
-    in
-    let c = match func_sort, t2 with
-      | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let ts = List.map (fun typbind -> typbind.it.T.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
-    let ve' =  T.Env.add id.it t scope.val_env in
-    {scope with val_env = ve'}
   | TypD (c, k) ->
     check env dec.at
       (not (Con.Env.mem c scope.con_env))
