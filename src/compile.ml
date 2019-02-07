@@ -234,6 +234,16 @@ module E = struct
   let add_con (env : t) c k =
     { env with con_env = Con.Env.add c k env.con_env }
 
+  let add_typ_binds (env : t) typ_binds =
+    (* There is some code duplication with Check_ir.check_open_typ_binds.
+       This shoulds be extracte into Type.add_open_typ_binds
+       and maybe we need a type open_typ_bind that can be used inside the IR.
+    *)
+    let cs = Check_ir.cons_of_typ_binds typ_binds in
+    let ks = List.map (fun tp -> Type.Abs([],tp.it.Type.bound)) typ_binds in
+    let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
+    { env with con_env = Con.Env.adjoin env.con_env ce }
+
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
       | Some l -> Some l
@@ -3761,15 +3771,17 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
         compile_exp_vanilla env e ^^
         Var.set_val env name.it
       )
-  | FuncD (cc, name, _, p, _rt, e) ->
+  | FuncD (cc, name, typ_binds, p, _rt, e) ->
       (* Get captured variables *)
       let captured = Freevars.captured p e in
       let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
       (pre_env1, alloc_code, fun env ->
-        let sr, code = Var.get_val env name.it in
-        sr, mk_code env ^^ code
+        (* Bring type parameters into scope *)
+        let env1 = E.add_typ_binds env typ_binds in
+        let sr, code = Var.get_val env1 name.it in
+        sr, mk_code env1 ^^ code
       )
 
 and compile_decs env decs : SR.t * G.t =
