@@ -1016,11 +1016,9 @@ module AllocHow = struct
       (set_of_map how)))
 
   let is_static_exp env how0 exp = match exp.it with
-    (*
     | BlockE ([{ it = FuncD _; _} as dec],_) ->
       let f = Freevars.close (Freevars.dec dec) in
       is_static env how0 f
-    *)
     | _ -> false
 
   let dec env (seen, how0) dec =
@@ -2852,6 +2850,11 @@ module StackRep = struct
   let materialize env = function
     | StaticFun fi -> Var.static_fun_pointer env fi
 
+  let deferred_of_static_think env s =
+    { materialize = (fun env -> (StaticThing s, G.nop))
+    ; materialize_vanilla = (fun env -> materialize env s)
+    }
+
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
     then G.nop
@@ -3010,16 +3013,12 @@ module FuncDec = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env cc name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
-      let d =
-        { materialize = (fun env -> (SR.StaticThing (SR.StaticFun fi), G.nop))
-        ; materialize_vanilla = (fun env -> Var.static_fun_pointer env fi)
-        } in
+      let d = StackRep.deferred_of_static_think pre_env (SR.StaticFun fi) in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
-      ( pre_env1, G.nop, fun env ->
+      ( pre_env1, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
         let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
-        fill f;
-        G.nop
+        fill f
       )
 
   (* Compile a closure declaration (has free variables) *)
@@ -3123,7 +3122,8 @@ module FuncDec = struct
     else match AllocHow.M.find_opt name.it how with
       | None ->
         assert is_local;
-        dec_closed pre_env cc name mk_pat mk_body at
+        let (pre_env1, fill) = dec_closed pre_env cc name mk_pat mk_body at in
+        (pre_env1, G.nop, fun env -> fill env; G.nop)
       | Some h ->
         dec_closure pre_env cc h name captured mk_pat mk_body at
 
@@ -3770,6 +3770,13 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
     let pre_env1 = E.add_con pre_env c k in
     (pre_env1, G.nop, fun _ -> SR.unit, G.nop)
   | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
+
+  (* A special case for static expressions *)
+  | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
+    let (static_thing, fill) = compile_static_exp pre_env how e in
+    let d = StackRep.deferred_of_static_think pre_env static_thing in
+    let pre_env1 = E.add_local_deferred pre_env v.it d in
+    ( pre_env1, G.nop, fun env -> fill env; (SR.unit, G.nop))
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
@@ -3821,6 +3828,18 @@ and compile_decs_block env decs : (E.t * (SR.t * G.t)) =
   let (env1, alloc_code, mk_code) = go env decs in
   let (sr, code) = mk_code env1 in
   (env1, (sr, alloc_code ^^ code))
+
+and compile_static_exp env how exp = match exp.it with
+  | BlockE ([{ it = FuncD (cc, name, typ_binds, p, _rt, e); _}],_) ->
+      (* Get captured variables *)
+      let mk_pat env1 = compile_func_pat env1 cc p in
+      let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
+      let (env1, fill) = FuncDec.dec_closed env cc name mk_pat mk_body exp.at in
+      begin match Var.get_val env1 name.it with
+      | (SR.StaticThing st, _) -> (st, fill)
+      | _ -> assert false
+      end
+  | _ -> assert false
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
