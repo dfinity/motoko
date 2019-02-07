@@ -1015,6 +1015,14 @@ module AllocHow = struct
       (Freevars.captured_vars f)
       (set_of_map how)))
 
+  let is_static_exp env how0 exp = match exp.it with
+    (*
+    | BlockE ([{ it = FuncD _; _} as dec],_) ->
+      let f = Freevars.close (Freevars.dec dec) in
+      is_static env how0 f
+    *)
+    | _ -> false
+
   let dec env (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
 
@@ -1028,6 +1036,9 @@ module AllocHow = struct
       map_of_set LocalImmut d
       (* Static functions *)
       | FuncD _ when is_static env how0 f ->
+      M.empty
+      (* Static functions in an let-expression *)
+      | LetD ({it = VarP _; _}, e) when is_static_exp env how0 e ->
       M.empty
       (* Everything else needs at least a local *)
       | _ ->
@@ -1075,14 +1086,10 @@ module AllocHow = struct
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
       (env1, alloc_code)
-    | _ -> (env, G.nop)
+    | None -> (env, G.nop)
 
   let add_local env how name =
     add_how env name (M.find_opt name how)
-
-  let add_local_default env how def name = match M.find_opt name how with
-    | Some h -> add_how env name (Some h)
-    | None   -> add_how env name (Some def)
 
 end (* AllocHow *)
 
@@ -3495,7 +3502,7 @@ and compile_exp (env : E.t) exp =
       | (c::cs) ->
           let pat = c.it.pat in
           let e = c.it.exp in
-          let (env1, alloc_code, code) = compile_pat env AllocHow.M.empty pat in
+          let (env1, alloc_code, code) = compile_pat_local env pat in
           CannotFail alloc_code ^^^
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
@@ -3506,7 +3513,7 @@ and compile_exp (env : E.t) exp =
   | ForE (p, e1, e2) ->
     SR.unit,
     let code1 = compile_exp_vanilla env e1 in
-    let (env1, alloc_code, code2) = compile_mono_pat env AllocHow.M.empty p in
+    let (env1, alloc_code, code2) = compile_mono_pat env p in
     let code3 = compile_exp_unit env1 e2 in
 
     let (set_i, get_i) = new_local env "iter" in
@@ -3667,15 +3674,24 @@ and fill_pat env pat : patternCode =
       orElse (CannotFail get_i ^^^ code1)
              (CannotFail get_i ^^^ code2)
 
+and alloc_pat_local env pat =
+  (fun (env,code) -> (env, G.with_region pat.at code)) @@
+  let (_,d) = Freevars.pat pat in
+  let env2 = AllocHow.S.fold (fun v env ->
+    let (env1, _i) = E.add_direct_local env  v
+    in env1
+  ) d env
+  in (env2, G.nop)
+
 and alloc_pat env how pat =
   (fun (env,code) -> (env, G.with_region pat.at code)) @@
   let (_,d) = Freevars.pat pat in
   AllocHow.S.fold (fun v (env,code0) ->
-    let (env1, code1) = AllocHow.add_local_default env how AllocHow.LocalImmut v
+    let (env1, code1) = AllocHow.add_local env how v
     in (env1, code0 ^^ code1)
   ) d (env, G.nop)
 
-and compile_pat env how pat : E.t * G.t * patternCode =
+and compile_pat_local env pat : E.t * G.t * patternCode =
   (* It returns:
      - the extended environment
      - the code to allocate memory
@@ -3684,14 +3700,14 @@ and compile_pat env how pat : E.t * G.t * patternCode =
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
-  let (env1, alloc_code) = alloc_pat env how pat in
+  let (env1, alloc_code) = alloc_pat_local env pat in
   let fill_code = fill_pat env1 pat in
   (env1, alloc_code, fill_code)
 
 (* Used for mono patterns (ForE) *)
-and compile_mono_pat env how pat =
-  let (env1, alloc_code, code) = compile_pat env how pat in
-  (env1, alloc_code, orTrap code)
+and compile_mono_pat env pat =
+  let (env1, alloc_code, fill_code) = compile_pat_local env pat in
+  (env1, alloc_code, orTrap fill_code)
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.
@@ -3724,7 +3740,7 @@ and compile_n_ary_pat env how pat =
    But if not, we need to construct the tuple first.
 *)
 and compile_func_pat env cc pat =
-  let (env1, alloc_code) = alloc_pat env AllocHow.M.empty pat in
+  let (env1, alloc_code) = alloc_pat_local env pat in
   let fill_code get =
     G.with_region pat.at @@
     if cc.Value.n_args = 1
