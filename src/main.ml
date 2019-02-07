@@ -94,8 +94,8 @@ let process_files files : unit =
 
 let () =
   (* 
-  Sys.catch_break true; - enable to get stacktrace on interrupt
-  (usefull for debugging infinite loops)
+  Sys.catch_break true; (* enable to get stacktrace on interrupt
+                           (usefull for debugging infinite loops) *)
   *)
   Printexc.record_backtrace true;
   try
@@ -104,3 +104,4 @@ let () =
     process_files !args
   with exn ->
     Interpret.print_exn exn
+

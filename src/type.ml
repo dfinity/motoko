@@ -390,7 +390,7 @@ let rel_list p env rel eq xs1 xs2 =
 let str = ref (fun _ -> failwith "")
 let rec rel_typ env rel eq t1 t2 =
 (*Printf.printf "[sub] %s == %s\n%!" (!str t1) (!str t2);*)
-  t1 == t2 || S.mem (t1, t2) !rel || begin
+  t1 == t2 || S.mem (t1, t2) !rel || begin (* crusso: why only test for physical equality of t1 == t2 *)
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
   | Any, Any ->
@@ -402,13 +402,16 @@ let rec rel_typ env rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
+    (con1 = con2 && rel_list eq_typ env rel eq ts1 ts2) ||
     (match Con.Env.find con1 env, Con.Env.find con2 env with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ env rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ env rel eq t1 (open_ ts2 t)
+(*
     | _ when con1 = con2 ->
       rel_list eq_typ env rel eq ts1 ts2
+ *)
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ env rel eq (open_ ts1 t) t2
     | _ ->
@@ -460,7 +463,7 @@ let rec rel_typ env rel eq t1 t2 =
     c1 = c2 &&
     (s1 = s2 || rel != eq && s1 = Construct) &&
     (match rel_binds env rel eq tbs1 tbs2 with
-    | Some (ts, env') ->
+     | Some (ts, env') ->
       rel_list rel_typ env' rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
       rel_list rel_typ env' rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
