@@ -1,3 +1,5 @@
+// TODO: make addClause private by passing it directly to Atom, Conj (in place of Join argument)
+// TODO: remove redundant types on fields
 type List<T> = ?{head: T; tail: List<T>};
 
 func rev<T>(l:List<T>) : List<T> {
