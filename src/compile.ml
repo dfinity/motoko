@@ -2932,10 +2932,9 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Destruct the argument *)
-      let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
+      let (env3, destruct_args_code) = mk_pat env2  in
 
       closure_code ^^
-      alloc_args_code ^^
       let get i = G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) in
       destruct_args_code get ^^
       mk_body env3
@@ -2965,10 +2964,9 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Destruct the argument *)
-      let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
+      let (env3, destruct_args_code) = mk_pat env2  in
 
       closure_code ^^
-      alloc_args_code ^^
       let get i =
         G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) ^^
         Serialization.deserialize env in
@@ -2993,10 +2991,8 @@ module FuncDec = struct
       OrthogonalPersistence.restore_mem env ^^
 
       (* Destruct the argument *)
-      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
+      let (env2, destruct_args_code) = mk_pat env1  in
 
-
-      alloc_args_code ^^
       let get i =
         G.i (LocalGet (nr (Int32.(add 0l (of_int i))))) ^^
         Serialization.deserialize env in
@@ -3502,8 +3498,7 @@ and compile_exp (env : E.t) exp =
       | (c::cs) ->
           let pat = c.it.pat in
           let e = c.it.exp in
-          let (env1, alloc_code, code) = compile_pat_local env pat in
-          CannotFail alloc_code ^^^
+          let (env1, code) = compile_pat_local env pat in
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
                  (go env cs)
@@ -3513,7 +3508,7 @@ and compile_exp (env : E.t) exp =
   | ForE (p, e1, e2) ->
     SR.unit,
     let code1 = compile_exp_vanilla env e1 in
-    let (env1, alloc_code, code2) = compile_mono_pat env p in
+    let (env1, code2) = compile_mono_pat env p in
     let code3 = compile_exp_unit env1 e2 in
 
     let (set_i, get_i) = new_local env "iter" in
@@ -3536,7 +3531,7 @@ and compile_exp (env : E.t) exp =
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ (ValBlockType None)
         G.nop
-        ( alloc_code ^^ get_oi ^^ Opt.project ^^
+        ( get_oi ^^ Opt.project ^^
           code2 ^^ code3 ^^ G.i (Br (nr 1l))
         )
     )
@@ -3675,13 +3670,11 @@ and fill_pat env pat : patternCode =
              (CannotFail get_i ^^^ code2)
 
 and alloc_pat_local env pat =
-  (fun (env,code) -> (env, G.with_region pat.at code)) @@
   let (_,d) = Freevars.pat pat in
-  let env2 = AllocHow.S.fold (fun v env ->
+  AllocHow.S.fold (fun v env ->
     let (env1, _i) = E.add_direct_local env  v
     in env1
   ) d env
-  in (env2, G.nop)
 
 and alloc_pat env how pat =
   (fun (env,code) -> (env, G.with_region pat.at code)) @@
@@ -3691,28 +3684,36 @@ and alloc_pat env how pat =
     in (env1, code0 ^^ code1)
   ) d (env, G.nop)
 
-and compile_pat_local env pat : E.t * G.t * patternCode =
+and compile_pat_local env pat : E.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to allocate memory
      - the code to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
-  let (env1, alloc_code) = alloc_pat_local env pat in
+  let env1 = alloc_pat_local env pat in
   let fill_code = fill_pat env1 pat in
-  (env1, alloc_code, fill_code)
+  (env1, fill_code)
 
 (* Used for mono patterns (ForE) *)
 and compile_mono_pat env pat =
-  let (env1, alloc_code, fill_code) = compile_pat_local env pat in
-  (env1, alloc_code, orTrap fill_code)
+  let (env1, fill_code) = compile_pat_local env pat in
+  (env1, orTrap fill_code)
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.
 *)
 and compile_n_ary_pat env how pat =
+  (* It returns:
+     - the extended environment
+     - the code to allocate memory
+     - the arity
+     - the code to do the pattern matching.
+       This expects the  undestructed value is on top of the stack,
+       consumes it, and fills the heap
+       If the pattern does not match, it branches to the depth at fail_depth.
+  *)
   let (env1, alloc_code) = alloc_pat env how pat in
   let arity, fill_code =
     (fun (sr,code) -> (sr, G.with_region pat.at code)) @@
@@ -3740,7 +3741,7 @@ and compile_n_ary_pat env how pat =
    But if not, we need to construct the tuple first.
 *)
 and compile_func_pat env cc pat =
-  let (env1, alloc_code) = alloc_pat_local env pat in
+  let env1 = alloc_pat_local env pat in
   let fill_code get =
     G.with_region pat.at @@
     if cc.Value.n_args = 1
@@ -3759,7 +3760,7 @@ and compile_func_pat env cc pat =
       | _ ->
         Array.lit env (Lib.List.table cc.Value.n_args (fun i -> get i)) ^^
         orTrap (fill_pat env1 pat) in
-  (env1, alloc_code, fill_code)
+  (env1, fill_code)
 
 and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
   (fun (pre_env,alloc_code,mk_code) ->
