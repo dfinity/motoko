@@ -87,6 +87,7 @@ func getBit(n:Nat, pos:Nat) : Bool {
   // Q: Are there bit-level operations planned for the future?
   // XXX: Temporary infinite loop here, as a "placeholder":
   getBit(n, pos)
+  //n & (1 << pos)
 };
 
 func empty<K,V>() : Trie<K,V> =
