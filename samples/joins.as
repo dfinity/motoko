@@ -1,15 +1,16 @@
-type List<T> = ?{head: T; var tail: List<T>};
+type List<T> = ?{head: T; tail: List<T>};
 
 func rev<T>(l:List<T>) : List<T> {
   func go<T>(l:List<T>, acc:List<T>) : List<T> {
     switch l {
       case (null) acc;
-      case (?l) go<T>(l.tail, ? (new { head = l.head; var tail = acc }));
+      case (?l) go<T>(l.tail, ? (new { head = l.head; tail = acc }));
     };
   };
   go<T>(l,null);
 };
 
+// mutable message queue
 class Queue<T>() {
   private var front : List<T> = null;
   private var back : List<T> = null;
@@ -22,7 +23,7 @@ class Queue<T>() {
   };
 
   enqueue(t : T) {
-    back := ? (new { head = t; var tail = back });
+    back := ? (new { head = t; tail = back });
   };
   dequeue() : T {
     switch (front,back)
@@ -60,7 +61,6 @@ class Chan<A> ( j : Join, i : Int ) = {
 };
 
 type Pat<A> = {
-     join : Join;
 //     And : <B> Chan<B> -> Pat<(A,B)>; // causes type-checker looping!
 //     And : <B> Chan<B> -> Conj<A,B>; // causes type-checker looping!
      Do : (A -> ()) -> ();
@@ -71,44 +71,34 @@ type Pat<A> = {
 //class Atom<A <: Shared>(c : Chan<A>) = this {
 type Atom<A> =
 {
-     join : Join;
+     And : <B>Chan<B> -> Conj<A,B>;
      Do : (A -> ()) -> ();
      match : () -> Bool;
      get : () -> A;
-     And : <B>Chan<B> -> Conj<A,B>;
 };
 
 type Conj<A,B> =
 {
-     join : Join;
+//     And : <C>Chan<C> -> Conj<(A,B),C>; // loops typechecker!
      Do : (((A,B)) -> ()) -> ();
      match : () -> Bool;
      get : () -> ((A,B));
-//     And : <C>Chan<C> -> Conj<(A,B),C>; // loops typechecker!
 };
 
-func Atom<A>(c : Chan<A>) : Atom<A> = new this {
-     join : Join = c.join;
-     chan : Chan<A> = c;
-
-     And<B>(c : Chan<B>):Conj<A,B> =
-          Conj<A,B>(this, c);
-
-     Do (c: A-> ()) { join.addClause(Clause<A>(this,c));};
+func Atom<A>(join : Join, chan : Chan<A>) : Atom<A> = new this {
+     And<B>(chan : Chan<B>):Conj<A,B> = Conj<A,B>(join, this, chan);
+     Do (cont: A-> ()) { join.addClause(Clause<A>(this, cont));};
 
      match():Bool { not(chan.isEmpty()); };
-
      get():A { chan.dequeue();}
 };
 
 //class Conj<A <: Shared, B <: Shared>(p:Pat<A>,c:Chan<B>) = this {
-func Conj<A,B>(p:Pat<A>, c:Chan<B>) : Conj<A,B> = new this {
-     join : Join = c.join;
-     pat : Pat<A> = p;
-     chan : Chan<B> = c;
-     And<C>(c : Chan<C>):Conj<(A,B),C> =
-     	 Conj<(A,B),C>(this,c);
-     Do (c: ((A,B)) -> ()) { join.addClause(Clause<(A,B)>(this,c));};
+func Conj<A,B>(join : Join, pat:Pat<A>, chan:Chan<B>) : Conj<A,B> = new this {
+     And<C>(chan : Chan<C>):Conj<(A,B),C> =
+     	 Conj<(A,B),C>(join, this, chan);
+     Do (cont: ((A,B)) -> ()) { join.addClause(Clause<(A,B)>(this, cont));};
+
      match():Bool { (pat.match() and (not (chan.isEmpty()))); };
      get():((A,B)) { (pat.get(), chan.dequeue());}
 };
@@ -119,7 +109,7 @@ class Join() = this {
   private var patterns : List<AbsClause> = null;
 
   addClause(c:AbsClause) {
-    patterns := ?(new { head = c; var tail = patterns });
+    patterns := ?(new { head = c; tail = patterns });
   };
 
   scan() {
@@ -142,7 +132,7 @@ class Join() = this {
     Chan<A>(this, count);
   };
 
-  When<A>(c:Chan<A>):Atom<A> = Atom<A>(c);
+  When<A>(c:Chan<A>):Atom<A> = Atom<A>(this, c);
 };
 
 type AbsClause = {
@@ -162,10 +152,10 @@ func Clause<A>(pat: Pat<A>, cont: A->()) : AbsClause = new {
 // an example
 
 actor Buffer = {
-    private j : Join = Join();
-    private put : Chan<Text> = j.Create<Text>();
-    private get : Chan<shared Text -> ()> = j.Create<shared Text-> ()>();
-    private dummy : () =
+    private j /* : Join */ = Join();
+    private put /* : Chan<Text> */ = j.Create<Text>();
+    private get /* : Chan<shared Text -> ()>  */ = j.Create<shared Text-> ()>();
+    private dummy /* : () */ =
       j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
       Do( func ( (t,c) : (Text, (shared Text -> ())))  {  // type annotation inference, please
 	    c(t);
