@@ -1226,10 +1226,9 @@ module Object = struct
      (* Return the pointer to the object *)
      get_ri
 
-  (* Returns a pointer to the object field *)
-  let idx_hash env indirect =
-    let rts_fun_name = if indirect then "obj_idx_mut" else "obj_idx" in
-    Func.share_code env rts_fun_name ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
+  (* Returns a pointer to the object field (without following the indirection) *)
+  let idx_hash_raw env =
+    Func.share_code env "obj_idx" ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
       let get_x = G.i (LocalGet (nr 0l)) in
       let get_hash = G.i (LocalGet (nr 1l)) in
       let (set_f, get_f) = new_local env "f" in
@@ -1254,16 +1253,25 @@ module Object = struct
         G.if_ (ValBlockType None)
           ( get_f ^^
             compile_add_const Heap.word_size ^^
-            (* dereference the indirection *)
-            ( if indirect
-              then load_ptr ^^ compile_add_const Heap.word_size
-              else G.nop) ^^
             set_r
           ) G.nop
       ) ^^
       get_r
     )
 
+  (* Returns a pointer to the object field (possibly following the indirection) *)
+  let idx_hash env indirect =
+    if indirect
+    then Func.share_code env "obj_idx_ind" ["x", I32Type; "hash", I32Type] [I32Type] (fun env ->
+      let get_x = G.i (LocalGet (nr 0l)) in
+      let get_hash = G.i (LocalGet (nr 1l)) in
+      get_x ^^ get_hash ^^
+      idx_hash_raw env ^^
+      load_ptr ^^ compile_add_const Heap.word_size
+    )
+    else idx_hash_raw env
+
+  (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type ({it = Syntax.Name s; _}) =
     let _, fields = Type.as_obj_sub "" (E.con_env env) obj_type in
     let field_typ = Type.lookup_field s fields in
@@ -1275,7 +1283,8 @@ module Object = struct
     idx_hash env (is_mut_field env obj_type name)
 
   let load_idx env obj_type f =
-    idx env obj_type f ^^ load_ptr
+    idx env obj_type f ^^
+    load_ptr
 
   let load_idx_immut env name =
     compile_unboxed_const (hash_field_name name) ^^
