@@ -30,6 +30,35 @@ let nr_ x = { it = x; at = no_region; note = () }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
+module SR = struct
+  (* This goes with the StackRep module, but we need the types earlier *)
+
+  (* Statically known values: They are not put on the stack, but the
+     “stack representation“ carries the static information.
+  *)
+  type static_thing =
+    | StaticFun of int32
+
+  (* Value representation on the stack:
+
+     Compiling an expression means putting its value on the stack. But
+     there are various ways of putting a value onto the stack -- unboxed,
+     tupled etc.
+   *)
+  type t =
+    | Vanilla
+    | UnboxedTuple of int
+    | UnboxedInt
+    | UnboxedReference
+    | Unreachable
+    | StaticThing of static_thing
+
+  let unit = UnboxedTuple 0
+
+  let bool = Vanilla
+
+end (* SR *)
+
 (*
 
 ** The compiler environment.
@@ -91,8 +120,8 @@ type 'env varloc =
    produce a value on demand:
  *)
 and 'env deferred_loc =
-  { allocate : 'env -> G.t
-  ; is_direct_call : int32 option (* To optimize known calls. *)
+  { materialize : 'env -> (SR.t * G.t)
+  ; materialize_vanilla : 'env -> G.t
   }
 
 module E = struct
@@ -233,6 +262,12 @@ module E = struct
       { env with local_vars_env = NameEnv.add name (Static ptr) env.local_vars_env }
 
   let add_local_deferred (env : t) name d =
+      { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
+
+  let add_local_deferred_vanilla (env : t) name materialize =
+      let d = {
+        materialize = (fun env -> (SR.Vanilla, materialize env));
+        materialize_vanilla = (fun env -> materialize env) } in
       { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
 
   let add_direct_local (env : t) name =
@@ -820,7 +855,7 @@ module Var = struct
 
   (* When accessing a variable that is a static function, then we need to create a
      heap-allocated closure-like thing on the fly. *)
-  let static_fun_pointer fi env =
+  let static_fun_pointer env fi =
     Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
       compile_unboxed_const 0l (* number of parameters: none *)
@@ -856,13 +891,18 @@ module Var = struct
     | Some (Deferred d) -> G.i Unreachable
     | None   -> G.i Unreachable
 
-  (* Returns the payload *)
-  let get_val env var = match E.lookup_var env var with
-    | Some (Local i)  -> G.i (LocalGet (nr i))
-    | Some (HeapInd (i, off))  -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
+  (* Returns the payload (vanialla representation) *)
+  let get_val_vanilla env var = match E.lookup_var env var with
+    | Some (Local i) -> G.i (LocalGet (nr i))
+    | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
     | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
-    | Some (Deferred d) -> d.allocate env
-    | None   -> G.i Unreachable
+    | Some (Deferred d) -> d.materialize_vanilla env
+    | None -> G.i Unreachable
+
+  (* Returns the payload (optimized representation) *)
+  let get_val env var = match E.lookup_var env var with
+    | Some (Deferred d) -> d.materialize env
+    | _ -> SR.Vanilla, get_val_vanilla env var
 
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
@@ -898,7 +938,7 @@ module Var = struct
 
   let get_val_ptr env var = match E.lookup_var env var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
-    | _  -> field_box env (get_val env var)
+    | _  -> field_box env (get_val_vanilla env var)
 
 end (* Var *)
 
@@ -2729,6 +2769,99 @@ module GC = struct
 end (* GC *)
 
 
+module StackRep = struct
+  open SR
+
+  (*
+     Most expression have a “preferred”, most optimal, form. Hence,
+     compile_exp put them on the stack in that form, and also returns
+     the form it chose.
+
+     But the users of compile_exp usually want a specific form as well.
+     So they use compile_exp_as, indicating the form they expect.
+     compile_exp_as then does the necessary coercions.
+   *)
+
+  let of_arity n =
+    if n = 1 then Vanilla else UnboxedTuple n
+
+  (* The stack rel of a primitive type, i.e. what the binary operators expect *)
+  let of_type : Type.typ -> t = function
+    | Type.Prim Type.Bool -> bool
+    | Type.Prim Type.Nat -> UnboxedInt
+    | Type.Prim Type.Int -> UnboxedInt
+    | Type.Prim Type.Text -> Vanilla
+    | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
+
+  let to_block_type env = function
+    | Vanilla -> ValBlockType (Some I32Type)
+    | UnboxedInt -> ValBlockType (Some I64Type)
+    | UnboxedReference -> ValBlockType (Some I32Type)
+    | UnboxedTuple 0 -> ValBlockType None
+    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
+    | StaticThing _ -> ValBlockType None
+    | Unreachable -> ValBlockType None
+
+  let to_string = function
+    | Vanilla -> "Vanilla"
+    | UnboxedInt -> "UnboxedInt"
+    | UnboxedReference -> "UnboxedReference"
+    | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
+    | Unreachable -> "Unreachable"
+    | StaticThing _ -> "StaticThing"
+
+  let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
+    | Unreachable, sr2 -> sr2
+    | sr1, Unreachable -> sr1
+    | UnboxedInt, UnboxedInt -> UnboxedInt
+    | UnboxedReference, UnboxedReference -> UnboxedReference
+    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
+    | _, Vanilla -> Vanilla
+    | Vanilla, _ -> Vanilla
+    | _, _ ->
+      Printf.eprintf "Invalid stack rep join (%s, %s)\n"
+        (to_string sr1) (to_string sr2); sr1
+
+  let drop env (sr_in : t) =
+    match sr_in with
+    | Vanilla -> G.i Drop
+    | UnboxedInt -> G.i Drop
+    | UnboxedReference -> G.i Drop
+    | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
+    | StaticThing _ -> G.nop
+    | Unreachable -> G.nop
+
+  let materialize env = function
+    | StaticFun fi -> Var.static_fun_pointer env fi
+
+  let adjust env (sr_in : t) sr_out =
+    if sr_in = sr_out
+    then G.nop
+    else match sr_in, sr_out with
+    | Unreachable, Unreachable -> G.nop
+    | Unreachable, _ -> G.i Unreachable
+
+    | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
+    | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
+
+    | UnboxedInt, Vanilla -> BoxedInt.box env
+    | Vanilla, UnboxedInt -> BoxedInt.unbox env
+
+    | UnboxedReference, Vanilla -> Dfinity.box_reference env
+    | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
+
+    | StaticThing s, Vanilla -> materialize env s
+    | StaticThing s, UnboxedTuple 0 -> G.nop
+
+    | _, _ ->
+      Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
+        (to_string sr_in) (to_string sr_out);
+      G.nop
+
+end (* StackRep *)
+
+
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
   (* We use the first table slot for calls to funcrefs *)
@@ -2763,7 +2896,7 @@ module FuncDec = struct
       ]
     )
 
-  let static_self_message_pointer name env =
+  let static_self_message_pointer env name =
     Dfinity.compile_databuf_of_bytes env name.it ^^
     export_self_message env
 
@@ -2860,7 +2993,10 @@ module FuncDec = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env cc name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
-      let d = { allocate = Var.static_fun_pointer fi; is_direct_call = Some fi } in
+      let d =
+        { materialize = (fun env -> (SR.StaticThing (SR.StaticFun fi), G.nop))
+        ; materialize_vanilla = (fun env -> Var.static_fun_pointer env fi)
+        } in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
       ( pre_env1, G.nop, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
@@ -2976,104 +3112,6 @@ module FuncDec = struct
 
 end (* FuncDec *)
 
-module StackRep = struct
-
-  (* Value representation on the stack:
-
-     Compiling an expression means putting its value on the stack. But
-     there are various ways of putting a value onto the stack -- unboxed,
-     tupled etc.
-   *)
-  type t =
-    | Vanilla
-    | UnboxedTuple of int
-    | UnboxedInt
-    | UnboxedReference
-    | Unreachable
-
-  let unit = UnboxedTuple 0
-
-  let bool = Vanilla
-
-  (*
-     Most expression have a “preferred”, most optimal, form. Hence,
-     compile_exp put them on the stack in that form, and also returns
-     the form it chose.
-
-     But the users of compile_exp usually want a specific form as well.
-     So they use compile_exp_as, indicating the form they expect.
-     compile_exp_as then does the necessary coercions.
-   *)
-
-  let of_arity n =
-    if n = 1 then Vanilla else UnboxedTuple n
-
-  (* The stack rel of a primitive type, i.e. what the binary operators expect *)
-  let of_type : Type.typ -> t = function
-    | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat -> UnboxedInt
-    | Type.Prim Type.Int -> UnboxedInt
-    | Type.Prim Type.Text -> Vanilla
-    | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
-
-  let to_block_type env = function
-    | Vanilla -> ValBlockType (Some I32Type)
-    | UnboxedInt -> ValBlockType (Some I64Type)
-    | UnboxedReference -> ValBlockType (Some I32Type)
-    | UnboxedTuple 0 -> ValBlockType None
-    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
-    | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
-    | Unreachable -> ValBlockType None
-
-  let to_string = function
-    | Vanilla -> "Vanilla"
-    | UnboxedInt -> "UnboxedInt"
-    | UnboxedReference -> "UnboxedReference"
-    | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
-    | Unreachable -> "Unreachable"
-
-  let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
-    | Unreachable, sr2 -> sr2
-    | sr1, Unreachable -> sr1
-    | UnboxedInt, UnboxedInt -> UnboxedInt
-    | UnboxedReference, UnboxedReference -> UnboxedReference
-    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
-    | _, Vanilla -> Vanilla
-    | Vanilla, _ -> Vanilla
-    | _, _ ->
-      Printf.eprintf "Invalid stack rep join (%s, %s)\n"
-        (to_string sr1) (to_string sr2); sr1
-
-  let drop env (sr_in : t) =
-    match sr_in with
-    | Vanilla -> G.i Drop
-    | UnboxedInt -> G.i Drop
-    | UnboxedReference -> G.i Drop
-    | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | Unreachable -> G.nop
-
-  let adjust env (sr_in : t) sr_out =
-    if sr_in = sr_out
-    then G.nop
-    else match sr_in, sr_out with
-    | Unreachable, Unreachable -> G.nop
-    | Unreachable, _ -> G.i Unreachable
-
-    | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
-    | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
-
-    | UnboxedInt, Vanilla -> BoxedInt.box env
-    | Vanilla, UnboxedInt -> BoxedInt.unbox env
-
-    | UnboxedReference, Vanilla -> Dfinity.box_reference env
-    | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
-
-    | _, _ ->
-      Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
-        (to_string sr_in) (to_string sr_out);
-      G.nop
-end
-
 
 module PatCode = struct
   (* Pattern failure code on demand.
@@ -3137,18 +3175,18 @@ open PatCode
 
 let compile_lit env lit = Syntax.(match lit with
   (* Booleans are directly in Vanilla representation *)
-  | BoolLit false -> StackRep.bool, Bool.lit false
-  | BoolLit true ->  StackRep.bool, Bool.lit true
+  | BoolLit false -> SR.bool, Bool.lit false
+  | BoolLit true ->  SR.bool, Bool.lit true
   (* This maps int to int32, instead of a proper arbitrary precision library *)
-  | IntLit n      -> StackRep.UnboxedInt,
+  | IntLit n      -> SR.UnboxedInt,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | NatLit n      -> StackRep.UnboxedInt,
+  | NatLit n      -> SR.UnboxedInt,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | NullLit       -> StackRep.Vanilla, Opt.null
-  | TextLit t     -> StackRep.Vanilla, Text.lit env t
-  | _ -> todo "compile_lit" (Arrange.lit lit) (StackRep.Vanilla, G.i Unreachable)
+  | NullLit       -> SR.Vanilla, Opt.null
+  | TextLit t     -> SR.Vanilla, Text.lit env t
+  | _ -> todo "compile_lit" (Arrange.lit lit) (SR.Vanilla, G.i Unreachable)
   )
 
 let compile_lit_as env sr_out lit =
@@ -3157,7 +3195,7 @@ let compile_lit_as env sr_out lit =
 
 let compile_unop env t op = Syntax.(match op with
   | NegOp ->
-      StackRep.UnboxedInt,
+      SR.UnboxedInt,
       Func.share_code env "neg" ["n", I64Type] [I64Type] (fun env ->
         let get_n = G.i (LocalGet (nr 0l)) in
         compile_const_64 0L ^^
@@ -3165,9 +3203,9 @@ let compile_unop env t op = Syntax.(match op with
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
   | PosOp ->
-      StackRep.UnboxedInt,
+      SR.UnboxedInt,
       G.nop
-  | _ -> todo "compile_unop" (Arrange.unop op) (StackRep.Vanilla, G.i Unreachable)
+  | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
 (* This returns a single StackRep, to be used for both arguments and the
@@ -3183,7 +3221,7 @@ let compile_binop env t op =
       let get_n1 = G.i (LocalGet (nr 0l)) in
       let get_n2 = G.i (LocalGet (nr 1l)) in
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      G.if_ (StackRep.to_block_type env StackRep.UnboxedInt)
+      G.if_ (StackRep.to_block_type env SR.UnboxedInt)
         (G.i Unreachable)
         (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
     )
@@ -3210,7 +3248,7 @@ let compile_relop env t op =
   Syntax.(match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-             G.if_ (StackRep.to_block_type env StackRep.bool)
+             G.if_ (StackRep.to_block_type env SR.bool)
                    (Bool.lit false) (Bool.lit true)
   | Type.Prim Type.Nat, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeU))
   | Type.Prim Type.Nat, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtU))
@@ -3234,7 +3272,7 @@ let rec compile_lexp (env : E.t) exp =
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_as env StackRep.UnboxedInt e2 ^^ (* idx *)
+     compile_exp_as env SR.UnboxedInt e2 ^^ (* idx *)
      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
      Array.idx env,
      store_ptr
@@ -3249,14 +3287,14 @@ and compile_exp (env : E.t) exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
   | IdxE (e1, e2)  ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to array *)
-    compile_exp_as env StackRep.UnboxedInt e2 ^^ (* idx *)
+    compile_exp_as env SR.UnboxedInt e2 ^^ (* idx *)
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Array.idx env ^^
     load_ptr
   | DotE (e, ({it = Syntax.Name n;_} as name)) ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     compile_exp_vanilla env e ^^
     begin match Array.fake_object_idx env n with
     | None -> Object.load_idx env e.note.note_typ name
@@ -3270,14 +3308,14 @@ and compile_exp (env : E.t) exp =
        )
     end
   | ActorDotE (e, ({it = Syntax.Name n;_} as name)) ->
-    StackRep.UnboxedReference,
+    SR.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else
-    compile_exp_as env StackRep.UnboxedReference e ^^
+    compile_exp_as env SR.UnboxedReference e ^^
     actor_fake_object_idx env {name with it = n}
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     begin
      compile_exp_vanilla env e1 ^^
      compile_exp_vanilla env e2 ^^
@@ -3291,26 +3329,25 @@ and compile_exp (env : E.t) exp =
     begin
       match p with
        | "abs" ->
-         StackRep.Vanilla,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
        | "printInt" ->
-         StackRep.unit,
+         SR.unit,
          compile_exp_vanilla env e ^^
          Dfinity.prim_printInt env
        | "print" ->
-         StackRep.unit,
+         SR.unit,
          compile_exp_vanilla env e ^^
          Dfinity.prim_print env
        | _ ->
-         StackRep.Unreachable,
+         SR.Unreachable,
          todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
   | VarE var ->
-    StackRep.Vanilla,
     Var.get_val env var.it
   | AssignE (e1,e2) ->
-    StackRep.unit,
+    SR.unit,
     let (prepare_code, store_code) = compile_lexp env e1  in
     prepare_code ^^
     compile_exp_vanilla env e2 ^^
@@ -3318,8 +3355,8 @@ and compile_exp (env : E.t) exp =
   | LitE l ->
     compile_lit env l
   | AssertE e1 ->
-    StackRep.unit,
-    compile_exp_as env StackRep.bool e1 ^^
+    SR.unit,
+    compile_exp_as env SR.bool e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
   | UnE (t, op, e1) ->
     let sr, code = compile_unop env t op in
@@ -3334,12 +3371,12 @@ and compile_exp (env : E.t) exp =
     code
   | RelE (t, e1, op, e2) ->
     let sr, code = compile_relop env t op in
-    StackRep.bool,
+    SR.bool,
     compile_exp_as env sr e1 ^^
     compile_exp_as env sr e2 ^^
     code
   | IfE (scrut, e1, e2) ->
-    let code_scrut = compile_exp_as env StackRep.bool scrut in
+    let code_scrut = compile_exp_as env SR.bool scrut in
     let sr1, code1 = compile_exp env e1 in
     let sr2, code2 = compile_exp env e2 in
     let sr = StackRep.join sr1 sr2 in
@@ -3355,8 +3392,8 @@ and compile_exp (env : E.t) exp =
        or any of the nested returns. Hard to tell which is the best
        stack representation here.
        So let’s go with Vanialla. *)
-    StackRep.Vanilla,
-    G.block_ (StackRep.to_block_type env StackRep.Vanilla) (
+    SR.Vanilla,
+    G.block_ (StackRep.to_block_type env SR.Vanilla) (
       G.with_current_depth (fun depth ->
         let env1 = E.add_label env name depth in
         compile_exp_vanilla env1 e
@@ -3364,49 +3401,49 @@ and compile_exp (env : E.t) exp =
     )
   | BreakE (name, e) ->
     let d = E.get_label_depth env name in
-    StackRep.Unreachable,
+    SR.Unreachable,
     compile_exp_vanilla env e ^^
     G.branch_to_ d
   | LoopE (e, None) ->
-    StackRep.Unreachable,
+    SR.Unreachable,
     G.loop_ (ValBlockType None) (compile_exp_unit env e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
   | LoopE (e1, Some e2) ->
-    StackRep.unit,
+    SR.unit,
     G.loop_ (ValBlockType None) (
       compile_exp_unit env e1 ^^
-      compile_exp_as env StackRep.bool e2 ^^
+      compile_exp_as env SR.bool e2 ^^
       G.if_ (ValBlockType None) (G.i (Br (nr 1l))) G.nop
     )
   | WhileE (e1, e2) ->
-    StackRep.unit,
+    SR.unit,
     G.loop_ (ValBlockType None) (
-      compile_exp_as env StackRep.bool e1 ^^
+      compile_exp_as env SR.bool e1 ^^
       G.if_ (ValBlockType None) (
         compile_exp_unit env e2 ^^
         G.i (Br (nr 1l))
       ) G.nop
     )
   | RetE e ->
-    StackRep.Unreachable,
+    SR.Unreachable,
     compile_exp_as env (StackRep.of_arity (E.get_n_res env)) e ^^
     G.i Return
   | OptE e ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
   | TupE es ->
-    StackRep.UnboxedTuple (List.length es),
+    SR.UnboxedTuple (List.length es),
     G.concat_map (compile_exp_vanilla env) es
   | ProjE (e1,n) ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
     Tuple.load_n (Int32.of_int n)
   | ArrayE (m, t, es) ->
-    StackRep.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
+    SR.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
   | ActorE (name, fs, _) ->
-    StackRep.UnboxedReference,
+    SR.UnboxedReference,
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
@@ -3414,29 +3451,31 @@ and compile_exp (env : E.t) exp =
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
   | CallE (cc, e1, _, e2) ->
     StackRep.of_arity (cc.Value.n_res),
-    begin match isDirectCall env e1, cc.Value.sort with
-     | Some fi, _ ->
+    let fun_sr, code1 = compile_exp env e1 in
+    begin match fun_sr, cc.Value.sort with
+     | SR.StaticThing (SR.StaticFun fi), _ ->
+        code1 ^^
         compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^ (* the args *)
         G.i (Call (nr fi))
-     | None, Type.Local ->
+     | _, Type.Local ->
         let (set_clos, get_clos) = new_local env "clos" in
-        compile_exp_vanilla env e1 ^^
+        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
         set_clos ^^
         get_clos ^^
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
         get_clos ^^
         Closure.call_closure env cc
-     | None, Type.Sharable ->
+     | _, Type.Sharable ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
-        compile_exp_as env StackRep.UnboxedReference e1 ^^
+        code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
         Serialization.serialize_n env cc.Value.n_args ^^
         FuncDec.call_funcref env cc get_funcref
     end
   | SwitchE (e, cs) ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     let code1 = compile_exp_vanilla env e in
     let (set_i, get_i) = new_local env "switch_in" in
     let (set_j, get_j) = new_local env "switch_out" in
@@ -3455,7 +3494,7 @@ and compile_exp (env : E.t) exp =
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap code2 ^^ get_j
   | ForE (p, e1, e2) ->
-    StackRep.unit,
+    SR.unit,
     let code1 = compile_exp_vanilla env e1 in
     let (env1, alloc_code, code2) = compile_mono_pat env AllocHow.M.empty p in
     let code3 = compile_exp_unit env1 e2 in
@@ -3493,30 +3532,22 @@ and compile_exp (env : E.t) exp =
     G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
-    StackRep.unit,
+    SR.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
   | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
-    StackRep.Vanilla,
+    SR.Vanilla,
     let fs' = fs |> List.map
       (fun (name, id) -> (name, fun env ->
         if Object.is_mut_field env exp.note.note_typ name
         then Var.get_val_ptr env id.it
-        else Var.get_val env id.it)) in
+        else Var.get_val_vanilla env id.it)) in
     Object.lit_raw env fs'
-  | _ -> StackRep.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i Unreachable)
-
-and isDirectCall env e = match e.it with
-  | VarE var ->
-    begin match E.lookup_var env var.it with
-    | Some (Deferred d) -> d.is_direct_call
-    | _ -> None
-    end
-  | _ -> None
+  | _ -> SR.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i Unreachable)
 
 and compile_exp_as env sr_out e =
-  let sr_in, code = compile_exp env e in
   G.with_region e.at (
+    let sr_in, code = compile_exp env e in
     code ^^ StackRep.adjust env sr_in sr_out
   )
 
@@ -3530,10 +3561,10 @@ and compile_exp_as_opt env sr_out_o e =
   )
 
 and compile_exp_vanilla (env : E.t) exp =
-  compile_exp_as env StackRep.Vanilla exp
+  compile_exp_as env SR.Vanilla exp
 
 and compile_exp_unit (env : E.t) exp =
-  compile_exp_as env StackRep.unit exp
+  compile_exp_as env SR.unit exp
 
 
 (*
@@ -3567,7 +3598,7 @@ enabled mutual recursion.
 and compile_lit_pat env l =
   match l with
   | Syntax.NullLit ->
-    compile_lit_as env StackRep.Vanilla l ^^
+    compile_lit_as env SR.Vanilla l ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.BoolLit true ->
     G.nop
@@ -3576,7 +3607,7 @@ and compile_lit_pat env l =
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
     BoxedInt.unbox env ^^
-    compile_lit_as env StackRep.UnboxedInt l ^^
+    compile_lit_as env SR.UnboxedInt l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
@@ -3664,14 +3695,14 @@ and compile_n_ary_pat env how pat =
     | WildP -> None, G.nop
     (* The good case: We have a tuple pattern *)
     | TupP ps when List.length ps <> 1 ->
-      Some (StackRep.UnboxedTuple (List.length ps)),
+      Some (SR.UnboxedTuple (List.length ps)),
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
       G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
     (* The general case: Create a single value, match that. *)
     | _ ->
-      Some StackRep.Vanilla,
+      Some SR.Vanilla,
       orTrap (fill_pat env1 pat)
   in (env1, alloc_code, arity, fill_code)
 
@@ -3704,22 +3735,22 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, alloc_code, fill_code)
 
-and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)) =
+and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
   (fun (pre_env,alloc_code,mk_code) ->
        (pre_env, G.with_region dec.at alloc_code, fun env ->
          (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
   match dec.it with
   | TypD (c,k) ->
     let pre_env1 = E.add_con pre_env c k in
-    (pre_env1, G.nop, fun _ -> StackRep.unit, G.nop)
+    (pre_env1, G.nop, fun _ -> SR.unit, G.nop)
   | ExpD e -> (pre_env, G.nop, fun env ->
     if as_unit
-    then StackRep.unit, compile_exp_unit env e
+    then SR.unit, compile_exp_unit env e
     else compile_exp env e)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      StackRep.unit,
+      SR.unit,
       compile_exp_as_opt env pat_arity e ^^
       fill_code
     )
@@ -3729,7 +3760,7 @@ and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        StackRep.unit,
+        SR.unit,
         compile_exp_vanilla env e ^^
         Var.set_val env name.it
       )
@@ -3741,17 +3772,19 @@ and compile_dec pre_env as_unit how dec : E.t * G.t * (E.t -> (StackRep.t * G.t)
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
       (pre_env1, alloc_code, fun env ->
         if as_unit
-        then StackRep.unit, mk_code env
-        else StackRep.Vanilla, mk_code env ^^ Var.get_val env name.it
+        then SR.unit, mk_code env
+        else
+          let sr, code = Var.get_val env name.it in
+          sr, mk_code env ^^ code
       )
 
-and compile_decs env as_unit decs : StackRep.t * G.t =
+and compile_decs env as_unit decs : SR.t * G.t =
   snd (compile_decs_block env as_unit decs)
 
-and compile_decs_block env as_unit decs : (E.t * (StackRep.t * G.t)) =
+and compile_decs_block env as_unit decs : (E.t * (SR.t * G.t)) =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, G.nop, fun _ -> (StackRep.unit, G.nop))
+    | []          -> (pre_env, G.nop, fun _ -> (SR.unit, G.nop))
     | [dec]       -> compile_dec pre_env as_unit how dec
     | (dec::decs) ->
         let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env true how dec in
@@ -3760,7 +3793,7 @@ and compile_decs_block env as_unit decs : (E.t * (StackRep.t * G.t)) =
           alloc_code1 ^^ alloc_code2,
           fun env ->
             let (sr1, code1) = mk_code1 env in
-            assert (sr1 = StackRep.unit);
+            assert (sr1 = SR.unit);
             let (sr2, code2) = mk_code2 env in
             (sr2, code1 ^^ StackRep.drop env sr1 ^^ code2)
          ) in
@@ -3771,7 +3804,7 @@ and compile_decs_block env as_unit decs : (E.t * (StackRep.t * G.t)) =
 and compile_prelude env =
   (* Allocate the primitive functions *)
   let (env1, (sr, code)) = compile_decs_block env true (E.get_prelude env).it in
-  assert (sr = StackRep.unit);
+  assert (sr = SR.unit);
   (env1, code ^^ StackRep.drop env sr)
 
 (* Is this a hack? When determining whether an actor is closed,
@@ -3793,7 +3826,7 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
         G.with_region prog.at @@
         let (env1, (sr, code1)) = compile_decs_block env true prog.it in
         let code2 = go env1 progs in
-        assert (sr = StackRep.unit);
+        assert (sr = SR.unit);
         code1 ^^ StackRep.drop env1 sr ^^ code2 in
     go env1 progs
     )
@@ -3824,8 +3857,8 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
     name = Dfinity.explode name.it;
     edesc = nr (FuncExport (nr fi))
   });
-  let d = { allocate = FuncDec.static_self_message_pointer name; is_direct_call = None } in
-  let pre_env1 = E.add_local_deferred pre_env name.it d in
+  let pre_env1 = E.add_local_deferred_vanilla pre_env name.it
+    (fun env -> FuncDec.static_self_message_pointer env name) in
 
   ( pre_env1, fun env -> G.with_region f.at @@
     let mk_pat inner_env = compile_func_pat inner_env cc pat in
@@ -3865,8 +3898,7 @@ and actor_lit outer_env name fs at =
       let (env4, prelude_code) = compile_prelude env3 in
 
       (* Bind the self pointer *)
-      let d = { allocate = Dfinity.get_self_reference; is_direct_call = None } in
-      let env5 = E.add_local_deferred env4 name.it d in
+      let env5 = E.add_local_deferred_vanilla env4 name.it Dfinity.get_self_reference in
       let (_env6, init_code)  = compile_actor_fields env5 fs in
 
       prelude_code ^^ init_code) in
