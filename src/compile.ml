@@ -3010,7 +3010,7 @@ module FuncDec = struct
       let is_local = cc.Value.sort <> Type.Sharable in
 
       let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
-      let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it h in
+      let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it (Some h) in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
       let alloc_code =
@@ -3108,7 +3108,7 @@ module FuncDec = struct
         assert is_local;
         dec_closed pre_env cc name mk_pat mk_body at
       | Some h ->
-        dec_closure pre_env cc (Some h) name captured mk_pat mk_body at
+        dec_closure pre_env cc h name captured mk_pat mk_body at
 
 end (* FuncDec *)
 
