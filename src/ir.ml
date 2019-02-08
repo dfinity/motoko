@@ -3,7 +3,7 @@ type type_note = Syntax.typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 type 'a phrase = ('a, Syntax.typ_note) Source.annotated_phrase
 
-type typ_bind = (Type.bind, Type.typ) Source.annotated_phrase
+type typ_bind = Type.open_bind Source.phrase
 
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =

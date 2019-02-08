@@ -52,6 +52,9 @@ let rec typ (t:Type.typ) = match t with
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]
 
+and open_typ_bind (tb : Type.open_bind) =
+  Con.to_string tb.con $$ [typ tb.con_bound]
+
 and typ_field (tf : Type.field) =
   tf.name $$ [typ tf.typ]
 

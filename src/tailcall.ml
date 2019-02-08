@@ -64,10 +64,10 @@ let bind env i (info:func_info option) : env =
 
 let are_generic_insts tbs insts =
   List.for_all2 (fun tb inst ->
-      match tb.note, inst with
-      | Con(c1,[]), Con(c2,[]) -> c1 = c2 (* conservative, but safe *)
-      | Con(c1,[]), _ -> false
-      | _,_ -> assert false) tbs insts
+      match inst with
+      | Con(c2,[]) -> tb.it.Type.con = c2 (* conservative, but safe *)
+      |  _ -> false
+      ) tbs insts
 
 let rec tailexp env e =
   {e with it = exp' env e}
@@ -210,7 +210,7 @@ and dec' env d =
       in
       let env3 = pat env2 p  in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
-      let cs = List.map (fun tb -> tb.note) tbs in
+      let cs = List.map (fun tb -> Con (tb.it.Type.con, [])) tbs in
       if !tail_called then
         let ids = match typ d with
           | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_id (open_ cs t)) dom

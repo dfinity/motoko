@@ -38,6 +38,7 @@ and typ =
   | Pre                                       (* pre-type *)
 
 and bind = {var : string; bound : typ}
+and open_bind = {con : con; con_bound : typ}
 and field = {name : string; typ : typ}
 
 (* field ordering *)
@@ -129,6 +130,7 @@ val glb : con_env -> typ -> typ -> typ
 
 val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
+val close_open_binds : con list -> open_bind list -> bind list
 
 val open_ : typ list -> typ -> typ
 val open_binds : con_env -> bind list -> typ list * con_env
