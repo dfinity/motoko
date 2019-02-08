@@ -225,36 +225,6 @@ let loopE exp1 exp2Opt =
              S.note_typ = Type.Non }
   }
 
-let loopWhileE' exp1 exp2 =
-  (*
-    loop e1 while e2
-     ~~>
-    label l: loop { e1 ; if e2 then break l else continue l }
-  *)
-  LoopE(exp1,Some exp2)
-
-let whileE' exp1 exp2 =
-  (*
-    while e1 e2
-    ~~>
-    label l: loop { if e1 then { e2 ; continue l } else break l }
-  *)
-  WhileE(exp1,exp2)
-
-let forE' pat exp1 exp2 =
-  (*
-    for x in e1 e2
-    ~~>
-    label l: loop {
-      switch e1.next() {
-        case null { break l };
-        case x    { e2 ; continue l };
-      }
-    }
-   *)
-  ForE(pat,exp1,exp2)
-
-
 let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
@@ -298,7 +268,6 @@ let varD x exp = { it = VarD (x, exp);
                  }
 
 let expD exp =  { exp with it = ExpD exp }
-
 
 (* let expressions (derived) *)
 
@@ -420,4 +389,58 @@ let prim_async typ =
   primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ =
+<<<<<<< HEAD
   primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+=======
+  primE "@await" (T.Func (T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+
+(* derived loop forms; each can be expressed as an unconditional loop *)
+
+let loopWhileE exp1 exp2 =
+  (* loop e1 while e2
+    ~~> label l: loop {
+          let () = e1 ;
+          let x2 = e2 ;
+          if x2 { break l x1 } else { } }
+   *)
+  let id2 = fresh_id exp2.note.S.note_typ in
+  let lab = fresh_lab () in
+  let ty1 = Type.unit in
+  labelE lab ty1 (
+      loopE (
+          blockE [
+              expD exp1 ;
+              letD id2 exp2 ;
+              expD (ifE id2
+                      (breakE lab (tupE []) ty1)
+                      (tupE [])
+                      ty1
+                )
+            ]
+        ) None
+    )
+
+(* LoopE(exp1,Some exp2) *)
+let loopWhileE' exp1 exp2 = (loopWhileE exp1 exp2).it
+
+let whileE' exp1 exp2 =
+  (*
+    while e1 e2
+    ~~>
+    label l: loop { if e1 then { e2 ; continue l } else break l }
+  *)
+  WhileE(exp1,exp2)
+
+let forE' pat exp1 exp2 =
+  (*
+    for x in e1 e2
+    ~~>
+    label l: loop {
+      switch e1.next() {
+        case null { break l };
+        case x    { e2 ; continue l };
+      }
+    }
+   *)
+  ForE(pat,exp1,exp2)
+>>>>>>> 1/3 of the derived loop forms in Construct; triggering WASM test errors
