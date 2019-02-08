@@ -399,7 +399,7 @@ let loopWhileE exp1 exp2 =
     ~~> label l: loop {
           let () = e1 ;
           let x2 = e2 ;
-          if x2 { } else { break } }
+          if x2 { } else { break l } }
    *)
   let id2 = fresh_id exp2.note.S.note_typ in
   let lab = fresh_lab () in
@@ -422,10 +422,10 @@ let loopWhileE exp1 exp2 =
 let loopWhileE' exp1 exp2 = (loopWhileE exp1 exp2).it
 
 let whileE exp1 exp2 =
-  (*
-    while e1 e2
-    ~~>
-    label l: loop { if e1 then { e2 ; continue l } else break l }
+  (* while e1 e2
+     ~~> label l: loop {
+           let x1 = e1 ;
+           if x1 then { e2 } else { break l } }
   *)
   let ty1 = exp1.note.S.note_typ in
   let id1 = fresh_id ty1 in
@@ -435,7 +435,7 @@ let whileE exp1 exp2 =
       loopE (
           blockE [
               letD id1 exp1 ;
-              expD (ifE id1 
+              expD (ifE id1
                       exp2
                       (breakE lab (tupE []) ty2)
                       ty2
@@ -446,15 +446,58 @@ let whileE exp1 exp2 =
 
 let whileE' exp1 exp2 = (whileE exp1 exp2).it
 
-let forE' pat exp1 exp2 =
-  (*
-    for x in e1 e2
-    ~~>
-    label l: loop {
-      switch e1.next() {
-        case null { break l };
-        case x    { e2 ; continue l };
-      }
-    }
+let forE pat exp1 exp2 =
+  (* for p in e1 e2
+     ~~>
+     let x1 = e1 ;
+     let nxt = e1.next ;
+     label l: loop {
+       let x1' = nxt () ;
+       switch x1' {
+         case null { break l };
+         case p    { e2 };
+       }
+     } *)
+  let lab = fresh_lab () in
+  let tyu = Type.unit in
+  let ty1 = exp1.note.S.note_typ in
+
+  (* XXX: not sure how to get type info for `next` function...
+     - ...how to do I supply a non-empty con_env for `as_obj_sub` ?
    *)
-  ForE(pat,exp1,exp2)
+  let _, tfs  = Type.as_obj_sub "next" (Con.Env.from_list []) ty1 in
+  let tnxt    = T.lookup_field "next" tfs in
+  let ty1_ret = match (T.as_func tnxt) with
+    | _,_,_,_,[x] -> x
+    | _           -> failwith "invalid return type"
+  in
+
+  let id1  = fresh_id ty1 in
+  let nxt  = fresh_id tnxt in
+  let id1' = fresh_id ty1_ret in
+  (*
+  Printf.eprintf "XXX ty1     = %s\n" (T.string_of_typ ty1);
+  Printf.eprintf "XXX tnxt    = %s\n" (T.string_of_typ tnxt);
+  Printf.eprintf "XXX ty1_ret = %s\n" (T.string_of_typ ty1_ret);
+   *)
+  blockE [
+      letD id1 exp1 ;
+      letD nxt (dotE id1 (nameN "next") tnxt) ;
+      expD (
+          labelE lab tyu (
+              loopE (
+                  blockE [
+                      letD id1' (callE nxt [] (tupE []) ty1_ret);
+                      expD (
+                          switch_optE id1
+                            (breakE lab (tupE []) tyu)
+                            pat exp2
+                            tyu
+                        )
+                    ]
+                ) None
+            )
+        )
+    ]
+
+let forE' pat exp1 exp2 = (forE pat exp1 exp2).it
