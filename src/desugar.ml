@@ -132,7 +132,7 @@ and typ_bind tb =
     | Some c -> c
     | _ -> assert false
   in
-  { it = { T.con = c; T.con_bound = tb.it.S.bound.note}
+  { it = { Ir.con = c; Ir.bound = tb.it.S.bound.note}
   ; at = tb.at
   ; note = ()
   }

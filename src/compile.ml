@@ -239,8 +239,8 @@ module E = struct
        This shoulds be extracte into Type.add_open_typ_binds
        and maybe we need a type open_typ_bind that can be used inside the IR.
     *)
-    let cs = List.map (fun tp -> tp.it.Type.con) typ_binds in
-    let ks = List.map (fun tp -> Type.Abs([],tp.it.Type.con_bound)) typ_binds in
+    let cs = List.map (fun tp -> tp.it.con) typ_binds in
+    let ks = List.map (fun tp -> Type.Abs([],tp.it.bound)) typ_binds in
     let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
     { env with con_env = Con.Env.adjoin env.con_env ce }
 

@@ -38,7 +38,6 @@ and typ =
   | Pre                                       (* pre-type *)
 
 and bind = {var : string; bound : typ}
-and open_bind = {con : con; con_bound : typ}
 and field = {name : string; typ : typ}
 
 (* field ordering *)
@@ -173,9 +172,6 @@ let close cs t =
 let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
-
-let close_open_binds cs tbs =
-  List.map (fun {con; con_bound} -> {var = Con.name con; bound = close cs con_bound}) tbs
 
 
 let rec open' i ts t =

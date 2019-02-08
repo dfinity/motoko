@@ -317,12 +317,12 @@ and t_dec' dec' =
     begin
       match s with
       | T.Local  ->
-         FuncD (cc, id, t_typ_open_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+         FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
       | T.Sharable ->
          begin
            match typ exp with
            | T.Tup [] ->
-              FuncD (cc, id, t_typ_open_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+              FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
            | T.Async res_typ ->
              let cc' = Value.message_cc (cc.Value.n_args + 1) in
              let res_typ = t_typ res_typ in
@@ -331,7 +331,7 @@ and t_dec' dec' =
              let typ' = T.Tup []  in
              let k = fresh_id reply_typ in
              let pat',d = extendTupP pat (varP k) in
-             let typbinds' = t_typ_open_binds typbinds in
+             let typbinds' = t_typ_binds typbinds in
              let x = fresh_id res_typ in
              let exp' =
                match exp.it with
@@ -375,13 +375,13 @@ and t_pat' pat =
   | AltP (pat1, pat2) ->
     AltP (t_pat pat1, t_pat pat2)
 
-and t_open_bind {con; con_bound} =
-  {con; con_bound = t_typ con_bound}
+and t_typ_bind' {con; bound} =
+  {con; bound = t_typ bound}
 
-and t_typ_open_bind typ_bind =
-  { typ_bind with it = t_open_bind typ_bind.it }
+and t_typ_bind typ_bind =
+  { typ_bind with it = t_typ_bind' typ_bind.it }
 
-and t_typ_open_binds typbinds = List.map t_typ_open_bind typbinds
+and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
 and t_prog prog:prog = { prog with it = t_decs prog.it }
 

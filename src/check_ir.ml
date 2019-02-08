@@ -693,12 +693,15 @@ and cons_of_typ_binds typ_binds =
   List.map con_of_typ_bind typ_binds
 
 and check_open_typ_binds env typ_binds =
-  let cs = List.map (fun tp -> tp.it.T.con) typ_binds in
-  let ks = List.map (fun tp -> T.Abs([],tp.it.T.con_bound)) typ_binds in
+  let cs = List.map (fun tp -> tp.it.con) typ_binds in
+  let ks = List.map (fun tp -> T.Abs([],tp.it.bound)) typ_binds in
   let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
-  let binds = T.close_open_binds cs (List.map (fun tb -> tb.it) typ_binds) in
+  let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
   cs,ce
+
+and close_typ_binds cs tbs =
+  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -777,7 +780,7 @@ and gather_dec env scope dec : scope =
     { scope with val_env = ve}
   | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
     let func_sort = call_conv.Value.sort in
-    let cs = List.map (fun tb -> tb.it.T.con) typ_binds in
+    let cs = List.map (fun tb -> tb.it.con) typ_binds in
     let t1 = pat.note in
     let t2 = typ in
     let ts1 = match call_conv.Value.n_args with
@@ -792,7 +795,7 @@ and gather_dec env scope dec : scope =
       | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
-    let ts = List.map (fun typbind -> typbind.it.T.con_bound) typ_binds in
+    let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
