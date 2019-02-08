@@ -965,6 +965,12 @@ module AllocHow = struct
       (Freevars.captured_vars f)
       (set_of_map how)))
 
+  let is_static_exp env how0 exp = match exp.it with
+    | BlockE ([{ it = FuncD _; _} as dec],_) ->
+      let f = Freevars.close (Freevars.dec dec) in
+      is_static env how0 f
+    | _ -> false
+
   let dec env (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
 
@@ -978,6 +984,9 @@ module AllocHow = struct
       map_of_set LocalImmut d
       (* Static functions *)
       | FuncD _ when is_static env how0 f ->
+      M.empty
+      (* Static functions in an let-expression *)
+      | LetD ({it = VarP _; _}, e) when is_static_exp env how0 e ->
       M.empty
       (* Everything else needs at least a local *)
       | _ ->
@@ -1025,14 +1034,10 @@ module AllocHow = struct
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
       (env1, alloc_code)
-    | _ -> (env, G.nop)
+    | None -> (env, G.nop)
 
   let add_local env how name =
     add_how env name (M.find_opt name how)
-
-  let add_local_default env how def name = match M.find_opt name how with
-    | Some h -> add_how env name (Some h)
-    | None   -> add_how env name (Some def)
 
 end (* AllocHow *)
 
@@ -2690,6 +2695,11 @@ module StackRep = struct
   let materialize env = function
     | StaticFun fi -> Var.static_fun_pointer env fi
 
+  let deferred_of_static_think env s =
+    { materialize = (fun env -> (StaticThing s, G.nop))
+    ; materialize_vanilla = (fun env -> materialize env s)
+    }
+
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
     then G.nop
@@ -2766,10 +2776,9 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Destruct the argument *)
-      let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
+      let (env3, destruct_args_code) = mk_pat env2  in
 
       closure_code ^^
-      alloc_args_code ^^
       let get i = G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) in
       destruct_args_code get ^^
       mk_body env3
@@ -2796,10 +2805,9 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Destruct the argument *)
-      let (env3, alloc_args_code, destruct_args_code) = mk_pat env2  in
+      let (env3, destruct_args_code) = mk_pat env2  in
 
       closure_code ^^
-      alloc_args_code ^^
       let get i =
         G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) ^^
         Serialization.deserialize env in
@@ -2818,10 +2826,8 @@ module FuncDec = struct
     (* Messages take no closure, return nothing*)
     Func.of_body env args [] (fun env1 ->
       (* Destruct the argument *)
-      let (env2, alloc_args_code, destruct_args_code) = mk_pat env1  in
+      let (env2, destruct_args_code) = mk_pat env1  in
 
-
-      alloc_args_code ^^
       let get i =
         G.i (LocalGet (nr (Int32.(add 0l (of_int i))))) ^^
         Serialization.deserialize env in
@@ -2835,16 +2841,12 @@ module FuncDec = struct
   (* Compile a closed function declaration (has no free variables) *)
   let dec_closed pre_env cc name mk_pat mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name.it in
-      let d =
-        { materialize = (fun env -> (SR.StaticThing (SR.StaticFun fi), G.nop))
-        ; materialize_vanilla = (fun env -> Var.static_fun_pointer env fi)
-        } in
+      let d = StackRep.deferred_of_static_think pre_env (SR.StaticFun fi) in
       let pre_env1 = E.add_local_deferred pre_env name.it d in
-      ( pre_env1, G.nop, fun env ->
+      ( pre_env1, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
         let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
-        fill f;
-        G.nop
+        fill f
       )
 
   (* Compile a closure declaration (has free variables) *)
@@ -2947,7 +2949,8 @@ module FuncDec = struct
     else match AllocHow.M.find_opt name.it how with
       | None ->
         assert is_local;
-        dec_closed pre_env cc name mk_pat mk_body at
+        let (pre_env1, fill) = dec_closed pre_env cc name mk_pat mk_body at in
+        (pre_env1, G.nop, fun env -> fill env; G.nop)
       | Some h ->
         dec_closure pre_env cc h name captured mk_pat mk_body at
 
@@ -3326,8 +3329,7 @@ and compile_exp (env : E.t) exp =
       | (c::cs) ->
           let pat = c.it.pat in
           let e = c.it.exp in
-          let (env1, alloc_code, code) = compile_pat env AllocHow.M.empty pat in
-          CannotFail alloc_code ^^^
+          let (env1, code) = compile_pat_local env pat in
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
                  (go env cs)
@@ -3337,7 +3339,7 @@ and compile_exp (env : E.t) exp =
   | ForE (p, e1, e2) ->
     SR.unit,
     let code1 = compile_exp_vanilla env e1 in
-    let (env1, alloc_code, code2) = compile_mono_pat env AllocHow.M.empty p in
+    let (env1, code2) = compile_mono_pat env p in
     let code3 = compile_exp_unit env1 e2 in
 
     let (set_i, get_i) = new_local env "iter" in
@@ -3360,7 +3362,7 @@ and compile_exp (env : E.t) exp =
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ (ValBlockType None)
         G.nop
-        ( alloc_code ^^ get_oi ^^ Opt.project ^^
+        ( get_oi ^^ Opt.project ^^
           code2 ^^ code3 ^^ G.i (Br (nr 1l))
         )
     )
@@ -3498,36 +3500,51 @@ and fill_pat env pat : patternCode =
       orElse (CannotFail get_i ^^^ code1)
              (CannotFail get_i ^^^ code2)
 
+and alloc_pat_local env pat =
+  let (_,d) = Freevars.pat pat in
+  AllocHow.S.fold (fun v env ->
+    let (env1, _i) = E.add_direct_local env  v
+    in env1
+  ) d env
+
 and alloc_pat env how pat =
   (fun (env,code) -> (env, G.with_region pat.at code)) @@
   let (_,d) = Freevars.pat pat in
   AllocHow.S.fold (fun v (env,code0) ->
-    let (env1, code1) = AllocHow.add_local_default env how AllocHow.LocalImmut v
+    let (env1, code1) = AllocHow.add_local env how v
     in (env1, code0 ^^ code1)
   ) d (env, G.nop)
 
-and compile_pat env how pat : E.t * G.t * patternCode =
+and compile_pat_local env pat : E.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to allocate memory
      - the code to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
-  let (env1, alloc_code) = alloc_pat env how pat in
+  let env1 = alloc_pat_local env pat in
   let fill_code = fill_pat env1 pat in
-  (env1, alloc_code, fill_code)
+  (env1, fill_code)
 
 (* Used for mono patterns (ForE) *)
-and compile_mono_pat env how pat =
-  let (env1, alloc_code, code) = compile_pat env how pat in
-  (env1, alloc_code, orTrap code)
+and compile_mono_pat env pat =
+  let (env1, fill_code) = compile_pat_local env pat in
+  (env1, orTrap fill_code)
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.
 *)
 and compile_n_ary_pat env how pat =
+  (* It returns:
+     - the extended environment
+     - the code to allocate memory
+     - the arity
+     - the code to do the pattern matching.
+       This expects the  undestructed value is on top of the stack,
+       consumes it, and fills the heap
+       If the pattern does not match, it branches to the depth at fail_depth.
+  *)
   let (env1, alloc_code) = alloc_pat env how pat in
   let arity, fill_code =
     (fun (sr,code) -> (sr, G.with_region pat.at code)) @@
@@ -3555,7 +3572,7 @@ and compile_n_ary_pat env how pat =
    But if not, we need to construct the tuple first.
 *)
 and compile_func_pat env cc pat =
-  let (env1, alloc_code) = alloc_pat env AllocHow.M.empty pat in
+  let env1 = alloc_pat_local env pat in
   let fill_code get =
     G.with_region pat.at @@
     if cc.Value.n_args = 1
@@ -3574,7 +3591,7 @@ and compile_func_pat env cc pat =
       | _ ->
         Array.lit env (Lib.List.table cc.Value.n_args (fun i -> get i)) ^^
         orTrap (fill_pat env1 pat) in
-  (env1, alloc_code, fill_code)
+  (env1, fill_code)
 
 and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
   (fun (pre_env,alloc_code,mk_code) ->
@@ -3585,6 +3602,13 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
     let pre_env1 = E.add_con pre_env c k in
     (pre_env1, G.nop, fun _ -> SR.unit, G.nop)
   | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
+
+  (* A special case for static expressions *)
+  | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
+    let (static_thing, fill) = compile_static_exp pre_env how e in
+    let d = StackRep.deferred_of_static_think pre_env static_thing in
+    let pre_env1 = E.add_local_deferred pre_env v.it d in
+    ( pre_env1, G.nop, fun env -> fill env; (SR.unit, G.nop))
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
@@ -3636,6 +3660,18 @@ and compile_decs_block env decs : (E.t * (SR.t * G.t)) =
   let (env1, alloc_code, mk_code) = go env decs in
   let (sr, code) = mk_code env1 in
   (env1, (sr, alloc_code ^^ code))
+
+and compile_static_exp env how exp = match exp.it with
+  | BlockE ([{ it = FuncD (cc, name, typ_binds, p, _rt, e); _}],_) ->
+      (* Get captured variables *)
+      let mk_pat env1 = compile_func_pat env1 cc p in
+      let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
+      let (env1, fill) = FuncDec.dec_closed env cc name mk_pat mk_body exp.at in
+      begin match Var.get_val env1 name.it with
+      | (SR.StaticThing st, _) -> (st, fill)
+      | _ -> assert false
+      end
+  | _ -> assert false
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
