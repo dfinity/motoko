@@ -420,4 +420,4 @@ let prim_async typ =
   primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ =
-  primE "@await" (T.Func (T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+  primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
