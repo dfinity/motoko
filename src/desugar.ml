@@ -144,7 +144,7 @@ and decs ds =
     match d.it with
     | S.ClassD(_, con_id, _, _, _, _, _) ->
       let c = Lib.Option.value con_id.note in
-      let typD = { it = I.TypD (c,T.kind c);
+      let typD = { it = I.TypD c;
                    at = d.at;
                    note = { S.note_typ = T.unit;
                             S.note_eff = T.Triv }
@@ -162,7 +162,7 @@ and dec' at n d = match d with
     I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
   | S.TypD (con_id, typ_bind, t) ->
     let c = Lib.Option.value con_id.note in
-    I.TypD (c,T.kind c)
+    I.TypD c
   | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
     let cc = Value.call_conv_of_typ n.S.note_typ in
     let inst = List.map

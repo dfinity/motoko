@@ -238,7 +238,7 @@ and dec' env d =
       let e' = tailexp env2 e in
       FuncD(cc, i, tbs, p, t, e')),
     env
-  | TypD (_, _) ->
+  | TypD _ ->
     (fun env -> d.it),
     env
 

@@ -3733,7 +3733,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
        (pre_env, G.with_region dec.at alloc_code, fun env ->
          (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
   match dec.it with
-  | TypD (c,k) ->
+  | TypD _ ->
     (pre_env, G.nop, fun _ -> SR.unit, G.nop)
   | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
   | LetD (p, e) ->

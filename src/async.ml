@@ -312,8 +312,8 @@ and t_dec dec =
 and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)
-  | TypD (con_id, k) ->
-    TypD (t_con con_id, t_kind k)
+  | TypD con_id ->
+    TypD (t_con con_id)
   | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
   | VarD (id,exp) -> VarD (id,t_exp exp)
   | FuncD (cc, id, typbinds, pat, typT, exp) ->

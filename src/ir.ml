@@ -72,7 +72,7 @@ and dec' =
   | VarD of Syntax.id * exp                    (* mutable *)
   | FuncD of                                   (* function *)
       Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp
-  | TypD of Type.con * Type.kind               (* type *)
+  | TypD of Type.con                           (* type *)
 
 
 (* Program *)

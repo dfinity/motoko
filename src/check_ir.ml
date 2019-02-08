@@ -728,9 +728,9 @@ and check_dec env dec  =
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' dec.at (typ exp) t2;
     t0 <: t;
-  | TypD (c, k) ->
+  | TypD c ->
     let (binds,typ) =
-      match k with
+      match T.kind c with
       | T.Abs(binds,typ)
       | T.Def(binds,typ) -> (binds,typ)
     in
@@ -795,11 +795,11 @@ and gather_dec env scope dec : scope =
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
     {scope with val_env = ve'}
-  | TypD (c, k) ->
+  | TypD c ->
     check env dec.at
       (not (Con.Env.mem c.T.con scope.con_env))
       "duplicate definition of type in block";
-    let ce' = Con.Env.add c.T.con k scope.con_env in
+    let ce' = Con.Env.add c.T.con (T.kind c) scope.con_env in
     {scope with con_env = ce'}
 
 (* Programs *)
