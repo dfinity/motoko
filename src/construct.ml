@@ -401,7 +401,7 @@ let loopWhileE exp1 exp2 =
     ~~> label l: loop {
           let () = e1 ;
           let x2 = e2 ;
-          if x2 { break l x1 } else { } }
+          if x2 { break l } else { } }
    *)
   let id2 = fresh_id exp2.note.S.note_typ in
   let lab = fresh_lab () in
