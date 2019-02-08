@@ -269,6 +269,7 @@ let varD x exp = { it = VarD (x, exp);
 
 let expD exp =  { exp with it = ExpD exp }
 
+
 (* let expressions (derived) *)
 
 let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
@@ -401,7 +402,7 @@ let loopWhileE exp1 exp2 =
     ~~> label l: loop {
           let () = e1 ;
           let x2 = e2 ;
-          if x2 { break l } else { } }
+          if x2 { } else { break } }
    *)
   let id2 = fresh_id exp2.note.S.note_typ in
   let lab = fresh_lab () in
@@ -412,8 +413,8 @@ let loopWhileE exp1 exp2 =
               expD exp1 ;
               letD id2 exp2 ;
               expD (ifE id2
-                      (breakE lab (tupE []) ty1)
                       (tupE [])
+                      (breakE lab (tupE []) ty1)
                       ty1
                 )
             ]
@@ -423,13 +424,30 @@ let loopWhileE exp1 exp2 =
 (* LoopE(exp1,Some exp2) *)
 let loopWhileE' exp1 exp2 = (loopWhileE exp1 exp2).it
 
-let whileE' exp1 exp2 =
+let whileE exp1 exp2 =
   (*
     while e1 e2
     ~~>
     label l: loop { if e1 then { e2 ; continue l } else break l }
   *)
-  WhileE(exp1,exp2)
+  let ty1 = exp1.note.S.note_typ in
+  let id1 = fresh_id ty1 in
+  let lab = fresh_lab () in
+  let ty2 = Type.unit in
+  labelE lab ty2 (
+      loopE (
+          blockE [
+              letD id1 exp1 ;
+              expD (ifE id1 
+                      exp2
+                      (breakE lab (tupE []) ty2)
+                      ty2
+                )
+            ]
+        ) None
+    )
+
+let whileE' exp1 exp2 = (whileE exp1 exp2).it
 
 let forE' pat exp1 exp2 =
   (*
