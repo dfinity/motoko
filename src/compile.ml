@@ -22,6 +22,8 @@ let (@@) = Pervasives.(@@)
 module G = InstrList
 let (^^) = G.(^^) (* is this how we import a single operator from a module that we otherwise use qualified? *)
 
+(* WebAssembly pages are 64kb. *)
+let page_size = Int32.of_int (64*1024)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
@@ -159,7 +161,8 @@ module E = struct
 
     (* Mutable *)
     func_types : func_type list ref;
-    imports : import list ref;
+    func_imports : import list ref;
+    other_imports : import list ref;
     exports : export list ref;
     dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
@@ -189,7 +192,8 @@ module E = struct
     local_vars_env = NameEnv.empty;
     con_env = Con.Env.empty;
     func_types = ref [];
-    imports = ref [];
+    func_imports = ref [];
+    other_imports = ref [];
     exports = ref [];
     dfinity_types = ref [];
     funcs = ref [];
@@ -292,10 +296,13 @@ module E = struct
     let l = env.local_vars_env in
     NameEnv.fold (fun k _ -> Freevars.S.add k) l Freevars.S.empty
 
-  let add_import (env : t) i =
+  let add_func_import (env : t) f =
     if !(env.funcs) = []
-    then reg env.imports i
+    then reg env.func_imports f
     else assert false (* "add all imports before all functions!" *)
+
+  let _add_other_import (env : t) m =
+    let _ = reg env.other_imports m in ()
 
   let add_export (env : t) e = let _ = reg env.exports e in ()
 
@@ -303,7 +310,7 @@ module E = struct
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Wasm.I32.of_int_u (List.length !(env.imports)) in
+    let n = Wasm.I32.of_int_u (List.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -339,7 +346,8 @@ module E = struct
 
   let get_n_res (env : t) = env.n_res
 
-  let get_imports (env : t) = !(env.imports)
+  let get_func_imports (env : t) = !(env.func_imports)
+  let get_other_imports (env : t) = !(env.other_imports) 
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -382,6 +390,9 @@ module E = struct
 
   let get_static_memory env =
     !(env.static_memory)
+
+  let mem_size env =
+    Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 end
 
 
@@ -488,9 +499,6 @@ module Heap = struct
 
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
-
-  (* WebAssembly pages are 64kb. *)
-  let page_size = Int32.of_int (64*1024)
 
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff.  *)
@@ -1770,105 +1778,105 @@ module Dfinity = struct
     exp (String.length s - 1) []
 
   let system_imports env =
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "test";
       item_name = explode "print";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_print_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "test";
       item_name = explode "show_i32";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "data";
       item_name = explode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "elem";
       item_name = explode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_length_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "module";
       item_name = explode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (module_new_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_new_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "self";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_self_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "actor";
       item_name = explode "export";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_export_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "func";
       item_name = explode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_internalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "func";
       item_name = explode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type], [I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_externalize_i env));
 
-    let i = E.add_import env (nr {
+    let i = E.add_func_import env (nr {
       module_name = explode "func";
       item_name = explode "bind_i32";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
@@ -3963,15 +3971,19 @@ and conclude_module env module_name start_fi_o =
   Dfinity.default_exports env;
   GC.register env (E.get_end_of_static_memory env);
 
-  let imports = E.get_imports env in
-  let ni = List.length imports in
+  let func_imports = E.get_func_imports env in
+  let ni = List.length func_imports in
   let ni' = Int32.of_int ni in
+
+  let other_imports = E.get_other_imports env in
 
   let funcs = E.get_funcs env in
   let nf = List.length funcs in
   let nf' = Wasm.I32.of_int_u nf in
 
   let table_sz = Int32.add nf' ni' in
+
+  let memories = [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ] in
 
   (* We want to put all persistent globals first:
      The index in the persist annotation refers to the index in the
@@ -4001,8 +4013,6 @@ and conclude_module env module_name start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
-  let mem_size = Int32.(add (div (E.get_end_of_static_memory env) Heap.page_size) 1l) in
-
   { module_ = nr {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
@@ -4013,8 +4023,8 @@ and conclude_module env module_name start_fi_o =
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
       start = start_fi_o;
       globals = globals;
-      memories = [nr {mtype = MemoryType {min = mem_size; max = None}} ];
-      imports;
+      memories = memories;
+      imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
     };
