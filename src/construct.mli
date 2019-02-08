@@ -61,6 +61,10 @@ val assignE : exp -> exp -> exp
 val labelE : Syntax.id -> typ -> exp -> exp
 val loopE: exp -> exp option -> exp
 
+val whileE' : exp -> exp -> exp'
+val loopWhileE' : exp -> exp -> exp'
+val forE' : pat -> exp -> exp -> exp'
+
 val declare_idE : Syntax.id -> typ -> exp -> exp
 val define_idE : Syntax.id -> Syntax.mut -> exp -> exp
 val newObjE : Syntax.obj_sort -> (Syntax.name * Syntax.id) list -> typ -> exp
