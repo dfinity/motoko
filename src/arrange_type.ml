@@ -31,7 +31,7 @@ let prim p = match p with
   | Char -> Atom "Char"
   | Text -> Atom "Text"
 
-let con c = Atom (Con.to_string c)
+let con c = Atom (Con.to_string c.con)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]

@@ -175,6 +175,10 @@ and t_kind k =
   | T.Def(typ_binds,typ) ->
     T.Def(t_binds typ_binds, t_typ typ)
 
+and t_con con =
+  con.kind := t_kind !(con.kind);
+  con
+
 and t_operator_type ot =
   (* We recreate the reference here. That is ok, because it
      we run after type inference. Once we move async past desugaring,
@@ -309,7 +313,7 @@ and t_dec' dec' =
   match dec' with
   | ExpD exp -> ExpD (t_exp exp)
   | TypD (con_id, k) ->
-    TypD (con_id, t_kind k)
+    TypD (t_con con_id, t_kind k)
   | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
   | VarD (id,exp) -> VarD (id,t_exp exp)
   | FuncD (cc, id, typbinds, pat, typT, exp) ->
@@ -376,7 +380,7 @@ and t_pat' pat =
     AltP (t_pat pat1, t_pat pat2)
 
 and t_typ_bind' {con; bound} =
-  {con; bound = t_typ bound}
+  {con = t_con con; bound = t_typ bound}
 
 and t_typ_bind typ_bind =
   { typ_bind with it = t_typ_bind' typ_bind.it }
