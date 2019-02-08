@@ -7,12 +7,11 @@ Productions marked * probably deferred to later versions.
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  actor? { <typ-field>;* }                      object
-  var? <typ> [ ]                                array
-  <typ> ?                                       option
-  <class>? <typ-params>? <typ> -> <typ>         function
+  (shared|actor)? { <typ-field>;* }             object
+  [ var? <typ> ]                                array
+  ? <typ>                                       option
+  shared <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
-  like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
@@ -43,10 +42,6 @@ Productions marked * probably deferred to later versions.
 
 ## Expressions
 ```
-<sort> ::=
-  new
-  actor
-
 <exp> ::=
   <id>                                           variable
   <lit>                                          literal
@@ -54,13 +49,12 @@ Productions marked * probably deferred to later versions.
   <exp> <binop> <exp>                            binary numeric operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
-  <exp> ?                                        option injection
-  <sort> <id>? { <exp-field>;* }                 object
+  ? <exp>                                        option injection
   <exp> . <id>                                   object projection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
   <exp> <binop>= <exp>                           binary update
-  [ <exp>,* ]                                    array
+  [ var? <exp>,* ]                               array
   <exp> [ <exp> ]                                array indexing
   <exp> <typ-args>? <exp>                        function call
   { <dec>;* }                                    block
@@ -79,7 +73,6 @@ Productions marked * probably deferred to later versions.
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
-  <exp> is <exp>                                 instance-of
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
@@ -99,7 +92,7 @@ Productions marked * probably deferred to later versions.
   <id>                                           variable
   <unop>? <lit>                                  literal
   ( <pat>,* )                                    tuple or brackets
-  <pat> ?                                        option
+  ? <pat>                                        option
   <pat> : <typ>                                  type annotation
   <pat> or <pat>                                 disjunctive pattern
 * <pat> and <pat>                                conjunctive pattern
@@ -113,12 +106,13 @@ Productions marked * probably deferred to later versions.
 ## Declarations
 ```
 <dec> ::=                                                 declaration
-  <exp>                                                     expression
-  let <pat> = <exp>                                         immutable
-  var <id> (: <typ>)? = <exp>                               mutable
-  func <id>? <typ-params>? <pat> (: <typ>)? = <exp>         function
-  type <id> <typ-params>? = <typ>                           type
-  actor? class <id> <typ-params>? <pat> (: <typ>)? = <exp>  class
+  <exp>                                                       expression
+  let <pat> = <exp>                                           immutable
+  var <id> (: <typ>)? = <exp>                                 mutable
+  (new|object|actor|shared) <id>? =? { <exp-field>;* }        object
+  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
+  type <id> <typ-params>? = <typ>                             type
+  actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
 ```
 
 ## Programs

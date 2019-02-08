@@ -29,10 +29,6 @@ To update, just run the last two commands again.
 
 ## Development using Nix
 
-**Mac OS X note**: Currently, Nix on Mac cannot built V8. So pass `--arg v8` to
-any of the following `nix` commands.
-
-
 This is the command that should always pass on master is the following, which builds everything:
 ```
 $ nix-build
@@ -52,31 +48,55 @@ To build `asc.js`, the JavaScript library, use
 nix-build -A js
 ```
 
-If you want to install `wasm` and `dvm` binaries with nix (for example because
-you maintain your Ocaml installation manually), run
 
-```
-nix-env -i -f . -A wasm
-nix-env -i -f . -A dvm
-```
-Repeat the last command after upgrading `dev/nix`.
+By default, `dvm` is built using the V8 engine. To build with the Haskell
+engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
-## Installation and development without Nix
+## Development without Nix
 
-You do not have to use nix:
+You can get a development environment that is independent of nix (although
+installing all required tools without nix is out of scope).
 
  * Use your system’s package manager to install `ocaml` and
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
    ```
-   opam install num
+   opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
- * Install the `wasm` package in `vendor/wasm-spec/interpreter/` by running
-   `make install` therein.
- * Make sure `wasm` (a binary found in `vendor/wasm-spec/interpreter`) is in
-   the path to run the `run` tests.
- * Make sure `dvm` (a binary from the `hs-dfinity-dvm` package) is in the path
-   to run the `run-dfinity` tests.
+ * Install the `wasm` package. We use a newer version than is on opam, and a
+   fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
+   the precise repository and version. You can use `nix` to fetch the correct
+   source for you, and run the manual installation inside:
+   ```
+   cd $(nix-build -Q -A wasm.src)
+   make install
+   ```
+ * Install the `wasm` tool, using
+   ```
+   nix-env -i -f . -A wasm
+   ```
+ * Install the `dvm` tool, using
+   ```
+   nix-env -i -f . -A dvm
+   ```
+   or simply
+   ```
+   ./update-dvm.sh
+   ```
+   which also updates the `dev` checkout.
+
+## Create a coverage report
+
+Run
+
+    BISECT_COVERAGE=YES make -C src asc
+    make -C test coverage
+
+and open `test/coverage/index.html` in the browser, or run
+
+   nix-build -A coverage-report
+
+and open the path printed on the last line of that command.
 
 
 ## Introduction
@@ -157,18 +177,15 @@ You do not have to use nix:
 
     The fields of an actor are all of function type with a return type of `async t` or `()`.
 
-* Array types: Java-like, but elements can be mutable or immutable
-  - `T[]`
-  - `var T[]`
+* Array types: elements can be mutable or immutable
+  - `[T]`
+  - `[var T]`
 
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
-  - `T?`
+  - `? T`
 
 * Async types: like futures/promises
   - `async T`
-
-* Class types: the identity of a class (essentially, a modref)
-  - `class`
 
 * Like types: structural expansions of nominal types
   - `like T`
@@ -281,64 +298,62 @@ You do not have to use nix:
 
 * Every declaration is a statement (and thereby an expression)
 
-
-
 ## Example
 
-Here is a variant of the bank account example.
 
-```
-actor class Bank(supply : Int) {
-  private issuer = Issuer();
-  private reserve = Account(supply);
-  getIssuer() : async Issuer { return issuer; };
-  getReserve() : async Account { return reserve; };
-};
+    /* a simple data structure: mutable, singly linked list */
+    type List<T> = ?{head: T; var tail: List<T>};
 
-actor class Issuer() {
-  hasIssued(account : like Account) : async Bool {
-    return (account is Account);
-  };
-};
+    type post = shared Text -> async ();
 
-actor class Account(initialBalance : Int) = this {
-  private var balance : Int = initialBalance;
+    type IClient = actor {
+       send: shared Text -> async ();
+    };
 
-  getBalance() : async Int {
-    return balance;
-  };
+    type IServer = actor {
+      post: Text -> async ();
+      subscribe: IClient -> async post;
+    };
 
-  split(amount : Int) : async Account {
-    balance -= amount;
-    return Account(amount);
-  };
+    actor Server = {
+       private var clients:List<IClient> = null;
 
-  join(account : like Account) {
-    assert(account is Account);
-    let amount = balance;
-    balance := 0;
-    account.credit(amount, Account);
-  };
+       post(message:Text) : async () {
+          var next = clients;
+          loop {
+             switch (next) {
+                case null return;
+                case (?l) {
+                    await l.head.send(message);
+                    next := l.tail;
+                  };
+               };
+            };
+         };
 
-  credit(amount : Int, caller : Class) {
-    assert(this is caller);
-    balance += amount;
-  };
+       subscribe(client:IClient) : async post {
+         let cs = new { head = client; var tail = clients};
+         clients := ?cs;
+         return post;
+       };
+    };
 
-  isCompatible(account : like Account) : async Bool {
-    return (account is Account);
-  };
-};
-```
 
-Example use:
+    actor class Client() = this {
+       private var name : Text = "";
+       private var server: ?IServer  = null;
+       go (n:Text,s:IServer) : async () {
+           name := n;
+           server := ?s;
+           let post = await s.subscribe(this);
+           await post("hello from " # name);
+           await post("goodbye from " # name);
+       };
+       send(msg:Text) : async () {
+          print name; print " received "; print msg; print "\n";
+       };
+    };
 
-```
-func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
-  let trx = await sender.split(amount);
-  trx.join(receiver);
-};
-```
 
 ## Syntax
 

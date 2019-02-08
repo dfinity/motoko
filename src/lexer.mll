@@ -101,6 +101,8 @@ let float =
 let char = '\'' character '\''
 let text = '"' character* '"'
 let id = letter ((letter | digit | '_')*)
+let privileged_id = "@" id
+
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
 rule token mode = parse
@@ -188,11 +190,10 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
-  | "is" { IS }
-  | "like" { LIKE }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }
+  | "object" { OBJECT }
   | "or" { OR }
   | "let" { LET }
   | "loop" { LOOP }
@@ -207,6 +208,7 @@ rule token mode = parse
 
   | "prim" as s { if mode = Privileged then PRIM else ID s }
   | id as s { ID s }
+  | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token mode lexbuf }

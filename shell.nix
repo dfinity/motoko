@@ -1,10 +1,9 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix) {},
   test-dvm ? true,
-  v8 ? true,
 }:
 
 let stdenv = nixpkgs.stdenv; in
-let default = import ./default.nix { inherit nixpkgs test-dvm v8; }; in
+let default = import ./default.nix { inherit nixpkgs test-dvm; }; in
 
 #
 # Since building asc, and testing it, are two different derivation in default.nix
@@ -16,6 +15,9 @@ let default = import ./default.nix { inherit nixpkgs test-dvm v8; }; in
 #
 
 nixpkgs.mkShell {
-    buildInputs = default.native.buildInputs ++ default.native_test.buildInputs;
+  buildInputs =
+    default.native.buildInputs ++
+    builtins.filter (i: i != default.native) default.native_test.buildInputs ++
+    [ nixpkgs.ncurses ];
 }
 

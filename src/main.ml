@@ -34,7 +34,9 @@ let argspec = Arg.align
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
   "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
+  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "-o", Arg.Set_string out_file, " output file";
   "--version",
@@ -56,30 +58,30 @@ let exit_on_none = function
 let exit_on_failure = function
   | Ok x -> x
   | Error errs ->
-    List.iter (fun (at, category, msg) ->
-      eprintf "%s: %s error, %s\n%!" (Source.string_of_region at) category msg
-    ) errs;
+    Diag.print_messages errs;
     exit 1
 
-let process_files names : unit =
+let process_files files : unit =
   match !mode with
   | Default ->
     assert false
   | Run ->
-    ignore (exit_on_none Pipeline.(run_files initial_env names))
+    ignore (exit_on_none Pipeline.(run_files initial_env files))
   | Interact ->
     printf "%s\n" banner;
-    let env = exit_on_none Pipeline.(run_files initial_env names) in
+    let env = exit_on_none Pipeline.(run_files initial_env files) in
     Pipeline.run_stdin env
   | Check ->
-    ignore (exit_on_failure Pipeline.(check_files initial_stat_env names));
+    let (_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env files) in
+    Diag.print_messages msgs
   | Compile ->
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode names) in
     if !out_file = "" then begin
-      match names with
+      match files with
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
+    let module_name = Filename.remove_extension (Filename.basename !out_file) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
@@ -91,18 +93,14 @@ let process_files names : unit =
     end
 
 let () =
+  (* 
+  Sys.catch_break true; - enable to get stacktrace on interrupt
+  (usefull for debugging infinite loops)
+  *)
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
     if !mode = Default then mode := (if !args = [] then Interact else Compile);
     process_files !args
   with exn ->
-    printf "%!";
-    let at = Source.string_of_region (Interpret.get_last_region ()) in
-    eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
-    eprintf "\nLast environment:\n";
-    Value.Env.iter (fun x d -> eprintf "%s = %s\n" x (Value.string_of_def d))
-      Interpret.((get_last_env ()).vals);
-    eprintf "\n";
-    Printexc.print_backtrace stderr;
-    eprintf "%!"
+    Interpret.print_exn exn

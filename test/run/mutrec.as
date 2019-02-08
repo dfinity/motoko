@@ -1,16 +1,18 @@
 func even(n : Nat) : Bool {
   if (n == 0) {
     return true;
-  } else
+  } else {
     return odd(n-1);
-  };
+  }
+};
 
 func odd(n : Nat) : Bool {
   if (n == 0) {
     return false;
-  } else
+  } else {
     return even(n-1);
-  };
+  }
+};
 
 assert(even(0));
 assert(even(2));

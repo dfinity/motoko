@@ -1,0 +1,67 @@
+non-closed actor: (ActorE
+  anon-object-1.30
+  (c c (VarE i) Var Private)
+  (dec
+    dec
+    (BlockE
+      (FuncD
+        (shared  0 -> 0)
+        dec
+        (TupP)
+        ()
+        (BlockE
+          (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
+          (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
+          ()
+        )
+      )
+      shared () -> ()
+    )
+    Const
+    Public
+  )
+  (read
+    read
+    (BlockE
+      (FuncD
+        (shared  1 -> 0)
+        read
+        (VarP $1)
+        ()
+        (BlockE
+          (LetD (TupP) (TupE))
+          (ExpD
+            (CallE
+              ( 1 -> 0)
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $0)
+                  ()
+                  (CallE ( 1 -> 0) (VarE $0) (BlockE (ExpD (VarE c)) Int))
+                )
+                (Int -> ()) -> ()
+              )
+              (BlockE
+                (FuncD
+                  ( 1 -> 0)
+                  $lambda
+                  (VarP $2)
+                  ()
+                  (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
+                )
+                Int -> ()
+              )
+            )
+          )
+          ()
+        )
+      )
+      shared (shared Int -> ()) -> ()
+    )
+    Const
+    Public
+  )
+  Counter
+)

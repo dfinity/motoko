@@ -63,7 +63,7 @@ let rec match_pat ce ctxt desc pat t sets =
   | LitP lit ->
     match_lit ce ctxt desc (value_of_lit !lit) t sets
   | SignP (op, lit) ->
-    let f = Operator.unop pat.note.note_typ op in
+    let f = Operator.unop pat.note op in
     match_lit ce ctxt desc (f (value_of_lit !lit)) t sets
   | TupP pats ->
     let ts = Type.as_tup (Type.promote ce t) in

@@ -7,18 +7,18 @@ let ($$) head inner = Node (head, inner)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit !l]
-  | UnE (uo, e)         -> "UnE"     $$ [unop uo; exp e]
-  | BinE (e1, bo, e2)   -> "BinE"    $$ [exp e1; binop bo; exp e2]
-  | RelE (e1, ro, e2)   -> "RelE"    $$ [exp e1; relop ro; exp e2]
+  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
-  | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
+  | DotE (e, sr, n)         -> "DotE"    $$ [exp e; obj_sort' !sr; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE es           -> "ArrayE"  $$ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE ds           -> "BlockE"  $$ List.map dec ds
+  | BlockE (ds, ot)      -> "BlockE"  $$ List.map dec ds @ [operator_type (!ot)]
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
   | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
@@ -34,16 +34,11 @@ let rec exp e = match e.it with
   | AsyncE e            -> "AsyncE"  $$ [exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
-  | IsE (e1, e2)        -> "IsE"     $$ [exp e1; exp e2]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | DecE d              -> "DecE"    $$ [dec d]
+  | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
-  | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
-  | NewObjE (s, nameids)-> "NewObjE" $$ (obj_sort s ::
-                                              List.fold_left (fun flds (n,i) ->
-                                                  (name n)::(id i):: flds) [] nameids)
+
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
   | VarP i        -> "VarP"       $$ [ id i]
@@ -109,14 +104,12 @@ and sharing sh = match sh with
 and control c = match c with
   | Type.Returns -> "Returns"
   | Type.Promises -> "Promises"
-            
-and obj_sort s = match s.it with
+
+and obj_sort' s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
 
-and func_sort s = match s.it with
-  | Type.Call sh -> Atom ("Call " ^ sharing sh)
-  | Type.Construct -> Atom "Construct"
+and obj_sort s = obj_sort' s.it
 
 and mut m = match m.it with
   | Const -> Atom "Const"
@@ -135,6 +128,7 @@ and typ_bind (tb : typ_bind)
 and exp_field (ef : exp_field)
   = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
 
+and operator_type t = Atom (Type.string_of_typ t)
 
 and typ t = match t.it with
   | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
@@ -143,12 +137,12 @@ and typ t = match t.it with
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | TupT ts             -> "TupT" $$ List.map typ ts
-  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
-  | LikeT  t            -> "LikeT" $$ [typ t]
-  | ParT t              -> "ParT" $$ [typ t]           
+  | ParT t              -> "ParT" $$ [typ t]
 
 and id i = Atom i.it
+and con_id i = Atom i.it         
 
 and name n = Atom (string_of_name n.it)
 
@@ -157,10 +151,18 @@ and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (s, i, tp, p, t, e) ->
-    "FuncD" $$ [Atom (sharing s.it); id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+    "FuncD" $$ [
+      Atom (Type.string_of_typ d.note.note_typ);
+      Atom (sharing s.it);
+      id i] @
+      List.map typ_bind tp @ [
+      pat p;
+      typ t;
+      exp e
+    ]
   | TypD (i, tp, t) ->
-    "TypD" $$ [id i] @ List.map typ_bind tp @ [typ t]
+    "TypD" $$ [con_id i] @ List.map typ_bind tp @ [typ t]
   | ClassD (i, j, tp, s, p, i', efs) ->
-    "ClassD" $$ id i :: id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+    "ClassD" $$ id i :: con_id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it                                                                       
+and prog prog = "BlockE"  $$ List.map dec prog.it

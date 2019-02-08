@@ -13,31 +13,24 @@ let range_of_region at =
     val _end = position_of_pos at.right
   end
 
-let diagnostics_of_error (at, category, msg) =
-  object%js
-    val range = range_of_region at
-    val severity = 1 (* 1 means error in the LSP spec *)
+let diagnostics_of_error (msg : Diag.message) =
+  Diag.(object%js
     val source = Js.string "actorscript"
-    val message = Js.string msg
-  end
+    val severity = match msg.sev with Diag.Error -> 1 | Diag.Warning -> 2
+    val range = range_of_region msg.at
+    val message = Js.string msg.text
+  end)
 
 
 let js_check source =
-  match
-    Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source)
-      "js-input"
-  with
-  | Ok _ ->
-    object%js
-      val diagnostics = Js.array [||]
-      val code = Js.null
-    end
-  | Error es ->
-    object%js
-      val diagnostics =
-        Js.array (Array.of_list (List.map diagnostics_of_error es))
-      val code = Js.null
-    end
+  let msgs = match
+    Pipeline.check_string Pipeline.initial_stat_env (Js.to_string source) "js-input" with
+    | Error msgs -> msgs
+    | Ok (_,  msgs) -> msgs in
+  object%js
+    val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
+    val code = Js.null
+  end
 
 let js_compile_with mode_string source_map source convert =
   Flags.source_map := source_map;

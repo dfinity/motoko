@@ -1,9 +1,9 @@
 open Printf
-
+module T = Type
 
 (* Environments *)
 
-module Env = Env.Make(String) 
+module Env = Env.Make(String)
 
 
 (* Numeric Representations *)
@@ -53,7 +53,7 @@ struct
   let neg i = inj (Rep.neg (proj i))
   let add i j = inj (Rep.add (proj i) (proj j))
   let sub i j = inj (Rep.sub (proj i) (proj j))
-  let mul i j = inj (Rep.mul (proj i) (proj j)) 
+  let mul i j = inj (Rep.mul (proj i) (proj j))
   let div i j = inj (Rep.div (proj i) (proj j))
   let rem i j = inj (Rep.rem (proj i) (proj j))
   let logand = Rep.logand
@@ -188,9 +188,22 @@ end
 (* Types *)
 
 type unicode = int
-type class_ = int
 
-type func = value -> value cont -> unit
+type call_conv = {
+  sort: Type.sharing;
+  control : Type.control;
+  n_args : int;
+  n_res : int;
+}
+
+let call_conv_of_typ typ =
+  match typ with
+  | Type.Func(sort, control, tbds, dom, res) ->
+    { sort; control; n_args = List.length dom; n_res = List.length res }
+  | _ -> raise (Invalid_argument ("call_conv_of_typ"^T.string_of_typ typ))
+
+type func =
+  (value -> value cont -> unit)
 and value =
   | Null
   | Bool of bool
@@ -205,8 +218,8 @@ and value =
   | Tup of value list
   | Opt of value
   | Array of value array
-  | Obj of class_ option * value Env.t
-  | Func of class_ option * func
+  | Obj of value Env.t
+  | Func of call_conv * func
   | Async of async
   | Mut of value ref
 
@@ -215,11 +228,15 @@ and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
 
-(* Classes *)
+(* Smart constructors *)
 
-let class_counter = ref 0
+let local_cc n m = { sort = T.Local; control = T.Returns; n_args = n; n_res = m}
+let message_cc n = { sort = T.Sharable; control = T.Returns; n_args = n; n_res = 0}
+let async_cc n = { sort = T.Sharable; control = T.Promises; n_args = n; n_res = 1}
 
-let new_class () = incr class_counter; !class_counter
+let local_func n m f = Func (local_cc n m, f)
+let message_func n f = Func (message_cc n, f)
+let async_func n f = Func (async_cc n, f)
 
 
 (* Projections *)
@@ -243,52 +260,44 @@ let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 
 let obj_of_array a =
-  let get =
-    Func (None, fun v k ->
-      let n = as_int v in
-      if Nat.lt n (Nat.of_int (Array.length a)) then
-        k (a.(Nat.to_int n))
-      else
-        raise (Invalid_argument "array index out of bounds")
-    )
-  in
-  let set =
-    Func (None, fun v k ->
-      let v1, v2 = as_pair v in
-      let n = as_int v1 in
-      if Nat.lt n (Nat.of_int (Array.length a)) then
-        k (a.(Nat.to_int n) <- v2; Tup [])
-      else
-        raise (Invalid_argument "array index out of bounds")
-    )
-  in
-  let len =
-    Func (None, fun v k -> as_unit v; k (Int (Nat.of_int (Array.length a))))
-  in
-  let keys =
-    Func (None, fun v k ->
-      as_unit v;
-      let i = ref 0 in
-      let next = fun v k' ->
+  let get = local_func 1 1 @@ fun v k ->
+    let n = as_int v in
+    if Nat.lt n (Nat.of_int (Array.length a)) then
+      k (a.(Nat.to_int n))
+    else
+      raise (Invalid_argument "array index out of bounds") in
+
+  let set = local_func 2 0 @@ fun v k ->
+    let v1, v2 = as_pair v in
+    let n = as_int v1 in
+    if Nat.lt n (Nat.of_int (Array.length a)) then
+      k (a.(Nat.to_int n) <- v2; Tup [])
+    else
+      raise (Invalid_argument "array index out of bounds") in
+
+  let len = local_func 0 1 @@ fun v k ->
+    as_unit v; k (Int (Nat.of_int (Array.length a))) in
+
+  let keys = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let next = local_func 0 1 @@ fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
-      in k (Obj (None, Env.singleton "next" (Func (None, next))))
-    )
-  in
-  let vals =
-    Func (None, fun v k ->
-      as_unit v;
-      let i = ref 0 in
-      let next = fun v k' ->
+          let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next)) in
+
+  let vals = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let next = local_func 0 1 @@ fun v k' ->
         if !i = Array.length a then k' Null else
-        let v = Opt (a.(!i)) in incr i; k' v
-      in k (Obj (None, Env.singleton "next" (Func (None, next))))
-    )
-  in
+          let v = Opt (a.(!i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next)) in
+
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
-let as_obj = function Obj (co, ve) -> co, ve | Array a -> None, obj_of_array a | _ -> invalid "as_obj"
-let as_func = function Func (co, f) -> co, f | _ -> invalid "as_func"
+let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
+let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
@@ -309,11 +318,7 @@ let rec compare x1 x2 =
   | Opt v1, Opt v2 -> compare v1 v2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
-  | Obj (c1, fs1), Obj (c2, fs2) ->
-    (match generic_compare c1 c2 with
-    | 0 -> Env.compare compare fs1 fs2
-    | n -> n
-    )
+  | Obj fs1, Obj fs2 -> Env.compare compare fs1 fs2
   | Mut r1, Mut r2 -> compare !r1 !r2
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2
@@ -356,15 +361,14 @@ let rec string_of_val_nullary d = function
       (if List.length vs = 1 then "," else "")
   | Opt v ->
     sprintf "%s?" (string_of_val_nullary d v)
-  | Obj (_, ve) ->
+  | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
       sprintf "%s = %s" x (string_of_val' (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val' d) (Array.to_list a)))
-  | Func (None, _) -> "func"
-  | Func (Some _, _) -> "class"
+  | Func ( _, _) -> "func"
   | v -> "(" ^ string_of_val' d v ^ ")"
 
 and string_of_val' d = function
@@ -388,3 +392,12 @@ and string_of_def' d def =
 
 let string_of_val v = string_of_val' !Flags.print_depth v
 let string_of_def d = string_of_def' !Flags.print_depth d
+
+let string_of_call_conv {sort;control;n_args;n_res} =
+  sprintf "(%s %i %s %i)"
+    (T.string_of_sharing sort)
+    n_args
+    (match control with
+     | T.Returns -> "->"
+     | T.Promises -> "@>")
+    n_res

@@ -6,7 +6,7 @@ then
   exit 1
 fi
 
-name="$(basename $1 .wasm)"
+name="$(basename $1 .wasm)_0"
 
 export LANG=C
 function dvm_ () {
@@ -22,5 +22,5 @@ function dvm_ () {
 
 rm -rf .dvm
 dvm_ -q reset
-dvm_ -q new --persistent-memory -a $1
+dvm_ -q new --persistent-memory $1
 dvm_ -q run $name start

@@ -100,6 +100,7 @@ let encode m =
     let vu32 i = vu64 Int64.(logand (of_int32 i) 0xffffffffL)
     let vs7 i = vs64 (Int64.of_int i)
     let vs32 i = vs64 (Int64.of_int32 i)
+    let vs33 i = vs64 (Wasm.I64_convert.extend_i32_s i)
     let f32 x = u32 (Wasm.F32.to_bits x)
     let f64 x = u64 (Wasm.F64.to_bits x)
 
@@ -137,17 +138,11 @@ let encode m =
       | F64Type -> vs7 (-0x04)
 
     let elem_type = function
-      | AnyFuncType -> vs7 (-0x10)
+      | FuncRefType -> vs7 (-0x10)
 
-    let stack_type = function
-      | [] -> vs7 (-0x40)
-      | [t] -> value_type t
-      | _ ->
-        Code.error Wasm.Source.no_region
-          "cannot encode stack type with arity > 1 (yet)"
-
+    let stack_type = vec value_type
     let func_type = function
-      | FuncType (ins, out) -> vs7 (-0x20); vec value_type ins; vec value_type out
+      | FuncType (ins, out) -> vs7 (-0x20); stack_type ins; stack_type out
 
     let limits vu {min; max} =
       bool (max <> None); vu min; opt vu max
@@ -179,6 +174,11 @@ let encode m =
 
     let var x = vu32 x.it
 
+    let block_type = function
+      | VarBlockType x -> vs33 x.it
+      | ValBlockType None -> vs7 (-0x40)
+      | ValBlockType (Some t) -> value_type t
+
     let rec instr e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
 
@@ -186,10 +186,10 @@ let encode m =
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
-      | Block (ts, es) -> op 0x02; stack_type ts; list instr es; end_ ()
-      | Loop (ts, es) -> op 0x03; stack_type ts; list instr es; end_ ()
+      | Block (ts, es) -> op 0x02; block_type ts; list instr es; end_ ()
+      | Loop (ts, es) -> op 0x03; block_type ts; list instr es; end_ ()
       | If (ts, es1, es2) ->
-        op 0x04; stack_type ts; list instr es1;
+        op 0x04; block_type ts; list instr es1;
         if es2 <> [] then op 0x05;
         list instr es2; end_ ()
 
@@ -203,11 +203,11 @@ let encode m =
       | Drop -> op 0x1a
       | Select -> op 0x1b
 
-      | GetLocal x -> op 0x20; var x
-      | SetLocal x -> op 0x21; var x
-      | TeeLocal x -> op 0x22; var x
-      | GetGlobal x -> op 0x23; var x
-      | SetGlobal x -> op 0x24; var x
+      | LocalGet x -> op 0x20; var x
+      | LocalSet x -> op 0x21; var x
+      | LocalTee x -> op 0x22; var x
+      | GlobalGet x -> op 0x23; var x
+      | GlobalSet x -> op 0x24; var x
 
       | Load ({ty = I32Type; sz = None; _} as mo) -> op 0x28; memop mo
       | Load ({ty = I64Type; sz = None; _} as mo) -> op 0x29; memop mo
