@@ -53,14 +53,6 @@ and kind =
 let kind con = !(con.kind)
 
 let fresh_con n k = { con = Con.fresh n; kind = ref k }
-let set_kind c k = match !(c.kind) with
-  | Abs (_, Pre) -> c.kind := k
-  (* I wanted a safeguard against mutatig redefinitions,
-     but this equality runs out of memory.
-  | k' when k = k' -> ()
-  | _ -> raise (Invalid_argument "set_kind")
-  *)
-  | _ -> c.kind := k
 let modify_kind c f = c.kind := f !(c.kind)
 
 (* field ordering *)
@@ -416,7 +408,7 @@ let rec rel_typ rel eq t1 t2 =
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
-    | _ when con1 = con2 ->
+    | _ when con1.con = con2.con ->
       rel_list eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ rel eq (open_ ts1 t) t2
@@ -517,6 +509,23 @@ and eq t1 t2 : bool =
 and sub  t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
+and eq_kind k1 k2 : bool =
+  let eq = ref S.empty in
+  match k1, k2 with
+  | Def (tbs1, t1), Def (tbs2, t2)
+  | Abs (tbs1, t1), Abs (tbs2, t2) ->
+  begin match rel_binds eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
+    | None -> false
+  end
+  | _ -> false
+
+(* Moved here to use eq_kind *)
+let set_kind c k = match !(c.kind) with
+  | Abs (_, Pre) -> c.kind := k
+  (* This safeguards against mutating redefinitions *)
+  | k' when eq_kind k k' -> ()
+  | _ -> raise (Invalid_argument "set_kind")
 
 (* Least upper bound and greatest lower bound *)
 
