@@ -176,9 +176,9 @@ and subst_field sigma {name; typ} =
 
 let close cs t =
   if cs = [] then t else
-  let bare_cons = List.map (fun c -> c.con) cs in
-  let ts = List.mapi (fun i c -> Var (Con.name c, i)) bare_cons in
-  let sigma = List.fold_right2 Con.Env.add bare_cons ts Con.Env.empty in
+  let cons = List.map (fun c -> c.con) cs in
+  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cons in
+  let sigma = List.fold_right2 Con.Env.add cons ts Con.Env.empty in
   subst sigma t
 
 let close_binds cs tbs =
