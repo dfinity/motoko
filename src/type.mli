@@ -41,7 +41,8 @@ and field = {name : string; typ : typ}
 
 (* cons and kinds *)
 
-and con = { con : Con.t; kind : kind ref }
+and kind_field (* abstract *)
+and con = { con : Con.t; kind : kind_field }
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -49,7 +50,9 @@ and kind =
 type con_env = kind Con.Env.t
 
 val kind : con -> kind
-val fresh_con : string -> con
+val fresh_con : string -> kind -> con
+val set_kind : con -> kind -> unit
+val modify_kind : con -> (kind -> kind) -> unit
 
 (* field ordering *)
 

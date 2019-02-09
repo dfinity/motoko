@@ -214,7 +214,7 @@ and check_typ_field env s typ_field : T.field =
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map T.fresh_con xs in
+  let cs = List.map (fun n -> T.fresh_con n (T.Abs ([], T.Pre))) xs in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -225,7 +225,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let pre_env' = add_typs {env with pre = true} xs cs pre_ks in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
-  List.iter2 (fun c k -> c.T.kind := k) cs ks;
+  List.iter2 T.set_kind cs ks;
   let env' = add_typs env xs cs ks in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
@@ -1091,13 +1091,12 @@ and gather_dec_typdecs env scope dec : scope =
     if T.Env.mem con_id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" con_id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
-    let c = T.fresh_con con_id.it in
-    let pre_k = T.Abs (pre_tbs, T.Pre) in
-    c.T.kind := pre_k;
+    let pre_k = (T.Abs (pre_tbs, T.Pre)) in
+    let c = T.fresh_con con_id.it pre_k in
     let ve' =
       match dec.it with
       | ClassD (id, _, _ , _, _, _, _) ->
-        let cs = List.map (fun (bind : typ_bind) -> T.fresh_con bind.it.var.it) binds in
+        let cs = List.map (fun (bind : typ_bind) -> T.fresh_con bind.it.var.it (T.Abs ([], T.Pre))) binds in
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
         T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
@@ -1126,7 +1125,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    c.T.kind := k;
+    T.set_kind c k;
     con_id.note <- Some c;
     Con.Env.singleton c.T.con k
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
@@ -1138,7 +1137,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
     let k = T.Abs (tbs, T.close cs t) in
-    c.T.kind := k;
+    T.set_kind c k;
     con_id.note <- Some c;
     Con.Env.singleton c.T.con k
 

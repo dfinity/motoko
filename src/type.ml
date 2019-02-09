@@ -36,7 +36,8 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and con = { con : Con.t; kind : kind ref }
+and kind_field = kind ref (* abstract, only this module knows its a ref  *)
+and con = { con : Con.t; kind : kind_field }
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
@@ -47,10 +48,20 @@ and kind =
 
 (* cons *)
 
-(* the promise is only there to break the recursion in open_bind *)
+(* The con field is a reference to break the recursion in open_binds,
+   and to allow the multiple passes in typing *)
 let kind con = !(con.kind)
 
-let fresh_con n = { con = Con.fresh n; kind = ref (Abs ([],Pre)) }
+let fresh_con n k = { con = Con.fresh n; kind = ref k }
+let set_kind c k = match !(c.kind) with
+  | Abs (_, Pre) -> c.kind := k
+  (* I wanted a safeguard against mutatig redefinitions,
+     but this equality runs out of memory.
+  | k' when k = k' -> ()
+  | _ -> raise (Invalid_argument "set_kind")
+  *)
+  | _ -> c.kind := k
+let modify_kind c f = c.kind := f !(c.kind)
 
 (* field ordering *)
 

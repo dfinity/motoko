@@ -176,7 +176,7 @@ and t_kind k =
     T.Def(t_binds typ_binds, t_typ typ)
 
 and t_con con =
-  con.kind := t_kind !(con.kind);
+  T.modify_kind con t_kind;
   con
 
 and t_operator_type ot =
