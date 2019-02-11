@@ -60,6 +60,7 @@ let modify_kind c f = c.kind := f !(c.kind)
 let compare_field {name=n;_} {name=m;_} = compare n m
 
 type con_env = kind Con.Env.t
+type con_set = Con.Set.t
 
 let seq ts =
     match ts with
@@ -344,41 +345,43 @@ let rec span = function
 
 exception Unavoidable of con
 
-let rec avoid' env env' = function
+let rec avoid' env to_avoid = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
-    (match Con.Env.find_opt c.con env' with
-    | Some (Abs _) -> raise (Unavoidable c)
-    | Some (Def (tbs, t)) -> avoid' env env' (reduce tbs t ts)
-    | None ->
-      try
-        Con (c, List.map (avoid' env env') ts)
+    if Con.Set.mem c.con to_avoid
+    then match kind c with
+      | Abs _ -> raise (Unavoidable c)
+      | Def (tbs, t) -> avoid' env to_avoid (reduce tbs t ts)
+    else
+      begin try
+        Con (c, List.map (avoid' env to_avoid) ts)
       with Unavoidable _ ->
-        match Con.Env.find c.con env with
-        | Abs _ -> raise (Unavoidable c)
-        | Def (tbs, t) -> avoid' env env' (reduce tbs t ts)
-    )
-  | Array t -> Array (avoid' env env' t)
-  | Tup ts -> Tup (List.map (avoid' env env') ts)
+        begin match Con.Env.find c.con env with
+        | Def (tbs, t) -> avoid' env to_avoid (reduce tbs t ts)
+        | Abs _ -> assert false (* c can only have parameters if it is a type def, or bound by Pre *)
+        end
+      end
+  | Array t -> Array (avoid' env to_avoid t)
+  | Tup ts -> Tup (List.map (avoid' env to_avoid) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     Func (s,
           c,
-          List.map (avoid_bind env env') tbs,
-          List.map (avoid' env env') ts1, List.map (avoid' env env') ts2)
-  | Opt t -> Opt (avoid' env env' t)
-  | Async t -> Async (avoid' env env' t)
-  | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
-  | Mut t -> Mut (avoid' env env' t)
+          List.map (avoid_bind env to_avoid) tbs,
+          List.map (avoid' env to_avoid) ts1, List.map (avoid' env to_avoid) ts2)
+  | Opt t -> Opt (avoid' env to_avoid t)
+  | Async t -> Async (avoid' env to_avoid t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field env to_avoid) fs)
+  | Mut t -> Mut (avoid' env to_avoid t)
 
-and avoid_bind env env' {var; bound} =
-  {var; bound = avoid' env env' bound}
+and avoid_bind env to_avoid {var; bound} =
+  {var; bound = avoid' env to_avoid bound}
 
-and avoid_field env env' {name; typ} =
-  {name; typ = avoid' env env' typ}
+and avoid_field env to_avoid {name; typ} =
+  {name; typ = avoid' env to_avoid typ}
 
-let avoid env env' t =
-  if env' = Con.Env.empty then t else
-  avoid' env env' t
+let avoid env to_avoid t =
+  if to_avoid = Con.Set.empty then t else
+  avoid' env to_avoid t
 
 
 (* Equivalence & Subtyping *)

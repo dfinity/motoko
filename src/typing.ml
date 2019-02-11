@@ -477,7 +477,8 @@ and infer_exp' env exp : T.typ =
   | BlockE (decs, ot) ->
     let t, scope = infer_block env decs exp.at in
     let t' =
-      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
+      let to_avoid = Con.set_of_env scope.con_env in
+      try T.avoid env.cons to_avoid t with T.Unavoidable c ->
         error env exp.at "local class type %s is contained in inferred block type\n  %s"
           (Con.to_string c.T.con)
           (T.string_of_typ_expand t)
@@ -604,7 +605,8 @@ and infer_exp' env exp : T.typ =
   | DecE (dec, ot) ->
     let t, scope = infer_block env [dec] exp.at in
     let t' =
-      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
+      let to_avoid = Con.set_of_env scope.con_env in
+      try T.avoid env.cons to_avoid t with T.Unavoidable c ->
         error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
           (Con.to_string c.T.con) (T.string_of_typ_expand t)
     in

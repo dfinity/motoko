@@ -48,6 +48,7 @@ and kind =
   | Abs of bind list * typ
 
 type con_env = kind Con.Env.t
+type con_set = Con.Set.t
 
 val kind : con -> kind
 val fresh_con : string -> kind -> con
@@ -122,7 +123,7 @@ val normalize : typ -> typ
 val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
+val avoid : con_env -> con_set -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)

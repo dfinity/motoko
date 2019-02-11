@@ -21,3 +21,6 @@ let to_string c =
 
 
 module Env = Env.Make(struct type t = con let compare = compare end)
+module Set = Set.Make(struct type t = con let compare = compare end)
+
+let set_of_env m = Env.fold (fun v _ m -> Set.add v m) m Set.empty
