@@ -1,10 +1,10 @@
 (* Generative constructors *)
 
-type t
+type 'a t
 
-val fresh : string -> t
-val name : t -> string
-val to_string : t -> string
-
-module Env : Env.S with type key = t
-module Set : Set.S with type elt = t
+val fresh : string -> 'a -> 'a t
+val kind : 'a t -> 'a
+val name : 'a t -> string
+val to_string : 'a t -> string
+val eq : 'a t -> 'a t -> bool
+val compare : 'a t -> 'a t -> int

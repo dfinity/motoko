@@ -71,7 +71,7 @@ and dec d = match d.it with
     "TypD" $$ [con c; kind (Type.kind c)]
 
 and typ_bind (tb : typ_bind) =
-  Con.to_string tb.it.con.Type.con $$ [typ tb.it.bound]
+  Con.to_string tb.it.con $$ [typ tb.it.bound]
 
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

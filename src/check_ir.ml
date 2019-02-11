@@ -675,7 +675,7 @@ and check_open_typ_binds env typ_binds =
   ()
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = Con.name con.T.con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -767,7 +767,7 @@ and gather_dec env scope dec : scope =
       | _ -> T.Returns
     in
     let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
     { val_env = ve' }

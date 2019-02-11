@@ -37,7 +37,7 @@ and typ =
   | Pre                                       (* pre-type *)
 
 and kind_field = kind ref (* abstract, only this module knows its a ref  *)
-and con = { con : Con.t; kind : kind_field }
+and con = kind_field Con.t
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
@@ -50,10 +50,10 @@ and kind =
 
 (* The con field is a reference to break the recursion in open_binds,
    and to allow the multiple passes in typing *)
-let kind con = !(con.kind)
+let kind con = !(Con.kind con)
 
-let fresh_con n k = { con = Con.fresh n; kind = ref k }
-let modify_kind c f = c.kind := f !(c.kind)
+let fresh_con n k = Con.fresh n (ref k)
+let modify_kind c f = Con.kind c := f !(Con.kind c)
 
 (* field ordering *)
 
@@ -138,20 +138,21 @@ and shift_field i n {name; typ} =
 
 (* First-order substitution *)
 
+module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 let rec subst sigma t =
-  if sigma = Con.Env.empty then t else
+  if sigma = ConEnv.empty then t else
   match t with
   | Prim _
   | Var _ -> t
   | Con (c, ts) ->
-    (match Con.Env.find_opt c.con sigma with
+    (match ConEnv.find_opt c sigma with
     | Some t -> assert (List.length ts = 0); t
     | None -> Con (c, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
@@ -174,9 +175,8 @@ and subst_field sigma {name; typ} =
 
 let close cs t =
   if cs = [] then t else
-  let cons = List.map (fun c -> c.con) cs in
-  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cons in
-  let sigma = List.fold_right2 Con.Env.add cons ts Con.Env.empty in
+  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
+  let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
 let close_binds cs tbs =
@@ -215,11 +215,10 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
-  let ps = List.map (fun _ -> ref (Abs ([],Pre))) tbs in
-  let ts = List.map2 (fun con kind-> Con ({con;kind}, [])) cs ps in
+  let cs = List.map (fun {var; _} -> fresh_con var (Abs ([],Pre))) tbs in
+  let ts = List.map (fun con -> Con (con, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun p k -> p := k) ps ks;
+  List.iter2 (fun c k -> Con.kind c := k) cs ks;
   ts
 
 
@@ -342,12 +341,13 @@ let rec span = function
 
 exception Unavoidable of con
 
-type con_set = Con.Set.t
+module ConSet = Set.Make(struct type t = con let compare = Con.compare end)
+type con_set = ConSet.t
 
 let rec avoid' to_avoid = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
-    if Con.Set.mem c.con to_avoid
+    if ConSet.mem c to_avoid
     then match kind c with
       | Abs _ -> raise (Unavoidable c)
       | Def (tbs, t) -> avoid' to_avoid (reduce tbs t ts)
@@ -379,7 +379,7 @@ and avoid_field to_avoid {name; typ} =
   {name; typ = avoid' to_avoid typ}
 
 let avoid to_avoid t =
-  if to_avoid = Con.Set.empty then t else
+  if to_avoid = ConSet.empty then t else
   avoid' to_avoid t
 
 
@@ -410,7 +410,7 @@ let rec rel_typ rel eq t1 t2 =
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
-    | _ when con1.con = con2.con ->
+    | _ when Con.eq con1 con2 ->
       rel_list eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ rel eq (open_ ts1 t) t2
@@ -523,8 +523,8 @@ and eq_kind k1 k2 : bool =
   | _ -> false
 
 (* Moved here to use eq_kind *)
-let set_kind c k = match !(c.kind) with
-  | Abs (_, Pre) -> c.kind := k
+let set_kind c k = match !(Con.kind c) with
+  | Abs (_, Pre) -> Con.kind c := k
   (* This safeguards against mutating redefinitions *)
   | k' when eq_kind k k' -> ()
   | _ -> raise (Invalid_argument "set_kind")
@@ -606,9 +606,9 @@ let rec string_of_typ_nullary vs = function
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
-  | Con (c, []) -> string_of_con vs c.con
+  | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con vs c.con)
+    sprintf "%s<%s>" (string_of_con vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"

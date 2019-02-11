@@ -18,7 +18,7 @@ let error at cat text =
 let print_te =
   Type.Env.iter (fun _ c ->
     let eq, params, typ = Type.strings_of_kind (Type.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c.Type.con) params eq typ
+    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 
 let print_stat_ve =

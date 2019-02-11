@@ -42,12 +42,13 @@ and field = {name : string; typ : typ}
 (* cons and kinds *)
 
 and kind_field (* abstract *)
-and con = { con : Con.t; kind : kind_field }
+and con = kind_field Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-type con_set = Con.Set.t
+module ConSet : Set.S with type elt = con
+type con_set = ConSet.t
 
 val kind : con -> kind
 val fresh_con : string -> kind -> con

@@ -36,7 +36,7 @@ let adjoin_scope scope1 scope2 =
   }
 
 let cons_of_scope scope =
-  T.Env.fold (fun _name con s -> Con.Set.add con.T.con s) scope.typ_env Con.Set.empty
+  T.Env.fold (fun _name con s -> T.ConSet.add con s) scope.typ_env T.ConSet.empty
 
 (* Contexts (internal) *)
 
@@ -168,7 +168,7 @@ and check_typ' env typ : T.typ =
           (T.string_of_typ_expand (T.seq ts2))
       )
     end;
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
@@ -463,7 +463,7 @@ and infer_exp' env exp : T.typ =
     let t' =
       try T.avoid (cons_of_scope scope) t with T.Unavoidable c ->
         error env exp.at "local class type %s is contained in inferred block type\n  %s"
-          (Con.to_string c.T.con)
+          (Con.to_string c)
           (T.string_of_typ_expand t)
     in
     ot := t';
@@ -590,7 +590,7 @@ and infer_exp' env exp : T.typ =
     let t' =
       try T.avoid (cons_of_scope scope) t with T.Unavoidable c ->
         error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
-          (Con.to_string c.T.con) (T.string_of_typ_expand t)
+          (Con.to_string c) (T.string_of_typ_expand t)
     in
     ot := t';
     t'
@@ -1089,7 +1089,7 @@ and infer_dec_typdecs env dec =
     let cs, ts, te = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te in
     let t = check_typ env' typ in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
     con_id.note <- Some c
@@ -1100,7 +1100,7 @@ and infer_dec_typdecs env dec =
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con(c, List.map (fun c -> T.Con (c, [])) cs) in
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
     con_id.note <- Some c
@@ -1168,7 +1168,7 @@ and infer_dec_valdecs env dec : val_env =
       | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it
       (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
@@ -1180,7 +1180,7 @@ and infer_dec_valdecs env dec : val_env =
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
 
 
