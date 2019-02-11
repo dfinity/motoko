@@ -65,9 +65,9 @@ class Chan<A,R> (join : Join) = {
 	join.scan();
     };
 
-    send(a:A): (async R) {
+    send(a:A): Async<R> {
         let (async_,c) = new_async<R>();
-        queue.enqeue(a,c);
+        queue.enqueue(a,c);
         async_;
     };
 
@@ -153,6 +153,7 @@ func Clause<A,R>(pat: Pat<A,R>, cont: A->R) : AbsClause = new {
 // Examples
 
 // an unbounded, asynchronous buffer
+{
 actor Buffer = {
     private j  = Join();
     private put = j.Create<Text>();
@@ -174,6 +175,39 @@ Buffer.Put("Hello\n");
 Buffer.Put("World\n");
 Buffer.Get(shared func(t:Text) { print(t);});
 Buffer.Get(shared func(t:Text) { print(t);});
+};
+
+{
+// an unbounded, awaitable (synchronous) buffer
+actor AwaitableBuffer = {
+    private j  = Join();
+    private put = j.Create<Text>();
+    private get = j.Request<(),Text>();
+    private init  =
+	j.Handle<(),Text>(get).And<Text>(put). // type argument inference, please
+	Do( func ((_,a) : ((), Text)) : Text {  // type annotation inference, please
+		a;
+	}
+	  );
+    Put(t : Text)
+    {	put.post(t);
+    };
+    Get() : async Text {
+      await (as_async (get.post(c)));
+    }
+};
+
+
+ignore(async {
+	let m1 = await (AwaitableBuffer.Get());
+        let m2 = await (AwaitableBuffer.Get());
+        print (m1 # m2);
+});
+
+AwaitableBuffer.Put("Hello\n");
+AwaitableBuffer.Put("World\n");
+
+};
 
 // an asynchronous lock
 type Release = shared () -> ();
