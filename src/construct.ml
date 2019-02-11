@@ -453,7 +453,7 @@ let forE pat exp1 exp2 =
   (* for p in e1 e2
      ~~>
      let x1 = e1 ;
-     let nxt = e1.next ;
+     let nxt = x1.next ;
      label l: loop {
        let x1' = nxt () ;
        switch x1' {
