@@ -46,10 +46,10 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-type Cont<T <: Shared> = T -> () ;
-type Async<T <: Shared> = Cont<T> -> ();
+type Cont<T> = T -> () ;
+type Async<T> = Cont<T> -> ();
 
-func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
+func @new_async<T>():(Async<T>, Cont<T>) {
   let empty = func k (t:T) = ();
   var result : ?T = null;
   var ks : T -> () = empty;
@@ -75,6 +75,12 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
   };
   (enqueue,fullfill)
 };
+
+func new_async<T>() : (Async<T>, Cont<T>) =
+   @new_async<T>();
+
+let as_async = prim "as_async" : <T <: Shared> Async<T> -> async T;
+
 |}
 
 (* Primitives *)
@@ -103,4 +109,5 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "as_async" -> fun v k -> k v;
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

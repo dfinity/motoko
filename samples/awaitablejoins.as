@@ -56,25 +56,33 @@ class Queue<T>() {
 };
 
 class Chan<A,R> (join : Join) = {
-    private queue : Queue<A> = Queue<A>();
+    private queue : Queue<(A,R->())> = Queue<(A,R->())>();
 
     isEmpty():Bool = queue.isEmpty();
 
     post(a : A) {
-	queue.enqueue(a);
+	queue.enqueue(a,func(r:R){});
 	join.scan();
     };
-    dequeue() : A
+
+    send(a:A): (async R) {
+        let (async_,c) = new_async<R>();
+        queue.enqeue(a,c);
+        async_;
+    };
+
+    dequeue() : (A,R->())
     {
 	queue.dequeue();
-    }
+    };
 };
+
 
 type Pat<A,R> = {
     And : <B> Chan<B,R> -> Pat<(A,B),R>; // causes type-checker looping without hack!
     Do : (A -> R) -> ();
     match : () -> Bool;
-    get : () -> A;
+    get : () -> (A,R->());
 };
 
 func Atom<A,R>(join : Join, chan : Chan<A,R>) : Pat<A,R> = new this {
@@ -82,7 +90,7 @@ func Atom<A,R>(join : Join, chan : Chan<A,R>) : Pat<A,R> = new this {
     Do (cont: A-> R) { join.addClause(Clause<A,R>(this, cont));};
 
     match():Bool { not(chan.isEmpty()); };
-    get():A { chan.dequeue();}
+    get():(A,R->()) { chan.dequeue();}
 };
 
 func Conj<A,B,R>(join : Join, pat:Pat<A,R>, chan:Chan<B,R>) : Pat<(A,B),R> = new this {
@@ -91,7 +99,11 @@ func Conj<A,B,R>(join : Join, pat:Pat<A,R>, chan:Chan<B,R>) : Pat<(A,B),R> = new
     Do (cont: ((A,B)) -> R) { join.addClause(Clause<(A,B),R>(this, cont));};
 
     match():Bool { (pat.match() and (not (chan.isEmpty()))); };
-    get():((A,B)) { (pat.get(), chan.dequeue());}
+    get():((A,B),R->()) {
+	let (a,ka) = pat.get();
+	let (b,kb) = chan.dequeue();
+	((a,b), func(r:R) { ka(r);kb(r); });
+    };
 };
 
 
@@ -121,6 +133,7 @@ class Join() = this {
     Request<A,C>() : Chan<A,C> = Chan<A,C>(this);
 
     When<A>(c:Chan<A,Any>):Pat<A,Any> = Atom<A,Any>(this, c);
+    Handle<A,R>(c:Chan<A,R>):Pat<A,R> = Atom<A,R>(this, c);
 };
 
 type AbsClause = {
@@ -131,7 +144,8 @@ type AbsClause = {
 func Clause<A,R>(pat: Pat<A,R>, cont: A->R) : AbsClause = new {
     match():Bool { pat.match(); };
     fire() : () {
-//	cont(pat.get());
+	let (a,k) = pat.get();
+	k(cont(a));
     };
 };
 
