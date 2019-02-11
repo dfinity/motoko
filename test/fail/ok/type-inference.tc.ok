@@ -60,5 +60,3 @@ the previous produce type
   Text
 type-inference.as:78.13-78.16: type error, expected iterable type, but expression has type
   Non
-type-inference.as:85.3-90.4: type error, local class type C/5 is contained in inferred block type
-  C/5

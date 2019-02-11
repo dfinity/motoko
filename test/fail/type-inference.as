@@ -79,7 +79,9 @@ func bot(bot : Bot) {
 };
 };
 
-// This is an error.
+// This was an error when classes were subtypes of their
+// representation, but with structural typing throughout it is
+// no longer one
 {
   let _ =
   {
