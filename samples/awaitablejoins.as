@@ -55,15 +55,27 @@ class Queue<T>() {
     };
 };
 
-class Chan<A,R> (join : Join) = {
+type Chan<A,R> = {
+
+    isEmpty: () -> Bool;
+
+    dequeue : () -> (A,R->());
+};
+
+type Channel<A,R> = {
+
+    isEmpty: () -> Bool;
+
+    dequeue : () -> (A,R->());
+
+    send: A -> Async<R>;
+};
+
+
+func Channel<A,R> (join : Join) : Channel<A,R> = new {
     private queue : Queue<(A,R->())> = Queue<(A,R->())>();
 
     isEmpty():Bool = queue.isEmpty();
-
-    post(a : A) {
-	queue.enqueue(a,func(r:R){});
-	join.scan();
-    };
 
     send(a:A): Async<R> {
         let (async_,c) = new_async<R>();
@@ -74,6 +86,35 @@ class Chan<A,R> (join : Join) = {
     dequeue() : (A,R->())
     {
 	queue.dequeue();
+    };
+};
+
+type Msg<A> = {
+
+    isEmpty: () -> Bool;
+
+    dequeue : () -> (A,Any->());
+
+    post: A -> ();
+};
+
+
+
+func Message<A> (join : Join) : Msg<A> = new {
+    private queue : Queue<A> = Queue<A>();
+
+    isEmpty():Bool = queue.isEmpty();
+
+    post(a : A) {
+	queue.enqueue(a);
+	join.scan();
+    };
+
+    dequeue() : (A, Any -> () )
+    {
+	let a = queue.dequeue();
+	let k = func(r:Any){};
+	(a,k);
     };
 };
 
@@ -129,8 +170,8 @@ class Join() = this {
 	};
     };
 
-    Create<A>() : Chan<A,Any> = Chan<A,Any>(this);
-    Request<A,C>() : Chan<A,C> = Chan<A,C>(this);
+    Create<A>() : Msg<A> = Message<A>(this);
+    Request<A,C>() : Channel<A,C> = Channel<A,C>(this);
 
     When<A>(c:Chan<A,Any>):Pat<A,Any> = Atom<A,Any>(this, c);
     Handle<A,R>(c:Chan<A,R>):Pat<A,R> = Atom<A,R>(this, c);
@@ -187,13 +228,13 @@ actor AwaitableBuffer = {
 	j.Handle<(),Text>(get).And<Text>(put). // type argument inference, please
 	Do( func ((_,a) : ((), Text)) : Text {  // type annotation inference, please
 		a;
-	}
-	  );
+	    }
+	);
     Put(t : Text)
     {	put.post(t);
     };
     Get() : async Text {
-      await (as_async (get.post(c)));
+	await (as_async<Text> (get.send(())));
     }
 };
 
