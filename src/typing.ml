@@ -19,25 +19,24 @@ let recover f y = recover_with () f y
 
 type val_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
-type con_set = T.con_set
 
 type scope =
   { val_env : val_env;
     typ_env : typ_env;
-    con_set : con_set;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
     typ_env = T.Env.empty;
-    con_set = Con.Set.empty;
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_set = Con.Set.union scope1.con_set scope2.con_set;
   }
+
+let cons_of_scope scope =
+  T.Env.fold (fun _name con s -> Con.Set.add con.T.con s) scope.typ_env Con.Set.empty
 
 (* Contexts (internal) *)
 
@@ -100,7 +99,7 @@ let adjoin c scope =
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
-let adjoin_typs c te ce =
+let adjoin_typs c te =
   { c with
     typs = T.Env.adjoin c.typs te;
   }
@@ -155,8 +154,8 @@ and check_typ' env typ : T.typ =
   | TupT typs ->
     T.Tup (List.map (check_typ env) typs)
   | FuncT (sort, binds, typ1, typ2) ->
-    let cs, ts, te, ce = check_typ_binds env binds in
-    let env' = adjoin_typs env te ce in
+    let cs, ts, te = check_typ_binds env binds in
+    let env' = adjoin_typs env te in
     let typs1 = as_seqT typ1 in
     let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
@@ -206,7 +205,7 @@ and check_typ_field env s typ_field : T.field =
       id.it (T.string_of_typ_expand t);
   {T.name = id.it; typ = t}
 
-and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_set =
+and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun n -> T.fresh_con n (T.Abs ([], T.Pre))) xs in
   let te = List.fold_left2 (fun te typ_bind c ->
@@ -222,7 +221,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_set 
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
-  cs, ts, te, Con.Set.of_list (List.map (fun c -> c.T.con) cs)
+  cs, ts, te
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   match tbs, typs with
@@ -470,7 +469,7 @@ and infer_exp' env exp : T.typ =
   | BlockE (decs, ot) ->
     let t, scope = infer_block env decs exp.at in
     let t' =
-      try T.avoid scope.con_set t with T.Unavoidable c ->
+      try T.avoid (cons_of_scope scope) t with T.Unavoidable c ->
         error env exp.at "local class type %s is contained in inferred block type\n  %s"
           (Con.to_string c.T.con)
           (T.string_of_typ_expand t)
@@ -597,7 +596,7 @@ and infer_exp' env exp : T.typ =
   | DecE (dec, ot) ->
     let t, scope = infer_block env [dec] exp.at in
     let t' =
-      try T.avoid scope.con_set t with T.Unavoidable c ->
+      try T.avoid (cons_of_scope scope) t with T.Unavoidable c ->
         error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
           (Con.to_string c.T.con) (T.string_of_typ_expand t)
     in
@@ -968,8 +967,8 @@ and infer_dec env dec : T.typ =
   | FuncD (sort, id, typ_binds, pat, typ, exp) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
-      let env' = adjoin_typs env te ce in
+      let _cs, _ts, te = check_typ_binds env typ_binds in
+      let env' = adjoin_typs env te in
       let _, ve = infer_pat_exhaustive env' pat in
       let t2 = check_typ env' typ in
       let env'' =
@@ -980,8 +979,8 @@ and infer_dec env dec : T.typ =
   | ClassD (id, con_id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let cs, _ts, te, ce = check_typ_binds env typ_binds in
-      let env' = adjoin_typs env te ce in
+      let cs, _ts, te = check_typ_binds env typ_binds in
+      let env' = adjoin_typs env te in
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
         {env' with labs = T.Env.empty; rets = None; async = false} in
@@ -1063,14 +1062,14 @@ and print_ve =
 and infer_block_decs env decs : scope =
   let scope = gather_block_typdecs env decs in
   let env' = adjoin {env with pre = true} scope in
-  let cs = infer_block_typdecs env' decs in
-  let env'' = adjoin env {scope with con_set = cs} in
-  let _cs' = infer_block_typdecs env'' decs in
+  infer_block_typdecs env' decs;
+  let env'' = adjoin env scope in
+  infer_block_typdecs env'' decs;
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
   let pre_ve' = gather_block_valdecs env decs in
   let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
-  {scope with val_env = ve; con_set = cs}
+  {scope with val_env = ve}
 
 
 (* Pass 1: collect type identifiers and their arity *)
@@ -1094,43 +1093,36 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
     let te' = T.Env.add con_id.it c scope.typ_env in
-    let cs' = Con.Set.add c.T.con scope.con_set in
-    {val_env = ve'; typ_env = te'; con_set = cs'}
+    {val_env = ve'; typ_env = te'}
 
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs : con_set =
-  List.fold_left (fun cs dec ->
-      let cs' = infer_dec_typdecs env dec in
-      Con.Set.union cs cs'
-    ) Con.Set.empty decs
+and infer_block_typdecs env decs  =
+  List.iter (infer_dec_typdecs env) decs
 
-and infer_dec_typdecs env dec : con_set =
+and infer_dec_typdecs env dec =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
-    Con.Set.empty
+  | ExpD _ | LetD _ | VarD _ | FuncD _ -> ()
   | TypD (con_id, binds, typ) ->
     let c = T.Env.find con_id.it env.typs in
-    let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs env te ce in
+    let cs, ts, te = check_typ_binds {env with pre = true} binds in
+    let env' = adjoin_typs env te in
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
-    con_id.note <- Some c;
-    Con.Set.singleton c.T.con
+    con_id.note <- Some c
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find con_id.it env.typs in
-    let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs {env with pre = true} te ce in
+    let cs, ts, te = check_typ_binds {env with pre = true} binds in
+    let env' = adjoin_typs {env with pre = true} te in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con(c, List.map (fun c -> T.Con (c, [])) cs) in
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
-    con_id.note <- Some c;
-    Con.Set.singleton c.T.con
+    con_id.note <- Some c
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =
@@ -1168,8 +1160,8 @@ and infer_dec_valdecs env dec : val_env =
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
   | FuncD (sort, id, typ_binds, pat, typ, exp) ->
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
-    let env' = adjoin_typs env te ce in
+    let cs, ts, te = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let t2 = check_typ env' typ in
     if not env.pre && sort.it = T.Sharable then begin
@@ -1201,8 +1193,8 @@ and infer_dec_valdecs env dec : val_env =
   | TypD _ ->
     T.Env.empty
   | ClassD (id, con_id, typ_binds, sort, pat, self_id, fields) ->
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
-    let env' = adjoin_typs env te ce in
+    let cs, ts, te = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te in
     let c = T.Env.find con_id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in

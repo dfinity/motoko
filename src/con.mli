@@ -8,5 +8,3 @@ val to_string : t -> string
 
 module Env : Env.S with type key = t
 module Set : Set.S with type elt = t
-
-val set_of_env : 'a Env.t -> Set.t

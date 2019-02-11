@@ -15,13 +15,10 @@ let phase heading name =
 let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
-let print_cs =
-  Con.Set.iter (fun c ->
-    printf "temporary TODO"
-    (*
+let print_te =
+  Type.Env.iter (fun _ c ->
     let eq, params, typ = Type.strings_of_kind (Type.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
-    *)
+    printf "type %s%s %s %s\n" (Con.to_string c.Type.con) params eq typ
   )
 
 let print_stat_ve =
@@ -41,7 +38,7 @@ let print_dyn_ve scope =
   )
 
 let print_scope senv scope dve =
-  print_cs scope.Typing.con_set;
+  print_te scope.Typing.typ_env;
   print_dyn_ve senv dve
 
 let print_val _senv v t =
@@ -111,7 +108,7 @@ let check_prog infer senv name prog
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
-      print_cs scope.Typing.con_set;
+      print_te scope.Typing.typ_env;
       print_stat_ve scope.Typing.val_env;
       dump_prog Flags.dump_tc prog;
     | Error _ -> ()
