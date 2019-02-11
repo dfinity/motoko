@@ -78,14 +78,6 @@ let warn env at fmt =
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
-(*
-let add_con c con k = {c with cons = Con.Env.add con k c.cons}
-let add_typ c x con k =
-  { c with
-    typs = T.Env.add x con c.typs;
-    cons = Con.Env.add con k c.cons;
-  }
-*)
 
 let add_typs c xs cs =
   { c with
@@ -1047,17 +1039,6 @@ and check_dec env t dec =
       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t)
-(*
-and print_ce =
-  Con.Env.iter (fun c k ->
-    Printf.printf "  type %s %s\n" (Con.to_string c) (Type.string_of_kind k)
-  )
-and print_ve =
-  Type.Env.iter (fun x t ->
-    Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
-  )
-*)
-
 
 and infer_block_decs env decs : scope =
   let scope = gather_block_typdecs env decs in

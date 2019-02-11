@@ -47,7 +47,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-type con_env = kind Con.Env.t
 type con_set = Con.Set.t
 
 val kind : con -> kind

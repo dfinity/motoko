@@ -25,7 +25,6 @@ let immute_typ p =
 (* Scope (the external interface) *)
 
 type val_env = T.typ T.Env.t
-type con_env = T.con_env
 
 type scope =
   { val_env : val_env;

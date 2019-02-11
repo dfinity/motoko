@@ -59,8 +59,6 @@ let modify_kind c f = c.kind := f !(c.kind)
 
 let compare_field {name=n;_} {name=m;_} = compare n m
 
-type con_env = kind Con.Env.t
-
 let seq ts =
     match ts with
     | [t] -> t
