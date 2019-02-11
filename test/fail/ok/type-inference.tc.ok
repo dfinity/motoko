@@ -28,5 +28,37 @@ this case produces type
   Int
 the previous produce type
   Text
-type-inference.as:83.1-88.2: type error, local class type C/3 is contained in inferred block type
-  C/3
+type-inference.as:10.9-10.28: warning, this if has type Any because branches have inconsistent types,
+true produces
+  Bool
+false produces
+  Nat
+type-inference.as:11.9-11.27: warning, this if has type Any because branches have inconsistent types,
+true produces
+  Nat
+false produces
+  Float
+type-inference.as:12.9-12.33: warning, this if has type Any because branches have inconsistent types,
+true produces
+  ()
+false produces
+  {}
+type-inference.as:13.9-13.53: warning, this if has type Any because branches have inconsistent types,
+true produces
+  {x : Nat}
+false produces
+  {x : var Nat}
+type-inference.as:17.33-17.41: warning, the switch has type Any because branches have inconsistent types,
+this case produces type
+  Bool
+the previous produce type
+  Nat
+type-inference.as:18.43-18.56: warning, the switch has type Any because branches have inconsistent types,
+this case produces type
+  Int
+the previous produce type
+  Text
+type-inference.as:78.13-78.16: type error, expected iterable type, but expression has type
+  Non
+type-inference.as:85.3-90.4: type error, local class type C/5 is contained in inferred block type
+  C/5

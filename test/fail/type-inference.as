@@ -65,7 +65,7 @@ func top(top : Top) {
 };
 
 // Bottom Type
-
+{
 type Bot = None;
 func bot(bot : Bot) {
   //let a = bot.1;
@@ -77,12 +77,15 @@ func bot(bot : Bot) {
   let g = bot + bot * bot;
   for (x in bot) {};
 };
+};
 
 // This is an error.
-let _ =
 {
-  class C() {};
-  type T = C;
-  let o : T = C();
-  o;
+  let _ =
+  {
+    class C() {};
+    type T = C;
+    let o : T = C();
+    o;
+  };
 };
