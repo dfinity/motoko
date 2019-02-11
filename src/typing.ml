@@ -1136,7 +1136,7 @@ and infer_dec_typdecs env dec : con_env =
     let self_typ = T.Con(c, List.map (fun c -> T.Con (c, [])) cs) in
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c.T.con; bound = T.close cs t}) cs ts in
-    let k = T.Abs (tbs, T.close cs t) in
+    let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
     con_id.note <- Some c;
     Con.Env.singleton c.T.con k
