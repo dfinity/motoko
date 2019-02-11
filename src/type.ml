@@ -45,8 +45,8 @@ and field = {name : string; typ : typ}
 let compare_field {name=n;_} {name=m;_} = compare n m
 
 type kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
+  | Def of bind list * typ (* concrete type alias or constructor *)
+  | Abs of typ (* abstract nullary type constructor with bound *)
 
 type con_env = kind Con.Env.t
 
@@ -207,7 +207,7 @@ let open_binds env tbs =
   if tbs = [] then [], env else
   let cs = List.map (fun {var; _} -> Con.fresh var) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
-  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
+  let ks = List.map (fun {bound; _} -> Abs (open_ ts bound)) tbs in
   ts, List.fold_right2 Con.Env.add cs ks env
 
 
@@ -230,7 +230,8 @@ let rec normalize env = function
 let rec promote env = function
   | Con (con, ts) ->
     (match Con.Env.find_opt con env with
-    | Some (Def (tbs, t) | Abs (tbs, t)) -> promote env (reduce tbs t ts)
+    | Some (Def (tbs, t)) -> promote env (reduce tbs t ts)
+    | Some (Abs t) -> promote env t
     | None -> assert false
     )
   | t -> t
@@ -396,10 +397,10 @@ let rec rel_typ env rel eq t1 t2 =
       rel_typ env rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ env rel eq t1 (open_ ts2 t)
-    | _ when con1 = con2 ->
-      rel_list eq_typ env rel eq ts1 ts2
-    | Abs (tbs, t), _ when rel != eq ->
-      rel_typ env rel eq (open_ ts1 t) t2
+    | Abs _, Abs _ when con1 = con2 ->
+      true (* ts1 and ts2 should both be empty here *)
+    | Abs t, _ when rel != eq ->
+      rel_typ env rel eq t t2
     | _ ->
       false
     )
@@ -407,8 +408,8 @@ let rec rel_typ env rel eq t1 t2 =
     (match Con.Env.find con1 env, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ env rel eq (open_ ts1 t) t2
-    | Abs (tbs, t), _ when rel != eq ->
-      rel_typ env rel eq (open_ ts1 t) t2
+    | Abs t, _ when rel != eq ->
+      rel_typ env rel eq t t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
@@ -659,7 +660,7 @@ let strings_of_kind k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
+    | Abs t -> "<:", [], t
   in
   let vs = names_of_binds [] tbs in
   op, string_of_binds vs vs tbs, string_of_typ' vs t

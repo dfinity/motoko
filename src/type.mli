@@ -46,7 +46,7 @@ val compare_field : field -> field -> int
 
 type kind =
   | Def of bind list * typ
-  | Abs of bind list * typ
+  | Abs of typ
 
 type con_env = kind Con.Env.t
 

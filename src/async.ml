@@ -168,12 +168,9 @@ and t_bind {var; bound} =
 
 and t_binds typbinds = List.map t_bind typbinds
 
-and t_kind k =
-  match k with
-  | T.Abs(typ_binds,typ) ->
-    T.Abs(t_binds typ_binds, t_typ typ)
-  | T.Def(typ_binds,typ) ->
-    T.Def(t_binds typ_binds, t_typ typ)
+and t_kind = function
+  | T.Def (typ_binds, typ) -> T.Def (t_binds typ_binds, t_typ typ)
+  | T.Abs typ -> T.Abs (t_typ typ)
 
 and t_operator_type ot =
   (* We recreate the reference here. That is ok, because it

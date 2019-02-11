@@ -240,7 +240,7 @@ module E = struct
        and maybe we need a type open_typ_bind that can be used inside the IR.
     *)
     let cs = Check_ir.cons_of_typ_binds typ_binds in
-    let ks = List.map (fun tp -> Type.Abs([],tp.it.Type.bound)) typ_binds in
+    let ks = List.map (fun tp -> Type.Abs tp.it.Type.bound) typ_binds in
     let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
     { env with con_env = Con.Env.adjoin env.con_env ce }
 

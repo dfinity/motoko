@@ -135,8 +135,9 @@ let rec check_typ env typ : unit =
     error env no_region "free type variable %s, index %i" s  i
   | T.Con(c,typs) ->
     (match Con.Env.find_opt c env.cons with
-    | Some (T.Def (tbs, t) | T.Abs (tbs, t))  ->
+    | Some (T.Def (tbs, t)) ->
       check_typ_bounds env tbs typs no_region
+    | Some (T.Abs t) -> ()
     | None -> error env no_region "unbound type constructor %s" (Con.to_string c)
     )
   | T.Any -> ()
@@ -206,7 +207,7 @@ and check_typ_field env s typ_field : unit =
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts,ce = Type.open_binds env.cons typ_binds in
   let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
-  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
+  let ks = List.map2 (fun c t -> T.Abs t) cs ts in
   let env' = add_typs env cs ks in
   let _ = List.map
             (fun typ_bind ->
@@ -694,7 +695,7 @@ and cons_of_typ_binds typ_binds =
 
 and check_open_typ_binds env typ_binds =
   let cs = cons_of_typ_binds typ_binds in
-  let ks = List.map (fun tp -> T.Abs([],tp.it.T.bound)) typ_binds in
+  let ks = List.map (fun tp -> T.Abs tp.it.T.bound) typ_binds in
   let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
   let binds = T.close_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
@@ -731,15 +732,14 @@ and check_dec env dec  =
     check_sub env' dec.at (typ exp) t2;
     t0 <: t;
   | TypD (c, k) ->
-    let (binds,typ) =
-      match k with
-      | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
-    in
-    let cs,ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
-    let env' = adjoin_typs env ce in
-    check_typ env' (T.open_ ts  typ);
+    begin match k with
+    | T.Def (binds, typ) ->
+      let cs,ce = check_typ_binds env binds in
+      let ts = List.map (fun c -> T.Con(c,[])) cs in
+      let env' = adjoin_typs env ce in
+       check_typ env' (T.open_ ts  typ);
+    | T.Abs typ -> check_typ env typ
+    end;
     T.unit <: t;
 
 and check_block env t decs at : scope =

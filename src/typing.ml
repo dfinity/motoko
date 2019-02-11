@@ -140,13 +140,18 @@ let rec check_typ env typ : T.typ =
 and check_typ' env typ : T.typ =
   match typ.it with
   | VarT (id, typs) ->
-    (match T.Env.find_opt id.it env.typs with
+    begin match T.Env.find_opt id.it env.typs with
     | Some c ->
-      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find c env.cons in
-      let ts = check_typ_bounds env tbs typs typ.at in
-	    T.Con (c, ts)
+      begin match Con.Env.find c env.cons with
+      | T.Def (tbs, t) ->
+        let ts = check_typ_bounds env tbs typs typ.at in
+        T.Con (c, ts)
+      | T.Abs t ->
+        if typs <> [] then error env id.at "type arguments to type parameter" id.it;
+        T.Con (c, [])
+      end
     | None -> error env id.at "unbound type identifier %s" id.it
-    )
+    end
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
@@ -221,10 +226,10 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
         error env id.at "duplicate type name %s in type parameter list" id.it;
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
-  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
+  let pre_ks = List.map (fun c -> T.Abs T.Pre) cs in
   let pre_env' = add_typs {env with pre = true} xs cs pre_ks in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
-  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
+  let ks = List.map2 (fun c t -> T.Abs t) cs ts in
   let env' = add_typs env xs cs ks in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   cs, ts, te, Con.Env.from_list2 cs ks
@@ -1092,7 +1097,7 @@ and gather_dec_typdecs env scope dec : scope =
       List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
     let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
     let c = Con.fresh con_id.it in
-    let pre_k = T.Abs (pre_tbs, T.Pre) in
+    let pre_k = T.Def (pre_tbs, T.Pre) in
     let ve' =
       match dec.it with
       | ClassD (id, _, _ , _, _, _, _) ->
