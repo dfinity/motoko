@@ -329,6 +329,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
+  | CallE (_cc, exp1, [t], exp2) when Show.is_show_func_ir exp1 ->
+    interpret_exp env exp2 (fun v2 ->
+      let s = Show.show_val t v2 in
+      k (V.Text s)
+    )
   | CallE (_cc, exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
         interpret_exp env exp2 (fun v2 ->

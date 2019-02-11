@@ -453,6 +453,16 @@ and infer_exp' env exp : T.typ =
       let tbs, t2, t = T.as_func_sub (List.length insts) t1 in
       let ts = check_inst_bounds env tbs insts exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
+
+      (* Checking instantations of magic functions like show *)
+      if not env.pre && Show.is_show_func exp1 then
+      begin match ts with
+        | [t] when Show.can_show t -> ()
+        | [t] ->
+        local_error env exp.at "do not know how to show value of type\n   %s"
+          (T.string_of_typ_expand t)
+        | _ -> ()
+      end;
       T.open_ ts t
     with Invalid_argument _ ->
       error env exp1.at "expected function type, but expression produces type\n  %s"

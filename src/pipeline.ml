@@ -136,6 +136,9 @@ let async_lowering =
 let tailcall_optimization =
   transform_ir "Tailcall optimization" Tailcall.transform
 
+let show_translation =
+  transform_ir "Translate show" Show.transform
+
 let check_with parse infer senv name : check_result =
   match parse name with
   | Error e -> Error [e]
@@ -167,7 +170,8 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
       then
         let prog_ir = Desugar.transform senv prog in
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
-        let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in 
+        let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
+        let prog_ir = show_translation true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
     match vo with
@@ -293,6 +297,7 @@ let compile_with check mode name : compile_result =
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
+    let prog = show_translation true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_

@@ -63,10 +63,12 @@ let with_check_typ check_typ env = { env with check_typ }
 
 (* More error bookkeeping *)
 
+exception CheckFailed of string
+
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
 
 let error env at fmt =
-    Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+    Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -101,7 +103,7 @@ let check env at p =
 let check_sub env at t1 t2 =
   if T.sub t1 t2
   then ()
-  else error env at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
+  else error env at "subtype violation (%s) (%s)" (T.string_of_typ t1) (T.string_of_typ t2)
 
 let make_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -766,5 +768,9 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_prog env prog : unit =
-  check_block env T.unit prog.it prog.at
+  try
+   check_block env T.unit prog.it prog.at
+  with CheckFailed s ->
+    Wasm.Sexpr.print 80 (Arrange_ir.prog prog);
+    failwith s
 
