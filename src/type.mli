@@ -123,7 +123,7 @@ val normalize : typ -> typ
 val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : con_env -> con_set -> typ -> typ (* raise Unavoidable *)
+val avoid : con_set -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)
