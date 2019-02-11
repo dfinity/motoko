@@ -534,6 +534,16 @@ and infer_exp'' env exp : T.typ =
             (T.string_of_typ_expand t_ret);
       end
     end;
+
+    (* Checking instantations of magic functions like show *)
+    if not env.pre && Show.is_show_func exp1 then
+    begin match ts with
+      | [t] when Show.can_show t -> ()
+      | [t] ->
+      local_error env exp.at "do not know how to show value of type\n   %s"
+        (T.string_of_typ_expand t)
+      | _ -> ()
+    end;
     t_ret
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
