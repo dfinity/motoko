@@ -8,7 +8,7 @@ https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/The-Joins-Co
 
 // TODO: make addClause, scan, match and get private by passing them directly to Atom, Conj (in place of Join argument) etc.
 
-// TODO: add support for awaitable channels (that return results)
+//  for awaitable channels (that return results) see awaitablejoins.as
 
 type List<T> = ?{head: T; tail: List<T>};
 

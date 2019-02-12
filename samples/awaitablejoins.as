@@ -240,7 +240,7 @@ actor AwaitableBuffer = {
 };
 
 AwaitableBuffer.Put("Bonjour\n");
-AwaitableBuffer.Put("Mond\n");
+AwaitableBuffer.Put("Monde\n");
 
 ignore(async {
     let m1 = await (AwaitableBuffer.Get());
