@@ -44,6 +44,7 @@ type Bits = ?(Bool, Bits);
 // TODO: Replace this definition WordX, for some X, once we have these types in AS.
 type Hash = Bits;
 //type Hash = Word16;
+//type Hash = Word8;
 
 // XXX: This Node type is a "sloppy union" between "BinNodes" (left/right fields) and "Leaves" (key/val fields):
 type Node<K,V> = {
@@ -342,7 +343,7 @@ let hash_1 = ?(false,?(false,?(false,?(true,  null))));
 let hash_2 = ?(false,?(false,?(true, ?(false, null))));
 let hash_3 = ?(false,?(false,?(true, ?(true,  null))));
 let hash_4 = ?(false,?(true, ?(false,?(false, null))));
-let hash_5 = ?(false,?(true, ?(true, ?(true,  null))));
+let hash_5 = ?(false,?(true, ?(false,?(true,  null))));
 let hash_6 = ?(false,?(true, ?(true, ?(false, null))));
 let hash_7 = ?(false,?(true, ?(true, ?(true,  null))));
 let hash_8 = ?(true, ?(false,?(false,?(false, null))));
@@ -372,6 +373,7 @@ assert( setMemDb(s5, "s5", 0, hash_0 ) );
 assert( setMemDb(s6, "s6", 0, hash_0 ) );
 assert( setMemDb(s7, "s7", 0, hash_0 ) );
 assert( setMemDb(s8, "s8", 0, hash_0 ) );
+assert( setMemDb(s9, "s9", 0, hash_0 ) );
 
 // Element 1: Test memberships of each set defined above for element 1
 assert( not(setMemDb(s0, "s0", 1, hash_1 )) );
@@ -383,6 +385,7 @@ assert( setMemDb(s5, "s5", 1, hash_1 ) );
 assert( setMemDb(s6, "s6", 1, hash_1 ) );
 assert( setMemDb(s7, "s7", 1, hash_1 ) );
 assert( setMemDb(s8, "s8", 1, hash_1 ) );
+assert( setMemDb(s9, "s9", 1, hash_1 ) );
 
 // Element 2: Test memberships of each set defined above for element 2
 assert( not(setMemDb(s0, "s0", 2, hash_2 )) );
@@ -394,6 +397,7 @@ assert( setMemDb(s5, "s5", 2, hash_2 ) );
 assert( setMemDb(s6, "s6", 2, hash_2 ) );
 assert( setMemDb(s7, "s7", 2, hash_2 ) );
 assert( setMemDb(s8, "s8", 2, hash_2 ) );
+assert( setMemDb(s9, "s9", 2, hash_2 ) );
 
 // Element 3: Test memberships of each set defined above for element 3
 assert( not(setMemDb(s0, "s0", 3, hash_3 )) );
@@ -405,5 +409,66 @@ assert( setMemDb(s5, "s5", 3, hash_3 ) );
 assert( setMemDb(s6, "s6", 3, hash_3 ) );
 assert( setMemDb(s7, "s7", 3, hash_3 ) );
 assert( setMemDb(s8, "s8", 3, hash_3 ) );
+assert( setMemDb(s9, "s9", 3, hash_3 ) );
+
+// Element 4: Test memberships of each set defined above for element 4
+assert( not(setMemDb(s0, "s0", 4, hash_4 )) );
+assert( not(setMemDb(s1, "s1", 4, hash_4 )) );
+assert( not(setMemDb(s2, "s2", 4, hash_4 )) );
+assert( not(setMemDb(s3, "s3", 4, hash_4 )) );
+assert( not(setMemDb(s4, "s4", 4, hash_4 )) );
+assert( setMemDb(s5, "s5", 4, hash_4 ) );
+assert( setMemDb(s6, "s6", 4, hash_4 ) );
+assert( setMemDb(s7, "s7", 4, hash_4 ) );
+assert( setMemDb(s8, "s8", 4, hash_4 ) );
+assert( setMemDb(s9, "s9", 4, hash_4 ) );
+
+// Element 5: Test memberships of each set defined above for element 5
+assert( not(setMemDb(s0, "s0", 5, hash_5 )) );
+assert( not(setMemDb(s1, "s1", 5, hash_5 )) );
+assert( not(setMemDb(s2, "s2", 5, hash_5 )) );
+assert( not(setMemDb(s3, "s3", 5, hash_5 )) );
+assert( not(setMemDb(s4, "s4", 5, hash_5 )) );
+assert( not(setMemDb(s5, "s5", 5, hash_5 )) );
+assert( setMemDb(s6, "s6", 5, hash_5 ) );
+assert( setMemDb(s7, "s7", 5, hash_5 ) );
+assert( setMemDb(s8, "s8", 5, hash_5 ) );
+assert( setMemDb(s9, "s9", 5, hash_5 ) );
+
+// Element 6: Test memberships of each set defined above for element 6
+assert( not(setMemDb(s0, "s0", 6, hash_6 )) );
+assert( not(setMemDb(s1, "s1", 6, hash_6 )) );
+assert( not(setMemDb(s2, "s2", 6, hash_6 )) );
+assert( not(setMemDb(s3, "s3", 6, hash_6 )) );
+assert( not(setMemDb(s4, "s4", 6, hash_6 )) );
+assert( not(setMemDb(s5, "s5", 6, hash_6 )) );
+assert( not(setMemDb(s6, "s6", 6, hash_6 )) );
+assert( setMemDb(s7, "s7", 6, hash_6 ) );
+assert( setMemDb(s8, "s8", 6, hash_6 ) );
+assert( setMemDb(s9, "s9", 6, hash_6 ) );
+
+// Element 7: Test memberships of each set defined above for element 7
+assert( not(setMemDb(s0, "s0", 7, hash_7 )) );
+assert( not(setMemDb(s1, "s1", 7, hash_7 )) );
+assert( not(setMemDb(s2, "s2", 7, hash_7 )) );
+assert( not(setMemDb(s3, "s3", 7, hash_7 )) );
+assert( not(setMemDb(s4, "s4", 7, hash_7 )) );
+assert( not(setMemDb(s5, "s5", 7, hash_7 )) );
+assert( not(setMemDb(s6, "s6", 7, hash_7 )) );
+assert( not(setMemDb(s7, "s7", 7, hash_7 )) );
+assert( setMemDb(s8, "s8", 7, hash_7 ) );
+assert( setMemDb(s9, "s9", 7, hash_7 ) );
+
+// Element 8: Test memberships of each set defined above for element 8
+assert( not(setMemDb(s0, "s0", 8, hash_8 )) );
+assert( not(setMemDb(s1, "s1", 8, hash_8 )) );
+assert( not(setMemDb(s2, "s2", 8, hash_8 )) );
+assert( not(setMemDb(s3, "s3", 8, hash_8 )) );
+assert( not(setMemDb(s4, "s4", 8, hash_8 )) );
+assert( not(setMemDb(s6, "s6", 8, hash_8 )) );
+assert( not(setMemDb(s6, "s6", 8, hash_8 )) );
+assert( not(setMemDb(s7, "s7", 8, hash_8 )) );
+assert( not(setMemDb(s8, "s8", 8, hash_8 )) );
+assert( setMemDb(s9, "s9", 8, hash_8 ) );
 
 print "done.\n";
