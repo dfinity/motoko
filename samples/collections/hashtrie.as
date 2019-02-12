@@ -25,24 +25,34 @@
 //  - remove operation
 //  - replace operation (remove+insert via a single traversal)
 //  - basic encoding of sets, and some set operations
+//  - basic tests (and primitive debugging) for set operations
 
 // TODO-Matthew:
 //
 //  - write trie operations that operate over pairs of tries:
 //    for set union, difference and intersection.
 //
-//  - regression tests for everything that is below
+//  - (more) regression tests for everything that is below
 //
 //  - handle hash collisions gracefully
 //
 //  - iterator objects, for use in 'for ... in ...' patterns
 
+// TEMP: A "bit string" as a linked list of bits:
+type Bits = ?(Bool, Bits);
+
 // TODO: Replace this definition WordX, for some X, once we have these types in AS.
-type Hash = ?(Bool, Hash);
+type Hash = Bits;
 //type Hash = Word16;
 
 // XXX: This Node type is a "sloppy union" between "BinNodes" (left/right fields) and "Leaves" (key/val fields):
-type Node<K,V> = {left:Trie<K,V>; right:Trie<K,V>; key:?K; val:?V};
+type Node<K,V> = {
+  left:Trie<K,V>;
+  right:Trie<K,V>;
+  key:?K;
+  val:?V
+};
+
 type Trie<K,V> = ?Node<K,V>;
 
 // Simplifying assumption, for now: All defined paths in the trie have a uniform length,
@@ -100,9 +110,9 @@ func getHashBit(h:Hash, pos:Nat) : Bool {
          // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
          false
        };
-  case (?(b, _)) {
+  case (?(b, h_)) {
          if (pos == 0) { b }
-         else { getHashBit(h, pos-1) }
+         else { getHashBit(h_, pos-1) }
        };
   }
 };
@@ -118,8 +128,12 @@ func buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
       // create new bin node for this bit of the hash
       let path = rec(bitpos+1);
       let bit = getHashBit(k_hash, bitpos);
-      if bit { ?(new {left=path; right=null; key=null; val=null}) }
-      else   { ?(new {left=null; right=path; key=null; val=null}) }
+      if (not bit) {
+        ?(new {left=path; right=null; key=null; val=null})
+      }
+      else {
+        ?(new {left=null; right=path; key=null; val=null})
+      }
     } else {
       // create new leaf for (k,v) pair
       ?(new {left=null; right=null; key=?k; val=ov })
@@ -139,7 +153,7 @@ func replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
         assertIsBin<K,V>(t);
         let bit = getHashBit(k_hash, bitpos);
         // rebuild either the left or right path with the inserted (k,v) pair
-        if bit {
+        if (not bit) {
           let (l, v_) = rec(n.left, bitpos+1);
           (?(new {left=l; right=n.right; key=null; val=null }), v_)
         }
@@ -178,16 +192,16 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
   // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
   func rec(t : Trie<K,V>, bitpos:Nat) : ?V {
     if ( bitpos < HASH_BITS ) {
-      assertIsBin<K,V>(t);
       switch t {
       case null {
         // the trie may be "sparse" along paths leading to no keys, and may end early.
         null
       };
       case (?n) {
+        assertIsBin<K,V>(t);
         let bit = getHashBit(k_hash, bitpos);
-        if bit { rec(n.left,  bitpos+1) }
-        else   { rec(n.right, bitpos+1) }
+        if (not bit) { rec(n.left,  bitpos+1) }
+        else         { rec(n.right, bitpos+1) }
         };
       }
     } else {
@@ -251,27 +265,40 @@ func setIntersect<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setIntersect<T>(s
 ////////////////////////////////////////////////////////////////////
 
 func setPrint(s:Set<Nat>) {
-  func rec(s:Set<Nat>, ind:Nat) {
+  func rec(s:Set<Nat>, ind:Nat, bits:Hash) {
     func indPrint(i:Nat) {
       if (i == 0) { } else { print "| "; indPrint(i-1) }
     };
+    func bitsPrintRev(bits:Bits) {
+      switch bits {
+        case null { print "" };
+        case (?(bit,bits_)) {
+               bitsPrintRev(bits_);
+               if bit { print "1R." }
+               else   { print "0L." }
+             }
+      }
+    };
     switch s {
     case null {
-           indPrint(ind);
-           print "null\n";
+           //indPrint(ind);
+           //bitsPrintRev(bits);
+           //print "(null)\n";
          };
     case (?n) {
            switch (n.key) {
            case null {
-                  indPrint(ind);
-                  print "(bin \n";
-                  rec(n.left, ind+1);
-                  rec(n.right, ind+1);
-                  indPrint(ind);
-                  print ")\n"
+                  //indPrint(ind);
+                  //bitsPrintRev(bits);
+                  //print "bin \n";
+                  rec(n.right, ind+1, ?(true, bits));
+                  rec(n.left,  ind+1, ?(false,bits));
+                  //bitsPrintRev(bits);
+                  //print ")\n"
                 };
            case (?k) {
-                  indPrint(ind);
+                  //indPrint(ind);
+                  bitsPrintRev(bits);
                   print "(leaf ";
                   printInt k;
                   print ")\n";
@@ -280,8 +307,10 @@ func setPrint(s:Set<Nat>) {
          };
     }
   };
-  rec(s,0);
+  rec(s, 0, null);
 };
+
+////////////////////////////////////////////////////////////////////////////////
 
 func setInsertDb(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
   print "  setInsert(";
@@ -306,25 +335,75 @@ func setMemDb(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
   b
 };
 
+/////////////////////////////////////////////////////////////////////////////////
+
+let hash_0 = ?(false,?(false,?(false,?(false, null))));
+let hash_1 = ?(false,?(false,?(false,?(true,  null))));
+let hash_2 = ?(false,?(false,?(true, ?(false, null))));
+let hash_3 = ?(false,?(false,?(true, ?(true,  null))));
+let hash_4 = ?(false,?(true, ?(false,?(false, null))));
+let hash_5 = ?(false,?(true, ?(true, ?(true,  null))));
+let hash_6 = ?(false,?(true, ?(true, ?(false, null))));
+let hash_7 = ?(false,?(true, ?(true, ?(true,  null))));
+let hash_8 = ?(true, ?(false,?(false,?(false, null))));
+
 print "inserting...\n";
-// Insert numbers [1..8] into the set, using their bits as their hashes:
+// Insert numbers [0..8] into the set, using their bits as their hashes:
 let s0 : Set<Nat> = setEmpty<Nat>();
-let s1 : Set<Nat> = setInsertDb(s0, 1, ?(false,?(false,?(false,?(false, null))))); // 0 0 0 0
-let s2 : Set<Nat> = setInsertDb(s1, 2, ?(true, ?(false,?(false,?(false, null))))); // 1 0 0 0
-let s3 : Set<Nat> = setInsertDb(s2, 3, ?(false,?(true, ?(false,?(false, null))))); // 0 1 0 0
-let s4 : Set<Nat> = setInsertDb(s3, 4, ?(true, ?(true, ?(false,?(false, null))))); // 1 1 0 0
-let s5 : Set<Nat> = setInsertDb(s4, 5, ?(false,?(false,?(true, ?(false, null))))); // 0 0 1 0
-let s6 : Set<Nat> = setInsertDb(s5, 6, ?(true, ?(false,?(true, ?(false, null))))); // 1 0 1 0
-let s7 : Set<Nat> = setInsertDb(s6, 7, ?(true, ?(true, ?(true, ?(false, null))))); // 1 1 1 0
-let s8 : Set<Nat> = setInsertDb(s7, 8, ?(false,?(false,?(false,?(true,  null))))); // 1 1 1 0
+let s1 : Set<Nat> = setInsertDb(s0, 0, hash_0);
+let s2 : Set<Nat> = setInsertDb(s1, 1, hash_1);
+let s3 : Set<Nat> = setInsertDb(s2, 2, hash_2);
+let s4 : Set<Nat> = setInsertDb(s3, 3, hash_3);
+let s5 : Set<Nat> = setInsertDb(s4, 4, hash_4);
+let s6 : Set<Nat> = setInsertDb(s5, 5, hash_5);
+let s7 : Set<Nat> = setInsertDb(s6, 6, hash_6);
+let s8 : Set<Nat> = setInsertDb(s7, 7, hash_7);
+let s9 : Set<Nat> = setInsertDb(s8, 8, hash_8);
 print "done.\n";
 print "testing membership...\n";
-assert( setMemDb(s1, "s1", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s2, "s2", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s3, "s3", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s4, "s4", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s5, "s5", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s6, "s6", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s7, "s7", 1, ?(false,?(false,?(false,?(false, null))))) );
-assert( setMemDb(s8, "s8", 1, ?(false,?(false,?(false,?(false, null))))) );
+
+// Element 0: Test memberships of each set defined above for element 0
+assert( not( setMemDb(s0, "s0", 0, hash_0 ) ));
+assert( setMemDb(s1, "s1", 0, hash_0 ) );
+assert( setMemDb(s2, "s2", 0, hash_0 ) );
+assert( setMemDb(s3, "s3", 0, hash_0 ) );
+assert( setMemDb(s4, "s4", 0, hash_0 ) );
+assert( setMemDb(s5, "s5", 0, hash_0 ) );
+assert( setMemDb(s6, "s6", 0, hash_0 ) );
+assert( setMemDb(s7, "s7", 0, hash_0 ) );
+assert( setMemDb(s8, "s8", 0, hash_0 ) );
+
+// Element 1: Test memberships of each set defined above for element 1
+assert( not(setMemDb(s0, "s0", 1, hash_1 )) );
+assert( not(setMemDb(s1, "s1", 1, hash_1 )) );
+assert( setMemDb(s2, "s2", 1, hash_1 ) );
+assert( setMemDb(s3, "s3", 1, hash_1 ) );
+assert( setMemDb(s4, "s4", 1, hash_1 ) );
+assert( setMemDb(s5, "s5", 1, hash_1 ) );
+assert( setMemDb(s6, "s6", 1, hash_1 ) );
+assert( setMemDb(s7, "s7", 1, hash_1 ) );
+assert( setMemDb(s8, "s8", 1, hash_1 ) );
+
+// Element 2: Test memberships of each set defined above for element 2
+assert( not(setMemDb(s0, "s0", 2, hash_2 )) );
+assert( not(setMemDb(s1, "s1", 2, hash_2 )) );
+assert( not(setMemDb(s2, "s2", 2, hash_2 )) );
+assert( setMemDb(s3, "s3", 2, hash_2 ) );
+assert( setMemDb(s4, "s4", 2, hash_2 ) );
+assert( setMemDb(s5, "s5", 2, hash_2 ) );
+assert( setMemDb(s6, "s6", 2, hash_2 ) );
+assert( setMemDb(s7, "s7", 2, hash_2 ) );
+assert( setMemDb(s8, "s8", 2, hash_2 ) );
+
+// Element 3: Test memberships of each set defined above for element 3
+assert( not(setMemDb(s0, "s0", 3, hash_3 )) );
+assert( not(setMemDb(s1, "s1", 3, hash_3 )) );
+assert( not(setMemDb(s2, "s2", 3, hash_3 )) );
+assert( not(setMemDb(s3, "s3", 3, hash_3 )) );
+assert( setMemDb(s4, "s4", 3, hash_3 ) );
+assert( setMemDb(s5, "s5", 3, hash_3 ) );
+assert( setMemDb(s6, "s6", 3, hash_3 ) );
+assert( setMemDb(s7, "s7", 3, hash_3 ) );
+assert( setMemDb(s8, "s8", 3, hash_3 ) );
+
 print "done.\n";
