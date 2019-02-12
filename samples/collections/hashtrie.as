@@ -1,16 +1,20 @@
 /*
- * Hash Tries.
- *
- *  Functional maps (and sets) whose representation is "canonical", and history independent.
- *
- *  By contrast, AVL Trees, RB Trees, and other representations do not
- *  enjoy history independence, and are each more complex to implement
- *  (e.g., each requires "rebalancing"; these trees never do).
- *
- * See this POPL 1989 paper (Section 6):
- *   - "Incremental computation via function caching", Pugh & Teitelbaum.
- *   - https://dl.acm.org/citation.cfm?id=75305
- *   - Public copy here: http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf
+ Hash Tries in ActorScript
+ -------------------------
+
+ Functional maps (and sets) whose representation is "canonical", and
+ history independent.
+
+  See this POPL 1989 paper (Section 6):
+    - "Incremental computation via function caching", Pugh & Teitelbaum.
+    - https://dl.acm.org/citation.cfm?id=75305
+    - Public copy here: http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf
+
+ By contrast, other usual functional representations of maps (AVL
+ Trees, Red-Black Trees) do not enjoy history independence, and are
+ each more complex to implement (e.g., each requires "rebalancing";
+ these trees never do).
+
  */
 
 // Done:
@@ -20,8 +24,12 @@
 //  - insert operation
 //  - remove operation
 //  - replace operation (remove+insert via a single traversal)
+//  - basic encoding of sets, and some set operations
 
 // TODO-Matthew:
+//
+//  - write trie operations that operate over pairs of tries:
+//    for set union, difference and intersection.
 //
 //  - regression tests for everything that is below
 //
@@ -84,10 +92,14 @@ func getLeafVal<K,V>(t : Node<K,V>) : ?V {
   t.val
 };
 
-// TODO: Replace with bitwise operations on Words, once we have each of those in AS.  For now, we encode hashes as lists of booleans.
+// TODO: Replace with bitwise operations on Words, once we have each of those in AS.
+// For now, we encode hashes as lists of booleans.
 func getHashBit(h:Hash, pos:Nat) : Bool {
   switch h {
-  case null { false }; // TODO: Should be an error case
+  case null {
+         // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
+         false
+       };
   case (?(b, _)) {
          if (pos == 0) { b }
          else { getHashBit(h, pos-1) }
@@ -121,10 +133,10 @@ func replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
   // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
   func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
     if ( bitpos < HASH_BITS ) {
-      assertIsBin<K,V>(t);
       switch t {
       case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
       case (?n) {
+        assertIsBin<K,V>(t);
         let bit = getHashBit(k_hash, bitpos);
         // rebuild either the left or right path with the inserted (k,v) pair
         if bit {
@@ -236,13 +248,83 @@ func setUnion<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setUnion<T>(s1,s2) };
 func setDiff<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setDiff<T>(s1,s2) };
 func setIntersect<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setIntersect<T>(s1,s2) };
 
+////////////////////////////////////////////////////////////////////
+
+func setPrint(s:Set<Nat>) {
+  func rec(s:Set<Nat>, ind:Nat) {
+    func indPrint(i:Nat) {
+      if (i == 0) { } else { print "| "; indPrint(i-1) }
+    };
+    switch s {
+    case null {
+           indPrint(ind);
+           print "null\n";
+         };
+    case (?n) {
+           switch (n.key) {
+           case null {
+                  indPrint(ind);
+                  print "(bin \n";
+                  rec(n.left, ind+1);
+                  rec(n.right, ind+1);
+                  indPrint(ind);
+                  print ")\n"
+                };
+           case (?k) {
+                  indPrint(ind);
+                  print "(leaf ";
+                  printInt k;
+                  print ")\n";
+                };
+           }
+         };
+    }
+  };
+  rec(s,0);
+};
+
+func setInsertDb(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
+  print "  setInsert(";
+  printInt x;
+  print ")";
+  let r = setInsert<Nat>(s,x,xh);
+  print ";\n";
+  setPrint(r);
+  r
+};
+
+func setMemDb(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
+  func natEq(n:Nat,m:Nat):Bool{ n == m};
+  print "  setMem(";
+  print sname;
+  print ", ";
+  printInt x;
+  print ")";
+  let b = setMem<Nat>(s,x,xh,natEq);
+  if b { print " = true" } else { print " = false" };
+  print ";\n";
+  b
+};
+
+print "inserting...\n";
 // Insert numbers [1..8] into the set, using their bits as their hashes:
 let s0 : Set<Nat> = setEmpty<Nat>();
-let s1 : Set<Nat> = setInsert<Nat>(s0, 1, ?(false,?(false,?(false,?(false, null))))); // 0 0 0 0
-let s2 : Set<Nat> = setInsert<Nat>(s1, 2, ?(true, ?(false,?(false,?(false, null))))); // 1 0 0 0
-let s3 : Set<Nat> = setInsert<Nat>(s2, 3, ?(false,?(true, ?(false,?(false, null))))); // 0 1 0 0
-let s4 : Set<Nat> = setInsert<Nat>(s3, 4, ?(true, ?(true, ?(false,?(false, null))))); // 1 1 0 0
-let s5 : Set<Nat> = setInsert<Nat>(s4, 5, ?(false,?(false,?(true, ?(false, null))))); // 0 0 1 0
-let s6 : Set<Nat> = setInsert<Nat>(s5, 6, ?(true, ?(false,?(true, ?(false, null))))); // 1 0 1 0
-let s7 : Set<Nat> = setInsert<Nat>(s6, 7, ?(true, ?(true, ?(true, ?(false, null))))); // 1 1 1 0
-let s8 : Set<Nat> = setInsert<Nat>(s7, 8, ?(false,?(false,?(false,?(true,  null))))); // 1 1 1 0
+let s1 : Set<Nat> = setInsertDb(s0, 1, ?(false,?(false,?(false,?(false, null))))); // 0 0 0 0
+let s2 : Set<Nat> = setInsertDb(s1, 2, ?(true, ?(false,?(false,?(false, null))))); // 1 0 0 0
+let s3 : Set<Nat> = setInsertDb(s2, 3, ?(false,?(true, ?(false,?(false, null))))); // 0 1 0 0
+let s4 : Set<Nat> = setInsertDb(s3, 4, ?(true, ?(true, ?(false,?(false, null))))); // 1 1 0 0
+let s5 : Set<Nat> = setInsertDb(s4, 5, ?(false,?(false,?(true, ?(false, null))))); // 0 0 1 0
+let s6 : Set<Nat> = setInsertDb(s5, 6, ?(true, ?(false,?(true, ?(false, null))))); // 1 0 1 0
+let s7 : Set<Nat> = setInsertDb(s6, 7, ?(true, ?(true, ?(true, ?(false, null))))); // 1 1 1 0
+let s8 : Set<Nat> = setInsertDb(s7, 8, ?(false,?(false,?(false,?(true,  null))))); // 1 1 1 0
+print "done.\n";
+print "testing membership...\n";
+assert( setMemDb(s1, "s1", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s2, "s2", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s3, "s3", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s4, "s4", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s5, "s5", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s6, "s6", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s7, "s7", 1, ?(false,?(false,?(false,?(false, null))))) );
+assert( setMemDb(s8, "s8", 1, ?(false,?(false,?(false,?(false, null))))) );
+print "done.\n";
