@@ -7,3 +7,6 @@ printLn(show<(Nat,Int,())>(42,-42,()));
 printLn(show<(Text,Null,?Int, ?Int)>("Foobar", null, null, ?23));
 printLn(show<[Int]>([1,2,3]));
 printLn(show<[var Int]>([var 1,2,3]));
+class Foo() { let foo : Int = 42; var bar : Bool = true ; private hidden = [1,2] };
+printLn(show<Foo>(Foo()));
+printLn(show<{var bar : Bool; foo : Int}>(Foo()));

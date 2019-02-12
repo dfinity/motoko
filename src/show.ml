@@ -257,9 +257,26 @@ let invoke_text_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
     )
   )
 
+let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
+  let rec go = function
+    | [] -> [ post ]
+    | [x] -> [ x; post ]
+    | x::xs -> [ x; sep ] @ go xs
+  in [ pre ] @ go xs
+
+let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
+  { it = BinE (T.Prim T.Text, e1, Syntax.CatOp, e2)
+  ; at = no_region
+  ; note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+  }
+
+let cat_list : Ir.exp list -> Ir.exp = fun es ->
+  List.fold_right catE es (textE "")
+
 (* Synthesizing a single show function *)
 
 (* Returns the new declarations, as well as a list of further types it needs *)
+
 
 let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
@@ -314,6 +331,25 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_show t (invoke_text_array t' (show_var_for t') (argE t)),
       [t']
     end
+  | T.Obj (T.Object _, fs) ->
+    define_show t (
+      cat_list (list_build
+        (textE "{") (textE "; ") (textE "}")
+        (List.map (fun f ->
+          let t' = T.as_immut (T.normalize f.Type.typ) in
+          catE
+            (textE (f.Type.lab ^ " = "))
+            (invoke_generated_show t'
+              { it = DotE (argE t, Ir.Name f.Type.lab @@ no_region )
+              ; at = no_region
+              ; note = { note_typ = t'; note_eff = T.Triv }
+              }
+            )
+          ) fs
+        )
+      )
+    ),
+    List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
   | _ -> assert false (* Should be prevented by can_show *)
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
@@ -343,12 +379,9 @@ let rec can_show t =
   | T.Prim T.Null -> true
   | T.Tup ts' -> List.for_all can_show ts'
   | T.Opt t' -> can_show t'
-  | T.Array t' ->
-    let t' = T.normalize t' in
-    begin match t' with
-    | T.Mut t' -> can_show t'
-    | _ -> can_show t'
-    end
+  | T.Array t' -> can_show (T.as_immut t')
+  | T.Obj (T.Object _, fs) ->
+    List.for_all (fun f -> can_show (T.as_immut f.T.typ)) fs
   | _ -> false
 
 (* Entry point for the interpreter (reference implementation) *)
@@ -373,7 +406,23 @@ let rec show_val t v =
   | T.Array t', Value.Array a ->
     Printf.sprintf "[%s]"
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
-  | _ -> assert false
+  | T.Obj (_, fts), Value.Obj fs ->
+    Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
+  | _ ->
+    Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val v) (T.string_of_typ t);
+    assert false
+
+and show_field fs ft =
+  let v = Value.Env.find ft.T.lab fs in
+  let m, t', v' =
+    match ft.T.typ with
+    | T.Mut t' -> "var ", t', !(Value.as_mut  v)
+    | t' -> "", t', v
+  in
+  (* With types:
+  Printf.sprintf "%s%s : %s = %s" m ft.T.name (T.string_of_typ t') (show_val t' v')
+  *)
+  Printf.sprintf "%s = %s" ft.T.lab (show_val t' v')
 
 (* Entry point for the program transformation *)
 
