@@ -62,7 +62,7 @@ type Chan<A,R> = {
     dequeue : () -> (A,R->());
 };
 
-type Channel<A,R> = {
+type Req<A,R> = {
 
     isEmpty: () -> Bool;
 
@@ -72,16 +72,14 @@ type Channel<A,R> = {
 };
 
 
-func Channel<A,R> (join : Join) : Channel<A,R> = new {
+func Req<A,R> (join : Join) : Req<A,R> = new {
     private queue : Queue<(A,R->())> = Queue<(A,R->())>();
 
     isEmpty():Bool = queue.isEmpty();
 
     send(a:A): Async<R>  {
-	print "send1";
         let (async_,c) = new_async<R>();
         queue.enqueue(a,c);
-	print "send2";
 	join.scan();
         async_;
     };
@@ -103,7 +101,7 @@ type Msg<A> = {
 
 
 
-func Message<A> (join : Join) : Msg<A> = new {
+func Msg<A> (join : Join) : Msg<A> = new {
     private queue : Queue<A> = Queue<A>();
 
     isEmpty():Bool = queue.isEmpty();
@@ -116,7 +114,7 @@ func Message<A> (join : Join) : Msg<A> = new {
     dequeue() : (A, Any -> () )
     {
 	let a = queue.dequeue();
-	let k = func(r:Any) { print "nullcont";};
+	let k = func(r:Any) { };
 	(a,k);
     };
 };
@@ -173,8 +171,8 @@ class Join() = this {
 	};
     };
 
-    Create<A>() : Msg<A> = Message<A>(this);
-    Request<A,C>() : Channel<A,C> = Channel<A,C>(this);
+    Message<A>() : Msg<A> = Msg<A>(this);
+    Request<A,C>() : Req<A,C> = Req<A,C>(this);
 
     When<A>(c:Chan<A,Any>):Pat<A,Any> = Atom<A,Any>(this, c);
     Handle<A,R>(c:Chan<A,R>):Pat<A,R> = Atom<A,R>(this, c);
@@ -188,11 +186,8 @@ type AbsClause = {
 func Clause<A,R>(pat: Pat<A,R>, cont: A->R) : AbsClause = new {
     match():Bool { pat.match(); };
     fire() : () {
-	print "fire";
 	let (a,k) = pat.get();
-	print "cont?";
 	let r = cont(a);
-	print "cont!";
 	k(r);
     };
 };
@@ -201,12 +196,12 @@ func Clause<A,R>(pat: Pat<A,R>, cont: A->R) : AbsClause = new {
 // Examples
 
 // an unbounded, asynchronous buffer
-/*
+
 {
 actor Buffer = {
     private j  = Join();
-    private put = j.Create<Text>();
-    private get = j.Create<shared Text-> ()>();
+    private put = j.Message<Text>();
+    private get = j.Message<shared Text-> ()>();
     private init  =
 	j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
 	Do( func ( (t,c) : (Text, (shared Text -> ()))) :(())  {  // type annotation inference, please
@@ -225,19 +220,16 @@ Buffer.Put("World\n");
 Buffer.Get(shared func(t:Text) { print(t);});
 Buffer.Get(shared func(t:Text) { print(t);});
 };
-*/
 
 {
-// an unbounded, awaitable (synchronous) buffer
+// an unbounded, awaitable (i.e. "synchronous") buffer
 actor AwaitableBuffer = {
     private j  = Join();
-    private put = j.Create<Text>();
+    private put = j.Message<Text>();
     private get = j.Request<(),Text>();
     private init  =
 	j.Handle<(),Text>(get).And<Text>(put). // type argument inference, please
 	Do( func ((_,a) : ((), Text)) : Text {  // type annotation inference, please
-		print "DO";
-                print a;
 		a;
 	    }
 	);
@@ -245,9 +237,7 @@ actor AwaitableBuffer = {
     {	put.post(t);
     };
     Get() : async Text {
-	print "666";
-	let a = as_async<Text>(get.send(())); 
-	await a;
+	await as_async<Text>(get.send(())); // missing feature: tail-await
     };
 
 };
@@ -256,23 +246,21 @@ AwaitableBuffer.Put("Bonjour\n");
 AwaitableBuffer.Put("Mond\n");
 
 ignore(async {
-    print ("m1");
     let m1 = await (AwaitableBuffer.Get());
-    print ("m2");
-    let m2 = await (AwaitableBuffer.Get());
     print m1;
+    let m2 = await (AwaitableBuffer.Get());
     print m2;
 });
 
-
 };
-/*
+
+{
 // an asynchronous lock
 type Release = shared () -> ();
 actor Lock = {
     private j  = Join();
-    private free = j.Create<()>();
-    private acquire = j.Create<shared Release -> async ()>();
+    private free = j.Message<()>();
+    private acquire = j.Message<shared Release -> async ()>();
     private release() = free.post(());
     private init  = {
 	j.When<shared Release-> async ()>(acquire).And<()>(free).
@@ -331,4 +319,5 @@ actor Charlie {
 // proper locking ensures the writes to Resource aren't interleaved.
 Alice.start();
 Charlie.start();
-*/
+
+};
