@@ -29,8 +29,9 @@
 //
 //  - iterator objects, for use in 'for ... in ...' patterns
 
-
-type Hash = Nat;
+// TODO: Replace this definition WordX, for some X, once we have these types in AS.
+type Hash = ?(Bool, Hash);
+//type Hash = Word16;
 
 // XXX: This Node type is a "sloppy union" between "BinNodes" (left/right fields) and "Leaves" (key/val fields):
 type Node<K,V> = {left:Trie<K,V>; right:Trie<K,V>; key:?K; val:?V};
@@ -83,11 +84,15 @@ func getLeafVal<K,V>(t : Node<K,V>) : ?V {
   t.val
 };
 
-func getBit(n:Nat, pos:Nat) : Bool {
-  // Q: Are there bit-level operations planned for the future?
-  // XXX: Temporary infinite loop here, as a "placeholder":
-  getBit(n, pos)
-  //n & (1 << pos)
+// TODO: Replace with bitwise operations on Words, once we have each of those in AS.  For now, we encode hashes as lists of booleans.
+func getHashBit(h:Hash, pos:Nat) : Bool {
+  switch h {
+  case null { false }; // TODO: Should be an error case
+  case (?(b, _)) {
+         if (pos == 0) { b }
+         else { getHashBit(h, pos-1) }
+       };
+  }
 };
 
 func empty<K,V>() : Trie<K,V> =
@@ -100,7 +105,7 @@ func buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
     if ( bitpos < HASH_BITS ) {
       // create new bin node for this bit of the hash
       let path = rec(bitpos+1);
-      let bit = getBit(k_hash, bitpos);
+      let bit = getHashBit(k_hash, bitpos);
       if bit { ?(new {left=path; right=null; key=null; val=null}) }
       else   { ?(new {left=null; right=path; key=null; val=null}) }
     } else {
@@ -120,7 +125,7 @@ func replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
       switch t {
       case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
       case (?n) {
-        let bit = getBit(k_hash, bitpos);
+        let bit = getHashBit(k_hash, bitpos);
         // rebuild either the left or right path with the inserted (k,v) pair
         if bit {
           let (l, v_) = rec(n.left, bitpos+1);
@@ -168,7 +173,7 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
         null
       };
       case (?n) {
-        let bit = getBit(k_hash, bitpos);
+        let bit = getHashBit(k_hash, bitpos);
         if bit { rec(n.left,  bitpos+1) }
         else   { rec(n.right, bitpos+1) }
         };
@@ -190,3 +195,54 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
   };
   rec(t, 0)
 };
+
+///////////////////////////////////////////////////////////////////////
+
+/*
+ Sets are partial maps from element type to unit type,
+ i.e., the partial map represents the set with its domain.
+*/
+
+// TODO-Matthew:
+//
+// - for now, we pass a hash value each time we pass an element value;
+//   in the future, we might avoid passing element hashes with each element in the API;
+//   related to: https://github.com/dfinity-lab/actorscript/issues/157
+//
+
+type Set<T> = Trie<T,()>;
+
+func setEmpty<T>():Set<T> =
+  empty<T,()>();
+
+func setInsert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
+  let (s2, _) = insert<T,()>(s, x, xh, ());
+  s2
+};
+
+func setRemove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
+  let (s2, _) = remove<T,()>(s, x, xh);
+  s2
+};
+
+func setMem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
+  switch (find<T,()>(s, x, xh, eq)) {
+  case null { false };
+  case (?_) { true };
+  }
+};
+
+func setUnion<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setUnion<T>(s1,s2) };
+func setDiff<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setDiff<T>(s1,s2) };
+func setIntersect<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setIntersect<T>(s1,s2) };
+
+// Insert numbers [1..8] into the set, using their bits as their hashes:
+let s0 : Set<Nat> = setEmpty<Nat>();
+let s1 : Set<Nat> = setInsert<Nat>(s0, 1, ?(false,?(false,?(false,?(false, null))))); // 0 0 0 0
+let s2 : Set<Nat> = setInsert<Nat>(s1, 2, ?(true, ?(false,?(false,?(false, null))))); // 1 0 0 0
+let s3 : Set<Nat> = setInsert<Nat>(s2, 3, ?(false,?(true, ?(false,?(false, null))))); // 0 1 0 0
+let s4 : Set<Nat> = setInsert<Nat>(s3, 4, ?(true, ?(true, ?(false,?(false, null))))); // 1 1 0 0
+let s5 : Set<Nat> = setInsert<Nat>(s4, 5, ?(false,?(false,?(true, ?(false, null))))); // 0 0 1 0
+let s6 : Set<Nat> = setInsert<Nat>(s5, 6, ?(true, ?(false,?(true, ?(false, null))))); // 1 0 1 0
+let s7 : Set<Nat> = setInsert<Nat>(s6, 7, ?(true, ?(true, ?(true, ?(false, null))))); // 1 1 1 0
+let s8 : Set<Nat> = setInsert<Nat>(s7, 8, ?(false,?(false,?(false,?(true,  null))))); // 1 1 1 0
