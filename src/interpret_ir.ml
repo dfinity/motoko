@@ -267,6 +267,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
   match exp.it with
+  | PrimE "as_async" (*: <T>Async<T> ->  async T *) ->
+    if !Flags.async_lowering
+    then (* interpret as identity *)
+      k (V.Func (None, V.call_conv_of_typ exp.note.note_typ,
+                 fun v k' -> k' v))
+    else
+      k (V.Func (None, V.call_conv_of_typ exp.note.note_typ,
+               fun v k' ->
+               let dom1 = match exp.note.note_typ with T.Func(_,cc,_,[dom],rng) -> dom | _ -> assert false in
+
+               let (_, _, f) = V.as_func v in
+               let f' = fun k'' -> f (V.Func(None, V.call_conv_of_typ dom1,
+                                             fun v' k''' ->
+                                             k'' v')) (fun v -> ())   in
+               async exp.at f' k'))
   | PrimE s ->
     let at = exp.at in
     let t = exp.note.Syntax.note_typ in

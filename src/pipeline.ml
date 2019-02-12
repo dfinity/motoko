@@ -289,6 +289,9 @@ let compile_with check mode name : compile_result =
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
+    (* TODO: this code is incorrect if await, async, or async t appears in the prelude,
+       in which case we should transform the prelude accordingly and lower
+       initial_stat_env in the right places  *)
     let prelude = Desugar.transform Typing.empty_scope prelude in
     let prog = Desugar.transform initial_stat_env prog in
     let prog = await_lowering true initial_stat_env prog name in

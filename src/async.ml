@@ -389,6 +389,8 @@ let check_exp env exp =
   match exp.it with
   | AwaitE _ -> Check_ir.error env exp.at "invalid await"
   | AsyncE _ -> Check_ir.error env exp.at "invalid async"
+  | PrimE "as_async" ->
+    Check_ir.error env exp.at "invalid as_async"
   | _ -> ()
 
 let check_typ env typ =

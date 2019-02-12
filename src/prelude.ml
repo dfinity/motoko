@@ -79,7 +79,10 @@ func @new_async<T>():(Async<T>, Cont<T>) {
 func new_async<T>() : (Async<T>, Cont<T>) =
    @new_async<T>();
 
-let as_async = prim "as_async" : <T <: Shared> ((T->())->()) -> async T;
+func as_async<T <: Shared> ( a : Async<T>) : async T = {
+   (prim "as_async" : ((T->())->()) -> async T) a;
+             // HACK: ^^^^^^^^^^^^^ unfold Async<T> for interpreter
+};
 
 |}
 

@@ -3240,7 +3240,10 @@ and compile_exp (env : E.t) exp =
        | "print" ->
          StackRep.unit,
          compile_exp_vanilla env e ^^
-         Dfinity.prim_print env
+           Dfinity.prim_print env
+       | "as_async" ->
+         StackRep.Vanilla,
+         compile_exp_vanilla env e 
        | _ ->
          StackRep.Unreachable,
          todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
