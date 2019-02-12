@@ -128,9 +128,14 @@ and exp_field' (f : S.exp_field') =
 and typ_binds tbs = List.map typ_bind tbs
 
 and typ_bind tb =
-  phrase' typ_bind' tb
-
-and typ_bind' at n { S.var; S.bound } = { Type.var = var.it; Type.bound = bound.note }
+  let c = match tb.note with
+    | Some c -> c
+    | _ -> assert false
+  in
+  { it = { Ir.con = c; Ir.bound = tb.it.S.bound.note}
+  ; at = tb.at
+  ; note = ()
+  }
 
 and decs ds =
   match ds with
@@ -163,8 +168,8 @@ and dec' at n d = match d with
     let inst = List.map
                  (fun tb ->
                    match tb.note with
-                   | Type.Pre -> assert false
-                   | t -> t)
+                   | None -> assert false
+                   | Some c -> T.Con (c, []))
                  tbs in
     let obj_typ =
       match n.S.note_typ with

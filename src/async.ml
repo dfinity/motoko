@@ -375,8 +375,11 @@ and t_pat' pat =
   | AltP (pat1, pat2) ->
     AltP (t_pat pat1, t_pat pat2)
 
+and t_typ_bind' {con; bound} =
+  {con; bound = t_typ bound}
+
 and t_typ_bind typ_bind =
-  { typ_bind with it = t_bind typ_bind.it }
+  { typ_bind with it = t_typ_bind' typ_bind.it }
 
 and t_typ_binds typbinds = List.map t_typ_bind typbinds
 

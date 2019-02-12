@@ -42,7 +42,7 @@ and typ' =
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
-and typ_bind = (typ_bind', Type.typ) Source.annotated_phrase
+and typ_bind = (typ_bind', Con.t option) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}
 
 
