@@ -79,7 +79,7 @@ func @new_async<T>():(Async<T>, Cont<T>) {
 func new_async<T>() : (Async<T>, Cont<T>) =
    @new_async<T>();
 
-let as_async = prim "as_async" : <T <: Shared> Async<T> -> async T;
+let as_async = prim "as_async" : <T <: Shared> ((T->())->()) -> async T;
 
 |}
 
@@ -109,5 +109,4 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
-  | "as_async" -> fun v k -> k v;
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

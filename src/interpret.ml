@@ -106,6 +106,7 @@ let set_async async v =
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
+  
 let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
@@ -237,6 +238,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
   match exp.it with
+  | PrimE "as_async" (*: Async<T> ->  async T *) ->
+    k (V.Func (None, V.call_conv_of_typ exp.note.note_typ,
+               fun v k' ->
+               let dom1 = match exp.note.note_typ with T.Func(_,cc,_,[dom],rng) -> dom | _ -> assert false in
+
+               let _ = Printf.printf "CRAP" in
+               let (_, _, f) = V.as_func v in
+               let f' = fun k'' -> f (V.Func(None, V.call_conv_of_typ dom1,
+                                             fun v' k' ->
+                                             k'' v' (*;
+                                             k' (V.Tup[])*)
+                                             )) (fun v -> ())   in
+               async exp.at f' k'))
   | PrimE s ->
     k (V.Func (None, V.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
   | VarE id ->
