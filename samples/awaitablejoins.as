@@ -319,4 +319,75 @@ Charlie.start();
 
 };
 
+{
+
+
+// an awaitable  (i.e. "synchronous") lock
+
+type Release = shared () -> ();
+
+actor Lock = {
+    private j  = Join();
+    private free = j.Message<()>();
+    private acquire = j.Request<(),Release>();
+    private release() = free.post(());
+    private init  = {
+	j.When<(),Release>(acquire).And<()>(free).
+	    Do( func ( _ : ((),())) : Release {  // type annotation inference, please
+		   shared func () = release();
+	    }
+        );
+	release(); // lock initially free
+    };
+
+    Acquire() : async Release { await as_async<Release>(acquire.send(()));}
+};
+
+// a shared output buffer, protected by Lock
+actor Resource {
+    private var buffer = "";
+    write(t:Text) { buffer := buffer # t;};
+    get():async Text{ buffer; };
+};
+
+actor Alice {
+    private name =  ["a","l","i","c","e"];
+
+    start() : async () {
+	let release = await Lock.Acquire();
+    	for (s in name.vals())
+	{
+            Resource.write(s);
+            await (async ()); // yield to allow interleavings
+	};
+	print (await Resource.get());
+	print ("\n");
+	release();
+    };
+
+};
+
+// just like Alice
+actor Charlie {
+    private name =  ["c","h","a","r","l","i","e"];
+
+    start() : async () {
+	let release = await Lock.Acquire();
+        for (s in name.vals())
+	{
+            Resource.write(s);
+            await (async ()); // yield to allow interleavings
+	};
+	print (await Resource.get());
+	print ("\n");
+	release();
+    };
+};
+
+// proper locking ensures the writes to Resource aren't interleaved.
+ignore(Alice.start());
+ignore(Charlie.start());
+
+};
+
 
