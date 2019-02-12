@@ -172,8 +172,7 @@ class Join() = this {
     Message<A>() : Msg<A> = Msg<A>(this);
     Request<A,C>() : Req<A,C> = Req<A,C>(this);
 
-    When<A>(c:Chan<A,Any>):Pat<A,Any> = Atom<A,Any>(this, c);
-    Handle<A,R>(c:Chan<A,R>):Pat<A,R> = Atom<A,R>(this, c);
+    When<A,R>(c:Chan<A,R>):Pat<A,R> = Atom<A,R>(this, c);
 };
 
 type AbsClause = {
@@ -201,7 +200,7 @@ actor Buffer = {
     private put = j.Message<Text>();
     private get = j.Message<shared Text-> ()>();
     private init  =
-	j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
+	j.When<Text,()>(put).And<shared Text-> ()>(get). // type argument inference, please
 	Do( func ( (t,c) : (Text, (shared Text -> ()))) :(())  {  // type annotation inference, please
 		c(t);
 	}
@@ -226,8 +225,8 @@ actor AwaitableBuffer = {
     private put = j.Message<Text>();
     private get = j.Request<(),Text>();
     private init  =
-	j.Handle<(),Text>(get).And<Text>(put). // type argument inference, please
-	Do( func ((_,a) : ((), Text)) : Text {  // type annotation inference, please
+	j.When<Text,Text>(put).And<()>(get). // type argument inference, please
+	Do( func ((a,_) : (Text,())) : Text {  // type annotation inference, please
 		a;
 	    }
 	);
@@ -261,7 +260,7 @@ actor Lock = {
     private acquire = j.Message<shared Release -> async ()>();
     private release() = free.post(());
     private init  = {
-	j.When<shared Release-> async ()>(acquire).And<()>(free).
+	j.When<shared Release-> async (),()>(acquire).And<()>(free).
 	    Do( func ( (k,_) : (shared Release -> async (), ())) :(()) {  // type annotation inference, please
 		    let _ = k(shared func () = release());
 	    }
@@ -319,3 +318,5 @@ Alice.start();
 Charlie.start();
 
 };
+
+
