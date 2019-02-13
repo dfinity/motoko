@@ -137,7 +137,7 @@ let tailcall_optimization =
   transform_ir "Tailcall optimization" Tailcall.transform
 
 let show_translation =
-  transform_ir "Translate show" Show.transform
+  transform_ir "Translate show" Show_pass.transform
 
 let check_with parse infer senv name : check_result =
   match parse name with
