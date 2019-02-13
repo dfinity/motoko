@@ -378,7 +378,9 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t);
       ot := t;
     end;
-    t
+    if op = ShowOp
+    then T.Prim T.Text
+    else t
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
@@ -534,16 +536,6 @@ and infer_exp'' env exp : T.typ =
             (T.string_of_typ_expand t_ret);
       end
     end;
-
-    (* Checking instantations of magic functions like show *)
-    if not env.pre && Show.is_show_func exp1 then
-    begin match ts with
-      | [t] when Show.can_show t -> ()
-      | [t] ->
-      local_error env exp.at "do not know how to show value of type\n   %s"
-        (T.string_of_typ_expand t)
-      | _ -> ()
-    end;
     t_ret
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
@@ -690,7 +682,7 @@ and check_exp' env t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
-  | UnE (ot, op, exp1), _ when Operator.has_unop t op ->
+  | UnE (ot, op, exp1), _ when op <> ShowOp && Operator.has_unop t op ->
     ot := t;
     check_exp env t exp1;
     t

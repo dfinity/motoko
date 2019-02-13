@@ -302,11 +302,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Sharable -> make_message name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (exp1, [_], exp2) when Show.is_show_func exp1 ->
-    interpret_exp env exp2 (fun v2 ->
-      let s = Show.show_val exp2.note.note_typ v2 in
-      k (V.Text s)
-    )
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
         interpret_exp env exp2 (fun v2 ->

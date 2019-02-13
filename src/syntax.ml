@@ -66,6 +66,7 @@ type unop =
   | PosOp                                       (* +x *)
   | NegOp                                       (* -x *)
   | NotOp                                       (* bitwise negation *)
+  | ShowOp                                      (* magic show *)
 
 type binop =
   | AddOp                                       (* x+y *)
