@@ -4,22 +4,6 @@ open Ir
 module T = Type
 open Construct
 
-(* Recognizing calls to the magic show function *)
-
-let is_show_func_ir exp =
-  (* TODO: how to deal with shadowing of `show`?
-     I have an idea based on a dedicated primitive type....
-  *)
-  match exp.it with
-  | VarE {it = "show";_} -> true
-  | _ -> false
-
-let is_show_func exp =
-  match exp.it with
-  | Syntax.VarE {it = "show";_} -> true
-  | _ -> false
-
-
 (* A type identifier *)
 
 (* This needs to map types to some identifier with the following properties:
@@ -77,6 +61,11 @@ and t_exp' env = function
   | PrimE p -> PrimE p
   | LitE l -> LitE l
   | VarE id -> VarE id
+  | UnE (ot, Syntax.ShowOp, exp1) ->
+    let t' = T.normalize ot in
+    add_type env t';
+    let f = idE (show_name_for t' @@ no_region) (show_fun_typ_for t') in
+    CallE(Value.local_cc 1 1, f, [], t_exp env exp1)
   | UnE (ot, op, exp1) ->
     UnE (ot, op, t_exp env exp1)
   | BinE (ot, exp1, op, exp2) ->
@@ -100,11 +89,6 @@ and t_exp' env = function
     ArrayE (mut, t, t_exps env exps)
   | IdxE (exp1, exp2) ->
     IdxE (t_exp env exp1, t_exp env exp2)
-  | CallE (cc, f, [t], exp2) when is_show_func_ir f ->
-    let t' = T.normalize t in
-    add_type env t';
-    let f = idE (show_name_for t' @@ no_region) (show_fun_typ_for t') in
-    CallE(cc, f, [], t_exp env exp2)
   | CallE (cc, exp1, typs, exp2)  ->
     CallE(cc, t_exp env exp1, typs, t_exp env exp2)
   | BlockE (decs, ot) ->

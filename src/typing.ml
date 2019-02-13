@@ -355,7 +355,9 @@ and infer_exp' env exp : T.typ =
           (T.string_of_typ_expand t);
       ot := t;
     end;
-    t
+    if op = ShowOp
+    then T.Prim T.Text
+    else t
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
@@ -453,16 +455,6 @@ and infer_exp' env exp : T.typ =
       let tbs, t2, t = T.as_func_sub (List.length insts) t1 in
       let ts = check_inst_bounds env tbs insts exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
-
-      (* Checking instantations of magic functions like show *)
-      if not env.pre && Show.is_show_func exp1 then
-      begin match ts with
-        | [t] when Show.can_show t -> ()
-        | [t] ->
-        local_error env exp.at "do not know how to show value of type\n   %s"
-          (T.string_of_typ_expand t)
-        | _ -> ()
-      end;
       T.open_ ts t
     with Invalid_argument _ ->
       error env exp1.at "expected function type, but expression produces type\n  %s"
@@ -620,7 +612,7 @@ and check_exp' env t exp =
     ()
   | LitE lit, _ ->
     check_lit env t lit exp.at
-  | UnE (ot, op, exp1), t' when Operator.has_unop t' op ->
+  | UnE (ot, op, exp1), t' when op <> ShowOp && Operator.has_unop t' op ->
     ot := t';
     check_exp env t' exp1
   | BinE (ot, exp1, op, exp2), t' when Operator.has_binop t' op ->

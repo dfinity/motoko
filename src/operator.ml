@@ -22,15 +22,13 @@ let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
   | t -> word_unop fword8 fword16 fword32 fword64 t
 
 let unop t op =
-  match t with
-  | T.Prim p ->
-    (match op with
-    | PosOp -> let id v = v in num_unop id id id id id id p
-    | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
-    | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
-    )
-  | T.Non -> impossible
-  | _ -> raise (Invalid_argument "unop")
+  match t, op with
+  | T.Prim p, PosOp -> let id v = v in num_unop id id id id id id p
+  | T.Prim p, NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
+  | T.Prim p, NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
+  | t, ShowOp when Show.can_show t -> fun v -> Text (Show.show_val t v)
+  | T.Non, _ -> impossible
+  | _, _ -> raise (Invalid_argument "unop")
 
 
 (* Binary operators *)

@@ -200,6 +200,7 @@ rule token mode = parse
   | "private" { PRIVATE }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "show" { SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }

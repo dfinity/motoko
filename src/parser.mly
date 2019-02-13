@@ -98,6 +98,7 @@ let share_expfield (ef : exp_field) =
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT 
+%token SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
@@ -367,6 +368,8 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
+  | SHOW e=exp_un
+    { UnE (ref Type.Pre, ShowOp, e) @? at $sloc }
 
 exp_bin :
   | e=exp_un

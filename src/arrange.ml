@@ -68,6 +68,7 @@ and unop uo = match uo with
   | PosOp -> Atom "PosOp"
   | NegOp -> Atom "NegOp"
   | NotOp -> Atom "NotOp"
+  | ShowOp -> Atom "ShowOp"
 
 and binop bo = match bo with
   | AddOp  -> Atom "AddOp"

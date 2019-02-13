@@ -34,10 +34,6 @@ class revrange(x : Nat, y : Nat) {
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
-func show<T>(x : T) : Text {
-  "Untranslated call to show"
-};
-
 // Internal helper functions for the show translation
 
 // The @ in the name ensures that this connot be shadowed by user code, so
