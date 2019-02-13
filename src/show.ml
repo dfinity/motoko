@@ -174,23 +174,6 @@ let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
     )
   )
 
-let invoke_text_tuple : Ir.exp list -> Ir.exp = fun es ->
-  let text_list_typ = T.Array (T.Prim T.Text) in
-  let fun_typ = T.Func (T.Local, T.Returns, [], [text_list_typ], [T.Prim T.Text]) in
-  text_exp (CallE
-    ( Value.local_cc 1 1
-    , { it = VarE ("@text_tuple" @@ no_region)
-      ; at = no_region
-      ; note = { note_typ = fun_typ; note_eff = T.Triv }
-      }
-    , []
-    , { it = ArrayE (Syntax.Const @@ no_region, T.Prim T.Text, es)
-      ; at = no_region
-      ; note = { note_typ = text_list_typ; note_eff = T.Triv }
-      }
-    )
-  )
-
 let invoke_text_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.Prim T.Text]) in
@@ -291,16 +274,19 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     []
   | T.Tup ts' ->
     let ts' = List.map T.normalize ts' in
-    define_show t (invoke_text_tuple (
-      List.mapi (fun i t' ->
-        invoke_generated_show t' (
-          { it = ProjE (argE t, i)
-          ; at = no_region
-          ; note = { note_typ = t'; note_eff = T.Triv }
-          }
-        )
-      ) ts'
-    )),
+    define_show t (
+      cat_list (list_build
+        (textE "(") (textE ", ") (textE ")")
+        (List.mapi (fun i t' ->
+           invoke_generated_show t' (
+             { it = ProjE (argE t, i)
+             ; at = no_region
+             ; note = { note_typ = t'; note_eff = T.Triv }
+             }
+           )
+        ) ts')
+      )
+    ),
     ts'
   | T.Opt t' ->
     let t' = T.normalize t' in

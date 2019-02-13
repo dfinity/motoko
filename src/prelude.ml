@@ -143,20 +143,6 @@ func @text_of_Text(t : Text) : Text {
   "\"" # t # "\"";
 };
 
-func @text_tuple(xs : [Text]) : Text {
-  var text = "";
-  for (x in xs.vals()) {
-    if (text == "") {
-      text := text # "(";
-    } else {
-      text := text # ", ";
-    };
-    text := text # x;
-  };
-  text := text # ")";
-  return text;
-};
-
 func @text_option<T>(f : T -> Text, x : ?T) : Text {
   switch (x) {
     case (?y) {"?(" # f y # ")"};
@@ -233,7 +219,6 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
   };
   (enqueue,fulfill)
 };
-
 |}
 
 (* Primitives *)
