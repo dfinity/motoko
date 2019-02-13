@@ -1,4 +1,3 @@
-// A simple data structure: mutable, singly linked list
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Subscription = {
@@ -6,23 +5,15 @@ type Subscription = {
   cancel : shared () -> ();
 };
 
-type IClient = actor {
-  send : shared Text -> ();
-};
-
-type IServer = actor {
-  subscribe : IClient -> async Subscription;
-};
-
-type client = {
+type ClientData = {
   id : Nat;
-  client : IClient;
+  client : Client;
   var revoked : Bool;
 };
 
-actor Server = {
+actor class Server() = {
   private var nextId : Nat = 0;
-  private var clients : List<client> = null;
+  private var clients : List<ClientData> = null;
 
   private broadcast(id : Nat, message : Text) {
     var next = clients;
@@ -37,8 +28,8 @@ actor Server = {
     };
   };
 
-  subscribe(iclient : IClient) : async Subscription {
-    let c = new {id = nextId; client = iclient; var revoked = false};
+  subscribe(aclient : Client) : async Subscription {
+    let c = new {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = new {head = c; var tail = clients};
     clients := ?cs;
@@ -51,7 +42,7 @@ actor Server = {
   };
 
   private unsubscribe(id : Nat) {
-    var prev : List<client> = null;
+    var prev : List<ClientData> = null;
     var next = clients;
     loop {
       switch next {
@@ -76,9 +67,9 @@ actor Server = {
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
   private var name : Text = "";
-  private var server : ?IServer  = null;
+  private var server : ?Server  = null;
 
-  go(n : Text, s : IServer) {
+  go(n : Text, s : Server) {
     name := n;
     server := ?s;
     ignore(async {
@@ -94,9 +85,10 @@ actor class Client() = this {
   };
 };
 
+let server = Server();
 let bob = Client();
 let alice = Client();
 let charlie = Client();
-bob.go("bob", Server);
-alice.go("alice", Server);
-charlie.go("charlie", Server);
+bob.go("bob", server);
+alice.go("alice", server);
+charlie.go("charlie", server);

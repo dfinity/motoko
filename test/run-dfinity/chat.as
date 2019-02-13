@@ -1,18 +1,9 @@
-/* a simple data structure: mutable, singly linked list */
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Post = shared Text -> ();
 
-type IClient = actor {
-  send : Text -> ();
-};
-
-type IServer = actor {
-  subscribe : IClient -> async Post;
-};
-
-actor Server = {
-  private var clients : List<IClient> = null;
+actor class Server() = {
+  private var clients : List<Client> = null;
 
   private shared broadcast(message : Text) {
     var next = clients;
@@ -27,7 +18,7 @@ actor Server = {
     };
   };
 
-  subscribe(client : IClient) : async Post {
+  subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
@@ -38,9 +29,9 @@ actor Server = {
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
   private var name : Text = "";
-  private var server : ?IServer  = null;
+  private var server : ?Server  = null;
 
-  go(n : Text, s : IServer) {
+  go(n : Text, s : Server) {
     name := n;
     server := ?s;
     ignore(async {
@@ -56,12 +47,13 @@ actor class Client() = this {
 };
 
 
+let server = Server();
 let bob = Client();
 let alice = Client();
 let charlie = Client();
-bob.go("bob", Server);
-alice.go("alice", Server);
-charlie.go("charlie", Server);
+bob.go("bob", server);
+alice.go("alice", server);
+charlie.go("charlie", server);
 
 
 /* design flaws:

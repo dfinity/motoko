@@ -300,59 +300,64 @@ and open the path printed on the last line of that command.
 
 ## Example
 
+```
+type List<T> = ?{head : T; var tail : List<T>};
 
-    /* a simple data structure: mutable, singly linked list */
-    type List<T> = ?{head: T; var tail: List<T>};
+type Post = shared Text -> ();
 
-    type post = shared Text -> async ();
+actor class Server() = {
+  private var clients : List<Client> = null;
 
-    type IClient = actor {
-       send: shared Text -> async ();
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null return;
+        case (?l) {
+          l.head.send(message);
+          next := l.tail;
+        };
+      };
     };
+  };
 
-    type IServer = actor {
-      post: Text -> async ();
-      subscribe: IClient -> async post;
-    };
-
-    actor Server = {
-       private var clients:List<IClient> = null;
-
-       post(message:Text) : async () {
-          var next = clients;
-          loop {
-             switch (next) {
-                case null return;
-                case (?l) {
-                    await l.head.send(message);
-                    next := l.tail;
-                  };
-               };
-            };
-         };
-
-       subscribe(client:IClient) : async post {
-         let cs = new { head = client; var tail = clients};
-         clients := ?cs;
-         return post;
-       };
-    };
+  subscribe(client : Client) : async Post {
+    let cs = new {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
+};
 
 
-    actor class Client() = this {
-       private var name : Text = "";
-       private var server: ?IServer  = null;
-       go (n:Text,s:IServer) : async () {
-           name := n;
-           server := ?s;
-           let post = await s.subscribe(this);
-           await post("hello from " # name);
-           await post("goodbye from " # name);
-       };
-       send(msg:Text) : async () {
-          print name; print " received "; print msg; print "\n";
-       };
-    };
+actor class Client() = this {
+  // TODO: these should be constructor params once we can compile them
+  private var name : Text = "";
+  private var server : ?Server  = null;
+
+  go(n : Text, s : Server) {
+    name := n;
+    server := ?s;
+    ignore(async {
+      let post = await s.subscribe(this);
+      post("hello from " # name);
+      post("goodbye from " # name);
+    });
+  };
+
+  send(msg : Text) {
+    print(name # " received " # msg # "\n");
+  };
+};
+
+
+let server = Server();
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+bob.go("bob", server);
+alice.go("alice", server);
+charlie.go("charlie", server);
+```
 
 
 ## Syntax
