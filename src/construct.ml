@@ -390,10 +390,7 @@ let prim_async typ =
   primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ =
-<<<<<<< HEAD
   primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
-=======
-  primE "@await" (T.Func (T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
 
 (* derived loop forms; each can be expressed as an unconditional loop *)
 
@@ -468,7 +465,7 @@ let forE pat exp1 exp2 =
   (* XXX: not sure how to get type info for `next` function...
      - ...how to do I supply a non-empty con_env for `as_obj_sub` ?
    *)
-  let _, tfs  = Type.as_obj_sub "next" (Con.Env.from_list []) ty1 in
+  let _, tfs  = Type.as_obj_sub "next" ty1 in
   let tnxt    = T.lookup_field "next" tfs in
   let ty1_ret = match (T.as_func tnxt) with
     | _,_,_,_,[x] -> x
@@ -492,7 +489,7 @@ let forE pat exp1 exp2 =
                   blockE [
                       letD id1' (callE nxt [] (tupE []) ty1_ret);
                       expD (
-                          switch_optE id1
+                          switch_optE id1'
                             (breakE lab (tupE []) tyu)
                             pat exp2
                             tyu
