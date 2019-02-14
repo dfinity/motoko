@@ -225,6 +225,36 @@ let loopE exp1 exp2Opt =
              S.note_typ = Type.Non }
   }
 
+let loopWhileE' exp1 exp2 =
+  (*
+    loop e1 while e2
+     ~~>
+    label l: loop { e1 ; if e2 then break l else continue l }
+  *)
+  LoopE(exp1,Some exp2)
+
+let whileE' exp1 exp2 =
+  (*
+    while e1 e2
+    ~~>
+    label l: loop { if e1 then { e2 ; continue l } else break l }
+  *)
+  WhileE(exp1,exp2)
+
+let forE' pat exp1 exp2 =
+  (*
+    for x in e1 e2
+    ~~>
+    label l: loop {
+      switch e1.next() {
+        case null { break l };
+        case x    { e2 ; continue l };
+      }
+    }
+   *)
+  ForE(pat,exp1,exp2)
+
+
 let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
@@ -390,5 +420,4 @@ let prim_async typ =
   primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
 
 let prim_await typ =
-  primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
-
+  primE "@await" (T.Func (T.Call T.Local, T.Returns, [], [T.Async typ; contT typ], []))
