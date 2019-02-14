@@ -36,8 +36,8 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and kind_field = kind ref (* abstract, only this module knows its a ref  *)
-and con = kind_field Con.t
+and con_annot = kind ref (* the con annotation is abstract to the outside world *)
+and con = con_annot Con.t
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}

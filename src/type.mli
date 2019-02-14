@@ -41,8 +41,8 @@ and field = {name : string; typ : typ}
 
 (* cons and kinds *)
 
-and kind_field (* abstract *)
-and con = kind_field Con.t
+and con_annot (* abstract *)
+and con = con_annot Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
