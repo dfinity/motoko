@@ -1,6 +1,6 @@
 type List<T> = ?{head : T; var tail : List<T>};
 
-type Subscription = {
+type Subscription = shared {
   post : shared Text -> ();  // revokable by Server
   cancel : shared () -> ();
 };
@@ -33,7 +33,7 @@ actor class Server() = {
     nextId += 1;
     let cs = new {head = c; var tail = clients};
     clients := ?cs;
-    return (new {
+    return (shared {
       post = shared func(message : Text) {
         if (not c.revoked) broadcast(c.id, message);
       };
