@@ -78,11 +78,7 @@ let warn env at fmt =
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
-
-let add_typs c xs cs =
-  { c with
-    typs = List.fold_right2 T.Env.add xs cs c.typs;
-  }
+let add_typs c xs cs = {c with typs = List.fold_right2 T.Env.add xs cs c.typs}
 
 let adjoin c scope =
   { c with
@@ -91,10 +87,7 @@ let adjoin c scope =
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
-let adjoin_typs c te =
-  { c with
-    typs = T.Env.adjoin c.typs te;
-  }
+let adjoin_typs c te = {c with typs = T.Env.adjoin c.typs te}
 
 let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
@@ -127,8 +120,7 @@ and check_typ' env typ : T.typ =
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it env.typs with
     | Some con ->
-      let kind = T.kind con in
-      let T.Def (tbs, t) | T.Abs (tbs, t) = kind in
+      let T.Def (tbs, t) | T.Abs (tbs, t) = T.kind con in
       let ts = check_typ_bounds env tbs typs typ.at in
       T.Con (con, ts)
     | None -> error env id.at "unbound type identifier %s" id.it
@@ -1064,7 +1056,7 @@ and gather_dec_typdecs env scope dec : scope =
     if T.Env.mem con_id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" con_id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
-    let pre_k = (T.Abs (pre_tbs, T.Pre)) in
+    let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = T.fresh_con con_id.it pre_k in
     let ve' =
       match dec.it with
@@ -1078,7 +1070,7 @@ and gather_dec_typdecs env scope dec : scope =
 
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs  =
+and infer_block_typdecs env decs =
   List.iter (infer_dec_typdecs env) decs
 
 and infer_dec_typdecs env dec =

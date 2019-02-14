@@ -57,7 +57,7 @@ let modify_kind c f = Con.kind c := f !(Con.kind c)
 
 (* field ordering *)
 
-let compare_field {name=n;_} {name=m;_} = compare n m
+let compare_field f1 f2 = compare f1.name f2.name
 
 let seq ts =
     match ts with
@@ -139,6 +139,7 @@ and shift_field i n {name; typ} =
 (* First-order substitution *)
 
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
+
 let rec subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with
@@ -215,7 +216,7 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> fresh_con var (Abs ([],Pre))) tbs in
+  let cs = List.map (fun {var; _} -> fresh_con var (Abs ([], Pre))) tbs in
   let ts = List.map (fun con -> Con (con, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 (fun c k -> Con.kind c := k) cs ks;
@@ -239,9 +240,8 @@ let rec normalize = function
 
 let rec promote = function
   | Con (con, ts) ->
-    (match kind con with
-    | Def (tbs, t) | Abs (tbs, t) -> promote (reduce tbs t ts)
-    )
+    let Def (tbs, t) | Abs (tbs, t) = kind con
+    in promote (reduce tbs t ts)
   | t -> t
 
 
