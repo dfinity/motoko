@@ -43,6 +43,10 @@ and exp' at note = function
   | I.BreakE (l, e) -> I.BreakE (l, exp e)
   | I.RetE e -> I.RetE (exp e)
   | I.AssertE e -> I.AssertE (exp e)
+<<<<<<< HEAD
+=======
+  | I.IsE (e1, e2) -> I.IsE (exp e1, exp e2)
+>>>>>>> c28bf054473d6344e0a83dc68c281008ea7c4cbc
   | I.ActorDotE(e, n) -> I.ActorDotE(exp e, n)
   | I.DeclareE(i, t, e) -> I.DeclareE(i, t, exp e)
   | I.DefineE(i, m, e) -> I.DefineE(i, m, exp e)
@@ -130,7 +134,12 @@ and dec' at n d = match d with
   | I.VarD (i, e) -> I.VarD (i, exp e)
   | I.FuncD (cc, i, tbs, p, ty, e) ->
     I.FuncD (cc, i, tbs, p, ty, exp e)
+<<<<<<< HEAD
   | I.TypD c -> I.TypD c
+=======
+  | I.TypD (c,k) ->
+    I.TypD (c,k)
+>>>>>>> c28bf054473d6344e0a83dc68c281008ea7c4cbc
 
 and cases cs = List.map case cs
 
