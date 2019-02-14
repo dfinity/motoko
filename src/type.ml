@@ -427,7 +427,7 @@ let rec rel_typ env rel eq t1 t2 =
     s1 = s2 &&
     rel_fields env rel eq tfs1 tfs2
   | Obj (s, _), Shared when rel != eq ->
-    s != Object Local
+    s <> Object Local
   | Array t1', Array t2' ->
     rel_typ env rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
