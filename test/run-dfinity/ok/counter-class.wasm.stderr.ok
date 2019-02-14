@@ -39,7 +39,7 @@ non-closed actor: (ActorE
                   $lambda
                   (VarP $0)
                   ()
-                  (CallE ( 1 -> 0) (VarE $0) (BlockE (ExpD (VarE c)) Int))
+                  (CallE ( 1 -> 0) (VarE $0) (VarE c))
                 )
                 (Int -> ()) -> ()
               )

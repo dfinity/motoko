@@ -67,6 +67,7 @@ and exp' at note = function
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
+  | S.BlockE ([{it = S.ExpD e; _}], _) -> exp' e.at e.note e.it
   | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
