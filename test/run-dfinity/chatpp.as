@@ -1,7 +1,7 @@
 /* a simple data structure: mutable, singly linked list */
 type List<T> = ?{head: T; var tail: List<T>};
 
-type subscription = {
+type subscription = shared {
   post : shared Text -> async (); /* revokable by Server */
   cancel : shared () -> ();
 };
@@ -51,7 +51,7 @@ actor Server = {
      nextId += 1;
      let cs = new { head = c; var tail = clients};
      clients := ?cs;
-     return (new {
+     return (shared {
        post =  (shared func (message:Text) : async ()
                 { if (not (c.revoked))
                     await broadcast(c.id, message);
