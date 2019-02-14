@@ -149,8 +149,13 @@ and check_path' env path : T.typ =
   | DotH(path, id) ->
     let t = check_path env path in
     match T.promote env.cons t with
-    | T.Obj _ ->  t
-    | _ -> error env id.at "expecting path of object type, found %s"
+    | T.Obj (T.Module, flds) ->
+      begin
+        try T.lookup_field id.it flds with
+        | _ -> error env id.at "expecting path of module type, found %s"
+                 (T.string_of_typ_expand env.cons t)
+      end
+    | _ -> error env id.at "expecting path of module type, found %s"
                  (T.string_of_typ_expand env.cons t)
 
 let rec check_typ env typ : T.typ =
@@ -458,11 +463,13 @@ and infer_exp' env exp : T.typ =
     (try
       let s, tfs = T.as_obj_sub n env.cons t1 in
       sr := s;
-      match List.find_opt (fun {T.name; _} -> name = n) tfs with
-      | Some {T.typ = t; _} -> t
-      | None ->
-        error env exp1.at "field name %s does not exist in type\n  %s"
+      begin
+        try T.lookup_field n tfs
+        with
+        |  _ ->
+           error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand env.cons t1)
+      end
     with Invalid_argument _ ->
       error env exp1.at "expected object type, but expression produces type\n  %s"
         (T.string_of_typ_expand env.cons t1)
