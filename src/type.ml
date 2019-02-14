@@ -3,7 +3,7 @@
 type con = Con.t
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
-type obj_sort = Object of sharing | Actor
+type obj_sort = Object of sharing | Actor | Module
 type eff = Triv | Await
 
 type prim =
@@ -36,17 +36,18 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
+  | Kind of con * kind
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+and kind =
+  | Def of bind list * typ
+  | Abs of bind list * typ
+
 (* field ordering *)
 
 let compare_field {name=n;_} {name=m;_} = compare n m
-
-type kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
 
 type con_env = kind Con.Env.t
 
@@ -119,6 +120,7 @@ let rec shift i n t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
+  | Kind (c,k) -> Kind (c, shift_kind i n k)
 
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
@@ -126,6 +128,14 @@ and shift_bind i n {var; bound} =
 and shift_field i n {name; typ} =
   {name; typ = shift i n typ}
 
+and shift_kind i n k =
+  match k with
+  | Def (tbs, t) ->
+    let i' = i + List.length tbs in
+    Def (List.map (shift_bind i' n) tbs, shift i' n t)
+  | Abs (tbs, t) ->
+    let i' = i + List.length tbs in
+    Abs (List.map (shift_bind i' n) tbs, shift i' n t)
 
 (* First-order substitution *)
 
@@ -153,6 +163,7 @@ let rec subst sigma t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
+  | Kind (c,k) -> Kind (c, subst_kind sigma k)
 
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
@@ -160,6 +171,16 @@ and subst_bind sigma {var; bound} =
 and subst_field sigma {name; typ} =
   {name; typ = subst sigma typ}
 
+and subst_kind sigma k =
+  match k with
+  | Def (tbs, t) ->
+    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    Def (List.map (subst_bind sigma') tbs,
+         subst sigma' t)
+  | Abs (tbs, t) ->
+    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    Abs (List.map (subst_bind sigma') tbs,
+         subst sigma' t)
 
 (* Handling binders *)
 
@@ -192,12 +213,23 @@ let rec open' i ts t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
+  | Kind (c,k) ->
+    Kind (c, open_kind i ts k)
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
 
 and open_field i ts {name; typ} =
   {name; typ = open' i ts typ}
+
+and open_kind i ts k =
+  match k with
+  | Def (tbs, t) ->
+    let i' = i + List.length tbs in
+    Def (List.map (open_bind i' ts) tbs, open' i' ts t)
+  | Abs (tbs, t) ->
+    let i' = i + List.length tbs in
+    Abs (List.map (open_bind i' ts) tbs, open' i' ts t)
 
 let open_ ts t =
   if ts = [] then t else
@@ -305,10 +337,21 @@ let as_async_sub env t = match promote env t with
   | _ -> invalid "as_async_sub"
 
 let lookup_field name' tfs =
-  match List.find_opt (fun {name; _} -> name = name') tfs with
+  match List.find_opt (fun {name; typ } ->
+                          match typ with Kind _ -> false
+                          | _ -> name = name') tfs with
   | Some {typ = t; _} -> t
   | None -> invalid "lookup_field"
 
+
+let lookup_typ_field name' tfs =
+  match List.find_opt (fun {name; typ } ->
+            match typ with
+            | Kind (c, k) -> name=name'
+            | _ -> false) tfs with
+  | Some {typ = Kind (c,k); _} -> (c,k)
+  | Some _ -> assert false
+  | None -> invalid "lookup_field"
 
 (* Span *)
 
@@ -326,7 +369,7 @@ let rec span env = function
   | Opt _ -> Some 2
   | Mut t -> span env t
   | Non -> Some 0
-
+  | Kind _ -> assert false (* TBR *)
 
 (* Avoiding local constructors *)
 
@@ -357,12 +400,22 @@ let rec avoid' env env' = function
   | Async t -> Async (avoid' env env' t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field env env') fs)
   | Mut t -> Mut (avoid' env env' t)
+  | Kind (c,k) -> Kind(c, avoid_kind env env' k) (* TBR *)
 
 and avoid_bind env env' {var; bound} =
   {var; bound = avoid' env env' bound}
 
 and avoid_field env env' {name; typ} =
   {name; typ = avoid' env env' typ}
+
+and avoid_kind env env' k =
+  match k with
+  | Def (tbs, t) ->
+    Def (List.map (avoid_bind env env') tbs,
+         avoid' env env' t)
+  | Abs (tbs, t) ->
+    Abs (List.map (avoid_bind env env') tbs,
+         avoid' env env' t)
 
 let avoid env env' t =
   if env' = Con.Env.empty then t else
@@ -589,6 +642,10 @@ let rec string_of_typ_nullary vs = function
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Obj (Module, fs) ->
+    sprintf "module {%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Kind (c,k) ->
+    sprintf "= {%s}" (string_of_kind k)
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -629,6 +686,10 @@ and string_of_typ' vs t =
     sprintf "shared %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Actor, fs) ->
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
+  | Obj (Module, fs) ->
+    sprintf "module %s" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Kind (c,k) ->
+    sprintf "= %s" (string_of_kind k)
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
@@ -652,10 +713,8 @@ and string_of_binds vs vs' = function
   | [] -> ""
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
-let string_of_typ = string_of_typ' []
-let _ = str := string_of_typ
 
-let strings_of_kind k =
+and strings_of_kind k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
@@ -664,10 +723,12 @@ let strings_of_kind k =
   let vs = names_of_binds [] tbs in
   op, string_of_binds vs vs tbs, string_of_typ' vs t
 
-let string_of_kind k =
+and string_of_kind k =
   let op, sbs, st = strings_of_kind k in
   sprintf "%s %s%s" op sbs st
 
+let string_of_typ = string_of_typ' []
+let _ = str := string_of_typ
 
 let rec string_of_typ_expand env t =
   let s = string_of_typ t in

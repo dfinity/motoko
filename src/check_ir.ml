@@ -191,6 +191,19 @@ let rec check_typ env typ : unit =
     check env no_region (sorted fields) "object type's fields are not sorted"
   | T.Mut typ ->
     check_typ env typ
+  | T.Kind (c,k) ->
+    check_kind env k
+
+and check_kind env k =
+    let (binds,typ) =
+      match k with
+      | T.Abs(binds,typ)
+      | T.Def(binds,typ) -> (binds,typ)
+    in
+    let cs,ce = check_typ_binds env binds in
+    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let env' = adjoin_typs env ce in
+    check_typ env' (T.open_ ts  typ);
 
 and check_typ_field env s typ_field : unit =
   let {T.name; T.typ} = typ_field in

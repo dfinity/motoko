@@ -190,6 +190,7 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
+  | "module" { MODULE }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }

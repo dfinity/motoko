@@ -3,7 +3,7 @@
 type con = Con.t
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
-type obj_sort = Object of sharing | Actor
+type obj_sort = Object of sharing | Actor | Module
 type eff = Triv | Await
 
 type prim =
@@ -36,17 +36,18 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
+  | Kind of con * kind
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+and kind =
+  | Def of bind list * typ
+  | Abs of bind list * typ
+
 (* field ordering *)
 
 val compare_field : field -> field -> int
-
-type kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
 
 type con_env = kind Con.Env.t
 
@@ -103,6 +104,8 @@ val as_mono_func_sub : con_env -> typ -> typ * typ
 val as_async_sub : con_env -> typ -> typ
 
 val lookup_field : string -> field list -> typ
+
+val lookup_typ_field : string -> field list -> (con * kind)
 
 val span : con_env -> typ -> int option
 

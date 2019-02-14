@@ -17,6 +17,7 @@ let control c = match c with
 let obj_sort s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
+  | Type.Module -> Atom "Module"
 
 let prim p = match p with
   | Null -> Atom "Null"
@@ -48,6 +49,7 @@ let rec typ (t:Type.typ) = match t with
   | Any                   -> Atom "Any"
   | Non                   -> Atom "Non"
   | Pre                   -> Atom "Pre"
+  | Kind (c,k)            -> Atom "Kind ..." (* TBC *)
 
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]

@@ -132,6 +132,27 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+let rec check_path env path : T.typ =
+  let t = check_path' env path in
+  path.note <- t;
+  t
+
+and check_path' env path : T.typ =
+  match path.it with
+  | IdH id ->
+    begin
+      match T.Env.find_opt id.it env.vals with
+      | Some t ->
+        t
+      | None -> error env id.at "unbound path identifier %s" id.it
+    end
+  | DotH(path, id) ->
+    let t = check_path env path in
+    match T.promote env.cons t with
+    | T.Obj _ ->  t
+    | _ -> error env id.at "expecting path of object type, found %s"
+                 (T.string_of_typ_expand env.cons t)
+
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
@@ -197,6 +218,20 @@ and check_typ' env typ : T.typ =
     check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
+  | PathT (p, id, typs) ->
+    let t = check_path env p in
+    (match T.promote env.cons t with
+     | T.Obj(_,flds) ->
+      begin
+        match T.lookup_typ_field id.it flds with
+        | (c,T.Def (tbs, t))
+        | (c,T.Abs (tbs, t)) ->
+          let ts = check_typ_bounds env tbs typs typ.at in
+          T.Con (c, ts)
+        | exception _ -> error env id.at "unbound type identifier %s" id.it
+      end
+     |  _ -> error env id.at "path of unexpected type %s" id.it
+    )
   | ParT typ ->
     check_typ env typ
 
@@ -996,6 +1031,12 @@ and infer_dec env dec : T.typ =
     t
   | TypD _ ->
     T.unit
+  | ModuleD (id, decs) ->
+    let t = T.Env.find id.it env.vals in
+    if not env.pre then begin
+        ignore (infer_block env decs id.at) (* TBR *)
+    end;
+    t
   in
   let eff = A.infer_effect_dec dec in
   dec.note <- {note_typ = t; note_eff = eff};
@@ -1102,7 +1143,41 @@ and gather_dec_typdecs env scope dec : scope =
     let te' = T.Env.add con_id.it c scope.typ_env in
     let ce' = Con.Env.add c pre_k scope.con_env in
     {val_env = ve'; typ_env = te'; con_env = ce'}
+  | ModuleD (id, decs) ->
+    let scope' = gather_block_typdecs env decs in
+    let ve' = T.Env.add id.it (module_of_scope scope') scope.val_env in
+    {val_env = ve';
+     typ_env = scope.typ_env;
+     con_env = scope.con_env }
 
+(* move me to type.ml *)    
+and module_of_scope scope =
+  let typ_fields =
+    T.Env.fold 
+      (fun id con flds ->
+        let kind = Con.Env.find con scope.con_env in
+        { T.name = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
+  in
+  let fields =
+    T.Env.fold
+      (fun id typ flds ->
+        { T.name = id; T.typ = typ }::flds) scope.val_env typ_fields
+  in
+  T.Obj(T.Module, List.sort T.compare_field fields)
+
+(* move me to type.ml *)
+and scope_of_module t =
+  match t with
+  | T.Obj(T.Module, flds) ->
+    List.fold_right
+      (fun {T.name;T.typ} scope ->
+        match typ with
+        | T.Kind (c,k) ->
+          { scope with con_env = Con.Env.add c k scope.con_env;
+                       typ_env = T.Env.add name c scope.typ_env}
+        | typ ->
+          { scope with val_env = T.Env.add name typ scope.val_env }) flds empty_scope
+  | _ -> assert false
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : con_env =
@@ -1137,6 +1212,13 @@ and infer_dec_typdecs env dec : con_env =
     let k = T.Def (tbs, T.close cs t) in
     con_id.note <- Some (c, k);
     Con.Env.singleton c k
+  | ModuleD (id, decs) ->
+    let t = T.Env.find id.it env.vals in
+    let scope = scope_of_module t in
+    let env' = adjoin env scope in
+    let con_env = infer_block_typdecs env' decs in
+    con_env
+
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =
@@ -1152,6 +1234,12 @@ and gather_dec_valdecs env ve dec : val_env =
     if T.Env.mem id.it ve then
       error env dec.at "duplicate definition for %s in block" id.it;
     T.Env.add id.it T.Pre ve
+  | ModuleD (id, decs) ->
+    (* TODO: add in scope of id *)
+    if T.Env.mem id.it ve then
+      error env dec.at "duplicate definition for %s in block" id.it;
+    let ve = gather_block_valdecs env decs in
+    T.Env.add id.it (module_of_scope {empty_scope with val_env = ve}) ve
 
 (* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
@@ -1215,7 +1303,9 @@ and infer_dec_valdecs env dec : val_env =
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
-
+  | ModuleD (id, decs) ->
+   let t, scope = infer_block {env with pre = true} decs id.at in
+   T.Env.singleton id.it (module_of_scope scope)
 
 (* Programs *)
 

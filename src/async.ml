@@ -162,6 +162,7 @@ let rec t_typ (t:T.typ) =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
+  | Kind (c,k) -> Kind (c, t_kind k)
 
 and t_bind {var; bound} =
   {var; bound = t_typ bound}

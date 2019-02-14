@@ -94,6 +94,7 @@ let rec exp msgs e : f = match e.it with
     begin match s.it with
     | Type.Actor -> eagerify f
     | Type.Object _ -> f
+    | Type.Module -> assert false (* TBR *)
     end
   | DotE (e, _t, i)     -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
@@ -153,6 +154,8 @@ and dec msgs d = match d.it with
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, l, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
+  | ModuleD (i, ds) ->
+    (M.empty, S.singleton i.it) +++ decs msgs ds    (* TBR *)
 
 and decs msgs decs : f =
   (* Annotate the declarations with the analysis results *)

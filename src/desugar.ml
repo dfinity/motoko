@@ -104,7 +104,7 @@ and field_to_obj_entry (f : S.exp_field) =
 
 and obj at s class_id self_id es obj_typ =
   match s.it with
-  | Type.Object _ -> build_obj at None s self_id es obj_typ
+  | Type.Object _ | Type.Module -> build_obj at None s self_id es obj_typ (* TBR *)
   | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
 
 and build_obj at class_id s self_id es obj_typ =
@@ -182,6 +182,8 @@ and dec' at n d = match d with
              { it = obj at s (Some fun_id) self_id es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
+  | S.ModuleD(id, ds) ->
+    failwith "NYI"
 
 and cases cs = List.map case cs
 
