@@ -166,7 +166,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {name : name; id : id; exp : exp; mut : mut; priv : priv}
+and exp_field' = {dec : dec; priv : priv}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

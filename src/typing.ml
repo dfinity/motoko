@@ -883,13 +883,12 @@ and check_obj env s tfs id fields at : T.typ =
 
 and gather_exp_fields env id fields : val_env =
   let ve0 = T.Env.singleton id T.Pre in
-  List.fold_left (gather_exp_field env) ve0 fields
+  (* TODO(andreas): gather typdecs (or merge exp_field with dec) *)
+  List.fold_left (gather_exp_field_valdecs env) ve0 fields
 
-and gather_exp_field env ve field : val_env =
-  let {id; _} : exp_field' = field.it in
-  if T.Env.mem id.it ve then
-    error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it T.Pre ve
+and gather_exp_field_valdecs env ve field : val_env =
+  let {dec; _} : exp_field' = field.it in
+  gather_dec_valdecs env ve dec
 
 
 and infer_exp_fields env s fields : T.field list * val_env =
@@ -909,7 +908,17 @@ and is_func_dec dec =
   | _ -> Printf.printf "[2]%!"; false
 
 and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name; exp; mut; priv} = field.it in
+  (* TODO(andreas): hack, do proper dec typing *)
+  let {dec; priv} = field.it in
+  let id, exp, mut =
+    match dec.it with
+    | LetD ({it = VarP(id); _}, exp) -> id, exp, Const @@ field.at
+    | VarD (id, exp) -> id, exp, Var @@ field.at
+    | FuncD (_, id, _, _, _, _) ->
+      id, {dec with it = DecE (dec, ref T.Pre)}, Const @@ field.at
+    | _ -> error env dec.at "declaration form not supported as field yet"
+  in
+  let name = Name id.it @@ id.at in
   let t =
     match T.Env.find id.it env.vals with
     | T.Pre ->

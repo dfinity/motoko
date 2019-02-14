@@ -42,17 +42,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, i, es) ->
-    let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
-    let obj_typ =
-      T.Obj(s.it,
-            List.sort T.compare_field
-              (List.map (fun {it = { Syntax.name; exp; mut; priv; _}; _} ->
-                   let t = exp.note.S.note_typ in
-                   let t = if mut.it = Syntax.Var then Type.Mut t else t in
-                   { Type.name = S.string_of_name name.it;
-                     Type.typ = t }) public_es))
-    in
-    obj at s None i es obj_typ
+    obj at s None i es note.S.note_typ
   | S.DotE (e, sr, n) ->
     begin match (!sr) with
     | Type.Actor -> I.ActorDotE (exp e, n)
@@ -87,34 +77,25 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
   | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
 
-and field_to_dec (f : S.exp_field) : Ir.dec =
-  let {it={S.id;S.exp=e;S.mut;_};at;note} = f in
-  let d = match mut.it with
-    | S.Const ->
-      letD (idE id (Effect.typ e))
-        (exp e)
-    | S.Var ->
-      varD id (exp e)
-  in
-  { d with at = at }
-
-and field_to_obj_entry (f : S.exp_field) =
-  match f.it.S.priv.it with
-  | S.Private -> []
-  | S.Public -> [ (f.it.S.name, f.it.S.id) ]
-
 and obj at s class_id self_id es obj_typ =
   match s.it with
   | Type.Object _ -> build_obj at None s self_id es obj_typ
   | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
 
 and build_obj at class_id s self_id es obj_typ =
-  let self =  idE self_id obj_typ in
+  let self = idE self_id obj_typ in
+  let names =
+    match obj_typ with
+    | Type.Obj (_, fields) ->
+      List.map (fun {Type.name; _} ->
+        S.Name name @@ no_region, name @@ no_region
+      ) fields
+    | _ -> assert false
+  in
   I.BlockE (
-      List.map (field_to_dec) es @
-        [ letD self
-            (newObjE s (List.concat (List.map field_to_obj_entry es)) obj_typ);
-	  expD self
+      List.map (fun ef -> dec ef.it.S.dec) es @
+        [ letD self (newObjE s names obj_typ);
+          expD self
         ],
       obj_typ)
 
@@ -123,7 +104,33 @@ and exp_fields fs = List.map exp_field fs
 and exp_field f = phrase exp_field' f
 
 and exp_field' (f : S.exp_field') =
-  S.{ I.name = f.name; I.id = f.id; I.exp = exp f.exp; I.mut = f.mut; I.priv = f.priv }
+  match f.S.dec.it with
+  | S.LetD ({it = S.VarP x; at; _}, e) ->
+    { I.priv = f.S.priv;
+      name = S.Name x.it @@ at;
+      id = x;
+      mut = S.Const @@ at;
+      exp = exp e;
+    }
+  | S.VarD (x, e) ->
+    { I.priv = f.S.priv;
+      name = S.Name x.it @@ x.at;
+      id = x;
+      mut = S.Var @@ x.at;
+      exp = exp e;
+    }
+  | S.FuncD (_, x, _, _, _, _)
+  | S.ClassD (x, _, _, _, _, _, _) ->
+    { I.priv = f.S.priv;
+      name = S.Name x.it @@ x.at;
+      id = x;
+      mut = S.Const @@ x.at;
+      exp = {f.S.dec with it = I.BlockE ([dec f.S.dec], f.S.dec.note.S.note_typ)};
+    }
+  (* TODO *)
+  | S.ExpD _ -> failwith "expressions not yet supported in objects"
+  | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
+  | S.TypD _ -> failwith "type definitions not yet supported in objects"
 
 
 and typ_binds tbs = List.map typ_bind tbs
@@ -154,6 +161,7 @@ and decs ds =
       typD :: (phrase' dec' d) :: (decs ds)
     | _ -> (phrase' dec' d) :: (decs ds)
 
+and dec d = phrase' dec' d
 and dec' at n d = match d with
   | S.ExpD e -> I.ExpD (exp e)
   | S.LetD (p, e) -> I.LetD (pat p, exp e)

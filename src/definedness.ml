@@ -139,7 +139,7 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 and cases msgs cs : f = unions (case msgs) cs
 
 and exp_field msgs (ef : exp_field) : fd
-  = (exp msgs ef.it.exp, S.singleton ef.it.id.it)
+  = dec msgs ef.it.dec
 
 and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
 

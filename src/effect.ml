@@ -88,7 +88,7 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and effect_field_exps efs =
-  List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
+  List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_dec fld.it.dec)) T.Triv efs
 
 and effect_dec dec =
   dec.note.note_eff

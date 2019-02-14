@@ -526,39 +526,28 @@ and match_pats pats vs ve : val_env option =
 (* Objects *)
 
 and interpret_obj env sort id fields (k : V.value V.cont) =
-  let ve = declare_exp_fields fields (declare_id id) in
-  let env' = adjoin_vals env ve in
-  interpret_fields env' sort.it fields V.Env.empty (fun v ->
+  let ve_ex, ve_in = declare_exp_fields fields V.Env.empty (declare_id id) in
+  let env' = adjoin_vals env ve_in in
+  interpret_exp_fields env' sort.it fields ve_ex (fun v ->
     define_id env' id v;
     k v
   )
 
-and declare_exp_fields fields ve : val_env =
+and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
-  | [] -> ve
-  | {it = {id; name; mut; priv; _}; _}::fields' ->
-    let p = Lib.Promise.make () in
-    let ve' = V.Env.singleton id.it p in
-    declare_exp_fields fields' (V.Env.adjoin ve ve')
+  | [] -> ve_ex, ve_in
+  | {it = {dec; priv}; _}::fields' ->
+    let ve' = declare_dec dec in
+    let ve_ex' = if priv.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
+    let ve_in' = V.Env.adjoin ve_in ve' in
+    declare_exp_fields fields' ve_ex' ve_in'
 
-
-and interpret_fields env s fields ve (k : V.value V.cont) =
+and interpret_exp_fields env s fields ve (k : V.value V.cont) =
   match fields with
   | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
-  | {it = {id; name; mut; priv; exp}; _}::fields' ->
-    interpret_exp env exp (fun v ->
-      let v' =
-        match mut.it with
-        | Const -> v
-        | Var -> V.Mut (ref v)
-      in
-      define_id env id v';
-      let ve' =
-        if priv.it = Private
-        then ve
-        else V.Env.add (string_of_name name.it) (V.Env.find id.it env.vals) ve
-      in interpret_fields env s fields' ve' k
-    )
+  | {it = {dec; priv}; _}::fields' ->
+    interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
+
 
 (* Blocks and Declarations *)
 

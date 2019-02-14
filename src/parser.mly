@@ -73,18 +73,10 @@ let share_dec d =
     FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
   | _ -> d
 
-let share_exp e =
-  match e.it with
-  | ObjE ({it = Type.Object Type.Local; _} as s, x, efs) ->
-    ObjE ({s with it = Type.Object Type.Sharable}, x, efs) @? e.at
-  | DecE (d, ot) ->
-    DecE (share_dec d, ot) @? e.at
-  | _ -> e
-
 let share_expfield (ef : exp_field) =
   if ef.it.priv.it = Private
   then ef
-  else {ef with it = {ef.it with exp = share_exp ef.it.exp}}
+  else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
 %}
 
@@ -463,16 +455,21 @@ case :
   | (* empty *) { Public @@ no_region }
   | PRIVATE { Private @@ at $sloc }
 
+(* TODO(andreas): change surface syntax to dec *)
 exp_field :
   | p=private_opt m=var_opt x=id EQ e=exp
-    { {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
+    { let d' = if m.it = Var then VarD(x, e) else LetD(VarP(x) @! x.at, e) in
+      {dec = d' @? at $sloc; priv = p} @@ at $sloc }
   | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
     { let e = AnnotE(e, t) @? span t.at e.at in
-      {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
-  | priv=private_opt s=shared_opt x=id fd=func_dec
+      let d' = if m.it = Var then VarD(x, e) else LetD(VarP(x) @! x.at, e) in
+      {dec = d' @? at $sloc; priv = p} @@ at $sloc }
+  | p=private_opt s=shared_opt x=id fd=func_dec
     { let d = fd s x in
-      let e = DecE(d, ref Type.Pre) @? d.at in
-      {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
+      {dec = d; priv = p} @@ at $sloc }
+  | p=private_opt TYPE x=con_id tps=typ_params_opt EQ t=typ
+    { {dec = TypD(x, tps, t) @? at $sloc; priv = p} @@ at $sloc }
+
 
 (* Patterns *)
 

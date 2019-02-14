@@ -126,7 +126,7 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and exp_field (ef : exp_field)
-  = (string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; mut ef.it.mut; priv ef.it.priv]
+  = "Field" $$ [dec ef.it.dec; priv ef.it.priv]
 
 and operator_type t = Atom (Type.string_of_typ t)
 
