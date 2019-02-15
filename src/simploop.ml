@@ -17,8 +17,8 @@ let rec exps es = List.map exp es
 and exp e = phrase' exp' e
 
 and exp' at note = function
-  | I.AsyncE _ -> assert false
-  | I.AwaitE _ -> assert false
+  | I.AsyncE e -> I.AsyncE (exp e)
+  | I.AwaitE e -> I.AwaitE (exp e)
   | I.PrimE p -> I.PrimE p
   | I.VarE i -> I.VarE i
   | I.LitE l -> I.LitE l
