@@ -213,7 +213,11 @@ let assignE exp1 exp2 =
   }
 
 let labelE l typ exp =
-  { exp with it = LabelE (l, typ, exp) }
+  { it = LabelE (l, typ, exp)
+  ; at = no_region
+  ; note = { S.note_eff = eff exp;
+             S.note_typ = typ }
+  }
 
 let loopE exp1 exp2Opt =
   { it = LoopE (exp1, exp2Opt);
