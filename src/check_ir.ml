@@ -22,7 +22,7 @@ let immute_typ p =
   assert (not (T.is_mut (typ p)));
   (typ p)
 
-(* Scope (the external interface) *)
+(* Scope *)
 
 type val_env = T.typ T.Env.t
 type con_env = T.con_env
@@ -35,11 +35,6 @@ type scope =
 let empty_scope : scope =
   { val_env = T.Env.empty;
     con_env = Con.Env.empty
-  }
-
-let adjoin_scope scope1 scope2 =
-  { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
-    con_env = Con.Env.adjoin scope1.con_env scope2.con_env;
   }
 
 (* Contexts (internal) *)
@@ -68,12 +63,17 @@ let env_of_scope scope : env =
     check_typ = (fun _ _ -> ());
   }
 
+let with_check_exp check_exp env = { env with check_exp }
+let with_check_typ check_typ env = { env with check_typ }
+
 (* More error bookkeeping *)
+
+exception CheckFailed of string
 
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
 
 let error env at fmt =
-    Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+    Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -91,7 +91,6 @@ let adjoin c scope =
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
-let adjoin_cons c ce = {c with cons = Con.Env.adjoin c.cons ce}
 let adjoin_typs c ce =
   { c with
     cons = Con.Env.adjoin c.cons ce;
@@ -117,9 +116,10 @@ let check env at p =
   else error env at
 
 let check_sub env at t1 t2 =
-  if (T.sub env.cons t1 t2)
+  if T.sub env.cons t1 t2
   then ()
-  else error env at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
+  else error env at "subtype violation:\n  %s\n  %s\n"
+    (T.string_of_typ_expand env.cons t1) (T.string_of_typ_expand env.cons t2)
 
 let make_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -250,9 +250,6 @@ let type_lit env lit at : T.prim =
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
 
 open Ir
-
-let string_of_exp exp =  Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp)
-let string_of_dec exp =  Wasm.Sexpr.to_string 80 (Arrange_ir.dec exp)
 
 (* Expressions *)
 
@@ -684,14 +681,6 @@ and type_block_exps env decs : T.typ =
     check_dec env dec;
     type_block_exps env decs'
 
-and cons_of_typ_binds typ_binds =
-  let con_of_typ_bind tp =
-      match tp.note with
-      | T.Con(c,[]) -> c
-      | _ -> assert false (* TODO: remove me by tightening note to Con.t *)
-  in
-  List.map con_of_typ_bind typ_binds
-
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
   let ks = List.map (fun tp -> T.Abs([],tp.it.bound)) typ_binds in
@@ -810,5 +799,20 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_prog env prog : unit =
-  ignore (check_block env T.unit prog.it prog.at)
+  try
+   ignore (check_block env T.unit prog.it prog.at)
+  with CheckFailed s ->
+    let bt = Printexc.get_backtrace () in
+    if !Flags.verbose
+    then begin
+      Printf.eprintf "Ill-typed intermediate code:\n";
+      Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end else begin
+      Printf.eprintf "Ill-typed intermediate code (use -v to see dumped IR):\n";
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end;
+    exit 1
 

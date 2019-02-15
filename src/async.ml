@@ -397,9 +397,10 @@ let check_typ env typ =
   | _ -> ()
 
 let check_prog scope prog =
-  let env = { (Check_ir.env_of_scope scope) with
-              Check_ir.check_exp = check_exp;
-              Check_ir.check_typ = check_typ }
+  let env =
+    Check_ir.env_of_scope scope |>
+    Check_ir.with_check_exp check_exp |>
+    Check_ir.with_check_typ check_typ
   in
   Check_ir.check_prog env prog
 
