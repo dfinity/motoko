@@ -383,27 +383,6 @@ and t_typ_bind typ_bind =
 
 and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-and t_prog prog:prog = { prog with it = t_decs prog.it }
+and t_prog (prog, flavor) =  (t_decs prog, { flavor with has_async_typ = false } )
 
-let check_exp env exp =
-  match exp.it with
-  | AwaitE _ -> Check_ir.error env exp.at "invalid await"
-  | AsyncE _ -> Check_ir.error env exp.at "invalid async"
-  | _ -> ()
-
-let check_typ env typ =
-  match typ with
-  | T.Async _ -> Check_ir.error env no_region "invalid async type"
-  | _ -> ()
-
-let check_prog scope prog =
-  let env = { (Check_ir.env_of_scope scope) with
-              Check_ir.check_exp = check_exp;
-              Check_ir.check_typ = check_typ }
-  in
-  Check_ir.check_prog env prog
-
-let transform scope prog =
-  let prog = t_prog prog in
-  check_prog scope prog;
-  prog;
+let transform prog = t_prog prog

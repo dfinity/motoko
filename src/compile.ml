@@ -3852,7 +3852,8 @@ and compile_static_exp env how exp = match exp.it with
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let (env1, (sr, code)) = compile_decs_block env (E.get_prelude env).it in
+  let (decs, _flavor) = E.get_prelude env in
+  let (env1, (sr, code)) = compile_decs_block env decs in
   (env1, code ^^ StackRep.drop env sr)
 
 (* Is this a hack? When determining whether an actor is closed,
@@ -3870,9 +3871,8 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
-      | (prog::progs) ->
-        G.with_region prog.at @@
-        let (env1, (sr, code1)) = compile_decs_block env prog.it in
+      | ((decs, _flavor) :: progs) ->
+        let (env1, (sr, code1)) = compile_decs_block env decs in
         let code2 = go env1 progs in
         code1 ^^ StackRep.drop env1 sr ^^ code2 in
     go env1 progs

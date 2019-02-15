@@ -75,7 +75,22 @@ and dec' =
   | TypD of Type.con * Type.kind               (* type *)
 
 
+(* Flavor *)
+
+(*
+We have a bunch of flavors of the IR, where some constructors are not
+allowed in some flavors. In an ideal world, we would have different IRs for
+that (or maybe GADTs). But for now we simply track that on the value level. The
+main purpose of tracking that is to inform `Check_ir` about the invariants that
+should hold.
+*)
+
+type flavor = {
+  has_async_typ : bool; (* AsyncT *)
+  has_await : bool; (* AwaitE and AsyncE *)
+}
+
+
 (* Program *)
 
-type prog = prog' Source.phrase
-and prog' = dec list
+type prog = dec list * flavor
