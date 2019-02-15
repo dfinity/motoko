@@ -123,10 +123,6 @@ let transform_ir transform_name transform flag env prog name =
       phase transform_name name;
       let prog' = transform env prog in
       dump_ir Flags.dump_lowering prog';
-      (* Matthew says:
-         the check_ir call should go here, not _before_ the dump happens:
-         when a pass introduces a type error, we want to see the offending AST. *)
-      Check_ir.check_prog (Check_ir.env_of_scope env) prog ;
       prog'
     end
   else prog
