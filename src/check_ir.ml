@@ -103,7 +103,7 @@ let check env at p =
 let check_sub env at t1 t2 =
   if T.sub t1 t2
   then ()
-  else error env at "subtype violation (%s) (%s)" (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
+  else error env at "subtype violation:\n  %s\n  %s\n" (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
 let make_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -771,6 +771,17 @@ let check_prog env prog : unit =
   try
    check_block env T.unit prog.it prog.at
   with CheckFailed s ->
-    Wasm.Sexpr.print 80 (Arrange_ir.prog prog);
-    failwith s
+    let bt = Printexc.get_backtrace () in
+    if !Flags.verbose
+    then begin
+      Printf.eprintf "Ill-typed intermediate code:\n";
+      Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end else begin
+      Printf.eprintf "Ill-typed intermediate code (use -v to see dumped IR):\n";
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end;
+    exit 1
 
