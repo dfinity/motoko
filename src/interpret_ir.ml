@@ -678,13 +678,13 @@ and interpret_func env id pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope p : V.value option * scope =
+let interpret_prog scope (decls, _flavor) : V.value option * scope =
   let env = env_of_scope scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    interpret_block env decls (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
   !vo, !ve

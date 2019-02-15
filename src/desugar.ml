@@ -204,16 +204,13 @@ and pat' = function
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _) -> pat' p.it
 
-and prog p = phrase decs p
+and prog p = (decs p.it,
+  { I.has_await = true
+  ; I.has_async = true
+  ; I.has_loop = true
+  })
 
 (* validation *)
 
-let check_prog scope prog =
-  let env = Check_ir.env_of_scope scope  in
-  Check_ir.check_prog env prog
-
-let transform scope p =
-  let p' = prog p in
-  check_prog scope p';
-  p'
+let transform scope p = prog p
 
