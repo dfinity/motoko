@@ -170,7 +170,8 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
       then
         let prog_ir = Desugar.transform senv prog in
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
-        let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in 
+        let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
+        let prog_ir = simploop true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
     match vo with
@@ -296,7 +297,6 @@ let compile_with check mode name : compile_result =
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
-    (* TEMP-Matthew: next line here just to get this module to compile *)
     let prog = simploop true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
