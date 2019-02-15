@@ -123,6 +123,10 @@ let transform_ir transform_name transform flag env prog name =
       phase transform_name name;
       let prog' = transform env prog in
       dump_ir Flags.dump_lowering prog';
+      (* Matthew says:
+         the check_ir call should go here, not _before_ the dump happens:
+         when a pass introduces a type error, we want to see the offending AST. *)
+      Check_ir.check_prog (Check_ir.env_of_scope env) prog ;
       prog'
     end
   else prog
@@ -135,6 +139,9 @@ let async_lowering =
 
 let tailcall_optimization =
   transform_ir "Tailcall optimization" Tailcall.transform
+
+let simploop =
+  transform_ir "Simplify looping forms" Simploop.transform
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -294,7 +301,7 @@ let compile_with check mode name : compile_result =
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
     (* TEMP-Matthew: next line here just to get this module to compile *)
-    let prog = Simploop.transform initial_stat_env prog in
+    let prog = simploop true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
     Ok module_

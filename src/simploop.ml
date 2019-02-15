@@ -148,5 +148,8 @@ let check_prog scope (prog:I.prog) =
 
 let transform scope (p:I.prog) =
   let p' = prog p in
-  check_prog scope p';
+  (* Matthew says:
+     the check_ir call should not go here,
+     but rather, in Pipeline, after the possibility of dumping the AST occurs. *)
+  (if false then check_prog scope p');
   p'

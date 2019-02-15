@@ -472,24 +472,20 @@ let forE pat exp1 exp2 =
     | _           -> failwith "invalid return type"
   in
 
-  let id1  = fresh_id ty1 in
-  let nxt  = fresh_id tnxt in
-  let id1' = fresh_id ty1_ret in
+  let nxt = fresh_id tnxt in
   (*
   Printf.eprintf "XXX ty1     = %s\n" (T.string_of_typ ty1);
   Printf.eprintf "XXX tnxt    = %s\n" (T.string_of_typ tnxt);
   Printf.eprintf "XXX ty1_ret = %s\n" (T.string_of_typ ty1_ret);
    *)
   blockE [
-      letD id1 exp1 ;
-      letD nxt (dotE id1 (nameN "next") tnxt) ;
+      letD nxt (dotE exp1 (nameN "next") tnxt) ;
       expD (
           labelE lab tyu (
               loopE (
                   blockE [
-                      letD id1' (callE nxt [] (tupE []) ty1_ret);
                       expD (
-                          switch_optE id1'
+                          switch_optE (callE nxt [] (tupE []) ty1_ret)
                             (breakE lab (tupE []) tyu)
                             pat exp2
                             tyu
