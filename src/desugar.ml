@@ -206,8 +206,7 @@ and pat' = function
 
 and prog p = (decs p.it,
   { I.has_await = true
-  ; I.has_async = true
-  ; I.has_loop = true
+  ; I.has_async_typ = true
   })
 
 (* validation *)

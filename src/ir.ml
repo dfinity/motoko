@@ -86,9 +86,8 @@ should hold.
 *)
 
 type flavor = {
-  has_async : bool;
-  has_await : bool;
-  has_loop : bool;
+  has_async_typ : bool; (* AsyncT *)
+  has_await : bool; (* AwaitE and AsyncE *)
 }
 
 

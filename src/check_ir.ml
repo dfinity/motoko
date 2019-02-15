@@ -169,7 +169,7 @@ let rec check_typ env typ : unit =
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
-    check env no_region env.flavor.Ir.has_async "async in non-async flavor";
+    check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
     let t' = T.promote env.cons typ in
     check_sub env no_region t' T.Shared
   | T.Obj (sort, fields) ->
@@ -468,7 +468,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         T.Non <: t; (* vacuously true *)
     end;
   | AsyncE exp1 ->
-    check env.flavor.has_async "async in non-async flavor";
+    check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
     let env' =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in

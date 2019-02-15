@@ -383,6 +383,6 @@ and t_typ_bind typ_bind =
 
 and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-and t_prog (prog, flavor) =  (t_decs prog, { flavor with has_async = false } )
+and t_prog (prog, flavor) =  (t_decs prog, { flavor with has_async_typ = false } )
 
 let transform prog = t_prog prog
