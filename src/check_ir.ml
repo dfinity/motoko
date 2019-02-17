@@ -212,7 +212,7 @@ and check_typ_field env s typ_field : unit =
      (s <> T.Actor || T.is_func (T.promote env.cons typ))
     "actor field has non-function type";
   check env no_region
-     (s = T.Object T.Local || T.sub env.cons typ T.Shared)
+     (s = T.Object T.Local || s = T.Module || T.sub env.cons typ T.Shared)
     "shared object or actor field has non-shared type"
 
 
@@ -534,11 +534,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
     end;
     T.unit <: t
   | NewObjE (sort, labids, t0) ->
-    let t1 =
-      T.Obj(sort.it,
-            List.sort T.compare_field (List.map (fun (name,id) ->
-                                           {T.name = Syntax.string_of_name name.it;
-                                            T.typ = T.Env.find id.it env.vals}) labids))
+    let is_typ_field {T.name;T.typ} =
+      match typ with T.Kind _ -> true | _ -> false
+    in
+    let typ_fields =
+      match T.as_obj t0 with
+      |  (s,fields) ->
+         List.filter is_typ_field fields
+      | exception _ ->
+        []
+    in
+    let fields = List.map (fun (name,id) ->
+                     {T.name = Syntax.string_of_name name.it;
+                      T.typ = T.Env.find id.it env.vals}) labids
+    in
+    let t1 = T.Obj(sort.it, List.sort T.compare_field (typ_fields @ fields))
     in
     let t2 = T.promote env.cons t in
     check (T.is_obj t2) "bad annotation (object type expected)";

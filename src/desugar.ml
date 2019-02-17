@@ -151,6 +151,13 @@ and decs ds =
                  }
       in
       typD :: (phrase' dec' d) :: (decs ds)
+    | S.ModuleD (id, _)->
+        build_module id ds d.note.S.note_typ ::
+        { it = I.ExpD (idE id d.note.S.note_typ);
+          at = d.at;
+          note = d.note;
+        } ::
+          (decs ds)
     | _ -> (phrase' dec' d) :: (decs ds)
 
 and dec' at n d = match d with
@@ -182,8 +189,25 @@ and dec' at n d = match d with
              { it = obj at s (Some fun_id) self_id es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
-  | S.ModuleD(id, ds) ->
-    failwith "NYI"
+  | S.ModuleD(id, ds) -> assert false
+
+and field_typ_to_obj_entry (fld : T.field) =
+  match fld.T.typ with
+  | T.Kind _ -> []
+  | _ -> [ ((S.Name fld.T.name) @@ no_region, fld.T.name @@ no_region) ]
+
+and build_module id ds typ =
+  let self =  idE id typ in
+  let (s, field_typs) = T.as_obj typ in
+  letD self (
+      blockE (
+          decs ds @
+            [ letD self
+                (newObjE (T.Module @@ no_region)
+                   (List.concat (List.map field_typ_to_obj_entry field_typs)) typ);
+	      expD self
+            ]
+        ))
 
 and cases cs = List.map case cs
 
