@@ -1,2 +1,0 @@
-issue36.as:13.8-13.15: type error, expected tuple type, but expression produces type
-  (Int, Z)

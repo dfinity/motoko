@@ -6,17 +6,15 @@ type B = { bar : (Int, Z) };
 let inner : Z = new { zap = 42 };
 let foo : B = new { bar = (25, inner) };
 
-assert(foo.bar.1 == 25);
+assert(foo.bar.0 == 25);
 
-assert(foo.bar.2.zap == 42);
+assert(foo.bar.1.zap == 42);
 
-assert(foo.bar.0.zap == 42); // Dubious: parses, but type error
-
-assert((0,((1,1,2), (3,5), 8), 12).2.2.2 == 5);
+assert((0,((1,1,2), (3,5), 8), 12).1.1.1 == 5);
 
 // Slight imbalance: between DOT and ID we can have whitespace...
 
-assert(foo. bar .2 . zap == 42);
+assert(foo. bar .1 . zap == 42);
 
 // but not between DOT and NUM:
 
