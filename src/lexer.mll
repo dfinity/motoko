@@ -62,6 +62,7 @@ let digit = ['0'-'9']
 let hexdigit = ['0'-'9''a'-'f''A'-'F']
 let num = digit ('_'? digit)*
 let hexnum = hexdigit ('_'? hexdigit)*
+let dot_num = '.' num 
 
 let letter = ['a'-'z''A'-'Z']
 let symbol =
@@ -163,6 +164,7 @@ rule token mode = parse
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 
+  | dot_num as s { DOT_NUM (String.sub s 1 1) }
   | nat as s { NAT s }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }

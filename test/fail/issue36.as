@@ -1,4 +1,4 @@
-// foo.bar.1.zap won't parse
+// AST-36: foo.bar.1.zap won't parse
 
 type Z = { zap : Nat };
 type B = { bar : (Int, Z) };
@@ -6,4 +6,8 @@ type B = { bar : (Int, Z) };
 let inner : Z = new { zap = 42 };
 let foo : B = new { bar = (25, inner) };
 
-assert(foo.bar.2.zap == 42)
+assert(foo.bar.1 == 25);
+
+assert(foo.bar.2.zap == 42);
+
+assert(foo.bar.0.zap == 42)
