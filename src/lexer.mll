@@ -62,7 +62,7 @@ let digit = ['0'-'9']
 let hexdigit = ['0'-'9''a'-'f''A'-'F']
 let num = digit ('_'? digit)*
 let hexnum = hexdigit ('_'? hexdigit)*
-let dot_num = '.' num 
+let dot_num = '.' num
 
 let letter = ['a'-'z''A'-'Z']
 let symbol =
