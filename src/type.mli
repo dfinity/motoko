@@ -48,10 +48,14 @@ and kind =
   | Abs of bind list * typ
 
 
-module ConEnv : Env.S with type key = con
-type 'a con_env = 'a ConEnv.t
 
-module ConSet : Set.S with type elt = con
+module ConSet :
+sig include Set.S with type elt = con
+    exception Clash of elt
+    val disjoint_add : elt -> t -> t (* raises Clash *)
+    val disjoint_union : t -> t -> t (* raises Clash *)
+end
+
 type con_set = ConSet.t
 
 val kind : con -> kind

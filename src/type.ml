@@ -140,8 +140,6 @@ and shift_field i n {name; typ} =
 
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 
-type 'a con_env = 'a ConEnv.t
-
 let rec subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with
@@ -343,7 +341,16 @@ let rec span = function
 
 exception Unavoidable of con
 
-module ConSet = Set.Make(struct type t = con let compare = Con.compare end)
+module ConSet =
+  struct include Set.Make(struct type t = con let compare = Con.compare end)
+         exception Clash of elt
+         let disjoint_add e set =
+           if mem e set then raise (Clash e)
+           else add e set
+         let disjoint_union set1 set2 =
+           fold (fun e s -> disjoint_add e s) set2 set1
+  end
+
 type con_set = ConSet.t
 
 let rec avoid' to_avoid = function

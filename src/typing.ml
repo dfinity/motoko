@@ -37,15 +37,8 @@ let empty_scope : scope =
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = T.ConSet.union scope1.con_env scope2.con_env;
+    con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
   }
-(*
-let cons_of_scope scope =
-  T.Env.fold (fun _name con s -> T.ConSet.add con s) scope.typ_env T.ConSet.empty
-*)
-
-let set_of_env con_env =
-  T.ConSet.fold (fun con s -> T.ConSet.add con s) con_env T.ConSet.empty
 
 (* Contexts (internal) *)
 
@@ -88,36 +81,28 @@ let warn env at fmt =
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
+
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
-(*
-let add_con c con k = {c with cons = Con.Env.add con k c.cons}
-let add_typ c x con k =
-  { c with
-    typs = T.Env.add x con c.typs;
-    cons = Con.Env.add con k c.cons;
-  }
-*)
 
 let add_typs c xs cs =
   { c with
     typs = List.fold_right2 T.Env.add xs cs c.typs;
-    cons = List.fold_right T.ConSet.add cs c.cons;
+    cons = List.fold_right T.ConSet.disjoint_add cs c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
     typs = T.Env.adjoin c.typs scope.typ_env;
-    cons = T.ConSet.union c.cons scope.con_env;
+    cons = T.ConSet.disjoint_union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 
-let adjoin_cons c ce = {c with cons = T.ConSet.union c.cons ce}
 let adjoin_typs c te ce =
   { c with
     typs = T.Env.adjoin c.typs te;
-    cons = T.ConSet.union c.cons ce;
+    cons = T.ConSet.disjoint_union c.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -485,7 +470,7 @@ and infer_exp' env exp : T.typ =
   | BlockE (decs, ot) ->
     let t, scope = infer_block env decs exp.at in
     let t' =
-      let to_avoid = set_of_env scope.con_env in
+      let to_avoid = scope.con_env in
       try T.avoid to_avoid t with T.Unavoidable c ->
         error env exp.at "local class type %s is contained in inferred block type\n  %s"
           (Con.to_string c)
@@ -613,7 +598,7 @@ and infer_exp' env exp : T.typ =
   | DecE (dec, ot) ->
     let t, scope = infer_block env [dec] exp.at in
     let t' =
-      let to_avoid = set_of_env scope.con_env in
+      let to_avoid = scope.con_env in
       try T.avoid to_avoid t with T.Unavoidable c ->
         error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
           (Con.to_string c) (T.string_of_typ_expand t)
@@ -1099,18 +1084,18 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
     let te' = T.Env.add con_id.it c scope.typ_env in
-    let ce' = T.ConSet.add c scope.con_env in
+    let ce' = T.ConSet.disjoint_add c scope.con_env in
     {val_env = ve'; typ_env = te'; con_env = ce'}
 
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : con_env =
-  let _env', ce =
-    List.fold_left (fun (env, ce) dec ->
+  List.fold_left
+    (fun ce dec ->
       let ce' = infer_dec_typdecs env dec in
-      adjoin_cons env ce', T.ConSet.union ce ce'
-    ) (env, T.ConSet.empty) decs
-  in ce
+      T.ConSet.disjoint_union ce ce'
+    )  T.ConSet.empty decs
+
 
 and infer_dec_typdecs env dec : con_env =
   match dec.it with
@@ -1128,7 +1113,7 @@ and infer_dec_typdecs env dec : con_env =
     T.ConSet.singleton c
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find con_id.it env.typs in
-    let cs, ts, te , ce = check_typ_binds {env with pre = true} binds in
+    let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con(c, List.map (fun c -> T.Con (c, [])) cs) in

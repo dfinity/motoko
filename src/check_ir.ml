@@ -25,7 +25,7 @@ let immute_typ p =
 (* Scope *)
 
 type val_env = T.typ T.Env.t
-type con_env = T.kind T.ConEnv.t
+type con_env = T.ConSet.t
 
 type scope =
   { val_env : val_env;
@@ -34,15 +34,8 @@ type scope =
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
-    con_env = T.ConEnv.empty
+    con_env = T.ConSet.empty
   }
-
-(*
-let adjoin_scope scope1 scope2 =
-  { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
-    con_env = T.ConEnv.adjoin scope1.con_env scope2.con_env;
-  }
- *)
 
 (* Contexts (internal) *)
 
@@ -60,12 +53,10 @@ type env =
     check_typ : env -> Type.typ -> unit;
   }
 
-let con_env_of_con_set cs =
-  Type.ConSet.fold (fun c ce -> Type.ConEnv.add c (T.kind c) ce) cs Type.ConEnv.empty
 
 let env_of_scope (scope : Typing.scope) : env =
   { vals = scope.Typing.val_env;
-    cons = con_env_of_con_set (scope.Typing.con_env);
+    cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -89,20 +80,20 @@ let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
 let add_typs c cs =
   { c with
-    cons = List.fold_right (fun c -> T.ConEnv.add c (T.kind c)) cs c.cons;
+    cons = List.fold_right (fun c -> T.ConSet.disjoint_add c) cs c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    cons = T.ConEnv.adjoin c.cons scope.con_env;
+    cons = T.ConSet.disjoint_union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 
 let adjoin_cons c ce =
   { c with
-    cons = T.ConEnv.adjoin c.cons ce;
+    cons = T.ConSet.disjoint_union c.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -142,7 +133,7 @@ let rec check_typ env typ : unit =
   | T.Var (s,i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c,typs) ->
-    if not (T.ConEnv.mem c env.cons) then
+    if not (T.ConSet.mem c env.cons) then
        error env no_region "free type constructor %s" (Con.name c);
     (match T.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
@@ -221,7 +212,7 @@ and check_typ_binds env typ_binds : T.con list * con_env =
               check_typ env' bd)
             typ_binds
   in
-  cs, T.ConEnv.from_list (List.map (fun c -> (c, T.kind c)) cs)
+  cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
@@ -689,7 +680,7 @@ and type_block_exps env decs : T.typ =
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
-  let ce = List.fold_right (fun c -> T.ConEnv.add c (Type.kind c)) cs T.ConEnv.empty in
+  let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
   let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
   cs,ce
@@ -728,6 +719,7 @@ and check_dec env dec  =
     check_sub env' dec.at (typ exp) t2;
     t0 <: t;
   | TypD c ->
+    check (T.ConSet.mem c env.cons) "free type constructor";
     let (binds,typ) =
       match T.kind c with
       | T.Abs(binds,typ)
@@ -796,9 +788,9 @@ and gather_dec env scope dec : scope =
     { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
-      (not (T.ConEnv.mem c scope.con_env))
+      (not (T.ConSet.mem c scope.con_env))
       "duplicate definition of type in block";
-    let ce' = T.ConEnv.add c (T.kind c) scope.con_env in
+    let ce' = T.ConSet.disjoint_add c scope.con_env in
     { scope with con_env = ce' }
 
 (* Programs *)
