@@ -1,0 +1,17 @@
+--- module2.run
++++ module2.run-ir
+@@ -0,0 +1,15 @@
++(unknown location): internal error, Failure("(unknown location): IR type error, unbound type constructor x\n")
++
++Last environment:
++
++Called from file "check_ir.ml", line 768, characters 4-36
++Called from file "check_ir.ml", line 707, characters 4-21
++Called from file "check_ir.ml", line 697, characters 10-49
++Called from file "check_ir.ml", line 411, characters 20-46
++Called from file "check_ir.ml", line 743, characters 4-21
++Called from file "check_ir.ml", line 785, characters 4-21
++Called from file "check_ir.ml", line 773, characters 2-47
++Called from file "check_ir.ml", line 836, characters 9-49
++Called from file "desugar.ml", line 242, characters 2-21
++Called from file "pipeline.ml", line 168, characters 22-49
