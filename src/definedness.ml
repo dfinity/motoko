@@ -100,7 +100,7 @@ let rec exp msgs e : f = match e.it with
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
-  | BlockE (ds, _)      -> decs msgs ds
+  | BlockE ds           -> decs msgs ds
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
@@ -117,7 +117,6 @@ let rec exp msgs e : f = match e.it with
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
-  | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es

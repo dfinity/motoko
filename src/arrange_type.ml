@@ -31,7 +31,7 @@ let prim p = match p with
   | Char -> Atom "Char"
   | Text -> Atom "Text"
 
-let con c = Atom (Con.to_string c)
+let con c = Atom (Type.Con.to_string c)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
@@ -53,5 +53,5 @@ and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]
 
 and typ_field (tf : Type.field) =
-  tf.name $$ [typ tf.typ]
+  tf.lab $$ [typ tf.typ]
 

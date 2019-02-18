@@ -310,7 +310,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 *)
       )
     )
-  | BlockE (decs, _)->
+  | BlockE decs ->
     interpret_block env decs None k
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
@@ -400,8 +400,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
-  | DecE (dec, _) ->
-    interpret_block env [dec] None k
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -536,16 +534,16 @@ and interpret_obj env sort id fields (k : V.value V.cont) =
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
   | [] -> ve_ex, ve_in
-  | {it = {dec; priv}; _}::fields' ->
+  | {it = {dec; vis}; _}::fields' ->
     let ve' = declare_dec dec in
-    let ve_ex' = if priv.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
+    let ve_ex' = if vis.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
     let ve_in' = V.Env.adjoin ve_in ve' in
     declare_exp_fields fields' ve_ex' ve_in'
 
 and interpret_exp_fields env s fields ve (k : V.value V.cont) =
   match fields with
   | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
-  | {it = {dec; priv}; _}::fields' ->
+  | {it = {dec; vis}; _}::fields' ->
     interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
 
 

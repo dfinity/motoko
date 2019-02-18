@@ -95,7 +95,7 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE dec = { dec with it = BlockE ([dec], typ dec) }
+let decE dec = { dec with it = BlockE [dec] }
 
 let blockE decs =
   let rec typ_decs decs =
@@ -107,7 +107,7 @@ let blockE decs =
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE (decs, typ);
+  { it = BlockE decs;
     at = no_region;
     note = {S.note_typ = typ;
             S.note_eff = e }

@@ -14,14 +14,13 @@ let fresh name kind =
   stamps := Stamps.add name (n + 1) !stamps;
   {name; stamp = n; kind}
 
-let name c = c.name
+let clone c k = {c with kind = k}
 
 let kind c = c.kind
+let name c = c.name
 
 let to_string c =
   if c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
 
-let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)
 let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
-
-let clone c k = { c with kind = k }
+let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)

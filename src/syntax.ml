@@ -118,20 +118,20 @@ and pat_field' = {id : id; pat : pat}
 
 (* Expressions *)
 
-type priv = priv' Source.phrase
-and priv' = Public | Private
+type vis = vis' Source.phrase
+and vis' = Public | Private
 
 (* Filled in for overloaded operators and blocks during type checking. Initially Type.Pre. *)
-type op_type = Type.typ ref
+type op_typ = Type.typ ref
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
-  | UnE of op_type * unop * exp                (* unary operator *)
-  | BinE of op_type * exp * binop * exp        (* binary operator *)
-  | RelE of op_type * exp * relop * exp        (* relational operator *)
+  | UnE of op_typ * unop * exp                 (* unary operator *)
+  | BinE of op_typ * exp * binop * exp         (* binary operator *)
+  | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
@@ -141,7 +141,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * typ list * exp              (* function call *)
-  | BlockE of dec list * op_type               (* block (with type after avoidance)*)
+  | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -157,7 +157,6 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
-  | DecE of dec * Type.typ ref                 (* declaration *)
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)
@@ -166,7 +165,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; priv : priv}
+and exp_field' = {dec : dec; vis : vis}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

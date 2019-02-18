@@ -63,8 +63,8 @@ let rec exp e : f = match e.it with
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (_, uo, e)      -> exp e
-  | BinE (_, e1, bo, e2)-> exps [e1; e2]
-  | RelE (_, e1, ro, e2)-> exps [e1; e2]
+  | BinE (_, e1, bo, e2) -> exps [e1; e2]
+  | RelE (_, e1, ro, e2) -> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | ActorE (i, efs, _)  -> close (exp_fields efs) // i.it
@@ -74,7 +74,7 @@ let rec exp e : f = match e.it with
   | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (_, e1, ts, e2) -> exps [e1; e2]
-  | BlockE (ds, _)      -> close (decs ds)
+  | BlockE ds           -> close (decs ds)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | WhileE (e1, e2)     -> exps [e1; e2]

@@ -39,7 +39,7 @@ and exp' =
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
       Value. call_conv * exp * Type.typ list * exp
-  | BlockE of dec list * Type.typ              (* block *)
+  | BlockE of dec list                         (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)
@@ -57,7 +57,7 @@ and exp' =
       Syntax.obj_sort * (Syntax.name * Syntax.id) list * Type.typ
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {name : Syntax.name; id : Syntax.id; exp : exp; mut : Syntax.mut; priv : Syntax.priv}
+and exp_field' = {name : Syntax.name; id : Syntax.id; exp : exp; mut : Syntax.mut; vis : Syntax.vis}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

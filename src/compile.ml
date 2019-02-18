@@ -1007,7 +1007,7 @@ module AllocHow = struct
       (set_of_map how)))
 
   let is_static_exp env how0 exp = match exp.it with
-    | BlockE ([{ it = FuncD _; _} as dec],_) ->
+    | BlockE [{ it = FuncD _; _} as dec] ->
       let f = Freevars.close (Freevars.dec dec) in
       is_static env how0 f
     | _ -> false
@@ -1226,7 +1226,7 @@ module Object = struct
       fs |>
       (* We could store only public fields in the object, but
          then we need to allocate separate boxes for the non-public ones:
-         List.filter (fun (_, priv, f) -> priv.it = Public) |>
+         List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
       List.map (fun ({it = Syntax.Name s;_} as n,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
@@ -3389,7 +3389,7 @@ and compile_exp (env : E.t) exp =
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
-  | BlockE (decs,_) ->
+  | BlockE decs ->
     compile_decs env decs
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -3820,7 +3820,7 @@ and compile_decs_block env decs : (E.t * (SR.t * G.t)) =
   (env1, (sr, alloc_code ^^ code))
 
 and compile_static_exp env how exp = match exp.it with
-  | BlockE ([{ it = FuncD (cc, name, typ_binds, p, _rt, e); _}],_) ->
+  | BlockE [{ it = FuncD (cc, name, typ_binds, p, _rt, e); _}] ->
       (* Get captured variables *)
       let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
@@ -3874,7 +3874,7 @@ and compile_private_actor_field pre_env (f : Ir.exp_field)  =
 and compile_public_actor_field pre_env (f : Ir.exp_field) =
   let (cc, name, _, pat, _rt, exp) =
     let find_func exp = match exp.it with
-    | BlockE ([{it = FuncD (cc, name, ty_args, pat, rt, exp); _ }],_) ->
+    | BlockE [{it = FuncD (cc, name, ty_args, pat, rt, exp); _ }] ->
       (cc, name, ty_args, pat, rt, exp)
     | _ -> assert false (* "public actor field not a function" *)
     in find_func f.it.exp in
@@ -3897,7 +3897,7 @@ and compile_public_actor_field pre_env (f : Ir.exp_field) =
   )
 
 and compile_actor_field pre_env (f : Ir.exp_field) =
-  if f.it.priv.it = Syntax.Private
+  if f.it.vis.it = Syntax.Private
   then compile_private_actor_field pre_env f
   else compile_public_actor_field pre_env f
 

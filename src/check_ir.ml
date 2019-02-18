@@ -25,7 +25,7 @@ let immute_typ p =
 (* Scope *)
 
 type val_env = T.typ T.Env.t
-type con_env = T.ConSet.t
+type con_env = T.Con.Set.t
 
 type scope =
   { val_env : val_env;
@@ -34,7 +34,7 @@ type scope =
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
-    con_env = T.ConSet.empty
+    con_env = T.Con.Set.empty
   }
 
 (* Contexts (internal) *)
@@ -76,13 +76,13 @@ let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
 let add_typs c cs =
   { c with
-    cons = List.fold_right (fun c -> T.ConSet.disjoint_add c) cs c.cons;
+    cons = List.fold_right (fun c -> T.Con.Set.disjoint_add c) cs c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    cons = T.ConSet.disjoint_union c.cons scope.con_env;
+    cons = T.Con.Set.disjoint_union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
@@ -90,7 +90,7 @@ let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 
 let adjoin_cons c ce =
   { c with
-    cons = T.ConSet.disjoint_union c.cons ce;
+    cons = T.Con.Set.disjoint_union c.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -130,9 +130,9 @@ let rec check_typ env typ : unit =
   | T.Var (s,i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c,typs) ->
-    if not (T.ConSet.mem c env.cons) then
-       error env no_region "free type constructor %s" (Con.name c);
-    (match T.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
+    if not (T.Con.Set.mem c env.cons) then
+       error env no_region "free type constructor %s" (T.Con.name c);
+    (match T.Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
   | T.Any -> ()
@@ -183,14 +183,14 @@ let rec check_typ env typ : unit =
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
     in
-    check_ids env (List.map (fun (field : T.field) -> field.T.name) fields);
+    check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
   | T.Mut typ ->
     check_typ env typ
 
 and check_typ_field env s typ_field : unit =
-  let {T.name; T.typ} = typ_field in
+  let T.{lab; typ} = typ_field in
   check_typ env typ;
   check env no_region
      (s <> T.Actor || T.is_func (T.promote typ))
@@ -210,7 +210,7 @@ and check_typ_binds env typ_binds : T.con list * con_env =
               check_typ env' bd)
             typ_binds
   in
-  cs, T.ConSet.of_list cs
+  cs, T.Con.Set.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
@@ -340,7 +340,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match List.find_opt (fun {T.name; _} -> name = n) tfs with
+      match List.find_opt (fun T.{lab; _} -> lab = n) tfs with
       | Some {T.typ = tn;_} ->
         tn <~ t
       | None ->
@@ -386,11 +386,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     (typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
-  | BlockE (decs, t0) ->
+  | BlockE decs ->
     let t1, scope = type_block env decs exp.at in
-    check_typ env t0;
-    check (T.eq t T.unit || T.eq t1 t0) "unexpected expected block type";
-    t0 <: t;
+    if t <> T.unit then t1 <: t;
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
     typ exp1 <: T.bool;
@@ -517,8 +515,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 =
       T.Obj(sort.it,
             List.sort T.compare_field (List.map (fun (name,id) ->
-                                           {T.name = Syntax.string_of_name name.it;
-                                            T.typ = T.Env.find id.it env.vals}) labids))
+                                           T.{lab = Syntax.string_of_name name.it;
+                                              typ = T.Env.find id.it env.vals}) labids))
     in
     let t2 = T.promote t in
     check (T.is_obj t2) "bad annotation (object type expected)";
@@ -612,7 +610,7 @@ and gather_exp_fields env id t fields : val_env =
   List.fold_left (gather_exp_field env) ve0 fields
 
 and gather_exp_field env ve field : val_env =
-  let {id; exp; mut; priv;_} : exp_field' = field.it in
+  let {id; exp; mut; vis; _} : exp_field' = field.it in
   if T.Env.mem id.it ve then
     error env id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it ( make_mut mut (typ exp)) ve
@@ -625,7 +623,7 @@ and type_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | BlockE ([dec],_)-> is_func_dec dec
+  | BlockE [dec]-> is_func_dec dec
   | _ -> false
 
 and is_func_dec dec =
@@ -634,7 +632,7 @@ and is_func_dec dec =
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name; exp; mut; priv} = field.it in
+  let {id; name; exp; mut; vis} = field.it in
   let t = try T.Env.find id.it env.vals with
           | Not_found -> error env field.at "field typing not found"
   in
@@ -644,19 +642,19 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
   check env field.at ((mut.it = Syntax.Var) = T.is_mut t)
     "inconsistent mutability of field and field type";
   check env field.at
-    ((s = T.Actor && priv.it = Syntax.Public) ==>
+    ((s = T.Actor && vis.it = Syntax.Public) ==>
        is_func_exp exp)
     "public actor field is not a function";
   check env field.at
-    (if (s <> T.Object T.Local && priv.it = Syntax.Public)
+    (if (s <> T.Object T.Local && vis.it = Syntax.Public)
      then T.sub t T.Shared
      else true)
     "public shared object or actor field has non-shared type";
   let ve' = T.Env.add id.it t ve in
   let tfs' =
-    if priv.it = Syntax.Private
+    if vis.it = Syntax.Private
     then tfs
-    else {T.name = Syntax.string_of_name name.it; typ = t} :: tfs
+    else T.{lab = Syntax.string_of_name name.it; typ = t} :: tfs
   in tfs', ve'
 
 
@@ -679,13 +677,13 @@ and type_block_exps env decs : T.typ =
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
-  let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
+  let ce = List.fold_right (fun c ce -> T.Con.Set.disjoint_add c ce) cs T.Con.Set.empty in
   let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
   cs,ce
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; bound} -> {Type.var = T.Con.name con; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -718,9 +716,9 @@ and check_dec env dec  =
     check_sub env' dec.at (typ exp) t2;
     t0 <: t;
   | TypD c ->
-    check (T.ConSet.mem c env.cons) "free type constructor";
+    check (T.Con.Set.mem c env.cons) "free type constructor";
     let (binds,typ) =
-      match T.kind c with
+      match T.Con.kind c with
       | T.Abs(binds,typ)
       | T.Def(binds,typ) -> (binds,typ)
     in
@@ -781,15 +779,15 @@ and gather_dec env scope dec : scope =
       | _ -> T.Returns
     in
     let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = T.Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
     { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
-      (not (T.ConSet.mem c scope.con_env))
+      (not (T.Con.Set.mem c scope.con_env))
       "duplicate definition of type in block";
-    let ce' = T.ConSet.disjoint_add c scope.con_env in
+    let ce' = T.Con.Set.disjoint_add c scope.con_env in
     { scope with con_env = ce' }
 
 (* Programs *)

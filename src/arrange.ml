@@ -18,7 +18,7 @@ let rec exp e = match e.it with
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE (ds, ot)      -> "BlockE"  $$ List.map dec ds @ [operator_type (!ot)]
+  | BlockE (ds)         -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
   | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
@@ -35,7 +35,6 @@ let rec exp e = match e.it with
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | DecE (d, ot)        -> "DecE"    $$ [dec d ; operator_type !ot]
   | OptE e              -> "OptE"    $$ [exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
 
@@ -115,7 +114,7 @@ and mut m = match m.it with
   | Const -> Atom "Const"
   | Var   -> Atom "Var"
 
-and priv p = match p.it with
+and vis v = match v.it with
   | Public  -> Atom "Public"
   | Private -> Atom "Private"
 
@@ -126,7 +125,7 @@ and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and exp_field (ef : exp_field)
-  = "Field" $$ [dec ef.it.dec; priv ef.it.priv]
+  = "Field" $$ [dec ef.it.dec; vis ef.it.vis]
 
 and operator_type t = Atom (Type.string_of_typ t)
 

@@ -57,8 +57,8 @@ and exp' at note = function
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
-  | S.BlockE ([{it = S.ExpD e; _}], _) -> exp' e.at e.note e.it
-  | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
+  | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
+  | S.BlockE ds -> I.BlockE (decs ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -75,7 +75,6 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
 
 and obj at s class_id self_id es obj_typ =
   match s.it with
@@ -87,8 +86,8 @@ and build_obj at class_id s self_id es obj_typ =
   let names =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.name; _} ->
-        S.Name name @@ no_region, name @@ no_region
+      List.map (fun {Type.lab; _} ->
+        S.Name lab @@ no_region, lab @@ no_region
       ) fields
     | _ -> assert false
   in
@@ -96,24 +95,25 @@ and build_obj at class_id s self_id es obj_typ =
       List.map (fun ef -> dec ef.it.S.dec) es @
         [ letD self (newObjE s names obj_typ);
           expD self
-        ],
-      obj_typ)
+        ]
+  )
 
 and exp_fields fs = List.map exp_field fs
 
 and exp_field f = phrase exp_field' f
 
+(* TODO(joachim): push decs through IR properly and handle all cases. *)
 and exp_field' (f : S.exp_field') =
   match f.S.dec.it with
   | S.LetD ({it = S.VarP x; at; _}, e) ->
-    { I.priv = f.S.priv;
+    { I.vis = f.S.vis;
       name = S.Name x.it @@ at;
       id = x;
       mut = S.Const @@ at;
       exp = exp e;
     }
   | S.VarD (x, e) ->
-    { I.priv = f.S.priv;
+    { I.vis = f.S.vis;
       name = S.Name x.it @@ x.at;
       id = x;
       mut = S.Var @@ x.at;
@@ -121,13 +121,12 @@ and exp_field' (f : S.exp_field') =
     }
   | S.FuncD (_, x, _, _, _, _)
   | S.ClassD (x, _, _, _, _, _, _) ->
-    { I.priv = f.S.priv;
+    { I.vis = f.S.vis;
       name = S.Name x.it @@ x.at;
       id = x;
       mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE ([dec f.S.dec], f.S.dec.note.S.note_typ)};
+      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
     }
-  (* TODO *)
   | S.ExpD _ -> failwith "expressions not yet supported in objects"
   | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
   | S.TypD _ -> failwith "type definitions not yet supported in objects"
@@ -184,7 +183,7 @@ and dec' at n d = match d with
       match n.S.note_typ with
       | T.Func(s,c,bds,dom,[rng]) ->
         assert(List.length inst = List.length bds);
-        T.open_ inst rng
+        T.promote (T.open_ inst rng)
       | _ -> assert false
     in
     I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)

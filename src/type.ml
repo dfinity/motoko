@@ -1,5 +1,8 @@
 (* Representation *)
 
+type lab = string
+type var = string
+
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
@@ -20,15 +23,14 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of string * int                       (* variable *)
+  | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of sharing * control *
-            bind list * typ list * typ list   (* function *)
+  | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
@@ -36,42 +38,48 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and con_annot = kind ref (* the con annotation is abstract to the outside world *)
-and con = con_annot Con.t
-
-and bind = {var : string; bound : typ}
-and field = {name : string; typ : typ}
+and bind = {var : var; bound : typ}
+and field = {lab : lab; typ : typ}
 
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-(* cons *)
+and con = kind ref Con.t
 
-(* The con field is a reference to break the recursion in open_binds,
-   and to allow the multiple passes in typing *)
-let kind con = !(Con.kind con)
 
-let fresh_con n k = Con.fresh n (ref k)
-let modify_kind c f = Con.kind c := f !(Con.kind c)
-let clone_con c (k:kind)  = Con.clone c (ref k)
-let set_kind c k = match !(Con.kind c) with
-  | Abs (_, Pre) -> Con.kind c := k
-  | _ -> raise (Invalid_argument "set_kind")
+(* Constructors *)
 
-(* field ordering *)
+module Con =
+struct
+  include Con
 
-let compare_field f1 f2 = compare f1.name f2.name
+  let fresh v k = Con.fresh v (ref k)
+  let clone c k = Con.clone c (ref k)
 
-let seq ts =
-    match ts with
-    | [t] -> t
-    | ts -> Tup ts
+  let kind c = !(Con.kind c)
+  let modify_kind c f = Con.kind c := f !(Con.kind c)
+  let set_kind c k =
+    match !(Con.kind c) with
+    | Abs (_, Pre) -> Con.kind c := k
+    | _ -> raise (Invalid_argument "set_kind")
 
-let as_seq t =
-    match t with
-    | Tup ts -> ts
-    | t -> [t]
+  module Set =
+  struct
+    include Set.Make(struct type t = con let compare = Con.compare end)
+
+    exception Clash of elt
+
+    let disjoint_add e set =
+      if mem e set then raise (Clash e)
+      else add e set
+    let disjoint_union set1 set2 =
+      fold (fun e s -> disjoint_add e s) set2 set1
+  end
+
+  module Env = Env.Make(struct type t = con let compare = Con.compare end)
+end
+
 
 (* Short-hands *)
 
@@ -94,19 +102,23 @@ let prim = function
   | "Text" -> Text
   | _ -> raise (Invalid_argument "Type.prim")
 
+let seq = function [t] -> t | ts -> Tup ts
+
+let compare_field {lab = l1; _} {lab = l2; _} = compare l1 l2
+
 let iter_obj t =
   Obj (Object Local,
-    [{name = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
+    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
 
 let array_obj t =
   let immut t =
-    [ {name = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
-      {name = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
-      {name = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
-      {name = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
+    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
+      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
     ] in
   let mut t = immut t @
-    [ {name = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
   match t with
   | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
   | t -> Obj (Object Local, List.sort compare_field (immut t))
@@ -136,28 +148,26 @@ let rec shift i n t =
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
 
-and shift_field i n {name; typ} =
-  {name; typ = shift i n typ}
+and shift_field i n {lab; typ} =
+  {lab; typ = shift i n typ}
 
 
 (* First-order substitution *)
 
-module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
-
 let rec subst sigma t =
-  if sigma = ConEnv.empty then t else
+  if sigma = Con.Env.empty then t else
   match t with
   | Prim _
   | Var _ -> t
   | Con (c, ts) ->
-    (match ConEnv.find_opt c sigma with
+    (match Con.Env.find_opt c sigma with
     | Some t -> assert (List.length ts = 0); t
     | None -> Con (c, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
@@ -172,8 +182,8 @@ let rec subst sigma t =
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
 
-and subst_field sigma {name; typ} =
-  {name; typ = subst sigma typ}
+and subst_field sigma {lab; typ} =
+  {lab; typ = subst sigma typ}
 
 
 (* Handling binders *)
@@ -181,7 +191,7 @@ and subst_field sigma {name; typ} =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
+  let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
   subst sigma t
 
 let close_binds cs tbs =
@@ -211,8 +221,8 @@ let rec open' i ts t =
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
 
-and open_field i ts {name; typ} =
-  {name; typ = open' i ts typ}
+and open_field i ts {lab; typ} =
+  {lab; typ = open' i ts typ}
 
 let open_ ts t =
   if ts = [] then t else
@@ -220,10 +230,10 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> fresh_con var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun con -> Con (con, [])) cs in
+  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+  let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun c k -> Con.kind c := k) cs ks;
+  List.iter2 (fun c k -> Con.set_kind c k) cs ks;
   ts
 
 
@@ -235,7 +245,7 @@ let reduce tbs t ts =
 
 let rec normalize = function
   | Con (con, ts) as t ->
-    (match kind con with
+    (match Con.kind con with
     | Def (tbs, t) -> normalize (reduce tbs t ts)
     | _ -> t
     )
@@ -244,7 +254,7 @@ let rec normalize = function
 
 let rec promote = function
   | Con (con, ts) ->
-    let Def (tbs, t) | Abs (tbs, t) = kind con
+    let Def (tbs, t) | Abs (tbs, t) = Con.kind con
     in promote (reduce tbs t ts)
   | t -> t
 
@@ -276,14 +286,16 @@ let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 
+let as_seq = function Tup ts -> ts | t -> [t]
+
 let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()
   | Non -> ()
   | _ -> invalid "as_prim_sub"
-let rec as_obj_sub name t = match promote t with
+let rec as_obj_sub lab t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Array t -> as_obj_sub name (array_obj t)
-  | Non -> Object Sharable, [{name; typ = Non}]
+  | Array t -> as_obj_sub lab (array_obj t)
+  | Non -> Object Sharable, [{lab; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -317,8 +329,9 @@ let as_async_sub t = match promote t with
   | Non -> Non
   | _ -> invalid "as_async_sub"
 
-let lookup_field name' tfs =
-  match List.find_opt (fun {name; _} -> name = name') tfs with
+
+let lookup_field lab' tfs =
+  match List.find_opt (fun {lab; _} -> lab = lab') tfs with
   | Some {typ = t; _} -> t
   | None -> invalid "lookup_field"
 
@@ -345,34 +358,20 @@ let rec span = function
 
 exception Unavoidable of con
 
-module ConSet =
-  struct
-    include Set.Make(struct type t = con let compare = Con.compare end)
-    exception Clash of elt
-    let disjoint_add e set =
-      if mem e set then raise (Clash e)
-      else add e set
-    let disjoint_union set1 set2 =
-      fold (fun e s -> disjoint_add e s) set2 set1
-  end
-
-type con_set = ConSet.t
-
 let rec avoid' cons = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
-    if ConSet.mem c cons
-    then match kind c with
+    if Con.Set.mem c cons
+    then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
       | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
     else
       begin try
         Con (c, List.map (avoid' cons) ts)
       with Unavoidable d ->
-        begin match kind c with
+        match Con.kind c with
         | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
-        end
       end
   | Array t -> Array (avoid' cons t)
   | Tup ts -> Tup (List.map (avoid' cons) ts)
@@ -389,11 +388,11 @@ let rec avoid' cons = function
 and avoid_bind cons {var; bound} =
   {var; bound = avoid' cons bound}
 
-and avoid_field cons {name; typ} =
-  {name; typ = avoid' cons typ}
+and avoid_field cons {lab; typ} =
+  {lab; typ = avoid' cons typ}
 
 let avoid cons t =
-  if cons = ConSet.empty then t else
+  if cons = Con.Set.empty then t else
   avoid' cons t
 
 
@@ -419,7 +418,7 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
-    (match kind con1, kind con2 with
+    (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
@@ -432,7 +431,7 @@ let rec rel_typ rel eq t1 t2 =
       false
     )
   | Con (con1, ts1), t2 ->
-    (match kind con1, t2 with
+    (match Con.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
@@ -440,7 +439,7 @@ let rec rel_typ rel eq t1 t2 =
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
-    (match kind con2 with
+    (match Con.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
     | _ -> false
@@ -656,7 +655,7 @@ and string_of_typ' vs t =
       (string_of_dom vs ts1)
       (string_of_cod c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
-    let vs' = names_of_binds vs tbs in
+    let vs' = vars_of_binds vs tbs in
     sprintf "%s%s%s -> %s"
       (string_of_sharing s) (string_of_binds (vs' @ vs) vs' tbs)
       (string_of_dom (vs' @ vs) ts1) (string_of_cod c (vs' @ vs) ts2)
@@ -672,10 +671,10 @@ and string_of_typ' vs t =
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
-and string_of_field vs {name; typ} =
-  sprintf "%s : %s" name (string_of_typ' vs typ)
+and string_of_field vs {lab; typ} =
+  sprintf "%s : %s" lab (string_of_typ' vs typ)
 
-and names_of_binds vs bs =
+and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
 
 and name_of_var vs v =
@@ -700,7 +699,7 @@ let strings_of_kind k =
     | Def (tbs, t) -> "=", tbs, t
     | Abs (tbs, t) -> "<:", tbs, t
   in
-  let vs = names_of_binds [] tbs in
+  let vs = vars_of_binds [] tbs in
   op, string_of_binds vs vs tbs, string_of_typ' vs t
 
 let string_of_kind k =
@@ -712,7 +711,7 @@ let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
   | Con (c, ts) ->
-    (match kind c with
+    (match Con.kind c with
     | Abs _ -> s
     | Def _ ->
       match normalize t with

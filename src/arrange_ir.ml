@@ -20,10 +20,10 @@ let rec exp e = match e.it with
   | DotE (e, n)         -> "DotE"    $$ [exp e; name n]
   | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; name n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE (m, t, es)      -> "ArrayE"  $$ [Arrange.mut m; typ t] @ List.map exp es
+  | ArrayE (m, t, es)   -> "ArrayE"  $$ [Arrange.mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE (ds, t)      -> "BlockE"  $$ List.map dec ds @ [typ t]
+  | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
@@ -55,7 +55,7 @@ and pat p = match p.it with
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
 and exp_field (ef : exp_field)
-  = (Syntax.string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; Arrange.mut ef.it.mut; Arrange.priv ef.it.priv]
+  = (Syntax.string_of_name ef.it.name.it) $$ [id ef.it.id; exp ef.it.exp; Arrange.mut ef.it.mut; Arrange.vis ef.it.vis]
 
 and name n = Atom (Syntax.string_of_name n.it)
 
@@ -68,10 +68,10 @@ and dec d = match d.it with
   | FuncD (cc, i, tp, p, t, e) ->
     "FuncD" $$ [call_conv cc; id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD c ->
-    "TypD" $$ [con c; kind (Type.kind c)]
+    "TypD" $$ [con c; kind (Type.Con.kind c)]
 
 and typ_bind (tb : typ_bind) =
-  Con.to_string tb.it.con $$ [typ tb.it.bound]
+  Type.Con.to_string tb.it.con $$ [typ tb.it.bound]
 
 
 and prog (prog, _flavor)= "BlockE"  $$ List.map dec prog

@@ -1,11 +1,9 @@
 open Printf
 
-
 type stat_env = Typing.scope
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
-module Await = Awaitopt
 
 (* Diagnostics *)
 
@@ -16,9 +14,9 @@ let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
 let print_ce =
-  Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.strings_of_kind (Type.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
+  Type.Con.Set.iter (fun c ->
+    let eq, params, typ = Type.strings_of_kind (Type.Con.kind c) in
+    printf "type %s%s %s %s\n" (Type.Con.to_string c) params eq typ
   )
 
 let print_stat_ve =

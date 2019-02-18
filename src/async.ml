@@ -197,9 +197,9 @@ module Transform() = struct
     match  ConRenaming.find_opt c (!con_renaming) with
     | Some c' -> c'
     | None ->
-      let clone = T.clone_con c (T.kind c) in
+      let clone = T.Con.clone c (T.Con.kind c) in
       con_renaming := ConRenaming.add c clone (!con_renaming);
-      T.modify_kind clone t_kind;
+      T.Con.modify_kind clone t_kind;
       clone
 
   and t_operator_type ot =
@@ -208,8 +208,8 @@ module Transform() = struct
      it will be a pure value anyways. *)
     t_typ ot
 
-  and t_field {name; typ} =
-    { name; typ = t_typ typ }
+  and t_field {lab; typ} =
+    { lab; typ = t_typ typ }
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
       note = { note_typ = t_typ exp.note.note_typ;
@@ -292,8 +292,8 @@ module Transform() = struct
         .it
     | CallE (cc, exp1, typs, exp2)  ->
       CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
-    | BlockE (decs, ot) ->
-      BlockE (t_decs decs, t_typ ot)
+    | BlockE decs ->
+      BlockE (t_decs decs)
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->

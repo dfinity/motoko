@@ -58,7 +58,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ArrayE (_, exps) ->
     let es = List.map effect_exp exps in
     List.fold_left max_eff Type.Triv es
-  | BlockE (decs,_) ->
+  | BlockE decs ->
     let es = List.map effect_dec decs in
     List.fold_left max_eff Type.Triv es
   | ObjE (_, _, efs) ->
@@ -76,8 +76,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Triv
   | AwaitE exp1 ->
     T.Await
-  | DecE (d, _) ->
-     effect_dec d
 
 and effect_cases cases =
   match cases with
@@ -151,7 +149,7 @@ module Ir =
       | ArrayE (_, _, exps) ->
         let es = List.map effect_exp exps in
         List.fold_left max_eff Type.Triv es
-      | BlockE (decs,_) ->
+      | BlockE decs ->
         let es = List.map effect_dec decs in
         List.fold_left max_eff Type.Triv es
       | IfE (exp1, exp2, exp3) ->

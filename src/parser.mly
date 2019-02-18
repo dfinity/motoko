@@ -54,7 +54,7 @@ let assign_op lhs rhs_f at =
   let e = AssignE (lhs', rhs_f rhs') @? at in
   match ds with
   | [] -> e
-  | ds -> BlockE (ds @ [ExpD e @? e.at], ref Type.Pre) @? at
+  | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
 let share_typ t =
   match t.it with
@@ -74,7 +74,7 @@ let share_dec d =
   | _ -> d
 
 let share_expfield (ef : exp_field) =
-  if ef.it.priv.it = Private
+  if ef.it.vis.it = Private
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
@@ -318,7 +318,7 @@ lit :
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds, ref Type.Pre) @? at $sloc }
+    { BlockE(ds) @? at $sloc }
 
 exp_nullary :
   | e=exp_block
@@ -430,7 +430,7 @@ exp_nonvar :
   | e=exp_nondec
     { e }
   | d=dec_nonvar
-    { DecE(d, ref Type.Pre) @? at $sloc }
+    { BlockE([d]) @? at $sloc }
   (* TODO(andreas): hack, remove *)
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let anon = if s.it = Type.Actor then "actor" else "object" in
@@ -444,7 +444,7 @@ exp :
   | e=exp_nonvar
     { e }
   | d=dec_var
-    { DecE(d, ref Type.Pre) @? at $sloc }
+    { BlockE([d]) @? at $sloc }
 
 
 case :
@@ -455,20 +455,20 @@ case :
   | (* empty *) { Public @@ no_region }
   | PRIVATE { Private @@ at $sloc }
 
-(* TODO(andreas): change surface syntax to dec *)
+(* TODO(andreas): separate short forms *)
+(* TODO(andreas): invert public/private default *)
 exp_field :
-  | p=private_opt m=var_opt x=id EQ e=exp
-    { let d' = if m.it = Var then VarD(x, e) else LetD(VarP(x) @! x.at, e) in
-      {dec = d' @? at $sloc; priv = p} @@ at $sloc }
-  | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
-    { let e = AnnotE(e, t) @? span t.at e.at in
-      let d' = if m.it = Var then VarD(x, e) else LetD(VarP(x) @! x.at, e) in
-      {dec = d' @? at $sloc; priv = p} @@ at $sloc }
-  | p=private_opt s=shared_opt x=id fd=func_dec
+  | v=private_opt x=id EQ e=exp
+    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
+      {dec = d; vis = v} @@ at $sloc }
+  | v=private_opt s=shared_opt x=id fd=func_dec
     { let d = fd s x in
-      {dec = d; priv = p} @@ at $sloc }
-  | p=private_opt TYPE x=con_id tps=typ_params_opt EQ t=typ
-    { {dec = TypD(x, tps, t) @? at $sloc; priv = p} @@ at $sloc }
+      {dec = d; vis = v} @@ at $sloc }
+  (* TODO(andreas): allow any dec *)
+  | v=private_opt d=dec_var
+    { {dec = d; vis = v} @@ at $sloc }
+  | v=private_opt d=dec_nonvar
+    { {dec = d; vis = v} @@ at $sloc }
 
 
 (* Patterns *)

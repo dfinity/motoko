@@ -1,2 +1,4 @@
-const-var-field.as:1.26-1.35: type error, mutable field x cannot produce expected immutable field of type
-  Nat
+const-var-field.as:1.21-1.36: type error, expression of type
+  {x : var Nat}
+cannot produce expected type
+  {x : Nat}
