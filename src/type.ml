@@ -140,6 +140,8 @@ and shift_field i n {name; typ} =
 
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 
+type 'a con_env = 'a ConEnv.t
+
 let rec subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with

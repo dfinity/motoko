@@ -25,22 +25,33 @@ let immute_typ p =
 (* Scope *)
 
 type val_env = T.typ T.Env.t
+type con_env = T.kind T.ConEnv.t
 
 type scope =
   { val_env : val_env;
+    con_env : con_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
+    con_env = T.ConEnv.empty
   }
 
-(* Contexts *)
+(*
+let adjoin_scope scope1 scope2 =
+  { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
+    con_env = T.ConEnv.adjoin scope1.con_env scope2.con_env;
+  }
+ *)
+  
+(* Contexts (internal) *)
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 
 type env =
   { vals : val_env;
+    cons : con_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
@@ -51,6 +62,7 @@ type env =
 
 let env_of_scope (scope : Typing.scope) : env =
   { vals = scope.Typing.val_env;
+    cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -72,12 +84,23 @@ let error env at fmt =
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
+let add_typs c cs =
+  { c with
+    cons = List.fold_right (fun c -> T.ConEnv.add c (T.kind c)) cs c.cons;
+  }
+
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
+    cons = T.ConEnv.adjoin c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
+
+let adjoin_cons c ce =
+  { c with
+    cons = T.ConEnv.adjoin c.cons ce;
+  }
 
 let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
@@ -115,7 +138,9 @@ let rec check_typ env typ : unit =
     error env no_region "illegal T.Pre type"
   | T.Var (s,i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con(c,typs) ->
+  | T.Con (c,typs) ->
+    if not (T.ConEnv.mem c env.cons) then
+       error env no_region "free type constructor %s" (Con.name c);
     (match T.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
@@ -128,12 +153,13 @@ let rec check_typ env typ : unit =
   | T.Tup typs ->
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
-    let cs = check_typ_binds env binds in
+    let cs, ce = check_typ_binds env binds in
+    let env' = adjoin_cons env  ce in
     let ts = List.map (fun c -> T.Con(c,[])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
-    List.iter (check_typ env) ts1;
-    List.iter (check_typ env) ts2;
+    List.iter (check_typ env') ts1;
+    List.iter (check_typ env') ts2;
     if control = T.Promises then begin
       match ts2 with
       | [T.Async _ ] -> ()
@@ -144,11 +170,11 @@ let rec check_typ env typ : unit =
     end;
     if sort = T.Sharable then begin
       let t1 = T.seq ts1 in
-      check_sub env no_region t1 T.Shared;
+      check_sub env' no_region t1 T.Shared;
       match ts2 with
       | [] -> ()
       | [T.Async t2] ->
-        check_sub env no_region t2 T.Shared;
+        check_sub env' no_region t2 T.Shared;
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
     end
@@ -182,16 +208,17 @@ and check_typ_field env s typ_field : unit =
     "shared object or actor field has non-shared type"
 
 
-and check_typ_binds env typ_binds : T.con list =
+and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
   let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
+  let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
               let bd = T.open_ ts typ_bind.T.bound  in
-              check_typ env bd)
+              check_typ env' bd)
             typ_binds
   in
-  cs
+  cs, T.ConEnv.from_list (List.map (fun c -> (c, T.kind c)) cs)
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
@@ -369,7 +396,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE (decs, t0) ->
-    let t1 = type_block env decs exp.at in
+    let t1, scope = type_block env decs exp.at in
     check_typ env t0;
     check (T.eq t T.unit || T.eq t1 t0) "unexpected expected block type";
     t0 <: t;
@@ -642,9 +669,10 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
 
 (* Blocks and Declarations *)
 
-and type_block env decs at : T.typ =
+and type_block env decs at : T.typ * scope =
   let scope = gather_block_decs env decs in
-  type_block_exps (adjoin env scope) decs
+  let t = type_block_exps (adjoin env scope) decs in
+  t, scope
 
 and type_block_exps env decs : T.typ =
   match decs with
@@ -658,9 +686,10 @@ and type_block_exps env decs : T.typ =
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
+  let ce = List.fold_right (fun c -> T.ConEnv.add c (Type.kind c)) cs T.ConEnv.empty in
   let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
-  let _ = check_typ_binds env binds in
-  ()
+  let _,_ = check_typ_binds env binds in
+  cs,ce
 
 and close_typ_binds cs tbs =
   List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
@@ -683,16 +712,17 @@ and check_dec env dec  =
     T.unit <: t
   | FuncD (cc, id, typ_binds, pat, t2, exp) ->
     let t0 = T.Env.find id.it env.vals in
-    check_open_typ_binds env typ_binds;
-    let ve = check_pat_exhaustive env pat in
-    check_typ env t2;
+    let _cs,ce = check_open_typ_binds env typ_binds in
+    let env' = adjoin_cons env ce in
+    let ve = check_pat_exhaustive env' pat in
+    check_typ env' t2;
     check ((cc.Value.sort = T.Sharable && Type.is_async t2)
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
     let env'' =
-      {env with labs = T.Env.empty; rets = Some t2; async = false} in
+      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env dec.at (typ exp) t2;
+    check_sub env' dec.at (typ exp) t2;
     t0 <: t;
   | TypD c ->
     let (binds,typ) =
@@ -700,14 +730,16 @@ and check_dec env dec  =
       | T.Abs(binds,typ)
       | T.Def(binds,typ) -> (binds,typ)
     in
-    let cs = check_typ_binds env binds in
+    let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con(c,[])) cs in
-    check_typ env (T.open_ ts  typ);
+    let env' = adjoin_cons env ce in
+    check_typ env' (T.open_ ts  typ);
     T.unit <: t;
 
-and check_block env t decs at =
+and check_block env t decs at : scope =
   let scope = gather_block_decs env decs in
-  check_block_exps (adjoin env scope) t decs at
+  check_block_exps (adjoin env scope) t decs at;
+  scope
 
 and check_block_exps env t decs at =
   match decs with
@@ -721,7 +753,7 @@ and check_block_exps env t decs at =
     check_dec env dec;
     check_block_exps env t decs' at
 
-and gather_block_decs env decs : scope =
+and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
 
 and gather_dec env scope dec : scope =
@@ -730,13 +762,13 @@ and gather_dec env scope dec : scope =
     scope
   | LetD (pat, _) ->
     let ve = gather_pat env scope.val_env pat in
-    { val_env = ve}
+    { scope with val_env = ve}
   | VarD (id, exp) ->
     check env dec.at
       (not (T.Env.mem id.it scope.val_env))
       "duplicate variable definition in block";
     let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
-    { val_env = ve}
+    { scope with val_env = ve}
   | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
     let func_sort = call_conv.Value.sort in
     let cs = List.map (fun tb -> tb.it.con) typ_binds in
@@ -758,13 +790,16 @@ and gather_dec env scope dec : scope =
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
-    { val_env = ve' }
+    { scope with val_env = ve' }
   | TypD c ->
-    (* Do we want to check for duplicate type definitions? *)
-    scope
+    check env dec.at
+      (not (T.ConEnv.mem c scope.con_env))
+      "duplicate definition of type in block";
+    let ce' = T.ConEnv.add c (T.kind c) scope.con_env in
+    { scope with con_env = ce' }
 
 (* Programs *)
 
 let check_prog env prog : unit =
-  check_block env T.unit prog.it prog.at
+  ignore (check_block env T.unit prog.it prog.at)
 

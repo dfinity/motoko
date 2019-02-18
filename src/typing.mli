@@ -2,10 +2,12 @@ open Type
 
 type val_env = typ Env.t
 type typ_env = con Env.t
+type con_env = kind Type.con_env
 
 type scope =
   { val_env : val_env;
     typ_env : typ_env;
+    con_env : con_env;
   }
 
 val empty_scope : scope

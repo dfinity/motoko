@@ -47,6 +47,10 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+
+module ConEnv : Env.S with type key = con
+type 'a con_env = 'a ConEnv.t
+
 module ConSet : Set.S with type elt = con
 type con_set = ConSet.t
 
