@@ -19,7 +19,7 @@ let recover f y = recover_with () f y
 
 type val_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
-type con_env = T.kind T.con_env
+type con_env = T.con_set
 
 
 type scope =
@@ -31,22 +31,21 @@ type scope =
 let empty_scope : scope =
   { val_env = T.Env.empty;
     typ_env = T.Env.empty;
-    con_env = T.ConEnv.empty
+    con_env = T.ConSet.empty
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = T.ConEnv.adjoin scope1.con_env scope2.con_env;
+    con_env = T.ConSet.union scope1.con_env scope2.con_env;
   }
-
 (*
 let cons_of_scope scope =
   T.Env.fold (fun _name con s -> T.ConSet.add con s) scope.typ_env T.ConSet.empty
 *)
 
 let set_of_env con_env =
-  T.ConEnv.fold (fun con k s -> T.ConSet.add con s) con_env T.ConSet.empty
+  T.ConSet.fold (fun con s -> T.ConSet.add con s) con_env T.ConSet.empty
 
 (* Contexts (internal) *)
 
@@ -99,26 +98,26 @@ let add_typ c x con k =
   }
 *)
 
-let add_typs c xs cs ks =
+let add_typs c xs cs =
   { c with
     typs = List.fold_right2 T.Env.add xs cs c.typs;
-    cons = List.fold_right2 T.ConEnv.add cs ks c.cons;
+    cons = List.fold_right T.ConSet.add cs c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
     typs = T.Env.adjoin c.typs scope.typ_env;
-    cons = T.ConEnv.adjoin c.cons scope.con_env;
+    cons = T.ConSet.union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 
-let adjoin_cons c ce = {c with cons = T.ConEnv.adjoin c.cons ce}
+let adjoin_cons c ce = {c with cons = T.ConSet.union c.cons ce}
 let adjoin_typs c te ce =
   { c with
     typs = T.Env.adjoin c.typs te;
-    cons = T.ConEnv.adjoin c.cons ce;
+    cons = T.ConSet.union c.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -152,7 +151,7 @@ and check_typ' env typ : T.typ =
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it env.typs with
     | Some con ->
-      let kind = T.ConEnv.find con env.cons in
+      let kind = T.kind con in
       let T.Def (tbs, t) | T.Abs (tbs, t) = kind in
       let ts = check_typ_bounds env tbs typs typ.at in
       T.Con (con, ts)
@@ -231,15 +230,14 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
         error env id.at "duplicate type name %s in type parameter list" id.it;
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
-  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
-  let pre_env' = add_typs {env with pre = true} xs cs pre_ks in
+  let pre_env' = add_typs {env with pre = true} xs cs  in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 T.set_kind cs ks;
-  let env' = add_typs env xs cs ks in
+  let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
-  cs, ts, te, T.ConEnv.from_list2 cs ks
+  cs, ts, te, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   match tbs, typs with
@@ -1101,7 +1099,7 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
     let te' = T.Env.add con_id.it c scope.typ_env in
-    let ce' = T.ConEnv.add c pre_k scope.con_env in
+    let ce' = T.ConSet.add c scope.con_env in
     {val_env = ve'; typ_env = te'; con_env = ce'}
 
 
@@ -1110,14 +1108,14 @@ and infer_block_typdecs env decs : con_env =
   let _env', ce =
     List.fold_left (fun (env, ce) dec ->
       let ce' = infer_dec_typdecs env dec in
-      adjoin_cons env ce', T.ConEnv.adjoin ce ce'
-    ) (env, T.ConEnv.empty) decs
+      adjoin_cons env ce', T.ConSet.union ce ce'
+    ) (env, T.ConSet.empty) decs
   in ce
 
 and infer_dec_typdecs env dec : con_env =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ ->
-    T.ConEnv.empty
+    T.ConSet.empty
   | TypD (con_id, binds, typ) ->
     let c = T.Env.find con_id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1127,7 +1125,7 @@ and infer_dec_typdecs env dec : con_env =
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
     con_id.note <- Some c;
-    T.ConEnv.singleton c k
+    T.ConSet.singleton c
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find con_id.it env.typs in
     let cs, ts, te , ce = check_typ_binds {env with pre = true} binds in
@@ -1139,7 +1137,7 @@ and infer_dec_typdecs env dec : con_env =
     let k = T.Def (tbs, T.close cs t) in
     T.set_kind c k;
     con_id.note <- Some c;
-    T.ConEnv.singleton c k
+    T.ConSet.singleton c
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =

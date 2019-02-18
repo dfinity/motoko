@@ -16,8 +16,8 @@ let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
 let print_ce =
-  Type.ConEnv.iter (fun c k ->
-    let eq, params, typ = Type.strings_of_kind k in
+  Type.ConSet.iter (fun c ->
+    let eq, params, typ = Type.strings_of_kind (Type.kind c) in
     printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 

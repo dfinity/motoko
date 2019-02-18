@@ -43,7 +43,7 @@ let adjoin_scope scope1 scope2 =
     con_env = T.ConEnv.adjoin scope1.con_env scope2.con_env;
   }
  *)
-  
+
 (* Contexts (internal) *)
 
 type lab_env = T.typ T.Env.t
@@ -60,9 +60,12 @@ type env =
     check_typ : env -> Type.typ -> unit;
   }
 
+let con_env_of_con_set cs =
+  Type.ConSet.fold (fun c ce -> Type.ConEnv.add c (T.kind c) ce) cs Type.ConEnv.empty
+
 let env_of_scope (scope : Typing.scope) : env =
   { vals = scope.Typing.val_env;
-    cons = scope.Typing.con_env;
+    cons = con_env_of_con_set (scope.Typing.con_env);
     labs = T.Env.empty;
     rets = None;
     async = false;
