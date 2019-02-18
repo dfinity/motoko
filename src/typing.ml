@@ -82,18 +82,22 @@ let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"
 let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
 let local_error env at fmt =
- Printf.printf "local_error";
+(*  Printf.printf "local_error";
  (try failwith "dummy" with _ -> Printexc.print_backtrace stdout);
  (*  if true then assert false else ();*)
+ *)
  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
 
 let error env at fmt =
-  Printf.printf "error";
+(*  Printf.printf "error";
   try failwith "dummy" with _ -> Printexc.print_backtrace stdout;
+ *)
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
 let warn env at fmt =
+(*  
   Printf.printf "warning";
   try failwith "dummy" with _ -> Printexc.print_backtrace stdout;
+ *)
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 

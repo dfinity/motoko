@@ -20,11 +20,5 @@ let to_string c =
   if c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
 
 
-module Env' = Env.Make(struct type t = con let compare = compare end)
+module Env = Env.Make(struct type t = con let compare = compare end)
 
-module Env = struct include Env'
-                    let find k v = try find k v with _ ->
-                                     Printf.printf "foo";
-                                     Printexc.print_backtrace stdout;
-                                     assert false
-             end

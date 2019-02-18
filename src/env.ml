@@ -26,8 +26,5 @@ struct
   let disjoint_union env1 env2 = union (fun k _ _ -> raise (Clash k)) env1 env2
   let disjoint_unions envs = List.fold_left disjoint_union empty envs
   let disjoint_add k x env = disjoint_union env (singleton k x)
-  let find k v = try find k v with _ ->
-                   Printf.printf "foo";
-                   Printexc.print_backtrace stdout;
-                   assert false
+
 end
