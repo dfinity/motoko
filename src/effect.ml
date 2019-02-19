@@ -61,7 +61,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | BlockE decs ->
     let es = List.map effect_dec decs in
     List.fold_left max_eff Type.Triv es
-  | ObjE (_, _, efs) ->
+  | ObjE (_, efs) ->
     effect_field_exps efs
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in

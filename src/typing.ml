@@ -412,9 +412,9 @@ and infer_exp'' env exp : T.typ =
       error env exp1.at "expected tuple type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | ObjE (sort, id, fields) ->
+  | ObjE (sort, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
-    infer_obj env' sort.it id T.Pre fields exp.at
+    infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -857,11 +857,9 @@ and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
 
-and infer_obj env s id t fields at : T.typ =
+and infer_obj env s fields at : T.typ =
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
-  let env' = add_val env id.it t in
-  (* Prepass to infer type for id *)
-  let _, scope = infer_block {env' with pre = true} decs at in
+  let _, scope = infer_block env decs at in
   let pub_typ, pub_val = pub_fields fields in
   (* TODO: type fields *)
   T.Env.iter (fun _ at' ->
@@ -878,9 +876,7 @@ and infer_obj env s id t fields at : T.typ =
           lab (T.string_of_typ_expand typ)
     ) tfs
   end;
-  let t' = T.Obj (s, tfs) in
-  ignore (infer_block (add_val env id.it t') decs at);
-  t'
+  T.Obj (s, tfs)
 
 
 (* Blocks and Declarations *)
@@ -934,14 +930,18 @@ and infer_dec env dec : T.typ =
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
+      let c = T.Env.find id.it env.typs in
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env'' =
-        {env' with labs = T.Env.empty; rets = None; async = false} in
-      let self_typ =
-        T.Con (T.Env.find id.it env.typs, List.map (fun c -> T.Con (c, [])) cs) in
-      ignore (infer_obj (adjoin_vals env'' ve) sort.it self_id self_typ fields dec.at)
+        { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
+          labs = T.Env.empty;
+          rets = None;
+          async = false
+        }
+      in ignore (infer_obj env'' sort.it fields dec.at)
     end;
     t
   | TypD _ ->
@@ -1048,7 +1048,8 @@ and infer_dec_typdecs env dec : con_env =
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let t = infer_obj (adjoin_vals env' ve) sort.it self_id self_typ fields dec.at in
+    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in 
+    let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     infer_id_typdecs id c k

@@ -42,11 +42,11 @@ let fresh () =
   id_stamp := !id_stamp + 1;
   name
 
-let fresh_lab () =
+let fresh_id () =
   let name = fresh () in
   name @@ no_region
 
-let fresh_id typ =
+let fresh_var typ =
   let name = fresh () in
   idE (name @@ no_region) typ
 
@@ -320,7 +320,7 @@ let answerT = T.unit
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
-let fresh_cont typ = fresh_id (contT typ)
+let fresh_cont typ = fresh_var (contT typ)
 
 (* Sequence expressions *)
 

@@ -24,7 +24,7 @@ let letcont k scope =
   | ContVar k' -> scope k' (* letcont eta-contraction *)
   | MetaCont (typ, cont) ->
     let k' = fresh_cont typ in
-    let v = fresh_id typ in
+    let v = fresh_var typ in
     blockE [funcD k' v (cont v); (* at this point, I'm really worried about variable capture *)
             expD (scope k')]
 
@@ -39,7 +39,7 @@ let ( -@- ) k exp2 =
      match exp2.it with
      | VarE _ -> k exp2
      | _ ->
-        let u = fresh_id typ in
+        let u = fresh_var typ in
         letE u exp2
           (k  u)
 
@@ -170,7 +170,7 @@ and unary context k unE e1 =
 and binary context k binE e1 e2 =
   match eff e1, eff e2 with
   | T.Triv, T.Await ->
-    let v1 = fresh_id (typ e1) in (* TBR *)
+    let v1 = fresh_var (typ e1) in (* TBR *)
     letE v1 (t_exp context e1)
       (c_exp context e2 (meta (typ e2) (fun v2 -> k -@- binE v1 v2)))
   | T.Await, T.Await ->
@@ -194,7 +194,7 @@ and nary context k naryE es =
     | e1 :: es ->
        match eff e1 with
        | T.Triv ->
-          let v1 = fresh_id (typ e1) in
+          let v1 = fresh_var (typ e1) in
           letE v1 (t_exp context e1)
             (nary_aux (v1 :: vs) es)
        | T.Await ->
@@ -220,8 +220,8 @@ and c_if context k e1 e2 e3 =
   )
 
 and c_while context k e1 e2 =
-  let loop = fresh_id (contT T.unit) in
-  let v2 = fresh_id T.unit in
+  let loop = fresh_var (contT T.unit) in
+  let v2 = fresh_var T.unit in
   let e2 = match eff e2 with
     | T.Triv -> loop -*- t_exp context e2
     | T.Await -> c_exp context e2 (ContVar loop)
@@ -245,20 +245,20 @@ and c_while context k e1 e2 =
             expD (loop -*- unitE)]
 
 and c_loop_none context k e1 =
-  let loop = fresh_id (contT T.unit) in
+  let loop = fresh_var (contT T.unit) in
   match eff e1 with
   | T.Triv ->
     assert false
   | T.Await ->
-    let v1 = fresh_id T.unit in
+    let v1 = fresh_var T.unit in
     blockE [funcD loop v1
               (c_exp context e1 (ContVar loop));
             expD(loop -*- unitE)]
 
 and c_loop_some context k e1 e2 =
-  let loop = fresh_id (contT T.unit) in
-  let u = fresh_id T.unit in
-  let v1 = fresh_id T.unit in
+  let loop = fresh_var (contT T.unit) in
+  let u = fresh_var T.unit in
+  let v1 = fresh_var T.unit in
   let e2 = match eff e2 with
     | T.Triv -> ifE (t_exp context e2)
                   (loop -*- unitE)
@@ -283,11 +283,11 @@ and c_loop_some context k e1 e2 =
             expD (loop -*- unitE)]
 
 and c_for context k pat e1 e2 =
-  let v1 = fresh_id (typ e1) in
+  let v1 = fresh_var (typ e1) in
   let next_typ = (T.Func(T.Local, T.Returns, [], [], [T.Opt pat.note])) in
   let dotnext v = dotE v nextN next_typ -*- unitE in
-  let loop = fresh_id (contT T.unit) in
-  let v2 = fresh_id T.unit in
+  let loop = fresh_var (contT T.unit) in
+  let v2 = fresh_var T.unit in
   let e2 = match eff e2 with
     | T.Triv -> loop -*- t_exp context e2
     | T.Await -> c_exp context e2 (ContVar loop) in
@@ -462,8 +462,8 @@ and c_dec context dec (k:kont) =
     end
   | FuncD  (_, id, _ (* typbinds *), _ (* pat *), _ (* typ *), _ (* exp *) ) ->
     let func_typ = typ dec in
-    let v = fresh_id func_typ in
-    let u = fresh_id T.unit in
+    let v = fresh_var func_typ in
+    let u = fresh_var T.unit in
     blockE [letD v (decE (t_dec context dec));
             letD u (define_idE id constM v);
             expD (k -@- v)]
@@ -521,7 +521,7 @@ and rename_pat' pat =
   | WildP
   | LitP _ -> (PatEnv.empty, pat.it)
   | VarP id ->
-    let v = fresh_id pat.note in
+    let v = fresh_var pat.note in
     (PatEnv.singleton id.it v,
      VarP (id_of_exp v))
   | TupP pats ->

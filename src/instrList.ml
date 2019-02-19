@@ -89,7 +89,7 @@ let loop_ (ty : block_type) (body : t) : t =
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
 
-let new_depth_label () : depth =  Lib.Promise.make_named "depth_label"
+let new_depth_label () : depth =  Lib.Promise.make ()
 
 let remember_depth depth (is : t) : t =
   fun d rest -> Lib.Promise.fulfill depth d; is d rest

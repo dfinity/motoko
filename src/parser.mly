@@ -432,13 +432,16 @@ exp_nonvar :
   | d=dec_nonvar
     { BlockE([d]) @? at $sloc }
   (* TODO(andreas): hack, remove *)
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let anon = if s.it = Type.Actor then "actor" else "object" in
-      let efs' =
+  | s=obj_sort x_opt=id? EQ? efs=obj_body
+    { let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
-      in ObjE(s, xf anon $sloc, efs') @? at $sloc }
+      in
+      let e = ObjE(s, efs') @? at $sloc in
+      match x_opt with
+      | None -> e
+      | Some x -> BlockE([LetD(VarP(x) @! x.at, e) @? at $sloc]) @? at $sloc }
 
 exp :
   | e=exp_nonvar
@@ -549,7 +552,7 @@ dec :
   | e=exp_nondec
     { ExpD e @? at $sloc }
   (* TODO(andreas): move to dec_nonvar once other production is gone *)
-  | s=obj_sort id_opt=id? EQ? efs=obj_body
+  | s=obj_sort x_opt=id? EQ? efs=obj_body
     { let efs' =
         if s.it = Type.Object Type.Local
         then efs
@@ -557,14 +560,12 @@ dec :
       in
       let r = at $sloc in
       (* desugar anonymous objects to ExpD, named ones to LetD. *)
-      match id_opt with
+      match x_opt with
       | None ->
-        let sort = if s.it = Type.Actor then "actor" else "object" in
-        let x = anon sort r @@ r  in
-        ExpD(ObjE(s, x, efs') @? r) @? r
+        ExpD(ObjE(s, efs') @? r) @? r
       | Some x ->
         let p = VarP x @! r in
-        LetD(p, ObjE(s, x, efs') @? r) @? r }
+        LetD(p, ObjE(s, efs') @? r) @? r }
 
 func_dec :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body

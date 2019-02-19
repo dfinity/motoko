@@ -266,8 +266,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjE (sort, id, fields) ->
-    interpret_obj env sort id fields k
+  | ObjE (sort, fields) ->
+    interpret_obj env sort fields k
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
@@ -523,13 +523,10 @@ and match_pats pats vs ve : val_env option =
 
 (* Objects *)
 
-and interpret_obj env sort id fields (k : V.value V.cont) =
-  let ve_ex, ve_in = declare_exp_fields fields V.Env.empty (declare_id id) in
+and interpret_obj env sort fields (k : V.value V.cont) =
+  let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
   let env' = adjoin_vals env ve_in in
-  interpret_exp_fields env' sort.it fields ve_ex (fun v ->
-    define_id env' id v;
-    k v
-  )
+  interpret_exp_fields env' sort.it fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
   match fields with
@@ -579,7 +576,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
-      k V.unit
+      k v
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
@@ -601,8 +598,13 @@ and interpret_dec env dec (k : V.value V.cont) =
     define_id env id v;
     k v
   | ClassD (id, _typbinds, sort, pat, id', fields) ->
-    let f = interpret_func env {id with note = ()} pat
-      (fun env' k' -> interpret_obj env' sort id' fields k') in
+    let f = interpret_func env {id with note = ()} pat (fun env' k' ->
+      let env'' = adjoin_vals env' (declare_id id') in
+      interpret_obj env'' sort fields (fun v' ->
+        define_id env'' id' v';
+        k' v'
+      )
+    ) in
     let v = V.Func (V.call_conv_of_typ dec.note.note_typ, f) in
     define_id env {id with note = ()} v;
     k v
