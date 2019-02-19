@@ -1,0 +1,5 @@
+compile_lit: (FloatLit 1.)
+compile_lit: (FloatLit 1.7)
+compile_lit: (FloatLit 0.000_18)
+compile_lit: (FloatLit 1_604.)
+compile_lit: (FloatLit 802.156_25)

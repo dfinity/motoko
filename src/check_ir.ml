@@ -43,36 +43,32 @@ type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 
 type env =
-  { vals : val_env;
+  { flavor : Ir.flavor;
+    vals : val_env;
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    (* additional checks *)
-    check_exp : env -> Ir.exp -> unit;
-    check_typ : env -> Type.typ -> unit;
   }
 
-
-let env_of_scope (scope : Typing.scope) : env =
-  { vals = scope.Typing.val_env;
+let env_of_scope scope flavor : env =
+  { flavor;
+    vals = scope.Typing.val_env;
     cons = scope.Typing.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
-    check_exp = (fun _ _ -> ());
-    check_typ = (fun _ _ -> ());
   }
 
-let with_check_exp check_exp env = { env with check_exp }
-let with_check_typ check_typ env = { env with check_typ }
 
 (* More error bookkeeping *)
+
+exception CheckFailed of string
 
 let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR type"; text }
 
 let error env at fmt =
-    Printf.ksprintf (fun s -> failwith (Diag.string_of_message (type_error at s))) fmt
+    Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
@@ -90,6 +86,7 @@ let adjoin c scope =
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
+
 
 let adjoin_cons c ce =
   { c with
@@ -118,7 +115,8 @@ let check env at p =
 let check_sub env at t1 t2 =
   if T.sub t1 t2
   then ()
-  else error env at "subtype violation %s %s" (T.string_of_typ t1) (T.string_of_typ t2)
+  else error env at "subtype violation:\n  %s\n  %s\n"
+    (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
 let make_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -126,7 +124,6 @@ let make_mut mut : T.typ -> T.typ =
   | Syntax.Var -> fun t -> T.Mut t
 
 let rec check_typ env typ : unit =
-  env.check_typ env typ; (* custom check *)
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
@@ -175,6 +172,7 @@ let rec check_typ env typ : unit =
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
+    check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
     let t' = T.promote typ in
     check_sub env no_region t' T.Shared
   | T.Obj (sort, fields) ->
@@ -272,7 +270,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = E.typ exp in
-  env.check_exp env exp; (* custom check *)
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
@@ -472,6 +469,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         T.Non <: t; (* vacuously true *)
     end;
   | AsyncE exp1 ->
+    check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
     let env' =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in
@@ -479,6 +477,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1 <: T.Shared;
     T.Async t1 <: t
   | AwaitE exp1 ->
+    check env.flavor.has_await "await in non-await flavor";
     check env.async "misplaced await";
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
@@ -795,6 +794,22 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog env prog : unit =
-  ignore (check_block env T.unit prog.it prog.at)
+let check_prog scope ((decs, flavor) as prog) : unit =
+  let env = env_of_scope scope flavor in
+  try
+   ignore (check_block env T.unit decs no_region)
+  with CheckFailed s ->
+    let bt = Printexc.get_backtrace () in
+    if !Flags.verbose
+    then begin
+      Printf.eprintf "Ill-typed intermediate code:\n";
+      Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end else begin
+      Printf.eprintf "Ill-typed intermediate code (use -v to see dumped IR):\n";
+      Printf.eprintf "%s" s;
+      Printf.eprintf "%s" bt;
+    end;
+    exit 1
 

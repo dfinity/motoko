@@ -67,6 +67,7 @@ and exp' at note = function
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
+  | S.BlockE ([{it = S.ExpD e; _}], _) -> exp' e.at e.note e.it
   | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
@@ -203,16 +204,12 @@ and pat' = function
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _) -> pat' p.it
 
-and prog p = phrase decs p
+and prog p = (decs p.it,
+  { I.has_await = true
+  ; I.has_async_typ = true
+  })
 
 (* validation *)
 
-let check_prog scope prog =
-  let env = Check_ir.env_of_scope scope  in
-  Check_ir.check_prog env prog
-
-let transform scope p =
-  let p' = prog p in
-  check_prog scope p';
-  p'
+let transform scope p = prog p
 

@@ -74,4 +74,4 @@ and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
 
 
-and prog prog = "BlockE"  $$ List.map dec prog.it
+and prog (prog, _flavor)= "BlockE"  $$ List.map dec prog
