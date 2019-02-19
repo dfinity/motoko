@@ -46,16 +46,6 @@ type Hash = Bits;
 //type Hash = Word16;
 //type Hash = Word8;
 
-// XXX: This Node type is a "sloppy union" between "BinNodes" (left/right fields) and "Leaves" (key/val fields):
-type Node<K,V> = {
-  left:Trie<K,V>;
-  right:Trie<K,V>;
-  key:?K;
-  val:?V
-};
-
-type Trie<K,V> = ?Node<K,V>;
-
 // Simplifying assumption, for now: All defined paths in the trie have a uniform length,
 // the same as the number of bits of a hash, starting at the LSB, that we use for indexing.
 //
@@ -67,7 +57,43 @@ type Trie<K,V> = ?Node<K,V>;
 //
 let HASH_BITS = 4;
 
-// XXX: Until we have real sum types:
+// XXX: See AST-42
+type Node<K,V> = {
+  left:Trie<K,V>;
+  right:Trie<K,V>;
+  key:?K;
+  val:?V
+};
+type Trie<K,V> = ?Node<K,V>;
+
+/* See AST-42 (sum types); we want this type definition instead:
+
+type BinNode<K,V> = {
+  left:Trie<K,V>;
+  right:Trie<K,V>; 
+};
+type LeafNode<K,V> = {
+  key:K; 
+  val:V 
+};
+type Trie<K,V> = 
+  Leaf of LeafNode<K,V> 
+| Bin of BinNode<K,V> 
+| Empty;
+*/
+
+func makeEmpty<K,V>() : Trie<K,V> 
+  = null;
+
+func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  { 
+  ?(new {left=l; right=r; key=null; val=null })
+};
+func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> { 
+  ?(new {left=null; right=null; key=?k; val=?v })
+};
+
+
+// XXX: until AST-42:
 func assertIsNull<X>(x : ?X) {
   switch x {
     case null { assert(true)  };
@@ -75,7 +101,7 @@ func assertIsNull<X>(x : ?X) {
   };
 };
 
-// XXX: Until we have real sum types:
+// XXX: until AST-42:
 func assertIsBin<K,V>(t : Trie<K,V>) {
   switch t {
     case null { assert(false) };
@@ -86,7 +112,7 @@ func assertIsBin<K,V>(t : Trie<K,V>) {
   }
 };
 
-// XXX: this helper is an ugly hack; we need real sum types to avoid it, I think:
+// XXX: until AST-42:
 func getLeafKey<K,V>(t : Node<K,V>) : K {
   assertIsNull<Node<K,V>>(t.left);
   assertIsNull<Node<K,V>>(t.right);
