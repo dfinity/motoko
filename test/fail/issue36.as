@@ -22,4 +22,8 @@ assert(foo. bar .1 . zap == 42);
 
 // N.B.: We did not change the FLOAT syntax:
 
-let (f, g, h, i) : (Float, Float, Float, Float) = (1., 1.7, 1.8e-4, 0x644.)
+let (f, g, h) : (Float, Float, Float) = (1., 1.7, 1.8e-4);
+
+// N.B. these fail in wasm (AST-40)
+
+let (k, l) : (Float, Float) = (0x644., 0x644.5P-1)
