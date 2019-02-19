@@ -48,20 +48,21 @@ and kind =
   | Abs of bind list * typ
 
 
-
-module ConSet :
-sig include Set.S with type elt = con
-    exception Clash of elt
-    val disjoint_add : elt -> t -> t (* raises Clash *)
-    val disjoint_union : t -> t -> t (* raises Clash *)
-end
-
-type con_set = ConSet.t
-
 val kind : con -> kind
 val fresh_con : string -> kind -> con
 val set_kind : con -> kind -> unit
 val modify_kind : con -> (kind -> kind) -> unit
+val clone_con : con -> kind -> con
+
+module ConSet :
+sig
+  include Set.S with type elt = con
+  exception Clash of elt
+  val disjoint_add : elt -> t -> t (* raises Clash *)
+  val disjoint_union : t -> t -> t (* raises Clash *)
+end
+
+type con_set = ConSet.t
 
 (* field ordering *)
 

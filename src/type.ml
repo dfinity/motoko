@@ -54,6 +54,7 @@ let kind con = !(Con.kind con)
 
 let fresh_con n k = Con.fresh n (ref k)
 let modify_kind c f = Con.kind c := f !(Con.kind c)
+let clone_con c (k:kind)  = Con.clone c (ref k)
 
 (* field ordering *)
 
@@ -342,13 +343,14 @@ let rec span = function
 exception Unavoidable of con
 
 module ConSet =
-  struct include Set.Make(struct type t = con let compare = Con.compare end)
-         exception Clash of elt
-         let disjoint_add e set =
-           if mem e set then raise (Clash e)
-           else add e set
-         let disjoint_union set1 set2 =
-           fold (fun e s -> disjoint_add e s) set2 set1
+  struct
+    include Set.Make(struct type t = con let compare = Con.compare end)
+    exception Clash of elt
+    let disjoint_add e set =
+      if mem e set then raise (Clash e)
+      else add e set
+    let disjoint_union set1 set2 =
+      fold (fun e s -> disjoint_add e s) set2 set1
   end
 
 type con_set = ConSet.t
@@ -363,10 +365,10 @@ let rec avoid' to_avoid = function
     else
       begin try
         Con (c, List.map (avoid' to_avoid) ts)
-      with Unavoidable _ ->
+      with Unavoidable d ->
         begin match kind c with
         | Def (tbs, t) -> avoid' to_avoid (reduce tbs t ts)
-        | Abs _ -> assert false (* c can only have parameters if it is a type def, or bound by Pre *)
+        | Abs _ -> raise (Unavoidable d)
         end
       end
   | Array t -> Array (avoid' to_avoid t)
