@@ -913,9 +913,10 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | ExpD exp ->
+  | ExpD exp
+  | LetD (_, exp) ->
     infer_exp env exp
-  | LetD (_, exp) | VarD (_, exp) ->
+  | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | FuncD (sort, id, typ_binds, pat, typ, exp) ->
@@ -972,7 +973,7 @@ and check_dec env t dec =
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
-    dec.note <- exp.note;
+    dec.note <- exp.note
 (* TBR: push in external type annotation;
    unfortunately, this isn't enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -998,7 +999,6 @@ and check_dec env t dec =
 *)
   | _ ->
     let t' = infer_dec env dec in
-    (* TBR: special-case unit? *)
     if not (T.eq t T.unit || T.sub t' t) then
       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')

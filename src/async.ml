@@ -72,9 +72,7 @@ module Transform() = struct
     let fullfill = fresh_id (typ (projE call_new_async 1)) in
     (async,fullfill),call_new_async
 
-  let letP p e =  {it = LetD(p, e);
-                   at = no_region;
-                   note = {e.note with note_typ = T.unit}}
+  let letP p e = {it = LetD(p, e); at = no_region; note = e.note}
 
   let new_nary_async_reply t1 =
     let (unary_async,unary_fullfill),call_new_async = new_async t1 in

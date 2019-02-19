@@ -695,10 +695,10 @@ and check_dec env dec  =
   (* check typing *)
   let t = typ dec in
   match dec.it with
-  | ExpD exp ->
+  | ExpD exp | LetD (_, exp) ->
     check_exp env exp;
     (typ exp) <: t
-  | LetD (_, exp) | VarD (_, exp) ->
+  | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
   | FuncD (cc, id, typ_binds, pat, t2, exp) ->

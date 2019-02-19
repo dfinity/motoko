@@ -251,14 +251,12 @@ let newObjE sort ids typ =
 let letP pat exp =
   { it = LetD (pat, exp);
     at = no_region;
-    note = { S.note_typ = T.unit; (* ! *)
-             S.note_eff = eff exp; }
+    note = exp.note;
   }
 
 let letD x exp = { it = LetD (varP x, exp);
                    at = no_region;
-                   note = { S.note_eff = eff exp;
-                            S.note_typ = T.unit; } (* ! *)
+                   note = exp.note;
                  }
 
 let varD x exp = { it = VarD (x, exp);
