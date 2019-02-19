@@ -181,6 +181,9 @@ and open the path printed on the last line of that command.
   - `[T]`
   - `[var T]`
 
+* Tuple types: heterogeneous aggregates of fixed size
+  - `(Bool, Float, Text)`
+
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
   - `? T`
 
@@ -231,6 +234,7 @@ and open the path printed on the last line of that command.
   - `[3, 4]`
   - `o.x`
   - `a[i]`
+  - `tuple.0`
 
 * Function calls, short-cut return
   - `f(x, y)`
