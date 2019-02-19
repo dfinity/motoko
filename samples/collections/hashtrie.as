@@ -70,28 +70,57 @@ type Trie<K,V> = ?Node<K,V>;
 
 type BinNode<K,V> = {
   left:Trie<K,V>;
-  right:Trie<K,V>; 
+  right:Trie<K,V>;
 };
 type LeafNode<K,V> = {
-  key:K; 
-  val:V 
+  key:K;
+  val:V
 };
-type Trie<K,V> = 
-  Leaf of LeafNode<K,V> 
-| Bin of BinNode<K,V> 
+type Trie<K,V> =
+  Leaf of LeafNode<K,V>
+| Bin of BinNode<K,V>
 | Empty;
 */
 
-func makeEmpty<K,V>() : Trie<K,V> 
+// XXX: until AST-42:
+func makeEmpty<K,V>() : Trie<K,V>
   = null;
 
-func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  { 
+// XXX: until AST-42:
+func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
   ?(new {left=l; right=r; key=null; val=null })
 };
-func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> { 
+
+// XXX: until AST-42:
+func isBin<K,V>(t:Trie<K,V>) : Bool {
+  switch t {
+  case null { false };
+  case (?t_) {
+         switch (t_.key) {
+         case null { true };
+         case _ { false };
+         };
+       };
+  }
+};
+
+// XXX: until AST-42:
+func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> {
   ?(new {left=null; right=null; key=?k; val=?v })
 };
 
+// XXX: until AST-42:
+func isLeaf<K,V>(t:Trie<K,V>) : Bool {
+  switch t {
+  case null { false };
+  case (?t_) {
+         switch (t_.key) {
+         case null { false };
+         case _ { true };
+         }
+       };
+  }
+};
 
 // XXX: until AST-42:
 func assertIsNull<X>(x : ?X) {
@@ -247,6 +276,11 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
     }
   };
   rec(t, 0)
+};
+
+// merge tries, preferring the right trie where there are collisions in common keys
+func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+  tl // XXX
 };
 
 ///////////////////////////////////////////////////////////////////////
