@@ -29,3 +29,30 @@ k(8);
 l(13);
 jkl[1](21);
 
+func m((a:Int, b:Bool)) {};
+func m1((a:Int, b:Bool,)) {};
+let ms : [((Int, Bool)) -> ()] = [m, m1];
+
+func n(a:Int, b:Bool) {};
+func n1(a:Int, b:Bool,) {};
+
+let ns : [(Int, Bool) -> ()] = [n, n1];
+
+func o((a:Int,)) {};
+let os : [((Int,)) -> ()] = [o];
+
+func p((),) {};
+let ps : [((),) -> ()] = [p];
+
+/* the above is a curious case, failing in wasm:
+
+issue38: [tc] [run] [run-low] [run-ir] [wasm]
+--- issue38.wasm.stderr (expected)
++++ issue38.wasm.stderr (actual)
+@@ -0,0 +1,5 @@
++Ill-typed intermediate code (use -v to see dumped IR):
++issue38.as:44.1-44.15: IR type error, subtype violation:
++  (((),)) -> ()
++  (()) -> ()
++
+*/
