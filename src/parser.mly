@@ -475,6 +475,15 @@ exp_field :
 
 (* Patterns *)
 
+pat_top :
+  | LPAR p=pat RPAR
+    { match p.it with
+      | TupP _ -> { p with it = ParP p }
+      | _ -> p
+    }
+  | p=pat_nullary
+    { p }
+
 pat_nullary :
   | UNDERSCORE
     { WildP @! at $sloc }
@@ -572,7 +581,7 @@ dec :
         LetD(p, ObjE(s, x, efs') @? r) @? r }
 
 func_dec :
-  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_top rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
@@ -582,11 +591,8 @@ func_dec :
         | (true, e) -> (* body declared as immediate block *)
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
-          | _ -> e in
-      let p2 = match p.it with
-	| TupP [p1] -> (*Printf.printf "Debug: %d\n" (List.length ps);*){ p with it = ParP p1 }
-	| _ -> p
-      in fun s x -> FuncD(s, x, tps, p2, t, e) @? at $sloc }
+          | _ -> e
+      in fun s x -> FuncD(s, x, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
