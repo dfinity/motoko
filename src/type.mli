@@ -138,11 +138,12 @@ val avoid : con_set -> typ -> typ (* raise Unavoidable *)
 (* Equivalence and Subtyping *)
 
 val eq : typ -> typ -> bool
+val eq_kind : kind -> kind -> bool
+
 val sub : typ -> typ -> bool
 
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ
-
 
 (* First-order substitution *)
 

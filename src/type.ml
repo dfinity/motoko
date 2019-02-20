@@ -55,6 +55,9 @@ let kind con = !(Con.kind con)
 let fresh_con n k = Con.fresh n (ref k)
 let modify_kind c f = Con.kind c := f !(Con.kind c)
 let clone_con c (k:kind)  = Con.clone c (ref k)
+let set_kind c k = match !(Con.kind c) with
+  | Abs (_, Pre) -> Con.kind c := k
+  | _ -> raise (Invalid_argument "set_kind")
 
 (* field ordering *)
 
@@ -519,6 +522,7 @@ and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 
 and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
+
 and sub  t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
@@ -532,13 +536,6 @@ and eq_kind k1 k2 : bool =
     | None -> false
   end
   | _ -> false
-
-(* Moved here to use eq_kind *)
-let set_kind c k = match !(Con.kind c) with
-  | Abs (_, Pre) -> Con.kind c := k
-  (* This safeguards against mutating redefinitions *)
-  | k' when eq_kind k k' -> ()
-  | _ -> raise (Invalid_argument "set_kind")
 
 (* Least upper bound and greatest lower bound *)
 

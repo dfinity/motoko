@@ -1050,11 +1050,12 @@ and check_dec env t dec =
         (T.string_of_typ_expand t)
 
 and infer_block_decs env decs : scope =
+  (* assert (not env.pre);? *)
   let scope = gather_block_typdecs env decs in
   let env' = adjoin {env with pre = true} scope in
-  let ce = infer_block_typdecs env' decs in
+  let ce = infer_block_typdecs true env' decs in
   let env'' = adjoin env {scope with con_env = ce} in
-  let _ce' = infer_block_typdecs env'' decs in
+  let _ce' = infer_block_typdecs false env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
   let pre_ve' = gather_block_valdecs env decs in
@@ -1087,15 +1088,15 @@ and gather_dec_typdecs env scope dec : scope =
 
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs : con_env =
+and infer_block_typdecs firstPass env decs : con_env =
   List.fold_left
     (fun ce dec ->
-      let ce' = infer_dec_typdecs env dec in
+      let ce' = infer_dec_typdecs firstPass env dec in
       T.ConSet.disjoint_union ce ce'
     )  T.ConSet.empty decs
 
 
-and infer_dec_typdecs env dec : con_env =
+and infer_dec_typdecs firstPass env dec : con_env =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ ->
     T.ConSet.empty
@@ -1106,8 +1107,10 @@ and infer_dec_typdecs env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    T.set_kind c k;
-    con_id.note <- Some c;
+    (if firstPass then
+       (T.set_kind c k;
+        con_id.note <- Some c)
+     else assert (T.eq_kind (T.kind c) k));
     T.ConSet.singleton c
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find con_id.it env.typs in
@@ -1118,8 +1121,10 @@ and infer_dec_typdecs env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    T.set_kind c k;
-    con_id.note <- Some c;
+    (if firstPass then
+       (T.set_kind c k;
+        con_id.note <- Some c)
+     else assert (T.eq_kind (T.kind c) k));
     T.ConSet.singleton c
 
 (* Pass 4: collect value identifiers *)
