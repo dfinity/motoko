@@ -1,9 +1,11 @@
 func f() {};
 func g(()) {};
+func g1((())) {}; // only top-level parenthesis signifies arity
 func h(u:()) {};
+func h1((u:())) {}; // dito, intermediate parentheses are redundant
 
 let _ : [() -> ()] = [f];
-let gh : [(()) -> ()] = [g, h];
+let gh : [(()) -> ()] = [g, g1, h, h1];
 
 f();
 g(); // why is this accepted?

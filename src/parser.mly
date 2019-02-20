@@ -475,6 +475,9 @@ exp_field :
 
 (* Patterns *)
 
+(* pat_top is needed because top-level parentheses around tuples (unit, 1-ary, pair, etc.)
+   are significant in function arguments, signifying a unary function which matches on a
+   first-class (i.e. consed) tuple *)
 pat_top :
   | LPAR p=pat RPAR
     { match p.it with

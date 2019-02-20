@@ -1,5 +1,5 @@
 Ill-typed intermediate code (use -v to see dumped IR):
-issue38.as:44.1-44.15: IR type error, subtype violation:
+issue38.as:46.1-46.15: IR type error, subtype violation:
   (((),)) -> ()
   (()) -> ()
 

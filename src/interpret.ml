@@ -511,10 +511,9 @@ and match_pat pat v : val_env option =
     | None -> match_pat pat2 v
     | some -> some
     )
-  | AnnotP (pat1, _typ) ->
-    match_pat pat1 v
-  | ParP pat ->
-    match_pat pat v
+  | AnnotP (pat1, _)
+  | ParP pat1 ->
+     match_pat pat1 v
 
 and match_pats pats vs ve : val_env option =
   match pats, vs with
