@@ -355,43 +355,43 @@ module ConSet =
 
 type con_set = ConSet.t
 
-let rec avoid' to_avoid = function
+let rec avoid' cons = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
-    if ConSet.mem c to_avoid
+    if ConSet.mem c cons
     then match kind c with
       | Abs _ -> raise (Unavoidable c)
-      | Def (tbs, t) -> avoid' to_avoid (reduce tbs t ts)
+      | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
     else
       begin try
-        Con (c, List.map (avoid' to_avoid) ts)
+        Con (c, List.map (avoid' cons) ts)
       with Unavoidable d ->
         begin match kind c with
-        | Def (tbs, t) -> avoid' to_avoid (reduce tbs t ts)
+        | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
         end
       end
-  | Array t -> Array (avoid' to_avoid t)
-  | Tup ts -> Tup (List.map (avoid' to_avoid) ts)
+  | Array t -> Array (avoid' cons t)
+  | Tup ts -> Tup (List.map (avoid' cons) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     Func (s,
           c,
-          List.map (avoid_bind to_avoid) tbs,
-          List.map (avoid' to_avoid) ts1, List.map (avoid' to_avoid) ts2)
-  | Opt t -> Opt (avoid' to_avoid t)
-  | Async t -> Async (avoid' to_avoid t)
-  | Obj (s, fs) -> Obj (s, List.map (avoid_field to_avoid) fs)
-  | Mut t -> Mut (avoid' to_avoid t)
+          List.map (avoid_bind cons) tbs,
+          List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
+  | Opt t -> Opt (avoid' cons t)
+  | Async t -> Async (avoid' cons t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
+  | Mut t -> Mut (avoid' cons t)
 
-and avoid_bind to_avoid {var; bound} =
-  {var; bound = avoid' to_avoid bound}
+and avoid_bind cons {var; bound} =
+  {var; bound = avoid' cons bound}
 
-and avoid_field to_avoid {name; typ} =
-  {name; typ = avoid' to_avoid typ}
+and avoid_field cons {name; typ} =
+  {name; typ = avoid' cons typ}
 
-let avoid to_avoid t =
-  if to_avoid = ConSet.empty then t else
-  avoid' to_avoid t
+let avoid cons t =
+  if cons = ConSet.empty then t else
+  avoid' cons t
 
 
 (* Equivalence & Subtyping *)
