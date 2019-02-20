@@ -107,6 +107,7 @@ and pat' =
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
+  | ParP of pat                                (* toplevel parenthesis *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
   | ObjP of pat_field list                     (* object *)

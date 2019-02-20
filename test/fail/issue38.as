@@ -1,5 +1,5 @@
 func f() {};
-func g(()) {};
+func g((),) {};
 func h(u:()) {};
 
 let _ : [() -> ()] = [f];

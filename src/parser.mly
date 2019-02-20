@@ -582,8 +582,11 @@ func_dec :
         | (true, e) -> (* body declared as immediate block *)
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
-          | _ -> e
-      in fun s x -> FuncD(s, x, tps, p, t, e) @? at $sloc }
+          | _ -> e in
+      let p2 = match p.it with
+	| TupP [p1] -> (*Printf.printf "Debug: %d\n" (List.length ps);*){ p with it = ParP p1 }
+	| _ -> p
+      in fun s x -> FuncD(s, x, tps, p2, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }

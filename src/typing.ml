@@ -710,7 +710,8 @@ and gather_pat env ve0 pat : val_env =
     | AltP (pat1, pat2) ->
       go ve pat1
     | OptP pat1
-    | AnnotP (pat1, _) ->
+    | AnnotP (pat1, _)
+    | ParP pat1 ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -761,6 +762,7 @@ and infer_pat' env pat : T.typ * val_env =
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
+  | ParP pat1 -> infer_pat env pat1
 
 and infer_pats at env pats ts ve : T.typ list * val_env =
   match pats with

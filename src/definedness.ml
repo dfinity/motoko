@@ -126,7 +126,8 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
-  | AnnotP (p, t) -> pat msgs p
+  | AnnotP (p, _)
+  | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
   | OptP p        -> pat msgs p

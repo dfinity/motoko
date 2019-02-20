@@ -435,6 +435,7 @@ and declare_pat pat : val_env =
   | OptP pat1 -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
   | AnnotP (pat1, _typ) -> declare_pat pat1
+  | ParP pat1 -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
   match pats with
@@ -464,6 +465,7 @@ and define_pat env pat v =
     | _ -> assert false
     )
   | AnnotP (pat1, _typ) -> define_pat env pat1 v
+  | ParP pat -> define_pat env pat v
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
@@ -511,6 +513,8 @@ and match_pat pat v : val_env option =
     )
   | AnnotP (pat1, _typ) ->
     match_pat pat1 v
+  | ParP pat ->
+    match_pat pat v
 
 and match_pats pats vs ve : val_env option =
   match pats, vs with

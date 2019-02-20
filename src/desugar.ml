@@ -203,6 +203,7 @@ and pat' = function
   | S.OptP p -> I.OptP (pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _) -> pat' p.it
+  | S.ParP p -> pat' p.it
 
 and prog p = (decs p.it,
   { I.has_await = true

@@ -90,7 +90,8 @@ let rec match_pat ce ctxt desc pat t sets =
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat ce (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
-  | AnnotP (pat1, _) ->
+  | AnnotP (pat1, _)
+  | ParP pat1 ->
     match_pat ce ctxt desc pat1 t sets
 
 and match_lit ce ctxt desc v t sets =
