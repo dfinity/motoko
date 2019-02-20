@@ -1097,6 +1097,14 @@ and infer_block_typdecs firstPass env decs : con_env =
 
 
 and infer_dec_typdecs firstPass env dec : con_env =
+  let set con_id c k =
+    if firstPass then
+      begin
+        T.set_kind c k;
+        con_id.note <- Some c
+      end
+    else assert (T.eq_kind (T.kind c) k)
+  in
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ ->
     T.ConSet.empty
@@ -1107,10 +1115,7 @@ and infer_dec_typdecs firstPass env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    (if firstPass then
-       (T.set_kind c k;
-        con_id.note <- Some c)
-     else assert (T.eq_kind (T.kind c) k));
+    set con_id c k;
     T.ConSet.singleton c
   | ClassD (id, con_id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find con_id.it env.typs in
@@ -1121,10 +1126,7 @@ and infer_dec_typdecs firstPass env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id (Some self_typ) fields in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    (if firstPass then
-       (T.set_kind c k;
-        con_id.note <- Some c)
-     else assert (T.eq_kind (T.kind c) k));
+    set con_id c k;
     T.ConSet.singleton c
 
 (* Pass 4: collect value identifiers *)
