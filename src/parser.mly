@@ -484,20 +484,24 @@ pat_top :
       | TupP _ -> { p with it = ParP p }
       | _ -> p
     }
-  | p=pat_nullary
+  | p=pat_simple
     { p }
 
-pat_nullary :
+pat_simple :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
-  | LPAR p=pat RPAR
-    { p }
   | LPAR ps=seplist1(pat_bin, COMMA) RPAR
     { TupP(ps) @! at $sloc }
+
+pat_nullary :
+  | LPAR p=pat RPAR
+    { p }
+  | p=pat_simple
+    { p }
 
 pat_un :
   | p=pat_nullary
