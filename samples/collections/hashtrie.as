@@ -327,7 +327,7 @@ func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
 //
 // - for now, we pass a hash value each time we pass an element value;
 //   in the future, we might avoid passing element hashes with each element in the API;
-//   related to: https://github.com/dfinity-lab/actorscript/issues/157
+//   related to: https://dfinity.atlassian.net/browse/AST-32
 //
 
 type Set<T> = Trie<T,()>;
