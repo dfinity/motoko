@@ -547,7 +547,7 @@ dec_nonvar :
     { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=con_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_top xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
