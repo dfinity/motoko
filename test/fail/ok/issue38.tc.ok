@@ -1,4 +1,0 @@
-issue38.as:6.26-6.27: type error, expression of type
-  () -> ()
-cannot produce expected type
-  (()) -> ()
