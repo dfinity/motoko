@@ -122,7 +122,7 @@ and dec d = match d.it with
     (M.empty, S.singleton i.it) +++ exp e
   | FuncD (cc, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
-  | TypD (c,k) -> (M.empty, S.empty)
+  | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =

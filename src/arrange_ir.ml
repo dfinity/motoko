@@ -67,8 +67,8 @@ and dec d = match d.it with
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
   | FuncD (cc, i, tp, p, t, e) ->
     "FuncD" $$ [call_conv cc; id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
-  | TypD (c,k) ->
-    "TypD" $$ [con c; kind k]
+  | TypD c ->
+    "TypD" $$ [con c; kind (Type.kind c)]
 
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]

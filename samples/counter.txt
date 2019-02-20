@@ -1,7 +1,7 @@
 -- Checking counter.as:
-type Counter <: actor {dec : shared () -> (); read : shared () -> async Int}
-let Counter : class Int -> Counter
-let c : Counter
+type Counter = actor {dec : shared () -> (); read : shared () -> async Int}
+let Counter : Int -> Counter
+let c : actor {dec : shared () -> (); read : shared () -> async Int}
 let show : (Text, Int) -> ()
 let showAsync : (Text, async Int) -> ()
 let testDec : () -> ()
@@ -287,8 +287,8 @@ testRead()
     <= ()
   <= ()
 -- Finished counter.as:
-let Counter : class Int -> Counter = func
-let c : Counter = {dec = func; read = func}
+let Counter : Int -> Counter = func
+let c : actor {dec : shared () -> (); read : shared () -> async Int} = {dec = func; read = func}
 let show : (Text, Int) -> () = func
 let showAsync : (Text, async Int) -> () = func
 let testDec : () -> () = func

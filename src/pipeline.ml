@@ -16,8 +16,8 @@ let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
 let print_ce =
-  Con.Env.iter (fun c k ->
-    let eq, params, typ = Type.strings_of_kind k in
+  Type.ConSet.iter (fun c ->
+    let eq, params, typ = Type.strings_of_kind (Type.kind c) in
     printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 
@@ -123,7 +123,8 @@ let transform_ir transform_name transform flag env prog name =
       phase transform_name name;
       let prog' : Ir.prog = transform prog in
       dump_ir Flags.dump_lowering prog';
-      Check_ir.check_prog env prog;
+      (* Check_ir.check_prog env prog; *)
+      Check_ir.check_prog env prog';
       prog'
     end
   else prog
