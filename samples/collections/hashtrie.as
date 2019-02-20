@@ -46,11 +46,17 @@ type Hash = Bits;
 //type Hash = Word16;
 //type Hash = Word8;
 
-// Simplifying assumption, for now: All defined paths in the trie have a uniform length,
-// the same as the number of bits of a hash, starting at the LSB, that we use for indexing.
+// Uniform depth assumption:
 //
-// - If the number is too low, our expected O(log n) bounds become expected O(n).
-// - If the number is too high, we waste constant factors for representing small sets/maps.
+// We make a simplifying assumption, for now: All defined paths in the
+// trie have a uniform length, the same as the number of bits of a
+// hash, starting at the LSB, that we use for indexing.
+//
+// - If the number is too low, our expected O(log n) bounds become
+//   expected O(n).
+//
+// - If the number is too high, we waste constant factors for
+//   representing small sets/maps.
 //
 // TODO: Make this more robust by making this number adaptive for each
 // path, and based on the content of the trie along that path.
@@ -68,18 +74,11 @@ type Trie<K,V> = ?Node<K,V>;
 
 /* See AST-42 (sum types); we want this type definition instead:
 
-type BinNode<K,V> = {
-  left:Trie<K,V>;
-  right:Trie<K,V>;
-};
-type LeafNode<K,V> = {
-  key:K;
-  val:V
-};
-type Trie<K,V> =
-  Leaf of LeafNode<K,V>
-| Bin of BinNode<K,V>
-| Empty;
+// Use a sum type (AST-42)
+type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
+type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
+type LeafNode<K,V> = { key:K; val:V };
+
 */
 
 // XXX: until AST-42:
@@ -120,6 +119,14 @@ func isLeaf<K,V>(t:Trie<K,V>) : Bool {
          }
        };
   }
+};
+
+// XXX: until AST-42:
+func isEmpty<K,V>(t:Trie<K,V>) : Bool {
+  switch t {
+    case null { true  };
+    case (?_) { false };
+  };
 };
 
 // XXX: until AST-42:
@@ -280,7 +287,33 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
 
 // merge tries, preferring the right trie where there are collisions in common keys
 func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
-  tl // XXX
+  switch (tl, tr) {
+    case (null, _) { return tr };
+    case (_, null) { return tl };
+    case (?nl,?nr) {
+    switch (isBin<K,V>(tl), isBin<K,V>(tr)) {
+    case (true, true) {
+           let t0 = merge<K,V>(nl.left, nr.left);
+           let t1 = merge<K,V>(nl.right, nr.right);
+           makeBin<K,V>(t0, t1)
+         };
+    case (false, true) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           tr
+         };
+    case (true, false) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           tr
+         };
+    case (false, false) {
+           /// XXX: handle hash collisions here.
+           tr
+         };
+      }
+   };
+  }
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -319,7 +352,11 @@ func setMem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
   }
 };
 
-func setUnion<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setUnion<T>(s1,s2) };
+func setUnion<T>(s1:Set<T>, s2:Set<T>):Set<T> {
+  let s3 = merge<T,()>(s1, s2);
+  s3
+};
+
 func setDiff<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setDiff<T>(s1,s2) };
 func setIntersect<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setIntersect<T>(s1,s2) };
 
@@ -396,6 +433,18 @@ func setMemDb(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
   b
 };
 
+func unionDb(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
+  print "  setUnion(";
+  print s1name;
+  print ", ";
+  print s2name;
+  print ")";
+  let r = setUnion<Nat>(s1, s2);
+  print ";\n";
+  setPrint(r);
+  r
+};
+
 /////////////////////////////////////////////////////////////////////////////////
 
 let hash_0 = ?(false,?(false,?(false,?(false, null))));
@@ -421,6 +470,17 @@ let s7 : Set<Nat> = setInsertDb(s6, 6, hash_6);
 let s8 : Set<Nat> = setInsertDb(s7, 7, hash_7);
 let s9 : Set<Nat> = setInsertDb(s8, 8, hash_8);
 print "done.\n";
+
+print "unioning...\n";
+let s1s2 : Set<Nat> = unionDb(s1, "s1", s2, "s2");
+let s2s1 : Set<Nat> = unionDb(s2, "s2", s1, "s1");
+let s3s2 : Set<Nat> = unionDb(s3, "s3", s2, "s2");
+let s4s2 : Set<Nat> = unionDb(s4, "s4", s2, "s2");
+let s1s5 : Set<Nat> = unionDb(s1, "s1", s5, "s5");
+let s0s2 : Set<Nat> = unionDb(s0, "s0", s2, "s2");
+print "done.\n";
+
+
 print "testing membership...\n";
 
 // Element 0: Test memberships of each set defined above for element 0
