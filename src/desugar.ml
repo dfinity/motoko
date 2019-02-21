@@ -202,7 +202,7 @@ and pat' = function
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
-  | S.AnnotP (p, _) -> pat' p.it
+  | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
 
 and prog p = (decs p.it,
