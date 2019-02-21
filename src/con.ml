@@ -7,8 +7,7 @@ Besides these two use-cases, the kind should not be mutated, and treated like
 immutable data.
 
 This module interface guarantees that constructors with the same stamp have the
-same ref. Unless clone is used. Then it does not do that. This can be improved
-(in async).
+same ref.
 *)
 
 type 'a con = {name : string; stamp : int; kind : 'a ref}
@@ -30,7 +29,7 @@ let fresh_stamp name =
 let fresh name k =
   {name; stamp = fresh_stamp name; kind = ref k}
 let clone c k =
-  { c with kind = ref k } (* Does not change the stamp! *)
+  { c with stamp = fresh_stamp c.name; kind = ref k } (* Does not change the stamp! *)
 
 let name c = c.name
 

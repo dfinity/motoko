@@ -121,7 +121,7 @@ let transform_ir transform_name transform flag env prog name =
   if flag then
     begin
       phase transform_name name;
-      let prog' : Ir.prog = transform prog in
+      let prog' : Ir.prog = transform env prog in
       dump_ir Flags.dump_lowering prog';
       Check_ir.check_prog env transform_name prog';
       prog'
@@ -129,13 +129,13 @@ let transform_ir transform_name transform flag env prog name =
   else prog
 
 let await_lowering =
-  transform_ir "Await Lowering" Await.transform
+  transform_ir "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
   transform_ir "Async Lowering" Async.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" Tailcall.transform
+  transform_ir "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let check_with parse infer senv name : check_result =
   match parse name with

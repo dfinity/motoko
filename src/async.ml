@@ -8,9 +8,12 @@ open T
 open Construct
 
 (* lower the async type itself
-   - adds a final callback argument to every awaitable shared function, replace the result by unit
-   - transforms types, introductions and eliminations awaitable shared functions only, leaving non-awaitable shared functions unchanged.
-   - ensures every call to an awaitable shared function that takes a tuple has a manifest tuple argument.
+   - adds a final callback argument to every awaitable shared function, replace
+     the result by unit
+   - transforms types, introductions and eliminations awaitable shared
+     functions only, leaving non-awaitable shared functions unchanged.
+   - ensures every call to an awaitable shared function that takes a tuple has
+     a manifest tuple argument.
 
    (for debugging, the `flattening` function can be used to disable argument flattening and use uniform pairing instead)
  *)
@@ -23,12 +26,13 @@ module Transform() = struct
 
   (* the state *)
 
-  (* maps constructors to clones with the same stamp & name,
-     but fresh annotation state (think parallel universe ;->) *)
+  (* maps constructors to new constructors (name name, new stamp, new kind)
+     it is initialized with the type constructors defined outside here, which are
+     not rewritten.
 
-  (* ensures that program fragments from corresponding passes have consistent constructor
-     definitions
-     (note, the actual state of the definition may be duplicated but always should be equivalent
+     If we run this translation on two program fragments (e.g. prelude and program)
+     we would have to pass down the `con_renaming`. But this is simply the right thing
+     to do for a pass that changes the context.
   *)
 
   let con_renaming = ref ConRenaming.empty
@@ -415,6 +419,12 @@ module Transform() = struct
 
 end
 
-let transform prog =
-  let module T = Transform()
-  in T.t_prog prog
+let transform env prog =
+  let module T = Transform() in
+  (*
+  Initialized the con_renaming with those type constructors already in scope.
+  Eventually, pipeline will allow us to pass the con_renaming to downstream program
+  fragments, then we would simply start with an empty con_renaming and the prelude.
+  *)
+  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Typing.con_env;
+  T.t_prog prog
