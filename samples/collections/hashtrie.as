@@ -130,8 +130,24 @@ func isEmpty<K,V>(t:Trie<K,V>) : Bool {
 };
 
 // XXX: until AST-42:
+func isNull<X>(x : ?X) : Bool {
+  switch x {
+    case null { true  };
+    case (?_) { false };
+  };
+};
+
+// XXX: until AST-42:
 func assertIsNull<X>(x : ?X) {
   switch x {
+    case null { assert(true)  };
+    case (?_) { assert(false) };
+  };
+};
+
+// XXX: until AST-42:
+func assertIsEmpty<K,V>(t : Trie<K,V>) {
+  switch t {
     case null { assert(true)  };
     case (?_) { assert(false) };
   };
@@ -144,6 +160,21 @@ func assertIsBin<K,V>(t : Trie<K,V>) {
     case (?n) {
       assertIsNull<K>(n.key);
       assertIsNull<V>(n.val);
+   };
+  }
+};
+
+// A "twig" is a binary node with two empty subtrees.  It arises
+// internally, for simplifying some pattern-matching logic that
+// deals with pairs of tries that we try to walk recursively.
+func isTwig<K,V>(t : Trie<K,V>) : Bool {
+  switch t {
+    case null { false };
+    case (?n) {
+      isEmpty<K,V>(n.left) and
+      isEmpty<K,V>(n.right) and
+      isNull<K>(n.key) and
+      isNull<V>(n.val);
    };
   }
 };
@@ -285,7 +316,10 @@ func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
   rec(t, 0)
 };
 
-// merge tries, preferring the right trie where there are collisions in common keys
+// merge tries, preferring the right trie where there are collisions
+// in common keys. note: the `disj` operation generalizes this `merge`
+// operation in various ways, and does not (in general) loose
+// information; this operation is a simpler, special case.
 func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
   switch (tl, tr) {
     case (null, _) { return tr };
@@ -316,6 +350,196 @@ func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
   }
 };
 
+// The key-value pairs of the final trie consists of those pairs of
+// the left trie whose keys are not present in the right trie; the
+// values of the right trie are irrelevant.
+func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> {
+  func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
+    switch (tl, tr) {
+    case (null, _) { return makeEmpty<K,V>() };
+    case (_, null) { return tl };
+    case (?nl,?nr) {
+    switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
+    case (true, true) {
+           let t0 = rec(nl.left, nr.left);
+           let t1 = rec(nl.right, nr.right);
+           makeBin<K,V>(t0, t1)
+         };
+    case (false, true) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           tl
+         };
+    case (true, false) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           tl
+         };
+    case (false, false) {
+           /// XXX: handle hash collisions here.
+           switch (nl.key, nr.key) {
+             case (?kl, ?kr) {
+               if (keq(kl, kr)) {
+                 makeEmpty<K,V>();
+               } else {
+                 tl
+               }};
+             // XXX impossible, and unnecessary with AST-42.
+             case _ { tl }
+           }
+         };
+      }
+   };
+  }};
+  rec(tl, tr)
+};
+
+// This operation generalizes the notion of "set union" to finite maps.
+// Produces a "disjunctive image" of the two tries, where the values of
+// matching keys are combined with the given binary operator.
+func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X) : Trie<K,X> {
+  // We use these "twigs" to simplify the pattern-matching cases
+  // below.  twigs are equivalent to empty tries.  we introduce them
+  // when one side or the other (but not both) input tries is empty.
+  //
+  let leftTwig  : Trie<K,V> = makeBin<K,V>(makeEmpty<K,V>(),makeEmpty<K,V>());
+  let rightTwig : Trie<K,W> = makeBin<K,W>(makeEmpty<K,W>(),makeEmpty<K,W>());
+  //
+  // using twigs, we only ever handle the cases for:
+  //    empty-empty, bin-bin, leaf-leaf, leaf-empty, empty-leaf.
+  //
+  // in particular, we do not explicitly handle:
+  //    empty-bin, bin-empty, leaf-bin, bin-leaf.
+  //
+  func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+    switch (tl, tr) {
+    // empty-empty terminates early, all other cases do not.
+    case (null, null) { makeEmpty<K,X>()   };
+    case (null, _   ) { rec(leftTwig, tr)  };
+    case (_,    null) { rec(tl, rightTwig) };
+    case (? nl, ? nr) {
+    switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
+    case (true, true) {
+           let t0 = rec(nl.left, nr.left);
+           let t1 = rec(nl.right, nr.right);
+           makeBin<K,X>(t0, t1)
+         };
+    case (false, true) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           makeEmpty<K,X>()
+         };
+    case (true, false) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           makeEmpty<K,X>()
+         };
+    case (false, false) {
+           assert(isLeaf<K,V>(tl) or isTwig<K,V>(tl));
+           assert(isLeaf<K,W>(tr) or isTwig<K,W>(tr));
+           switch (nl.key, nl.val, nr.key, nr.val) {
+             // leaf-leaf case
+             case (?kl, ?vl, ?kr, ?vr) {
+               if (keq(kl, kr)) {
+                 makeLeaf<K,X>(kl, vbin(?vl, ?vr));
+               } else {
+                 // XXX: handle hash collisions here.
+                 makeEmpty<K,X>()
+               }
+             };
+             // empty-leaf case
+             case (null, null, ?kr, ?vr) {
+               makeLeaf<K,X>(kr, vbin(null, ?vr))
+             };
+             // leaf-empty case
+             case (?kl, ?vl, null, null) {
+               makeLeaf<K,X>(kl, vbin(?vl, null))
+             };
+             // empty-empty case
+             case (null, null, null, null) {
+               makeEmpty<K,X>()
+             };
+             // XXX impossible, and unnecessary with AST-42.
+             case _ { makeEmpty<K,X>() };
+           }
+         };
+      }
+   };
+  }};
+  rec(tl, tr)
+};
+
+
+// This operation generalizes the notion of "set intersection" to
+// finite maps.  Produces a "conjuctive image" of the two tries, where
+// the values of matching keys are combined with the given binary
+// operator, and unmatched key-value pairrs are not present in the output.
+func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) : Trie<K,X> {
+  // We use these "twigs" to simplify the pattern-matching cases
+  // below.  twigs are equivalent to empty tries.  we introduce them
+  // when one side or the other (but not both) input tries is empty.
+  //
+  let leftTwig  : Trie<K,V> = makeBin<K,V>(makeEmpty<K,V>(),makeEmpty<K,V>());
+  let rightTwig : Trie<K,W> = makeBin<K,W>(makeEmpty<K,W>(),makeEmpty<K,W>());
+  //
+  // using twigs, we only ever handle the cases for:
+  //    empty-empty, bin-bin, leaf-leaf, leaf-empty, empty-leaf.
+  //
+  // in particular, we do not explicitly handle:
+  //    empty-bin, bin-empty, leaf-bin, bin-leaf.
+  //
+  func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+    switch (tl, tr) {
+    // empty-empty terminates early, all other cases do not.
+    case (null, null) { makeEmpty<K,X>()   };
+    case (null, _   ) { rec(leftTwig, tr)  };
+    case (_,    null) { rec(tl, rightTwig) };
+    case (? nl, ? nr) {
+    switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
+    case (true, true) {
+           let t0 = rec(nl.left, nr.left);
+           let t1 = rec(nl.right, nr.right);
+           makeBin<K,X>(t0, t1)
+         };
+    case (false, true) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           makeEmpty<K,X>()
+         };
+    case (true, false) {
+           assert(false);
+           // XXX impossible, until we lift uniform depth assumption
+           makeEmpty<K,X>()
+         };
+    case (false, false) {
+           assert(isLeaf<K,V>(tl) or isTwig<K,V>(tl));
+           assert(isLeaf<K,W>(tr) or isTwig<K,W>(tr));
+           switch (nl.key, nl.val, nr.key, nr.val) {
+             // leaf-leaf case
+             case (?kl, ?vl, ?kr, ?vr) {
+               if (keq(kl, kr)) {
+                 makeLeaf<K,X>(kl, vbin(vl, vr));
+               } else {
+                 // XXX: handle hash collisions here.
+                 makeEmpty<K,X>()
+               }
+             };
+             // empty-leaf case
+             case (null, null, ?kr, ?vr) { makeEmpty<K,X>() };
+             // leaf-empty case
+             case (?kl, ?vl, null, null) { makeEmpty<K,X>() };
+             // empty-empty case
+             case (null, null, null, null) { makeEmpty<K,X>()};
+             // XXX impossible, and unnecessary with AST-42.
+             case _ { makeEmpty<K,X>() };
+           }
+         };
+      }
+   };
+  }};
+  rec(tl, tr)
+};
+
 ///////////////////////////////////////////////////////////////////////
 
 /*
@@ -328,6 +552,9 @@ func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
 // - for now, we pass a hash value each time we pass an element value;
 //   in the future, we might avoid passing element hashes with each element in the API;
 //   related to: https://dfinity.atlassian.net/browse/AST-32
+//
+// - similarly, we pass an equality function when we do some operations.
+//   in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 //
 
 type Set<T> = Trie<T,()>;
@@ -357,8 +584,16 @@ func setUnion<T>(s1:Set<T>, s2:Set<T>):Set<T> {
   s3
 };
 
-func setDiff<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setDiff<T>(s1,s2) };
-func setIntersect<T>(s1:Set<T>, s2:Set<T>):Set<T> { /* TODO */ setIntersect<T>(s1,s2) };
+func setDiff<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+  let s3 = diff<T,(),()>(s1, s2, eq);
+  s3
+};
+
+func setIntersect<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+  let noop : ((),())->(()) = func (_:(),_:()):(())=();
+  let s3 = conj<T,(),(),()>(s1, s2, eq, noop);
+  s3
+};
 
 ////////////////////////////////////////////////////////////////////
 
