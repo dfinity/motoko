@@ -92,7 +92,7 @@ let rec match_pat ctxt desc pat t sets =
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
   | AnnotP (pat1, _)
   | ParP pat1 ->
-    match_pat ce ctxt desc pat1 t sets
+    match_pat ctxt desc pat1 t sets
 
 and match_lit ctxt desc v t sets =
   let desc_succ = Val v in
