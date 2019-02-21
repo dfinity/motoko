@@ -243,7 +243,7 @@ and open the path printed on the last line of that command.
 * Conditionals and switches
   - `if b ...`
   - `if b ... else ...`
-  - `switch x case 1 ... case 2 ... case _ ...`
+  - `switch x { case 1 ...; case 2 ...; case _ ...}`
 
 * While loops and iterations
   - `while (p()) ...`
