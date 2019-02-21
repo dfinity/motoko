@@ -61,3 +61,24 @@ let _ : [(()) -> H1] = [H1];
 
 func annih<A,B>(f : A -> B) : (A -> ()) { func (a : A) { ignore (f a) } };
 let _ : [(()) -> ()] = [annih<(),G> G, annih<(),G1> G1, annih<(),H> H, annih<(),H1> H1];
+
+
+// test that parens are not significant deeper into the pattern,
+// even around tuples
+
+func p(a:Int,  () ) {};
+func q(a:Int, (())) {};
+func r(a:Int,  (b:Int,) ) {};
+func s(a:Int, ((b:Int,))) {};
+let _ : [(Int, ()) -> ()] = [p, q];
+let _ : [(Int, (Int,)) -> ()] = [r, s];
+
+// redundant parens for anonymous functions
+
+let _ = (func (a:Nat, ()) : Nat { a }) (42, ());
+let _ = (func ((a:Nat, (()))) : Nat { a }) (42, ());
+
+// test that switch expressions are also behave correctly with redundant parens
+
+let _ = switch (42,) { case (3,) 3; case ((5,)) 5; case (a,) a};
+let _ = switch (42,) { case (3,) 3; case ((5,)) 5; case (((a,))) a};
