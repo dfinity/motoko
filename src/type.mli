@@ -1,6 +1,5 @@
 (* Representation *)
 
-type con = Con.t
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
@@ -40,15 +39,35 @@ and typ =
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
 
+(* cons and kinds *)
+
+and con_annot (* abstract *)
+and con = con_annot Con.t
+and kind =
+  | Def of bind list * typ
+  | Abs of bind list * typ
+
+
+val kind : con -> kind
+val fresh_con : string -> kind -> con
+val set_kind : con -> kind -> unit
+val modify_kind : con -> (kind -> kind) -> unit
+val clone_con : con -> kind -> con
+
+module ConSet :
+sig
+  include Set.S with type elt = con
+  exception Clash of elt
+  val disjoint_add : elt -> t -> t (* raises Clash *)
+  val disjoint_union : t -> t -> t (* raises Clash *)
+end
+
+type con_set = ConSet.t
+
 (* field ordering *)
 
 val compare_field : field -> field -> int
 
-type kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
-
-type con_env = kind Con.Env.t
 
 (* n-ary argument/result sequences *)
 
@@ -91,39 +110,40 @@ val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 
-val as_prim_sub : prim -> con_env -> typ -> unit
-val as_obj_sub : string -> con_env -> typ -> obj_sort * field list
-val as_array_sub : con_env -> typ -> typ
-val as_opt_sub : con_env -> typ -> typ
-val as_tup_sub : int -> con_env -> typ -> typ list
-val as_unit_sub : con_env -> typ -> unit
-val as_pair_sub : con_env -> typ -> typ * typ
-val as_func_sub : int -> con_env -> typ -> bind list * typ * typ
-val as_mono_func_sub : con_env -> typ -> typ * typ
-val as_async_sub : con_env -> typ -> typ
+val as_prim_sub : prim -> typ -> unit
+val as_obj_sub : string -> typ -> obj_sort * field list
+val as_array_sub : typ -> typ
+val as_opt_sub : typ -> typ
+val as_tup_sub : int -> typ -> typ list
+val as_unit_sub : typ -> unit
+val as_pair_sub : typ -> typ * typ
+val as_func_sub : int -> typ -> bind list * typ * typ
+val as_mono_func_sub : typ -> typ * typ
+val as_async_sub : typ -> typ
 
 val lookup_field : string -> field list -> typ
 
-val span : con_env -> typ -> int option
+val span : typ -> int option
 
 
 (* Normalization and Classification *)
 
-val normalize : con_env -> typ -> typ
-val promote : con_env -> typ -> typ
+val normalize : typ -> typ
+val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
+val avoid : con_set -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)
 
-val eq : con_env -> typ -> typ -> bool
-val sub : con_env -> typ -> typ -> bool
+val eq : typ -> typ -> bool
+val eq_kind : kind -> kind -> bool
 
-val lub : con_env -> typ -> typ -> typ
-val glb : con_env -> typ -> typ -> typ
+val sub : typ -> typ -> bool
 
+val lub : typ -> typ -> typ
+val glb : typ -> typ -> typ
 
 (* First-order substitution *)
 
@@ -131,7 +151,7 @@ val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
-val open_binds : con_env -> bind list -> typ list * con_env
+val open_binds : bind list -> typ list
 
 
 (* Environments *)
@@ -147,4 +167,4 @@ val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
 
-val string_of_typ_expand : con_env -> typ -> string
+val string_of_typ_expand : typ -> string

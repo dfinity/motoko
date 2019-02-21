@@ -145,7 +145,7 @@ and dec' rho d = match d with
        let e' = exp rho'' e in
        FuncD (s, i', tp, p', t, e')),
      rho
-  | TypD (c,k) -> (* we don't rename type names *)
+  | TypD c -> (* we don't rename type names *)
      (fun rho -> d),
      rho
 
