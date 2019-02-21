@@ -132,7 +132,7 @@ let rec check_typ env typ : unit =
   | T.Con (c,typs) ->
     if not (T.ConSet.mem c env.cons) then
        error env no_region "free type constructor %s" (Con.name c);
-    (match T.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
+    (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
   | T.Any -> ()
@@ -720,7 +720,7 @@ and check_dec env dec  =
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
     let (binds,typ) =
-      match T.kind c with
+      match Con.kind c with
       | T.Abs(binds,typ)
       | T.Def(binds,typ) -> (binds,typ)
     in

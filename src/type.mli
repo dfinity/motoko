@@ -41,18 +41,12 @@ and field = {name : string; typ : typ}
 
 (* cons and kinds *)
 
-and con_annot (* abstract *)
-and con = con_annot Con.t
+and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-
-val kind : con -> kind
-val fresh_con : string -> kind -> con
 val set_kind : con -> kind -> unit
-val modify_kind : con -> (kind -> kind) -> unit
-val clone_con : con -> kind -> con
 
 module ConSet :
 sig

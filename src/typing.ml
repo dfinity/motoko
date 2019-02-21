@@ -136,7 +136,7 @@ and check_typ' env typ : T.typ =
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it env.typs with
     | Some con ->
-      let kind = T.kind con in
+      let kind = Con.kind con in
       let T.Def (tbs, t) | T.Abs (tbs, t) = kind in
       let ts = check_typ_bounds env tbs typs typ.at in
       T.Con (con, ts)
@@ -208,7 +208,7 @@ and check_typ_field env s typ_field : T.field =
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map (fun n -> T.fresh_con n (T.Abs ([], T.Pre))) xs in
+  let cs = List.map (fun n -> Con.fresh n (T.Abs ([], T.Pre))) xs in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -1074,11 +1074,11 @@ and gather_dec_typdecs env scope dec : scope =
       error env dec.at "duplicate definition for type %s in block" con_id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
-    let c = T.fresh_con con_id.it pre_k in
+    let c = Con.fresh con_id.it pre_k in
     let ve' =
       match dec.it with
       | ClassD (id, _, _ , _, _, _, _) ->
-        let cs = List.map (fun (bind : typ_bind) -> T.fresh_con bind.it.var.it (T.Abs ([], T.Pre))) binds in
+        let cs = List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it (T.Abs ([], T.Pre))) binds in
         let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
         T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
       | _ -> scope.val_env in
@@ -1103,7 +1103,7 @@ and infer_dec_typdecs firstPass env dec : con_env =
         T.set_kind c k;
         con_id.note <- Some c
       end
-    else assert (T.eq_kind (T.kind c) k)
+    else assert (T.eq_kind (Con.kind c) k)
   in
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ ->

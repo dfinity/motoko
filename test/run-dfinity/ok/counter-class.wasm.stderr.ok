@@ -63,5 +63,5 @@ non-closed actor: (ActorE
     Const
     Public
   )
-  Counter
+  Counter/1
 )
