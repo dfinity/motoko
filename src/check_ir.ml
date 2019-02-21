@@ -794,7 +794,7 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope ((decs, flavor) as prog) : unit =
+let check_prog scope phase ((decs, flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
    ignore (check_block env T.unit decs no_region)
@@ -802,12 +802,12 @@ let check_prog scope ((decs, flavor) as prog) : unit =
     let bt = Printexc.get_backtrace () in
     if !Flags.verbose
     then begin
-      Printf.eprintf "Ill-typed intermediate code:\n";
+      Printf.eprintf "Ill-typed intermediate code after %s:\n" phase;
       Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
       Printf.eprintf "%s" s;
       Printf.eprintf "%s" bt;
     end else begin
-      Printf.eprintf "Ill-typed intermediate code (use -v to see dumped IR):\n";
+      Printf.eprintf "Ill-typed intermediate code after %s (use -v to see dumped IR):\n" phase;
       Printf.eprintf "%s" s;
       Printf.eprintf "%s" bt;
     end;

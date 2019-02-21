@@ -123,8 +123,7 @@ let transform_ir transform_name transform flag env prog name =
       phase transform_name name;
       let prog' : Ir.prog = transform prog in
       dump_ir Flags.dump_lowering prog';
-      (* Check_ir.check_prog env prog; *)
-      Check_ir.check_prog env prog';
+      Check_ir.check_prog env transform_name prog;
       prog'
     end
   else prog
@@ -292,7 +291,7 @@ let compile_with check mode name : compile_result =
     Diag.print_messages msgs;
     let prelude = Desugar.transform Typing.empty_scope prelude in
     let prog = Desugar.transform initial_stat_env prog in
-    Check_ir.check_prog initial_stat_env prog;
+    Check_ir.check_prog initial_stat_env "desugaring" prog;
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
