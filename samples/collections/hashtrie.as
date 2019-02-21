@@ -82,8 +82,40 @@ type LeafNode<K,V> = { key:K; val:V };
 */
 
 // XXX: until AST-42:
+func isNull<X>(x : ?X) : Bool {
+  switch x {
+    case null { true  };
+    case (?_) { false };
+  };
+};
+
+// XXX: until AST-42:
+func assertIsNull<X>(x : ?X) {
+  switch x {
+    case null { assert(true)  };
+    case (?_) { assert(false) };
+  };
+};
+
+// XXX: until AST-42:
 func makeEmpty<K,V>() : Trie<K,V>
   = null;
+
+// XXX: until AST-42:
+func isEmpty<K,V>(t:Trie<K,V>) : Bool {
+  switch t {
+    case null { true  };
+    case (?_) { false };
+  };
+};
+
+// XXX: until AST-42:
+func assertIsEmpty<K,V>(t : Trie<K,V>) {
+  switch t {
+    case null { assert(true)  };
+    case (?_) { assert(false) };
+  };
+};
 
 // XXX: until AST-42:
 func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
@@ -109,6 +141,19 @@ func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> {
 };
 
 // XXX: until AST-42:
+func matchLeaf<K,V>(t:Trie<K,V>) : ?(K,V) {
+  switch t {
+  case null { null };
+  case (?t_) {
+         switch (t_.key, t_.val) {
+         case (?k,?v) ?(k,v);
+         case (_)     null;
+         }
+       };
+  }
+};
+
+// XXX: until AST-42:
 func isLeaf<K,V>(t:Trie<K,V>) : Bool {
   switch t {
   case null { false };
@@ -120,39 +165,6 @@ func isLeaf<K,V>(t:Trie<K,V>) : Bool {
        };
   }
 };
-
-// XXX: until AST-42:
-func isEmpty<K,V>(t:Trie<K,V>) : Bool {
-  switch t {
-    case null { true  };
-    case (?_) { false };
-  };
-};
-
-// XXX: until AST-42:
-func isNull<X>(x : ?X) : Bool {
-  switch x {
-    case null { true  };
-    case (?_) { false };
-  };
-};
-
-// XXX: until AST-42:
-func assertIsNull<X>(x : ?X) {
-  switch x {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
-  };
-};
-
-// XXX: until AST-42:
-func assertIsEmpty<K,V>(t : Trie<K,V>) {
-  switch t {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
-  };
-};
-
 // XXX: until AST-42:
 func assertIsBin<K,V>(t : Trie<K,V>) {
   switch t {
@@ -160,21 +172,6 @@ func assertIsBin<K,V>(t : Trie<K,V>) {
     case (?n) {
       assertIsNull<K>(n.key);
       assertIsNull<V>(n.val);
-   };
-  }
-};
-
-// A "twig" is a binary node with two empty subtrees.  It arises
-// internally, for simplifying some pattern-matching logic that
-// deals with pairs of tries that we try to walk recursively.
-func isTwig<K,V>(t : Trie<K,V>) : Bool {
-  switch t {
-    case null { false };
-    case (?n) {
-      isEmpty<K,V>(n.left) and
-      isEmpty<K,V>(n.right) and
-      isNull<K>(n.key) and
-      isNull<V>(n.val);
    };
   }
 };
@@ -211,9 +208,8 @@ func getHashBit(h:Hash, pos:Nat) : Bool {
   }
 };
 
-func empty<K,V>() : Trie<K,V> =
-  null
-;
+// part of "public interface":
+func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
 // helper function for constructing new paths of uniform length
 func buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
@@ -398,25 +394,32 @@ func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> {
 // Produces a "disjunctive image" of the two tries, where the values of
 // matching keys are combined with the given binary operator.
 func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X) : Trie<K,X> {
-  // We use these "twigs" to simplify the pattern-matching cases
-  // below.  twigs are equivalent to empty tries.  we introduce them
-  // when one side or the other (but not both) input tries is empty.
-  //
-  let leftTwig  : Trie<K,V> = makeBin<K,V>(makeEmpty<K,V>(),makeEmpty<K,V>());
-  let rightTwig : Trie<K,W> = makeBin<K,W>(makeEmpty<K,W>(),makeEmpty<K,W>());
-  //
-  // using twigs, we only ever handle the cases for:
-  //    empty-empty, bin-bin, leaf-leaf, leaf-empty, empty-leaf.
-  //
-  // in particular, we do not explicitly handle:
-  //    empty-bin, bin-empty, leaf-bin, bin-leaf.
-  //
+  func recL(t:Trie<K,V>) : Trie<K,X> {
+    switch t {
+      case (null) null;
+      case (? n) {
+      switch (matchLeaf<K,V>(t)) {
+        case (?(k,v)) { makeLeaf<K,X>(k, vbin(?v, null)) };
+        case _ { makeBin<K,X>(recL(n.left), recL(n.right)) }
+      }
+    };
+  }};
+  func recR(t:Trie<K,W>) : Trie<K,X> {
+    switch t {
+      case (null) null;
+      case (? n) {
+      switch (matchLeaf<K,W>(t)) {
+        case (?(k,w)) { makeLeaf<K,X>(k, vbin(null, ?w)) };
+        case _ { makeBin<K,X>(recR(n.left), recR(n.right)) }
+      }
+    };
+  }};
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
     // empty-empty terminates early, all other cases do not.
-    case (null, null) { makeEmpty<K,X>()   };
-    case (null, _   ) { rec(leftTwig, tr)  };
-    case (_,    null) { rec(tl, rightTwig) };
+    case (null, null) { makeEmpty<K,X>() };
+    case (null, _   ) { recR(tr) };
+    case (_,    null) { recL(tl) };
     case (? nl, ? nr) {
     switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
     case (true, true) {
@@ -435,8 +438,8 @@ func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X)
            makeEmpty<K,X>()
          };
     case (false, false) {
-           assert(isLeaf<K,V>(tl) or isTwig<K,V>(tl));
-           assert(isLeaf<K,W>(tr) or isTwig<K,W>(tr));
+           assert(isLeaf<K,V>(tl));
+           assert(isLeaf<K,W>(tr));
            switch (nl.key, nl.val, nr.key, nr.val) {
              // leaf-leaf case
              case (?kl, ?vl, ?kr, ?vr) {
@@ -446,18 +449,6 @@ func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X)
                  // XXX: handle hash collisions here.
                  makeEmpty<K,X>()
                }
-             };
-             // empty-leaf case
-             case (null, null, ?kr, ?vr) {
-               makeLeaf<K,X>(kr, vbin(null, ?vr))
-             };
-             // leaf-empty case
-             case (?kl, ?vl, null, null) {
-               makeLeaf<K,X>(kl, vbin(?vl, null))
-             };
-             // empty-empty case
-             case (null, null, null, null) {
-               makeEmpty<K,X>()
              };
              // XXX impossible, and unnecessary with AST-42.
              case _ { makeEmpty<K,X>() };
@@ -469,7 +460,6 @@ func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X)
   rec(tl, tr)
 };
 
-
 // This operation generalizes the notion of "set intersection" to
 // finite maps.  Produces a "conjuctive image" of the two tries, where
 // the values of matching keys are combined with the given binary
@@ -478,7 +468,7 @@ func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) :
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
       case (null, null) { return makeEmpty<K,X>() };
-      case (null, ? nr) { return makeEmpty<K,X>() };  
+      case (null, ? nr) { return makeEmpty<K,X>() };
       case (? nl, null) { return makeEmpty<K,X>() };
       case (? nl, ? nr) {
       switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
@@ -487,7 +477,7 @@ func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) :
              let t1 = rec(nl.right, nr.right);
              makeBin<K,X>(t0, t1)
            };
-      case (false, true) {           
+      case (false, true) {
              assert(false);
              // XXX impossible, until we lift uniform depth assumption
              makeEmpty<K,X>()
@@ -516,6 +506,48 @@ func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) :
            };
           }
          }
+    }};
+  rec(tl, tr)
+};
+
+func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
+  func rec(t:Trie<K,V>) : X {
+    switch t {
+    case (null) { empty };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) { leaf(k,v) };
+           case null { bin(rec(n.left), rec(n.right)) };
+           }
+    };
+    }};
+  rec(t)
+};
+
+// Test for equality, but naively, based on structure.
+// Does not attempt to remove "junk" in the tree;
+// For instance, a "smarter" approach would equate
+//   `#bin{left=#empty;right=#empty}`
+// with
+//   `#empty`.
+// We do not observe that equality here.
+func equalStructure<K,V>(
+  tl:Trie<K,V>,
+  tr:Trie<K,V>,
+  keq:(K,K)->Bool,
+  veq:(V,V)->Bool
+) : Bool {
+  func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Bool {
+    switch (tl, tr) {
+    case (null, null) { true };
+    case (?nl, ?nr) {
+           switch (matchLeaf<K,V>(tl), matchLeaf<K,V>(tr)) {
+           case (?(kl,vl), ?(kr,vr)) { keq(kl,kr) and veq(vl,vr) };
+           case (null,     null)     { rec(nl.left, nr.left)
+                                       and rec(nl.right, nr.right) };
+           case _ { false }
+           }
+    };
     }};
   rec(tl, tr)
 };
@@ -550,6 +582,19 @@ func setInsert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
 func setRemove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
   let (s2, _) = remove<T,()>(s, x, xh);
   s2
+};
+
+func setEq<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Bool {
+  // XXX: Todo: use a smarter check
+  equalStructure<T,()>(s1, s2, eq, unitEq)
+};
+
+func setCard<T>(s:Set<T>) : Nat {
+  foldUp<T,(),Nat>
+  (s, 
+   func(n:Nat,m:Nat):Nat{n+m}, 
+   func(_:T,_:()):Nat{1}, 
+   0)
 };
 
 func setMem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
@@ -626,6 +671,7 @@ func setPrint(s:Set<Nat>) {
 ////////////////////////////////////////////////////////////////////////////////
 
 func natEq(n:Nat,m:Nat):Bool{ n == m};
+func unitEq (_:(),_:()):Bool{ true };
 
 func setInsertDb(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
   print "  setInsert(";
@@ -655,8 +701,10 @@ func setUnionDb(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
   print ", ";
   print s2name;
   print ")";
+  // also: test that merge agrees with disj:
   let r1 = setUnion<Nat>(s1, s2);
   let r2 = disj<Nat,(),(),()>(s1, s2, natEq, func (_:?(),_:?()):(())=());
+  assert(equalStructure<Nat,()>(r1, r2, natEq, unitEq));
   print ";\n";
   setPrint(r1);
   print "=========\n";
@@ -691,15 +739,34 @@ let hash_8 = ?(true, ?(false,?(false,?(false, null))));
 print "inserting...\n";
 // Insert numbers [0..8] into the set, using their bits as their hashes:
 let s0 : Set<Nat> = setEmpty<Nat>();
+assert(setCard<Nat>(s0) == 0);
+
 let s1 : Set<Nat> = setInsertDb(s0, 0, hash_0);
+assert(setCard<Nat>(s1) == 1);
+
 let s2 : Set<Nat> = setInsertDb(s1, 1, hash_1);
+assert(setCard<Nat>(s2) == 2);
+
 let s3 : Set<Nat> = setInsertDb(s2, 2, hash_2);
+assert(setCard<Nat>(s3) == 3);
+
 let s4 : Set<Nat> = setInsertDb(s3, 3, hash_3);
+assert(setCard<Nat>(s4) == 4);
+
 let s5 : Set<Nat> = setInsertDb(s4, 4, hash_4);
+assert(setCard<Nat>(s5) == 5);
+
 let s6 : Set<Nat> = setInsertDb(s5, 5, hash_5);
+assert(setCard<Nat>(s6) == 6);
+
 let s7 : Set<Nat> = setInsertDb(s6, 6, hash_6);
+assert(setCard<Nat>(s7) == 7);
+
 let s8 : Set<Nat> = setInsertDb(s7, 7, hash_7);
+assert(setCard<Nat>(s8) == 8);
+
 let s9 : Set<Nat> = setInsertDb(s8, 8, hash_8);
+assert(setCard<Nat>(s9) == 9);
 print "done.\n";
 
 print "unioning...\n";
