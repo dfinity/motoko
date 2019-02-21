@@ -7,7 +7,7 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 (* Identifiers *)
 
 type id = string Source.phrase
-type con_id = (string, (Type.con * Type.kind) option) Source.annotated_phrase
+type con_id = (string, Type.con option) Source.annotated_phrase
 
 (* Names (not alpha-convertible), used for field and class names *)
 type name = name' Source.phrase
@@ -42,7 +42,7 @@ and typ' =
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
-and typ_bind = (typ_bind', Con.t option) Source.annotated_phrase
+and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}
 
 

@@ -3,7 +3,7 @@ type type_note = Syntax.typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 type 'a phrase = ('a, Syntax.typ_note) Source.annotated_phrase
 
-and typ_bind' = {con : Con.t; bound : Type.typ}
+type typ_bind' = {con : Type.con; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type pat = (pat', Type.typ) Source.annotated_phrase
@@ -72,7 +72,7 @@ and dec' =
   | VarD of Syntax.id * exp                    (* mutable *)
   | FuncD of                                   (* function *)
       Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp
-  | TypD of Type.con * Type.kind               (* type *)
+  | TypD of Type.con                           (* type *)
 
 
 (* Flavor *)

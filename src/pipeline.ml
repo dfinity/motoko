@@ -16,8 +16,8 @@ let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
 let print_ce =
-  Con.Env.iter (fun c k ->
-    let eq, params, typ = Type.strings_of_kind k in
+  Type.ConSet.iter (fun c ->
+    let eq, params, typ = Type.strings_of_kind (Con.kind c) in
     printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 
@@ -121,21 +121,21 @@ let transform_ir transform_name transform flag env prog name =
   if flag then
     begin
       phase transform_name name;
-      let prog' : Ir.prog = transform prog in
+      let prog' : Ir.prog = transform env prog in
       dump_ir Flags.dump_lowering prog';
-      Check_ir.check_prog env prog;
+      Check_ir.check_prog env transform_name prog';
       prog'
     end
   else prog
 
 let await_lowering =
-  transform_ir "Await Lowering" Await.transform
+  transform_ir "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
   transform_ir "Async Lowering" Async.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" Tailcall.transform
+  transform_ir "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -291,7 +291,7 @@ let compile_with check mode name : compile_result =
     Diag.print_messages msgs;
     let prelude = Desugar.transform Typing.empty_scope prelude in
     let prog = Desugar.transform initial_stat_env prog in
-    Check_ir.check_prog initial_stat_env prog;
+    Check_ir.check_prog initial_stat_env "desugaring" prog;
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in

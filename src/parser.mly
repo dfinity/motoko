@@ -107,6 +107,7 @@ let share_expfield (ef : exp_field) =
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
+%token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
 %token<Value.unicode> CHAR
@@ -348,7 +349,7 @@ exp_post :
     { ArrayE(m, es) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
-  | e=exp_post DOT s=NAT
+  | e=exp_post s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
     { DotE(e, dummy_obj_sort(), {x with it = Name x.it}) @? at $sloc }

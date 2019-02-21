@@ -157,7 +157,6 @@ module E = struct
 
     (* Immutable *)
     local_vars_env : t varloc NameEnv.t; (* variables ↦ their location *)
-    con_env : Type.con_env;
 
     (* Mutable *)
     func_types : func_type list ref;
@@ -190,7 +189,6 @@ module E = struct
     mode;
     prelude;
     local_vars_env = NameEnv.empty;
-    con_env = Con.Env.empty;
     func_types = ref [];
     func_imports = ref [];
     other_imports = ref [];
@@ -232,21 +230,6 @@ module E = struct
      bunch of accessors. *)
 
   let mode (env : t) = env.mode
-
-  let con_env (env : t) = env.con_env
-
-  let add_con (env : t) c k =
-    { env with con_env = Con.Env.add c k env.con_env }
-
-  let add_typ_binds (env : t) typ_binds =
-    (* There is some code duplication with Check_ir.check_open_typ_binds.
-       This shoulds be extracte into Type.add_open_typ_binds
-       and maybe we need a type open_typ_bind that can be used inside the IR.
-    *)
-    let cs = List.map (fun tp -> tp.it.con) typ_binds in
-    let ks = List.map (fun tp -> Type.Abs([],tp.it.bound)) typ_binds in
-    let ce = List.fold_right2 Con.Env.add cs ks Con.Env.empty in
-    { env with con_env = Con.Env.adjoin env.con_env ce }
 
   let lookup_var env var =
     match NameEnv.find_opt var env.local_vars_env with
@@ -1336,7 +1319,7 @@ module Object = struct
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type ({it = Syntax.Name s; _}) =
-    let _, fields = Type.as_obj_sub "" (E.con_env env) obj_type in
+    let _, fields = Type.as_obj_sub "" obj_type in
     let field_typ = Type.lookup_field s fields in
     let mut = Type.is_mut field_typ in
     mut
@@ -3775,9 +3758,8 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
        (pre_env, G.with_region dec.at alloc_code, fun env ->
          (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
   match dec.it with
-  | TypD (c,k) ->
-    let pre_env1 = E.add_con pre_env c k in
-    (pre_env1, G.nop, fun _ -> SR.unit, G.nop)
+  | TypD _ ->
+    (pre_env, G.nop, fun _ -> SR.unit, G.nop)
   | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
 
   (* A special case for static expressions *)
@@ -3811,9 +3793,8 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
       let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
       (pre_env1, alloc_code, fun env ->
         (* Bring type parameters into scope *)
-        let env1 = E.add_typ_binds env typ_binds in
-        let sr, code = Var.get_val env1 name.it in
-        sr, mk_code env1 ^^ code
+        let sr, code = Var.get_val env name.it in
+        sr, mk_code env ^^ code
       )
 
 and compile_decs env decs : SR.t * G.t =

@@ -196,7 +196,7 @@ module Ir =
       | LetD (_,e)
       | VarD (_, e) ->
         effect_exp e
-      | TypD (c,k) ->
+      | TypD _ ->
         T.Triv
       | FuncD (s, v, tps, p, t, e) ->
         T.Triv
