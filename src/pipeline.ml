@@ -123,7 +123,7 @@ let transform_ir transform_name transform flag env prog name =
       phase transform_name name;
       let prog' : Ir.prog = transform prog in
       dump_ir Flags.dump_lowering prog';
-      Check_ir.check_prog env transform_name prog;
+      Check_ir.check_prog env transform_name prog';
       prog'
     end
   else prog
