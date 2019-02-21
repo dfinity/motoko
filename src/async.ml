@@ -197,10 +197,10 @@ module Transform() = struct
     match  ConRenaming.find_opt c (!con_renaming) with
     | Some c' -> c'
     | None ->
-      let clone = T.clone_con c (Abs ([],Pre)) in
+      let clone = Con.clone c (Abs ([],Pre)) in
       con_renaming := ConRenaming.add c clone (!con_renaming);
       (* Need to extend con_renaming before traversing the kind *)
-      Type.set_kind clone (t_kind (T.kind c));
+      Type.set_kind clone (t_kind (Con.kind c));
       clone
 
   and t_operator_type ot =

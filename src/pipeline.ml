@@ -17,7 +17,7 @@ let error at cat text =
 
 let print_ce =
   Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.strings_of_kind (Type.kind c) in
+    let eq, params, typ = Type.strings_of_kind (Con.kind c) in
     printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
   )
 

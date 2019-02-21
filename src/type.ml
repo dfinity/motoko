@@ -36,8 +36,7 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and con_annot = kind ref (* the con annotation is abstract to the outside world *)
-and con = con_annot Con.t
+and con = kind Con.t
 
 and bind = {var : string; bound : typ}
 and field = {name : string; typ : typ}
@@ -48,14 +47,8 @@ and kind =
 
 (* cons *)
 
-(* The con field is a reference to break the recursion in open_binds,
-   and to allow the multiple passes in typing *)
-let kind con = !(Con.kind con)
-
-let fresh_con n k = Con.fresh n (ref k)
-let clone_con c (k:kind)  = Con.clone c (ref k)
-let set_kind c k = match !(Con.kind c) with
-  | Abs (_, Pre) -> Con.kind c := k
+let set_kind c k = match Con.kind c with
+  | Abs (_, Pre) -> Con.unsafe_set_kind c k
   | _ -> raise (Invalid_argument "set_kind")
 
 (* field ordering *)
@@ -219,10 +212,10 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> fresh_con var (Abs ([], Pre))) tbs in
+  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun con -> Con (con, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun c k -> Con.kind c := k) cs ks;
+  List.iter2 (fun c k -> set_kind c k) cs ks;
   ts
 
 
@@ -234,7 +227,7 @@ let reduce tbs t ts =
 
 let rec normalize = function
   | Con (con, ts) as t ->
-    (match kind con with
+    (match Con.kind con with
     | Def (tbs, t) -> normalize (reduce tbs t ts)
     | _ -> t
     )
@@ -243,7 +236,7 @@ let rec normalize = function
 
 let rec promote = function
   | Con (con, ts) ->
-    let Def (tbs, t) | Abs (tbs, t) = kind con
+    let Def (tbs, t) | Abs (tbs, t) = Con.kind con
     in promote (reduce tbs t ts)
   | t -> t
 
@@ -361,14 +354,14 @@ let rec avoid' cons = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
     if ConSet.mem c cons
-    then match kind c with
+    then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
       | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
     else
       begin try
         Con (c, List.map (avoid' cons) ts)
       with Unavoidable d ->
-        begin match kind c with
+        begin match Con.kind c with
         | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
         end
@@ -418,7 +411,7 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
-    (match kind con1, kind con2 with
+    (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
@@ -431,7 +424,7 @@ let rec rel_typ rel eq t1 t2 =
       false
     )
   | Con (con1, ts1), t2 ->
-    (match kind con1, t2 with
+    (match Con.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
@@ -439,7 +432,7 @@ let rec rel_typ rel eq t1 t2 =
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
-    (match kind con2 with
+    (match Con.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
     | _ -> false
@@ -711,7 +704,7 @@ let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
   | Con (c, ts) ->
-    (match kind c with
+    (match Con.kind c with
     | Abs _ -> s
     | Def _ ->
       match normalize t with
