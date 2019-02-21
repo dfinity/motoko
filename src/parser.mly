@@ -475,33 +475,20 @@ exp_field :
 
 (* Patterns *)
 
-(* pat_top is needed because top-level parentheses around tuples (unit, 1-ary, pair, etc.)
-   are significant in function arguments, signifying a unary function which matches on a
-   first-class (i.e. consed) tuple *)
-pat_top :
-  | LPAR p=pat RPAR
-    { match p.it with
-      | TupP _ -> { p with it = ParP p }
-      | _ -> p
-    }
-  | p=pat_simple
-    { p }
-
-pat_simple :
+pat_nullary :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
+  | LPAR p=pat RPAR
+    { match p.it with
+      | TupP _ -> { p with it = ParP p }
+      | _ -> p
+    }
   | LPAR ps=seplist1(pat_bin, COMMA) RPAR
     { TupP(ps) @! at $sloc }
-
-pat_nullary :
-  | LPAR p=pat RPAR
-    { p }
-  | p=pat_simple
-    { p }
 
 pat_un :
   | p=pat_nullary
@@ -551,7 +538,7 @@ dec_nonvar :
     { (fd s (xf "func" $sloc)).it @? at $sloc }
   | TYPE x=con_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_top xefs=class_body
+  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
@@ -588,7 +575,7 @@ dec :
         LetD(p, ObjE(s, x, efs') @? r) @? r }
 
 func_dec :
-  | tps=typ_params_opt p=pat_top rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
