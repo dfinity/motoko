@@ -434,7 +434,7 @@ and declare_pat pat : val_env =
   | TupP pats -> declare_pats pats V.Env.empty
   | OptP pat1 -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
-  | AnnotP (pat1, _typ) -> declare_pat pat1
+  | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
@@ -464,8 +464,8 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | AnnotP (pat1, _typ) -> define_pat env pat1 v
-  | ParP pat -> define_pat env pat v
+  | AnnotP (pat1, _)
+  | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
