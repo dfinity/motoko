@@ -475,68 +475,48 @@ func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X)
 // the values of matching keys are combined with the given binary
 // operator, and unmatched key-value pairrs are not present in the output.
 func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) : Trie<K,X> {
-  // We use these "twigs" to simplify the pattern-matching cases
-  // below.  twigs are equivalent to empty tries.  we introduce them
-  // when one side or the other (but not both) input tries is empty.
-  //
-  let leftTwig  : Trie<K,V> = makeBin<K,V>(makeEmpty<K,V>(),makeEmpty<K,V>());
-  let rightTwig : Trie<K,W> = makeBin<K,W>(makeEmpty<K,W>(),makeEmpty<K,W>());
-  //
-  // using twigs, we only ever handle the cases for:
-  //    empty-empty, bin-bin, leaf-leaf, leaf-empty, empty-leaf.
-  //
-  // in particular, we do not explicitly handle:
-  //    empty-bin, bin-empty, leaf-bin, bin-leaf.
-  //
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
-    // empty-empty terminates early, all other cases do not.
-    case (null, null) { makeEmpty<K,X>()   };
-    case (null, _   ) { rec(leftTwig, tr)  };
-    case (_,    null) { rec(tl, rightTwig) };
-    case (? nl, ? nr) {
-    switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
-    case (true, true) {
-           let t0 = rec(nl.left, nr.left);
-           let t1 = rec(nl.right, nr.right);
-           makeBin<K,X>(t0, t1)
-         };
-    case (false, true) {
-           assert(false);
-           // XXX impossible, until we lift uniform depth assumption
-           makeEmpty<K,X>()
-         };
-    case (true, false) {
-           assert(false);
-           // XXX impossible, until we lift uniform depth assumption
-           makeEmpty<K,X>()
-         };
-    case (false, false) {
-           assert(isLeaf<K,V>(tl) or isTwig<K,V>(tl));
-           assert(isLeaf<K,W>(tr) or isTwig<K,W>(tr));
-           switch (nl.key, nl.val, nr.key, nr.val) {
-             // leaf-leaf case
+      case (null, null) { return makeEmpty<K,X>() };
+      case (null, ? nr) { return makeEmpty<K,X>() };  
+      case (? nl, null) { return makeEmpty<K,X>() };
+      case (? nl, ? nr) {
+      switch (isBin<K,V>(tl), isBin<K,W>(tr)) {
+      case (true, true) {
+             let t0 = rec(nl.left, nr.left);
+             let t1 = rec(nl.right, nr.right);
+             makeBin<K,X>(t0, t1)
+           };
+      case (false, true) {           
+             assert(false);
+             // XXX impossible, until we lift uniform depth assumption
+             makeEmpty<K,X>()
+           };
+      case (true, false) {
+             assert(false);
+             // XXX impossible, until we lift uniform depth assumption
+             makeEmpty<K,X>()
+           };
+      case (false, false) {
+             assert(isLeaf<K,V>(tl));
+             assert(isLeaf<K,W>(tr));
+             switch (nl.key, nl.val, nr.key, nr.val) {
+               // leaf-leaf case
              case (?kl, ?vl, ?kr, ?vr) {
-               if (keq(kl, kr)) {
-                 makeLeaf<K,X>(kl, vbin(vl, vr));
-               } else {
-                 // XXX: handle hash collisions here.
-                 makeEmpty<K,X>()
-               }
-             };
-             // empty-leaf case
-             case (null, null, ?kr, ?vr) { makeEmpty<K,X>() };
-             // leaf-empty case
-             case (?kl, ?vl, null, null) { makeEmpty<K,X>() };
-             // empty-empty case
-             case (null, null, null, null) { makeEmpty<K,X>()};
+                    if (keq(kl, kr)) {
+                      makeLeaf<K,X>(kl, vbin(vl, vr));
+                    } else {
+                      // XXX: handle hash collisions here.
+                      makeEmpty<K,X>()
+                    }
+                  };
              // XXX impossible, and unnecessary with AST-42.
              case _ { makeEmpty<K,X>() };
-           }
-         };
-      }
-   };
-  }};
+             }
+           };
+          }
+         }
+    }};
   rec(tl, tr)
 };
 
@@ -645,6 +625,8 @@ func setPrint(s:Set<Nat>) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+func natEq(n:Nat,m:Nat):Bool{ n == m};
+
 func setInsertDb(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
   print "  setInsert(";
   printInt x;
@@ -656,7 +638,6 @@ func setInsertDb(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
 };
 
 func setMemDb(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
-  func natEq(n:Nat,m:Nat):Bool{ n == m};
   print "  setMem(";
   print sname;
   print ", ";
@@ -668,13 +649,28 @@ func setMemDb(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
   b
 };
 
-func unionDb(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
+func setUnionDb(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
   print "  setUnion(";
   print s1name;
   print ", ";
   print s2name;
   print ")";
-  let r = setUnion<Nat>(s1, s2);
+  let r1 = setUnion<Nat>(s1, s2);
+  let r2 = disj<Nat,(),(),()>(s1, s2, natEq, func (_:?(),_:?()):(())=());
+  print ";\n";
+  setPrint(r1);
+  print "=========\n";
+  setPrint(r2);
+  r1
+};
+
+func setIntersectDb(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
+  print "  setIntersect(";
+  print s1name;
+  print ", ";
+  print s2name;
+  print ")";
+  let r = setIntersect<Nat>(s1, s2, natEq);
   print ";\n";
   setPrint(r);
   r
@@ -707,12 +703,17 @@ let s9 : Set<Nat> = setInsertDb(s8, 8, hash_8);
 print "done.\n";
 
 print "unioning...\n";
-let s1s2 : Set<Nat> = unionDb(s1, "s1", s2, "s2");
-let s2s1 : Set<Nat> = unionDb(s2, "s2", s1, "s1");
-let s3s2 : Set<Nat> = unionDb(s3, "s3", s2, "s2");
-let s4s2 : Set<Nat> = unionDb(s4, "s4", s2, "s2");
-let s1s5 : Set<Nat> = unionDb(s1, "s1", s5, "s5");
-let s0s2 : Set<Nat> = unionDb(s0, "s0", s2, "s2");
+let s1s2 : Set<Nat> = setUnionDb(s1, "s1", s2, "s2");
+let s2s1 : Set<Nat> = setUnionDb(s2, "s2", s1, "s1");
+let s3s2 : Set<Nat> = setUnionDb(s3, "s3", s2, "s2");
+let s4s2 : Set<Nat> = setUnionDb(s4, "s4", s2, "s2");
+let s1s5 : Set<Nat> = setUnionDb(s1, "s1", s5, "s5");
+let s0s2 : Set<Nat> = setUnionDb(s0, "s0", s2, "s2");
+print "done.\n";
+
+print "intersecting...\n";
+let s3is6 : Set<Nat> = setIntersectDb(s3, "s3", s6, "s6");
+let s2is1 : Set<Nat> = setIntersectDb(s2, "s2", s1, "s1");
 print "done.\n";
 
 
