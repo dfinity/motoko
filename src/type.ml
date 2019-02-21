@@ -53,7 +53,6 @@ and kind =
 let kind con = !(Con.kind con)
 
 let fresh_con n k = Con.fresh n (ref k)
-let modify_kind c f = Con.kind c := f !(Con.kind c)
 let clone_con c (k:kind)  = Con.clone c (ref k)
 let set_kind c k = match !(Con.kind c) with
   | Abs (_, Pre) -> Con.kind c := k

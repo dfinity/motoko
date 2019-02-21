@@ -51,7 +51,6 @@ and kind =
 val kind : con -> kind
 val fresh_con : string -> kind -> con
 val set_kind : con -> kind -> unit
-val modify_kind : con -> (kind -> kind) -> unit
 val clone_con : con -> kind -> con
 
 module ConSet :
