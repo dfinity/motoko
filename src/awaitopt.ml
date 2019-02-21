@@ -5,6 +5,14 @@ module R = Rename
 module T = Type
 open Construct
 
+(*
+   TODO:
+     optimize many uses of `funcD f u exp` to `nary_funcD f [] exp` , when u not in FV(exp)
+     and u:unit -
+     that'll avoid some unit value bindings in the generated code
+     (and make it easier to read).
+*)
+
 (* continuations, syntactic and meta-level *)
 
 type kont = ContVar of exp
@@ -438,7 +446,7 @@ and c_dec context dec (k:kont) =
     let patenv,pat' = rename_pat pat in
     let block exp =
       let dec_pat' = {dec with it = LetD(pat',exp)} in
-      blockE ( dec_pat' :: 
+      blockE ( dec_pat' ::
               (define_pat patenv pat)
               @[expD (k -@- (tupE[]))])
     in
@@ -563,5 +571,3 @@ and define_pats patenv (pats : pat list) : dec list =
 and t_prog (prog, flavor) = (t_decs LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog
-
-

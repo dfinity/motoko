@@ -768,9 +768,11 @@ and gather_dec env scope dec : scope =
     let cs = List.map (fun tb -> tb.it.con) typ_binds in
     let t1 = pat.note in
     let t2 = typ in
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
+    let ts1 =
+      match pat.it with
+      |  TupP _ ->
+         T.as_seq t1
+      | _ -> [t1]
     in
     let ts2 = match call_conv.Value.n_res  with
       | 1 -> [t2]
@@ -783,6 +785,8 @@ and gather_dec env scope dec : scope =
     let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
+    check env dec.at
+      (Value.call_conv_of_typ t = call_conv) "inconsistent calling convention";
     let ve' =  T.Env.add id.it t scope.val_env in
     { scope with val_env = ve' }
   | TypD c ->

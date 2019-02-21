@@ -278,17 +278,24 @@ let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
-    let sharing, t1, t2 = match typ f with
-      | T.Func(sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
+    let sharing, ts1, ts2 = match typ f with
+      | T.Func(sharing, _, [], ts1, ts2) -> sharing, ts1, ts2
       | _ -> assert false in
+    let pat1,exp1 =
+      match ts1 with
+      | [t] -> varP x, exp
+      | ts -> let xs = List.map fresh_id ts in
+              (tupP (List.map varP xs),
+               letE x (tupE xs) exp)
+    in
     let cc = Value.call_conv_of_typ (typ f) in
     { it = FuncD (cc,
                   (id_of_exp f),
                   [],
-                  { it = VarP (id_of_exp x); at = no_region; note = t1 },
+                  pat1,
                   (* TODO: Assert invariant: t2 has no free (unbound) DeBruijn indices -- Claudio *)
-                  t2,
-                  exp);
+                  T.seq ts2,
+                  exp1);
       at = no_region;
       note = f.note
     }
@@ -298,7 +305,7 @@ let funcD f x exp =
 let nary_funcD f xs exp =
   match f.it, typ f with
   | VarE _,
-    T.Func(sharing,_,_,_,ts2) ->
+    T.Func(sharing,_,[],_,ts2) ->
     let cc = Value.call_conv_of_typ (typ f) in
     let t2 = T.seq ts2 in
     { it = FuncD (cc,

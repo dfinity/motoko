@@ -264,11 +264,10 @@ module Transform() = struct
       let k = fresh_id contT in
       let v1 = fresh_id t1 in
       let post = fresh_id (T.Func(T.Sharable,T.Returns,[],[],[])) in
-      let u = fresh_id T.unit in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
                funcD k v1 (nary_reply -*- v1);
-               funcD post u (t_exp exp2 -*- k);
+               nary_funcD post [] (t_exp exp2 -*- k);
                expD (post -*- tupE[]);
                expD nary_async])
         .it
