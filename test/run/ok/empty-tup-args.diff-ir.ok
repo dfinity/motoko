@@ -1,0 +1,13 @@
+--- empty-tup-args.run
++++ empty-tup-args.run-ir
+@@ -0,0 +1,11 @@
++(unknown location): internal error, File "interpret_ir.ml", line 559, characters 9-15: Assertion failed
++
++Last environment:
++
++Called from file "interpret_ir.ml", line 659, characters 8-23
++Called from file "interpret_ir.ml", line 86, characters 8-23
++Re-raised at file "interpret_ir.ml", line 83, characters 19-35
++Called from file "interpret_ir.ml", line 90, characters 36-44
++Called from file "interpret_ir.ml", line 689, characters 2-18
++Called from file "pipeline.ml", line 172, characters 8-48

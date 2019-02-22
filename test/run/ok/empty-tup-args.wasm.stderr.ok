@@ -1,0 +1,5 @@
+Ill-typed intermediate code after desugaring (use -v to see dumped IR):
+empty-tup-args.as:2.8-2.10: IR type error, subtype violation:
+  ((),)
+  ()
+
