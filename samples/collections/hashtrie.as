@@ -101,13 +101,18 @@ func assertIsNull<X>(x : ?X) {
 func makeEmpty<K,V>() : Trie<K,V>
   = null;
 
-// XXX: until AST-42:
-func isEmpty<K,V>(t:Trie<K,V>) : Bool {
-  switch t {
-    case null { true  };
-    case (?_) { false };
-  };
-};
+// Note: More general version of this operation below, which tests for
+// "deep emptiness" (subtrees that have branching structure, but no
+// leaves; these can result from naive filtering operations, for
+// instance).
+//
+// // XXX: until AST-42:
+// func isEmpty<K,V>(t:Trie<K,V>) : Bool {
+//   switch t {
+//     case null { true  };
+//     case (?_) { false };
+//   };
+// };
 
 // XXX: until AST-42:
 func assertIsEmpty<K,V>(t : Trie<K,V>) {
@@ -524,6 +529,58 @@ func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
   rec(t)
 };
 
+// Test for "deep emptiness": subtrees that have branching structure,
+// but no leaves.  These can result from naive filtering operations;
+// filter uses this function to avoid creating such subtrees.
+func isEmpty<K,V>(t:Trie<K,V>) : Bool {
+  func rec(t:Trie<K,V>) : Bool {
+    switch t {
+    case (null) { true };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) { false };
+           case null { rec(n.left) and rec(n.right) };
+           }
+         };
+    }
+  };
+  rec(t)
+};
+
+func filter<K,V,X>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
+  func rec(t:Trie<K,V>) : Trie<K,V> {
+    switch t {
+    case (null) { null };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) {
+                  // XXX-Typechecker:
+                  //  This version of the next line gives _really_
+                  //  strange type errors, and no parse errors.
+                  // if f(k,v) {
+                  if (f(k,v)) {
+                    makeLeaf<K,V>(k,v)
+                  } else {
+                    null
+                  }
+                };
+           case null {
+                  let l = rec(n.left);
+                  let r = rec(n.right);
+                  switch (isEmpty<K,V>(l),isEmpty<K,V>(r)) {
+                    case (true,  true)  null;
+                    case (false, true)  r;
+                    case (true,  false) l;
+                    case (false, false) makeBin<K,V>(l, r);
+                  }
+                };
+           }
+         };
+    }
+  };
+  rec(t)
+};
+
 // Test for equality, but naively, based on structure.
 // Does not attempt to remove "junk" in the tree;
 // For instance, a "smarter" approach would equate
@@ -591,9 +648,9 @@ func setEq<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Bool {
 
 func setCard<T>(s:Set<T>) : Nat {
   foldUp<T,(),Nat>
-  (s, 
-   func(n:Nat,m:Nat):Nat{n+m}, 
-   func(_:T,_:()):Nat{1}, 
+  (s,
+   func(n:Nat,m:Nat):Nat{n+m},
+   func(_:T,_:()):Nat{1},
    0)
 };
 
