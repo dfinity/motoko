@@ -43,10 +43,10 @@ and exp' at note = function
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, i, es) ->
     obj at s None i es note.S.note_typ
-  | S.DotE (e, sr, n) ->
+  | S.DotE (e, sr, x) ->
     begin match (!sr) with
-    | Type.Actor -> I.ActorDotE (exp e, n)
-    | _ -> I.DotE (exp e, n)
+    | Type.Actor -> I.ActorDotE (exp e, {x with it = I.Name x.it})
+    | _ -> I.DotE (exp e, {x with it = I.Name x.it})
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
@@ -92,13 +92,13 @@ and build_obj at class_id s self_id es obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
       List.map (fun {Type.lab; _} ->
-        S.Name lab @@ no_region, lab @@ no_region
+        I.Name lab @@ no_region, lab @@ no_region
       ) fields
     | _ -> assert false
   in
   I.BlockE (
       List.map (fun ef -> dec ef.it.S.dec) es @
-        [ letD self (newObjE s names obj_typ);
+        [ letD self (newObjE s.it names obj_typ);
           expD self
         ]
   )
@@ -112,14 +112,14 @@ and exp_field' (f : S.exp_field') =
   match f.S.dec.it with
   | S.LetD ({it = S.VarP x; at; _}, e) ->
     { I.vis = f.S.vis;
-      name = S.Name x.it @@ at;
+      name = I.Name x.it @@ at;
       id = x;
       mut = S.Const @@ at;
       exp = exp e;
     }
   | S.VarD (x, e) ->
     { I.vis = f.S.vis;
-      name = S.Name x.it @@ x.at;
+      name = I.Name x.it @@ x.at;
       id = x;
       mut = S.Var @@ x.at;
       exp = exp e;
@@ -127,7 +127,7 @@ and exp_field' (f : S.exp_field') =
   | S.FuncD (_, x, _, _, _, _)
   | S.ClassD (x, _, _, _, _, _, _) ->
     { I.vis = f.S.vis;
-      name = S.Name x.it @@ x.at;
+      name = I.Name x.it @@ x.at;
       id = x;
       mut = S.Const @@ x.at;
       exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};

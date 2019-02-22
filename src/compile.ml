@@ -1214,7 +1214,7 @@ module Object = struct
   let size_field = Int32.add Tagged.header_size 0l
 
   (* We use the same hashing function as Ocaml would *)
-  let hash_field_name ({it = Syntax.Name s; _}) =
+  let hash_field_name ({it = Name s; _}) =
     Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
@@ -1228,7 +1228,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun ({it = Syntax.Name s;_} as n,_) -> (hash_field_name n, s)) |>
+      List.map (fun ({it = Name s;_} as n,_) -> (hash_field_name n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1249,10 +1249,10 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-     let hash_position env {it = Syntax.Name n; _} =
+     let hash_position env {it = Name n; _} =
          let i = FieldEnv.find n name_pos_map in
          Int32.add header_size (Int32.mul 2l i) in
-     let field_position env {it = Syntax.Name n; _} =
+     let field_position env {it = Name n; _} =
          let i = FieldEnv.find n name_pos_map in
          Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
@@ -1318,7 +1318,7 @@ module Object = struct
     else idx_hash_raw env
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
-  let is_mut_field env obj_type ({it = Syntax.Name s; _}) =
+  let is_mut_field env obj_type ({it = Name s; _}) =
     let _, fields = Type.as_obj_sub "" obj_type in
     let field_typ = Type.lookup_field s fields in
     let mut = Type.is_mut field_typ in
@@ -1581,7 +1581,7 @@ module Array = struct
             set_ni ^^
 
             Object.lit_raw env1
-              [ nr_ (Syntax.Name "next"), fun _ -> get_ni ]
+              [ nr_ (Name "next"), fun _ -> get_ni ]
        ) in
 
     E.define_built_in env "array_keys_next"
@@ -3297,7 +3297,7 @@ and compile_exp (env : E.t) exp =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Array.idx env ^^
     load_ptr
-  | DotE (e, ({it = Syntax.Name n;_} as name)) ->
+  | DotE (e, ({it = Name n;_} as name)) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
     begin match Array.fake_object_idx env n with
@@ -3311,7 +3311,7 @@ and compile_exp (env : E.t) exp =
         ; Tagged.Array, get_o ^^ array_code ]
        )
     end
-  | ActorDotE (e, ({it = Syntax.Name n;_} as name)) ->
+  | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else
     compile_exp_as env SR.UnboxedReference e ^^
@@ -3509,9 +3509,9 @@ and compile_exp (env : E.t) exp =
 
     G.loop_ (ValBlockType None) (
       get_i ^^
-      Object.load_idx_immut env1 (nr_ (Syntax.Name "next")) ^^
+      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
       get_i ^^
-      Object.load_idx_immut env1 (nr_ (Syntax.Name "next")) ^^
+      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
       Closure.call_closure env1 (Value.local_cc 0 1) ^^
       let (set_oi, get_oi) = new_local env "opt" in
       set_oi ^^
@@ -3538,7 +3538,7 @@ and compile_exp (env : E.t) exp =
     SR.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
-  | NewObjE ({ it = Type.Object _ (*sharing*); _}, fs, _) ->
+  | NewObjE (Type.Object _ (*sharing*), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (name, id) -> (name, fun env ->

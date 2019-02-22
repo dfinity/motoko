@@ -325,8 +325,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check (T.is_obj t2) "bad annotation (object type expected)";
     t1 <: t2;
     t0 <: t;
-  | ActorDotE(exp1,{it = Syntax.Name n;_})
-  | DotE (exp1, {it = Syntax.Name n;_}) ->
+  | ActorDotE(exp1,{it = Name n;_})
+  | DotE (exp1, {it = Name n;_}) ->
     begin
       check_exp env exp1;
       let t1 = typ exp1 in
@@ -513,10 +513,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.unit <: t
   | NewObjE (sort, labids, t0) ->
     let t1 =
-      T.Obj(sort.it,
+      T.Obj(sort,
             List.sort T.compare_field (List.map (fun (name,id) ->
-                                           T.{lab = Syntax.string_of_name name.it;
-                                              typ = T.Env.find id.it env.vals}) labids))
+                                           let Name lab = name.it in
+                                           T.{lab; typ = T.Env.find id.it env.vals}) labids))
     in
     let t2 = T.promote t in
     check (T.is_obj t2) "bad annotation (object type expected)";
@@ -632,7 +632,7 @@ and is_func_dec dec =
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name; exp; mut; vis} = field.it in
+  let {id; name = {it = Name name; _}; exp; mut; vis} = field.it in
   let t = try T.Env.find id.it env.vals with
           | Not_found -> error env field.at "field typing not found"
   in
@@ -654,7 +654,7 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
   let tfs' =
     if vis.it = Syntax.Private
     then tfs
-    else T.{lab = Syntax.string_of_name name.it; typ = t} :: tfs
+    else T.{lab = name; typ = t} :: tfs
   in tfs', ve'
 
 

@@ -415,16 +415,16 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, id, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it id T.Pre fields exp.at
-  | DotE (exp1, sr, {it = Name l; _}) ->
+  | DotE (exp1, sr, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let s, tfs = T.as_obj_sub l t1 in
+      let s, tfs = T.as_obj_sub id.it t1 in
       sr := s;
-      match List.find_opt (fun T.{lab; _} -> lab = l) tfs with
+      match List.find_opt (fun T.{lab; _} -> lab = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error env exp1.at "field name %s does not exist in type\n  %s"
-          l (T.string_of_typ_expand t1)
+          id.it (T.string_of_typ_expand t1)
     with Invalid_argument _ ->
       error env exp1.at "expected object type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)

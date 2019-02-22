@@ -4,15 +4,11 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
+
 (* Identifiers *)
 
 type id = string Source.phrase
 type con_id = (string, Type.con option) Source.annotated_phrase
-
-(* Names (not alpha-convertible), used for field and class names *)
-type name = name' Source.phrase
-and name' = Name of string
-let string_of_name (Name s ) = s
 
 
 (* Types *)
@@ -23,7 +19,7 @@ type obj_sort = Type.obj_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
-type typ = (typ',Type.typ) Source.annotated_phrase
+type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
@@ -136,7 +132,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ObjE of obj_sort * id * exp_field list     (* object *)
-  | DotE of exp * Type.obj_sort ref * name     (* object projection *)
+  | DotE of exp * Type.obj_sort ref * id       (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)

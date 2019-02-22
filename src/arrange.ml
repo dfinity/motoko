@@ -5,7 +5,7 @@ open Wasm.Sexpr
 let ($$) head inner = Node (head, inner)
 
 let rec exp e = match e.it with
-  | VarE i              -> "VarE"    $$ [id i]
+  | VarE x              -> "VarE"    $$ [id x]
   | LitE l              -> "LitE"    $$ [lit !l]
   | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; binop bo; exp e2]
@@ -13,7 +13,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
-  | DotE (e, sr, n)         -> "DotE"    $$ [exp e; obj_sort' !sr; name n]
+  | DotE (e, sr, x)         -> "DotE"    $$ [exp e; obj_sort' !sr; id x]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
@@ -40,13 +40,13 @@ let rec exp e = match e.it with
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
-  | VarP i        -> "VarP"       $$ [ id i]
+  | VarP x        -> "VarP"       $$ [id x]
   | TupP ps       -> "TupP"       $$ List.map pat ps
-  | AnnotP (p, t) -> "AnnotP"     $$ [ pat p; typ t]
-  | LitP l        -> "LitP"       $$ [ lit !l ]
-  | SignP (uo, l) -> "SignP"      $$ [ unop uo ; lit !l ]
-  | OptP p        -> "OptP"       $$ [ pat p ]
-  | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
+  | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
+  | LitP l        -> "LitP"       $$ [lit !l]
+  | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
+  | OptP p        -> "OptP"       $$ [pat p]
+  | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
@@ -61,7 +61,7 @@ and lit (l:lit) = match l with
   | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
-  | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; prim p]
+  | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; prim p ]
 
 and unop uo = match uo with
   | PosOp -> Atom "PosOp"
@@ -143,25 +143,23 @@ and typ t = match t.it with
 and id i = Atom i.it
 and con_id i = Atom i.it         
 
-and name n = Atom (string_of_name n.it)
-
 and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
-  | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | FuncD (s, i, tp, p, t, e) ->
+  | VarD (x, e) -> "VarD" $$ [id x; exp e]
+  | FuncD (s, x, tp, p, t, e) ->
     "FuncD" $$ [
       Atom (Type.string_of_typ d.note.note_typ);
       Atom (sharing s.it);
-      id i] @
+      id x] @
       List.map typ_bind tp @ [
       pat p;
       typ t;
       exp e
     ]
-  | TypD (i, tp, t) ->
-    "TypD" $$ [con_id i] @ List.map typ_bind tp @ [typ t]
-  | ClassD (i, j, tp, s, p, i', efs) ->
-    "ClassD" $$ id i :: con_id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+  | TypD (x, tp, t) ->
+    "TypD" $$ [con_id x] @ List.map typ_bind tp @ [typ t]
+  | ClassD (x, j, tp, s, p, i', efs) ->
+    "ClassD" $$ id x :: con_id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

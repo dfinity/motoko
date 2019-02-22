@@ -13,21 +13,21 @@ type var = exp
 
 (* Mutabilities *)
 
-val varM : Syntax.mut
-val constM : Syntax.mut
+val varM : mut
+val constM : mut
 
 (* Field names *)
 
-val nameN : string -> Syntax.name
-val nextN : Syntax.name
+val nameN : string -> name
+val nextN : name
 
 (* Identifiers *)
 
-val fresh_lab : unit -> Syntax.id
+val fresh_lab : unit -> id
 val fresh_id : typ -> var
 
-val idE : Syntax.id -> typ -> exp
-val id_of_exp : exp -> Syntax.id
+val idE : id -> typ -> exp
+val id_of_exp : exp -> id
 
 (* Patterns *)
 
@@ -52,25 +52,25 @@ val boolE : bool -> exp
 val callE : exp -> typ list -> exp -> typ -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
-val dotE : exp -> Syntax.name -> typ -> exp
+val dotE : exp -> name -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val tupE : exp list -> exp
-val breakE: Syntax.id -> exp -> typ -> exp
+val breakE: id -> exp -> typ -> exp
 val retE: exp -> typ -> exp
 val assignE : exp -> exp -> exp
-val labelE : Syntax.id -> typ -> exp -> exp
+val labelE : id -> typ -> exp -> exp
 val loopE: exp -> exp option -> exp
 
-val declare_idE : Syntax.id -> typ -> exp -> exp
-val define_idE : Syntax.id -> Syntax.mut -> exp -> exp
-val newObjE : Syntax.obj_sort -> (Syntax.name * Syntax.id) list -> typ -> exp
+val declare_idE : id -> typ -> exp -> exp
+val define_idE : id -> mut -> exp -> exp
+val newObjE : obj_sort -> (name * id) list -> typ -> exp
 
 (* Declarations *)
 
 val letP : pat -> exp -> dec   (* TBR: replace letD? *)
 
 val letD : var -> exp -> dec
-val varD : Syntax.id -> exp -> dec
+val varD : id -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var  -> var list -> exp -> dec

@@ -344,7 +344,7 @@ exp_post :
   | e=exp_post s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
-    { DotE(e, dummy_obj_sort(), {x with it = Name x.it}) @? at $sloc }
+    { DotE(e, dummy_obj_sort(), x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { let typ_args = Lib.Option.get tso [] in
       CallE(e1, typ_args, e2) @? at $sloc }
