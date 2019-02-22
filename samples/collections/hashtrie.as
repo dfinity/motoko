@@ -26,15 +26,19 @@
 //  - replace operation (remove+insert via a single traversal)
 //  - basic encoding of sets, and some set operations
 //  - basic tests (and primitive debugging) for set operations
+//  - write trie operations that operate over pairs of tries:
+//    for set union, difference and intersection.
 
 // TODO-Matthew:
 //
-//  - write trie operations that operate over pairs of tries:
-//    for set union, difference and intersection.
-//
 //  - (more) regression tests for everything that is below
 //
-//  - handle hash collisions gracefully
+//  - handle hash collisions gracefully; 
+//    ==> Blocked on AS module support, for using List module.
+//
+//  - adapt the path length of each subtree to its cardinality; avoid
+//    needlessly long paths, or paths that are too short for their
+//    subtree's size.
 //
 //  - iterator objects, for use in 'for ... in ...' patterns
 
