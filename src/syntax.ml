@@ -117,8 +117,7 @@ and pat_field' = {id : id; pat : pat}
 type vis = vis' Source.phrase
 and vis' = Public | Private
 
-(* Filled in for overloaded operators and blocks during type checking. Initially Type.Pre. *)
-type op_typ = Type.typ ref
+type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
