@@ -154,13 +154,17 @@ and decs ds =
       typD :: (phrase' dec' d) :: (decs ds)
     | _ -> (phrase' dec' d) :: (decs ds)
 
-and dec' at n d = match d with
+and dec' at n d =
+  let param p = match p.it with
+    | S.ParP p1 -> pat { p with it = S.TupP [p1] }
+    | _ -> pat p
+  in match d with
   | S.ExpD e -> I.ExpD (exp e)
   | S.LetD (p, e) -> I.LetD (pat p, exp e)
   | S.VarD (i, e) -> I.VarD (i, exp e)
   | S.FuncD (s, i, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ n.S.note_typ in
-    I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
+    I.FuncD (cc, i, typ_binds tbs, param p, ty.note, exp e)
   | S.TypD (con_id, typ_bind, t) ->
     let c = Lib.Option.value con_id.note in
     I.TypD c
@@ -179,7 +183,7 @@ and dec' at n d = match d with
         T.open_ inst rng
       | _ -> assert false
     in
-    I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
+    I.FuncD (cc, fun_id, typ_binds tbs, param p, obj_typ, (* TBR *)
              { it = obj at s (Some fun_id) self_id es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
