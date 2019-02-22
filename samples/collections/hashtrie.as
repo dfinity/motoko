@@ -398,6 +398,12 @@ func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> {
 // This operation generalizes the notion of "set union" to finite maps.
 // Produces a "disjunctive image" of the two tries, where the values of
 // matching keys are combined with the given binary operator.
+//
+// For unmatched key-value pairs, the operator is still applied to
+// create the value in the image.  To accomodate these various
+// situations, the operator accepts optional values, but is never
+// applied to (null, null).
+//
 func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X) : Trie<K,X> {
   func recL(t:Trie<K,V>) : Trie<K,X> {
     switch t {
@@ -468,7 +474,7 @@ func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(?V,?W)->X)
 // This operation generalizes the notion of "set intersection" to
 // finite maps.  Produces a "conjuctive image" of the two tries, where
 // the values of matching keys are combined with the given binary
-// operator, and unmatched key-value pairrs are not present in the output.
+// operator, and unmatched key-value pairs are not present in the output.
 func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) : Trie<K,X> {
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
