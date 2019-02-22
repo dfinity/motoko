@@ -515,6 +515,10 @@ func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool, vbin:(V,W)->X) :
   rec(tl, tr)
 };
 
+// This operation gives a recursor for the internal structure of
+// tries.  Many common operations are instantiations of this function,
+// either as clients, or as hand-specialized versions (e.g., see map,
+// mapFilter, exists and forAll below).
 func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
   func rec(t:Trie<K,V>) : X {
     switch t {
@@ -529,6 +533,53 @@ func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
   rec(t)
 };
 
+// Fold over the key-value pairs of the trie, using an accumulator.
+// The key-value pairs have no reliable or meaningful ordering.
+func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
+  func rec(t:Trie<K,V>, x:X) : X {
+    switch t {
+    case (null) x;
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) { f(k,v,x) };
+           case null { rec(n.left,rec(n.right,x)) };
+           }
+    };
+    }};
+  rec(t, x)
+};
+
+// specialized foldUp operation.
+func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+  func rec(t:Trie<K,V>) : Bool {
+    switch t {
+    case (null) { false };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) { f(k,v) };
+           case null { rec(n.left) or rec(n.right) };
+           }
+    };
+    }};
+  rec(t)
+};
+
+// specialized foldUp operation.
+func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+  func rec(t:Trie<K,V>) : Bool {
+    switch t {
+    case (null) { true };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) { f(k,v) };
+           case null { rec(n.left) and rec(n.right) };
+           }
+    };
+    }};
+  rec(t)
+};
+
+// specialized foldUp operation.
 // Test for "deep emptiness": subtrees that have branching structure,
 // but no leaves.  These can result from naive filtering operations;
 // filter uses this function to avoid creating such subtrees.
@@ -636,6 +687,8 @@ func equalStructure<K,V>(
     }};
   rec(tl, tr)
 };
+
+
 
 ///////////////////////////////////////////////////////////////////////
 
