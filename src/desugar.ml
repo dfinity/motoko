@@ -124,11 +124,17 @@ and exp_field' (f : S.exp_field') =
       mut = S.Var @@ x.at;
       exp = exp e;
     }
-  | S.FuncD (_, x, _, _, _, _)
-  | S.ClassD (x, _, _, _, _, _, _) ->
+  | S.FuncD (_, x, _, _, _, _) ->
     { I.vis = f.S.vis;
       name = I.Name x.it @@ x.at;
       id = x;
+      mut = S.Const @@ x.at;
+      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
+    }
+  | S.ClassD (x, _, _, _, _, _) ->
+    { I.vis = f.S.vis;
+      name = I.Name x.it @@ x.at;
+      id = {x with note = ()};
       mut = S.Const @@ x.at;
       exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
     }
@@ -154,8 +160,8 @@ and decs ds =
   | [] -> []
   | d::ds ->
     match d.it with
-    | S.ClassD(_, con_id, _, _, _, _, _) ->
-      let c = Lib.Option.value con_id.note in
+    | S.ClassD(id, _, _, _, _, _) ->
+      let c = Lib.Option.value id.note in
       let typD = { it = I.TypD c;
                    at = d.at;
                    note = { S.note_typ = T.unit;
@@ -173,10 +179,11 @@ and dec' at n d = match d with
   | S.FuncD (s, i, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ n.S.note_typ in
     I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
-  | S.TypD (con_id, typ_bind, t) ->
-    let c = Lib.Option.value con_id.note in
+  | S.TypD (id, typ_bind, t) ->
+    let c = Lib.Option.value id.note in
     I.TypD c
-  | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
+  | S.ClassD (id, tbs, s, p, self_id, es) ->
+    let id' = {id with note = ()} in
     let cc = Value.call_conv_of_typ n.S.note_typ in
     let inst = List.map
                  (fun tb ->
@@ -191,8 +198,8 @@ and dec' at n d = match d with
         T.promote (T.open_ inst rng)
       | _ -> assert false
     in
-    I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some fun_id) self_id es obj_typ;
+    I.FuncD (cc, id', typ_binds tbs, pat p, obj_typ, (* TBR *)
+             { it = obj at s (Some id') self_id es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
 

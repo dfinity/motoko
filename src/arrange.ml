@@ -4,6 +4,8 @@ open Wasm.Sexpr
 
 let ($$) head inner = Node (head, inner)
 
+and id i = Atom i.it
+
 let rec exp e = match e.it with
   | VarE x              -> "VarE"    $$ [id x]
   | LitE l              -> "LitE"    $$ [lit !l]
@@ -140,11 +142,8 @@ and typ t = match t.it with
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
 
-and id i = Atom i.it
-and con_id i = Atom i.it         
-
 and dec d = match d.it with
-  | ExpD e ->      "ExpD" $$ [exp e ]
+  | ExpD e -> "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | FuncD (s, x, tp, p, t, e) ->
@@ -158,8 +157,8 @@ and dec d = match d.it with
       exp e
     ]
   | TypD (x, tp, t) ->
-    "TypD" $$ [con_id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, j, tp, s, p, i', efs) ->
-    "ClassD" $$ id x :: con_id j :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+    "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
+  | ClassD (x, tp, s, p, i', efs) ->
+    "ClassD" $$ id x :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

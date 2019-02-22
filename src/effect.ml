@@ -97,11 +97,9 @@ and infer_effect_dec dec =
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e
-  | TypD (v, tps, t) ->
-    T.Triv
-  | FuncD (s, v, tps, p, t, e) ->
-    T.Triv
-  | ClassD (v, l, tps, s, p, v', efs) ->
+  | TypD _
+  | FuncD _
+  | ClassD _ ->
     T.Triv
 
 (* effect inference on Ir *)

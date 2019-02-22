@@ -561,8 +561,8 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _)
-  | FuncD (_, id, _, _, _, _)
-  | ClassD (id, _, _, _, _, _, _) -> declare_id id
+  | FuncD (_, id, _, _, _, _) -> declare_id id
+  | ClassD (id, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -600,11 +600,11 @@ and interpret_dec env dec (k : V.value V.cont) =
     in
     define_id env id v;
     k v
-  | ClassD (id, _, _typbinds, sort, pat, id', fields) ->
-    let f = interpret_func env id pat
+  | ClassD (id, _typbinds, sort, pat, id', fields) ->
+    let f = interpret_func env {id with note = ()} pat
       (fun env' k' -> interpret_obj env' sort id' fields k') in
     let v = V.Func (V.call_conv_of_typ dec.note.note_typ, f) in
-    define_id env id v;
+    define_id env {id with note = ()} v;
     k v
 
 and interpret_decs env decs (k : V.value V.cont) =

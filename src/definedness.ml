@@ -150,7 +150,7 @@ and dec msgs d = match d.it with
   | FuncD (s, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ delayify (exp msgs e /// pat msgs p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, l, tp, s, p, i', efs) ->
+  | ClassD (i, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
 
 and decs msgs decs : f =

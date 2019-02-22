@@ -838,7 +838,8 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _)
   | FuncD (_, id, _, _, _, _) -> pub_val_id id xs
-  | ClassD (id, typ_id, _, _, _, _, _) -> pub_val_id id (pub_typ_id typ_id xs)
+  | ClassD (id, _, _, _, _, _) ->
+    pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
 
 and pub_pat pat xs : region T.Env.t * region T.Env.t =
@@ -930,7 +931,7 @@ and infer_dec env dec : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp
     end;
     t
-  | ClassD (id, typ_id, typ_binds, sort, pat, self_id, fields) ->
+  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
@@ -938,7 +939,8 @@ and infer_dec env dec : T.typ =
       let _, ve = infer_pat_exhaustive env' pat in
       let env'' =
         {env' with labs = T.Env.empty; rets = None; async = false} in
-      let self_typ = T.Con (T.Env.find typ_id.it env.typs, List.map (fun c -> T.Con (c, [])) cs) in
+      let self_typ =
+        T.Con (T.Env.find id.it env.typs, List.map (fun c -> T.Con (c, [])) cs) in
       ignore (infer_obj (adjoin_vals env'' ve) sort.it self_id self_typ fields dec.at)
     end;
     t
@@ -1010,7 +1012,7 @@ and gather_block_typdecs env decs : scope =
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
   | ExpD _ | LetD _ | VarD _ | FuncD _ -> scope
-  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
@@ -1041,7 +1043,7 @@ and infer_dec_typdecs env dec : con_env =
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     infer_id_typdecs env id c k
-  | ClassD (_, id, binds, sort, pat, self_id, fields) ->
+  | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
@@ -1075,9 +1077,10 @@ and gather_dec_valdecs env ve dec : val_env =
   | LetD (pat, _) ->
     gather_pat env ve pat
   | VarD (id, _)
-  | FuncD (_, id, _, _, _, _)
-  | ClassD (id, _ , _, _, _, _, _) ->
+  | FuncD (_, id, _, _, _, _) ->
     gather_id env ve id
+  | ClassD (id, _ , _, _, _, _) ->
+    gather_id env ve {id with note = ()}
 
 and gather_pat env ve pat : val_env =
   match pat.it with
@@ -1150,10 +1153,10 @@ and infer_dec_valdecs env dec : val_env =
       (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
-  | ClassD (id, typ_id, typ_binds, sort, pat, self_id, fields) ->
+  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let c = T.Env.find typ_id.it env.typs in
+    let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in

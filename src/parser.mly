@@ -152,14 +152,16 @@ seplist1(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline con_id :
+%inline typ_id :
   | id=ID { id @= at $sloc }
 
 %inline id_opt :
-  | id=ID
-    { fun _ _ -> id @@ at $sloc }
-  | (* empty *)
-    { fun sort sloc -> anon sort (at sloc) @@ at sloc }
+  | id=id { fun _ _ -> id }
+  | (* empty *) { fun sort sloc -> anon sort (at sloc) @@ at sloc }
+
+%inline typ_id_opt :
+  | id=typ_id { fun _ _ -> id }
+  | (* empty *) { fun sort sloc -> anon sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -531,18 +533,15 @@ dec_var :
 dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fd=func_dec
     { (fd s (xf "func" $sloc)).it @? at $sloc }
-  | TYPE x=con_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
-      in
-      let id = xf "class" $sloc in
-      let con_id = id.it @= at $sloc in
-      ClassD(id, con_id, tps, s, p, x, efs') @? at $sloc }
+      in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
 
 dec :
   | d=dec_var
