@@ -1,0 +1,9 @@
+unary-tuple-arg-fail.as:2.7-2.12: warning, this pattern does not cover all possible values
+unary-tuple-arg-fail.as:4.27-4.28: type error, expression of type
+  (((),)) -> ()
+cannot produce expected type
+  (()) -> ()
+unary-tuple-arg-fail.as:5.28-5.29: type error, expression of type
+  ((Nat,)) -> ()
+cannot produce expected type
+  Nat -> ()
