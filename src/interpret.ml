@@ -543,7 +543,7 @@ and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
 and interpret_exp_fields env s fields ve (k : V.value V.cont) =
   match fields with
   | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
-  | {it = {dec; vis}; _}::fields' ->
+  | {it = {dec; _}; _}::fields' ->
     interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
 
 

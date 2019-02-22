@@ -1042,7 +1042,7 @@ and infer_dec_typdecs env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    infer_id_typdecs env id c k
+    infer_id_typdecs id c k
   | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1052,9 +1052,9 @@ and infer_dec_typdecs env dec : con_env =
     let t = infer_obj (adjoin_vals env' ve) sort.it self_id self_typ fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    infer_id_typdecs env id c k
+    infer_id_typdecs id c k
 
-and infer_id_typdecs env id c k : con_env =
+and infer_id_typdecs id c k : con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) ->
