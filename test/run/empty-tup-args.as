@@ -12,17 +12,20 @@ let _ : [() -> ()] = [f];
 let gh : [(()) -> ()] = [g, g1, h, h1];
 
 f();
-g(); // accepted, because "At calls there is an implicit coercion
+//g(); // accepted, because "At calls there is an implicit coercion
      //                    between tuples and n-ary arguments"
 h(); // dito
-gh[0](); // dito
-gh[1](); // dito
+//gh[0](); // dito
+//gh[1](); // dito
 
 // Correct:
-g(());
+//g(());
 h(());
-gh[0](());
-gh[1](());
+h1(());
+//gh[0](());
+//gh[1](());
+gh[2](());
+gh[3](());
 
 func j(a:Int) {};
 func k(a:(Int)) {};
@@ -76,7 +79,7 @@ let _ : [(Int, (Int,)) -> ()] = [r, s];
 // redundant parens for anonymous functions
 
 let _ = (func (a:Nat, ()) : Nat { a }) (42, ());
-let _ = (func ((a:Nat, (()))) : Nat { a }) (42, ());
+//let _ = (func ((a:Nat, (()))) : Nat { a }) (42, ());
 
 // test that switch expressions are also behave correctly with redundant parens
 
