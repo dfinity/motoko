@@ -43,10 +43,11 @@ and exp' at note = function
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, i, es) ->
     obj at s None i es note.S.note_typ
-  | S.DotE (e, sr, x) ->
-    begin match (!sr) with
-    | Type.Actor -> I.ActorDotE (exp e, {x with it = I.Name x.it})
-    | _ -> I.DotE (exp e, {x with it = I.Name x.it})
+  | S.DotE (e, x) ->
+    let n = {x with it = I.Name x.it} in
+    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    | Type.Actor, _ -> I.ActorDotE (exp e, n)
+    | _ -> I.DotE (exp e, n)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->

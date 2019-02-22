@@ -95,7 +95,7 @@ let rec exp msgs e : f = match e.it with
     | Type.Actor -> eagerify f
     | Type.Object _ -> f
     end
-  | DotE (e, _t, i)     -> exp msgs e
+  | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]

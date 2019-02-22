@@ -415,11 +415,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, id, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it id T.Pre fields exp.at
-  | DotE (exp1, sr, id) ->
+  | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let s, tfs = T.as_obj_sub id.it t1 in
-      sr := s;
+      let _, tfs = T.as_obj_sub id.it t1 in
       match List.find_opt (fun T.{lab; _} -> lab = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
