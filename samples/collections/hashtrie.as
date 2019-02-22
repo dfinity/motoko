@@ -547,7 +547,7 @@ func isEmpty<K,V>(t:Trie<K,V>) : Bool {
   rec(t)
 };
 
-func filter<K,V,X>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
+func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
   func rec(t:Trie<K,V>) : Trie<K,V> {
     switch t {
     case (null) { null };
@@ -572,6 +572,34 @@ func filter<K,V,X>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
                     case (false, true)  r;
                     case (true,  false) l;
                     case (false, false) makeBin<K,V>(l, r);
+                  }
+                };
+           }
+         };
+    }
+  };
+  rec(t)
+};
+
+func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?(K,W)) : Trie<K,W> {
+  func rec(t:Trie<K,V>) : Trie<K,W> {
+    switch t {
+    case (null) { null };
+    case (?n) {
+           switch (matchLeaf<K,V>(t)) {
+           case (?(k,v)) {
+                  switch (f(k,v)) {
+                    case (null) null;
+                    case (?(k,w)) { makeLeaf<K,W>(k,w) };
+                }};
+           case null {
+                  let l = rec(n.left);
+                  let r = rec(n.right);
+                  switch (isEmpty<K,W>(l),isEmpty<K,W>(r)) {
+                    case (true,  true)  null;
+                    case (false, true)  r;
+                    case (true,  false) l;
+                    case (false, false) makeBin<K,W>(l, r);
                   }
                 };
            }
