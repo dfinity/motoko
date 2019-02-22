@@ -57,8 +57,13 @@ and exp' at note = function
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
+  | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
-  | S.BlockE ds -> I.BlockE (decs ds)
+  | S.BlockE ds ->
+    let ds' = decs ds in
+    if Type.is_unit note.S.note_typ && not (is_expD (Lib.List.last ds'))
+    then I.BlockE (ds' @ [expD (tupE [])])
+    else I.BlockE (ds')
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)

@@ -388,7 +388,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.open_ insts t3 <: t;
   | BlockE decs ->
     let t1, scope = type_block env decs exp.at in
-    if t <> T.unit then t1 <: t;
+    t1 <: t;
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
     typ exp1 <: T.bool;

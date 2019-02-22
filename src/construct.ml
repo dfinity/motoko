@@ -269,6 +269,8 @@ let varD x exp = { it = VarD (x, exp);
 
 let expD exp =  { exp with it = ExpD exp }
 
+let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
+
 
 (* let expressions (derived) *)
 

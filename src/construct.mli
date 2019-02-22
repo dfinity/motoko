@@ -75,6 +75,8 @@ val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var  -> var list -> exp -> dec
 
+val is_expD : dec -> bool
+
 (* Continuations *)
 
 val answerT : typ
