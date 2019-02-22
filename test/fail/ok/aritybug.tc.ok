@@ -1,0 +1,4 @@
+aritybug.as:17.25-17.26: type error, literal of type
+  Nat
+does not have expected type
+  (Int,)
