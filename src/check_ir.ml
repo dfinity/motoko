@@ -25,7 +25,7 @@ let immute_typ p =
 (* Scope *)
 
 type val_env = T.typ T.Env.t
-type con_env = T.Con.Set.t
+type con_env = T.ConSet.t
 
 type scope =
   { val_env : val_env;
@@ -34,7 +34,7 @@ type scope =
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
-    con_env = T.Con.Set.empty
+    con_env = T.ConSet.empty
   }
 
 (* Contexts (internal) *)
@@ -76,13 +76,13 @@ let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
 let add_typs c cs =
   { c with
-    cons = List.fold_right (fun c -> T.Con.Set.disjoint_add c) cs c.cons;
+    cons = List.fold_right (fun c -> T.ConSet.disjoint_add c) cs c.cons;
   }
 
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    cons = T.Con.Set.disjoint_union c.cons scope.con_env;
+    cons = T.ConSet.disjoint_union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
@@ -90,7 +90,7 @@ let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
 
 let adjoin_cons c ce =
   { c with
-    cons = T.Con.Set.disjoint_union c.cons ce;
+    cons = T.ConSet.disjoint_union c.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -130,9 +130,9 @@ let rec check_typ env typ : unit =
   | T.Var (s,i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c,typs) ->
-    if not (T.Con.Set.mem c env.cons) then
-       error env no_region "free type constructor %s" (T.Con.name c);
-    (match T.Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
+    if not (T.ConSet.mem c env.cons) then
+       error env no_region "free type constructor %s" (Con.name c);
+    (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
   | T.Any -> ()
@@ -146,7 +146,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -202,7 +202,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -210,7 +210,7 @@ and check_typ_binds env typ_binds : T.con list * con_env =
               check_typ env' bd)
             typ_binds
   in
-  cs, T.Con.Set.of_list cs
+  cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
   match tbs, typs with
@@ -677,13 +677,13 @@ and type_block_exps env decs : T.typ =
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
-  let ce = List.fold_right (fun c ce -> T.Con.Set.disjoint_add c ce) cs T.Con.Set.empty in
+  let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
   let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _,_ = check_typ_binds env binds in
   cs,ce
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = T.Con.name con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -716,14 +716,14 @@ and check_dec env dec  =
     check_sub env' dec.at (typ exp) t2;
     t0 <: t;
   | TypD c ->
-    check (T.Con.Set.mem c env.cons) "free type constructor";
+    check (T.ConSet.mem c env.cons) "free type constructor";
     let (binds,typ) =
-      match T.Con.kind c with
+      match Con.kind c with
       | T.Abs(binds,typ)
       | T.Def(binds,typ) -> (binds,typ)
     in
     let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
     check_typ env' (T.open_ ts  typ);
     T.unit <: t;
@@ -779,20 +779,20 @@ and gather_dec env scope dec : scope =
       | _ -> T.Returns
     in
     let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = T.Con.name c; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
     let ve' =  T.Env.add id.it t scope.val_env in
     { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
-      (not (T.Con.Set.mem c scope.con_env))
+      (not (T.ConSet.mem c scope.con_env))
       "duplicate definition of type in block";
-    let ce' = T.Con.Set.disjoint_add c scope.con_env in
+    let ce' = T.ConSet.disjoint_add c scope.con_env in
     { scope with con_env = ce' }
 
 (* Programs *)
 
-let check_prog scope ((decs, flavor) as prog) : unit =
+let check_prog scope phase ((decs, flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
    ignore (check_block env T.unit decs no_region)
@@ -800,12 +800,12 @@ let check_prog scope ((decs, flavor) as prog) : unit =
     let bt = Printexc.get_backtrace () in
     if !Flags.verbose
     then begin
-      Printf.eprintf "Ill-typed intermediate code:\n";
+      Printf.eprintf "Ill-typed intermediate code after %s:\n" phase;
       Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
       Printf.eprintf "%s" s;
       Printf.eprintf "%s" bt;
     end else begin
-      Printf.eprintf "Ill-typed intermediate code (use -v to see dumped IR):\n";
+      Printf.eprintf "Ill-typed intermediate code after %s (use -v to see dumped IR):\n" phase;
       Printf.eprintf "%s" s;
       Printf.eprintf "%s" bt;
     end;

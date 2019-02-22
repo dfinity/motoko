@@ -2,7 +2,7 @@ module type S =
 sig
   include Map.S
 
-  module Dom : Set.S with type elt = key
+  module Dom : Dom.S with type elt = key
 
   exception Clash of key
 
@@ -11,16 +11,16 @@ sig
   val from_list : (key * 'a) list -> 'a t
   val from_list2 : key list -> 'a list -> 'a t
   val adjoin : 'a t -> 'a t -> 'a t
+  val disjoint_add : key -> 'a -> 'a t -> 'a t (* raises Clash *)
   val disjoint_union : 'a t -> 'a t -> 'a t (* raises Clash *)
   val disjoint_unions : 'a t list -> 'a t (* raises Clash *)
-  val disjoint_add : key -> 'a -> 'a t -> 'a t (* raises Clash *)
 end
 
 module Make(X : Map.OrderedType) : S with type key = X.t =
 struct
   include Map.Make(X)
 
-  module Dom = Set.Make(X)
+  module Dom = Dom.Make(X)
 
   exception Clash of key
 

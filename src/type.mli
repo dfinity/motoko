@@ -2,7 +2,6 @@
 
 type lab = string
 type var = string
-type con
 
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
@@ -42,6 +41,7 @@ and typ =
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
+and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -104,31 +104,9 @@ val span : typ -> int option
 
 (* Constructors *)
 
-module Con :
-sig
-  val fresh : string -> kind -> con
-  val clone : con -> kind -> con
+val set_kind : con -> kind -> unit
 
-  val kind : con -> kind
-  val set_kind : con -> kind -> unit
-  val modify_kind : con -> (kind -> kind) -> unit
-
-  val eq : con -> con -> bool
-  val compare : con -> con -> int
-
-  val name : con -> string
-  val to_string : con -> string
-
-  module Set :
-  sig
-    include Set.S with type elt = con
-
-    exception Clash of elt
-
-    val disjoint_add : elt -> t -> t (* raises Clash *)
-    val disjoint_union : t -> t -> t (* raises Clash *)
-  end
-end
+module ConSet : Dom.S with type elt = con
 
 
 (* Normalization and Classification *)
@@ -137,7 +115,7 @@ val normalize : typ -> typ
 val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : Con.Set.t -> typ -> typ (* raise Unavoidable *)
+val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)

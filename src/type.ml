@@ -41,44 +41,21 @@ and typ =
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
+and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-and con = kind ref Con.t
-
 
 (* Constructors *)
 
-module Con =
-struct
-  include Con
+let set_kind c k =
+  match Con.kind c with
+  | Abs (_, Pre) -> Con.unsafe_set_kind c k
+  | _ -> raise (Invalid_argument "set_kind")
 
-  let fresh v k = Con.fresh v (ref k)
-  let clone c k = Con.clone c (ref k)
-
-  let kind c = !(Con.kind c)
-  let modify_kind c f = Con.kind c := f !(Con.kind c)
-  let set_kind c k =
-    match !(Con.kind c) with
-    | Abs (_, Pre) -> Con.kind c := k
-    | _ -> raise (Invalid_argument "set_kind")
-
-  module Set =
-  struct
-    include Set.Make(struct type t = con let compare = Con.compare end)
-
-    exception Clash of elt
-
-    let disjoint_add e set =
-      if mem e set then raise (Clash e)
-      else add e set
-    let disjoint_union set1 set2 =
-      fold (fun e s -> disjoint_add e s) set2 set1
-  end
-
-  module Env = Env.Make(struct type t = con let compare = Con.compare end)
-end
+module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
+module ConSet = ConEnv.Dom
 
 
 (* Short-hands *)
@@ -155,19 +132,19 @@ and shift_field i n {lab; typ} =
 (* First-order substitution *)
 
 let rec subst sigma t =
-  if sigma = Con.Env.empty then t else
+  if sigma = ConEnv.empty then t else
   match t with
   | Prim _
   | Var _ -> t
   | Con (c, ts) ->
-    (match Con.Env.find_opt c sigma with
+    (match ConEnv.find_opt c sigma with
     | Some t -> assert (List.length ts = 0); t
     | None -> Con (c, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
@@ -191,7 +168,7 @@ and subst_field sigma {lab; typ} =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let sigma = List.fold_right2 Con.Env.add cs ts Con.Env.empty in
+  let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
 let close_binds cs tbs =
@@ -233,7 +210,7 @@ let open_binds tbs =
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun c k -> Con.set_kind c k) cs ks;
+  List.iter2 (fun c k -> set_kind c k) cs ks;
   ts
 
 
@@ -361,7 +338,7 @@ exception Unavoidable of con
 let rec avoid' cons = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
-    if Con.Set.mem c cons
+    if ConSet.mem c cons
     then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
       | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
@@ -392,7 +369,7 @@ and avoid_field cons {lab; typ} =
   {lab; typ = avoid' cons typ}
 
 let avoid cons t =
-  if cons = Con.Set.empty then t else
+  if cons = ConSet.empty then t else
   avoid' cons t
 
 
