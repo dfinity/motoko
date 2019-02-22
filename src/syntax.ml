@@ -194,6 +194,11 @@ and prog' = dec list
 
 (* n-ary arguments/result sequences *)
 
+let seq_from_pat (pat:pat) t =
+  match pat.Source.it with
+        | TupP ps -> Type.as_seq t
+        | _ -> [t]
+
 let seqT ts =
   match ts with
   | [t] -> t

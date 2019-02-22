@@ -1185,7 +1185,7 @@ and infer_dec_valdecs env dec : val_env =
           (T.string_of_typ_expand t2)
       end;
     end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts1 = seq_from_pat pat t1 in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
@@ -1202,7 +1202,7 @@ and infer_dec_valdecs env dec : val_env =
     let env' = adjoin_typs env te ce in
     let c = T.Env.find con_id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
-    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
+    let ts1 = seq_from_pat pat t1 in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))

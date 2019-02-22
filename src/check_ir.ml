@@ -768,13 +768,11 @@ and gather_dec env scope dec : scope =
     let cs = List.map (fun tb -> tb.it.con) typ_binds in
     let t1 = pat.note in
     let t2 = typ in
-    let ts1 =
-      match pat.it with
-      |  TupP _ ->
-         T.as_seq t1
-      | _ -> [t1]
+    let ts1 = match call_conv.Value.n_args with
+      | 1 -> [t1]
+      | _ -> T.as_seq t1
     in
-    let ts2 = match call_conv.Value.n_res  with
+    let ts2 = match call_conv.Value.n_res with
       | 1 -> [t2]
       | _ -> T.as_seq t2
     in

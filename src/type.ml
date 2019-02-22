@@ -69,7 +69,8 @@ let seq ts =
     | ts -> Tup ts
 
 let as_seq t =
-    match t with
+  match t with
+    | Tup [_] -> [t]
     | Tup ts -> ts
     | t -> [t]
 
