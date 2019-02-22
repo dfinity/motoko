@@ -6,11 +6,19 @@ type 'a phrase = ('a, Syntax.typ_note) Source.annotated_phrase
 type typ_bind' = {con : Type.con; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
+type id = Syntax.id
+type lit = Syntax.lit
+type unop = Syntax.unop
+type binop = Syntax.binop
+type relop = Syntax.relop
+type mut = Syntax.mut
+type vis = Syntax.vis
+
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
-  | VarP of Syntax.id                          (* variable *)
-  | LitP of Syntax.lit                         (* literal *)
+  | VarP of id                                 (* variable *)
+  | LitP of lit                                (* literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
@@ -20,44 +28,44 @@ and pat' =
 type exp = exp' phrase
 and exp' =
   | PrimE of string                            (* primitive *)
-  | VarE of Syntax.id                          (* variable *)
-  | LitE of Syntax.lit                         (* literal *)
-  | UnE of Type.typ * Syntax.unop * exp        (* unary operator *)
-  | BinE of                                    (* binary operator *)
-      Type.typ * exp * Syntax.binop * exp
-  | RelE of                                    (* relational operator *)
-      Type.typ * exp * Syntax.relop * exp
+  | VarE of id                                 (* variable *)
+  | LitE of lit                                (* literal *)
+  | UnE of Type.typ * unop * exp               (* unary operator *)
+  | BinE of Type.typ * exp * binop * exp       (* binary operator *)
+  | RelE of Type.typ * exp * relop * exp       (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ActorE of                                  (* actor *)
-      Syntax.id * exp_field list * Type.typ
-  | DotE of exp * Syntax.name                  (* object projection *)
-  | ActorDotE of exp * Syntax.name             (* actor field access *)
+  | ActorE of id * exp_field list * Type.typ   (* actor *)
+  | DotE of exp * name                         (* object projection *)
+  | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
-  | ArrayE of Syntax.mut * Type.typ * exp list  (* array *)
+  | ArrayE of mut * Type.typ * exp list        (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
-      Value. call_conv * exp * Type.typ list * exp
-  | BlockE of dec list * Type.typ              (* block *)
+      Value.call_conv * exp * Type.typ list * exp
+  | BlockE of dec list                         (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)
   | LoopE of exp * exp option                  (* do-while loop *)
   | ForE of pat * exp * exp                    (* iteration *)
-  | LabelE of Syntax.id * Type.typ * exp       (* label *)
-  | BreakE of Syntax.id * exp                  (* break *)
+  | LabelE of id * Type.typ * exp              (* label *)
+  | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | DeclareE of Syntax.id * Type.typ * exp     (* local promise *)
-  | DefineE of Syntax.id * Syntax.mut * exp    (* promise fulfillment *)
+  | DeclareE of id * Type.typ * exp            (* local promise *)
+  | DefineE of id * mut * exp                  (* promise fulfillment *)
   | NewObjE of                                 (* make an object, preserving mutable identity *)
-      Syntax.obj_sort * (Syntax.name * Syntax.id) list * Type.typ
+      Type.obj_sort * (name * id) list * Type.typ
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {name : Syntax.name; id : Syntax.id; exp : exp; mut : Syntax.mut; priv : Syntax.priv}
+and exp_field' = {name : name; id : id; exp : exp; mut : mut; vis : vis}
+
+and name = name' Source.phrase
+and name' = Name of string
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -69,9 +77,9 @@ and dec = dec' phrase
 and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
-  | VarD of Syntax.id * exp                    (* mutable *)
+  | VarD of id * exp                           (* mutable *)
   | FuncD of                                   (* function *)
-      Value.call_conv * Syntax.id * typ_bind list * pat * Type.typ * exp
+      Value.call_conv * id * typ_bind list * pat * Type.typ * exp
   | TypD of Type.con                           (* type *)
 
 

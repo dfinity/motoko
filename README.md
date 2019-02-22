@@ -27,6 +27,7 @@ git -C nix/dev submodule update --init --recursive
 
 To update, just run the last two commands again.
 
+
 ## Development using Nix
 
 This is the command that should always pass on master is the following, which builds everything:
@@ -52,6 +53,7 @@ nix-build -A js
 By default, `dvm` is built using the V8 engine. To build with the Haskell
 engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
+
 ## Development without Nix
 
 You can get a development environment that is independent of nix (although
@@ -68,7 +70,7 @@ installing all required tools without nix is out of scope).
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
    ```
-   cd $(nix-build -Q -A wasm.src)
+   cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
  * Install the `wasm` tool, using
@@ -84,6 +86,7 @@ installing all required tools without nix is out of scope).
    ./update-dvm.sh
    ```
    which also updates the `dev` checkout.
+
 
 ## Create a coverage report
 

@@ -1,5 +1,8 @@
 (* Representation *)
 
+type lab = string
+type var = string
+
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
@@ -20,15 +23,14 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of string * int                       (* variable *)
+  | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of sharing * control *
-            bind list * typ list * typ list   (* function *)
+  | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
@@ -36,37 +38,13 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and bind = {var : string; bound : typ}
-and field = {name : string; typ : typ}
-
-(* cons and kinds *)
+and bind = {var : var; bound : typ}
+and field = {lab : lab; typ : typ}
 
 and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
-
-val set_kind : con -> kind -> unit
-
-module ConSet :
-sig
-  include Set.S with type elt = con
-  exception Clash of elt
-  val disjoint_add : elt -> t -> t (* raises Clash *)
-  val disjoint_union : t -> t -> t (* raises Clash *)
-end
-
-type con_set = ConSet.t
-
-(* field ordering *)
-
-val compare_field : field -> field -> int
-
-
-(* n-ary argument/result sequences *)
-
-val seq: typ list -> typ
-val as_seq : typ -> typ list
 
 
 (* Short-hands *)
@@ -115,9 +93,20 @@ val as_func_sub : int -> typ -> bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
+val seq : typ list -> typ
+val as_seq : typ -> typ list
+
 val lookup_field : string -> field list -> typ
+val compare_field : field -> field -> int
 
 val span : typ -> int option
+
+
+(* Constructors *)
+
+val set_kind : con -> kind -> unit
+
+module ConSet : Dom.S with type elt = con
 
 
 (* Normalization and Classification *)
@@ -126,7 +115,7 @@ val normalize : typ -> typ
 val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : con_set -> typ -> typ (* raise Unavoidable *)
+val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)
@@ -138,6 +127,7 @@ val sub : typ -> typ -> bool
 
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ
+
 
 (* First-order substitution *)
 

@@ -15,7 +15,7 @@ let constM = S.Const @@ no_region
 
 (* Field names *)
 
-let nameN s = S.Name s @@ no_region
+let nameN s = Name s @@ no_region
 
 let nextN = nameN "next"
 
@@ -95,7 +95,7 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE dec = { dec with it = BlockE ([dec], typ dec) }
+let decE dec = { dec with it = BlockE [dec] }
 
 let blockE decs =
   let rec typ_decs decs =
@@ -107,7 +107,7 @@ let blockE decs =
   let es = List.map eff decs in
   let typ = typ_decs decs in
   let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE (decs, typ);
+  { it = BlockE decs;
     at = no_region;
     note = {S.note_typ = typ;
             S.note_eff = e }
@@ -268,6 +268,8 @@ let varD x exp = { it = VarD (x, exp);
                  }
 
 let expD exp =  { exp with it = ExpD exp }
+
+let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
 
 
 (* let expressions (derived) *)

@@ -80,9 +80,8 @@ Productions marked * probably deferred to later versions.
 * # <id>                                             atom
 
 <exp-field> ::=                                object expression fields
-  private? <id> (: <typ>)? = <exp>                        immutable
-  private? var <id> (: <typ>)? = <exp>                    mutable
-  private? <id> <typ-params>? <pat> (: <typ>)? = <exp>    function (short-hand)
+  private? dec                                   field
+  private? <id> = <exp>                          short-hand
 ```
 
 ## Patterns

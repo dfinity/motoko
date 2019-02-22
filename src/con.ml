@@ -26,19 +26,15 @@ let fresh_stamp name =
   stamps := Stamps.add name (n + 1) !stamps;
   n
 
-let fresh name k =
-  {name; stamp = fresh_stamp name; kind = ref k}
-let clone c k =
-  { c with stamp = fresh_stamp c.name; kind = ref k } (* Does not change the stamp! *)
-
-let name c = c.name
+let fresh name k = {name; stamp = fresh_stamp name; kind = ref k}
+let clone c k = {c with stamp = fresh_stamp c.name; kind = ref k}
 
 let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
+let name c = c.name
 let to_string c =
   if c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
 
-let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)
 let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
-
+let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)

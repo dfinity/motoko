@@ -42,20 +42,11 @@ and exp' at note = function
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, i, es) ->
-    let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
-    let obj_typ =
-      T.Obj(s.it,
-            List.sort T.compare_field
-              (List.map (fun {it = { Syntax.name; exp; mut; priv; _}; _} ->
-                   let t = exp.note.S.note_typ in
-                   let t = if mut.it = Syntax.Var then Type.Mut t else t in
-                   { Type.name = S.string_of_name name.it;
-                     Type.typ = t }) public_es))
-    in
-    obj at s None i es obj_typ
-  | S.DotE (e, sr, n) ->
-    begin match (!sr) with
-    | Type.Actor -> I.ActorDotE (exp e, n)
+    obj at s None i es note.S.note_typ
+  | S.DotE (e, x) ->
+    let n = {x with it = I.Name x.it} in
+    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    | Type.Actor, _ -> I.ActorDotE (exp e, n)
     | _ -> I.DotE (exp e, n)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
@@ -67,8 +58,13 @@ and exp' at note = function
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
-  | S.BlockE ([{it = S.ExpD e; _}], _) -> exp' e.at e.note e.it
-  | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
+  | S.BlockE [] -> I.TupE []
+  | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
+  | S.BlockE ds ->
+    let ds' = decs ds in
+    if Type.is_unit note.S.note_typ && not (is_expD (Lib.List.last ds'))
+    then I.BlockE (ds' @ [expD (tupE [])])
+    else I.BlockE (ds')
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -85,23 +81,6 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
-
-and field_to_dec (f : S.exp_field) : Ir.dec =
-  let {it={S.id;S.exp=e;S.mut;_};at;note} = f in
-  let d = match mut.it with
-    | S.Const ->
-      letD (idE id (Effect.typ e))
-        (exp e)
-    | S.Var ->
-      varD id (exp e)
-  in
-  { d with at = at }
-
-and field_to_obj_entry (f : S.exp_field) =
-  match f.it.S.priv.it with
-  | S.Private -> []
-  | S.Public -> [ (f.it.S.name, f.it.S.id) ]
 
 and obj at s class_id self_id es obj_typ =
   match s.it with
@@ -109,21 +88,60 @@ and obj at s class_id self_id es obj_typ =
   | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
 
 and build_obj at class_id s self_id es obj_typ =
-  let self =  idE self_id obj_typ in
+  let self = idE self_id obj_typ in
+  let names =
+    match obj_typ with
+    | Type.Obj (_, fields) ->
+      List.map (fun {Type.lab; _} ->
+        I.Name lab @@ no_region, lab @@ no_region
+      ) fields
+    | _ -> assert false
+  in
   I.BlockE (
-      List.map (field_to_dec) es @
-        [ letD self
-            (newObjE s (List.concat (List.map field_to_obj_entry es)) obj_typ);
-	  expD self
-        ],
-      obj_typ)
+      List.map (fun ef -> dec ef.it.S.dec) es @
+        [ letD self (newObjE s.it names obj_typ);
+          expD self
+        ]
+  )
 
 and exp_fields fs = List.map exp_field fs
 
 and exp_field f = phrase exp_field' f
 
+(* TODO(joachim): push decs through IR properly and handle all cases. *)
 and exp_field' (f : S.exp_field') =
-  S.{ I.name = f.name; I.id = f.id; I.exp = exp f.exp; I.mut = f.mut; I.priv = f.priv }
+  match f.S.dec.it with
+  | S.LetD ({it = S.VarP x; at; _}, e) ->
+    { I.vis = f.S.vis;
+      name = I.Name x.it @@ at;
+      id = x;
+      mut = S.Const @@ at;
+      exp = exp e;
+    }
+  | S.VarD (x, e) ->
+    { I.vis = f.S.vis;
+      name = I.Name x.it @@ x.at;
+      id = x;
+      mut = S.Var @@ x.at;
+      exp = exp e;
+    }
+  | S.FuncD (_, x, _, _, _, _) ->
+    { I.vis = f.S.vis;
+      name = I.Name x.it @@ x.at;
+      id = x;
+      mut = S.Const @@ x.at;
+      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
+    }
+  | S.ClassD (x, _, _, _, _, _) ->
+    { I.vis = f.S.vis;
+      name = I.Name x.it @@ x.at;
+      id = {x with note = ()};
+      mut = S.Const @@ x.at;
+      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
+    }
+  | S.ExpD _ -> failwith "expressions not yet supported in objects"
+  | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
+  | S.TypD _ -> failwith "type definitions not yet supported in objects"
 
 
 and typ_binds tbs = List.map typ_bind tbs
@@ -143,8 +161,8 @@ and decs ds =
   | [] -> []
   | d::ds ->
     match d.it with
-    | S.ClassD(_, con_id, _, _, _, _, _) ->
-      let c = Lib.Option.value con_id.note in
+    | S.ClassD(id, _, _, _, _, _) ->
+      let c = Lib.Option.value id.note in
       let typD = { it = I.TypD c;
                    at = d.at;
                    note = { S.note_typ = T.unit;
@@ -154,6 +172,7 @@ and decs ds =
       typD :: (phrase' dec' d) :: (decs ds)
     | _ -> (phrase' dec' d) :: (decs ds)
 
+and dec d = phrase' dec' d
 and dec' at n d = match d with
   | S.ExpD e -> I.ExpD (exp e)
   | S.LetD (p, e) -> I.LetD (pat p, exp e)
@@ -161,10 +180,11 @@ and dec' at n d = match d with
   | S.FuncD (s, i, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ n.S.note_typ in
     I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
-  | S.TypD (con_id, typ_bind, t) ->
-    let c = Lib.Option.value con_id.note in
+  | S.TypD (id, typ_bind, t) ->
+    let c = Lib.Option.value id.note in
     I.TypD c
-  | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
+  | S.ClassD (id, tbs, s, p, self_id, es) ->
+    let id' = {id with note = ()} in
     let cc = Value.call_conv_of_typ n.S.note_typ in
     let inst = List.map
                  (fun tb ->
@@ -176,11 +196,11 @@ and dec' at n d = match d with
       match n.S.note_typ with
       | T.Func(s,c,bds,dom,[rng]) ->
         assert(List.length inst = List.length bds);
-        T.open_ inst rng
+        T.promote (T.open_ inst rng)
       | _ -> assert false
     in
-    I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some fun_id) self_id es obj_typ;
+    I.FuncD (cc, id', typ_binds tbs, pat p, obj_typ, (* TBR *)
+             { it = obj at s (Some id') self_id es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
 

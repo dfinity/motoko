@@ -101,7 +101,7 @@ and exp' env e  : exp' = match e.it with
                  expD (breakE label (tupE []) (typ e))]).it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
-  | BlockE (ds,ot)      -> BlockE (decs env ds, ot)
+  | BlockE ds           -> BlockE (decs env ds)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
   | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
@@ -162,9 +162,9 @@ and exp_field env (ef : exp_field) =
   let (mk_ef,env) = exp_field' env ef.it in
   ( { ef with it = mk_ef }, env)
 
-and exp_field' env { name = n; id = i; exp = e; mut; priv } =
+and exp_field' env { name = n; id = i; exp = e; mut; vis } =
   let env = bind env i None in
-  ((fun env1-> { name = n; id = i; exp = exp env1 e; mut; priv }),
+  ((fun env1 -> { name = n; id = i; exp = exp env1 e; mut; vis }),
    env)
 
 and exp_fields env efs  =

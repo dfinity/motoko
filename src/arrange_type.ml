@@ -53,5 +53,5 @@ and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]
 
 and typ_field (tf : Type.field) =
-  tf.name $$ [typ tf.typ]
+  tf.lab $$ [typ tf.typ]
 

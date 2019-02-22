@@ -41,7 +41,7 @@ and exp' rho e  = match e with
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (cc, e1, ts, e2)
                         -> CallE  (cc, exp rho e1, ts, exp rho e2)
-  | BlockE (ds, ot)     -> BlockE (decs rho ds, ot)
+  | BlockE ds           -> BlockE (decs rho ds)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
   | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
@@ -106,9 +106,9 @@ and exp_field rho (ef : exp_field) =
   let (mk_ef, rho) = exp_field' rho ef.it in
     ({ ef with it = mk_ef }, rho)
 
-and exp_field' rho {name; id; exp = e; mut; priv} =
+and exp_field' rho {name; id; exp = e; mut; vis} =
   let id', rho = id_bind rho id in
-  ((fun rho'-> { name; id = id'; exp = exp rho' e; mut; priv }),
+  ((fun rho'-> { name; id = id'; exp = exp rho' e; mut; vis }),
    rho)
 
 and exp_fields rho efs  =

@@ -95,12 +95,12 @@ let rec exp msgs e : f = match e.it with
     | Type.Actor -> eagerify f
     | Type.Object _ -> f
     end
-  | DotE (e, _t, i)     -> exp msgs e
+  | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
-  | BlockE (ds, _)      -> decs msgs ds
+  | BlockE ds           -> decs msgs ds
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
@@ -117,7 +117,6 @@ let rec exp msgs e : f = match e.it with
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
-  | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
@@ -139,7 +138,7 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 and cases msgs cs : f = unions (case msgs) cs
 
 and exp_field msgs (ef : exp_field) : fd
-  = (exp msgs ef.it.exp, S.singleton ef.it.id.it)
+  = dec msgs ef.it.dec
 
 and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
 
@@ -151,7 +150,7 @@ and dec msgs d = match d.it with
   | FuncD (s, i, tp, p, t, e) ->
     (M.empty, S.singleton i.it) +++ delayify (exp msgs e /// pat msgs p)
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, l, tp, s, p, i', efs) ->
+  | ClassD (i, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
 
 and decs msgs decs : f =

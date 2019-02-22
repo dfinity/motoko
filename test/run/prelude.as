@@ -1,6 +1,6 @@
-ignore(3);
+//ignore(3);
 ignore(new {});
-
+/*
 assert(abs(-3) == 3);
 
 var i = 0;
@@ -56,3 +56,4 @@ for (j in revrange(0, 0)) {
 for (j in revrange(1, 2)) {
   assert(false);
 };
+*/
