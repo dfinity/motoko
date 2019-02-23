@@ -21,7 +21,7 @@ EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
-SILENT=echo
+ECHO=echo
 
 while getopts "ads" o; do
     case "${o}" in
@@ -33,7 +33,7 @@ while getopts "ads" o; do
             EXTRA_ASC_FLAGS=--dfinity
             ;;
         s)
-            SILENT=true
+            ECHO=true
             ;;
     esac
 done
@@ -59,7 +59,7 @@ do
   out=_out
   ok=ok
 
-  $SILENT -n "$base:"
+  $ECHO -n "$base:"
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
@@ -69,7 +69,7 @@ do
   diff_files=
 
   # Typecheck
-  $SILENT -n " [tc]"
+  $ECHO -n " [tc]"
   $ASC $ASC_FLAGS --check $base.as > $out/$base.tc 2>&1
   tc_succeeded=$?
   diff_files="$diff_files $base.tc"
@@ -79,12 +79,12 @@ do
     if [ "$SKIP_RUNNING" != yes ]
     then
       # Interpret
-      $SILENT -n " [run]"
+      $ECHO -n " [run]"
       $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
       diff_files="$diff_files $base.run"
 
       # Interpret with lowering
-      $SILENT -n " [run-low]"
+      $ECHO -n " [run-low]"
       $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
       diff_files="$diff_files $base.run-low"
 
@@ -93,7 +93,7 @@ do
       diff_files="$diff_files $base.diff-low"
 
       # Interpret IR
-      $SILENT -n " [run-ir]"
+      $ECHO -n " [run-ir]"
       $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
       diff_files="$diff_files $base.run-ir"
 
@@ -103,7 +103,7 @@ do
     fi
 
     # Compile
-    $SILENT -n " [wasm]"
+    $ECHO -n " [wasm]"
     if [ $DFINITY = 'yes' ]
     then
       $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as <(echo 'print("Top-level code done.\n")') -o $out/$base.wasm 2> $out/$base.wasm.stderr
@@ -117,11 +117,11 @@ do
       then
         if [ $DFINITY = 'yes' ]
         then
-          $SILENT -n " [dvm]"
+          $ECHO -n " [dvm]"
           $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
           diff_files="$diff_files $base.dvm-run"
         else
-          $SILENT -n " [wasm-run]"
+          $ECHO -n " [wasm-run]"
           $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
           sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
           mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
@@ -130,7 +130,7 @@ do
       fi
     fi
   fi
-  $SILENT ""
+  $ECHO ""
 
   # normalize files
   for file in $diff_files
@@ -171,5 +171,5 @@ then
   echo "Some tests failed."
   exit 1
 else
-  $SILENT "All tests passed."
+  $ECHO "All tests passed."
 fi
