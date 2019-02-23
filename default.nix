@@ -91,6 +91,7 @@ rec {
     src = sourceByRegex ./. [
       "test/"
       "test/.*Makefile.*"
+      "test/quick.mk"
       "test/(run.*|fail)/"
       "test/(run.*|fail)/.*.as"
       "test/(run.*|fail)/ok/.*"
@@ -141,6 +142,7 @@ rec {
     src = sourceByRegex ./. [
       "test/"
       "test/.*Makefile.*"
+      "test/quick.mk"
       "test/(run.*|fail)/"
       "test/(run.*|fail)/.*.as"
       "test/(run.*|fail)/ok/.*"
