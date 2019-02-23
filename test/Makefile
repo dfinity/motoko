@@ -3,6 +3,11 @@ all:
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity all
 
+quick:
+	 #$(MAKE) -C fail quick
+	$(MAKE) -j -C run quick
+	 #$(MAKE) -C run-dfinity quick
+
 coverage:
 	rm -rf _coverage
 	mkdir _coverage
