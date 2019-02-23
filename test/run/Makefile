@@ -13,4 +13,5 @@ quick: $(TO-TEST)
 
 # run single test, e.g. make _out/AST-56.done
 _out/%.done: %.as ../../src/asc ../run.sh
-	@ ../run.sh -s $< && touch $@
+	@ mkdir -p _out
+	@ (../run.sh $< > $@, && mv $@, $@) || (cat $@,; rm -f $@,; false)
