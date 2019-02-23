@@ -9,4 +9,4 @@ accept:
 clean:
 	rm -rf _out
 
-include ../*.mk
+include ../quick.mk
