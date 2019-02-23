@@ -1,12 +1,12 @@
 all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
-	$(MAKE) -C run-dfinity all
+	$(MAKE) -C run-dfinity
 
 quick:
-	 #$(MAKE) -C fail quick
-	$(MAKE) -j -C run quick
-	 #$(MAKE) -C run-dfinity quick
+	$(MAKE) --no-print-directory --load-average -j -C fail quick
+	$(MAKE) --no-print-directory --load-average -j -C run quick
+	$(MAKE) --no-print-directory --load-average -j -C run-dfinity _out/chatpp.done
 
 coverage:
 	rm -rf _coverage

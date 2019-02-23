@@ -1,8 +1,10 @@
+# Note: this rule collection is included for one level deeper
+
 TO-TEST = $(patsubst %.as,_out/%.done,$(wildcard *.as))
 
 quick: $(TO-TEST)
 
 # run single test, e.g. make _out/AST-56.done
-_out/%.done: %.as ../../src/asc ../run.sh
+_out/%.done: %.as $(ASC) ../run.sh
 	@ mkdir -p _out
-	@ (../run.sh $< > $@, && mv $@, $@) || (cat $@,; rm -f $@,; false)
+	@ (../run.sh $(RUNFLAGS) $< > $@, && mv $@, $@) || (cat $@,; rm -f $@,; false)
