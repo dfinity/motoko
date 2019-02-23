@@ -1,6 +1,3 @@
-TO-TEST = $(patsubst %.as,_out/%.done,$(wildcard *.as))
-# .PHONY: $(TO-TEST)
-
 all:
 	../run.sh *.as
 
@@ -10,9 +7,10 @@ accept:
 clean:
 	rm -rf _out
 
-quick: $(TO-TEST)
-#	echo $(TO-TEST)
+TO-TEST = $(patsubst %.as,_out/%.done,$(wildcard *.as))
 
-# run single test, e.g. make AST-56.done
+quick: $(TO-TEST)
+
+# run single test, e.g. make _out/AST-56.done
 _out/%.done: %.as ../../src/asc ../run.sh
 	@ ../run.sh -s $< && touch $@
