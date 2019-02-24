@@ -21,7 +21,7 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  $(OPAM_PACKAGES:%=-pkg %) \
  -tags debug
 
-.PHONY: all quick clean test test-quick test-quicker
+.PHONY: all quick quicker clean test test-quick test-quicker
 
 all: $(NAME) test
 
