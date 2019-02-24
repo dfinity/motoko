@@ -1,0 +1,23 @@
+--- actor-reexport.run
++++ actor-reexport.run-ir
+@@ -1,5 +1,16 @@
+-exported()
+-exported()
+-exported()
+-exported()
+-exported()
++(unknown location): internal error, Failure("pattern bindings not yet supported in objects")
++
++Last environment:
++
++Called from file "desugar.ml", line 19, characters 32-38
++Called from file "list.ml", line 67, characters 20-23
++Called from file "list.ml", line 67, characters 32-39
++Called from file "desugar.ml", line 88, characters 37-50
++Called from file "desugar.ml", line 21, characters 32-50
++Called from file "desugar.ml", line 178, characters 36-41
++Called from file "desugar.ml", line 21, characters 32-50
++Called from file "desugar.ml", line 173, characters 11-27
++Called from file "desugar.ml", line 173, characters 31-40
++Called from file "desugar.ml", line 227, characters 14-23
++Called from file "pipeline.ml", line 167, characters 22-49
