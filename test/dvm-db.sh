@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]
+if [ -z "$1" -o -z "$2" ]
 then
-  echo "Usage: $0 <name>.wasm"
+  echo "Usage: $0 <tmpdir> <name>.wasm"
   exit 1
 fi
 
-name="$(basename $1 .wasm)_0"
+name="$(basename $2 .wasm)_0"
 
 export LANG=C
 function dvm_ () {
@@ -20,6 +20,6 @@ function dvm_ () {
 
 }
 
-dvm_ -q reset
-dvm_ -q new $1
-dvm_ -q run $name start
+dvm_ -q --db $1 reset
+dvm_ -q --db $1 new $2
+dvm_ -q --db $1 run $name start

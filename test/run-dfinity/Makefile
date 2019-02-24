@@ -9,4 +9,5 @@ accept:
 clean:
 	rm -rf _out
 
+_out/%.done: RUNFLAGS += -t
 include ../*.mk

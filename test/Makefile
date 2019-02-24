@@ -3,10 +3,12 @@ all:
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity
 
-quick:
+quicker:
 	$(MAKE) --no-print-directory --load-average -j -C fail quick
 	$(MAKE) --no-print-directory --load-average -j -C run quick
-	$(MAKE) --no-print-directory --load-average -j -C run-dfinity _out/chatpp.done
+
+quick: quicker
+	$(MAKE) --no-print-directory --load-average -j -C run-dfinity quick
 
 coverage:
 	rm -rf _coverage
