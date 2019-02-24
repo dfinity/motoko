@@ -757,7 +757,8 @@ and infer_pat' env pat : T.typ * val_env =
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
-  | ParP pat1 -> infer_pat env pat1
+  | ParP pat1 ->
+     infer_pat env pat1
 
 and infer_pats at env pats ts ve : T.typ list * val_env =
   match pats with
@@ -824,7 +825,8 @@ and check_pat' env t pat : val_env =
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "variables are not allowed in pattern alternatives";
     T.Env.empty
-  | ParP pat1 -> check_pat' env t pat1
+  | ParP pat1 ->
+     check_pat' env t pat1
   | _ ->
     let t', ve = infer_pat env pat in
     if not (T.sub t t') then

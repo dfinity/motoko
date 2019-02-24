@@ -432,8 +432,8 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | OptP pat1 -> declare_pat pat1
-  | AltP (pat1, pat2) -> declare_pat pat1
+  | OptP pat1
+  | AltP (pat1, _)    (* both have empty binders *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
