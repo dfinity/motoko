@@ -1,8 +1,12 @@
+RUNFLAGS = -d
+
 all:
-	../run.sh -d *.as
+	../run.sh $(RUNFLAGS) *.as
 
 accept:
-	../run.sh -d -a *.as
+	../run.sh $(RUNFLAGS) -a *.as
 
 clean:
 	rm -rf _out
+
+include ../*.mk
