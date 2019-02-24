@@ -89,8 +89,8 @@ and t_exp' context exp' =
     IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (cc, exp1, typs, exp2) ->
     CallE (cc, t_exp context exp1, typs, t_exp context exp2)
-  | BlockE (decs, typ) ->
-    BlockE (t_decs context decs, typ)
+  | BlockE decs ->
+    BlockE (t_decs context decs)
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp context exp1, t_exp context exp2, t_exp context exp3)
   | SwitchE (exp1, cases) ->
@@ -345,7 +345,7 @@ and c_exp' context exp k =
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (cc, exp1, typs, exp2) ->
     binary context k (fun v1 v2 -> e (CallE (cc, v1, typs, v2))) exp1 exp2
-  | BlockE (decs,t) ->
+  | BlockE decs ->
     c_block context decs k
   | IfE (exp1, exp2, exp3) ->
     c_if context k exp1 exp2 exp3

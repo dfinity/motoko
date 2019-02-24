@@ -37,8 +37,7 @@ The function with_message_store returns Error if its argument returns None or
 the reported messages contain an error.
 *)
 
-type msg_store (* abstract *)
+type msg_store
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
 val with_message_store : (msg_store -> 'a option) -> 'a result
-

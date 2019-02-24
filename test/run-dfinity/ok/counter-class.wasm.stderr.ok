@@ -12,10 +12,8 @@ non-closed actor: (ActorE
         (BlockE
           (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
           (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
-          ()
         )
       )
-      shared () -> ()
     )
     Const
     Public
@@ -41,7 +39,6 @@ non-closed actor: (ActorE
                   ()
                   (CallE ( 1 -> 0) (VarE $0) (VarE c))
                 )
-                (Int -> ()) -> ()
               )
               (BlockE
                 (FuncD
@@ -51,17 +48,14 @@ non-closed actor: (ActorE
                   ()
                   (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
                 )
-                Int -> ()
               )
             )
           )
-          ()
         )
       )
-      shared (shared Int -> ()) -> ()
     )
     Const
     Public
   )
-  Counter/1
+  actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
 )

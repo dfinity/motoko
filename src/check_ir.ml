@@ -146,7 +146,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -183,14 +183,14 @@ let rec check_typ env typ : unit =
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
     in
-    check_ids env (List.map (fun (field : T.field) -> field.T.name) fields);
+    check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
   | T.Mut typ ->
     check_typ env typ
 
 and check_typ_field env s typ_field : unit =
-  let {T.name; T.typ} = typ_field in
+  let T.{lab; typ} = typ_field in
   check_typ env typ;
   check env no_region
      (s <> T.Actor || T.is_func (T.promote typ))
@@ -202,7 +202,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con(c,[]) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -325,8 +325,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check (T.is_obj t2) "bad annotation (object type expected)";
     t1 <: t2;
     t0 <: t;
-  | ActorDotE(exp1,{it = Syntax.Name n;_})
-  | DotE (exp1, {it = Syntax.Name n;_}) ->
+  | ActorDotE(exp1,{it = Name n;_})
+  | DotE (exp1, {it = Name n;_}) ->
     begin
       check_exp env exp1;
       let t1 = typ exp1 in
@@ -340,7 +340,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match List.find_opt (fun {T.name; _} -> name = n) tfs with
+      match List.find_opt (fun T.{lab; _} -> lab = n) tfs with
       | Some {T.typ = tn;_} ->
         tn <~ t
       | None ->
@@ -386,11 +386,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     (typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
-  | BlockE (decs, t0) ->
+  | BlockE decs ->
     let t1, scope = type_block env decs exp.at in
-    check_typ env t0;
-    check (T.eq t T.unit || T.eq t1 t0) "unexpected expected block type";
-    t0 <: t;
+    t1 <: t;
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
     typ exp1 <: T.bool;
@@ -515,10 +513,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.unit <: t
   | NewObjE (sort, labids, t0) ->
     let t1 =
-      T.Obj(sort.it,
+      T.Obj(sort,
             List.sort T.compare_field (List.map (fun (name,id) ->
-                                           {T.name = Syntax.string_of_name name.it;
-                                            T.typ = T.Env.find id.it env.vals}) labids))
+                                           let Name lab = name.it in
+                                           T.{lab; typ = T.Env.find id.it env.vals}) labids))
     in
     let t2 = T.promote t in
     check (T.is_obj t2) "bad annotation (object type expected)";
@@ -612,7 +610,7 @@ and gather_exp_fields env id t fields : val_env =
   List.fold_left (gather_exp_field env) ve0 fields
 
 and gather_exp_field env ve field : val_env =
-  let {id; exp; mut; priv;_} : exp_field' = field.it in
+  let {id; exp; mut; vis; _} : exp_field' = field.it in
   if T.Env.mem id.it ve then
     error env id.at "duplicate field name %s in object" id.it;
   T.Env.add id.it ( make_mut mut (typ exp)) ve
@@ -625,7 +623,7 @@ and type_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | BlockE ([dec],_)-> is_func_dec dec
+  | BlockE [dec]-> is_func_dec dec
   | _ -> false
 
 and is_func_dec dec =
@@ -634,7 +632,7 @@ and is_func_dec dec =
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name; exp; mut; priv} = field.it in
+  let {id; name = {it = Name name; _}; exp; mut; vis} = field.it in
   let t = try T.Env.find id.it env.vals with
           | Not_found -> error env field.at "field typing not found"
   in
@@ -644,19 +642,19 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
   check env field.at ((mut.it = Syntax.Var) = T.is_mut t)
     "inconsistent mutability of field and field type";
   check env field.at
-    ((s = T.Actor && priv.it = Syntax.Public) ==>
+    ((s = T.Actor && vis.it = Syntax.Public) ==>
        is_func_exp exp)
     "public actor field is not a function";
   check env field.at
-    (if (s <> T.Object T.Local && priv.it = Syntax.Public)
+    (if (s <> T.Object T.Local && vis.it = Syntax.Public)
      then T.sub t T.Shared
      else true)
     "public shared object or actor field has non-shared type";
   let ve' = T.Env.add id.it t ve in
   let tfs' =
-    if priv.it = Syntax.Private
+    if vis.it = Syntax.Private
     then tfs
-    else {T.name = Syntax.string_of_name name.it; typ = t} :: tfs
+    else T.{lab = name; typ = t} :: tfs
   in tfs', ve'
 
 
@@ -725,7 +723,7 @@ and check_dec env dec  =
       | T.Def(binds,typ) -> (binds,typ)
     in
     let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
     check_typ env' (T.open_ ts  typ);
     T.unit <: t;

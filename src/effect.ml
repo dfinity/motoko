@@ -32,7 +32,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | UnE (_, _, exp1)
   | ProjE (exp1, _)
   | OptE exp1
-  | DotE (exp1, _, _)
+  | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1
   | LabelE (_, _, exp1)
@@ -58,7 +58,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ArrayE (_, exps) ->
     let es = List.map effect_exp exps in
     List.fold_left max_eff Type.Triv es
-  | BlockE (decs,_) ->
+  | BlockE decs ->
     let es = List.map effect_dec decs in
     List.fold_left max_eff Type.Triv es
   | ObjE (_, _, efs) ->
@@ -76,8 +76,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Triv
   | AwaitE exp1 ->
     T.Await
-  | DecE (d, _) ->
-     effect_dec d
 
 and effect_cases cases =
   match cases with
@@ -88,7 +86,7 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and effect_field_exps efs =
-  List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
+  List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_dec fld.it.dec)) T.Triv efs
 
 and effect_dec dec =
   dec.note.note_eff
@@ -99,11 +97,9 @@ and infer_effect_dec dec =
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e
-  | TypD (v, tps, t) ->
-    T.Triv
-  | FuncD (s, v, tps, p, t, e) ->
-    T.Triv
-  | ClassD (v, l, tps, s, p, v', efs) ->
+  | TypD _
+  | FuncD _
+  | ClassD _ ->
     T.Triv
 
 (* effect inference on Ir *)
@@ -151,7 +147,7 @@ module Ir =
       | ArrayE (_, _, exps) ->
         let es = List.map effect_exp exps in
         List.fold_left max_eff Type.Triv es
-      | BlockE (decs,_) ->
+      | BlockE decs ->
         let es = List.map effect_dec decs in
         List.fold_left max_eff Type.Triv es
       | IfE (exp1, exp2, exp3) ->
