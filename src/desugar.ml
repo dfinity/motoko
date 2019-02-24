@@ -54,6 +54,11 @@ and exp' at note = function
     let t = Type.as_array note.S.note_typ in
     I.ArrayE (m, Type.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
+  | S.FuncE (name, s, tbs, p, ty, e) ->
+    let cc = Value.call_conv_of_typ note.S.note_typ in
+    (* TODO(joachim): Turn I.FuncD into I.FuncE *)
+    let i = {it = name; at; note = ()} in
+    I.BlockE [{it = I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e); at; note}]
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -137,13 +142,6 @@ and exp_field' (f : S.exp_field') =
       mut = S.Var @@ x.at;
       exp = exp e;
     }
-  | S.FuncD (_, x, _, _, _, _) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = x;
-      mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
-    }
   | S.ExpD _ -> failwith "expressions not yet supported in objects"
   | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
   | S.TypD _ -> failwith "type definitions not yet supported in objects"
@@ -191,9 +189,6 @@ and dec' at n d = match d with
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i, exp e)
-  | S.FuncD (s, i, tbs, p, ty, e) ->
-    let cc = Value.call_conv_of_typ n.S.note_typ in
-    I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
   | S.TypD (id, typ_bind, t) ->
     let c = Lib.Option.value id.note in
     I.TypD c

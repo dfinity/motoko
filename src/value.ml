@@ -200,7 +200,7 @@ let call_conv_of_typ typ =
   match typ with
   | Type.Func(sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
-  | _ -> raise (Invalid_argument ("call_conv_of_typ"^T.string_of_typ typ))
+  | _ -> raise (Invalid_argument ("call_conv_of_typ " ^ T.string_of_typ typ))
 
 type func =
   (value -> value cont -> unit)

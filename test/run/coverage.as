@@ -10,13 +10,13 @@ func f() {
   let ?_ = ?0;
   let ?9 = ?0;
 
-  func(_ : Nat) {};
-  func(x : Nat) {};
-  func(5) {};
-  func(5 or 5) {};
-  func(5 or _ : Nat) {};
-  func(_ or 6 : Nat) {};
-  func((_ or _) : Nat) {};
+  func f1(_ : Nat) {};
+  func f2(x : Nat) {};
+  func f3(5) {};
+  func f4(5 or 5) {};
+  func f5(5 or _ : Nat) {};
+  func f6(_ or 6 : Nat) {};
+  func f7((_ or _) : Nat) {};
 
   switch 0 { case _ {} };
   switch 0 { case x {} };

@@ -65,10 +65,15 @@ let share_typ t =
 let share_typfield tf =
   {tf with it = {tf.it with typ = share_typ tf.it.typ}}
 
+let share_exp e =
+  match e.it with
+  | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
+    FuncE (x, {s with it = Type.Sharable}, tbs, p, t, e) @? e.at
+  | _ -> e
+
 let share_dec d =
   match d.it with
-  | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
+  | LetD (p, e) -> LetD (p, share_exp e) @? d.at
   | _ -> d
 
 let share_expfield (ef : exp_field) =
@@ -464,8 +469,8 @@ exp_field :
   | v=private_opt x=id EQ e=exp
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = v} @@ at $sloc }
-  | v=private_opt s=shared_opt x=id fd=func_dec
-    { let d = fd s x in
+  | v=private_opt s=shared_opt x=id fe=func_exp
+    { let d = LetD(VarP(x) @! x.at, fe s x.it) @? at $sloc in
       {dec = d; vis = v} @@ at $sloc }
   (* TODO(andreas): allow any dec *)
   | v=private_opt d=dec_var
@@ -532,8 +537,12 @@ dec_var :
       in VarD(x, e') @? at $sloc }
 
 dec_nonvar :
-  | s=shared_opt FUNC xf=id_opt fd=func_dec
-    { (fd s (xf "func" $sloc)).it @? at $sloc }
+  | s=shared_opt FUNC x_opt=id? fe=func_exp
+    { let x = Lib.Option.get x_opt (anon "func" (at $sloc) @@ at $sloc) in
+      let e = (fe s x.it).it @? at $sloc in
+      if x_opt = None
+      then ExpD(e) @? at $sloc
+      else LetD(VarP(x) @! x.at, e) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
@@ -567,7 +576,7 @@ dec :
         let p = VarP x @! r in
         LetD(p, ObjE(s, efs') @? r) @? r }
 
-func_dec :
+func_exp :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
@@ -579,7 +588,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun s x -> FuncD(s, x, tps, p, t, e) @? at $sloc }
+      in fun s x -> FuncE(x, s, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }

@@ -457,6 +457,41 @@ and infer_exp'' env exp : T.typ =
       error env exp1.at "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
+  | FuncE (_, sort, typ_binds, pat, typ, exp) ->
+    let cs, ts, te, ce = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te ce in
+    let t1, ve = infer_pat_exhaustive env' pat in
+    let t2 = check_typ env' typ in
+    if not env.pre then begin
+      let env'' =
+        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
+      check_exp (adjoin_vals env'' ve) t2 exp;
+      if sort.it = T.Sharable then begin
+        if not (T.sub t1 T.Shared) then
+          error env pat.at "shared function has non-shared parameter type\n  %s"
+            (T.string_of_typ_expand t1);
+        begin match t2 with
+        | T.Tup [] -> ()
+        | T.Async t2 ->
+          if not (T.sub t2 T.Shared) then
+            error env typ.at "shared function has non-shared result type\n  %s"
+              (T.string_of_typ_expand t2);
+          if not (isAsyncE exp) then
+            error env exp.at "shared function with async type has non-async body"
+        | _ -> error env typ.at "shared function has non-async result type\n  %s"
+            (T.string_of_typ_expand t2)
+        end
+      end
+    end;
+    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
+    let c =
+      match sort.it, typ.it with
+      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | _ -> T.Returns
+    in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -835,8 +870,7 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   match dec.it with
   | ExpD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
-  | VarD (id, _)
-  | FuncD (_, id, _, _, _, _) -> pub_val_id id xs
+  | VarD (id, _) -> pub_val_id id xs
   | ClassD (id, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
@@ -915,18 +949,6 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
-    let t = T.Env.find id.it env.vals in
-    if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
-      let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive env' pat in
-      let t2 = check_typ env' typ in
-      let env'' =
-        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-      check_exp (adjoin_vals env'' ve) t2 exp
-    end;
-    t
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
@@ -1010,7 +1032,7 @@ and gather_block_typdecs env decs : scope =
 
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ -> scope
+  | ExpD _ | LetD _ | VarD _ -> scope
   | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
@@ -1032,7 +1054,7 @@ and infer_block_typdecs env decs : con_env =
 
 and infer_dec_typdecs env dec : con_env =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
+  | ExpD _ | LetD _ | VarD _ ->
     T.ConSet.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
@@ -1072,28 +1094,17 @@ and gather_block_valdecs env decs : val_env =
 
 and gather_dec_valdecs env ve dec : val_env =
   match dec.it with
-  | ExpD _ | TypD _ ->
-    ve
-  | LetD (pat, _) ->
-    gather_pat env ve pat
-  | VarD (id, _)
-  | FuncD (_, id, _, _, _, _) ->
-    gather_id env ve id
-  | ClassD (id, _ , _, _, _, _) ->
-    gather_id env ve {id with note = ()}
+  | ExpD _ | TypD _ -> ve
+  | LetD (pat, _) -> gather_pat env ve pat
+  | VarD (id, _) -> gather_id env ve id
+  | ClassD (id, _ , _, _, _, _) -> gather_id env ve {id with note = ()}
 
 and gather_pat env ve pat : val_env =
   match pat.it with
-  | WildP | LitP _ | SignP _ ->
-    ve
-  | VarP id ->
-    gather_id env ve id
-  | TupP pats ->
-    List.fold_left (gather_pat env) ve pats
-  | AltP (pat1, _)
-  | OptP pat1
-  | AnnotP (pat1, _) ->
-    gather_pat env ve pat1
+  | WildP | LitP _ | SignP _ -> ve
+  | VarP id -> gather_id env ve id
+  | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then
@@ -1120,37 +1131,6 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
-    let env' = adjoin_typs env te ce in
-    let t1, _ = infer_pat {env' with pre = true} pat in
-    let t2 = check_typ env' typ in
-    if not env.pre && sort.it = T.Sharable then begin
-      if not (T.sub t1 T.Shared) then
-        error env pat.at "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand t1);
-      begin match t2 with
-      | T.Tup [] -> ()
-      | T.Async t2 ->
-        if not (T.sub t2 T.Shared) then
-          error env typ.at "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand t2);
-        if not (isAsyncE exp) then
-          error env dec.at "shared function with async type has non-async body"
-      | _ -> error env typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand t2)
-      end;
-    end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
-    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
-    let c =
-      match sort.it, typ.it with
-      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it
-      (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->

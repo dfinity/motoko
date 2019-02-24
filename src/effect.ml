@@ -27,7 +27,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
   | PrimE _
   | VarE _
-  | LitE _ ->
+  | LitE _
+  | FuncE _ ->
     T.Triv
   | UnE (_, _, exp1)
   | ProjE (exp1, _)
@@ -98,7 +99,6 @@ and infer_effect_dec dec =
   | VarD (_, e) ->
     effect_exp e
   | TypD _
-  | FuncD _
   | ClassD _ ->
     T.Triv
 
@@ -192,8 +192,7 @@ module Ir =
       | LetD (_,e)
       | VarD (_, e) ->
         effect_exp e
-      | TypD _ ->
-        T.Triv
-      | FuncD (s, v, tps, p, t, e) ->
+      | TypD _
+      | FuncD _ ->
         T.Triv
 end

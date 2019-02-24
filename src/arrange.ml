@@ -19,6 +19,16 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
+  | FuncE (x, s, tp, p, t, e') ->
+    "FuncD" $$ [
+      Atom (Type.string_of_typ e.note.note_typ);
+      Atom (sharing s.it);
+      Atom x] @
+      List.map typ_bind tp @ [
+      pat p;
+      typ t;
+      exp e'
+    ]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
@@ -146,16 +156,6 @@ and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
-  | FuncD (s, x, tp, p, t, e) ->
-    "FuncD" $$ [
-      Atom (Type.string_of_typ d.note.note_typ);
-      Atom (sharing s.it);
-      id x] @
-      List.map typ_bind tp @ [
-      pat p;
-      typ t;
-      exp e
-    ]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
   | ClassD (x, tp, s, p, i', efs) ->
