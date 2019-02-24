@@ -36,7 +36,6 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ActorE of id * exp_field list * Type.typ   (* actor *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -58,8 +57,9 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
+  | ActorE of dec list * (name * id * Type.typ) list * Type.typ   (* actor *)
   | NewObjE of                                 (* make an object, preserving mutable identity *)
-      Type.obj_sort * (name * id) list * Type.typ
+      Type.obj_sort * (name * id * Type.typ) list * Type.typ
 
 and exp_field = exp_field' Source.phrase
 and exp_field' = {name : name; id : id; exp : exp; mut : mut; vis : vis}

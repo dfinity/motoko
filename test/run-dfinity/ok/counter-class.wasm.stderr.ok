@@ -1,9 +1,8 @@
-non-closed actor: (ActorE
-  anon-object-1.30
-  (c c (VarE i) Var Private)
-  (dec
-    dec
-    (BlockE
+non-closed actor: (BlockE
+  (LetD
+    (VarP anon-object-1.30)
+    (ActorE
+      (VarD c (VarE i))
       (FuncD
         (shared  0 -> 0)
         dec
@@ -14,13 +13,6 @@ non-closed actor: (ActorE
           (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
         )
       )
-    )
-    Const
-    Public
-  )
-  (read
-    read
-    (BlockE
       (FuncD
         (shared  1 -> 0)
         read
@@ -53,9 +45,10 @@ non-closed actor: (ActorE
           )
         )
       )
+      (read read)
+      (dec dec)
+      actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
     )
-    Const
-    Public
   )
-  actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
+  (ExpD (VarE anon-object-1.30))
 )

@@ -165,6 +165,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
       if !Flags.interpret_ir
       then
         let prog_ir = Desugar.transform senv prog in
+        Check_ir.check_prog senv "desugaring" prog_ir;
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir

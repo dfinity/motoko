@@ -300,8 +300,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ActorE (id, fields, _) ->
-    interpret_obj env id fields k
   | DotE (exp1, {it = Name n; _})
   | ActorDotE (exp1, {it = Name n; _}) ->
     interpret_exp env exp1 (fun v1 ->
@@ -434,15 +432,24 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | ActorE (decs, ids, _) ->
+    let ve = declare_decs decs V.Env.empty in
+    let env' = adjoin_vals env ve in
+    interpret_decs env' decs (fun _ ->
+      let ve =
+        List.fold_left
+          (fun ve ({it = Name name; _}, id, _typ) ->
+            V.Env.disjoint_add name (Lib.Promise.value (find id.it env'.vals)) ve
+          ) V.Env.empty ids
+      in k (V.Obj ve)
+    )
   | NewObjE (sort, ids, _) ->
     let ve =
       List.fold_left
-        (fun ve ({it = Name name; _}, id) ->
+        (fun ve ({it = Name name; _}, id, _typ) ->
           V.Env.disjoint_add name (Lib.Promise.value (find id.it env.vals)) ve
         ) V.Env.empty ids
     in k (V.Obj ve)
-
-
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -556,44 +563,6 @@ and match_pats pats vs ve : val_env option =
     | None -> None
     )
   | _ -> assert false
-
-
-(* Actors *)
-
-and interpret_obj env id fields (k : V.value V.cont) =
-  let ve = declare_exp_fields fields (declare_id id) in
-  let env' = adjoin_vals env ve in
-  interpret_fields env'  fields V.Env.empty (fun v ->
-    define_id env' id v;
-    k v
-  )
-
-and declare_exp_fields fields ve : val_env =
-  match fields with
-  | [] -> ve
-  | {it = {id; name; mut; _}; _}::fields' ->
-    let p = Lib.Promise.make () in
-    let ve' = V.Env.singleton id.it p in
-    declare_exp_fields fields' (V.Env.adjoin ve ve')
-
-
-and interpret_fields env fields ve (k : V.value V.cont) =
-  match fields with
-  | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
-  | {it = {id; name = {it = Name name; _}; mut; vis; exp}; _}::fields' ->
-    interpret_exp env exp (fun v ->
-      let v' =
-        match mut.it with
-        | Syntax.Const -> v
-        | Syntax.Var -> V.Mut (ref v)
-      in
-      define_id env id v';
-      let ve' =
-        if vis.it = Syntax.Private
-        then ve
-        else V.Env.add name (V.Env.find id.it env.vals) ve
-      in interpret_fields env fields' ve' k
-    )
 
 (* Blocks and Declarations *)
 

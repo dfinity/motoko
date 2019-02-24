@@ -74,9 +74,6 @@ and t_exp' context exp' =
     OptE (t_exp context exp1)
   | ProjE (exp1, n) ->
     ProjE (t_exp context exp1, n)
-  | ActorE (id, fields, typ) ->
-    let fields' = t_fields context fields in
-    ActorE (id, fields', typ)
   | DotE (exp1, id) ->
     DotE (t_exp context exp1, id)
   | ActorDotE (exp1, id) ->
@@ -137,6 +134,8 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
+  | ActorE (ds, ids, t) ->
+    ActorE (t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
 
 and t_dec context dec =
@@ -152,11 +151,6 @@ and t_dec' context dec' =
     FuncD (s, id, typbinds, pat, typ,t_exp context' exp)
 
 and t_decs context decs = List.map (t_dec context) decs
-
-and t_fields context fields =
-  List.map (fun (field:exp_field) ->
-      { field with it = { field.it with exp = t_exp context field.it.exp }})
-    fields
 
 (* non-trivial translation of possibly impure terms (eff = T.Await) *)
 

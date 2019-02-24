@@ -160,7 +160,7 @@ module Ir =
         let e2 = effect_cases cases in
         max_eff e1 e2
       | ActorE (_,efs,_) ->
-        effect_field_exps efs
+        T.Triv
       | AsyncE exp1 ->
         T.Triv
       | AwaitE exp1 ->
@@ -179,9 +179,6 @@ module Ir =
       | {it = {pat; exp}; _}::cases' ->
         let e = effect_exp exp in
         max_eff e (effect_cases cases')
-
-    and effect_field_exps efs =
-      List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
 
     and effect_dec dec =
       dec.note.note_eff

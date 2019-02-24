@@ -239,9 +239,6 @@ module Transform() = struct
       OptE (t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
-    | ActorE (id, fields, typ) ->
-      let fields' = t_fields fields in
-      ActorE (id, fields', t_typ typ)
     | DotE (exp1, id) ->
       DotE (t_exp exp1, id)
     | ActorDotE (exp1, id) ->
@@ -328,8 +325,12 @@ module Transform() = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
+    | ActorE (ds, ids, t) ->
+      ActorE (t_decs ds, t_ids ids, t_typ t)
     | NewObjE (sort, ids, t) ->
-      NewObjE (sort, ids, t_typ t)
+      NewObjE (sort, t_ids ids, t_typ t)
+
+  and t_ids ids = List.map (fun (l, i, t) -> (l, i, t_typ t)) ids
 
   and t_dec dec =
     { it = t_dec' dec.it;
@@ -383,11 +384,6 @@ module Transform() = struct
       end
 
   and t_decs decs = List.map t_dec decs
-
-  and t_fields fields =
-    List.map (fun (field:exp_field) ->
-        { field with it = { field.it with exp = t_exp field.it.exp } })
-      fields
 
   and t_pat pat =
     { pat with

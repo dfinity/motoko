@@ -83,17 +83,25 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
 
 and obj at s class_id self_id es obj_typ =
+  let self = idE self_id obj_typ in
   match s.it with
-  | Type.Object _ -> build_obj at None s self_id es obj_typ
-  | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
+  | Type.Object _ ->
+    build_obj at None s self_id es obj_typ
+  | Type.Actor ->
+    I.BlockE
+      [ letD self (build_actor at es obj_typ);
+        expD self
+      ]
+
+
 
 and build_obj at class_id s self_id es obj_typ =
   let self = idE self_id obj_typ in
   let names =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.lab; _} ->
-        I.Name lab @@ no_region, lab @@ no_region
+      List.map (fun {Type.lab; typ} ->
+        I.Name lab @@ no_region, lab @@ no_region, typ
       ) fields
     | _ -> assert false
   in
@@ -104,45 +112,38 @@ and build_obj at class_id s self_id es obj_typ =
         ]
   )
 
-and exp_fields fs = List.map exp_field fs
+and build_actor at es obj_typ =
+    let decs = List.map (fun ef -> dec ef.it.S.dec) es  in
+    let nameids = gather_public_fields es in
+    { it = I.ActorE (decs, nameids, obj_typ)
+    ; at
+    ; note = { I.note_typ = obj_typ; I.note_eff = T.Triv }
+    }
 
-and exp_field f = phrase exp_field' f
+and gather_public_fields fs = List.concat (List.map gather_public_field fs)
 
-(* TODO(joachim): push decs through IR properly and handle all cases. *)
-and exp_field' (f : S.exp_field') =
-  match f.S.dec.it with
-  | S.LetD ({it = S.VarP x; at; _}, e) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ at;
-      id = x;
-      mut = S.Const @@ at;
-      exp = exp e;
-    }
-  | S.VarD (x, e) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = x;
-      mut = S.Var @@ x.at;
-      exp = exp e;
-    }
-  | S.FuncD (_, x, _, _, _, _) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = x;
-      mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
-    }
-  | S.ClassD (x, _, _, _, _, _) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = {x with note = ()};
-      mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
-    }
-  | S.ExpD _ -> failwith "expressions not yet supported in objects"
-  | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
-  | S.TypD _ -> failwith "type definitions not yet supported in objects"
+and gather_public_field f =
+  if f.it.S.vis.it = S.Public
+  then gather_public_dec f.it.S.dec
+  else []
 
+and gather_public_dec dec = match dec.it with
+  | S.LetD (pat, e) -> gather_public_pat pat
+  | S.VarD (x, e) -> [(I.Name x.it @@ x.at, x, e.note.S.note_typ)]
+  | S.FuncD (_,x,_,_,_,_) -> [(I.Name x.it @@ x.at, x, dec.note.S.note_typ)]
+  | S.ClassD (x,_,_,_,_,_) -> [(I.Name x.it @@ x.at, x.it @@ x.at, dec.note.S.note_typ)]
+  | S.ExpD _ -> []
+  | S.TypD _ -> []
+
+and gather_public_pat pat = match pat.it with
+  | S.WildP -> []
+  | S.LitP _ -> []
+  | S.SignP _ -> []
+  | S.VarP x -> [(I.Name x.it @@ x.at, x, pat.note)]
+  | S.TupP pats -> List.concat (List.map gather_public_pat pats)
+  | S.OptP p -> gather_public_pat p
+  | S.AltP (p1, _p2) -> gather_public_pat p1
+  | S.AnnotP (p,_) -> gather_public_pat p
 
 and typ_binds tbs = List.map typ_bind tbs
 
