@@ -3352,7 +3352,7 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
-       | "Nat32toWord32" ->
+       | "Nat->Word32" ->
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_nat32toWord32 env
