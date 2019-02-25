@@ -174,11 +174,11 @@ and decs ds =
 
 and dec d = phrase' dec' d
 and dec' at n d =
-  let fix_unary p = match p.it with
-    | S.TupP [p1] -> { p with it = p1.it }
+  let fix_unary p = match p.it, p.note with
+    | S.TupP [p1], Type.Tup [n] -> { p with it = p1.it; note = n }
     | _ -> p in
   let param p = match p.it with
-    | S.ParP p1 -> pat (fix_unary { p with it = S.TupP [p1] })
+    | S.ParP p1 -> pat (fix_unary { p with it = S.TupP [p1]; note = Type.Tup [p.note] })
     | _ ->  pat (fix_unary p)
   in match d with
   | S.ExpD e -> I.ExpD (exp e)
