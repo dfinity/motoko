@@ -81,7 +81,7 @@ let _ : [(Int, (Int,)) -> ()] = [r, s];
 let _ = (func (a:Nat, ()) : Nat { a }) (42, ());
 let _ = (func ((a:Nat, (()))) : Nat { a }) (42, ());
 
-// test that switch expressions are also behave correctly with redundant parens
+// test that switch expressions also behave correctly with redundant parens
 
 let _ = switch (42,) { case (3,) 3; case ((5,)) 5; case (a,) a};
 let _ = switch (42,) { case (3,) 3; case ((5,)) 5; case (((a,))) a};
