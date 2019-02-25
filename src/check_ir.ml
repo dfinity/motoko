@@ -740,7 +740,7 @@ and check_block_exps env t decs at =
   | [dec] ->
     check_dec env dec;
     check env at (T.is_unit t || T.sub (typ dec) t)
-      "declaration does not produce expect type"
+      "declaration does not produce expected type"
   | dec::decs' ->
     check_dec env dec;
     check_block_exps env t decs' at
