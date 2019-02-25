@@ -2972,7 +2972,7 @@ module FuncDec = struct
     ))
 
   (* A static message, from a public actor field *)
-  (* Forward the call the the funcref at the given static location. *)
+  (* Forward the call to the funcref at the given static location. *)
   let compile_static_message env cc ptr : E.func_with_names =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     assert (cc.Value.n_res = 0);
@@ -3936,7 +3936,7 @@ and actor_lit outer_env self_o ds ids at =
 
     OrthogonalPersistence.register env start_fi;
 
-    let m = conclude_module env "anonymus-actor" None in
+    let m = conclude_module env "anonymous-actor" None in
     let (_map, wasm_binary) = CustomModule.encode m in
     wasm_binary in
 
