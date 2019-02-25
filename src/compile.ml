@@ -70,13 +70,13 @@ put in the compiler environment, type `E.t`. Some fields are valid globally, som
 only make sense locally, i.e. within a single function (but we still put them
 in one big record, for convenience).
 
-The field fall into the following categories:
+The fields fall into the following categories:
 
  1. Static global fields. Never change.
     Example: whether we are compiling with --dfinity; the prelude code
 
  2. Immutable global fields. Change in a well-scoped manner.
-    Example: Mapping from ActorScrpit names to their location.
+    Example: Mapping from ActorScript names to their location.
 
  3. Mutable global fields. Change only monotonously.
     These are used to register things like functions. This should be monotone
@@ -1174,6 +1174,22 @@ module Prim = struct
 
   let prim_abs env =
     let (set_i, get_i) = new_local env "abs_param" in
+    set_i ^^
+    get_i ^^
+    BoxedInt.unbox env ^^
+    compile_const_64 0L ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+    G.if_ (ValBlockType (Some I32Type))
+      ( compile_const_64 0L ^^
+        get_i ^^
+        BoxedInt.unbox env ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+        BoxedInt.box env
+      )
+      ( get_i )
+
+  let prim_nat32toWord32 env =
+    let (set_i, get_i) = new_local env "conv_param" in
     set_i ^^
     get_i ^^
     BoxedInt.unbox env ^^
@@ -3336,6 +3352,10 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
+       | "Nat32toWord32" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         Prim.prim_nat32toWord32 env
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
