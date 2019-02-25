@@ -1194,7 +1194,7 @@ module Prim = struct
     set_i ^^
     get_i ^^
     BoxedInt.unbox env ^^
-    G.i (Convert (Wasm.Values.I32 I64Op.WrapI64))
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
 end (* Prim *)
 
