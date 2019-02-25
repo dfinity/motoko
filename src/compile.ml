@@ -6,8 +6,8 @@ instrList.ml, which provides a more convenient way of assembling WebAssembly
 instruction lists, as it takes care of (1) source locations and (2) labels.
 
 This file is split up in a number of modules, purely for namespacing and
-grouping. Every module has a high-level prose comment explainin the concept;
-this keeps documentation close to the code (a lessen learned from Simon PJ).
+grouping. Every module has a high-level prose comment explaining the concept;
+this keeps documentation close to the code (a lesson learned from Simon PJ).
 *)
 
 
@@ -387,6 +387,7 @@ end
 
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
+let compile_const_32 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
 
 (* Some common arithmetic, used for pointer and index arithmetic *)
@@ -1193,16 +1194,7 @@ module Prim = struct
     set_i ^^
     get_i ^^
     BoxedInt.unbox env ^^
-    compile_const_64 0L ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-    G.if_ (ValBlockType (Some I32Type))
-      ( compile_const_64 0L ^^
-        get_i ^^
-        BoxedInt.unbox env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        BoxedInt.box env
-      )
-      ( get_i )
+    G.i (Convert (Wasm.Values.I32 I64Op.WrapI64))
 
 end (* Prim *)
 
@@ -3204,6 +3196,9 @@ let compile_lit env lit = Syntax.(match lit with
   | NatLit n      -> SR.UnboxedInt,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
+  | Word32Lit n   -> SR.UnboxedInt,
+    (try compile_const_32 n
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable) (* TODO: check we are 64 bit *)
   | NullLit       -> SR.Vanilla, Opt.null
   | TextLit t     -> SR.Vanilla, Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) (SR.Vanilla, G.i Unreachable)

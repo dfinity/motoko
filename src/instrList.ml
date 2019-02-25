@@ -58,7 +58,7 @@ let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
 let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
 let table n f = List.fold_right (^^) (Lib.List.table n f) nop
 
-(* Region-managing combinabor *)
+(* Region-managing combinator *)
 
 let cr at =
   let left = { Wasm.Source.file = at.Source.left.Source.file;
