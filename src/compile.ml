@@ -2804,6 +2804,7 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat -> UnboxedInt
     | Type.Prim Type.Int -> UnboxedInt
+    | Type.Prim Type.Word32 -> UnboxedInt
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
