@@ -50,6 +50,8 @@ function normalize () {
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
+    sed 's/ *[0-9]* Illegal instruction */ Illegal instruction /g' |
     cat > $1.norm
     mv $1.norm $1
   fi
