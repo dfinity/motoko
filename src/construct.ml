@@ -406,7 +406,7 @@ let prim_await typ =
 
 let whileE exp1 exp2 =
   (* while e1 e2
-     ~~> label l: loop {
+     ~~> label l loop {
            if e1 then { e2 } else { break l }
          }
   *)
@@ -447,7 +447,7 @@ let forE pat exp1 exp2 =
   (* for p in e1 e2
      ~~>
      let nxt = e1.next ;
-     label l: loop {
+     label l loop {
        switch nxt () {
          case null { break l };
          case p    { e2 };
@@ -468,14 +468,10 @@ let forE pat exp1 exp2 =
       expD (
           labelE lab tyu (
               loopE_unit (
-                  blockE [
-                      expD (
-                          switch_optE (callE nxt [] (tupE []) ty1_ret)
-                            (breakE lab (tupE []) tyu)
-                            pat exp2
-                            tyu
-                        )
-                    ]
+                  switch_optE (callE nxt [] (tupE []) ty1_ret)
+                    (breakE lab (tupE []) tyu)
+                    pat exp2
+                    tyu
                 )
             )
         )
