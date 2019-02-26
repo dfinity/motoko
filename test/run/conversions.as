@@ -8,4 +8,7 @@ assert(natToWord32 2147483647 == (2147483647 : Word32)); // 2**31 - 1
 // assert(natToWord32 4294967295 == (4294967295 : Word32)); TODO: 31 bits currently
 
 
+assert(word32ToNat 0 == (0 : Nat));
 assert(word32ToNat 42 == (42 : Nat));
+assert(word32ToNat 2147483647 == (2147483647 : Nat)); // 2**31 - 1
+assert(word32ToNat 4294967295 == (4294967295 : Nat)); // 2**32 - 1

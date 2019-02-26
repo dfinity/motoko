@@ -87,7 +87,11 @@ open Value
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "Nat->Word32" -> fun v k -> k (Word32 (Big_int.int32_of_big_int(*!*) (as_int v)))
-  | "Word32->Nat" -> fun v k -> k (Int (Big_int.big_int_of_int (Int32.to_int (as_word32 v))))
+  | "Word32->Nat" -> fun v k ->
+                     let i32 = Int32.to_int (as_word32 v) in
+                     let min32 = Int32.to_int Int32.min_int in
+                     let i = if i32 < 0 then i32 - 2 * min32 else i32
+                     in k (Int (Big_int.big_int_of_int i))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
