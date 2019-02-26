@@ -1,6 +1,6 @@
 actor class Control() {
 
-  private condition() : Bool = false;   
+  private condition() : Bool = false;
 
   testBlock() {
     label l1 {
@@ -25,13 +25,31 @@ actor class Control() {
       else continue l;
     };
   };
-  
+
   testLoopWhile() {
     label l loop {
       if true break l
       else continue l;
     } while (condition());
   };
+
+/*
+  testLoopWhile2() {
+    loop { } while (false);
+  };
+
+  testLoopWhile3() {
+    label l {
+      loop { }
+      while (false and true)
+    };
+  };
+
+  testLoopWhile4() {
+    label l loop {
+    } while (true and false);
+  };
+*/
 
   testNestedWhile() {
     label l while (condition()) {
