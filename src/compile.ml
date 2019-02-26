@@ -1190,11 +1190,11 @@ module Prim = struct
       ( get_i )
 
   let prim_nat32toWord32 env =
-    let (set_i, get_i) = new_local env "conv_param" in
-    set_i ^^
-    get_i ^^
     BoxedInt.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
+  let prim_word32toNat32 env =
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    BoxedInt.box env
 
 end (* Prim *)
 
@@ -3352,6 +3352,10 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_nat32toWord32 env
+       | "Word32->Nat" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         Prim.prim_word32toNat32 env
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^

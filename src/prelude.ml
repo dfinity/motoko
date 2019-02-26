@@ -36,6 +36,7 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 
 // Conversions
 func natToWord32(n : Nat) : Word32 = (prim "Nat->Word32" : Nat -> Word32) n;
+func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
 
 
 // This would be nicer as a objects, but lets do them as functions
@@ -86,6 +87,7 @@ open Value
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "Nat->Word32" -> fun v k -> k (Word32 (Big_int.int32_of_big_int(*!*) (as_int v)))
+  | "Word32->Nat" -> fun v k -> k (Int (Big_int.big_int_of_int (Int32.to_int (as_word32 v))))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
