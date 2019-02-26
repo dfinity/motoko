@@ -387,7 +387,6 @@ end
 
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
-let compile_const_32 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
 
 (* Some common arithmetic, used for pointer and index arithmetic *)
@@ -2810,7 +2809,7 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat -> UnboxedInt
     | Type.Prim Type.Int -> UnboxedInt
-    | Type.Prim Type.Word32 -> UnboxedInt
+    | Type.Prim Type.Word32 -> Vanilla
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
@@ -3203,8 +3202,8 @@ let compile_lit env lit = Syntax.(match lit with
   | NatLit n      -> SR.UnboxedInt,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | Word32Lit n   -> SR.UnboxedInt,
-    (try compile_const_32 n
+  | Word32Lit n   -> SR.Vanilla,
+    (try compile_unboxed_const n
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable) (* TODO: check we are 64 bit *)
   | NullLit       -> SR.Vanilla, Opt.null
   | TextLit t     -> SR.Vanilla, Text.lit env t
@@ -3263,7 +3262,8 @@ let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.Prim (Type.Nat | Type.Int) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | _ -> G.i Unreachable
+  | Type.Prim Type.Word32 -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | _ -> todo "compile_eq" (Arrange.relop Syntax.EqOp) (G.i Unreachable)
 
 let compile_relop env t op =
   StackRep.of_type t,
@@ -3280,7 +3280,7 @@ let compile_relop env t op =
   | Type.Prim Type.Int, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtS))
   | Type.Prim Type.Int, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeS))
   | Type.Prim Type.Int, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtS))
-  | _ -> G.i Unreachable
+  | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
   )
 
 
