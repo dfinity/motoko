@@ -482,7 +482,7 @@ pat_nullary :
     { LitP(ref l) @! at $sloc }
   | LPAR p=pat RPAR
     { match p.it with
-      | TupP _ -> { p with it = ParP p }
+      | TupP _ -> { p with it = ParP p; at = at $sloc }
       | _ -> p
     }
   | LPAR ps=seplist1(pat_bin, COMMA) RPAR
