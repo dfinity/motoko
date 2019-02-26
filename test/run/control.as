@@ -26,14 +26,13 @@ actor class Control() {
     };
   };
 
-/*
   testLoopWhile() {
     label l loop {
       if true break l
       else continue l;
     } while (condition());
   };
-*/
+
   testLoopWhile2() {
     loop { } while (false);
   };
