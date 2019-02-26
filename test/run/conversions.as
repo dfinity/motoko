@@ -1,4 +1,9 @@
-func n2w(n : Nat) : ?Word32 { ?(natToWord32 n) };
+func n2w(n : Nat) : ?Word32 {
+    let w = natToWord32 n;
+    if (n == word32ToNat w)
+       ?w
+       else null
+};
 
 assert(natToWord32 42 == (42 : Word32));
 assert(natToWord32 65535 == (65535 : Word32)); // 2**16 - 1
