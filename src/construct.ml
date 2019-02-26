@@ -405,15 +405,13 @@ let loopWhileE exp1 exp2 =
           let x2 = e2 ;
           if x2 { } else { break l } }
    *)
-  let id2 = fresh_id exp2.note.S.note_typ in
   let lab = fresh_lab () in
   let ty1 = Type.unit in
   labelE lab ty1 (
       loopE (
           blockE [
               expD exp1 ;
-              letD id2 exp2 ;
-              expD (ifE id2
+              expD (ifE exp2
                       (tupE [])
                       (breakE lab (tupE []) ty1)
                       ty1
@@ -422,7 +420,7 @@ let loopWhileE exp1 exp2 =
         ) None
     )
 
-(* LoopE(exp1,Some exp2) *)
+(* LoopE(exp1, Some exp2) *)
 let loopWhileE' exp1 exp2 = (loopWhileE exp1 exp2).it
 
 let whileE exp1 exp2 =
@@ -431,15 +429,12 @@ let whileE exp1 exp2 =
            let x1 = e1 ;
            if x1 then { e2 } else { break l } }
   *)
-  let ty1 = exp1.note.S.note_typ in
-  let id1 = fresh_id ty1 in
   let lab = fresh_lab () in
   let ty2 = Type.unit in
   labelE lab ty2 (
       loopE (
           blockE [
-              letD id1 exp1 ;
-              expD (ifE id1
+              expD (ifE exp1
                       exp2
                       (breakE lab (tupE []) ty2)
                       ty2
@@ -465,10 +460,6 @@ let forE pat exp1 exp2 =
   let lab = fresh_lab () in
   let tyu = Type.unit in
   let ty1 = exp1.note.S.note_typ in
-
-  (* XXX: not sure how to get type info for `next` function...
-     - ...how to do I supply a non-empty con_env for `as_obj_sub` ?
-   *)
   let _, tfs  = Type.as_obj_sub "next" ty1 in
   let tnxt    = T.lookup_field "next" tfs in
   let ty1_ret = match (T.as_func tnxt) with
@@ -477,12 +468,10 @@ let forE pat exp1 exp2 =
   in
 
   let nxt = fresh_id tnxt in
-  (*
-  Printf.eprintf "XXX ty1     = %s\n" (T.string_of_typ ty1);
-  Printf.eprintf "XXX tnxt    = %s\n" (T.string_of_typ tnxt);
-  Printf.eprintf "XXX ty1_ret = %s\n" (T.string_of_typ ty1_ret);
-   *)
   blockE [
+      (* Matthew says: When I avoid ANF and "inline" this Let binding for 'nxt',
+         the IR interpreter hangs on `array-gen.as`.
+         it's unclear to me why that apparent divergence happens. *)
       letD nxt (dotE exp1 (nameN "next") tnxt) ;
       expD (
           labelE lab tyu (
