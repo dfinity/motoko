@@ -37,6 +37,8 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 // Conversions
 func natToWord32(n : Nat) : Word32 = (prim "Nat->Word32" : Nat -> Word32) n;
 func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
+func intToWord32(n : Int) : Word32 = (prim "Int->Word32" : Int -> Word32) n;
+func word32ToInt(n : Word32) : Int = (prim "Word32->Int" : Word32 -> Int) n;
 
 
 // This would be nicer as a objects, but lets do them as functions
@@ -86,12 +88,18 @@ open Value
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
-  | "Nat->Word32" -> fun v k -> k (Word32 (Big_int.int32_of_big_int(*!*) (as_int v)))
+  | "Nat->Word32" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v) in
+                     let max32 = Int32.to_int Int32.max_int in
+                     let w = if i > max32 then 0 else i (*FIXME: range*)
+                     in k (Word32 (Int32.of_int w))
+  | "Int->Word32" -> fun v k -> k (Word32 (Big_int.int32_of_big_int(*!*) (as_int v)))
   | "Word32->Nat" -> fun v k ->
                      let i32 = Int32.to_int (as_word32 v) in
                      let min32 = Int32.to_int Int32.min_int in
                      let i = if i32 < 0 then i32 - 2 * min32 else i32
                      in k (Int (Big_int.big_int_of_int i))
+  | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
