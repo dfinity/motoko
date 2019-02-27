@@ -33,6 +33,7 @@ assert(intToWord32 65535 == (65535 : Word32)); // 2**16 - 1
 assert(intToWord32 (-42 : Int) == (-42/*!*/ : Word32));
 assert(intToWord32 (-65535 : Int) == (-65535/*!*/ : Word32)); // - 2**16 + 1
 assert(intToWord32 (-65536 : Int) == (-65536/*!*/ : Word32)); // - 2**16
+assert(intToWord32 (-2147483648) == (-2147483648 : Word32)); // - 2**31
 
 assert(intToWord32 2147483647 == (2147483647 : Word32)); // 2**31 - 1
 assert(intToWord32 2147483648 == (2147483648 : Word32)); // 2**31
@@ -43,5 +44,7 @@ assert(intToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 assert(word32ToInt 0 == (0 : Int));
 assert(word32ToInt 42 == (42 : Int));
 assert(word32ToInt 2147483647 == (2147483647 : Int)); // 2**31 - 1
-//assert(word32ToInt 4294967295 == (4294967295 : Int)); // 2**32 - 1
+assert(word32ToInt 2147483648 == (-2147483648 : Int)); // 2**31
+assert(word32ToInt 4294967294 == (-2 : Int)); // 2**32 - 2
+assert(word32ToInt 4294967295 == (-1 : Int)); // 2**32 - 1
 
