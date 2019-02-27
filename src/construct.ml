@@ -191,18 +191,18 @@ let tupE exps =
              S.note_eff = eff }
   }
 
-let breakE l exp typ =
+let breakE l exp =
   { it = BreakE (l, exp);
     at = no_region;
     note = { S.note_eff = eff exp;
-             S.note_typ = typ }
+             S.note_typ = Type.Non }
   }
 
-let retE exp typ =
+let retE exp =
   { it = RetE exp;
     at = no_region;
     note = { S.note_eff = eff exp;
-             S.note_typ = typ }
+             S.note_typ = Type.Non }
   }
 
 let assignE exp1 exp2 =
@@ -213,7 +213,11 @@ let assignE exp1 exp2 =
   }
 
 let labelE l typ exp =
-  { exp with it = LabelE (l, typ, exp) }
+  { it = LabelE (l, typ, exp);
+    at = no_region;
+    note = { S.note_eff = eff exp;
+             S.note_typ = typ }
+  }
 
 let loopE exp1 exp2Opt =
   { it = LoopE (exp1, exp2Opt);
@@ -226,11 +230,11 @@ let loopE exp1 exp2Opt =
   }
 
 (* Used to desugar for loops, while loops and loop-while loops. *)
-let loopE_unit exp =
+let loopE' exp =
   { it = LoopE (exp, None);
     at = no_region;
     note = { S.note_eff = eff exp ;
-             S.note_typ = Type.unit }
+             S.note_typ = T.Non }
   }
 
 let declare_idE x typ exp1 =
@@ -411,13 +415,12 @@ let whileE exp1 exp2 =
          }
   *)
   let lab = fresh_lab () in
-  let tyu = Type.unit in
-  labelE lab tyu (
-      loopE_unit (
+  labelE lab T.unit (
+      loopE' (
           ifE exp1
             exp2
-            (breakE lab (tupE []) tyu)
-            tyu
+            (breakE lab (tupE []))
+            T.unit
         )
     )
 
@@ -429,15 +432,14 @@ let loopWhileE exp1 exp2 =
         }
    *)
   let lab = fresh_lab () in
-  let ty1 = Type.unit in
-  labelE lab ty1 (
-      loopE_unit (
+  labelE lab T.unit (
+      loopE' (
           blockE [
               expD exp1 ;
               expD (ifE exp2
                       (tupE [])
-                      (breakE lab (tupE []) ty1)
-                      ty1
+                      (breakE lab (tupE []))
+                      T.unit
                 )
             ]
         )
@@ -467,9 +469,9 @@ let forE pat exp1 exp2 =
       letD nxt (dotE exp1 (nameN "next") tnxt) ;
       expD (
           labelE lab tyu (
-              loopE_unit (
+              loopE' (
                   switch_optE (callE nxt [] (tupE []) ty1_ret)
-                    (breakE lab (tupE []) tyu)
+                    (breakE lab (tupE []))
                     pat exp2
                     tyu
                 )
