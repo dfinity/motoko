@@ -56,9 +56,7 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
-    (* TODO(joachim): Turn I.FuncD into I.FuncE *)
-    let i = {it = name; at; note = ()} in
-    I.BlockE [{it = I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e); at; note}]
+    I.FuncE (name, cc, typ_binds tbs, pat p, ty.note, exp e)
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -71,7 +69,7 @@ and exp' at note = function
     begin match Type.is_unit note.S.note_typ, last.it with
     | _, I.ExpD _ -> I.BlockE (ds')
     | true, _ -> I.BlockE (ds' @ [expD (tupE [])])
-    | false, (I.LetD ({it = I.VarP (x); _}, _) | I.FuncD (_, x, _, _, _, _)) ->
+    | false, (I.LetD ({it = I.VarP x; _}, _)) ->
       I.BlockE (ds' @ [expD (idE x note.S.note_typ)])
     | false, I.LetD (p', e') ->
       let x = fresh_var note.S.note_typ in
@@ -119,7 +117,7 @@ and build_obj at s self_id es obj_typ =
     match self_id with
     | None -> [ expD obj_e ]
     | Some id -> let self = idE id obj_typ in [ letD self obj_e; expD self ]
-  in I.BlockE (List.map (fun ef -> dec ef.it.S.dec) es @ ret_ds)
+  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds)
 
 and exp_fields fs = List.map exp_field fs
 
@@ -173,10 +171,21 @@ and decs ds =
                             S.note_eff = T.Triv }
                  }
       in
-      typD :: phrase' dec' d :: decs ds
-    | _ -> phrase' dec' d :: decs ds
+      typD :: dec d :: decs ds
+    | _ -> dec d :: decs ds
 
-and dec d = phrase' dec' d
+and dec d =
+  let ir_dec = phrase' dec' d in
+  (* In Source, LetD has a type, in IR not *)
+  match ir_dec.it with
+    | I.LetD _ -> { ir_dec with note =
+        { S.note_eff = ir_dec.note.S.note_eff
+        ; S.note_typ = T.unit
+        }
+      }
+    | _ -> ir_dec
+
+
 and dec' at n d = match d with
   | S.ExpD e -> I.ExpD (exp e)
   | S.LetD (p, e) ->
@@ -201,17 +210,24 @@ and dec' at n d = match d with
                    | None -> assert false
                    | Some c -> T.Con (c, []))
                  tbs in
+    let fun_typ = n.S.note_typ in
     let obj_typ =
-      match n.S.note_typ with
+      match fun_typ with
       | T.Func(s,c,bds,dom,[rng]) ->
         assert(List.length inst = List.length bds);
         T.promote (T.open_ inst rng)
       | _ -> assert false
     in
-    I.FuncD (cc, id', typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some self_id) es obj_typ;
-               at = at;
-               note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
+    let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
+    let fn = {
+      it = I.FuncE (id.it, cc, typ_binds tbs, pat p, obj_typ,
+         { it = obj at s (Some self_id) es obj_typ;
+           at = at;
+           note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
+      at = at;
+      note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
+    } in
+    I.LetD (varPat, fn)
 
 and cases cs = List.map case cs
 

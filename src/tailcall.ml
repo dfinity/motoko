@@ -121,6 +121,10 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
+  | FuncE (x, cc, tbs, p, typT, exp0) ->
+    let env1 = pat {tail_pos = true; info = None} p in
+    let exp0' = tailexp env1 exp0 in
+    FuncE (x, cc, tbs, p, typT, exp0')
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
 and exps env es  = List.map (exp env) es
@@ -184,20 +188,11 @@ and dec env d =
 
 and dec' env d =
   match d.it with
-  | ExpD e ->
-    (fun env1 -> ExpD (tailexp env1 e)),
-    env
-  | LetD (p, e) ->
-    let env = pat env p in
-    (fun env1 -> LetD(p,exp env1 e)),
-    env
-  | VarD (i, e) ->
-    let env = bind env i None in
-    (fun env1 -> VarD(i,exp env1 e)),
-    env
-  | FuncD ({ Value.sort = Local; _} as cc, id, tbs, p, typT, exp0) ->
+  (* A local let bound function, this is what we are looking for *)
+  | LetD (({it = VarP id;_} as id_pat),
+          ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, p, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
-    (fun env1 ->
+    begin fun env1 ->
       let temp = fresh_var (Mut p.note) in
       let l = fresh_id () in
       let tail_called = ref false in
@@ -212,7 +207,7 @@ and dec' env d =
       let exp0' = tailexp env3 exp0 in
       let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
       if !tail_called then
-        let ids = match typ d with
+        let ids = match typ funexp with
           | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_var (open_ cs t)) dom
           | _ -> assert false
         in
@@ -225,18 +220,21 @@ and dec' env d =
                               (blockE [letP p temp;
                                        expD (retE exp0')])) None)
             ] in
-        FuncD (cc, id, tbs, args, typT, body)
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
       else
-        FuncD (cc, id, tbs, p, typT, exp0')),
-      env
-  | FuncD (cc, i, tbs, p, t, e) ->
-    (* don't optimize self-tail calls for shared functions otherwise
-       we won't go through the scheduler *)
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, p, typT, exp0')})
+    end,
+    env
+  | ExpD e ->
+    (fun env1 -> ExpD (tailexp env1 e)),
+    env
+  | LetD (p, e) ->
+    let env = pat env p in
+    (fun env1 -> LetD(p,exp env1 e)),
+    env
+  | VarD (i, e) ->
     let env = bind env i None in
-    (fun env1 ->
-      let env2 = pat {tail_pos = true; info = None} p in
-      let e' = tailexp env2 e in
-      FuncD(cc, i, tbs, p, t, e')),
+    (fun env1 -> VarD(i,exp env1 e)),
     env
   | TypD _ ->
     (fun env -> d.it),

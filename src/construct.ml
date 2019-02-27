@@ -255,7 +255,7 @@ let newObjE sort ids typ =
 let letP pat exp =
   { it = LetD (pat, exp);
     at = no_region;
-    note = exp.note;
+    note = { S.note_eff = eff exp; S.note_typ = T.unit }
   }
 
 let letD x exp = letP (varP x) exp
@@ -275,43 +275,55 @@ let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
 
 let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
 
+(* Mono-morphic function expression *)
+let funcE name t x exp =
+  let retty = match t with
+    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | _ -> assert false in
+  let cc = Value.call_conv_of_typ t in
+  ({it = FuncE
+     ( name,
+       cc,
+       [],
+       varP x,
+       (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
+       retty,
+       exp
+     );
+    at = no_region;
+    note = { S.note_eff = T.Triv; S.note_typ = t }
+   })
+
+let nary_funcE name t xs exp =
+  let retty = match t with
+    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | _ -> assert false in
+  let cc = Value.call_conv_of_typ t in
+  ({it = FuncE
+      ( name,
+        cc,
+        [],
+        seqP (List.map varP xs),
+        retty,
+        exp
+      );
+    at = no_region;
+    note = { S.note_eff = T.Triv; S.note_typ = t }
+  })
+
 (* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
-    let sharing, t1, t2 = match typ f with
-      | T.Func(sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
-      | _ -> assert false in
-    let cc = Value.call_conv_of_typ (typ f) in
-    { it = FuncD (cc,
-                  (id_of_exp f),
-                  [],
-                  { it = VarP (id_of_exp x); at = no_region; note = t1 },
-                  (* TODO: Assert invariant: t2 has no free (unbound) DeBruijn indices -- Claudio *)
-                  t2,
-                  exp);
-      at = no_region;
-      note = f.note
-    }
+    letD f (funcE (id_of_exp f).it (typ f) x exp)
   | _ -> failwith "Impossible: funcD"
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs exp =
-  match f.it, typ f with
-  | VarE _,
-    T.Func(sharing,_,_,_,ts2) ->
-    let cc = Value.call_conv_of_typ (typ f) in
-    let t2 = T.seq ts2 in
-    { it = FuncD (cc,
-                  id_of_exp f,
-                  [],
-                  seqP (List.map varP xs),
-                  t2,
-                  exp);
-      at = no_region;
-      note = f.note
-    }
-  | _,_ -> failwith "Impossible: funcD"
+  match f.it with
+  | VarE _ ->
+    letD f (nary_funcE (id_of_exp f).it (typ f) xs exp)
+  | _ -> failwith "Impossible: funcD"
 
 
 (* Continuation types *)
@@ -340,29 +352,20 @@ let as_seqE e =
 (* Lambda abstraction *)
 
 (* local lambda *)
-let  (-->) x exp =
-  match x.it with
-  | VarE _ ->
-    let f = idE ("$lambda" @@ no_region)
-              (T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)))
-    in
-    decE  (funcD f x exp)
-  | _ -> failwith "Impossible: -->"
+let (-->) x exp =
+  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)) in
+  funcE "$lambda" fun_ty x exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
-  let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Local, T.Returns, [],
-                     List.map typ xs, T.as_seq (typ exp))) in
-  decE (nary_funcD f xs exp)
+  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  nary_funcE "$lambda" fun_ty xs exp
 
 
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
-  let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Sharable, T.Returns, [],
-                     List.map typ xs, T.as_seq (typ exp))) in
-  decE (nary_funcD f xs exp)
+  let fun_ty = T.Func (T.Sharable, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  nary_funcE "$lambda" fun_ty xs exp
 
 
 (* Lambda application (monomorphic) *)

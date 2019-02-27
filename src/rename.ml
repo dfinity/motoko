@@ -60,6 +60,10 @@ and exp' rho e  = match e with
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
+  | FuncE (x, s, tp, p, t, e) ->
+     let p', rho' = pat rho p in
+     let e' = exp rho' e in
+     FuncE (x, s, tp, p', t, e')
   | NewObjE (s, is, t)  -> NewObjE (s, List.map (fun (l,i) -> (l,id rho i)) is, t)
 
 and exps rho es  = List.map (exp rho) es
@@ -137,13 +141,6 @@ and dec' rho d = match d with
   | VarD (i, e) ->
      let i', rho = id_bind rho i in
      (fun rho' -> VarD (i',exp rho' e)),
-     rho
-  | FuncD (s, i, tp, p, t, e) ->
-     let i', rho = id_bind rho i in
-     (fun rho' ->
-       let p', rho'' = pat rho' p in
-       let e' = exp rho'' e in
-       FuncD (s, i', tp, p', t, e')),
      rho
   | TypD c -> (* we don't rename type names *)
      (fun rho -> d),

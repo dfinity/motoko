@@ -262,9 +262,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 =
-    (if T.is_mut t2 then t1 else T.as_immut t1) <: t2
-  in
+  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check effect *)
   check (E.Ir.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
@@ -387,6 +385,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (typ exp2) <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE decs ->
+    (* Really, this should be a tuple of decs and an expression now *)
+    check (decs <> []) "BlockE [] is invalid";
+    begin match (Lib.List.last decs).it with
+      | ExpD _ -> ()
+      | _ -> error env exp.at "last entry in a BlockE must be an expression"
+    end;
     let t1, scope = type_block env decs exp.at in
     t1 <: t;
   | IfE (exp1, exp2, exp3) ->
@@ -512,6 +516,29 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
+  | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
+    let cs,ce = check_open_typ_binds env typ_binds in
+    let arg_ty, ret_ty = match t with
+      | T.Func (cc, _, _, ts1, ts2) ->
+        let ts = List.map (fun c -> T.Con (c, [])) cs in
+        let ts1 = List.map (T.open_ ts) ts1 in
+        let ts2 = List.map (T.open_ ts) ts2 in
+        T.seq ts1, T.seq ts2
+      | _ -> error env exp.at "FuncE not annotated with a function type"
+    in
+    let env' = adjoin_cons env ce in
+    let ve = check_pat_exhaustive env' pat in
+    check (cc = Value.call_conv_of_typ t) "different calling convention in FuncE and its type";
+    check_typ env' arg_ty;
+    check_typ env' ret_ty;
+    check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
+           ==> isAsyncE exp)
+      "shared function with async type has non-async body";
+    let env'' =
+      {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
+    check_exp (adjoin_vals env'' ve) exp;
+    check_sub env' exp.at arg_ty pat.note;
+    check_sub env' exp.at (typ exp) ret_ty
   | NewObjE (sort, labids, t0) ->
     let t1 =
       T.Obj(sort,
@@ -624,12 +651,7 @@ and type_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | BlockE [dec]-> is_func_dec dec
-  | _ -> false
-
-and is_func_dec dec =
-  match dec.it with
-  | FuncD _ -> true
+  | FuncE _ -> true
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
@@ -690,32 +712,24 @@ and check_dec env dec  =
   (* helpers *)
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
+  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check effect *)
   check (E.Ir.infer_effect_dec dec <= E.eff dec)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = typ dec in
   match dec.it with
-  | ExpD exp | LetD (_, exp) ->
+  | ExpD exp ->
     check_exp env exp;
-    (typ exp) <: t
+    typ exp <: t
+  | LetD (pat, exp) ->
+    ignore (check_pat_exhaustive env pat);
+    check_exp env exp;
+    typ exp <~ pat.note;
+    T.unit <: t
   | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
-  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
-    let t0 = T.Env.find id.it env.vals in
-    let _cs,ce = check_open_typ_binds env typ_binds in
-    let env' = adjoin_cons env ce in
-    let ve = check_pat_exhaustive env' pat in
-    check_typ env' t2;
-    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
-           ==> isAsyncE exp)
-      "shared function with async type has non-async body";
-    let env'' =
-      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-    check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' dec.at (typ exp) t2;
-    t0 <: t;
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
     let (binds,typ) =
@@ -762,28 +776,6 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
-  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
-    let func_sort = call_conv.Value.sort in
-    let cs = List.map (fun tb -> tb.it.con) typ_binds in
-    let t1 = pat.note in
-    let t2 = typ in
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
-    in
-    let ts2 = match call_conv.Value.n_res  with
-      | 1 -> [t2]
-      | _ -> T.as_seq t2
-    in
-    let c = match func_sort, t2 with
-      | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
-    let ve' =  T.Env.add id.it t scope.val_env in
-    { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
       (not (T.ConSet.mem c scope.con_env))

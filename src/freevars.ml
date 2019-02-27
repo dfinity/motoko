@@ -90,6 +90,7 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
+  | FuncE (x, cc, tp, p, t, e) -> under_lambda (exp e /// pat p)
   | NewObjE (_, ids, _) -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps es : f = unions exp es
@@ -120,8 +121,6 @@ and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e
   | VarD (i, e) ->
     (M.empty, S.singleton i.it) +++ exp e
-  | FuncD (cc, i, tp, p, t, e) ->
-    (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
   | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)

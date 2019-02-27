@@ -58,6 +58,8 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
+  | FuncE of                                   (* function *)
+      string * Value.call_conv * typ_bind list * pat * Type.typ * exp
   | NewObjE of                                 (* make an object, preserving mutable identity *)
       Type.obj_sort * (name * id) list * Type.typ
 
@@ -78,8 +80,6 @@ and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
-  | FuncD of                                   (* function *)
-      Value.call_conv * id * typ_bind list * pat * Type.typ * exp
   | TypD of Type.con                           (* type *)
 
 

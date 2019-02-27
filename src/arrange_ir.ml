@@ -40,6 +40,8 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
+  | FuncE (x, cc, tp, p, t, e) ->
+    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | NewObjE (s, nameids, t)-> "NewObjE" $$ (Arrange.obj_sort' s ::
                                               List.fold_left (fun flds (n,i) ->
                                                   Atom (name n)::(id i):: flds) [typ t] nameids)
@@ -66,8 +68,6 @@ and dec d = match d.it with
   | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | FuncD (cc, i, tp, p, t, e) ->
-    "FuncD" $$ [call_conv cc; id i] @ List.map typ_bind tp @ [pat p; typ t; exp e]
   | TypD c ->
     "TypD" $$ [con c; kind (Con.kind c)]
 

@@ -72,8 +72,6 @@ module Transform() = struct
     let fullfill = fresh_var (typ (projE call_new_async 1)) in
     (async,fullfill),call_new_async
 
-  let letP p e = {it = LetD(p, e); at = no_region; note = e.note}
-
   let new_nary_async_reply t1 =
     let (unary_async,unary_fullfill),call_new_async = new_async t1 in
     let v' = fresh_var t1 in
@@ -326,6 +324,43 @@ module Transform() = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
+    | FuncE (x, cc, typbinds, pat, typT, exp) ->
+      let s = cc.Value.sort in
+      begin
+        match s with
+        | T.Local  ->
+          FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+        | T.Sharable ->
+          begin
+            match typ exp with
+            | T.Tup [] ->
+              FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+            | T.Async res_typ ->
+              let cc' = Value.message_cc (cc.Value.n_args + 1) in
+              let res_typ = t_typ res_typ in
+              let pat = t_pat pat in
+              let reply_typ = replyT nary res_typ in
+              let typ' = T.Tup []  in
+              let k = fresh_var reply_typ in
+              let pat',d = extendTupP pat (varP k) in
+              let typbinds' = t_typ_binds typbinds in
+              let y = fresh_var res_typ in
+              let exp' =
+                match exp.it with
+                | CallE(_, async,_,cps) ->
+                  begin
+                    match async.it with
+                    | PrimE("@async") ->
+                      blockE
+                        (d [expD ((t_exp cps) -*- (y --> (k -*- y)))])
+                    | _ -> assert false
+                  end
+                | _ -> assert false
+              in
+              FuncE (x, cc', typbinds', pat', typ', exp')
+            | _ -> assert false
+          end
+      end
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, ids, t_typ t)
 
@@ -342,43 +377,6 @@ module Transform() = struct
       TypD (t_con con_id)
     | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
     | VarD (id,exp) -> VarD (id,t_exp exp)
-    | FuncD (cc, id, typbinds, pat, typT, exp) ->
-      let s = cc.Value.sort in
-      begin
-        match s with
-        | T.Local  ->
-          FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
-        | T.Sharable ->
-          begin
-            match typ exp with
-            | T.Tup [] ->
-              FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
-            | T.Async res_typ ->
-              let cc' = Value.message_cc (cc.Value.n_args + 1) in
-              let res_typ = t_typ res_typ in
-              let pat = t_pat pat in
-              let reply_typ = replyT nary res_typ in
-              let typ' = T.Tup []  in
-              let k = fresh_var reply_typ in
-              let pat',d = extendTupP pat (varP k) in
-              let typbinds' = t_typ_binds typbinds in
-              let x = fresh_var res_typ in
-              let exp' =
-                match exp.it with
-                | CallE(_, async,_,cps) ->
-                  begin
-                    match async.it with
-                    | PrimE("@async") ->
-                      blockE
-                        (d [expD ((t_exp cps) -*- (x --> (k -*- x)))])
-                    | _ -> assert false
-                  end
-                | _ -> assert false
-              in
-              FuncD (cc', id, typbinds', pat', typ', exp')
-            | _ -> assert false
-          end
-      end
 
   and t_decs decs = List.map t_dec decs
 
