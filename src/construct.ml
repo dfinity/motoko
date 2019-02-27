@@ -191,18 +191,18 @@ let tupE exps =
              S.note_eff = eff }
   }
 
-let breakE l exp typ =
+let breakE l exp =
   { it = BreakE (l, exp);
     at = no_region;
     note = { S.note_eff = eff exp;
-             S.note_typ = typ }
+             S.note_typ = Type.Non }
   }
 
-let retE exp typ =
+let retE exp =
   { it = RetE exp;
     at = no_region;
     note = { S.note_eff = eff exp;
-             S.note_typ = typ }
+             S.note_typ = Type.Non }
   }
 
 let assignE exp1 exp2 =
@@ -213,7 +213,11 @@ let assignE exp1 exp2 =
   }
 
 let labelE l typ exp =
-  { exp with it = LabelE (l, typ, exp) }
+  { it = LabelE (l, typ, exp);
+    at = no_region;
+    note = { S.note_eff = eff exp;
+             S.note_typ = typ }
+  }
 
 let loopE exp1 exp2Opt =
   { it = LoopE (exp1, exp2Opt);
@@ -391,4 +395,3 @@ let prim_async typ =
 
 let prim_await typ =
   primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
-

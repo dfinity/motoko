@@ -360,7 +360,7 @@ let rec string_of_val_nullary d = function
       (String.concat ", " (List.map (string_of_val' d) vs))
       (if List.length vs = 1 then "," else "")
   | Opt v ->
-    sprintf "%s?" (string_of_val_nullary d v)
+    sprintf "?%s" (string_of_val_nullary d v)
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->

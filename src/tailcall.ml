@@ -98,7 +98,7 @@ and exp' env e  : exp' = match e.it with
            when f1.it = func.it && are_generic_insts typ_binds insts  ->
         tail_called := true;
         (blockE [expD (assignE temp (exp env e2));
-                 expD (breakE label (tupE []) (typ e))]).it
+                 expD (breakE label (tupE []))]).it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
   | BlockE ds           -> BlockE (decs env ds)
@@ -223,7 +223,7 @@ and dec' env d =
                    expD (loopE
                            (labelE l l_typ
                               (blockE [letP p temp;
-                                       expD (retE exp0' Type.unit)])) None)
+                                       expD (retE exp0')])) None)
             ] in
         FuncD (cc, id, tbs, args, typT, body)
       else
