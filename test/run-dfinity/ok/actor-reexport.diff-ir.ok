@@ -1,0 +1,12 @@
+--- actor-reexport.run
++++ actor-reexport.run-ir
+@@ -1,5 +1,4 @@
+-exported()
+-exported()
+-exported()
+-exported()
+-exported()
++(unknown location): internal error, Failure("pattern bindings not yet supported in objects")
++
++Last environment:
++
