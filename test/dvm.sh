@@ -10,7 +10,7 @@ name="$(basename $1 .wasm)_0"
 DVM_TMP="$TMP/dvm/$name"
 
 rm -rf $DVM_TMP
-mkdir $DVM_TMP
+mkdir -p $DVM_TMP
 
 export LANG=C
 function dvm_ () {
