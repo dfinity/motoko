@@ -113,11 +113,10 @@ rec {
       patchShebangs .
       asc --version
       make -C samples ASC=asc all
-      make -C test/run VERBOSE=1 ASC=asc all
-      make -C test/fail VERBOSE=1 ASC=asc all
+      make -C test VERBOSE=1 ASC=asc quick
     '' +
       (if test-dvm then ''
-      make -C test/run-dfinity VERBOSE=1 ASC=asc all
+      make -C test VERBOSE=1 ASC=asc parallel
       '' else "");
 
     installPhase = ''
