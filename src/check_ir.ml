@@ -416,10 +416,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
     begin match expo with
     | Some exp2 ->
       check_exp env exp2;
-      (typ exp2) <: T.bool;
-    | _ -> ()
+      typ exp2 <: T.bool;
+      T.unit <: t;
+    | _ ->
+      T.Non <: t; (* vacuously true *)
     end;
-    T.Non <: t; (* vacuously true *)
   | ForE (pat, exp1, exp2) ->
     begin
       check_exp env exp1;
