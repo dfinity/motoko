@@ -453,8 +453,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some t1 ->
         check_exp env exp1;
         typ exp1 <: t1;
-        T.Non <: t1; (* vacuously true *)
     end;
+    T.Non <: t; (* vacuously true *)
   | RetE exp1 ->
     begin
       match env.rets with
@@ -464,8 +464,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
         assert (t0 <> T.Pre);
         check_exp env exp1;
         typ exp1 <: t0;
-        T.Non <: t; (* vacuously true *)
     end;
+    T.Non <: t; (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
