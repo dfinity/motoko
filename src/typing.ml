@@ -552,17 +552,17 @@ and infer_exp'' env exp : T.typ =
       check_exp env T.unit exp2
     end;
     T.unit
-  | LoopE (exp1, expo) ->
+  | LoopE (exp1, None) ->
+    if not env.pre then begin
+      check_exp env T.unit exp1
+    end;
+    T.Non
+  | LoopE (exp1, Some exp2) ->
     if not env.pre then begin
       check_exp env T.unit exp1;
+      check_exp env T.bool exp2
     end;
-    begin match expo with
-    | Some exp2 ->
-      check_exp env T.bool exp2;
-      T.unit
-    | None ->
-      T.Non
-    end
+    T.unit
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
       let t1 = infer_exp_promote env exp1 in
