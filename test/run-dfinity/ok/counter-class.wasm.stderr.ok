@@ -24,7 +24,7 @@ non-closed actor: (ActorE
       (FuncD
         (shared  1 -> 0)
         read
-        (VarP $1)
+        (VarP $2)
         ()
         (BlockE
           (LetD (TupP) (TupE))
@@ -35,18 +35,18 @@ non-closed actor: (ActorE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
-                  (VarP $0)
+                  (VarP $1)
                   ()
-                  (CallE ( 1 -> 0) (VarE $0) (VarE c))
+                  (CallE ( 1 -> 0) (VarE $1) (VarE c))
                 )
               )
               (BlockE
                 (FuncD
                   ( 1 -> 0)
                   $lambda
-                  (VarP $2)
+                  (VarP $3)
                   ()
-                  (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
+                  (CallE (shared  1 -> 0) (VarE $2) (VarE $3))
                 )
               )
             )
