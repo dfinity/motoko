@@ -74,13 +74,18 @@ assert(intToWord32 2147483648 == (2147483648 : Word32)); // 2**31
 assert(intToWord32 2147483649 == (2147483649 : Word32)); // 2**31 + 1
 assert(intToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 
+func println(i : Int) { printInt(i); print "\n"; };
 
-assert(word32ToInt 0 == 0);
-assert(word32ToInt 42 == 42);
-assert(word32ToInt 2147483647 == (2147483647)); // 2**31 - 1
-assert(word32ToInt 2147483648 == (-2147483648)); // 2**31
-assert(word32ToInt 4294967294 == (-2)); // 2**32 - 2
-assert(word32ToInt 4294967295 == (-1)); // 2**32 - 1
+println(word32ToInt (-2147483648)); // -2**31
+println(word32ToInt (-2147483647)); // -2**31 + 1
+println(word32ToInt (-42));
+println(word32ToInt (-1));
+println(word32ToInt 0);
+println(word32ToInt 42);
+println(word32ToInt 2147483647); // 2**31 - 1
+println(word32ToInt 2147483648); // == (-2147483648) // 2**31
+println(word32ToInt 4294967294); // == (-2) // 2**32 - 2
+println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
 
 {
     func roundtrip(i : Int) = assert (word32ToInt (intToWord32 i) == i);
