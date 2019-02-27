@@ -90,8 +90,12 @@ let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "Nat->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v) in
+                     let min32 = Int32.to_int Int32.min_int in
                      let max32 = Int32.to_int Int32.max_int in
-                     let w = if i > max32 then 0 else i (*FIXME: range*)
+                     let w = if i > max32 - min32 then 0
+                             else if i > max32 then i - 2 * min32 
+                             else if i < min32 then 0
+                             else i
                      in k (Word32 (Int32.of_int w))
   | "Int->Word32" -> fun v k -> k (Word32 (Big_int.int32_of_big_int(*!*) (as_int v)))
   | "Word32->Nat" -> fun v k ->
