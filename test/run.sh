@@ -9,7 +9,6 @@
 #    -a: Update the files in ok/
 #    -d: Compile with --dfinity, use dvm to run
 #    -s: Be silent in sunny-day execution
-#    -t: Use individual temporary folder for dvm run
 #
 
 function realpath() {
@@ -23,11 +22,9 @@ EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
-DVM_TMP=$TMP/dvm
-DVM_EXTRA=true
 ECHO=echo
 
-while getopts "adst" o; do
+while getopts "ads" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -39,23 +36,12 @@ while getopts "adst" o; do
         s)
             ECHO=true
             ;;
-        t)
-            DVM_EXTRA=make_tmpdir
-	    DVM_WRAPPER=$(realpath $(dirname $0)/dvm-db.sh)
-            ;;
     esac
 done
 
 shift $((OPTIND-1))
 
 failures=no
-
-function make_tmpdir() {
-  tmpdir=$DVM_TMP/$(echo $(basename $1) | cut -f 1 -d '.')
-  rm -rf $tmpdir
-  mkdir $tmpdir
-  echo $tmpdir
-}
 
 for file in "$@";
 do
@@ -133,7 +119,7 @@ do
         if [ $DFINITY = 'yes' ]
         then
           $ECHO -n " [dvm]"
-          $DVM_WRAPPER $($DVM_EXTRA $file) $out/$base.wasm > $out/$base.dvm-run 2>&1
+          $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
           diff_files="$diff_files $base.dvm-run"
         else
           $ECHO -n " [wasm-run]"

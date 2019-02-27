@@ -7,6 +7,10 @@ then
 fi
 
 name="$(basename $1 .wasm)_0"
+DVM_TMP="$TMP/dvm/$name"
+
+rm -rf $DVM_TMP
+mkdir $DVM_TMP
 
 export LANG=C
 function dvm_ () {
@@ -20,6 +24,6 @@ function dvm_ () {
 
 }
 
-dvm_ -q reset
-dvm_ -q new $1
-dvm_ -q run $name start
+dvm_ -q --db $DVM_TMP reset
+dvm_ -q --db $DVM_TMP new $1
+dvm_ -q --db $DVM_TMP run $name start

@@ -3,11 +3,11 @@ all:
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity
 
-quicker:
+quick:
 	$(MAKE) --no-print-directory --load-average -j -C fail quick
 	$(MAKE) --no-print-directory --load-average -j -C run quick
 
-quick: quicker
+parallel: quick
 	$(MAKE) --no-print-directory --load-average -j -C run-dfinity quick
 
 coverage:
