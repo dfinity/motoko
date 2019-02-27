@@ -258,10 +258,7 @@ let letP pat exp =
     note = exp.note;
   }
 
-let letD x exp = { it = LetD (varP x, exp);
-                   at = no_region;
-                   note = exp.note;
-                 }
+let letD x exp = letP (varP x) exp
 
 let varD x exp = { it = VarD (x, exp);
                    at = no_region;
