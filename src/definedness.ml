@@ -89,7 +89,9 @@ let rec exp msgs e : f = match e.it with
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, efs)       -> close (exp_fields msgs efs)
+  | ObjE (s, efs)       ->
+    (* For actors, this may be too permissive; to be revised when we work on actors again *)
+    close (exp_fields msgs efs)
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
