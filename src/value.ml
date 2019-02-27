@@ -296,7 +296,18 @@ let obj_of_array a =
 
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
-let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
+let obj_of_text t =
+  let chars = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let s = Wasm.Utf8.decode t in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = List.length s then k' Null else
+          let v = Opt (Char (List.nth s !i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next)) in
+  Env.from_list ["chars", chars]
+
+let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | Text t -> obj_of_text t | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"

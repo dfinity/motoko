@@ -100,6 +100,11 @@ let array_obj t =
   | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
   | t -> Obj (Object Local, List.sort compare_field (immut t))
 
+let text_obj =
+  let immut =
+    [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+    ] in
+  Obj (Object Local, List.sort compare_field immut)
 
 (* Shifting *)
 
@@ -272,6 +277,7 @@ let as_prim_sub p t = match promote t with
 let rec as_obj_sub lab t = match promote t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub lab (array_obj t)
+  | Prim Text -> as_obj_sub lab text_obj
   | Non -> Object Sharable, [{lab; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub t = match promote t with

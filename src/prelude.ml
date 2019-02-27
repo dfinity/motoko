@@ -32,6 +32,7 @@ class revrange(x : Nat, y : Nat) {
 };
 
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
+func printChar(x : Char) { (prim "printChar" : Char -> ()) x };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
 
@@ -84,6 +85,7 @@ let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
+  | "printChar" -> fun v k -> Printf.printf "%c%!" (Char.chr (as_char v)); k unit
   | "Array.init" -> fun v k ->
     (match Value.as_tup v with
     | [len; x] ->
