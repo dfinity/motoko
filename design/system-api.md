@@ -9,7 +9,7 @@ Motivation, history and related documents
 
 It thus grew out and subsumes the document “[DFINITY System API (System
 Calls)]”, making changes and simplifications based on our experience building
-the ActorScrpit compiler against that interface.
+the ActorScript compiler against that interface.
 
 This document includes the interfaces proposed by and required for the
 “[Bidirectional Asynchronous Messaging]”, but does not define the semantics of
@@ -51,13 +51,13 @@ release, and thus excludes features like
  * payment and others.
 
 
-It is, however, designed to be extended with these feature, and occasionaly we
+It is, however, designed to be extended with these features, and occasionally we
 note how that extension would look like.
 
 WebAssembly Host references
 ---------------------------
 
-This design mentions custom references types, such as `msgref`. If the
+This design mentions custom reference types, such as `msgref`. If the
 “[Reference Types for WebAssembly]” proposal is implemented, these would be
 such opaque host references of type `anyref`, or a custom reference type if
 type import is implemented; until then, they are represented by a `i32`. The
@@ -73,7 +73,7 @@ that name and type `(msgref) -> ()`, where `msgref` is a host reference type,
 as introduced in the [Bidirectional Asynchronous Messaging] proposal. We call
 this the *message entry point*.
 
-The proivided `msgref` is valid only during the execution of this method.
+The provided `msgref` is valid only during the execution of this method.
 
 *Alternative design:* A single static entry-point `receive` that can query the requested
 `name` via the `msgref`, and do dynamic dispatch.
@@ -110,7 +110,7 @@ entry point call, even if that were possible with WebAssembly. This allows the
 WebAssembly module to do various checks (do I have enough space? does the
 argument have the size I expect? Eventually: is the sender authenticated and is
 enough payment provided?) before actually loading the data. By allowing partial
-access the receiver can parse large amount of data in a streaming fashion.
+access, the receiver can parse large amount of data in a streaming fashion.
 
 *Future note* (relevant once we allow inter-canister messages and/or local
 actors): The `msgref` is re-used when message sends return and callbacks are
@@ -145,7 +145,7 @@ msg.reply : (msg : msgref, offset : i32, length : i32) -> ()
 ```
 
 This system call loads `length` bytes at position `offset` of the WebAssembly
-heap, to be used as the result value upon successful competion of the entry
+heap, to be used as the result value upon successful completion of the entry
 point.
 
 It traps if `length+offset` exceeds the size of the WebAssembly heap. I also
@@ -172,7 +172,7 @@ that later.
 *Future note* (once we can respond with references): To send references, an
 additional system call
 ```
-msg.refs_reply : (msg msgref, offset : i32, length : i32) -> ()
+msg.refs_reply : (msg : msgref, offset : i32, length : i32) -> ()
 ```
 is provided that reads references from the WebAssembly module table.
 
@@ -189,14 +189,14 @@ msg.reject : (msg : msgref, errorcode : i32) -> ()
 The meaning of the error codes is not specified in this proposal.
 
 Like `msg.reply`, this function returns to the WebAssembly module and does not
-immediatelly send a response. It traps if `msg.reject` or `msg.reply` has been
+immediately send a response. It traps if `msg.reject` or `msg.reply` has been
 called before.
 
 *Alternative design:* Additional methods that add more information to the
 rejection (e.g. a log message) could be added.
 
 
-Serializaing and deserializing the actor state
+Serializing and deserializing the actor state
 ----------------------------------------------
 
 The system expects WebAssembly modules to be able to serialize and
