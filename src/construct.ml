@@ -456,7 +456,6 @@ let forE pat exp1 exp2 =
        }
      } *)
   let lab = fresh_lab () in
-  let tyu = Type.unit in
   let ty1 = exp1.note.S.note_typ in
   let _, tfs  = Type.as_obj_sub "next" ty1 in
   let tnxt    = T.lookup_field "next" tfs in
@@ -468,12 +467,12 @@ let forE pat exp1 exp2 =
   blockE [
       letD nxt (dotE exp1 (nameN "next") tnxt) ;
       expD (
-          labelE lab tyu (
+          labelE lab Type.unit (
               loopE' (
                   switch_optE (callE nxt [] (tupE []) ty1_ret)
                     (breakE lab (tupE []))
                     pat exp2
-                    tyu
+                    Type.unit
                 )
             )
         )
