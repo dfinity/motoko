@@ -51,6 +51,7 @@ module SR = struct
     | Vanilla
     | UnboxedTuple of int
     | UnboxedInt64
+    | UnboxedInt32
     | UnboxedReference
     | Unreachable
     | StaticThing of static_thing
@@ -2809,13 +2810,14 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat -> UnboxedInt64
     | Type.Prim Type.Int -> UnboxedInt64
-    | Type.Prim Type.Word32 -> Vanilla
+    | Type.Prim Type.Word32 -> UnboxedInt32
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
     | UnboxedInt64 -> ValBlockType (Some I64Type)
+    | UnboxedInt32 -> ValBlockType (Some I32Type)
     | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
@@ -2826,6 +2828,7 @@ module StackRep = struct
   let to_string = function
     | Vanilla -> "Vanilla"
     | UnboxedInt64 -> "UnboxedInt64"
+    | UnboxedInt32 -> "UnboxedInt32"
     | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
@@ -2847,6 +2850,7 @@ module StackRep = struct
     match sr_in with
     | Vanilla -> G.i Drop
     | UnboxedInt64 -> G.i Drop
+    | UnboxedInt32 -> G.i Drop
     | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | StaticThing _ -> G.nop
@@ -3202,7 +3206,7 @@ let compile_lit env lit = Syntax.(match lit with
   | NatLit n      -> SR.UnboxedInt64,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | Word32Lit n   -> SR.Vanilla,
+  | Word32Lit n   -> SR.UnboxedInt32,
     (try compile_unboxed_const n
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable) (* TODO: check we are 64 bit *)
   | NullLit       -> SR.Vanilla, Opt.null
@@ -3355,19 +3359,19 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
        | "Nat->Word32" ->
-         SR.Vanilla,
-         compile_exp_vanilla env e ^^
+         SR.UnboxedInt32,
+         compile_exp_as env SR.UnboxedInt32 e ^^
          Prim.prim_nat32toWord32 env
        | "Word32->Nat" ->
-         SR.Vanilla,
+         SR.Vanilla, (*TODO*)
          compile_exp_vanilla env e ^^
          Prim.prim_word32toNat32 env
        | "Int->Word32" ->
-         SR.Vanilla,
+         SR.Vanilla, (*TODO*)
          compile_exp_vanilla env e ^^
          Prim.prim_int32toWord32 env
        | "Word32->Int" ->
-         SR.Vanilla,
+         SR.Vanilla, (*TODO*)
          compile_exp_vanilla env e ^^
          Prim.prim_word32toInt32 env
        | "printInt" ->
