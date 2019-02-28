@@ -173,7 +173,7 @@ module Transform() = struct
       end
     | Opt t -> Opt (t_typ t)
     | Async t -> t_async nary (t_typ t)
-    | Obj (s, fs) -> Obj (s, List.map t_field  fs)
+    | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
     | Any -> Any
@@ -210,6 +210,7 @@ module Transform() = struct
 
   and t_field {lab; typ} =
     { lab; typ = t_typ typ }
+
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
       note = { note_typ = t_typ exp.note.note_typ;
@@ -234,9 +235,6 @@ module Transform() = struct
       OptE (t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
-    | ActorE (id, fields, typ) ->
-      let fields' = t_fields fields in
-      ActorE (id, fields', t_typ typ)
     | DotE (exp1, id) ->
       DotE (t_exp exp1, id)
     | ActorDotE (exp1, id) ->
@@ -361,8 +359,10 @@ module Transform() = struct
             | _ -> assert false
           end
       end
+    | ActorE (id, ds, fs, typ) ->
+      ActorE (id, t_decs ds, t_fields fs, t_typ typ)
     | NewObjE (sort, ids, t) ->
-      NewObjE (sort, ids, t_typ t)
+      NewObjE (sort, t_fields ids, t_typ t)
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 
@@ -378,10 +378,8 @@ module Transform() = struct
 
   and t_block (ds, exp) = (t_decs ds, t_exp exp)
 
-  and t_fields fields =
-    List.map (fun (field:exp_field) ->
-        { field with it = { field.it with exp = t_exp field.it.exp } })
-      fields
+  and t_fields fs =
+    List.map (fun f -> { f with note = t_typ f.note }) fs
 
   and t_pat pat =
     { pat with

@@ -74,9 +74,6 @@ and t_exp' context exp' =
     OptE (t_exp context exp1)
   | ProjE (exp1, n) ->
     ProjE (t_exp context exp1, n)
-  | ActorE (id, fields, typ) ->
-    let fields' = t_fields context fields in
-    ActorE (id, fields', typ)
   | DotE (exp1, id) ->
     DotE (t_exp context exp1, id)
   | ActorDotE (exp1, id) ->
@@ -140,6 +137,8 @@ and t_exp' context exp' =
   | FuncE (x, s, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add id_ret Label LabelEnv.empty in
     FuncE (x, s, typbinds, pat, typ,t_exp context' exp)
+  | ActorE (id, ds, ids, t) ->
+    ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
 
 and t_dec context dec =
@@ -154,11 +153,6 @@ and t_dec' context dec' =
 and t_decs context decs = List.map (t_dec context) decs
 
 and t_block context (ds, exp) = (t_decs context ds, t_exp context exp)
-
-and t_fields context fields =
-  List.map (fun (field:exp_field) ->
-      { field with it = { field.it with exp = t_exp context field.it.exp }})
-    fields
 
 (* non-trivial translation of possibly impure terms (eff = T.Await) *)
 
@@ -334,7 +328,7 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (OptE v1)) exp1
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
-  | ActorE (id, fields, t) ->
+  | ActorE _ ->
     assert false; (* ActorE fields cannot await *)
   | DotE (exp1, id) ->
     unary context k (fun v1 -> e (DotE (v1, id))) exp1

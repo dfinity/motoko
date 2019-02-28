@@ -33,7 +33,9 @@ and exp' rho e  = match e with
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp rho e1, ro, exp rho e2)
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
-  | ActorE (i, efs, t)  -> ActorE (i, exp_fields rho efs, t)
+  | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
+                            let ds', rho'' = decs rho' ds
+                            in ActorE (i', ds', fields rho'' fs, t)
   | DotE (e, i)         -> DotE (exp rho e, i)
   | ActorDotE (e, i)    -> ActorDotE (exp rho e, i)
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
@@ -65,9 +67,12 @@ and exp' rho e  = match e with
      let p', rho' = pat rho p in
      let e' = exp rho' e in
      FuncE (x, s, tp, p', t, e')
-  | NewObjE (s, is, t)  -> NewObjE (s, List.map (fun (l,i) -> (l,id rho i)) is, t)
+  | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
 
 and exps rho es  = List.map (exp rho) es
+
+and fields rho fs =
+  List.map (fun f -> { f with it = { f.it with var = id rho f.it.var } }) fs
 
 and pat rho p =
     let p',rho = pat' rho p.it in
@@ -104,28 +109,7 @@ and case' rho { pat = p; exp = e} =
   let e' = exp rho' e in
   {pat=p'; exp=e'}
 
-
 and cases rho cs = List.map (case rho) cs
-
-and exp_field rho (ef : exp_field) =
-  let (mk_ef, rho) = exp_field' rho ef.it in
-    ({ ef with it = mk_ef }, rho)
-
-and exp_field' rho {name; id; exp = e; mut; vis} =
-  let id', rho = id_bind rho id in
-  ((fun rho'-> { name; id = id'; exp = exp rho' e; mut; vis }),
-   rho)
-
-and exp_fields rho efs  =
-  let rec exp_fields_aux rho efs =
-    match efs with
-    | [] -> ([],rho)
-    | ef::efs ->
-       let (mk_ef, rho) = exp_field rho ef in
-       let (mk_efs, rho) = exp_fields_aux rho efs in
-       (mk_ef::mk_efs,rho) in
-  let mk_efs, rho = exp_fields_aux rho efs in
-  List.map (fun mk_ef -> {mk_ef with it = mk_ef.it rho}) mk_efs
 
 and dec rho d =
   let (mk_d, rho') = dec' rho d.it in
