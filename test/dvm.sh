@@ -27,3 +27,6 @@ function dvm_ () {
 dvm_ -q --db $DVM_TMP reset
 dvm_ -q --db $DVM_TMP new $1
 dvm_ -q --db $DVM_TMP run $name start
+
+# cleanup
+rm -rf $DVM_TMP
