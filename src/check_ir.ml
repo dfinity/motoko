@@ -517,19 +517,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     end;
     T.unit <: t
   | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
-    let cs,ce = check_open_typ_binds env typ_binds in
-    let arg_ty, ret_ty = match t with
-      | T.Func (cc, _, _, ts1, ts2) ->
-        let ts = List.map (fun c -> T.Con (c, [])) cs in
-        let ts1 = List.map (T.open_ ts) ts1 in
-        let ts2 = List.map (T.open_ ts) ts2 in
-        T.seq ts1, T.seq ts2
-      | _ -> error env exp.at "FuncE not annotated with a function type"
-    in
+    let cs,tbs,ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
     let ve = check_pat_exhaustive env' pat in
-    check (cc = Value.call_conv_of_typ t) "different calling convention in FuncE and its type";
-    check_typ env' arg_ty;
     check_typ env' ret_ty;
     check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
            ==> isAsyncE exp)
@@ -537,8 +527,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env'' =
       {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at arg_ty pat.note;
-    check_sub env' exp.at (typ exp) ret_ty
+    check_sub env' exp.at (typ exp) ret_ty;
+    (* Now construct the function type and compare with the annotation *)
+    let arg_ty = pat.note in
+    let ts1 = if cc.Value.n_args = 1
+              then [arg_ty]
+              else T.as_seq arg_ty in
+    let ts2 = if cc.Value.n_res = 1
+              then [ret_ty]
+              else T.as_seq ret_ty in
+    let fun_ty = T.Func
+      ( cc.Value.sort, cc.Value.control
+      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
+      ) in
+    fun_ty <: t
   | NewObjE (sort, labids, t0) ->
     let t1 =
       T.Obj(sort,
@@ -701,9 +703,9 @@ and type_block_exps env decs : T.typ =
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
   let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
-  let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
-  let _,_ = check_typ_binds env binds in
-  cs,ce
+  let tbs = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
+  let _,_ = check_typ_binds env tbs in
+  cs,tbs,ce
 
 and close_typ_binds cs tbs =
   List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
