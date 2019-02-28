@@ -57,6 +57,7 @@ val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp
+val immuteE: exp -> exp
 val assignE : exp -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp option -> exp
