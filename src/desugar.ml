@@ -72,7 +72,6 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1, None)
-  (* TODO(Matthew): This case, for loop-while loops, triggers a regression error, which manifests as an IR type-checking issue; it seems to involve how IR types labeled loops. *)
   | S.LoopE (e1, Some e2) -> if true then (loopWhileE (exp e1) (exp e2)).it else I.LoopE (exp e1, Some (exp e2))
   | S.ForE (p, e1, e2) -> if true then (forE (pat p) (exp e1) (exp e2)).it else I.ForE (pat p, exp e1, exp e2)
   | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note, exp e)
