@@ -91,6 +91,7 @@ let rec exp msgs e : f = match e.it with
   | ProjE (e, i)        -> exp msgs e
   | ObjE (s, efs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
+    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
     close (exp_fields msgs efs)
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
