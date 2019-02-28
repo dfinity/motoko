@@ -37,7 +37,9 @@ entering a function, class or actor constructor.
 On little gotcha for functional programmers: the argument `e` to an early `return e` is *always* in tail position,
 regardless of `return e`s own tail position.
 
- *)
+TODO: optimize for multiple arguments using multiple temps (not a tuple).
+
+*)
 
 type func_info = { func: S.id;
                    typ_binds: typ_bind list;
@@ -182,6 +184,7 @@ and exp_fields env efs  =
   let mk_efs, env = exp_fields_aux env efs in
   List.map (fun mk_ef -> { mk_ef with it = mk_ef.it env }) mk_efs
 
+
 and dec env d =
   let (mk_d,env1) = dec' env d in
   ({d with it = mk_d}, env1)
@@ -217,7 +220,7 @@ and dec' env d =
           blockE [varD (id_of_exp temp) (seqE ids)]
             (loopE
               (labelE l l_typ
-                 (blockE [letP p temp] (retE exp0'))) None)
+                 (blockE [letP p (immuteE temp)] (retE exp0'))) None)
         in
         LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
       else
@@ -240,17 +243,6 @@ and dec' env d =
     env
 
 and block env ds exp =
-  let rec tail_posns ds =
-    match ds with
-    | [] -> (true,[])
-    | { it = TypD _; _ } :: ds ->
-      let (b, bs) = tail_posns ds in
-      (b, b :: bs)
-    | d :: ds ->
-      let (b, bs) = tail_posns ds in
-      (false, b :: bs)
-  in
-  let _, tail_posns = tail_posns ds in
   let rec decs_aux env ds =
     match ds with
     | [] -> ([],env)
@@ -260,14 +252,11 @@ and block env ds exp =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  ( List.map2
-      (fun mk_d in_tail_pos ->
-        let env2 = if in_tail_pos
-                   then env1
-                   else { env1 with tail_pos = false } in
+  ( List.map
+      (fun mk_d ->
+        let env2 = { env1 with tail_pos = false } in
         { mk_d with it = mk_d.it env2 })
       mk_ds
-      tail_posns
   , tailexp env1 exp)
 
 and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)

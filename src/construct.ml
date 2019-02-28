@@ -201,7 +201,15 @@ let retE exp =
              S.note_typ = Type.Non }
   }
 
+let immuteE e =
+  { e with
+    note = { S.note_eff = eff e;
+             S.note_typ = T.as_immut (typ e) }
+  }
+
+
 let assignE exp1 exp2 =
+  assert (T.is_mut (typ exp1));
   { it = AssignE (exp1, exp2);
     at = no_region;
     note = { S.note_eff = Effect.max_eff (eff exp1) (eff exp2);
@@ -252,7 +260,8 @@ let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x exp = VarD (x, exp) @@ no_region
+let varD x exp =
+  VarD (x, exp) @@ no_region
 
 let expD exp = ExpD exp @@ exp.at
 

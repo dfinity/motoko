@@ -694,14 +694,13 @@ and check_dec env dec  =
   (* helpers *)
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
-  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   match dec.it with
   | ExpD exp ->
     check_exp env exp
   | LetD (pat, exp) ->
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
-    typ exp <~ pat.note
+    typ exp <: pat.note
   | VarD (id, exp) ->
     let t0 = try T.Env.find id.it env.vals with
              |  Not_found -> error env id.at "unbound variable %s" id.it
