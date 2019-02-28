@@ -41,7 +41,8 @@ and exp' rho e  = match e with
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (cc, e1, ts, e2)
                         -> CallE  (cc, exp rho e1, ts, exp rho e2)
-  | BlockE ds           -> BlockE (decs rho ds)
+  | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
+                           in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
   | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
@@ -156,5 +157,5 @@ and decs rho ds =
        (mk_d::mk_ds, rho'')
   in
   let mk_ds, rho' = decs_aux rho ds in
-  List.map (fun mk_d ->
-      { mk_d with it = mk_d.it rho' } ) mk_ds
+  let ds' = List.map (fun mk_d -> { mk_d with it = mk_d.it rho' } ) mk_ds in
+  (ds', rho')

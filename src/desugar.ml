@@ -63,19 +63,7 @@ and exp' at note = function
     I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
-  | S.BlockE ds ->
-    let ds' = decs ds in
-    let prefix, last = Lib.List.split_last ds' in
-    begin match Type.is_unit note.S.note_typ, last.it with
-    | _, I.ExpD _ -> I.BlockE (ds')
-    | true, _ -> I.BlockE (ds' @ [expD (tupE [])])
-    | false, (I.LetD ({it = I.VarP x; _}, _)) ->
-      I.BlockE (ds' @ [expD (idE x note.S.note_typ)])
-    | false, I.LetD (p', e') ->
-      let x = fresh_var note.S.note_typ in
-      I.BlockE (prefix @ [letD x e'; letP p' x; expD x])
-    | false, (I.VarD _ | I.TypD _) -> assert false
-    end
+  | S.BlockE ds -> I.BlockE (block (Type.is_unit note.S.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -113,11 +101,11 @@ and build_obj at s self_id es obj_typ =
     | _ -> assert false
   in
   let obj_e = newObjE s.it names obj_typ in
-  let ret_ds =
+  let ret_ds, ret_o =
     match self_id with
-    | None -> [ expD obj_e ]
-    | Some id -> let self = idE id obj_typ in [ letD self obj_e; expD self ]
-  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds)
+    | None -> [], obj_e
+    | Some id -> let self = idE id obj_typ in [ letD self obj_e ], self
+  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
 
 and exp_fields fs = List.map exp_field fs
 
@@ -158,6 +146,20 @@ and typ_bind tb =
   ; note = ()
   }
 
+and block force_unit ds =
+  let ds' = decs ds in
+  let prefix, last = Lib.List.split_last ds' in
+  match force_unit, last.it with
+  | _, I.ExpD e ->
+    (prefix, e)
+  | false, I.LetD ({it = I.VarP x; _}, e) ->
+    (ds', idE x e.note.S.note_typ)
+  | false, I.LetD (p', e') ->
+    let x = fresh_var (e'.note.S.note_typ) in
+    (prefix @ [letD x e'; letP p' x], x)
+  | _, _ ->
+    (ds', tupE [])
+
 and decs ds =
   match ds with
   | [] -> []
@@ -165,26 +167,11 @@ and decs ds =
     match d.it with
     | S.ClassD(id, _, _, _, _, _) ->
       let c = Lib.Option.value id.note in
-      let typD = { it = I.TypD c;
-                   at = d.at;
-                   note = { S.note_typ = T.unit;
-                            S.note_eff = T.Triv }
-                 }
-      in
+      let typD = I.TypD c @@ d.at in
       typD :: dec d :: decs ds
     | _ -> dec d :: decs ds
 
-and dec d =
-  let ir_dec = phrase' dec' d in
-  (* In Source, LetD has a type, in IR not *)
-  match ir_dec.it with
-    | I.LetD _ -> { ir_dec with note =
-        { S.note_eff = ir_dec.note.S.note_eff
-        ; S.note_typ = T.unit
-        }
-      }
-    | _ -> ir_dec
-
+and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
   | S.ExpD e -> I.ExpD (exp e)
@@ -249,10 +236,14 @@ and pat' = function
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _) -> pat' p.it
 
-and prog p = (decs p.it,
-  { I.has_await = true
-  ; I.has_async_typ = true
-  })
+and prog (p : Syntax.prog) : Ir.prog =
+  begin match p.it with
+    | [] -> ([], tupE [])
+    | _ -> block false p.it
+  end
+  , { I.has_await = true
+    ; I.has_async_typ = true
+    }
 
 (* validation *)
 

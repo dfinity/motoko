@@ -25,8 +25,8 @@ let letcont k scope =
   | MetaCont (typ, cont) ->
     let k' = fresh_cont typ in
     let v = fresh_var typ in
-    blockE [funcD k' v (cont v); (* at this point, I'm really worried about variable capture *)
-            expD (scope k')]
+    blockE [funcD k' v (cont v)] (* at this point, I'm really worried about variable capture *)
+            (scope k')
 
 (* The empty identifier names the implicit return label *)
 let id_ret = ""
@@ -89,8 +89,8 @@ and t_exp' context exp' =
     IdxE (t_exp context exp1, t_exp context exp2)
   | CallE (cc, exp1, typs, exp2) ->
     CallE (cc, t_exp context exp1, typs, t_exp context exp2)
-  | BlockE decs ->
-    BlockE (t_decs context decs)
+  | BlockE b ->
+    BlockE (t_block context b)
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp context exp1, t_exp context exp2, t_exp context exp3)
   | SwitchE (exp1, cases) ->
@@ -152,6 +152,8 @@ and t_dec' context dec' =
   | VarD (id, exp) -> VarD (id, t_exp context exp)
 
 and t_decs context decs = List.map (t_dec context) decs
+
+and t_block context (ds, exp) = (t_decs context ds, t_exp context exp)
 
 and t_fields context fields =
   List.map (fun (field:exp_field) ->
@@ -232,8 +234,8 @@ and c_while context k e1 e2 =
               (ifE (t_exp context e1)
                  e2
                  (k -@- unitE)
-                 answerT);
-            expD (loop -*- unitE)]
+                 answerT)]
+            (loop -*- unitE)
   | T.Await ->
     blockE [funcD loop v2
               (c_exp context e1 (meta (T.bool)
@@ -241,8 +243,8 @@ and c_while context k e1 e2 =
                                      ifE v1
                                        e2
                                        (k -@- unitE)
-                                       answerT)));
-            expD (loop -*- unitE)]
+                                       answerT)))]
+            (loop -*- unitE)
 
 and c_loop_none context k e1 =
   let loop = fresh_var (contT T.unit) in
@@ -252,8 +254,8 @@ and c_loop_none context k e1 =
   | T.Await ->
     let v1 = fresh_var T.unit in
     blockE [funcD loop v1
-              (c_exp context e1 (ContVar loop));
-            expD(loop -*- unitE)]
+              (c_exp context e1 (ContVar loop))]
+            (loop -*- unitE)
 
 and c_loop_some context k e1 e2 =
   let loop = fresh_var (contT T.unit) in
@@ -275,12 +277,12 @@ and c_loop_some context k e1 e2 =
   match eff e1 with
   | T.Triv ->
     blockE [funcD loop u
-              (letE v1 (t_exp context e1) e2);
-            expD (loop -*- unitE)]
+              (letE v1 (t_exp context e1) e2)]
+            (loop -*- unitE)
   | T.Await ->
     blockE [funcD loop u
-              (c_exp context e1 (meta (typ e1) (fun v1 -> e2)));
-            expD (loop -*- unitE)]
+              (c_exp context e1 (meta (typ e1) (fun v1 -> e2)))]
+            (loop -*- unitE)
 
 and c_for context k pat e1 e2 =
   let v1 = fresh_var (typ e1) in
@@ -297,8 +299,8 @@ and c_for context k pat e1 e2 =
          (switch_optE (dotnext v1)
             (k -@- unitE)
             pat e2
-            T.unit);
-       expD (loop -*- unitE)]
+            T.unit)]
+       (loop -*- unitE)
   in
   match eff e1 with
   | T.Triv ->
@@ -346,8 +348,8 @@ and c_exp' context exp k =
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
   | CallE (cc, exp1, typs, exp2) ->
     binary context k (fun v1 v2 -> e (CallE (cc, v1, typs, v2))) exp1 exp2
-  | BlockE decs ->
-    c_block context decs k
+  | BlockE (decs, exp) ->
+    c_block context decs exp k
   | IfE (exp1, exp2, exp3) ->
     c_if context k exp1 exp2 exp3
   | SwitchE (exp1, cases) ->
@@ -422,16 +424,16 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
 
-and c_block context decs k =
-  declare_decs decs (c_decs context decs k)
+and c_block context decs exp k =
+  declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
 
 and c_dec context dec (k:kont) =
   match dec.it with
   | ExpD exp ->
     begin
       match eff exp with
-      | T.Triv -> k -@- (t_exp context exp)
-      | T.Await -> c_exp context exp k
+      | T.Triv -> k -@- (ignoreE (t_exp context exp))
+      | T.Await -> c_exp context exp (meta (typ exp) (fun _ -> k -@- tupE[]))
     end
   | TypD _ ->
     k -@- unitE
@@ -439,9 +441,8 @@ and c_dec context dec (k:kont) =
     let patenv,pat' = rename_pat pat in
     let block exp =
       let dec_pat' = {dec with it = LetD(pat',exp)} in
-      blockE ( dec_pat' :: 
-              (define_pat patenv pat)
-              @[expD (k -@- (tupE[]))])
+      blockE (dec_pat' :: define_pat patenv pat)
+             (k -@- tupE[])
     in
      begin
        match eff exp with
@@ -467,9 +468,8 @@ and c_decs context decs k =
   match decs with
   | [] ->
     k -@- unitE
-  | [dec] ->  c_dec context dec k
-  | (dec :: decs) ->
-     c_dec context dec (meta (typ dec) (fun v-> c_decs context decs k))
+  | dec :: decs ->
+    c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 
 (* Blocks and Declarations *)
 
@@ -553,7 +553,8 @@ and define_pat patenv pat : dec list =
 and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
 
-and t_prog (prog, flavor) = (t_decs LabelEnv.empty prog, { flavor with has_await = false })
+and t_prog (prog, flavor) =
+  (t_block LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog
 

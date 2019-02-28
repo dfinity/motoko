@@ -342,8 +342,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 *)
       )
     )
-  | BlockE decs ->
-    interpret_block env decs None k
+  | BlockE (decs, exp1) ->
+     interpret_block env None decs exp1 k
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -604,11 +604,11 @@ and interpret_fields env fields ve (k : V.value V.cont) =
 
 (* Blocks and Declarations *)
 
-and interpret_block env decs ro (k : V.value V.cont) =
+and interpret_block env ro decs exp k =
   let ve = declare_decs decs V.Env.empty in
   Lib.Option.app (fun r -> r := ve) ro;
-  interpret_decs (adjoin_vals env ve) decs k
-
+  let env' = adjoin_vals env ve in
+  interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
 
 and declare_dec dec : val_env =
   match dec.it with
@@ -624,30 +624,26 @@ and declare_decs decs ve : val_env =
     declare_decs decs' (V.Env.adjoin ve ve')
 
 
-and interpret_dec env dec (k : V.value V.cont) =
+and interpret_dec env dec k =
   match dec.it with
   | ExpD exp ->
-    interpret_exp env exp k
+    interpret_exp env exp (fun _ -> k ())
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
-      k V.unit
+      k ()
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));
-      k V.unit
+      k ()
     )
-  | TypD _ ->
-    k V.unit
+  | TypD _ -> k ()
 
-and interpret_decs env decs (k : V.value V.cont) =
+and interpret_decs env decs (k : unit V.cont) =
   match decs with
-  | [] -> k V.unit
-  | [dec] -> interpret_dec env dec k
-  | dec::decs' ->
-    interpret_dec env dec (fun _v -> interpret_decs env decs' k)
-
+  | [] -> k ()
+  | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
 and interpret_func env x pat f v (k : V.value V.cont) =
   if !Flags.trace then trace "%s%s" x (string_of_arg v);
@@ -673,13 +669,13 @@ and interpret_func env x pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope (decls, _flavor) : V.value option * scope =
+let interpret_prog scope ((ds, exp), _flavor) : V.value option * scope =
   let env = env_of_scope scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env decls (Some ve) (fun v -> vo := Some v)
+    interpret_block env (Some ve) ds exp  (fun v -> vo := Some v)
   );
   Scheduler.run ();
   !vo, !ve

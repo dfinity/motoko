@@ -383,15 +383,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     typ exp2 <: T.open_ insts t2;
     T.open_ insts t3 <: t;
-  | BlockE decs ->
-    (* Really, this should be a tuple of decs and an expression now *)
-    check (decs <> []) "BlockE [] is invalid";
-    begin match (Lib.List.last decs).it with
-      | ExpD _ -> ()
-      | _ -> error env exp.at "last entry in a BlockE must be an expression"
-    end;
-    let t1, scope = type_block env decs exp.at in
-    t1 <: t;
+  | BlockE (ds, exp1) ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' exp1;
+    typ exp1 <: t
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
     typ exp1 <: T.bool;
@@ -681,22 +678,7 @@ and type_exp_field env s (tfs, ve) field : T.field list * val_env =
   in tfs', ve'
 
 
-(* Blocks and Declarations *)
-
-and type_block env decs at : T.typ * scope =
-  let scope = gather_block_decs env decs in
-  let t = type_block_exps (adjoin env scope) decs in
-  t, scope
-
-and type_block_exps env decs : T.typ =
-  match decs with
-  | [] -> T.unit
-  | [dec] ->
-    check_dec env dec;
-    typ dec;
-  | dec::decs' ->
-    check_dec env dec;
-    type_block_exps env decs'
+(* Declarations *)
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
@@ -714,22 +696,25 @@ and check_dec env dec  =
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check effect *)
+  (* TODO 
   check (E.Ir.infer_effect_dec dec <= E.eff dec)
     "inferred effect not a subtype of expected effect";
+  *)
   (* check typing *)
-  let t = typ dec in
   match dec.it with
   | ExpD exp ->
-    check_exp env exp;
-    typ exp <: t
+    check_exp env exp
   | LetD (pat, exp) ->
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
-    typ exp <~ pat.note;
-    T.unit <: t
-  | VarD (_, exp) ->
+    typ exp <~ pat.note
+  | VarD (id, exp) ->
+    let t0 = try T.Env.find id.it env.vals with
+             |  Not_found -> error env id.at "unbound variable %s" id.it
+    in
+    check (T.is_mut t0) "variable in VarD is not immutable";
     check_exp env exp;
-    T.unit <: t
+    typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
     let (binds, typ) =
@@ -740,25 +725,10 @@ and check_dec env dec  =
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
-    check_typ env' (T.open_ ts  typ);
-    T.unit <: t;
+    check_typ env' (T.open_ ts  typ)
 
-and check_block env t decs at : scope =
-  let scope = gather_block_decs env decs in
-  check_block_exps (adjoin env scope) t decs at;
-  scope
-
-and check_block_exps env t decs at =
-  match decs with
-  | [] ->
-    check_sub env at T.unit t
-  | [dec] ->
-    check_dec env dec;
-    check env at (T.is_unit t || T.sub (typ dec) t)
-      "declaration does not produce expect type"
-  | dec::decs' ->
-    check_dec env dec;
-    check_block_exps env t decs' at
+and check_decs env decs  =
+  List.iter (check_dec env) decs;
 
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
@@ -785,10 +755,13 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope phase ((decs, flavor) as prog) : unit =
+let check_prog scope phase (((ds,exp), flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
-   ignore (check_block env T.unit decs no_region)
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' exp;
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if !Flags.verbose

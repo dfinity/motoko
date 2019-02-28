@@ -44,7 +44,7 @@ and exp' =
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
       Value.call_conv * exp * Type.typ list * exp
-  | BlockE of dec list                         (* block *)
+  | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)
@@ -75,7 +75,7 @@ and case' = {pat : pat; exp : exp}
 
 (* Declarations *)
 
-and dec = dec' phrase
+and dec = dec' Source.phrase
 and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
@@ -101,4 +101,4 @@ type flavor = {
 
 (* Program *)
 
-type prog = dec list * flavor
+type prog = (dec list * exp) * flavor

@@ -95,19 +95,15 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE dec = { dec with it = BlockE [dec] }
+let dec_eff dec = match dec.it with
+  | TypD _ -> T.Triv
+  | LetD (_,e) | VarD (_,e) | ExpD e -> eff e
 
-let blockE decs =
-  let rec typ_decs decs =
-    match decs with
-    | [] -> T.unit
-    | [dec] -> typ dec
-    | _ :: decs -> typ_decs decs
-  in
-  let es = List.map eff decs in
-  let typ = typ_decs decs in
-  let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE decs;
+let blockE decs exp =
+  let es = List.map dec_eff decs in
+  let typ = typ exp in
+  let e =  List.fold_left max_eff (eff exp) es in
+  { it = BlockE (decs, exp);
     at = no_region;
     note = {S.note_typ = typ;
             S.note_eff = e }
@@ -252,28 +248,25 @@ let newObjE sort ids typ =
 
 (* Declarations *)
 
-let letP pat exp =
-  { it = LetD (pat, exp);
-    at = no_region;
-    note = { S.note_eff = eff exp; S.note_typ = T.unit }
-  }
+let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x exp = { it = VarD (x, exp);
-                   at = no_region;
-                   note = { S.note_eff = eff exp;
-                            S.note_typ = T.unit; } (* ! *)
-                 }
+let varD x exp = VarD (x, exp) @@ no_region
 
-let expD exp =  { exp with it = ExpD exp }
+let expD exp = ExpD exp @@ exp.at
 
 let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
+
+let ignoreE exp =
+  if typ exp = T.unit
+  then exp
+  else blockE [expD exp] (tupE [])
 
 
 (* let expressions (derived) *)
 
-let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
+let letE x exp1 exp2 = blockE [letD x exp1] exp2
 
 (* Mono-morphic function expression *)
 let funcE name t x exp =

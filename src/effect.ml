@@ -147,9 +147,9 @@ module Ir =
       | ArrayE (_, _, exps) ->
         let es = List.map effect_exp exps in
         List.fold_left max_eff Type.Triv es
-      | BlockE decs ->
-        let es = List.map effect_dec decs in
-        List.fold_left max_eff Type.Triv es
+      | BlockE (ds, exp) ->
+        let es = List.map effect_dec ds in
+        List.fold_left max_eff (effect_exp exp) es
       | IfE (exp1, exp2, exp3) ->
         let e1 = effect_exp exp1 in
         let e2 = effect_exp exp2 in
@@ -185,8 +185,9 @@ module Ir =
     and effect_field_exps efs =
       List.fold_left (fun e (fld:exp_field) -> max_eff e (effect_exp fld.it.exp)) T.Triv efs
 
-    and effect_dec dec =
-      dec.note.note_eff
+    and effect_dec dec = match dec.it with
+      | TypD _ -> T.Triv
+      | LetD (_,e) | VarD (_,e) | ExpD e -> effect_exp e
 
     and infer_effect_dec (dec:Ir.dec) =
       match dec.it with
