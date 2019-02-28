@@ -100,8 +100,8 @@ module Transform() = struct
       vs -@>* (unary_fullfill -*-  seq_of_vs)
     in
     let async,reply = fresh_var (typ nary_async), fresh_var (typ nary_reply) in
-    (async,reply),blockE [letP (tupP [varP unary_async; varP unary_fullfill])  call_new_async;
-                          expD (tupE [nary_async; nary_reply])]
+    (async,reply),blockE [letP (tupP [varP unary_async; varP unary_fullfill])  call_new_async]
+                         (tupE [nary_async; nary_reply])
 
 
   let letEta e scope =
@@ -122,11 +122,10 @@ module Transform() = struct
     | TupP ps ->
       begin
         match ps with
-        | [] -> p2, fun d -> (letP p1 (tupE [])::d)
-        | ps ->
-          tupP (ps@[p2]), fun d -> d
+        | [] -> p2, fun e -> blockE [letP p1 (tupE [])] e
+        | ps -> tupP (ps@[p2]), fun e -> e
       end
-    | _ -> tupP [p1;p2], fun d -> d
+    | _ -> tupP [p1;p2], fun e -> e
 
   (* Given sequence type ts, bind e of type (seq ts) to a
    sequence of expressions supplied to decs d_of_es,
@@ -270,9 +269,9 @@ module Transform() = struct
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
                funcD k v1 (nary_reply -*- v1);
                funcD post u (t_exp exp2 -*- k);
-               expD (post -*- tupE[]);
-               expD nary_async])
-        .it
+               expD (post -*- tupE[])]
+               nary_async
+      ).it
     | CallE (cc,exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
@@ -285,16 +284,19 @@ module Transform() = struct
       let typs = List.map t_typ typs in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
       let _ = letEta in
-      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
-                 letEta exp1' (fun v1 ->
-                     letSeq ts1 exp2' (fun vs ->
-                         [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
-                          expD nary_async]))))
+      (blockE ( letP (tupP [varP nary_async; varP nary_reply]) def ::
+                letEta exp1' (fun v1 ->
+                  letSeq ts1 exp2' (fun vs ->
+                    [ expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit) ]
+                  )
+                 )
+               )
+               nary_async)
         .it
     | CallE (cc, exp1, typs, exp2)  ->
       CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
-    | BlockE decs ->
-      BlockE (t_decs decs)
+    | BlockE b ->
+      BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->
@@ -350,9 +352,7 @@ module Transform() = struct
                 | CallE(_, async,_,cps) ->
                   begin
                     match async.it with
-                    | PrimE("@async") ->
-                      blockE
-                        (d [expD ((t_exp cps) -*- (y --> (k -*- y)))])
+                    | PrimE("@async") -> d ((t_exp cps) -*- (y --> (k -*- y)))
                     | _ -> assert false
                   end
                 | _ -> assert false
@@ -364,11 +364,7 @@ module Transform() = struct
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, ids, t_typ t)
 
-  and t_dec dec =
-    { it = t_dec' dec.it;
-      note = { note_typ = t_typ dec.note.note_typ;
-               note_eff = dec.note.note_eff };
-      at = dec.at }
+  and t_dec dec = { dec with it = t_dec' dec.it }
 
   and t_dec' dec' =
     match dec' with
@@ -379,6 +375,8 @@ module Transform() = struct
     | VarD (id,exp) -> VarD (id,t_exp exp)
 
   and t_decs decs = List.map t_dec decs
+
+  and t_block (ds, exp) = (t_decs ds, t_exp exp)
 
   and t_fields fields =
     List.map (fun (field:exp_field) ->
@@ -411,7 +409,7 @@ module Transform() = struct
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) =  (t_decs prog, { flavor with has_async_typ = false } )
+  and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
 
 end
 

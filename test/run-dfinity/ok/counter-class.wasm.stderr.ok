@@ -10,7 +10,7 @@ non-closed actor: (ActorE
       ()
       (BlockE
         (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
-        (ExpD (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1)))))
+        (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1))))
       )
     )
     Const
@@ -25,23 +25,21 @@ non-closed actor: (ActorE
       ()
       (BlockE
         (LetD (TupP) (TupE))
-        (ExpD
-          (CallE
+        (CallE
+          ( 1 -> 0)
+          (FuncE
+            $lambda
             ( 1 -> 0)
-            (FuncE
-              $lambda
-              ( 1 -> 0)
-              (VarP $0)
-              ()
-              (CallE ( 1 -> 0) (VarE $0) (VarE c))
-            )
-            (FuncE
-              $lambda
-              ( 1 -> 0)
-              (VarP $2)
-              ()
-              (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
-            )
+            (VarP $0)
+            ()
+            (CallE ( 1 -> 0) (VarE $0) (VarE c))
+          )
+          (FuncE
+            $lambda
+            ( 1 -> 0)
+            (VarP $2)
+            ()
+            (CallE (shared  1 -> 0) (VarE $1) (VarE $2))
           )
         )
       )

@@ -41,10 +41,10 @@ val as_seqP : pat -> pat list
 
 val primE : string -> typ -> exp
 val projE : exp ->  int -> exp
-val decE : dec -> exp
-val blockE : dec list -> exp
+val blockE : dec list -> exp -> exp
 val textE : string -> exp
 val letE : var -> exp -> exp -> exp
+val ignoreE : exp -> exp
 
 val unitE : exp
 val boolE : bool -> exp
@@ -67,8 +67,7 @@ val newObjE : obj_sort -> (name * id) list -> typ -> exp
 
 (* Declarations *)
 
-val letP : pat -> exp -> dec   (* TBR: replace letD? *)
-
+val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
 val varD : id -> exp -> dec
 val expD : exp -> dec

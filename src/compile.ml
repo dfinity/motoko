@@ -3365,8 +3365,10 @@ and compile_exp (env : E.t) exp =
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
-  | BlockE decs ->
-    compile_decs env decs
+  | BlockE (decs, exp) ->
+    let (env', code1) = compile_decs env decs in
+    let (sr, code2) = compile_exp env' exp in
+    (sr, code1 ^^ code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -3734,25 +3736,25 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, fill_code)
 
-and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
+and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   (fun (pre_env,alloc_code,mk_code) ->
        (pre_env, G.with_region dec.at alloc_code, fun env ->
-         (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
+         G.with_region dec.at (mk_code env))) @@
   match dec.it with
   | TypD _ ->
-    (pre_env, G.nop, fun _ -> SR.unit, G.nop)
-  | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
-
+    (pre_env, G.nop, fun _ -> G.nop)
+  | ExpD e ->(pre_env, G.nop, fun env ->
+    let sr, code = compile_exp env e in
+    code ^^ StackRep.drop env sr)
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp pre_env how e in
     let d = StackRep.deferred_of_static_think pre_env static_thing in
     let pre_env1 = E.add_local_deferred pre_env v.it d in
-    ( pre_env1, G.nop, fun env -> fill env; (SR.unit, G.nop))
+    ( pre_env1, G.nop, fun env -> fill env; G.nop)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      SR.unit,
       compile_exp_as_opt env pat_arity e ^^
       fill_code
     )
@@ -3762,32 +3764,32 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        SR.unit,
         compile_exp_vanilla env e ^^
         Var.set_val env name.it
       )
 
-and compile_decs env decs : SR.t * G.t =
-  snd (compile_decs_block env decs)
-
-and compile_decs_block env decs : (E.t * (SR.t * G.t)) =
+and compile_decs env decs : E.t * G.t =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, G.nop, fun _ -> (SR.unit, G.nop))
+    | []          -> (pre_env, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec pre_env how dec
     | (dec::decs) ->
         let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env how dec in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
         ( pre_env2,
           alloc_code1 ^^ alloc_code2,
-          fun env ->
-            let (sr1, code1) = mk_code1 env in
-            let (sr2, code2) = mk_code2 env in
-            (sr2, code1 ^^ StackRep.drop env sr1 ^^ code2)
-         ) in
+          fun env -> let code1 = mk_code1 env in
+                     let code2 = mk_code2 env in
+                     code1 ^^ code2
+        ) in
   let (env1, alloc_code, mk_code) = go env decs in
-  let (sr, code) = mk_code env1 in
-  (env1, (sr, alloc_code ^^ code))
+  let code = mk_code env1 in
+  (env1, alloc_code ^^ code)
+
+and compile_prog env (ds, e) =
+    let (env', code1) = compile_decs env ds in
+    let (sr, code2) = compile_exp env' e in
+    (env', code1 ^^ code2 ^^ StackRep.drop env' sr)
 
 and compile_static_exp env how exp = match exp.it with
   | FuncE (name, cc, typ_binds, p, _rt, e) ->
@@ -3800,8 +3802,8 @@ and compile_static_exp env how exp = match exp.it with
 and compile_prelude env =
   (* Allocate the primitive functions *)
   let (decs, _flavor) = E.get_prelude env in
-  let (env1, (sr, code)) = compile_decs_block env decs in
-  (env1, code ^^ StackRep.drop env sr)
+  let (env1, code) = compile_prog env decs in
+  (env1, code)
 
 (* Is this a hack? When determining whether an actor is closed,
 we should disregard the prelude, because every actor is compiled with the
@@ -3818,10 +3820,10 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
-      | ((decs, _flavor) :: progs) ->
-        let (env1, (sr, code1)) = compile_decs_block env decs in
+      | ((prog, _flavor) :: progs) ->
+        let (env1, code1) = compile_prog env prog in
         let code2 = go env1 progs in
-        code1 ^^ StackRep.drop env1 sr ^^ code2 in
+        code1 ^^ code2 in
     go env1 progs
     )
 

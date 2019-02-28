@@ -97,11 +97,11 @@ and exp' env e  : exp' = match e.it with
                    info = Some { func; typ_binds; temp; label; tail_called } }
            when f1.it = func.it && are_generic_insts typ_binds insts  ->
         tail_called := true;
-        (blockE [expD (assignE temp (exp env e2));
-                 expD (breakE label (tupE []))]).it
+        (blockE [expD (assignE temp (exp env e2))]
+                 (breakE label (tupE []))).it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
-  | BlockE ds           -> BlockE (decs env ds)
+  | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
   | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
@@ -214,12 +214,11 @@ and dec' env d =
         let args = seqP (List.map varP ids) in
         let l_typ = Type.unit in
         let body =
-          blockE [ varD (id_of_exp temp) (seqE ids);
-                   expD (loopE
-                           (labelE l l_typ
-                              (blockE [letP p temp;
-                                       expD (retE exp0')])) None)
-            ] in
+          blockE [varD (id_of_exp temp) (seqE ids)]
+            (loopE
+              (labelE l l_typ
+                 (blockE [letP p temp] (retE exp0'))) None)
+        in
         LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
       else
         LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, p, typT, exp0')})
@@ -240,7 +239,7 @@ and dec' env d =
     (fun env -> d.it),
     env
 
-and decs env ds =
+and block env ds exp =
   let rec tail_posns ds =
     match ds with
     | [] -> (true,[])
@@ -261,16 +260,17 @@ and decs env ds =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  List.map2
-    (fun mk_d in_tail_pos ->
-      let env2 = if in_tail_pos
-                 then env1
-                 else { env1 with tail_pos = false } in
-      { mk_d with it = mk_d.it env2 })
-    mk_ds
-    tail_posns
+  ( List.map2
+      (fun mk_d in_tail_pos ->
+        let env2 = if in_tail_pos
+                   then env1
+                   else { env1 with tail_pos = false } in
+        { mk_d with it = mk_d.it env2 })
+      mk_ds
+      tail_posns
+  , tailexp env1 exp)
 
-and prog (ds, flavor) = (decs { tail_pos = false; info = None } ds, flavor)
+and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
 
 (* validation *)
 
