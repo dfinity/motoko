@@ -1,13 +1,5 @@
-prelude:50.1-75.2: internal error, Failure("pattern bindings not yet supported in objects")
-
-Last environment:
-@new_async = func
-Array_init = func
-Array_tabulate = func
-abs = func
-ignore = func
-print = func
-printInt = func
-range = func
-revrange = func
-
+exported()
+exported()
+exported()
+exported()
+exported()

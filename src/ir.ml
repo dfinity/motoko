@@ -36,7 +36,6 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ActorE of id * exp_field list * Type.typ   (* actor *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -60,11 +59,11 @@ and exp' =
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
       string * Value.call_conv * typ_bind list * pat * Type.typ * exp
-  | NewObjE of                                 (* make an object, preserving mutable identity *)
-      Type.obj_sort * (name * id) list * Type.typ
+  | ActorE of id * dec list * field list * Type.typ (* actor *)
+  | NewObjE of  Type.obj_sort * field list * Type.typ  (* make an object *)
 
-and exp_field = exp_field' Source.phrase
-and exp_field' = {name : name; id : id; exp : exp; mut : mut; vis : vis}
+and field = (field', Type.typ) Source.annotated_phrase
+and field' = {name : name; var : id} (* the var is by reference, not by value *)
 
 and name = name' Source.phrase
 and name' = Name of string

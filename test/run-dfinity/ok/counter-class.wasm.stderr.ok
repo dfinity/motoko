@@ -1,8 +1,8 @@
 non-closed actor: (ActorE
   anon-object-1.30
-  (c c (VarE i) Var Private)
-  (dec
-    dec
+  (VarD c (VarE i))
+  (LetD
+    (VarP dec)
     (FuncE
       dec
       (shared  0 -> 0)
@@ -13,11 +13,9 @@ non-closed actor: (ActorE
         (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1))))
       )
     )
-    Const
-    Public
   )
-  (read
-    read
+  (LetD
+    (VarP read)
     (FuncE
       read
       (shared  1 -> 0)
@@ -44,8 +42,8 @@ non-closed actor: (ActorE
         )
       )
     )
-    Const
-    Public
   )
+  (read read)
+  (dec dec)
   actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
 )

@@ -1,7 +1,7 @@
 non-closed actor: (ActorE
   a
-  (foo
-    foo
+  (LetD
+    (VarP foo)
     (FuncE
       foo
       (shared  0 -> 0)
@@ -9,8 +9,7 @@ non-closed actor: (ActorE
       ()
       (AssertE (RelE Nat (VarE x) EqOp (LitE (NatLit 1))))
     )
-    Const
-    Public
   )
+  (foo foo)
   actor {foo : shared () -> ()}
 )

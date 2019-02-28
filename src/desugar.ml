@@ -84,55 +84,36 @@ and exp' at note = function
 and obj at s self_id es obj_typ =
   match s.it with
   | Type.Object _ -> build_obj at s self_id es obj_typ
-  | Type.Actor ->
-    let id =
-      match self_id with
-      | Some id -> id
-      | None -> id_of_exp (fresh_var obj_typ)
-    in I.ActorE (id, exp_fields es, obj_typ)
+  | Type.Actor -> build_actor at self_id es obj_typ
 
-and build_obj at s self_id es obj_typ =
-  let names =
+and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.lab; _} ->
-        I.Name lab @@ no_region, lab @@ no_region
-      ) fields
+      List.map (fun {Type.lab; Type.typ} ->
+        { it = { I.name = I.Name lab @@ no_region
+               ; I.var = lab @@ no_region
+               }
+        ; at = no_region
+        ; note = typ
+        }) fields
     | _ -> assert false
-  in
-  let obj_e = newObjE s.it names obj_typ in
+
+and build_actor at self_id es obj_typ =
+  let fs = build_fields obj_typ in
+  let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let name = match self_id with
+    | Some n -> n
+    | None -> ("anon-actor-" ^ string_of_pos at.left) @@ at in
+  I.ActorE (name, ds, fs, obj_typ)
+
+and build_obj at s self_id es obj_typ =
+  let fs = build_fields obj_typ in
+  let obj_e = newObjE s.it fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
     | Some id -> let self = idE id obj_typ in [ letD self obj_e ], self
   in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
-
-and exp_fields fs = List.map exp_field fs
-
-and exp_field f = phrase exp_field' f
-
-(* TODO(joachim): push decs through IR properly and handle all cases. *)
-and exp_field' (f : S.exp_field') =
-  match f.S.dec.it with
-  | S.LetD ({it = S.VarP x; at; _}, e) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ at;
-      id = x;
-      mut = S.Const @@ at;
-      exp = exp e;
-    }
-  | S.VarD (x, e) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = x;
-      mut = S.Var @@ x.at;
-      exp = exp e;
-    }
-  | S.ExpD _ -> failwith "expressions not yet supported in objects"
-  | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
-  | S.TypD _ -> failwith "type definitions not yet supported in objects"
-  | S.ClassD _ -> failwith "class definitions not yet supported in objects"
-
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -178,10 +159,10 @@ and dec' at n d = match d with
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in
-    (* TODO: remove this hack once IR is adapted and backend can handle it *)
+    (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (_, efs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (i, efs, t)})
+    | I.VarP i, I.ActorE (_, ds, fs, t) ->
+      I.LetD (p', {e' with it = I.ActorE (i, ds, fs, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i, exp e)
