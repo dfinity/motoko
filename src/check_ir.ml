@@ -321,9 +321,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | ActorE ( id, fields, t0) ->
     let env' = { env with async = false } in
     let t1 =  type_obj env' T.Actor id t fields in
-    let t2 = T.promote t in
-    check (T.is_obj t2) "bad annotation (object type expected)";
-    t1 <: t2;
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    t1 <: t0;
     t0 <: t;
   | ActorDotE(exp1,{it = Name n;_})
   | DotE (exp1, {it = Name n;_}) ->
@@ -519,9 +518,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
                                            let Name lab = name.it in
                                            T.{lab; typ = T.Env.find id.it env.vals}) labids))
     in
-    let t2 = T.promote t in
-    check (T.is_obj t2) "bad annotation (object type expected)";
-    t1 <: t2;
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    t1 <: t0;
     t0 <: t;
 
 (* Cases *)
