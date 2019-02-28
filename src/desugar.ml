@@ -70,7 +70,6 @@ and exp' at note = function
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  (* TEMP(Matthew): The conditions in the following cases are temporary; will remove once all bugs are resolved. *)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1, None)
   (* TODO(Matthew): This case, for loop-while loops, triggers a regression error, which manifests as an IR type-checking issue; it seems to involve how IR types labeled loops. *)
