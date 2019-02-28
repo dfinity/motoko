@@ -7,10 +7,8 @@ then
 fi
 
 name="$(basename $1 .wasm)_0"
-DVM_TMP="$TMP/dvm/$name"
-
-rm -rf $DVM_TMP
-mkdir -p $DVM_TMP
+DVM_TMP=$(mktemp -d)
+trap 'rm -rf $DVM_TMP' EXIT
 
 export LANG=C
 function dvm_ () {
@@ -27,6 +25,3 @@ function dvm_ () {
 dvm_ -q --db $DVM_TMP reset
 dvm_ -q --db $DVM_TMP new $1
 dvm_ -q --db $DVM_TMP run $name start
-
-# cleanup
-rm -rf $DVM_TMP
