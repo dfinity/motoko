@@ -20,7 +20,7 @@ let rec exp e = match e.it with
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | FuncE (x, s, tp, p, t, e') ->
-    "FuncD" $$ [
+    "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
       Atom (sharing s.it);
       Atom x] @
