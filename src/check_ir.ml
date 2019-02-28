@@ -695,12 +695,6 @@ and check_dec env dec  =
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
-  (* check effect *)
-  (* TODO 
-  check (E.Ir.infer_effect_dec dec <= E.eff dec)
-    "inferred effect not a subtype of expected effect";
-  *)
-  (* check typing *)
   match dec.it with
   | ExpD exp ->
     check_exp env exp
