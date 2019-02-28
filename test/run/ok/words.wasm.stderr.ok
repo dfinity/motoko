@@ -1,0 +1,13 @@
+compile_binop: AddOp
+compile_binop: SubOp
+compile_binop: MulOp
+compile_binop: DivOp
+compile_binop: ModOp
+compile_binop: PowOp
+compile_binop: AndOp
+compile_binop: OrOp
+compile_binop: XorOp
+compile_binop: ShiftLOp
+compile_binop: ShiftROp
+compile_binop: RotLOp
+compile_binop: RotROp
