@@ -23,8 +23,8 @@ val nextN : name
 
 (* Identifiers *)
 
-val fresh_lab : unit -> id
-val fresh_id : typ -> var
+val fresh_id : unit -> id
+val fresh_var : typ -> var
 
 val idE : id -> typ -> exp
 val id_of_exp : exp -> id
@@ -59,7 +59,7 @@ val breakE: id -> exp -> exp
 val retE: exp -> exp
 val assignE : exp -> exp -> exp
 val labelE : id -> typ -> exp -> exp
-val loopE: exp -> exp option -> exp
+val loopE : exp -> exp option -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp

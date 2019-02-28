@@ -198,8 +198,8 @@ and dec' env d =
   | FuncD ({ Value.sort = Local; _} as cc, id, tbs, p, typT, exp0) ->
     let env = bind env id None in
     (fun env1 ->
-      let temp = fresh_id (Mut p.note) in
-      let l = fresh_lab () in
+      let temp = fresh_var (Mut p.note) in
+      let l = fresh_id () in
       let tail_called = ref false in
       let env2 = { tail_pos = true;
                    info = Some { func = id;
@@ -213,7 +213,7 @@ and dec' env d =
       let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
       if !tail_called then
         let ids = match typ d with
-          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_id (open_ cs t)) dom
+          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_var (open_ cs t)) dom
           | _ -> assert false
         in
         let args = seqP (List.map varP ids) in

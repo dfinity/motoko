@@ -42,11 +42,11 @@ let fresh () =
   id_stamp := !id_stamp + 1;
   name
 
-let fresh_lab () =
+let fresh_id () =
   let name = fresh () in
   name @@ no_region
 
-let fresh_id typ =
+let fresh_var typ =
   let name = fresh () in
   idE (name @@ no_region) typ
 
@@ -255,15 +255,10 @@ let newObjE sort ids typ =
 let letP pat exp =
   { it = LetD (pat, exp);
     at = no_region;
-    note = { S.note_typ = T.unit; (* ! *)
-             S.note_eff = eff exp; }
+    note = exp.note;
   }
 
-let letD x exp = { it = LetD (varP x, exp);
-                   at = no_region;
-                   note = { S.note_eff = eff exp;
-                            S.note_typ = T.unit; } (* ! *)
-                 }
+let letD x exp = letP (varP x) exp
 
 let varD x exp = { it = VarD (x, exp);
                    at = no_region;
@@ -326,7 +321,7 @@ let answerT = T.unit
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
-let fresh_cont typ = fresh_id (contT typ)
+let fresh_cont typ = fresh_var (contT typ)
 
 (* Sequence expressions *)
 

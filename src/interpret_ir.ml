@@ -624,7 +624,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
-      k V.unit
+      k v
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->

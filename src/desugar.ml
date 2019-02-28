@@ -41,8 +41,8 @@ and exp' at note = function
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
-  | S.ObjE (s, i, es) ->
-    obj at s None i es note.S.note_typ
+  | S.ObjE (s, es) ->
+    obj at s None es note.S.note_typ
   | S.DotE (e, x) ->
     let n = {x with it = I.Name x.it} in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
@@ -54,6 +54,11 @@ and exp' at note = function
     let t = Type.as_array note.S.note_typ in
     I.ArrayE (m, Type.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
+  | S.FuncE (name, s, tbs, p, ty, e) ->
+    let cc = Value.call_conv_of_typ note.S.note_typ in
+    (* TODO(joachim): Turn I.FuncD into I.FuncE *)
+    let i = {it = name; at; note = ()} in
+    I.BlockE [{it = I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e); at; note}]
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -62,9 +67,17 @@ and exp' at note = function
   | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
   | S.BlockE ds ->
     let ds' = decs ds in
-    if Type.is_unit note.S.note_typ && not (is_expD (Lib.List.last ds'))
-    then I.BlockE (ds' @ [expD (tupE [])])
-    else I.BlockE (ds')
+    let prefix, last = Lib.List.split_last ds' in
+    begin match Type.is_unit note.S.note_typ, last.it with
+    | _, I.ExpD _ -> I.BlockE (ds')
+    | true, _ -> I.BlockE (ds' @ [expD (tupE [])])
+    | false, (I.LetD ({it = I.VarP (x); _}, _) | I.FuncD (_, x, _, _, _, _)) ->
+      I.BlockE (ds' @ [expD (idE x note.S.note_typ)])
+    | false, I.LetD (p', e') ->
+      let x = fresh_var note.S.note_typ in
+      I.BlockE (prefix @ [letD x e'; letP p' x; expD x])
+    | false, (I.VarD _ | I.TypD _) -> assert false
+    end
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -82,13 +95,17 @@ and exp' at note = function
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
 
-and obj at s class_id self_id es obj_typ =
+and obj at s self_id es obj_typ =
   match s.it with
-  | Type.Object _ -> build_obj at None s self_id es obj_typ
-  | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
+  | Type.Object _ -> build_obj at s self_id es obj_typ
+  | Type.Actor ->
+    let id =
+      match self_id with
+      | Some id -> id
+      | None -> id_of_exp (fresh_var obj_typ)
+    in I.ActorE (id, exp_fields es, obj_typ)
 
-and build_obj at class_id s self_id es obj_typ =
-  let self = idE self_id obj_typ in
+and build_obj at s self_id es obj_typ =
   let names =
     match obj_typ with
     | Type.Obj (_, fields) ->
@@ -97,12 +114,12 @@ and build_obj at class_id s self_id es obj_typ =
       ) fields
     | _ -> assert false
   in
-  I.BlockE (
-      List.map (fun ef -> dec ef.it.S.dec) es @
-        [ letD self (newObjE s.it names obj_typ);
-          expD self
-        ]
-  )
+  let obj_e = newObjE s.it names obj_typ in
+  let ret_ds =
+    match self_id with
+    | None -> [ expD obj_e ]
+    | Some id -> let self = idE id obj_typ in [ letD self obj_e; expD self ]
+  in I.BlockE (List.map (fun ef -> dec ef.it.S.dec) es @ ret_ds)
 
 and exp_fields fs = List.map exp_field fs
 
@@ -125,23 +142,10 @@ and exp_field' (f : S.exp_field') =
       mut = S.Var @@ x.at;
       exp = exp e;
     }
-  | S.FuncD (_, x, _, _, _, _) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = x;
-      mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
-    }
-  | S.ClassD (x, _, _, _, _, _) ->
-    { I.vis = f.S.vis;
-      name = I.Name x.it @@ x.at;
-      id = {x with note = ()};
-      mut = S.Const @@ x.at;
-      exp = {f.S.dec with it = I.BlockE [dec f.S.dec]};
-    }
   | S.ExpD _ -> failwith "expressions not yet supported in objects"
   | S.LetD _ -> failwith "pattern bindings not yet supported in objects"
   | S.TypD _ -> failwith "type definitions not yet supported in objects"
+  | S.ClassD _ -> failwith "class definitions not yet supported in objects"
 
 
 and typ_binds tbs = List.map typ_bind tbs
@@ -169,17 +173,22 @@ and decs ds =
                             S.note_eff = T.Triv }
                  }
       in
-      typD :: (phrase' dec' d) :: (decs ds)
-    | _ -> (phrase' dec' d) :: (decs ds)
+      typD :: phrase' dec' d :: decs ds
+    | _ -> phrase' dec' d :: decs ds
 
 and dec d = phrase' dec' d
 and dec' at n d = match d with
   | S.ExpD e -> I.ExpD (exp e)
-  | S.LetD (p, e) -> I.LetD (pat p, exp e)
+  | S.LetD (p, e) ->
+    let p' = pat p in
+    let e' = exp e in
+    (* TODO: remove this hack once IR is adapted and backend can handle it *)
+    begin match p'.it, e'.it with
+    | I.VarP i, I.ActorE (_, efs, t) ->
+      I.LetD (p', {e' with it = I.ActorE (i, efs, t)})
+    | _ -> I.LetD (p', e')
+    end
   | S.VarD (i, e) -> I.VarD (i, exp e)
-  | S.FuncD (s, i, tbs, p, ty, e) ->
-    let cc = Value.call_conv_of_typ n.S.note_typ in
-    I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
   | S.TypD (id, typ_bind, t) ->
     let c = Lib.Option.value id.note in
     I.TypD c
@@ -200,7 +209,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     I.FuncD (cc, id', typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some id') self_id es obj_typ;
+             { it = obj at s (Some self_id) es obj_typ;
                at = at;
                note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
 
