@@ -50,7 +50,7 @@ module SR = struct
   type t =
     | Vanilla
     | UnboxedTuple of int
-    | UnboxedInt
+    | UnboxedInt64
     | UnboxedReference
     | Unreachable
     | StaticThing of static_thing
@@ -2807,15 +2807,15 @@ module StackRep = struct
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat -> UnboxedInt
-    | Type.Prim Type.Int -> UnboxedInt
+    | Type.Prim Type.Nat -> UnboxedInt64
+    | Type.Prim Type.Int -> UnboxedInt64
     | Type.Prim Type.Word32 -> Vanilla
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
-    | UnboxedInt -> ValBlockType (Some I64Type)
+    | UnboxedInt64 -> ValBlockType (Some I64Type)
     | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
@@ -2825,7 +2825,7 @@ module StackRep = struct
 
   let to_string = function
     | Vanilla -> "Vanilla"
-    | UnboxedInt -> "UnboxedInt"
+    | UnboxedInt64 -> "UnboxedInt64"
     | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
@@ -2834,7 +2834,7 @@ module StackRep = struct
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
-    | UnboxedInt, UnboxedInt -> UnboxedInt
+    | UnboxedInt64, UnboxedInt64 -> UnboxedInt64
     | UnboxedReference, UnboxedReference -> UnboxedReference
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
@@ -2846,7 +2846,7 @@ module StackRep = struct
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla -> G.i Drop
-    | UnboxedInt -> G.i Drop
+    | UnboxedInt64 -> G.i Drop
     | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | StaticThing _ -> G.nop
@@ -2870,8 +2870,8 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedInt, Vanilla -> BoxedInt.box env
-    | Vanilla, UnboxedInt -> BoxedInt.unbox env
+    | UnboxedInt64, Vanilla -> BoxedInt.box env
+    | Vanilla, UnboxedInt64 -> BoxedInt.unbox env
 
     | UnboxedReference, Vanilla -> Dfinity.box_reference env
     | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
@@ -3196,10 +3196,10 @@ let compile_lit env lit = Syntax.(match lit with
   | BoolLit false -> SR.bool, Bool.lit false
   | BoolLit true ->  SR.bool, Bool.lit true
   (* This maps int to int32, instead of a proper arbitrary precision library *)
-  | IntLit n      -> SR.UnboxedInt,
+  | IntLit n      -> SR.UnboxedInt64,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | NatLit n      -> SR.UnboxedInt,
+  | NatLit n      -> SR.UnboxedInt64,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
   | Word32Lit n   -> SR.Vanilla,
@@ -3216,7 +3216,7 @@ let compile_lit_as env sr_out lit =
 
 let compile_unop env t op = Syntax.(match op with
   | NegOp ->
-      SR.UnboxedInt,
+      SR.UnboxedInt64,
       Func.share_code env "neg" ["n", I64Type] [I64Type] (fun env ->
         let get_n = G.i (LocalGet (nr 0l)) in
         compile_const_64 0L ^^
@@ -3224,7 +3224,7 @@ let compile_unop env t op = Syntax.(match op with
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
   | PosOp ->
-      SR.UnboxedInt,
+      SR.UnboxedInt64,
       G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
@@ -3242,7 +3242,7 @@ let compile_binop env t op =
       let get_n1 = G.i (LocalGet (nr 0l)) in
       let get_n2 = G.i (LocalGet (nr 1l)) in
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      G.if_ (StackRep.to_block_type env SR.UnboxedInt)
+      G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
         (G.i Unreachable)
         (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
     )
@@ -3294,7 +3294,7 @@ let rec compile_lexp (env : E.t) exp =
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_as env SR.UnboxedInt e2 ^^ (* idx *)
+     compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
      Array.idx env,
      store_ptr
@@ -3311,7 +3311,7 @@ and compile_exp (env : E.t) exp =
   | IdxE (e1, e2)  ->
     SR.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to array *)
-    compile_exp_as env SR.UnboxedInt e2 ^^ (* idx *)
+    compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Array.idx env ^^
     load_ptr
@@ -3644,7 +3644,7 @@ and compile_lit_pat env l =
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
     BoxedInt.unbox env ^^
-    compile_lit_as env SR.UnboxedInt l ^^
+    compile_lit_as env SR.UnboxedInt64 l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
