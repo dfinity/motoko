@@ -86,31 +86,30 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
 
 open Value
 
+let min32 = Int32.to_int Int32.min_int
+let max32 = Int32.to_int Int32.max_int
+let maxW32 = - 2 * min32
+
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "Nat->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v) in
-                     let min32 = Int32.to_int Int32.min_int in
-                     let max32 = Int32.to_int Int32.max_int in
                      let w = if i > max32 - min32 then 0
-                             else if i > max32 then i - 2 * min32 
+                             else if i > max32 then i + maxW32
                              else if i < 0 then failwith "negative Nat?" 
                              else i
                      in k (Word32 (Int32.of_int w))
   | "Int->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v) in
-                     let min32 = Int32.to_int Int32.min_int in
-                     let max32 = Int32.to_int Int32.max_int in
                      let w = if i > max32 - min32 then 0
-                             else if i > max32 then i - 2 * min32 
+                             else if i > max32 then i + maxW32
                              else if i < min32 then 0
                              else i
                      in k (Word32 (Int32.of_int w))
   | "Word32->Nat" -> fun v k ->
-                     let i32 = Int32.to_int (as_word32 v) in
-                     let min32 = Int32.to_int Int32.min_int in
-                     let i = if i32 < 0 then i32 - 2 * min32 else i32
-                     in k (Int (Big_int.big_int_of_int i))
+                     let i = Int32.to_int (as_word32 v) in
+                     let i' = if i < 0 then i + maxW32 else i
+                     in k (Int (Big_int.big_int_of_int i'))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
