@@ -175,16 +175,13 @@ let make_async_message id v =
     (* assert (false) *)
 
 
-let make_message id t v : V.value =
-  match t with
-  | T.Func (_, _, _, _, []) ->
-    make_unit_message id.it v
-  | T.Func (_, _, _, _, [T.Async _]) ->
+let make_message x cc v : V.value =
+  match cc.V.control with
+  | T.Returns ->
+    make_unit_message x v
+  | T.Promises ->
     assert (not !Flags.async_lowering);
-    make_async_message id.it v
-  | _ ->
-    failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
-    (* assert false *)
+    make_async_message x v
 
 
 let extended_prim s typ at =
@@ -434,6 +431,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | FuncE (x, cc, _typbinds, pat, _typ, exp) ->
+    let f = interpret_func env x pat
+      (fun env' -> interpret_exp env' exp) in
+    let v = V.Func (cc, f) in
+    let v =
+      match cc.Value.sort with
+      | T.Sharable -> make_message x cc v
+      | _-> v
+    in
+    k v
   | NewObjE (sort, ids, _) ->
     let ve =
       List.fold_left
@@ -607,7 +614,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _ | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
-  | VarD (id, _) | FuncD (_, id, _, _, _, _) -> declare_id id
+  | VarD (id, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -624,7 +631,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
-      k v
+      k V.unit
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
@@ -633,17 +640,6 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | FuncD (cc, id, _typbinds, pat, _typ, exp) ->
-    let f = interpret_func env id pat
-      (fun env' -> interpret_exp env' exp) in
-    let v = V.Func (V.call_conv_of_typ dec.note.Syntax.note_typ, f) in
-    let v =
-      match cc.Value.sort with
-      | T.Sharable -> make_message id dec.note.Syntax.note_typ v
-      | _-> v
-    in
-    define_id env id v;
-    k v
 
 and interpret_decs env decs (k : V.value V.cont) =
   match decs with
@@ -653,8 +649,8 @@ and interpret_decs env decs (k : V.value V.cont) =
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
 
-and interpret_func env id pat f v (k : V.value V.cont) =
-  if !Flags.trace then trace "%s%s" id.it (string_of_arg v);
+and interpret_func env x pat f v (k : V.value V.cont) =
+  if !Flags.trace then trace "%s%s" x (string_of_arg v);
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list"

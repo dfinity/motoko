@@ -127,9 +127,9 @@ let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
-  | T.Var (s,i) ->
+  | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con (c,typs) ->
+  | T.Con (c, typs) ->
     if not (T.ConSet.mem c env.cons) then
        error env no_region "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
@@ -242,7 +242,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
-  | PreLit (s,p) ->
+  | PreLit (s, p) ->
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
 
 open Ir
@@ -253,7 +253,7 @@ let isAsyncE exp =
   match exp.it with
   | AsyncE _ -> (* pre await transformation *)
     true
-  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* post await transformation *)
+  | CallE(_,{it=PrimE("@async");_}, _, cps) -> (* post await transformation *)
     true
   | _ ->
     false
@@ -262,9 +262,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 =
-    (if T.is_mut t2 then t1 else T.as_immut t1) <: t2
-  in
+  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check effect *)
   check (E.Ir.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
@@ -291,7 +289,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: ot;
     typ exp2 <: ot;
     ot <: t;
-  | RelE (ot,exp1, op, exp2) ->
+  | RelE (ot, exp1, op, exp2) ->
     check (Operator.has_relop ot op) "relational operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
@@ -383,9 +381,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    (typ exp2) <: T.open_ insts t2;
+    typ exp2 <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE decs ->
+    (* Really, this should be a tuple of decs and an expression now *)
+    check (decs <> []) "BlockE [] is invalid";
+    begin match (Lib.List.last decs).it with
+      | ExpD _ -> ()
+      | _ -> error env exp.at "last entry in a BlockE must be an expression"
+    end;
     let t1, scope = type_block env decs exp.at in
     t1 <: t;
   | IfE (exp1, exp2, exp3) ->
@@ -511,10 +515,35 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
+  | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
+    let cs, tbs, ce = check_open_typ_binds env typ_binds in
+    let env' = adjoin_cons env ce in
+    let ve = check_pat_exhaustive env' pat in
+    check_typ env' ret_ty;
+    check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
+           ==> isAsyncE exp)
+      "shared function with async type has non-async body";
+    let env'' =
+      {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
+    check_exp (adjoin_vals env'' ve) exp;
+    check_sub env' exp.at (typ exp) ret_ty;
+    (* Now construct the function type and compare with the annotation *)
+    let arg_ty = pat.note in
+    let ts1 = if cc.Value.n_args = 1
+              then [arg_ty]
+              else T.as_seq arg_ty in
+    let ts2 = if cc.Value.n_res = 1
+              then [ret_ty]
+              else T.as_seq ret_ty in
+    let fun_ty = T.Func
+      ( cc.Value.sort, cc.Value.control
+      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
+      ) in
+    fun_ty <: t
   | NewObjE (sort, labids, t0) ->
     let t1 =
       T.Obj(sort,
-            List.sort T.compare_field (List.map (fun (name,id) ->
+            List.sort T.compare_field (List.map (fun (name, id) ->
                                            let Name lab = name.it in
                                            T.{lab; typ = T.Env.find id.it env.vals}) labids))
     in
@@ -602,7 +631,7 @@ and type_obj env s id t fields : T.typ =
   let ve = gather_exp_fields env id.it t fields in
   let env' = adjoin_vals env ve in
   let tfs, _ve = type_exp_fields env' s id.it t fields in
-  T.Obj(s,tfs)
+  T.Obj (s, tfs)
 
 and gather_exp_fields env id t fields : val_env =
   let ve0 = T.Env.singleton id t in
@@ -622,12 +651,7 @@ and type_exp_fields env s id t fields : T.field list * val_env =
 
 and is_func_exp exp =
   match exp.it with
-  | BlockE [dec]-> is_func_dec dec
-  | _ -> false
-
-and is_func_dec dec =
-  match dec.it with
-  | FuncD _ -> true
+  | FuncE _ -> true
   | _ -> false
 
 and type_exp_field env s (tfs, ve) field : T.field list * val_env =
@@ -677,9 +701,9 @@ and type_block_exps env decs : T.typ =
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
   let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
-  let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
-  let _,_ = check_typ_binds env binds in
-  cs,ce
+  let tbs = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
+  let _ = check_typ_binds env tbs in
+  cs, tbs, ce
 
 and close_typ_binds cs tbs =
   List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
@@ -688,38 +712,30 @@ and check_dec env dec  =
   (* helpers *)
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
+  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check effect *)
   check (E.Ir.infer_effect_dec dec <= E.eff dec)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   let t = typ dec in
   match dec.it with
-  | ExpD exp | LetD (_, exp) ->
+  | ExpD exp ->
     check_exp env exp;
-    (typ exp) <: t
+    typ exp <: t
+  | LetD (pat, exp) ->
+    ignore (check_pat_exhaustive env pat);
+    check_exp env exp;
+    typ exp <~ pat.note;
+    T.unit <: t
   | VarD (_, exp) ->
     check_exp env exp;
     T.unit <: t
-  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
-    let t0 = T.Env.find id.it env.vals in
-    let _cs,ce = check_open_typ_binds env typ_binds in
-    let env' = adjoin_cons env ce in
-    let ve = check_pat_exhaustive env' pat in
-    check_typ env' t2;
-    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
-           ==> isAsyncE exp)
-      "shared function with async type has non-async body";
-    let env'' =
-      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-    check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' dec.at (typ exp) t2;
-    t0 <: t;
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds,typ) =
+    let (binds, typ) =
       match Con.kind c with
-      | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
+      | T.Abs (binds, typ)
+      | T.Def (binds, typ) -> (binds, typ)
     in
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
@@ -760,28 +776,6 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
-  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
-    let func_sort = call_conv.Value.sort in
-    let cs = List.map (fun tb -> tb.it.con) typ_binds in
-    let t1 = pat.note in
-    let t2 = typ in
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
-    in
-    let ts2 = match call_conv.Value.n_res  with
-      | 1 -> [t2]
-      | _ -> T.as_seq t2
-    in
-    let c = match func_sort, t2 with
-      | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
-    let ve' =  T.Env.add id.it t scope.val_env in
-    { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
       (not (T.ConSet.mem c scope.con_env))

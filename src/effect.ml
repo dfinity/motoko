@@ -169,6 +169,8 @@ module Ir =
         effect_exp exp1
       | DefineE (_, _, exp1) ->
         effect_exp exp1
+      | FuncE _ ->
+        T.Triv
       | NewObjE _ ->
         T.Triv
 
@@ -192,7 +194,6 @@ module Ir =
       | LetD (_,e)
       | VarD (_, e) ->
         effect_exp e
-      | TypD _
-      | FuncD _ ->
+      | TypD _ ->
         T.Triv
 end
