@@ -3289,7 +3289,7 @@ let compile_unop env t op = Syntax.(match op, t with
   | PosOp, Type.Prim (Type.Int | Type.Nat) ->
       SR.UnboxedInt64,
       G.nop
-  | PosOp, Type.Prim Type.Word32 ->
+  | PosOp, Type.Prim (Type.Word8 | Type.Word16 | Type.Word32) ->
       SR.UnboxedWord32,
       G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
