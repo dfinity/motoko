@@ -1210,7 +1210,7 @@ module BoxedSmallInt = struct
         (compile_box env get_n)
     )
 
-  let unbox env = Func.share_code env "unbox_int32" ["n", I32Type] [I32Type] (fun env ->
+  let unbox env = Func.share_code env "unbox_i32" ["n", I32Type] [I32Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
