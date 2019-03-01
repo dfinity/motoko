@@ -1201,7 +1201,7 @@ module BoxedSmallInt = struct
     get_i ^^ compile_elem ^^ Heap.store_field 1l ^^
     get_i
 
-  let box env = Func.share_code env "box_int32" ["n", I32Type] [I32Type] (fun env ->
+  let box env = Func.share_code env "box_i32" ["n", I32Type] [I32Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
