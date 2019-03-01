@@ -811,7 +811,7 @@ module Tagged = struct
     | Indirection
     | SmallInt (* Word? Contains a 32 bit unsigned number *)
 
-  (* Lets leave out tag 0 to trap earlier on invalid memory *)
+  (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
     | Object -> 1l
     | ObjInd -> 2l
