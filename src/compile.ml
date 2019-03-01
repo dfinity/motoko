@@ -3286,7 +3286,7 @@ let compile_unop env t op = Syntax.(match op, t with
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
       )
-  | PosOp, (Type.Prim Type.Int | Type.Prim Type.Nat) ->
+  | PosOp, Type.Prim (Type.Int | Type.Nat) ->
       SR.UnboxedInt64,
       G.nop
   | PosOp, Type.Prim Type.Word32 ->
