@@ -4,6 +4,12 @@ compile_binop: PowOp
 compile_binop: PowOp
 compile_binop: PowOp
 compile_binop: PowOp
+compile_binop: PowOp
+compile_binop: PowOp
+compile_unop: PosOp
+compile_unop: PosOp
+compile_unop: NegOp
+compile_unop: NegOp
 compile_binop: AddOp
 of_type: Float
 compile_binop: AddOp

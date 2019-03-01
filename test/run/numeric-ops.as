@@ -30,8 +30,8 @@ func testInt(a : Int, b : Int) {
   let rat2 = (a / b) : Int;
   let mod1 = a % b;
   let mod2 = (a % b) : Int;
-  let pow1 = a * b;
-  let pow2 = (a * b) : Int;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Int;
 };
 
 func testNatInt(a : Nat, b : Int) {
