@@ -51,7 +51,7 @@ module SR = struct
     | Vanilla
     | UnboxedTuple of int
     | UnboxedInt64
-    | UnboxedInt32
+    | UnboxedInt32 (*UnboxedWord32?*)
     | UnboxedReference
     | Unreachable
     | StaticThing of static_thing
@@ -389,6 +389,7 @@ end
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
+(*let compile_unboxed_one = compile_unboxed_const 1l LATER*)
 
 (* Some common arithmetic, used for pointer and index arithmetic *)
 let compile_op_const op i =
@@ -773,6 +774,17 @@ module BitTagged = struct
     compile_unboxed_const 1l ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
+  (* The untag_small and tag_small functions expect 32 bit numbers *)
+  let untag_small env =
+    compile_unboxed_const 1l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+
+  let tag_small =
+    compile_unboxed_const 1l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+    compile_unboxed_const 1l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or))
+
 end (* BitTagged *)
 
 module Tagged = struct
@@ -797,6 +809,7 @@ module Tagged = struct
     | Some (* For opt *)
     | Text
     | Indirection
+    | SmallInt (* Word? Contains a 32 bit unsigned number *)
 
   (* Lets leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -810,6 +823,7 @@ module Tagged = struct
     | Some -> 8l
     | Text -> 9l
     | Indirection -> 10l
+    | SmallInt -> 11l
 
   (* The tag *)
   let header_size = 1l
@@ -1170,6 +1184,44 @@ module BoxedInt = struct
 
 end (* BoxedInt *)
 
+module BoxedSmallInt = struct
+  (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
+
+     Small values (just <2^10 for now, so that both code paths are well-tested)
+     are stored unboxed, tagged, see BitTagged.
+  *)
+
+  let payload_field = Int32.add Tagged.header_size 0l
+
+  let compile_box env compile_elem : G.t =
+    let (set_i, get_i) = new_local env "boxed_int" in
+    Heap.alloc env 3l ^^
+    set_i ^^
+    get_i ^^ Tagged.store Tagged.SmallInt ^^
+    get_i ^^ compile_elem ^^ Heap.store_field 1l ^^
+    get_i
+
+  let box env = Func.share_code env "box_int32" ["n", I32Type] [I32Type] (fun env ->
+      let get_n = G.i (LocalGet (nr 0l)) in
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      G.if_ (ValBlockType (Some I32Type))
+        (get_n ^^ BitTagged.tag_small)
+        (compile_box env get_n)
+    )
+
+  let unbox env = Func.share_code env "unbox_int32" ["n", I32Type] [I32Type] (fun env ->
+      let get_n = G.i (LocalGet (nr 0l)) in
+      get_n ^^
+      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+        ( get_n ^^ BitTagged.untag_small env)
+        ( get_n ^^ Heap.load_field payload_field)
+    )
+
+  (*let lit env n = compile_unboxed_const n ^^ box env*)
+
+end (* BoxedSmallInt *)
+
 (* Primitive functions *)
 module Prim = struct
 
@@ -1190,17 +1242,13 @@ module Prim = struct
       ( get_i )
 
   let prim_nat32toWord32 env =
-    BoxedInt.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let prim_word32toNat32 env =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-    BoxedInt.box env
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let prim_int32toWord32 env =
-    BoxedInt.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let prim_word32toInt32 env =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-    BoxedInt.box env
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
 end (* Prim *)
 
@@ -2877,6 +2925,9 @@ module StackRep = struct
     | UnboxedInt64, Vanilla -> BoxedInt.box env
     | Vanilla, UnboxedInt64 -> BoxedInt.unbox env
 
+    | UnboxedInt32, Vanilla -> BoxedSmallInt.box env
+    | Vanilla, UnboxedInt32 -> BoxedSmallInt.unbox env
+
     | UnboxedReference, Vanilla -> Dfinity.box_reference env
     | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
 
@@ -3218,8 +3269,8 @@ let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-let compile_unop env t op = Syntax.(match op with
-  | NegOp ->
+let compile_unop env t op = Syntax.(match op, t with
+  | NegOp, Type.Prim Type.Int ->
       SR.UnboxedInt64,
       Func.share_code env "neg" ["n", I64Type] [I64Type] (fun env ->
         let get_n = G.i (LocalGet (nr 0l)) in
@@ -3227,8 +3278,19 @@ let compile_unop env t op = Syntax.(match op with
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
-  | PosOp ->
+  | NegOp, Type.Prim Type.Word32 ->
+      SR.UnboxedInt32,
+      Func.share_code env "neg32" ["n", I32Type] [I32Type] (fun env ->
+        let get_n = G.i (LocalGet (nr 0l)) in
+        compile_unboxed_zero ^^
+        get_n ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+      )
+  | PosOp, (Type.Prim Type.Int | Type.Prim Type.Nat) ->
       SR.UnboxedInt64,
+      G.nop
+  | PosOp, Type.Prim Type.Word32 ->
+      SR.UnboxedInt32,
       G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
@@ -3360,19 +3422,19 @@ and compile_exp (env : E.t) exp =
          Prim.prim_abs env
        | "Nat->Word32" ->
          SR.UnboxedInt32,
-         compile_exp_as env SR.UnboxedInt32 e ^^
+         compile_exp_as env SR.UnboxedInt64 e ^^
          Prim.prim_nat32toWord32 env
        | "Word32->Nat" ->
-         SR.Vanilla, (*TODO*)
-         compile_exp_vanilla env e ^^
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedInt32 e ^^
          Prim.prim_word32toNat32 env
        | "Int->Word32" ->
-         SR.Vanilla, (*TODO*)
-         compile_exp_vanilla env e ^^
+         SR.UnboxedInt32,
+         compile_exp_as env SR.UnboxedInt64 e ^^
          Prim.prim_int32toWord32 env
        | "Word32->Int" ->
-         SR.Vanilla, (*TODO*)
-         compile_exp_vanilla env e ^^
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedInt32 e ^^
          Prim.prim_word32toInt32 env
        | "printInt" ->
          SR.unit,
