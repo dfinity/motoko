@@ -127,9 +127,9 @@ let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
-  | T.Var (s,i) ->
+  | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con (c,typs) ->
+  | T.Con (c, typs) ->
     if not (T.ConSet.mem c env.cons) then
        error env no_region "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
@@ -242,7 +242,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
-  | PreLit (s,p) ->
+  | PreLit (s, p) ->
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
 
 open Ir
@@ -253,7 +253,7 @@ let isAsyncE exp =
   match exp.it with
   | AsyncE _ -> (* pre await transformation *)
     true
-  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* post await transformation *)
+  | CallE(_,{it=PrimE("@async");_}, _, cps) -> (* post await transformation *)
     true
   | _ ->
     false
@@ -289,7 +289,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: ot;
     typ exp2 <: ot;
     ot <: t;
-  | RelE (ot,exp1, op, exp2) ->
+  | RelE (ot, exp1, op, exp2) ->
     check (Operator.has_relop ot op) "relational operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
@@ -543,7 +543,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | NewObjE (sort, labids, t0) ->
     let t1 =
       T.Obj(sort,
-            List.sort T.compare_field (List.map (fun (name,id) ->
+            List.sort T.compare_field (List.map (fun (name, id) ->
                                            let Name lab = name.it in
                                            T.{lab; typ = T.Env.find id.it env.vals}) labids))
     in
@@ -631,7 +631,7 @@ and type_obj env s id t fields : T.typ =
   let ve = gather_exp_fields env id.it t fields in
   let env' = adjoin_vals env ve in
   let tfs, _ve = type_exp_fields env' s id.it t fields in
-  T.Obj(s,tfs)
+  T.Obj (s, tfs)
 
 and gather_exp_fields env id t fields : val_env =
   let ve0 = T.Env.singleton id t in
@@ -703,7 +703,7 @@ and check_open_typ_binds env typ_binds =
   let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
   let tbs = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
   let _ = check_typ_binds env tbs in
-  cs,tbs,ce
+  cs, tbs, ce
 
 and close_typ_binds cs tbs =
   List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
