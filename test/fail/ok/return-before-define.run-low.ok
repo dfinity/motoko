@@ -1,0 +1,3 @@
+1
+2
+return-before-define.as:2.22-2.23: execution error, accessing identifier before its definition
