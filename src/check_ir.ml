@@ -381,7 +381,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    (typ exp2) <: T.open_ insts t2;
+    typ exp2 <: T.open_ insts t2;
     T.open_ insts t3 <: t;
   | BlockE decs ->
     (* Really, this should be a tuple of decs and an expression now *)
@@ -516,7 +516,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     end;
     T.unit <: t
   | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
-    let cs,tbs,ce = check_open_typ_binds env typ_binds in
+    let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
     let ve = check_pat_exhaustive env' pat in
     check_typ env' ret_ty;
@@ -702,7 +702,7 @@ and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
   let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
   let tbs = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
-  let _,_ = check_typ_binds env tbs in
+  let _ = check_typ_binds env tbs in
   cs,tbs,ce
 
 and close_typ_binds cs tbs =
@@ -732,10 +732,10 @@ and check_dec env dec  =
     T.unit <: t
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds,typ) =
+    let (binds, typ) =
       match Con.kind c with
-      | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
+      | T.Abs (binds, typ)
+      | T.Def (binds, typ) -> (binds, typ)
     in
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
