@@ -809,7 +809,7 @@ module Tagged = struct
     | Some (* For opt *)
     | Text
     | Indirection
-    | SmallInt (* Word? Contains a 32 bit unsigned number *)
+    | SmallWord (* Contains a 32 bit unsigned number *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -823,7 +823,7 @@ module Tagged = struct
     | Some -> 8l
     | Text -> 9l
     | Indirection -> 10l
-    | SmallInt -> 11l
+    | SmallWord -> 11l
 
   (* The tag *)
   let header_size = 1l
@@ -1184,7 +1184,7 @@ module BoxedInt = struct
 
 end (* BoxedInt *)
 
-module BoxedSmallInt = struct
+module BoxedSmallWord = struct
   (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
 
      Small values (just <2^10 for now, so that both code paths are well-tested)
@@ -1197,7 +1197,7 @@ module BoxedSmallInt = struct
     let (set_i, get_i) = new_local env "boxed_int" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.store Tagged.SmallInt ^^
+    get_i ^^ Tagged.store Tagged.SmallWord ^^
     get_i ^^ compile_elem ^^ Heap.store_field 1l ^^
     get_i
 
@@ -1220,7 +1220,7 @@ module BoxedSmallInt = struct
 
   (*let lit env n = compile_unboxed_const n ^^ box env*)
 
-end (* BoxedSmallInt *)
+end (* BoxedSmallWord *)
 
 (* Primitive functions *)
 module Prim = struct
@@ -1241,13 +1241,13 @@ module Prim = struct
       )
       ( get_i )
 
-  let prim_nat32toWord32 env =
+  let prim_natToWord32 env =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_word32toNat32 env =
+  let prim_word32toNat env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let prim_int32toWord32 env =
+  let prim_intToWord32 env =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_word32toInt32 env =
+  let prim_word32toInt env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
 end (* Prim *)
@@ -2925,8 +2925,8 @@ module StackRep = struct
     | UnboxedInt64, Vanilla -> BoxedInt.box env
     | Vanilla, UnboxedInt64 -> BoxedInt.unbox env
 
-    | UnboxedWord32, Vanilla -> BoxedSmallInt.box env
-    | Vanilla, UnboxedWord32 -> BoxedSmallInt.unbox env
+    | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
+    | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
     | UnboxedReference, Vanilla -> Dfinity.box_reference env
     | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
@@ -3423,19 +3423,19 @@ and compile_exp (env : E.t) exp =
        | "Nat->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_nat32toWord32 env
+         Prim.prim_natToWord32 env
        | "Word32->Nat" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat32 env
+         Prim.prim_word32toNat env
        | "Int->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_int32toWord32 env
+         Prim.prim_intToWord32 env
        | "Word32->Int" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toInt32 env
+         Prim.prim_word32toInt env
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
