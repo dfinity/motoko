@@ -195,22 +195,59 @@ called before.
 *Alternative design:* Additional methods that add more information to the
 rejection (e.g. a log message) could be added.
 
+Initialization, serialization and deserialization
+-------------------------------------------------
 
-Serializing and deserializing the actor state
-----------------------------------------------
+A WebAssembly module instance may be initialized in exactly one of two ways:
 
-The system expects WebAssembly modules to be able to serialize and
-de-serialize their state. To that end, each module has to provide message entry
-points for two messages with IDL signature
+* created from scratch, with support for initialization data provided by the creator, or
+* created from a serialized state of a prior instance.
+
+To that end, each module has to provide message entry points for the following three messages, with IDL signatures
 ```
-serialize : () -> t
-deserialize  : t -> ()
+initialize : init_param -> ()
+serialize : () -> state_type
+deserialize : state_type -> ()
 ```
-where `t` is an IDL type chosen by the developer of the WebAssembly module.
+where `init_param` and `state_type` are IDL types chosen by the developer of
+the WebAssembly module.
+
 Because these are, from the point of view of the program, just normal messages,
-the mechanics above apply as well.
+the above mechanics for accessing the argument and indicating success apply as well.
+
+The system guarantees that the first message received by the actor is either
+`initialize` or `deserialize`, and that these messages are not called after the
+first message. If these messages indicate failure, instance creation is
+considered to have failed.
+
+It also guarantees that after a call to `deserialize` the actor is either
+killed, or that the serialized state is discarded by the system, enforcing
+linearity of state.
 
 Upgrading is only allowed if the new version of the module specifies a type
-`t_new` that is a supertype of `t_old`, as specified in section “Upgrading and
-Subtyping” of the [DFINITY IDL]. This ensures that the new version can deal
-with the data from the old version.
+`state_type_new` that is a supertype of `state_type_old`, as specified in
+section “Upgrading and Subtyping” of the [DFINITY IDL]. This ensures that the
+new version can always deal with the data from the old version.
+
+*Impliciation on other components*: The `ActorNewMessage` transaction type
+would gain a parameter `Function Arguments`.
+
+*Motivation:* The argument to `initialize` allows the developer to ability to
+deploy the same code, but configure each instance differently, without
+recompilation. It is also important for a future support of dynamic actor
+creations. It also allows for the code to signal failure to initialize.
+
+*Alternative Design*: It may be useful to allow the `initialize` method to also
+return data.
+
+A note on `(start)`
+-------------------
+
+The Web Assembly module must not have a `(start)` function (in the sense of the
+WebAssembly specification).
+
+*Motivation*: In our setting, modules are either initialized from scratch, or
+from a serialization of the state of an earlier instance (see below). This requires more structure than provided by `(start)`. Furthermore, during the execution of `(start)`, WebAssembly exports are not yet available for the host, which causes complications. Finally, orthogonal persistence requires the ability to instantiate a WebAssembly module without side-effects; the `(start)` function is a complication there.
+
+*Alternative design*: The module may have a `(start)` function, but the System API is not available during the execution.
+
