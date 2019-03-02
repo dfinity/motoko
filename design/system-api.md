@@ -1,6 +1,8 @@
 System API
 ==========
 
+[MOVED TO CONFLUENCE](https://dfinity.atlassian.net/wiki/spaces/AST/pages/114559592/System+API)
+
 This documents describes the system API provided to WebAssembly module by the
 DFINITY system, as expected by the ActorScript runtime system.
 
