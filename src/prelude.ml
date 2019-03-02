@@ -86,30 +86,24 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
 
 open Value
 
-let min32 = Int32.to_int Int32.min_int
-let max32 = Int32.to_int Int32.max_int
-let maxW32 = - 2 * min32
+module Conv = struct
+  open Nativeint
+  let to_signed_Word32 i = to_int32 (of_int i)
+  let of_signed_Word32 w = to_int (logand 4294967295n (of_int32 w))
+end (* Conv *)
+
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
   | "Nat->Word32" -> fun v k ->
-                     let i = Big_int.int_of_big_int (as_int v) in
-                     let w = if i > max32 - min32 then 0
-                             else if i > max32 then i + maxW32
-                             else if i < 0 then failwith "negative Nat?" 
-                             else i
-                     in k (Word32 (Int32.of_int w))
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Conv.to_signed_Word32 i))
   | "Int->Word32" -> fun v k ->
-                     let i = Big_int.int_of_big_int (as_int v) in
-                     let w = if i > max32 - min32 then 0
-                             else if i > max32 then i + maxW32
-                             else if i < min32 then 0
-                             else i
-                     in k (Word32 (Int32.of_int w))
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Conv.to_signed_Word32 i))
   | "Word32->Nat" -> fun v k ->
-                     let i = Int32.to_int (as_word32 v) in
-                     let i' = if i < 0 then i + maxW32 else i
-                     in k (Int (Big_int.big_int_of_int i'))
+                     let i = Conv.of_signed_Word32 (as_word32 v)
+                     in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
