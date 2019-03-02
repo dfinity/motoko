@@ -35,6 +35,16 @@ func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
 // Conversions
+func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
+func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
+func intToWord8(n : Int) : Word8 = (prim "Int->Word8" : Int -> Word8) n;
+func word8ToInt(n : Word8) : Int = (prim "Word8->Int" : Word8 -> Int) n;
+
+func natToWord16(n : Nat) : Word16 = (prim "Nat->Word16" : Nat -> Word16) n;
+func word16ToNat(n : Word16) : Nat = (prim "Word16->Nat" : Word16 -> Nat) n;
+func intToWord16(n : Int) : Word16 = (prim "Int->Word16" : Int -> Word16) n;
+func word16ToInt(n : Word16) : Int = (prim "Word16->Int" : Word16 -> Int) n;
+
 func natToWord32(n : Nat) : Word32 = (prim "Nat->Word32" : Nat -> Word32) n;
 func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
 func intToWord32(n : Int) : Word32 = (prim "Int->Word32" : Int -> Word32) n;
@@ -88,21 +98,47 @@ open Value
 
 module Conv = struct
   open Nativeint
+  let to_signed_Word_masked m i = Int32.logand m (to_int32 (of_int i))
   let to_signed_Word32 i = to_int32 (of_int i)
-  let of_signed_Word32 w = to_int (logand 4294967295n (of_int32 w))
+  let of_signed_Word_by_shift b w = to_int (shift_right (shift_left (of_int32 w) b) b)
+  let of_signed_Word_masked m w = to_int (logand m (of_int32 w))
+  let of_signed_Word32 w = of_signed_Word_masked 0xFFFFFFFFn w
 end (* Conv *)
 
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
+
+  | "Nat->Word8"
+  | "Int->Word8" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Conv.to_signed_Word_masked 0xFFl i))
+  | "Nat->Word16"
+  | "Int->Word16" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Conv.to_signed_Word_masked 0xFFFFl i))
   | "Nat->Word32"
   | "Int->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word32 (Conv.to_signed_Word32 i))
+
+  | "Word8->Nat" -> fun v k ->
+                    let i = Conv.of_signed_Word_masked 0xFFn (as_word32 v)
+                    in k (Int (Big_int.big_int_of_int i))
+  | "Word8->Int" -> fun v k ->
+                    let i = Conv.of_signed_Word_by_shift 56 (as_word32 v)
+                    in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Nat" -> fun v k ->
+                     let i = Conv.of_signed_Word_masked 0xFFFFn (as_word32 v)
+                     in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Int" -> fun v k ->
+                     let i = Conv.of_signed_Word_by_shift 48 (as_word32 v)
+                     in k (Int (Big_int.big_int_of_int i))
   | "Word32->Nat" -> fun v k ->
                      let i = Conv.of_signed_Word32 (as_word32 v)
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
+
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->

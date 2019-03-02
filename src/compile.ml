@@ -1224,6 +1224,7 @@ end (* BoxedSmallWord *)
 
 (* Primitive functions *)
 module Prim = struct
+  open Wasm.Values
 
   let prim_abs env =
     let (set_i, get_i) = new_local env "abs_param" in
@@ -1243,11 +1244,24 @@ module Prim = struct
 
   let prim_word32toNat env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+  let prim_maskedWord32toNat mask env =
+    compile_unboxed_const mask ^^
+    G.i (Binary (I32 I32Op.And)) ^^
+    prim_word32toNat env
+  let prim_by_shiftWord32toInt b env =
+    compile_unboxed_const b ^^
+    G.i (Binary (I32 I32Op.Shl)) ^^
+    compile_unboxed_const b ^^
+    G.i (Binary (I32 I32Op.ShrS)) ^^
+    prim_word32toNat env
   let prim_intToWord32 env =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let prim_word32toInt env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-
+  let prim_maskToWord32 mask env =
+    prim_intToWord32 env ^^
+    compile_unboxed_const mask ^^
+    G.i (Binary (I32 I32Op.And))
 end (* Prim *)
 
 module Object = struct
@@ -3418,22 +3432,52 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
-       | "Nat->Word32" ->
+
+       | "Nat->Word8"
+       | "Int->Word8" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_intToWord32 env
-       | "Word32->Nat" ->
-         SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat env
+         Prim.prim_maskToWord32 0xFFl env
+
+       | "Nat->Word16"
+       | "Int->Word16" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         Prim.prim_maskToWord32 0xFFFFl env
+
+       | "Nat->Word32"
        | "Int->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
          Prim.prim_intToWord32 env
+
+       | "Word8->Nat" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         Prim.prim_maskedWord32toNat 0xFFl env
+       | "Word8->Int" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         Prim.prim_by_shiftWord32toInt 24l env
+
+       | "Word16->Nat" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         Prim.prim_maskedWord32toNat 0xFFFFl env
+       | "Word16->Int" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         Prim.prim_by_shiftWord32toInt 16l env
+
+       | "Word32->Nat" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         Prim.prim_word32toNat env
        | "Word32->Int" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
          Prim.prim_word32toInt env
+
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
