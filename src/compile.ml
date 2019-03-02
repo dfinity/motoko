@@ -1241,8 +1241,6 @@ module Prim = struct
       )
       ( get_i )
 
-  let prim_natToWord32 env =
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let prim_word32toNat env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let prim_intToWord32 env =
@@ -3423,7 +3421,7 @@ and compile_exp (env : E.t) exp =
        | "Nat->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_natToWord32 env
+         Prim.prim_intToWord32 env
        | "Word32->Nat" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
