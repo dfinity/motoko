@@ -95,9 +95,7 @@ end (* Conv *)
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
-  | "Nat->Word32" -> fun v k ->
-                     let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word32 (Conv.to_signed_Word32 i))
+  | "Nat->Word32"
   | "Int->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word32 (Conv.to_signed_Word32 i))
