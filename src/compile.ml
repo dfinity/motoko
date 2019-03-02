@@ -1151,19 +1151,26 @@ module BoxedInt = struct
 
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
+
+     The heap layout of a BoxedWord is:
+
+       ┌─────┬─────┬─────┐
+       │ tag │    i64    │
+       └─────┴─────┴─────┘
+
   *)
 
-  let payload_field = Int32.add Tagged.header_size 0l
+  let payload_field = Tagged.header_size
 
   let compile_box env compile_elem : G.t =
-    let (set_i, get_i) = new_local env "boxed_int" in
+    let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.store Tagged.Int ^^
-    get_i ^^ compile_elem ^^ Heap.store_field64 1l ^^
+    get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
-  let box env = Func.share_code env "box_int" ["n", I64Type] [I32Type] (fun env ->
+  let box env = Func.share_code env "box_i64" ["n", I64Type] [I32Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
@@ -1172,7 +1179,7 @@ module BoxedInt = struct
         (compile_box env get_n)
     )
 
-  let unbox env = Func.share_code env "unbox_int" ["n", I32Type] [I64Type] (fun env ->
+  let unbox env = Func.share_code env "unbox_i64" ["n", I32Type] [I64Type] (fun env ->
       let get_n = G.i (LocalGet (nr 0l)) in
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I64Type))
@@ -1189,16 +1196,23 @@ module BoxedSmallWord = struct
 
      Small values (just <2^10 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
+
+     The heap layout of a BoxedSmallWord is:
+
+       ┌─────┬─────┐
+       │ tag │ i32 │
+       └─────┴─────┘
+
   *)
 
-  let payload_field = Int32.add Tagged.header_size 0l
+  let payload_field = Tagged.header_size
 
   let compile_box env compile_elem : G.t =
-    let (set_i, get_i) = new_local env "boxed_int" in
-    Heap.alloc env 3l ^^
+    let (set_i, get_i) = new_local env "boxed_i32" in
+    Heap.alloc env 2l ^^
     set_i ^^
     get_i ^^ Tagged.store Tagged.SmallWord ^^
-    get_i ^^ compile_elem ^^ Heap.store_field 1l ^^
+    get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
   let box env = Func.share_code env "box_i32" ["n", I32Type] [I32Type] (fun env ->
