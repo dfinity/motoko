@@ -2,7 +2,7 @@
 This module implements a check that rules out use-before define.
 It is a compositional algorithm that returns, for each subexpression,
  * Which variables are used eagerly and
- * which are delayd
+ * which are delayed
 these sets are disjoint and their union makes up the set of free variables, so
 the structure of this module is very similar to that of freevars.ml.
 
@@ -187,7 +187,7 @@ and decs msgs decs : f =
   let e = set_unions (List.map (fun (_,_,eager,_) ->
     NameRel.range (NameRel.restricted_rtcl eager r)
   ) decs') in
-  (* Every thing else is lazy *)
+  (* Everything else is lazy *)
   let d = S.diff (set_unions (List.map (fun (_,_,_,delayed) -> delayed) decs')) e in
   (* And remove whats defined here  *)
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>
