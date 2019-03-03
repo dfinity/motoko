@@ -98,9 +98,7 @@ open Value
 
 module Conv = struct
   open Nativeint
-  let to_signed_Word32 i = to_int32 (of_int i)
-  let of_signed_Word_masked m w = to_int (logand m (of_int32 w))
-  let of_signed_Word32 w = of_signed_Word_masked 0xFFFFFFFFn w
+  let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
 end (* Conv *)
 
 
@@ -119,10 +117,12 @@ let prim = function
   | "Int->Word16" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word16 (Word16.of_int_s i))
-  | "Nat->Word32"
+  | "Nat->Word32" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Word32.of_int_u i))
   | "Int->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word32 (Conv.to_signed_Word32 i))
+                     in k (Word32 (Word32.of_int_s i))
 
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
