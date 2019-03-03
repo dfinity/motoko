@@ -3304,6 +3304,16 @@ let compile_unop env t op = Syntax.(match op, t with
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
+  | NegOp, Type.Prim Type.Word16 ->
+      SR.UnboxedWord32,
+      Func.share_code env "neg16" ["n", I32Type] [I32Type] (fun env ->
+        let get_n = G.i (LocalGet (nr 0l)) in
+        compile_unboxed_zero ^^
+        get_n ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_unboxed_const 0xFFFFl ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And))
+      )
   | NegOp, Type.Prim Type.Word32 ->
       SR.UnboxedWord32,
       Func.share_code env "neg32" ["n", I32Type] [I32Type] (fun env ->

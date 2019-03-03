@@ -98,9 +98,7 @@ open Value
 
 module Conv = struct
   open Nativeint
-  let to_signed_Word_masked m i = Int32.logand m (to_int32 (of_int i))
   let to_signed_Word32 i = to_int32 (of_int i)
-  let of_signed_Word_by_shift b w = to_int (shift_right (shift_left (of_int32 w) b) b)
   let of_signed_Word_masked m w = to_int (logand m (of_int32 w))
   let of_signed_Word32 w = of_signed_Word_masked 0xFFFFFFFFn w
 end (* Conv *)
@@ -109,30 +107,34 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
-  | "Nat->Word8"
+  | "Nat->Word8" -> fun v k ->
+                    let i = Big_int.int_of_big_int (as_int v)
+                    in k (Word8 (Word8.of_int_u i))
   | "Int->Word8" -> fun v k ->
+                    let i = Big_int.int_of_big_int (as_int v)
+                    in k (Word8 (Word8.of_int_s i))
+  | "Nat->Word16" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word32 (Conv.to_signed_Word_masked 0xFFl i))
-  | "Nat->Word16"
+                     in k (Word16 (Word16.of_int_u i))
   | "Int->Word16" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word32 (Conv.to_signed_Word_masked 0xFFFFl i))
+                     in k (Word16 (Word16.of_int_s i))
   | "Nat->Word32"
   | "Int->Word32" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word32 (Conv.to_signed_Word32 i))
 
   | "Word8->Nat" -> fun v k ->
-                    let i = Conv.of_signed_Word_masked 0xFFn (as_word32 v)
+                    let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
   | "Word8->Int" -> fun v k ->
-                    let i = Conv.of_signed_Word_by_shift 56 (as_word32 v)
+                    let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
   | "Word16->Nat" -> fun v k ->
-                     let i = Conv.of_signed_Word_masked 0xFFFFn (as_word32 v)
+                     let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
   | "Word16->Int" -> fun v k ->
-                     let i = Conv.of_signed_Word_by_shift 48 (as_word32 v)
+                     let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Nat" -> fun v k ->
                      let i = Conv.of_signed_Word32 (as_word32 v)
