@@ -81,7 +81,18 @@ let close (f,d) =
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp msgs e : f = match e.it with
+  (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
+  (* Or anything that is occurring in a call (as this may call a closure): *)
+  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
+  (* And break and return can be thought of as calling a continuation: *)
+  | BreakE (i, e)       -> eagerify (exp msgs e)
+  | RetE e              -> eagerify (exp msgs e)
+
+  (* Uses are delayed by function expressions *)
+  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
+
+  (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
@@ -97,8 +108,6 @@ let rec exp msgs e : f = match e.it with
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
-  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
-  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   | BlockE ds           -> decs msgs ds
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
@@ -110,8 +119,6 @@ let rec exp msgs e : f = match e.it with
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
-  | BreakE (i, e)       -> exp msgs e
-  | RetE e              -> exp msgs e
   | AsyncE e            -> exp msgs e
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
