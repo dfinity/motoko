@@ -3,3 +3,5 @@
 This sample shows how to interpret/compile an application consisting of multipe`.as` files by passing one or more files on the `asc` command-line.
 
 The application is a version of `../chatpp.as`, split into several files.
+
+See the [Makefile](./Makefile) for more details.
