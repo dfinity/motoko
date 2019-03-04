@@ -16,7 +16,6 @@ let rec exp e = match e.it with
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ActorE (i, efs, t)  -> "ActorE"  $$ [id i] @ List.map exp_field efs @ [typ t]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom (name n)]
   | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom (name n)]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
@@ -42,9 +41,11 @@ let rec exp e = match e.it with
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
   | FuncE (x, cc, tp, p, t, e) ->
     "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ [pat p; typ t; exp e]
-  | NewObjE (s, nameids, t)-> "NewObjE" $$ (Arrange.obj_sort' s ::
-                                              List.fold_left (fun flds (n,i) ->
-                                                  Atom (name n)::(id i):: flds) [typ t] nameids)
+  | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
+  | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
+
+and fields fs = List.fold_left (fun flds f -> (name f.it.name $$ [ id f.it.var ]):: flds) [] fs
+
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"
@@ -55,9 +56,6 @@ and pat p = match p.it with
   | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
-
-and exp_field (ef : exp_field)
-  = name ef.it.name $$ [id ef.it.id; exp ef.it.exp; Arrange.mut ef.it.mut; Arrange.vis ef.it.vis]
 
 and name n = match n.it with
   | Name l -> l

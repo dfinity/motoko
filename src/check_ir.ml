@@ -72,7 +72,6 @@ let error env at fmt =
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
-let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
 let add_typs c cs =
   { c with
@@ -117,11 +116,6 @@ let check_sub env at t1 t2 =
   then ()
   else error env at "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
-
-let make_mut mut : T.typ -> T.typ =
-  match mut.it with
-  | Syntax.Const -> fun t -> t
-  | Syntax.Var -> fun t -> T.Mut t
 
 let rec check_typ env typ : unit =
   match typ with
@@ -318,12 +312,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
                  n (T.string_of_typ_expand t1) in
     tn <: t
     end
-  | ActorE ( id, fields, t0) ->
-    let env' = { env with async = false } in
-    let t1 =  type_obj env' T.Actor id t fields in
-    check (T.is_obj t0) "bad annotation (object type expected)";
-    t1 <: t0;
-    t0 <: t;
   | ActorDotE(exp1,{it = Name n;_})
   | DotE (exp1, {it = Name n;_}) ->
     begin
@@ -539,16 +527,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
       ) in
     fun_ty <: t
-  | NewObjE (sort, labids, t0) ->
-    let t1 =
-      T.Obj(sort,
-            List.sort T.compare_field (List.map (fun (name, id) ->
-                                           let Name lab = name.it in
-                                           T.{lab; typ = T.Env.find id.it env.vals}) labids))
-    in
+  | ActorE (id, ds, fs, t0) ->
+    let env' = { env with async = false } in
+    let ve0 = T.Env.singleton id.it t0 in
+    let scope0 = { empty_scope with val_env = ve0 } in
+    let scope1 = List.fold_left (gather_dec env') scope0 ds in
+    let env'' = adjoin env' scope1 in
+    let t1 = type_obj env'' T.Actor fs in
     check (T.is_obj t0) "bad annotation (object type expected)";
     t1 <: t0;
     t0 <: t;
+  | NewObjE (s, fs, t0) ->
+    let t1 = type_obj env s fs in
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    t1 <: t0;
+    t0 <: t
 
 (* Cases *)
 
@@ -626,59 +619,26 @@ and check_pats at env pats ve : val_env =
 
 (* Objects *)
 
-and type_obj env s id t fields : T.typ =
-  let ve = gather_exp_fields env id.it t fields in
-  let env' = adjoin_vals env ve in
-  let tfs, _ve = type_exp_fields env' s id.it t fields in
+and type_obj env s fs : T.typ =
+  let tfs = type_exp_fields env s fs in
   T.Obj (s, tfs)
 
-and gather_exp_fields env id t fields : val_env =
-  let ve0 = T.Env.singleton id t in
-  List.fold_left (gather_exp_field env) ve0 fields
+and type_exp_fields env s fs : T.field list =
+  let tfs = List.map (type_exp_field env s) fs in
+  List.sort T.compare_field tfs
 
-and gather_exp_field env ve field : val_env =
-  let {id; exp; mut; vis; _} : exp_field' = field.it in
-  if T.Env.mem id.it ve then
-    error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it ( make_mut mut (typ exp)) ve
-
-and type_exp_fields env s id t fields : T.field list * val_env =
-  let env' = add_val env id t in
-  let tfs, ve =
-    List.fold_left (type_exp_field env' s) ([], T.Env.empty) fields in
-  List.sort T.compare_field tfs, ve
-
-and is_func_exp exp =
-  match exp.it with
-  | FuncE _ -> true
-  | _ -> false
-
-and type_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name = {it = Name name; _}; exp; mut; vis} = field.it in
-  let t = try T.Env.find id.it env.vals with
-          | Not_found -> error env field.at "field typing not found"
+and type_exp_field env s f : T.field =
+  let {name = {it = Name name; _}; var} = f.it in
+  let t = try T.Env.find var.it env.vals with
+          | Not_found -> error env f.at "field typing not found"
   in
   assert (t <> T.Pre);
-  check_exp (adjoin_vals env ve)  exp;
-  check_sub env field.at (typ exp) (T.as_immut t);
-  check env field.at ((mut.it = Syntax.Var) = T.is_mut t)
-    "inconsistent mutability of field and field type";
-  check env field.at
-    ((s = T.Actor && vis.it = Syntax.Public) ==>
-       is_func_exp exp)
+  check_sub env f.at t f.note;
+  check env f.at ((s = T.Actor) ==> T.is_func t)
     "public actor field is not a function";
-  check env field.at
-    (if (s <> T.Object T.Local && vis.it = Syntax.Public)
-     then T.sub t T.Shared
-     else true)
+  check env f.at ((s <> T.Object T.Local) ==> T.sub t T.Shared)
     "public shared object or actor field has non-shared type";
-  let ve' = T.Env.add id.it t ve in
-  let tfs' =
-    if vis.it = Syntax.Private
-    then tfs
-    else T.{lab = name; typ = t} :: tfs
-  in tfs', ve'
-
+  T.{lab = name; typ = t}
 
 (* Declarations *)
 
@@ -750,7 +710,7 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope phase (((ds,exp), flavor) as prog) : unit =
+let check_prog scope phase (((ds, exp), flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
     let scope = gather_block_decs env ds in

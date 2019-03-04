@@ -86,7 +86,6 @@ and exp' env e  : exp' = match e.it with
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
-  | ActorE (i, es, t)   -> ActorE (i, exp_fields env es, t)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
@@ -127,6 +126,7 @@ and exp' env e  : exp' = match e.it with
     let env1 = pat {tail_pos = true; info = None} p in
     let exp0' = tailexp env1 exp0 in
     FuncE (x, cc, tbs, p, typT, exp0')
+  | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: decent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
 and exps env es  = List.map (exp env) es
@@ -163,27 +163,6 @@ and case' env {pat=p;exp=e} =
 
 
 and cases env cs = List.map (case env) cs
-
-and exp_field env (ef : exp_field) =
-  let (mk_ef,env) = exp_field' env ef.it in
-  ( { ef with it = mk_ef }, env)
-
-and exp_field' env { name = n; id = i; exp = e; mut; vis } =
-  let env = bind env i None in
-  ((fun env1 -> { name = n; id = i; exp = exp env1 e; mut; vis }),
-   env)
-
-and exp_fields env efs  =
-  let rec exp_fields_aux env efs =
-    match efs with
-    | [] -> ([],env)
-    | ef :: efs ->
-      let (mk_ef, env) = exp_field env ef in
-      let (mk_efs, env) = exp_fields_aux env efs in
-      (mk_ef :: mk_efs,env) in
-  let mk_efs, env = exp_fields_aux env efs in
-  List.map (fun mk_ef -> { mk_ef with it = mk_ef.it env }) mk_efs
-
 
 and dec env d =
   let (mk_d,env1) = dec' env d in

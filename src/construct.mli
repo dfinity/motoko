@@ -64,7 +64,7 @@ val loopE : exp -> exp option -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
-val newObjE : obj_sort -> (name * id) list -> typ -> exp
+val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
 (* Declarations *)
 
