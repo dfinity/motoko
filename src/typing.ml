@@ -915,7 +915,14 @@ and infer_obj env s fields at : T.typ =
           lab (T.string_of_typ_expand typ)
     ) tfs
   end;
-  T.Obj (s, tfs)
+  let t = T.Obj (s, tfs) in
+  (try T.avoid scope.con_env t with T.Unavoidable c ->
+      error env at "local class type %s is contained in object or actor type\n  %s"
+        (Con.to_string c)
+        (T.string_of_typ_expand t)
+    )
+
+        
 
 
 (* Blocks and Declarations *)
