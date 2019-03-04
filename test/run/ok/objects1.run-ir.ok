@@ -1,2 +1,0 @@
-Ill-typed intermediate code after Tailcall optimization (use -v to see dumped IR):
-(unknown location): IR type error, free type constructor T

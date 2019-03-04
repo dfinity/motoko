@@ -895,7 +895,6 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
-
 and infer_obj env s fields at : T.typ =
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
@@ -916,13 +915,10 @@ and infer_obj env s fields at : T.typ =
     ) tfs
   end;
   let t = T.Obj (s, tfs) in
-  (try T.avoid scope.con_env t with T.Unavoidable c ->
-      error env at "local class type %s is contained in object or actor type\n  %s"
-        (Con.to_string c)
-        (T.string_of_typ_expand t)
-    )
-
-        
+  try T.avoid scope.con_env t with T.Unavoidable c ->
+    error env at "local class type %s is contained in object or actor type\n  %s"
+      (Con.to_string c)
+      (T.string_of_typ_expand t)
 
 
 (* Blocks and Declarations *)
