@@ -841,7 +841,7 @@ and check_pat' env t pat : val_env =
       error env pat.at "variables are not allowed in pattern alternatives";
     T.Env.empty
   | ParP pat1 ->
-     check_pat' env t pat1
+     check_pat env t pat1
   | _ ->
     let t', ve = infer_pat env pat in
     if not (T.sub t t') then
