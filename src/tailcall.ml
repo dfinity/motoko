@@ -37,7 +37,9 @@ entering a function, class or actor constructor.
 On little gotcha for functional programmers: the argument `e` to an early `return e` is *always* in tail position,
 regardless of `return e`s own tail position.
 
- *)
+TODO: optimize for multiple arguments using multiple temps (not a tuple).
+
+*)
 
 type func_info = { func: S.id;
                    typ_binds: typ_bind list;
@@ -84,7 +86,6 @@ and exp' env e  : exp' = match e.it with
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
-  | ActorE (i, es, t)   -> ActorE (i, exp_fields env es, t)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
@@ -97,11 +98,11 @@ and exp' env e  : exp' = match e.it with
                    info = Some { func; typ_binds; temp; label; tail_called } }
            when f1.it = func.it && are_generic_insts typ_binds insts  ->
         tail_called := true;
-        (blockE [expD (assignE temp (exp env e2));
-                 expD (breakE label (tupE []) (typ e))]).it
+        (blockE [expD (assignE temp (exp env e2))]
+                 (breakE label (tupE []))).it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
-  | BlockE ds           -> BlockE (decs env ds)
+  | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
   | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
@@ -121,6 +122,11 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
+  | FuncE (x, cc, tbs, p, typT, exp0) ->
+    let env1 = pat {tail_pos = true; info = None} p in
+    let exp0' = tailexp env1 exp0 in
+    FuncE (x, cc, tbs, p, typT, exp0')
+  | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: decent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
 and exps env es  = List.map (exp env) es
@@ -158,48 +164,19 @@ and case' env {pat=p;exp=e} =
 
 and cases env cs = List.map (case env) cs
 
-and exp_field env (ef : exp_field) =
-  let (mk_ef,env) = exp_field' env ef.it in
-  ( { ef with it = mk_ef }, env)
-
-and exp_field' env { name = n; id = i; exp = e; mut; vis } =
-  let env = bind env i None in
-  ((fun env1 -> { name = n; id = i; exp = exp env1 e; mut; vis }),
-   env)
-
-and exp_fields env efs  =
-  let rec exp_fields_aux env efs =
-    match efs with
-    | [] -> ([],env)
-    | ef :: efs ->
-      let (mk_ef, env) = exp_field env ef in
-      let (mk_efs, env) = exp_fields_aux env efs in
-      (mk_ef :: mk_efs,env) in
-  let mk_efs, env = exp_fields_aux env efs in
-  List.map (fun mk_ef -> { mk_ef with it = mk_ef.it env }) mk_efs
-
 and dec env d =
   let (mk_d,env1) = dec' env d in
   ({d with it = mk_d}, env1)
 
 and dec' env d =
   match d.it with
-  | ExpD e ->
-    (fun env1 -> ExpD (tailexp env1 e)),
-    env
-  | LetD (p, e) ->
-    let env = pat env p in
-    (fun env1 -> LetD(p,exp env1 e)),
-    env
-  | VarD (i, e) ->
-    let env = bind env i None in
-    (fun env1 -> VarD(i,exp env1 e)),
-    env
-  | FuncD ({ Value.sort = Local; _} as cc, id, tbs, p, typT, exp0) ->
+  (* A local let bound function, this is what we are looking for *)
+  | LetD (({it = VarP id;_} as id_pat),
+          ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, p, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
-    (fun env1 ->
-      let temp = fresh_id (Mut p.note) in
-      let l = fresh_lab () in
+    begin fun env1 ->
+      let temp = fresh_var (Mut p.note) in
+      let l = fresh_id () in
       let tail_called = ref false in
       let env2 = { tail_pos = true;
                    info = Some { func = id;
@@ -212,48 +189,39 @@ and dec' env d =
       let exp0' = tailexp env3 exp0 in
       let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
       if !tail_called then
-        let ids = match typ d with
-          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_id (open_ cs t)) dom
+        let ids = match typ funexp with
+          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_var (open_ cs t)) dom
           | _ -> assert false
         in
         let args = seqP (List.map varP ids) in
         let l_typ = Type.unit in
         let body =
-          blockE [ varD (id_of_exp temp) (seqE ids);
-                   expD (loopE
-                           (labelE l l_typ
-                              (blockE [letP p temp;
-                                       expD (retE exp0' Type.unit)])) None)
-            ] in
-        FuncD (cc, id, tbs, args, typT, body)
+          blockE [varD (id_of_exp temp) (seqE ids)]
+            (loopE
+              (labelE l l_typ
+                 (blockE [letP p (immuteE temp)] (retE exp0'))) None)
+        in
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
       else
-        FuncD (cc, id, tbs, p, typT, exp0')),
-      env
-  | FuncD (cc, i, tbs, p, t, e) ->
-    (* don't optimize self-tail calls for shared functions otherwise
-       we won't go through the scheduler *)
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, p, typT, exp0')})
+    end,
+    env
+  | ExpD e ->
+    (fun env1 -> ExpD (tailexp env1 e)),
+    env
+  | LetD (p, e) ->
+    let env = pat env p in
+    (fun env1 -> LetD(p,exp env1 e)),
+    env
+  | VarD (i, e) ->
     let env = bind env i None in
-    (fun env1 ->
-      let env2 = pat {tail_pos = true; info = None} p in
-      let e' = tailexp env2 e in
-      FuncD(cc, i, tbs, p, t, e')),
+    (fun env1 -> VarD(i,exp env1 e)),
     env
   | TypD _ ->
     (fun env -> d.it),
     env
 
-and decs env ds =
-  let rec tail_posns ds =
-    match ds with
-    | [] -> (true,[])
-    | { it = TypD _; _ } :: ds ->
-      let (b, bs) = tail_posns ds in
-      (b, b :: bs)
-    | d :: ds ->
-      let (b, bs) = tail_posns ds in
-      (false, b :: bs)
-  in
-  let _, tail_posns = tail_posns ds in
+and block env ds exp =
   let rec decs_aux env ds =
     match ds with
     | [] -> ([],env)
@@ -263,16 +231,14 @@ and decs env ds =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  List.map2
-    (fun mk_d in_tail_pos ->
-      let env2 = if in_tail_pos
-                 then env1
-                 else { env1 with tail_pos = false } in
-      { mk_d with it = mk_d.it env2 })
-    mk_ds
-    tail_posns
+  ( List.map
+      (fun mk_d ->
+        let env2 = { env1 with tail_pos = false } in
+        { mk_d with it = mk_d.it env2 })
+      mk_ds
+  , tailexp env1 exp)
 
-and prog (ds, flavor) = (decs { tail_pos = false; info = None } ds, flavor)
+and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
 
 (* validation *)
 

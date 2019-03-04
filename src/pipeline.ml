@@ -167,6 +167,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
         let prog_ir = Desugar.transform senv prog in
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
+        let prog_ir = tailcall_optimization true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
     match vo with

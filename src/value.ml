@@ -200,7 +200,7 @@ let call_conv_of_typ typ =
   match typ with
   | Type.Func(sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
-  | _ -> raise (Invalid_argument ("call_conv_of_typ"^T.string_of_typ typ))
+  | _ -> raise (Invalid_argument ("call_conv_of_typ " ^ T.string_of_typ typ))
 
 type func =
   (value -> value cont -> unit)
@@ -360,7 +360,7 @@ let rec string_of_val_nullary d = function
       (String.concat ", " (List.map (string_of_val' d) vs))
       (if List.length vs = 1 then "," else "")
   | Opt v ->
-    sprintf "%s?" (string_of_val_nullary d v)
+    sprintf "?%s" (string_of_val_nullary d v)
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->

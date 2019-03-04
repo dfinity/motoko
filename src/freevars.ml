@@ -67,14 +67,13 @@ let rec exp e : f = match e.it with
   | RelE (_, e1, ro, e2) -> exps [e1; e2]
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
-  | ActorE (i, efs, _)  -> close (exp_fields efs) // i.it
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (_, e1, ts, e2) -> exps [e1; e2]
-  | BlockE ds           -> close (decs ds)
+  | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | WhileE (e1, e2)     -> exps [e1; e2]
@@ -90,7 +89,11 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
-  | NewObjE (_, ids, _) -> unions id (List.map (fun (lab,id) -> id) ids)
+  | FuncE (x, cc, tp, p, t, e) -> under_lambda (exp e /// pat p)
+  | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i.it
+  | NewObjE (_, fs, _)  -> fields fs
+
+and fields fs = unions (fun f -> id f.it.var) fs
 
 and exps es : f = unions exp es
 
@@ -108,11 +111,6 @@ and case (c : case) = exp c.it.exp /// pat c.it.pat
 
 and cases cs : f = unions case cs
 
-and exp_field (ef : exp_field) : fd
-  = (exp ef.it.exp, S.singleton ef.it.id.it)
-
-and exp_fields efs : fd = union_binders exp_field efs
-
 and id i = M.singleton i.it {captured = false}
 
 and dec d = match d.it with
@@ -120,16 +118,10 @@ and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e
   | VarD (i, e) ->
     (M.empty, S.singleton i.it) +++ exp e
-  | FuncD (cc, i, tp, p, t, e) ->
-    (M.empty, S.singleton i.it) +++ under_lambda (exp e /// pat p)
   | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured p e =
   List.map fst (M.bindings (exp e /// pat p))
-
-(* The variables captured by a class function. May include the function itself! *)
-and captured_exp_fields p efs =
-  List.map fst (M.bindings (close (exp_fields efs) /// pat p))
 
 and decs ps : fd = union_binders dec ps

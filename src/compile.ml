@@ -870,7 +870,7 @@ module Var = struct
   let load = Heap.load_field mutbox_field
   let store = Heap.store_field mutbox_field
 
-  let add_local env name =
+  let _add_local env name =
     E.add_local_with_offset env name mutbox_field
 
   (* Stores the payload (which is found on the stack) *)
@@ -1007,9 +1007,10 @@ module AllocHow = struct
       (set_of_map how)))
 
   let is_static_exp env how0 exp = match exp.it with
-    | BlockE [{ it = FuncD _; _} as dec] ->
-      let f = Freevars.close (Freevars.dec dec) in
-      is_static env how0 f
+    | FuncE (_, cc, _, _, _ , _)
+        (* Messages cannot be static *)
+        when cc.Value.sort <> Type.Sharable ->
+      is_static env how0 (Freevars.exp exp)
     | _ -> false
 
   let dec env (seen, how0) dec =
@@ -1020,12 +1021,6 @@ module AllocHow = struct
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
       map_of_set LocalMut d
-      (* Messages cannot be static *)
-      | FuncD (cc, _, _, _, _, _) when cc.Value.sort = Type.Sharable ->
-      map_of_set LocalImmut d
-      (* Static functions *)
-      | FuncD _ when is_static env how0 f ->
-      M.empty
       (* Static functions in an let-expression *)
       | LetD ({it = VarP _; _}, e) when is_static_exp env how0 e ->
       M.empty
@@ -2907,8 +2902,8 @@ module FuncDec = struct
       ]
     )
 
-  let static_self_message_pointer env name =
-    Dfinity.compile_databuf_of_bytes env name.it ^^
+  let _static_self_message_pointer env name =
+    Dfinity.compile_databuf_of_bytes env name ^^
     export_self_message env
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
@@ -2972,8 +2967,8 @@ module FuncDec = struct
     ))
 
   (* A static message, from a public actor field *)
-  (* Like compile__message, but no closure *)
-  let compile_static_message env cc mk_pat mk_body at : E.func_with_names =
+  (* Forward the call to the funcref at the given static location. *)
+  let compile_static_message env cc ptr : E.func_with_names =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     assert (cc.Value.n_res = 0);
     (* Messages take no closure, return nothing*)
@@ -2981,138 +2976,118 @@ module FuncDec = struct
       (* Set up memory *)
       OrthogonalPersistence.restore_mem env ^^
 
-      (* Destruct the argument *)
-      let (env2, destruct_args_code) = mk_pat env1  in
+      (* Load the arguments *)
+      G.table cc.Value.n_args (fun i -> G.i (LocalGet (nr (Int32.of_int i)))) ^^
 
-      let get i =
-        G.i (LocalGet (nr (Int32.(add 0l (of_int i))))) ^^
-        Serialization.deserialize env in
-      destruct_args_code get ^^
-      mk_body env2 ^^
-
-      (* Collect memory *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
+      (* Forward the call *)
+      let get_funcref =
+        compile_unboxed_const ptr ^^
+        load_ptr ^^
+        ElemHeap.recall_reference env
+      in
+      call_funcref env cc get_funcref ^^
 
       (* Save memory *)
       OrthogonalPersistence.save_mem env
       )
 
   (* Compile a closed function declaration (has no free variables) *)
-  let dec_closed pre_env cc name mk_pat mk_body at =
-      let (fi, fill) = E.reserve_fun pre_env name.it in
-      let d = StackRep.deferred_of_static_think pre_env (SR.StaticFun fi) in
-      let pre_env1 = E.add_local_deferred pre_env name.it d in
-      ( pre_env1, fun env ->
+  let closed pre_env cc name mk_pat mk_body at =
+      let (fi, fill) = E.reserve_fun pre_env name in
+      ( SR.StaticFun fi, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
         let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
         fill f
       )
 
   (* Compile a closure declaration (has free variables) *)
-  let dec_closure pre_env cc h name captured mk_pat mk_body at =
+  let closure env cc name captured mk_pat mk_body at =
       let is_local = cc.Value.sort <> Type.Sharable in
 
-      let (set_li, get_li) = new_local pre_env (name.it ^ "_clos") in
-      let (pre_env1, alloc_code0) = AllocHow.add_how pre_env name.it (Some h) in
+      let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
       let len = Wasm.I32.of_int_u (List.length captured) in
-      let alloc_code =
+      let (store_env, restore_env) =
+        let rec go i = function
+          | [] -> (G.nop, fun env1 _ -> (env1, G.nop))
+          | (v::vs) ->
+              let (store_rest, restore_rest) = go (i+1) vs in
+              let (store_this, restore_this) = Var.capture env v in
+              let store_env =
+                get_clos ^^
+                store_this ^^
+                Closure.store_data (Wasm.I32.of_int_u i) ^^
+                store_rest in
+              let restore_env env1 get_env =
+                let (env2, code) = restore_this env1 in
+                let (env3, code_rest) = restore_rest env2 get_env in
+                (env3,
+                 get_env ^^
+                 Closure.load_data (Wasm.I32.of_int_u i) ^^
+                 code ^^
+                 code_rest
+                )
+              in (store_env, restore_env) in
+        go 0 captured in
+
+      let f =
+        if is_local
+        then compile_local_function env cc restore_env mk_pat mk_body at
+        else compile_message env cc restore_env mk_pat mk_body at in
+
+      let fi = E.add_fun env f name in
+
+      if not is_local then
+          E.add_dfinity_type env (fi,
+            CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
+          );
+
+      let code =
         (* Allocate a heap object for the closure *)
-        Heap.alloc pre_env (Int32.add Closure.header_size len) ^^
-        set_li ^^
-
-        (* Alloc space for the name of the function *)
-        alloc_code0
-      in
-
-      ( pre_env1, alloc_code, fun env ->
-
-        let (store_env, restore_env) =
-          let rec go i = function
-            | [] -> (G.nop, fun env1 _ -> (env1, G.nop))
-            | (v::vs) ->
-                let (store_rest, restore_rest) = go (i+1) vs in
-                let (store_this, restore_this) = Var.capture env v in
-                let store_env =
-                  get_li ^^
-                  store_this ^^
-                  Closure.store_data (Wasm.I32.of_int_u i) ^^
-                  store_rest in
-                let restore_env env1 get_env =
-                  let (env2, code) = restore_this env1 in
-                  let (env3, code_rest) = restore_rest env2 get_env in
-                  (env3,
-                   get_env ^^
-                   Closure.load_data (Wasm.I32.of_int_u i) ^^
-                   code ^^
-                   code_rest
-                  )
-                in (store_env, restore_env) in
-          go 0 captured in
-
-        let fi =
-          if is_local
-          then
-            let f = compile_local_function env cc restore_env mk_pat mk_body at in
-            E.add_fun env f name.it
-          else
-            let f = compile_message env cc restore_env mk_pat mk_body at in
-            let fi = E.add_fun env f name.it in
-            E.add_dfinity_type env (fi,
-              CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
-            );
-            fi
-          in
+        Heap.alloc env (Int32.add Closure.header_size len) ^^
+        set_clos ^^
 
         (* Store the tag *)
-        get_li ^^
+        get_clos ^^
         Tagged.store Tagged.Closure ^^
 
         (* Store the function number: *)
-        get_li ^^
+        get_clos ^^
         compile_unboxed_const fi ^^
         Heap.store_field Closure.funptr_field ^^
 
         (* Store the length *)
-        get_li ^^
+        get_clos ^^
         compile_unboxed_const len ^^
         Heap.store_field Closure.len_field ^^
 
         (* Store all captured values *)
-        store_env ^^
+        store_env
+      in
 
-        (* Possibly turn into a funcref *)
-        begin
-          if is_local
-          then get_li
-          else
-            Tagged.obj env Tagged.Reference [
-              compile_unboxed_const fi ^^
-              G.i (Call (nr (Dfinity.func_externalize_i env))) ^^
-              get_li ^^
-              ClosureTable.remember_closure env ^^
-              G.i (Call (nr (Dfinity.func_bind_i env))) ^^
-              ElemHeap.remember_reference env
-            ]
-        end ^^
+      (* Possibly turn into a funcref *)
+      if is_local
+      then
+        SR.Vanilla,
+        code ^^
+        get_clos
+      else
+        SR.UnboxedReference,
+        code ^^
+        compile_unboxed_const fi ^^
+        G.i (Call (nr (Dfinity.func_externalize_i env))) ^^
+        get_clos ^^
+        ClosureTable.remember_closure env ^^
+        G.i (Call (nr (Dfinity.func_bind_i env)))
 
-        (* Store it *)
-        Var.set_val env name.it)
-
-  let dec pre_env how name cc captured mk_pat mk_body at =
+  let lit env how name cc captured mk_pat mk_body at =
     let is_local = cc.Value.sort <> Type.Sharable in
 
-    if not is_local && E.mode pre_env <> DfinityMode
-    then
-      let (pre_env1, _) = Var.add_local pre_env name.it in
-      ( pre_env1, G.i Unreachable, fun env -> G.i Unreachable)
-    else match AllocHow.M.find_opt name.it how with
-      | None ->
-        assert is_local;
-        let (pre_env1, fill) = dec_closed pre_env cc name mk_pat mk_body at in
-        (pre_env1, G.nop, fun env -> fill env; G.nop)
-      | Some h ->
-        dec_closure pre_env cc h name captured mk_pat mk_body at
+    if not is_local && E.mode env <> DfinityMode
+    then SR.Unreachable, G.i Unreachable
+    else
+      (* TODO: Can we create a static function here? Do we ever have to? *)
+      closure env cc name captured mk_pat mk_body at
 
 end (* FuncDec *)
 
@@ -3389,8 +3364,10 @@ and compile_exp (env : E.t) exp =
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
-  | BlockE decs ->
-    compile_decs env decs
+  | BlockE (decs, exp) ->
+    let (env', code1) = compile_decs env decs in
+    let (sr, code2) = compile_exp env' exp in
+    (sr, code1 ^^ code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -3446,13 +3423,6 @@ and compile_exp (env : E.t) exp =
     Tuple.load_n (Int32.of_int n)
   | ArrayE (m, t, es) ->
     SR.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
-  | ActorE (name, fs, _) ->
-    SR.UnboxedReference,
-    let captured = Freevars.exp exp in
-    let prelude_names = find_prelude_names env in
-    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env name fs exp.at
-    else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
   | CallE (cc, e1, _, e2) ->
     StackRep.of_arity (cc.Value.n_res),
     let fun_sr, code1 = compile_exp env e1 in
@@ -3538,13 +3508,25 @@ and compile_exp (env : E.t) exp =
     SR.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
+  | FuncE (x, cc, typ_binds, p, _rt, e) ->
+    let captured = Freevars.captured p e in
+    let mk_pat env1 = compile_func_pat env1 cc p in
+    let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
+    FuncDec.lit env typ_binds x cc captured mk_pat mk_body exp.at
+  | ActorE (i, ds, fs, _) ->
+    SR.UnboxedReference,
+    let captured = Freevars.exp exp in
+    let prelude_names = find_prelude_names env in
+    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
+    then actor_lit env i ds fs exp.at
+    else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
   | NewObjE (Type.Object _ (*sharing*), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
-      (fun (name, id) -> (name, fun env ->
-        if Object.is_mut_field env exp.note.note_typ name
-        then Var.get_val_ptr env id.it
-        else Var.get_val_vanilla env id.it)) in
+      (fun (f : Ir.field) -> (f.it.name, fun env ->
+        if Object.is_mut_field env exp.note.note_typ f.it.name
+        then Var.get_val_ptr env f.it.var.it
+        else Var.get_val_vanilla env f.it.var.it)) in
     Object.lit_raw env fs'
   | _ -> SR.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i Unreachable)
 
@@ -3753,25 +3735,25 @@ and compile_func_pat env cc pat =
         orTrap (fill_pat env1 pat) in
   (env1, fill_code)
 
-and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
+and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   (fun (pre_env,alloc_code,mk_code) ->
        (pre_env, G.with_region dec.at alloc_code, fun env ->
-         (fun (sr, code) -> (sr, G.with_region dec.at code)) (mk_code env))) @@
+         G.with_region dec.at (mk_code env))) @@
   match dec.it with
   | TypD _ ->
-    (pre_env, G.nop, fun _ -> SR.unit, G.nop)
-  | ExpD e ->(pre_env, G.nop, fun env -> compile_exp env e)
-
+    (pre_env, G.nop, fun _ -> G.nop)
+  | ExpD e ->(pre_env, G.nop, fun env ->
+    let sr, code = compile_exp env e in
+    code ^^ StackRep.drop env sr)
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp pre_env how e in
     let d = StackRep.deferred_of_static_think pre_env static_thing in
     let pre_env1 = E.add_local_deferred pre_env v.it d in
-    ( pre_env1, G.nop, fun env -> fill env; (SR.unit, G.nop))
+    ( pre_env1, G.nop, fun env -> fill env; G.nop)
   | LetD (p, e) ->
     let (pre_env1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat pre_env how p in
     ( pre_env1, alloc_code, fun env ->
-      SR.unit,
       compile_exp_as_opt env pat_arity e ^^
       fill_code
     )
@@ -3781,65 +3763,53 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> (SR.t * G.t)) =
       let (pre_env1, alloc_code) = AllocHow.add_local pre_env how name.it in
 
       ( pre_env1, alloc_code, fun env ->
-        SR.unit,
         compile_exp_vanilla env e ^^
         Var.set_val env name.it
       )
-  | FuncD (cc, name, typ_binds, p, _rt, e) ->
-      (* Get captured variables *)
-      let captured = Freevars.captured p e in
-      let mk_pat env1 = compile_func_pat env1 cc p in
-      let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
-      let (pre_env1, alloc_code, mk_code) = FuncDec.dec pre_env how name cc captured mk_pat mk_body dec.at in
-      (pre_env1, alloc_code, fun env ->
-        (* Bring type parameters into scope *)
-        let sr, code = Var.get_val env name.it in
-        sr, mk_code env ^^ code
-      )
 
-and compile_decs env decs : SR.t * G.t =
-  snd (compile_decs_block env decs)
-
-and compile_decs_block env decs : (E.t * (SR.t * G.t)) =
+and compile_decs env decs : E.t * G.t =
   let how = AllocHow.decs env decs in
   let rec go pre_env decs = match decs with
-    | []          -> (pre_env, G.nop, fun _ -> (SR.unit, G.nop))
+    | []          -> (pre_env, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec pre_env how dec
     | (dec::decs) ->
         let (pre_env1, alloc_code1, mk_code1) = compile_dec pre_env how dec in
         let (pre_env2, alloc_code2, mk_code2) = go          pre_env1 decs in
         ( pre_env2,
           alloc_code1 ^^ alloc_code2,
-          fun env ->
-            let (sr1, code1) = mk_code1 env in
-            let (sr2, code2) = mk_code2 env in
-            (sr2, code1 ^^ StackRep.drop env sr1 ^^ code2)
-         ) in
+          fun env -> let code1 = mk_code1 env in
+                     let code2 = mk_code2 env in
+                     code1 ^^ code2
+        ) in
   let (env1, alloc_code, mk_code) = go env decs in
-  let (sr, code) = mk_code env1 in
-  (env1, (sr, alloc_code ^^ code))
+  let code = mk_code env1 in
+  (env1, alloc_code ^^ code)
+
+and compile_prog env (ds, e) =
+    let (env', code1) = compile_decs env ds in
+    let (sr, code2) = compile_exp env' e in
+    (env', code1 ^^ code2 ^^ StackRep.drop env' sr)
 
 and compile_static_exp env how exp = match exp.it with
-  | BlockE [{ it = FuncD (cc, name, typ_binds, p, _rt, e); _}] ->
+  | FuncE (name, cc, typ_binds, p, _rt, e) ->
       (* Get captured variables *)
       let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
-      let (env1, fill) = FuncDec.dec_closed env cc name mk_pat mk_body exp.at in
-      begin match Var.get_val env1 name.it with
-      | (SR.StaticThing st, _) -> (st, fill)
-      | _ -> assert false
-      end
+      FuncDec.closed env cc name mk_pat mk_body exp.at
   | _ -> assert false
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
   let (decs, _flavor) = E.get_prelude env in
-  let (env1, (sr, code)) = compile_decs_block env decs in
-  (env1, code ^^ StackRep.drop env sr)
+  let (env1, code) = compile_prog env decs in
+  (env1, code)
 
-(* Is this a hack? When determining whether an actor is closed,
-we should disregard the prelude, because every actor is compiled with the
-prelude. So this function compiles the prelude, just to find out the bound names.
+(*
+This is a horrible hack
+When determining whether an actor is closed, we disregard the prelude, because
+every actor is compiled with the prelude.
+This breaks with shadowing.
+This function compiles the prelude, just to find out the bound names.
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
@@ -3852,67 +3822,46 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
-      | ((decs, _flavor) :: progs) ->
-        let (env1, (sr, code1)) = compile_decs_block env decs in
+      | ((prog, _flavor) :: progs) ->
+        let (env1, code1) = compile_prog env prog in
         let code2 = go env1 progs in
-        code1 ^^ StackRep.drop env1 sr ^^ code2 in
+        code1 ^^ code2 in
     go env1 progs
     )
 
-and compile_private_actor_field pre_env (f : Ir.exp_field)  =
-  let ptr = E.reserve_static_memory pre_env (Int32.mul 2l Heap.word_size) in
-  let pre_env1 = E.add_local_static pre_env f.it.id.it (Int32.add Heap.word_size ptr) in
-  ( pre_env1, fun env -> G.with_region f.at @@
-    compile_unboxed_const ptr ^^
-    Tagged.store Tagged.MutBox ^^
 
-    compile_unboxed_const ptr ^^
-    compile_exp_vanilla env f.it.exp ^^
-    Var.store
-  )
+and allocate_actor_field env f =
+  (* Create a Reference heap object in static memory *)
+  let tag = Text.bytes_of_int32 (Tagged.int_of_tag Tagged.Reference) in
+  let zero = Text.bytes_of_int32 0l in
+  let ptr = E.add_static_bytes env (tag ^ zero) in
+  let ptr_payload = Int32.add ptr Heap.word_size in
+  (f, ptr_payload)
 
-and compile_public_actor_field pre_env (f : Ir.exp_field) =
-  let (cc, name, _, pat, _rt, exp) =
-    let find_func exp = match exp.it with
-    | BlockE [{it = FuncD (cc, name, ty_args, pat, rt, exp); _ }] ->
-      (cc, name, ty_args, pat, rt, exp)
-    | _ -> assert false (* "public actor field not a function" *)
-    in find_func f.it.exp in
+and allocate_actor_fields env fs =
+  List.map (allocate_actor_field env) fs
 
-  let (fi, fill) = E.reserve_fun pre_env name.it in
-  E.add_dfinity_type pre_env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
-  E.add_export pre_env (nr {
-    name = Dfinity.explode name.it;
+and fill_actor_field env (f, ptr) =
+  compile_unboxed_const ptr ^^
+  Var.get_val_vanilla env f.it.var.it ^^
+  Heap.load_field 1l ^^
+  store_ptr
+
+and fill_actor_fields env fs =
+  G.concat_map (fill_actor_field env) fs
+
+and export_actor_field env ((f : Ir.field), ptr) =
+  let Name name = f.it.name.it in
+  let (fi, fill) = E.reserve_fun env name in
+  let cc = Value.call_conv_of_typ f.note in
+  E.add_dfinity_type env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
+  E.add_export env (nr {
+    name = Dfinity.explode name;
     edesc = nr (FuncExport (nr fi))
   });
-  let pre_env1 = E.add_local_deferred_vanilla pre_env name.it
-    (fun env -> FuncDec.static_self_message_pointer env name) in
+  fill (FuncDec.compile_static_message env cc ptr);
 
-  ( pre_env1, fun env -> G.with_region f.at @@
-    let mk_pat inner_env = compile_func_pat inner_env cc pat in
-    let mk_body inner_env = compile_exp_as inner_env (StackRep.of_arity cc.Value.n_res) exp in
-    let f = FuncDec.compile_static_message env cc mk_pat mk_body f.at in
-    fill f;
-    G.nop
-  )
-
-and compile_actor_field pre_env (f : Ir.exp_field) =
-  if f.it.vis.it = Syntax.Private
-  then compile_private_actor_field pre_env f
-  else compile_public_actor_field pre_env f
-
-and compile_actor_fields env fs =
-  (* We need to tie the knot about the enrivonment *)
-  let rec go env = function
-    | []          -> (env, fun _ -> G.nop)
-    | (f::fs) ->
-        let (env1, mk_code1) = compile_actor_field env f in
-        let (env2, mk_code2) = go env1 fs in
-        (env2, fun env -> mk_code1 env ^^ mk_code2 env) in
-  let (env1, mk_code2) = go env fs in
-  (env1, mk_code2 env1)
-
-and actor_lit outer_env name fs at =
+and actor_lit outer_env this ds fs at =
   if E.mode outer_env <> DfinityMode then G.i Unreachable else
 
   let wasm_binary =
@@ -3921,20 +3870,30 @@ and actor_lit outer_env name fs at =
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     Array.common_funcs env;
 
+    (* Allocate static positions for exported functions *)
+    let located_ids = allocate_actor_fields env fs in
+
+    List.iter (export_actor_field env) located_ids;
+
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
-      (* Compile stuff here *)
+      (* Compile the prelude *)
       let (env4, prelude_code) = compile_prelude env3 in
 
-      (* Bind the self pointer *)
-      let env5 = E.add_local_deferred_vanilla env4 name.it Dfinity.get_self_reference in
-      let (_env6, init_code)  = compile_actor_fields env5 fs in
+      (* Add this pointer *)
+      let env5 = E.add_local_deferred_vanilla env4 this.it Dfinity.get_self_reference in
 
-      prelude_code ^^ init_code) in
+      (* Compile the declarations *)
+      let (env6, decls_code) = compile_decs env5 ds in
+
+      (* fill the static export references *)
+      let fill_code = fill_actor_fields env6 located_ids in
+
+      prelude_code ^^ decls_code ^^ fill_code) in
     let start_fi = E.add_fun env start_fun "start" in
 
     OrthogonalPersistence.register env start_fi;
 
-    let m = conclude_module env name.it None in
+    let m = conclude_module env this.it None in
     let (_map, wasm_binary) = CustomModule.encode m in
     wasm_binary in
 

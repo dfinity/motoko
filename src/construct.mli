@@ -23,8 +23,8 @@ val nextN : name
 
 (* Identifiers *)
 
-val fresh_lab : unit -> id
-val fresh_id : typ -> var
+val fresh_id : unit -> id
+val fresh_var : typ -> var
 
 val idE : id -> typ -> exp
 val id_of_exp : exp -> id
@@ -41,10 +41,10 @@ val as_seqP : pat -> pat list
 
 val primE : string -> typ -> exp
 val projE : exp ->  int -> exp
-val decE : dec -> exp
-val blockE : dec list -> exp
+val blockE : dec list -> exp -> exp
 val textE : string -> exp
 val letE : var -> exp -> exp -> exp
+val ignoreE : exp -> exp
 
 val unitE : exp
 val boolE : bool -> exp
@@ -55,20 +55,20 @@ val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> name -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val tupE : exp list -> exp
-val breakE: id -> exp -> typ -> exp
-val retE: exp -> typ -> exp
+val breakE: id -> exp -> exp
+val retE: exp -> exp
+val immuteE: exp -> exp
 val assignE : exp -> exp -> exp
 val labelE : id -> typ -> exp -> exp
-val loopE: exp -> exp option -> exp
+val loopE : exp -> exp option -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
-val newObjE : obj_sort -> (name * id) list -> typ -> exp
+val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
 (* Declarations *)
 
-val letP : pat -> exp -> dec   (* TBR: replace letD? *)
-
+val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
 val varD : id -> exp -> dec
 val expD : exp -> dec
