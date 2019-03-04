@@ -8,8 +8,8 @@ let _ = f : () -> ();
 let _ = g : (()) -> ();
 let _ = h : (()) -> ();
 
-let _ : [() -> ()] = [f];
-let gh : [(()) -> ()] = [g, g1, h, h1];
+let _ : [() -> ()] = [f, func () {}, func f1 () {}];
+let gh : [(()) -> ()] = [g, g1, h, h1, func (()) {}, func g2 (()) {}];
 
 f();
 g(); // accepted, because "At calls there is an implicit coercion
@@ -31,7 +31,7 @@ func j(a:Int) {};
 func k(a:(Int)) {};
 func l(a:((Int))) {};
 
-let jkl : [Int -> ()] = [j, k, l];
+let jkl : [Int -> ()] = [j, k, l, func l1(a:((Int))) {}];
 
 j(5);
 k(8);
