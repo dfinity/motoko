@@ -62,7 +62,7 @@ and exp' at note = function
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
-  | S.BlockE [{it = S.ExpD e; _}] -> exp' e.at e.note e.it
+  | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (Type.is_unit note.S.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)

@@ -257,11 +257,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
-  (* check effect *)
+  (* check type annotation *)
+  let t = E.typ exp in
+  check_typ env t;
+  (* check effect annotation *)
   check (E.Ir.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
-  let t = E.typ exp in
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
