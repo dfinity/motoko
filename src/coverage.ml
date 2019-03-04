@@ -178,7 +178,7 @@ let warn at fmt =
   ) fmt
 
 let check_cases cases t : bool =
-	let sets = make_sets () in
+  let sets = make_sets () in
   let exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
   let unreached_alts = AtSet.diff sets.alts sets.reached_alts in
