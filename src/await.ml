@@ -419,7 +419,14 @@ and c_exp' context exp k =
   | NewObjE _ -> exp
 
 and c_block context decs exp k =
-  declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
+  let is_typ dec =
+    match dec.it with
+    | TypD _ -> true
+    | _ -> false
+  in
+  let (typ_decs,val_decs) = List.partition is_typ decs in
+  blockE typ_decs
+    (declare_decs val_decs (c_decs context val_decs (meta T.unit (fun _ -> c_exp context exp k))))
 
 and c_dec context dec (k:kont) =
   match dec.it with
@@ -430,7 +437,7 @@ and c_dec context dec (k:kont) =
       | T.Await -> c_exp context exp (meta (typ exp) (fun _ -> k -@- tupE[]))
     end
   | TypD _ ->
-    k -@- unitE
+    assert false
   | LetD (pat,exp) ->
     let patenv,pat' = rename_pat pat in
     let block exp =
@@ -469,8 +476,8 @@ and c_decs context decs k =
 
 and declare_dec dec exp : exp =
   match dec.it with
-  | ExpD _
-  | TypD _ -> exp
+  | ExpD _ -> exp
+  | TypD _ -> assert false
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
 

@@ -100,6 +100,9 @@ let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_,e) | ExpD e -> eff e
 
 let blockE decs exp =
+  match decs with
+  | [] -> exp
+  | _ ->
   let es = List.map dec_eff decs in
   let typ = typ exp in
   let e =  List.fold_left max_eff (eff exp) es in
