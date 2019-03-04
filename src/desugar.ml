@@ -56,7 +56,7 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
-    I.FuncE (name, cc, typ_binds tbs, pat p, ty.note, exp e)
+    I.FuncE (name, cc, typ_binds tbs, param p, ty.note, exp e)
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
