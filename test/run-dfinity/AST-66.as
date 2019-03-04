@@ -1,4 +1,5 @@
 // test cps conversion of async blocks with type decs
+
 let _ = async{
   type T = Null;
   await { async (null:T) };
