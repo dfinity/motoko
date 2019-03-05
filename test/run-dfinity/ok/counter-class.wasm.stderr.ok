@@ -9,7 +9,7 @@ non-closed actor: (ActorE
       (TupP)
       ()
       (BlockE
-        (ExpD (CallE ( 1 -> 0) (VarE show) (VarE c)))
+        (LetD WildP (CallE ( 1 -> 0) (VarE show) (VarE c)))
         (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1))))
       )
     )

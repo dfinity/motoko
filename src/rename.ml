@@ -116,9 +116,6 @@ and dec rho d =
   ({d with it = mk_d}, rho')
 
 and dec' rho d = match d with
-  | ExpD e ->
-     (fun rho -> ExpD (exp rho e)),
-     rho
   | LetD (p, e) ->
      let p', rho = pat rho p in
      (fun rho' -> LetD (p',exp rho' e)),

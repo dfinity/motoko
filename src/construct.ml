@@ -97,7 +97,7 @@ let projE e n =
 
 let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
-  | LetD (_,e) | VarD (_,e) | ExpD e -> eff e
+  | LetD (_,e) | VarD (_,e) -> eff e
 
 let blockE decs exp =
   match decs with
@@ -266,9 +266,9 @@ let letD x exp = letP (varP x) exp
 let varD x exp =
   VarD (x, exp) @@ no_region
 
-let expD exp = ExpD exp @@ exp.at
-
-let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
+let expD exp =
+  let pat = { it = WildP; at = exp.at; note = exp.note.note_typ } in
+  LetD (pat, exp) @@ exp.at
 
 let ignoreE exp =
   if typ exp = T.unit

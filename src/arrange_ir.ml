@@ -63,11 +63,9 @@ and name n = match n.it with
 and call_conv cc = Atom (Value.string_of_call_conv cc)
 
 and dec d = match d.it with
-  | ExpD e ->      "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | TypD c ->
-    "TypD" $$ [con c; kind (Con.kind c)]
+  | TypD c -> "TypD" $$ [con c; kind (Con.kind c)]
 
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]

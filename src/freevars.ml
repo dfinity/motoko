@@ -114,10 +114,8 @@ and cases cs : f = unions case cs
 and id i = M.singleton i.it {captured = false}
 
 and dec d = match d.it with
-  | ExpD e -> (exp e, S.empty)
   | LetD (p, e) -> pat p +++ exp e
-  | VarD (i, e) ->
-    (M.empty, S.singleton i.it) +++ exp e
+  | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp e
   | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)

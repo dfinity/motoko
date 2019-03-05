@@ -581,7 +581,7 @@ and interpret_block env ro decs exp k =
 
 and declare_dec dec : val_env =
   match dec.it with
-  | ExpD _ | TypD _ -> V.Env.empty
+  | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
 
@@ -595,8 +595,6 @@ and declare_decs decs ve : val_env =
 
 and interpret_dec env dec k =
   match dec.it with
-  | ExpD exp ->
-    interpret_exp env exp (fun _ -> k ())
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;

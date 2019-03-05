@@ -184,11 +184,10 @@ module Ir =
 
     and effect_dec dec = match dec.it with
       | TypD _ -> T.Triv
-      | LetD (_,e) | VarD (_,e) | ExpD e -> effect_exp e
+      | LetD (_,e) | VarD (_,e) -> effect_exp e
 
     and infer_effect_dec (dec:Ir.dec) =
       match dec.it with
-      | ExpD e
       | LetD (_,e)
       | VarD (_, e) ->
         effect_exp e
