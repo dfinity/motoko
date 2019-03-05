@@ -2928,7 +2928,7 @@ module StackRep = struct
   let materialize env = function
     | StaticFun fi -> Var.static_fun_pointer env fi
 
-  let deferred_of_static_think env s =
+  let deferred_of_static_thing env s =
     { materialize = (fun env -> (StaticThing s, G.nop))
     ; materialize_vanilla = (fun env -> materialize env s)
     }
@@ -3911,7 +3911,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp pre_env how e in
-    let d = StackRep.deferred_of_static_think pre_env static_thing in
+    let d = StackRep.deferred_of_static_thing pre_env static_thing in
     let pre_env1 = E.add_local_deferred pre_env v.it d in
     ( pre_env1, G.nop, fun env -> fill env; G.nop)
   | LetD (p, e) ->
