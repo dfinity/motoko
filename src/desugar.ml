@@ -56,7 +56,7 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
-    I.FuncE (name, cc, typ_binds tbs, pat p, ty.note, exp e)
+    I.FuncE (name, cc, typ_binds tbs, param p, ty.note, exp e)
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -156,6 +156,12 @@ and decs ds = extra_typDs ds @ List.map dec ds
 
 and dec d = { (phrase' dec' d) with note = () }
 
+and param p =
+  pat (match p.it, p.note with
+       | S.ParP p1, _ -> p1
+       | S.TupP [p1], Type.Tup [n] -> { p with it = p1.it; note = n }
+       | _ ->  p)
+
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
@@ -190,7 +196,7 @@ and dec' at n d = match d with
     in
     let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
     let fn = {
-      it = I.FuncE (id.it, cc, typ_binds tbs, pat p, obj_typ,
+      it = I.FuncE (id.it, cc, typ_binds tbs, param p, obj_typ,
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
@@ -217,7 +223,8 @@ and pat' = function
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
-  | S.AnnotP (p, _) -> pat' p.it
+  | S.AnnotP (p, _)
+  | S.ParP p -> pat' p.it
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with

@@ -1,0 +1,14 @@
+one-tuple-ambiguity.as:10.2-10.7: type error, expression of type
+  ((),)
+cannot produce expected type
+  ()
+one-tuple-ambiguity.as:16.3-16.5: type error, literal of type
+  Nat
+does not have expected type
+  (Nat, Bool)
+one-tuple-ambiguity.as:16.1-16.5: type error, expected function type, but expression produces type
+  ()
+one-tuple-ambiguity.as:21.2-21.16: type error, expression of type
+  ((Nat, Bool),)
+cannot produce expected type
+  (Nat, Bool)
