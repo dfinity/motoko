@@ -145,7 +145,6 @@ and t_dec context dec =
   {dec with it = t_dec' context dec.it}
 and t_dec' context dec' =
   match dec' with
-  | ExpD exp -> ExpD (t_exp context exp)
   | TypD _ -> dec'
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, exp) -> VarD (id, t_exp context exp)
@@ -423,12 +422,6 @@ and c_block context decs exp k =
 
 and c_dec context dec (k:kont) =
   match dec.it with
-  | ExpD exp ->
-    begin
-      match eff exp with
-      | T.Triv -> k -@- (ignoreE (t_exp context exp))
-      | T.Await -> c_exp context exp (meta (typ exp) (fun _ -> k -@- tupE[]))
-    end
   | TypD _ ->
     k -@- unitE
   | LetD (pat,exp) ->
@@ -469,7 +462,6 @@ and c_decs context decs k =
 
 and declare_dec dec exp : exp =
   match dec.it with
-  | ExpD _
   | TypD _ -> exp
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp

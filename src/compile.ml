@@ -3742,9 +3742,6 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   match dec.it with
   | TypD _ ->
     (pre_env, G.nop, fun _ -> G.nop)
-  | ExpD e ->(pre_env, G.nop, fun env ->
-    let sr, code = compile_exp env e in
-    code ^^ StackRep.drop env sr)
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp pre_env how e in
