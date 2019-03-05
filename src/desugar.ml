@@ -128,34 +128,36 @@ and typ_bind tb =
   }
 
 and block force_unit ds =
-  let ds' = decs ds in
-  let prefix, last = Lib.List.split_last ds' in
+  let extra = extra_typDs ds in
+  let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
-  | _, I.ExpD e ->
-    (prefix, e)
-  | false, I.LetD ({it = I.VarP x; _}, e) ->
-    (ds', idE x e.note.S.note_typ)
-  | false, I.LetD (p', e') ->
+  | _, S.ExpD e ->
+    (extra @ List.map dec prefix, exp e)
+  | false, S.LetD ({it = S.VarP x; _}, e) ->
+    (extra @ List.map dec ds, idE x e.note.S.note_typ)
+  | false, S.LetD (p', e') ->
     let x = fresh_var (e'.note.S.note_typ) in
-    (prefix @ [letD x e'; letP p' x], x)
+    (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
   | _, _ ->
-    (ds', tupE [])
+    (extra @ List.map dec ds, tupE [])
 
-and decs ds =
+and extra_typDs ds =
   match ds with
   | [] -> []
   | d::ds ->
     match d.it with
-    | S.ClassD(id, _, _, _, _, _) ->
+    | S.ClassD (id, _, _, _, _, _) ->
       let c = Lib.Option.value id.note in
       let typD = I.TypD c @@ d.at in
-      typD :: dec d :: decs ds
-    | _ -> dec d :: decs ds
+      typD :: extra_typDs ds
+    | _ -> extra_typDs ds
+
+and decs ds = extra_typDs ds @ List.map dec ds
 
 and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
-  | S.ExpD e -> I.ExpD (exp e)
+  | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in

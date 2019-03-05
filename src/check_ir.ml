@@ -657,8 +657,6 @@ and check_dec env dec  =
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   match dec.it with
-  | ExpD exp ->
-    check_exp env exp
   | LetD (pat, exp) ->
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
@@ -690,8 +688,6 @@ and gather_block_decs env decs =
 
 and gather_dec env scope dec : scope =
   match dec.it with
-  | ExpD _ ->
-    scope
   | LetD (pat, _) ->
     let ve = gather_pat env scope.val_env pat in
     { scope with val_env = ve}

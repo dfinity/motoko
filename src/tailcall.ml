@@ -206,9 +206,6 @@ and dec' env d =
         LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, p, typT, exp0')})
     end,
     env
-  | ExpD e ->
-    (fun env1 -> ExpD (tailexp env1 e)),
-    env
   | LetD (p, e) ->
     let env = pat env p in
     (fun env1 -> LetD(p,exp env1 e)),

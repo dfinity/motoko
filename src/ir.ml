@@ -76,7 +76,6 @@ and case' = {pat : pat; exp : exp}
 
 and dec = dec' Source.phrase
 and dec' =
-  | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of Type.con                           (* type *)
