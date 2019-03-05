@@ -1147,7 +1147,7 @@ module BoxedInt = struct
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
 
-     The heap layout of a BoxedWord is:
+     The heap layout of a BoxedInt is:
 
        ┌─────┬─────┬─────┐
        │ tag │    i64    │
