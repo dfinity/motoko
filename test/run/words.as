@@ -11,6 +11,7 @@
 
     printW32ln(+c);
     printW32ln(-c);
+    printW32ln(^c);
     printW32ln(a + c);
     printW32ln(c - a);
     printW32ln(a * b);
@@ -44,6 +45,7 @@
 
     printW16ln(+c);
     printW16ln(-c);
+    printW16ln(^c);
     printW16ln(a + c);
     printW16ln(c - a);
     printW16ln(a * b);
@@ -77,6 +79,7 @@
 
     printW8ln(+c);
     printW8ln(-c);
+    printW8ln(^c);
     printW8ln(a + c);
     printW8ln(c - a);
     printW8ln(a * b);
