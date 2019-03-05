@@ -34,6 +34,22 @@ class revrange(x : Nat, y : Nat) {
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
+// Conversions
+func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
+func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
+func intToWord8(n : Int) : Word8 = (prim "Int->Word8" : Int -> Word8) n;
+func word8ToInt(n : Word8) : Int = (prim "Word8->Int" : Word8 -> Int) n;
+
+func natToWord16(n : Nat) : Word16 = (prim "Nat->Word16" : Nat -> Word16) n;
+func word16ToNat(n : Word16) : Nat = (prim "Word16->Nat" : Word16 -> Nat) n;
+func intToWord16(n : Int) : Word16 = (prim "Int->Word16" : Int -> Word16) n;
+func word16ToInt(n : Word16) : Int = (prim "Word16->Int" : Word16 -> Int) n;
+
+func natToWord32(n : Nat) : Word32 = (prim "Nat->Word32" : Nat -> Word32) n;
+func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
+func intToWord32(n : Int) : Word32 = (prim "Int->Word32" : Int -> Word32) n;
+func word32ToInt(n : Word32) : Int = (prim "Word32->Int" : Word32 -> Int) n;
+
 
 // This would be nicer as a objects, but lets do them as functions
 // until the compiler has a concept of “static objects”
@@ -80,8 +96,51 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
 
 open Value
 
+module Conv = struct
+  open Nativeint
+  let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
+end (* Conv *)
+
+
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
+
+  | "Nat->Word8" -> fun v k ->
+                    let i = Big_int.int_of_big_int (as_int v)
+                    in k (Word8 (Word8.of_int_u i))
+  | "Int->Word8" -> fun v k ->
+                    let i = Big_int.int_of_big_int (as_int v)
+                    in k (Word8 (Word8.of_int_s i))
+  | "Nat->Word16" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word16 (Word16.of_int_u i))
+  | "Int->Word16" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word16 (Word16.of_int_s i))
+  | "Nat->Word32" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Word32.of_int_u i))
+  | "Int->Word32" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word32 (Word32.of_int_s i))
+
+  | "Word8->Nat" -> fun v k ->
+                    let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
+                    in k (Int (Big_int.big_int_of_int i))
+  | "Word8->Int" -> fun v k ->
+                    let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
+                    in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Nat" -> fun v k ->
+                     let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
+                     in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Int" -> fun v k ->
+                     let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
+                     in k (Int (Big_int.big_int_of_int i))
+  | "Word32->Nat" -> fun v k ->
+                     let i = Conv.of_signed_Word32 (as_word32 v)
+                     in k (Int (Big_int.big_int_of_int i))
+  | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
+
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
