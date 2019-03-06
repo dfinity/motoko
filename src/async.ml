@@ -68,21 +68,17 @@ module Transform() = struct
         [t1]
         (tupE [])
         (T.seq (new_async_ret unary t1)) in
-    let async  = fresh_id (typ (projE call_new_async 0)) in
-    let fullfill = fresh_id (typ (projE call_new_async 1)) in
+    let async = fresh_var (typ (projE call_new_async 0)) in
+    let fullfill = fresh_var (typ (projE call_new_async 1)) in
     (async,fullfill),call_new_async
-
-  let letP p e =  {it = LetD(p, e);
-                   at = no_region;
-                   note = {e.note with note_typ = T.unit}}
 
   let new_nary_async_reply t1 =
     let (unary_async,unary_fullfill),call_new_async = new_async t1 in
-    let v' = fresh_id t1 in
+    let v' = fresh_var t1 in
     let ts1 = T.as_seq t1 in
     (* construct the n-ary async value, coercing the continuation, if necessary *)
     let nary_async =
-      let k' = fresh_id (contT t1) in
+      let k' = fresh_var (contT t1) in
       match ts1 with
       | [t] ->
         unary_async
@@ -95,23 +91,23 @@ module Transform() = struct
       let vs,seq_of_vs =
         match ts1 with
         | [t] ->
-          let v = fresh_id t in
+          let v = fresh_var t in
           [v],v
         | ts ->
-          let vs = List.map fresh_id ts in
+          let vs = List.map fresh_var ts in
           vs, tupE vs
       in
       vs -@>* (unary_fullfill -*-  seq_of_vs)
     in
-    let async,reply = fresh_id (typ nary_async), fresh_id (typ nary_reply) in
-    (async,reply),blockE [letP (tupP [varP unary_async;varP unary_fullfill])  call_new_async;
-                          expD (tupE [nary_async;nary_reply])]
+    let async,reply = fresh_var (typ nary_async), fresh_var (typ nary_reply) in
+    (async,reply),blockE [letP (tupP [varP unary_async; varP unary_fullfill])  call_new_async]
+                         (tupE [nary_async; nary_reply])
 
 
   let letEta e scope =
     match e.it with
     | VarE _ -> scope e (* pure, so reduce *)
-    | _  -> let f = fresh_id (typ e) in
+    | _  -> let f = fresh_var (typ e) in
             letD f e :: (scope f) (* maybe impure; sequence *)
 
   let isAwaitableFunc exp =
@@ -126,11 +122,10 @@ module Transform() = struct
     | TupP ps ->
       begin
         match ps with
-        | [] -> p2, fun d -> (letP p1 (tupE [])::d)
-        | ps ->
-          tupP (ps@[p2]), fun d -> d
+        | [] -> p2, fun e -> blockE [letP p1 (tupE [])] e
+        | ps -> tupP (ps@[p2]), fun e -> e
       end
-    | _ -> tupP [p1;p2], fun d -> d
+    | _ -> tupP [p1;p2], fun e -> e
 
   (* Given sequence type ts, bind e of type (seq ts) to a
    sequence of expressions supplied to decs d_of_es,
@@ -142,11 +137,11 @@ module Transform() = struct
     | [] ->
       (expD e)::d_of_vs []
     | [t] ->
-      let x = fresh_id t in
+      let x = fresh_var t in
       let p = varP x in
       (letP p e)::d_of_vs [x]
     | ts ->
-      let xs = List.map fresh_id ts in
+      let xs = List.map fresh_var ts in
       let p = tupP (List.map varP xs) in
       (letP p e)::d_of_vs (xs)
 
@@ -178,7 +173,7 @@ module Transform() = struct
       end
     | Opt t -> Opt (t_typ t)
     | Async t -> t_async nary (t_typ t)
-    | Obj (s, fs) -> Obj (s, List.map t_field  fs)
+    | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
     | Any -> Any
@@ -215,6 +210,7 @@ module Transform() = struct
 
   and t_field {lab; typ} =
     { lab; typ = t_typ typ }
+
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
       note = { note_typ = t_typ exp.note.note_typ;
@@ -239,9 +235,6 @@ module Transform() = struct
       OptE (t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
-    | ActorE (id, fields, typ) ->
-      let fields' = t_fields fields in
-      ActorE (id, fields', t_typ typ)
     | DotE (exp1, id) ->
       DotE (t_exp exp1, id)
     | ActorDotE (exp1, id) ->
@@ -266,17 +259,17 @@ module Transform() = struct
                []) -> (* TBR, why isn't this []? *)
           (t_typ (T.seq ts1),t_typ contT)
         | t -> assert false in
-      let k = fresh_id contT in
-      let v1 = fresh_id t1 in
-      let post = fresh_id (T.Func(T.Sharable,T.Returns,[],[],[])) in
-      let u = fresh_id T.unit in
+      let k = fresh_var contT in
+      let v1 = fresh_var t1 in
+      let post = fresh_var (T.Func(T.Sharable,T.Returns,[],[],[])) in
+      let u = fresh_var T.unit in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
                funcD k v1 (nary_reply -*- v1);
                funcD post u (t_exp exp2 -*- k);
-               expD (post -*- tupE[]);
-               expD nary_async])
-        .it
+               expD (post -*- tupE[])]
+               nary_async
+      ).it
     | CallE (cc,exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
@@ -289,16 +282,19 @@ module Transform() = struct
       let typs = List.map t_typ typs in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t2 in
       let _ = letEta in
-      (blockE (letP (tupP [varP nary_async; varP nary_reply]) def::
-                 letEta exp1' (fun v1 ->
-                     letSeq ts1 exp2' (fun vs ->
-                         [expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit);
-                          expD nary_async]))))
+      (blockE ( letP (tupP [varP nary_async; varP nary_reply]) def ::
+                letEta exp1' (fun v1 ->
+                  letSeq ts1 exp2' (fun vs ->
+                    [ expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit) ]
+                  )
+                 )
+               )
+               nary_async)
         .it
     | CallE (cc, exp1, typs, exp2)  ->
       CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
-    | BlockE decs ->
-      BlockE (t_decs decs)
+    | BlockE b ->
+      BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->
@@ -328,66 +324,60 @@ module Transform() = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | NewObjE (sort, ids, t) ->
-      NewObjE (sort, ids, t_typ t)
-
-  and t_dec dec =
-    { it = t_dec' dec.it;
-      note = { note_typ = t_typ dec.note.note_typ;
-               note_eff = dec.note.note_eff };
-      at = dec.at }
-
-  and t_dec' dec' =
-    match dec' with
-    | ExpD exp -> ExpD (t_exp exp)
-    | TypD con_id ->
-      TypD (t_con con_id)
-    | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
-    | VarD (id,exp) -> VarD (id,t_exp exp)
-    | FuncD (cc, id, typbinds, pat, typT, exp) ->
+    | FuncE (x, cc, typbinds, pat, typT, exp) ->
       let s = cc.Value.sort in
       begin
         match s with
         | T.Local  ->
-          FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+          FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
         | T.Sharable ->
           begin
             match typ exp with
             | T.Tup [] ->
-              FuncD (cc, id, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+              FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
             | T.Async res_typ ->
               let cc' = Value.message_cc (cc.Value.n_args + 1) in
               let res_typ = t_typ res_typ in
               let pat = t_pat pat in
               let reply_typ = replyT nary res_typ in
               let typ' = T.Tup []  in
-              let k = fresh_id reply_typ in
+              let k = fresh_var reply_typ in
               let pat',d = extendTupP pat (varP k) in
               let typbinds' = t_typ_binds typbinds in
-              let x = fresh_id res_typ in
+              let y = fresh_var res_typ in
               let exp' =
                 match exp.it with
                 | CallE(_, async,_,cps) ->
                   begin
                     match async.it with
-                    | PrimE("@async") ->
-                      blockE
-                        (d [expD ((t_exp cps) -*- (x --> (k -*- x)))])
+                    | PrimE("@async") -> d ((t_exp cps) -*- (y --> (k -*- y)))
                     | _ -> assert false
                   end
                 | _ -> assert false
               in
-              FuncD (cc', id, typbinds', pat', typ', exp')
+              FuncE (x, cc', typbinds', pat', typ', exp')
             | _ -> assert false
           end
       end
+    | ActorE (id, ds, fs, typ) ->
+      ActorE (id, t_decs ds, t_fields fs, t_typ typ)
+    | NewObjE (sort, ids, t) ->
+      NewObjE (sort, t_fields ids, t_typ t)
+
+  and t_dec dec = { dec with it = t_dec' dec.it }
+
+  and t_dec' dec' =
+    match dec' with
+    | TypD con_id -> TypD (t_con con_id)
+    | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
+    | VarD (id,exp) -> VarD (id,t_exp exp)
 
   and t_decs decs = List.map t_dec decs
 
-  and t_fields fields =
-    List.map (fun (field:exp_field) ->
-        { field with it = { field.it with exp = t_exp field.it.exp } })
-      fields
+  and t_block (ds, exp) = (t_decs ds, t_exp exp)
+
+  and t_fields fs =
+    List.map (fun f -> { f with note = t_typ f.note }) fs
 
   and t_pat pat =
     { pat with
@@ -415,7 +405,7 @@ module Transform() = struct
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) =  (t_decs prog, { flavor with has_async_typ = false } )
+  and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
 
 end
 

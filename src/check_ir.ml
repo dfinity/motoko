@@ -72,7 +72,6 @@ let error env at fmt =
 
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
-let add_val c x t = {c with vals = T.Env.add x t c.vals}
 
 let add_typs c cs =
   { c with
@@ -118,18 +117,13 @@ let check_sub env at t1 t2 =
   else error env at "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
-let make_mut mut : T.typ -> T.typ =
-  match mut.it with
-  | Syntax.Const -> fun t -> t
-  | Syntax.Var -> fun t -> T.Mut t
-
 let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
-  | T.Var (s,i) ->
+  | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con (c,typs) ->
+  | T.Con (c, typs) ->
     if not (T.ConSet.mem c env.cons) then
        error env no_region "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
@@ -242,7 +236,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
-  | PreLit (s,p) ->
+  | PreLit (s, p) ->
     error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
 
 open Ir
@@ -253,7 +247,7 @@ let isAsyncE exp =
   match exp.it with
   | AsyncE _ -> (* pre await transformation *)
     true
-  | CallE(_,{it=PrimE("@async");_},_,cps) -> (* post await transformation *)
+  | CallE(_,{it=PrimE("@async");_}, _, cps) -> (* post await transformation *)
     true
   | _ ->
     false
@@ -262,14 +256,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
-  let (<~) t1 t2 =
-    (if T.is_mut t2 then t1 else T.as_immut t1) <: t2
-  in
-  (* check effect *)
+  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
+  (* check type annotation *)
+  let t = E.typ exp in
+  check_typ env t;
+  (* check effect annotation *)
   check (E.Ir.infer_effect_exp exp <= E.eff exp)
     "inferred effect not a subtype of expected effect";
   (* check typing *)
-  let t = E.typ exp in
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
@@ -291,7 +285,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: ot;
     typ exp2 <: ot;
     ot <: t;
-  | RelE (ot,exp1, op, exp2) ->
+  | RelE (ot, exp1, op, exp2) ->
     check (Operator.has_relop ot op) "relational operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
@@ -318,13 +312,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
                  n (T.string_of_typ_expand t1) in
     tn <: t
     end
-  | ActorE ( id, fields, t0) ->
-    let env' = { env with async = false } in
-    let t1 =  type_obj env' T.Actor id t fields in
-    let t2 = T.promote t in
-    check (T.is_obj t2) "bad annotation (object type expected)";
-    t1 <: t2;
-    t0 <: t;
   | ActorDotE(exp1,{it = Name n;_})
   | DotE (exp1, {it = Name n;_}) ->
     begin
@@ -384,11 +371,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    (typ exp2) <: T.open_ insts t2;
+    typ exp2 <: T.open_ insts t2;
     T.open_ insts t3 <: t;
-  | BlockE decs ->
-    let t1, scope = type_block env decs exp.at in
-    t1 <: t;
+  | BlockE (ds, exp1) ->
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' exp1;
+    typ exp1 <: t
   | IfE (exp1, exp2, exp3) ->
     check_exp env exp1;
     typ exp1 <: T.bool;
@@ -512,17 +502,46 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | NewObjE (sort, labids, t0) ->
-    let t1 =
-      T.Obj(sort,
-            List.sort T.compare_field (List.map (fun (name,id) ->
-                                           let Name lab = name.it in
-                                           T.{lab; typ = T.Env.find id.it env.vals}) labids))
-    in
-    let t2 = T.promote t in
-    check (T.is_obj t2) "bad annotation (object type expected)";
-    t1 <: t2;
+  | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
+    let cs, tbs, ce = check_open_typ_binds env typ_binds in
+    let env' = adjoin_cons env ce in
+    let ve = check_pat_exhaustive env' pat in
+    check_typ env' ret_ty;
+    check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
+           ==> isAsyncE exp)
+      "shared function with async type has non-async body";
+    let env'' =
+      {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
+    check_exp (adjoin_vals env'' ve) exp;
+    check_sub env' exp.at (typ exp) ret_ty;
+    (* Now construct the function type and compare with the annotation *)
+    let arg_ty = pat.note in
+    let ts1 = if cc.Value.n_args = 1
+              then [arg_ty]
+              else T.as_seq arg_ty in
+    let ts2 = if cc.Value.n_res = 1
+              then [ret_ty]
+              else T.as_seq ret_ty in
+    let fun_ty = T.Func
+      ( cc.Value.sort, cc.Value.control
+      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
+      ) in
+    fun_ty <: t
+  | ActorE (id, ds, fs, t0) ->
+    let env' = { env with async = false } in
+    let ve0 = T.Env.singleton id.it t0 in
+    let scope0 = { empty_scope with val_env = ve0 } in
+    let scope1 = List.fold_left (gather_dec env') scope0 ds in
+    let env'' = adjoin env' scope1 in
+    let t1 = type_obj env'' T.Actor fs in
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    t1 <: t0;
     t0 <: t;
+  | NewObjE (s, fs, t0) ->
+    let t1 = type_obj env s fs in
+    check (T.is_obj t0) "bad annotation (object type expected)";
+    t1 <: t0;
+    t0 <: t
 
 (* Cases *)
 
@@ -600,88 +619,35 @@ and check_pats at env pats ve : val_env =
 
 (* Objects *)
 
-and type_obj env s id t fields : T.typ =
-  let ve = gather_exp_fields env id.it t fields in
-  let env' = adjoin_vals env ve in
-  let tfs, _ve = type_exp_fields env' s id.it t fields in
-  T.Obj(s,tfs)
+and type_obj env s fs : T.typ =
+  let tfs = type_exp_fields env s fs in
+  T.Obj (s, tfs)
 
-and gather_exp_fields env id t fields : val_env =
-  let ve0 = T.Env.singleton id t in
-  List.fold_left (gather_exp_field env) ve0 fields
+and type_exp_fields env s fs : T.field list =
+  let tfs = List.map (type_exp_field env s) fs in
+  List.sort T.compare_field tfs
 
-and gather_exp_field env ve field : val_env =
-  let {id; exp; mut; vis; _} : exp_field' = field.it in
-  if T.Env.mem id.it ve then
-    error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it ( make_mut mut (typ exp)) ve
-
-and type_exp_fields env s id t fields : T.field list * val_env =
-  let env' = add_val env id t in
-  let tfs, ve =
-    List.fold_left (type_exp_field env' s) ([], T.Env.empty) fields in
-  List.sort T.compare_field tfs, ve
-
-and is_func_exp exp =
-  match exp.it with
-  | BlockE [dec]-> is_func_dec dec
-  | _ -> false
-
-and is_func_dec dec =
-  match dec.it with
-  | FuncD _ -> true
-  | _ -> false
-
-and type_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name = {it = Name name; _}; exp; mut; vis} = field.it in
-  let t = try T.Env.find id.it env.vals with
-          | Not_found -> error env field.at "field typing not found"
+and type_exp_field env s f : T.field =
+  let {name = {it = Name name; _}; var} = f.it in
+  let t = try T.Env.find var.it env.vals with
+          | Not_found -> error env f.at "field typing not found"
   in
   assert (t <> T.Pre);
-  check_exp (adjoin_vals env ve)  exp;
-  check_sub env field.at (typ exp) (T.as_immut t);
-  check env field.at ((mut.it = Syntax.Var) = T.is_mut t)
-    "inconsistent mutability of field and field type";
-  check env field.at
-    ((s = T.Actor && vis.it = Syntax.Public) ==>
-       is_func_exp exp)
+  check_sub env f.at t f.note;
+  check env f.at ((s = T.Actor) ==> T.is_func t)
     "public actor field is not a function";
-  check env field.at
-    (if (s <> T.Object T.Local && vis.it = Syntax.Public)
-     then T.sub t T.Shared
-     else true)
+  check env f.at ((s <> T.Object T.Local) ==> T.sub t T.Shared)
     "public shared object or actor field has non-shared type";
-  let ve' = T.Env.add id.it t ve in
-  let tfs' =
-    if vis.it = Syntax.Private
-    then tfs
-    else T.{lab = name; typ = t} :: tfs
-  in tfs', ve'
+  T.{lab = name; typ = t}
 
-
-(* Blocks and Declarations *)
-
-and type_block env decs at : T.typ * scope =
-  let scope = gather_block_decs env decs in
-  let t = type_block_exps (adjoin env scope) decs in
-  t, scope
-
-and type_block_exps env decs : T.typ =
-  match decs with
-  | [] -> T.unit
-  | [dec] ->
-    check_dec env dec;
-    typ dec;
-  | dec::decs' ->
-    check_dec env dec;
-    type_block_exps env decs'
+(* Declarations *)
 
 and check_open_typ_binds env typ_binds =
   let cs = List.map (fun tp -> tp.it.con) typ_binds in
   let ce = List.fold_right (fun c ce -> T.ConSet.disjoint_add c ce) cs T.ConSet.empty in
-  let binds = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
-  let _,_ = check_typ_binds env binds in
-  cs,ce
+  let tbs = close_typ_binds cs (List.map (fun tb -> tb.it) typ_binds) in
+  let _ = check_typ_binds env tbs in
+  cs, tbs, ce
 
 and close_typ_binds cs tbs =
   List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
@@ -690,69 +656,38 @@ and check_dec env dec  =
   (* helpers *)
   let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
-  (* check effect *)
-  check (E.Ir.infer_effect_dec dec <= E.eff dec)
-    "inferred effect not a subtype of expected effect";
-  (* check typing *)
-  let t = typ dec in
   match dec.it with
-  | ExpD exp ->
+  | LetD (pat, exp) ->
+    ignore (check_pat_exhaustive env pat);
     check_exp env exp;
-    (typ exp) <: t
-  | LetD (_, exp) | VarD (_, exp) ->
+    typ exp <: pat.note
+  | VarD (id, exp) ->
+    let t0 = try T.Env.find id.it env.vals with
+             |  Not_found -> error env id.at "unbound variable %s" id.it
+    in
+    check (T.is_mut t0) "variable in VarD is not immutable";
     check_exp env exp;
-    T.unit <: t
-  | FuncD (cc, id, typ_binds, pat, t2, exp) ->
-    let t0 = T.Env.find id.it env.vals in
-    let _cs,ce = check_open_typ_binds env typ_binds in
-    let env' = adjoin_cons env ce in
-    let ve = check_pat_exhaustive env' pat in
-    check_typ env' t2;
-    check ((cc.Value.sort = T.Sharable && Type.is_async t2)
-           ==> isAsyncE exp)
-      "shared function with async type has non-async body";
-    let env'' =
-      {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-    check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' dec.at (typ exp) t2;
-    t0 <: t;
+    typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds,typ) =
+    let (binds, typ) =
       match Con.kind c with
-      | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
+      | T.Abs (binds, typ)
+      | T.Def (binds, typ) -> (binds, typ)
     in
     let cs, ce = check_typ_binds env binds in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let env' = adjoin_cons env ce in
-    check_typ env' (T.open_ ts  typ);
-    T.unit <: t;
+    check_typ env' (T.open_ ts  typ)
 
-and check_block env t decs at : scope =
-  let scope = gather_block_decs env decs in
-  check_block_exps (adjoin env scope) t decs at;
-  scope
-
-and check_block_exps env t decs at =
-  match decs with
-  | [] ->
-    check_sub env at T.unit t
-  | [dec] ->
-    check_dec env dec;
-    check env at (T.is_unit t || T.sub (typ dec) t)
-      "declaration does not produce expect type"
-  | dec::decs' ->
-    check_dec env dec;
-    check_block_exps env t decs' at
+and check_decs env decs  =
+  List.iter (check_dec env) decs;
 
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
 
 and gather_dec env scope dec : scope =
   match dec.it with
-  | ExpD _ ->
-    scope
   | LetD (pat, _) ->
     let ve = gather_pat env scope.val_env pat in
     { scope with val_env = ve}
@@ -762,28 +697,6 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
-  | FuncD (call_conv, id, typ_binds, pat, typ, exp) ->
-    let func_sort = call_conv.Value.sort in
-    let cs = List.map (fun tb -> tb.it.con) typ_binds in
-    let t1 = pat.note in
-    let t2 = typ in
-    let ts1 = match call_conv.Value.n_args with
-      | 1 -> [t1]
-      | _ -> T.as_seq t1
-    in
-    let ts2 = match call_conv.Value.n_res  with
-      | 1 -> [t2]
-      | _ -> T.as_seq t2
-    in
-    let c = match func_sort, t2 with
-      | T.Sharable, (T.Async _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let ts = List.map (fun typbind -> typbind.it.bound) typ_binds in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let t = T.Func (func_sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
-    let ve' =  T.Env.add id.it t scope.val_env in
-    { scope with val_env = ve' }
   | TypD c ->
     check env dec.at
       (not (T.ConSet.mem c scope.con_env))
@@ -793,10 +706,13 @@ and gather_dec env scope dec : scope =
 
 (* Programs *)
 
-let check_prog scope phase ((decs, flavor) as prog) : unit =
+let check_prog scope phase (((ds, exp), flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
-   ignore (check_block env T.unit decs no_region)
+    let scope = gather_block_decs env ds in
+    let env' = adjoin env scope in
+    check_decs env' ds;
+    check_exp env' exp;
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if !Flags.verbose

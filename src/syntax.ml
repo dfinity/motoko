@@ -103,6 +103,7 @@ and pat' =
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
+  | ParP of pat                                (* parenthesis *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
   | ObjP of pat_field list                     (* object *)
@@ -130,11 +131,12 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of obj_sort * id * exp_field list     (* object *)
+  | ObjE of obj_sort * exp_field list          (* object *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
+  | FuncE of string * sharing * typ_bind list * pat * typ * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
@@ -173,8 +175,6 @@ and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
-  | FuncD of                                   (* function *)
-      sharing * id * typ_bind list * pat * typ * exp
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * obj_sort * pat * id * exp_field list

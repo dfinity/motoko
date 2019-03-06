@@ -1,9 +1,9 @@
 coverage.as:5.13-5.14: warning, this pattern is never matched
 coverage.as:7.13-7.14: warning, this pattern is never matched
 coverage.as:8.13-8.14: warning, this pattern is never matched
-coverage.as:16.13-16.14: warning, this pattern is never matched
-coverage.as:18.13-18.14: warning, this pattern is never matched
-coverage.as:19.14-19.15: warning, this pattern is never matched
+coverage.as:16.16-16.17: warning, this pattern is never matched
+coverage.as:18.16-18.17: warning, this pattern is never matched
+coverage.as:19.17-19.18: warning, this pattern is never matched
 coverage.as:24.25-24.34: warning, this case is never reached
 coverage.as:27.25-27.34: warning, this case is never reached
 coverage.as:28.25-28.34: warning, this case is never reached
@@ -18,8 +18,8 @@ coverage.as:5.8-5.14: warning, this pattern does not cover all possible values
 coverage.as:9.7-9.9: warning, this pattern does not cover all possible values
 coverage.as:10.7-10.9: warning, this pattern does not cover all possible values
 coverage.as:11.7-11.9: warning, this pattern does not cover all possible values
-coverage.as:15.8-15.9: warning, this pattern does not cover all possible values
-coverage.as:16.8-16.14: warning, this pattern does not cover all possible values
+coverage.as:15.11-15.12: warning, this pattern does not cover all possible values
+coverage.as:16.11-16.17: warning, this pattern does not cover all possible values
 coverage.as:23.3-23.25: warning, the cases in this switch do not cover all possible values
 coverage.as:24.3-24.36: warning, the cases in this switch do not cover all possible values
 coverage.as:32.3-32.50: warning, the cases in this switch do not cover all possible values
