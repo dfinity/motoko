@@ -68,7 +68,7 @@ a.printLabeled("Foo: ");
 
 
 let w32 = actor {
-  private var c = 0;
+  private var c : Word32 = 0;
   incn(n : Word32) : () {
     c += n;
     printW32(c);
@@ -104,7 +104,7 @@ let w32 = actor {
     print("\n");
   };
   printW32(x : Word32) {
-    printInt(word32ToNat c);
+    printInt(word32ToNat x);
     print("\n");
   };
   printCounter() {
@@ -116,7 +116,7 @@ let w32 = actor {
     printW32(c);
     print("\n");
   };
-  readCounter(f : shared Nat -> ()) : () {
+  readCounter(f : shared Word32 -> ()) : () {
     f(c);
   };
 };
