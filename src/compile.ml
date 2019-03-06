@@ -1253,7 +1253,6 @@ module Prim = struct
 
   (* The Word8 and Word16 bits sit in the MSBs of the i32, in this manner
      we can perform almost all operations, with the exception of
-     - Xor (needs masking of result (or ones in one operand))
      - Mul (needs shr of one operand)
      - Shr (needs masking of result)
      - Rot (needs duplication into LSBs, masking of amount and masking of result)
@@ -3314,11 +3313,11 @@ let compile_unop env t op = Syntax.(match op, t with
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
       )
-  | NotOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
+  | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
       StackRep.of_type t,
       Func.share_code env "not32" ["n", I32Type] [I32Type] (fun env ->
         let get_n = G.i (LocalGet (nr 0l)) in
-        compile_unboxed_zero ^^
+        compile_unboxed_const (StackRep.mask_of_type ty) ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Xor))
       )
@@ -3366,10 +3365,7 @@ let compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
-  | Type.Prim Type.                  Word32,  XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-  | Type.Prim Type.(Word8 | Word16 as ty),    XorOp -> compile_unboxed_const (StackRep.padding_of_type ty) ^^
-                                                       G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                                                       G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+  | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | Type.Prim Type.(Word8 | Word16 | Word32), ShLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Shl))
   | Type.Prim Type.                  Word32,  ShROp -> G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
   | Type.Prim Type.(Word8 | Word16 as ty),    ShROp -> G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
