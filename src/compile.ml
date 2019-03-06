@@ -585,7 +585,7 @@ module Heap = struct
 
   (* Heap objects *)
 
-  (* At this level of abstaction, heap objects are just flat arrays of words *)
+  (* At this level of abstraction, heap objects are just flat arrays of words *)
 
   let load_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unshift) in
@@ -773,7 +773,7 @@ end (* ClosureTable *)
 
 module Bool = struct
   (* Boolean literals are either 0 or 1
-     Both are recognized as a unboxed scalar anyways,
+     Both are recognized as unboxed scalars anyways,
      This allows us to use the result of the WebAssembly comparison operators
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
@@ -795,7 +795,7 @@ module BitTagged = struct
      This means we can store an unboxed scalar x as (x << 2).
 
      It also means that 0 and 1 are recognized as non-pointers, so we can use
-     these for false and true, matching the result of WebAssembly’s comparision
+     these for false and true, matching the result of WebAssembly's comparison
      operators.
   *)
   let if_unboxed env retty is1 is2 =
