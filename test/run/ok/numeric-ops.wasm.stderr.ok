@@ -30,12 +30,6 @@ compile_binop: PowOp
 of_type: Float
 compile_binop: PowOp
 of_type: Float
-compile_binop: PowOp
-compile_binop: PowOp
-compile_binop: PowOp
-compile_binop: PowOp
-compile_binop: PowOp
-compile_binop: PowOp
 compile_binop: AddOp
 of_type: Word64
 compile_binop: AddOp

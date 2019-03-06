@@ -1220,8 +1220,7 @@ module BoxedSmallWord = struct
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
-  let box env = Func.share_code env "box_i32" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
+  let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ (ValBlockType (Some I32Type))
@@ -1229,8 +1228,7 @@ module BoxedSmallWord = struct
         (compile_box env get_n)
     )
 
-  let unbox env = Func.share_code env "unbox_i32" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
+  let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         ( get_n ^^ BitTagged.untag_i32 env)
@@ -3279,8 +3277,7 @@ let compile_unop env t op = Syntax.(match op, t with
       )
   | NegOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
       StackRep.of_type t,
-      Func.share_code env "neg32" ["n", I32Type] [I32Type] (fun env ->
-        let get_n = G.i (LocalGet (nr 0l)) in
+      Func.share_code1 env "neg32" ("n", I32Type) [I32Type] (fun env get_n ->
         compile_unboxed_zero ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
@@ -3326,6 +3323,7 @@ let compile_binop env t op =
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
+  | Type.Prim Type.(Word8 | Word16 | Word32), PowOp -> G.i Drop (* TODO *)
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
   | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
