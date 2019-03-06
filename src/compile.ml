@@ -366,7 +366,7 @@ module E = struct
   let add_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    ptr
+    Int32.(add ptr (-1l)) (* Return a shifted pointer *)
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -448,11 +448,17 @@ let from_0_to_n env mk_body =
 
 (* Pointer reference and dereference  *)
 
-let load_ptr : G.t =
+let load_unshifted_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
 
-let store_ptr : G.t =
+let store_unshifted_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
+
+let load_ptr : G.t =
+  G.i (Load {ty = I32Type; align = 2; offset = 1l; sz = None})
+
+let store_ptr : G.t =
+  G.i (Store {ty = I32Type; align = 2; offset = 1l; sz = None})
 
 module Func = struct
   (* This module contains basic bookkeeping functionality to define functions,
@@ -512,10 +518,11 @@ module Heap = struct
   let word_size = 4l
 
   (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff.  *)
+     we allocate stuff. This the actual memory offset, not-shifted yet *)
   let heap_global = 2l
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
+  let get_shifted_heap_ptr = get_heap_ptr ^^ compile_add_const (-1l)
 
   (* Page allocation. Ensures that the memory up to the heap pointer is allocated. *)
   let grow_memory env =
@@ -544,8 +551,10 @@ module Heap = struct
   (* Dynamic allocation *)
   let dyn_alloc_words env =
     Func.share_code1 env "alloc_words" ("n", I32Type) [I32Type] (fun env get_n ->
-      (* expect the size (in words), returns the pointer *)
-      get_heap_ptr ^^
+      (* expects the size (in words), returns the pointer *)
+
+      (* return the current pointer (shifted) *)
+      get_shifted_heap_ptr ^^
 
       (* Update heap pointer *)
       get_heap_ptr ^^
@@ -565,28 +574,32 @@ module Heap = struct
     )
 
   (* Static allocation (always words)
-     (uses dynamic allocation for smaller and more readable code *)
+     (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
     dyn_alloc_words env
 
   (* Heap objects *)
 
-  (* At this level of abstactions, heap objects are just flat arrays of words *)
+  (* At this level of abstaction, heap objects are just flat arrays of words *)
 
   let load_field (i : int32) : G.t =
-    G.i (Load {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
+    let offset = Int32.(add (mul word_size i) 1l) in
+    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
 
   let store_field (i : int32) : G.t =
-    G.i (Store {ty = I32Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
+    let offset = Int32.(add (mul word_size i) 1l) in
+    G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
   (* Although we occationally want to treat to of them as a 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
-    G.i (Load {ty = I64Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
+    let offset = Int32.(add (mul word_size i) 1l) in
+    G.i (Load {ty = I64Type; align = 2; offset; sz = None})
 
   let store_field64 (i : int32) : G.t =
-    G.i (Store {ty = I64Type; align = 2; offset = Wasm.I32.mul word_size i; sz = None})
+    let offset = Int32.(add (mul word_size i) 1l) in
+    G.i (Store {ty = I64Type; align = 2; offset; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
   let obj env element_instructions : G.t =
@@ -605,6 +618,7 @@ module Heap = struct
     get_heap_obj
 
   (* Convenience functions related to memory *)
+  (* Works on unshifted memory addresses! *)
   let memcpy env =
     Func.share_code3 env "memcpy" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
       get_n ^^
@@ -620,6 +634,15 @@ module Heap = struct
 
           G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
       )
+    )
+
+  (* Variant for shifted memory addresses! *)
+  let memcpy_shifted env =
+    Func.share_code3 env "memcpy_shifted" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
+      get_from ^^ compile_add_const 1l ^^
+      get_to ^^ compile_add_const 1l ^^
+      get_n ^^
+      memcpy env
     )
 
 end (* Heap *)
@@ -660,7 +683,7 @@ module ElemHeap = struct
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
       get_ref ^^
-      store_ptr ^^
+      store_unshifted_ptr ^^
 
       (* Bump counter *)
       get_ref_ctr ^^
@@ -674,7 +697,7 @@ module ElemHeap = struct
       get_ref_idx ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
-      load_ptr
+      load_unshifted_ptr
     )
 
 end (* ElemHeap *)
@@ -699,7 +722,7 @@ module ClosureTable = struct
   (* For reasons I do not recall we use the first word of the table as the counter,
      and not a global.
   *)
-  let get_counter = compile_unboxed_const loc ^^ load_ptr
+  let get_counter = compile_unboxed_const loc ^^ load_unshifted_ptr
 
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
@@ -715,13 +738,13 @@ module ClosureTable = struct
       compile_mul_const Heap.word_size ^^
       compile_add_const loc ^^
       get_ptr ^^
-      store_ptr ^^
+      store_unshifted_ptr ^^
 
       (* Bump counter *)
       compile_unboxed_const loc ^^
       get_counter ^^
       compile_add_const 1l ^^
-      store_ptr
+      store_unshifted_ptr
     )
 
   (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
@@ -730,15 +753,14 @@ module ClosureTable = struct
       get_closure_idx ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const loc ^^
-      load_ptr
+      load_unshifted_ptr
     )
 
 end (* ClosureTable *)
 
 module Bool = struct
   (* Boolean literals are either 0 or 1
-     The 1 is recognized as a unboxed scalar anyways,
-     while the 0 is special (see below).
+     Both are recognized as a unboxed scalar anyways,
      This allows us to use the result of the WebAssembly comparison operators
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
@@ -750,52 +772,49 @@ end (* Bool *)
 
 
 module BitTagged = struct
-  (* This module takes care of pointer tagging: Pointer are always aligned, so they
-     have their LSB bit unset. We use that and store an unboxed scalar x
-     as (x << 1 | 1).
-     Special case: The zero pointer is considered a scalar.
+  let scalar_shift = 2l
+
+  (* This module takes care of pointer tagging:
+
+     A pointer to an object at offset `i` on the heap is represented as
+     `i-1`, so the low two bits of the pointer are always set.
+
+     This means we can store an unboxed scalar x as (x << 2).
+
+     It also means that 0 and 1 are recognized as non-pointers, so we can use
+     these for false and true, matching the result of WebAssembly’s comparision
+     operators.
   *)
   let if_unboxed env retty is1 is2 =
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
       get_x ^^
-      compile_unboxed_const 1l ^^
+      compile_unboxed_const 0x2l ^^
       G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
       (* Check bit *)
-      compile_unboxed_const 1l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None)
-        (Bool.lit true ^^ G.i Return) G.nop ^^
-      (* Also check if it is the null-pointer *)
-      get_x ^^
-      compile_unboxed_const 0l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     ) ^^
     G.if_ retty is1 is2
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
-    compile_unboxed_const 1l ^^
+    compile_unboxed_const scalar_shift ^^
     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_unboxed_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-    compile_unboxed_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or))
+    compile_unboxed_const scalar_shift ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
   (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
   let untag_i32 env =
-    compile_unboxed_const 1l ^^
+    compile_unboxed_const scalar_shift ^^
     G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
 
   let tag_i32 =
-    compile_unboxed_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-    compile_unboxed_const 1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or))
+    compile_unboxed_const scalar_shift ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
 end (* BitTagged *)
 
@@ -976,7 +995,7 @@ module Opt = struct
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
-  let null = compile_unboxed_const 3l
+  let null = compile_unboxed_const 5l
 
   let inject env e = Tagged.obj env Tagged.Some [e]
   let project = Heap.load_field Tagged.header_size
@@ -1489,10 +1508,10 @@ module Text = struct
 
       (* Copy first string *)
       get_x ^^
-      compile_add_const (Int32.mul Heap.word_size header_size) ^^
+      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
 
       get_z ^^
-      compile_add_const (Int32.mul Heap.word_size header_size) ^^
+      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
 
       get_len1 ^^
 
@@ -1500,10 +1519,10 @@ module Text = struct
 
       (* Copy second string *)
       get_y ^^
-      compile_add_const (Int32.mul Heap.word_size header_size) ^^
+      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
 
       get_z ^^
-      compile_add_const (Int32.mul Heap.word_size header_size) ^^
+      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
       get_len1 ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
 
@@ -1534,13 +1553,13 @@ module Text = struct
       get_len1 ^^
       from_0_to_n env (fun get_i ->
         get_x ^^
-        compile_add_const (Int32.mul Heap.word_size header_size) ^^
+        compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         get_y ^^
-        compile_add_const (Int32.mul Heap.word_size header_size) ^^
+        compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
@@ -1574,8 +1593,7 @@ module Array = struct
       (* No need to check the lower bound, we interpret is as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
-      get_array ^^
-      Heap.load_field len_field ^^
+      get_array ^^ Heap.load_field len_field ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
 
@@ -1954,7 +1972,8 @@ module Dfinity = struct
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
       (* Calculate the offset *)
       get_string ^^
-      compile_add_const (Int32.mul Heap.word_size Text.header_size) ^^
+      compile_add_const (Int32.(add (mul Heap.word_size Text.header_size)) 1l) ^^
+
       (* Calculate the length *)
       get_string ^^
       Heap.load_field (Text.len_field) ^^
@@ -2149,7 +2168,7 @@ module Serialization = struct
     TODO: Cycles are not detected yet.
 
     We separate code for copying and the code for pointer adjustment because
-    the latter can be used again in the deseriazliation code.
+    the latter can be used again in the deserialization code.
 
     The deserialization is analogous:
     * We internalize the elembuf into the table, bumping the table reference
@@ -2164,26 +2183,31 @@ module Serialization = struct
 
   let serialize_go env =
     Func.share_code1 env "serialize_go" ("x", I32Type) [I32Type] (fun env get_x ->
-      let (set_copy, get_copy) = new_local env "x" in
-
-      Heap.get_heap_ptr ^^
-      set_copy ^^
+      let (set_copy, get_copy) = new_local env "x'" in
 
       get_x ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         ( get_x )
-        ( get_x ^^ Tagged.branch env (ValBlockType (Some I32Type))
+        ( get_x ^^
+          Tagged.branch env (ValBlockType (Some I32Type))
           [ Tagged.Int,
-            get_x ^^
             Heap.alloc env 2l ^^
+            set_copy ^^
+
+            get_x ^^
+            get_copy ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            Heap.memcpy env ^^
+            Heap.memcpy_shifted env ^^
+
             get_copy
           ; Tagged.Reference,
+            Heap.alloc env 2l ^^ set_copy ^^
+
             get_x ^^
-            Heap.alloc env 2l ^^
+            get_copy ^^
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            Heap.memcpy env ^^
+            Heap.memcpy_shifted env ^^
+
             get_copy
           ; Tagged.Some,
             Opt.inject env (
@@ -2205,13 +2229,13 @@ module Serialization = struct
               get_len ^^
               compile_add_const Array.header_size ^^
               Heap.dyn_alloc_words env ^^
-              G.i Drop ^^
+              set_copy ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
-              Heap.memcpy env ^^
+              Heap.memcpy_shifted env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2242,14 +2266,14 @@ module Serialization = struct
 
               get_len ^^
               Heap.dyn_alloc_words env ^^
-              G.i Drop ^^
+              set_copy ^^
 
               (* Copy header and data *)
               get_x ^^
               get_copy ^^
               get_len ^^
               compile_mul_const Heap.word_size ^^
-              Heap.memcpy env ^^
+              Heap.memcpy_shifted env ^^
 
               get_copy
             end
@@ -2264,13 +2288,13 @@ module Serialization = struct
               compile_mul_const 2l ^^
               compile_add_const Object.header_size ^^
               Heap.dyn_alloc_words env ^^
-              G.i Drop ^^
+              set_copy ^^
 
               (* Copy header *)
               get_x ^^
               get_copy ^^
               compile_unboxed_const (Int32.mul Heap.word_size Object.header_size) ^^
-              Heap.memcpy env ^^
+              Heap.memcpy_shifted env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2289,7 +2313,6 @@ module Serialization = struct
                 compile_mul_const Heap.word_size ^^
                 get_x ^^
                 G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
 
                 load_ptr ^^
                 store_ptr ^^
@@ -2526,11 +2549,15 @@ module Serialization = struct
     then Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env _ -> G.i Unreachable)
     else Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env get_x ->
       let (set_start, get_start) = new_local env "old_heap" in
+      let (set_start_shifted, get_start_shifted) = new_local env "old_heap_shifted" in
       let (set_end, get_end) = new_local env "end" in
+      let (set_end_shifted, get_end_shifted) = new_local env "end_shifted" in
       let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
       let (set_databuf, get_databuf) = new_local env "databuf" in
 
       (* Remember where we start to copy to *)
+      Heap.get_shifted_heap_ptr ^^
+      set_start_shifted ^^
       Heap.get_heap_ptr ^^
       set_start ^^
 
@@ -2545,6 +2572,8 @@ module Serialization = struct
           store_ptr ^^
 
           (* Remember the end *)
+          Heap.get_shifted_heap_ptr ^^
+          set_end_shifted ^^
           Heap.get_heap_ptr ^^
           set_end ^^
 
@@ -2557,31 +2586,33 @@ module Serialization = struct
           G.i Drop ^^
 
           (* Remember the end *)
+          Heap.get_shifted_heap_ptr ^^
+          set_end_shifted ^^
           Heap.get_heap_ptr ^^
           set_end ^^
 
           (* Adjust pointers *)
-          get_start ^^
-          get_end ^^
+          get_start_shifted ^^
+          get_end_shifted ^^
           compile_unboxed_zero ^^ get_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           shift_pointers env ^^
 
           (* Extract references, and remember how many there were *)
-          get_start ^^
-          get_end ^^
-          get_end ^^
+          get_start_shifted ^^
+          get_end_shifted ^^
+          get_end_shifted ^^
           extract_references env ^^
           set_tbl_size
         ) ^^
 
       (* Create databuf *)
       get_start ^^
-      get_end ^^ get_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      get_end_shifted ^^ get_start_shifted ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
       G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
       set_databuf ^^
 
       (* Append this reference at the end of the extracted references *)
-      get_end ^^
+      get_end_shifted ^^
       get_tbl_size ^^ compile_mul_const Heap.word_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       get_databuf ^^
@@ -2621,7 +2652,7 @@ module Serialization = struct
       let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
 
       (* new positions *)
-      Heap.get_heap_ptr ^^
+      Heap.get_shifted_heap_ptr ^^
       set_start ^^
 
       get_elembuf ^^ G.i (Call (nr (Dfinity.elem_length_i env))) ^^
@@ -2629,11 +2660,11 @@ module Serialization = struct
 
       (* Get scratch space (one word) *)
       Heap.alloc env 1l ^^ G.i Drop ^^
-      get_start ^^ Heap.set_heap_ptr ^^
+      get_start ^^ compile_add_const 1l ^^ Heap.set_heap_ptr ^^
 
       (* First load databuf reference (last entry) at the heap position somehow *)
       (* now load the databuf *)
-      get_start ^^
+      get_start ^^ compile_add_const 1l ^^
       compile_unboxed_const 1l ^^
       get_elembuf ^^
       get_tbl_size ^^ compile_sub_const 1l ^^
@@ -2646,10 +2677,10 @@ module Serialization = struct
 
       (* Get some scratch space *)
       get_data_len ^^ Heap.dyn_alloc_bytes env ^^ G.i Drop ^^
-      get_start ^^ Heap.set_heap_ptr ^^
+      get_start ^^ compile_add_const 1l ^^ Heap.set_heap_ptr ^^
 
       (* Load data from databuf *)
-      get_start ^^
+      get_start ^^ compile_add_const 1l ^^
       get_data_len ^^
       get_databuf ^^
       compile_unboxed_const 0l ^^
@@ -2667,13 +2698,14 @@ module Serialization = struct
           get_start ^^
           get_data_len ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          compile_add_const 1l ^^
           Heap.set_heap_ptr ^^
           Heap.grow_memory env ^^
 
           (* Fix pointers *)
           get_start ^^
-          Heap.get_heap_ptr ^^
-          get_start ^^
+          Heap.get_shifted_heap_ptr ^^
+          get_start ^^ compile_add_const 1l ^^
           shift_pointers env ^^
 
           (* Load references *)
@@ -2686,8 +2718,8 @@ module Serialization = struct
           (* Fix references *)
           (* Extract references *)
           get_start ^^
-          Heap.get_heap_ptr ^^
-          Heap.get_heap_ptr ^^
+          Heap.get_shifted_heap_ptr ^^
+          Heap.get_shifted_heap_ptr ^^
           intract_references env ^^
 
           (* return allocated thing *)
@@ -2710,6 +2742,8 @@ module GC = struct
        These therefore need to live in a separate area of memory
        (could be mutable array of pointers, similar to the reference table)
   *)
+
+  let gc_enabled = false
 
   (* If the pointer at ptr_loc points after begin_from_space, copy
      to after end_to_space, and replace it with a pointer, adjusted for where
@@ -2776,6 +2810,8 @@ module GC = struct
   )
 
   let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
+    if not gc_enabled then G.nop else
+
     (* Copy all roots. *)
     let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
     let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
