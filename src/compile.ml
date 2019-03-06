@@ -3362,7 +3362,7 @@ let compile_relop env t op =
 
 
 (* compile_lexp is used for expressions on the left of an
-assignment operator, produces some code (with sideffect), and some pure code *)
+assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
