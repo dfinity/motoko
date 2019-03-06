@@ -3,7 +3,8 @@
 Critical modules
 ==================
  - [x] **List**: See [`List` module from SML Basis library](http://sml-family.org/Basis/list.html).
- - [ ] **Hashtrie**: Persistent maps, as functional hash tries.
+ - [x] **Hashtrie**: Persistent maps, as functional hash tries.
+ - [x] **Set**: Persistent sets, based directly on persistent maps.
  - [ ] **Hashtable**: Mutable maps, as imperative hash tables.
 
 Secondary modules
