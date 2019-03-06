@@ -2159,7 +2159,7 @@ module Serialization = struct
       pointer.
     * The last entry of the table is the dataref from above. Since we don't
       need it after this, we decrement the table reference pointer by one.
-    * We internalize this databuf intot the heap space, bumping the heap
+    * We internalize this databuf into the heap space, bumping the heap
       pointer.
     * We traverse this space and adjust all pointers.
       Same for indices into the reference table.
