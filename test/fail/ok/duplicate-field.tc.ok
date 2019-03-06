@@ -1,1 +1,1 @@
-duplicate-field.as:4.3-4.4: type error, duplicate field name m in object
+duplicate-field.as:4.3-4.4: type error, duplicate definition for m in block

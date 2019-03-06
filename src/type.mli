@@ -1,6 +1,8 @@
 (* Representation *)
 
-type con = Con.t
+type lab = string
+type var = string
+
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor | Module
@@ -21,15 +23,14 @@ type prim =
 
 type t = typ
 and typ =
-  | Var of string * int                       (* variable *)
+  | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of sharing * control *
-            bind list * typ list * typ list   (* function *)
+  | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
@@ -38,24 +39,25 @@ and typ =
   | Pre                                       (* pre-type *)
   | Kind of con * kind
 
-and bind = {var : string; bound : typ}
-and field = {name : string; typ : typ}
-
-and kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
 
 (* field ordering *)
 
 val compare_field : field -> field -> int
 
-type con_env = kind Con.Env.t
+(* CRUSSO TBD type con_env = kind Con.Env.t *)
 
 (* n-ary argument/result sequences *)
 
 val seq: typ list -> typ
 val as_seq : typ -> typ list
 
+and bind = {var : var; bound : typ}
+and field = {lab : lab; typ : typ}
+
+and con = kind Con.t
+and kind =
+  | Def of bind list * typ
+  | Abs of bind list * typ
 
 (* Short-hands *)
 
@@ -92,40 +94,53 @@ val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 
-val as_prim_sub : prim -> con_env -> typ -> unit
-val as_obj_sub : string -> con_env -> typ -> obj_sort * field list
-val as_array_sub : con_env -> typ -> typ
-val as_opt_sub : con_env -> typ -> typ
-val as_tup_sub : int -> con_env -> typ -> typ list
-val as_unit_sub : con_env -> typ -> unit
-val as_pair_sub : con_env -> typ -> typ * typ
-val as_func_sub : int -> con_env -> typ -> bind list * typ * typ
-val as_mono_func_sub : con_env -> typ -> typ * typ
-val as_async_sub : con_env -> typ -> typ
+val as_prim_sub : prim -> typ -> unit
+val as_obj_sub : string -> typ -> obj_sort * field list
+val as_array_sub : typ -> typ
+val as_opt_sub : typ -> typ
+val as_tup_sub : int -> typ -> typ list
+val as_unit_sub : typ -> unit
+val as_pair_sub : typ -> typ * typ
+val as_func_sub : int -> typ -> bind list * typ * typ
+val as_mono_func_sub : typ -> typ * typ
+val as_async_sub : typ -> typ
+
+val seq : typ list -> typ
+val as_seq : typ -> typ list
 
 val lookup_field : string -> field list -> typ
+val compare_field : field -> field -> int
+
+val span : typ -> int option
+
+
 
 val lookup_typ_field : string -> field list -> (con * kind)
 
-val span : con_env -> typ -> int option
+(* Constructors *)
 
+val set_kind : con -> kind -> unit
+
+module ConSet : Dom.S with type elt = con
 
 (* Normalization and Classification *)
 
-val normalize : con_env -> typ -> typ
-val promote : con_env -> typ -> typ
+val normalize : typ -> typ
+val promote : typ -> typ
 
 exception Unavoidable of con
-val avoid : con_env -> con_env -> typ -> typ (* raise Unavoidable *)
+val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
 
 (* Equivalence and Subtyping *)
 
-val eq : con_env -> typ -> typ -> bool
-val sub : con_env -> typ -> typ -> bool
+val eq : typ -> typ -> bool
+val eq_kind : kind -> kind -> bool
 
-val lub : con_env -> typ -> typ -> typ
-val glb : con_env -> typ -> typ -> typ
+val sub : typ -> typ -> bool
+
+val lub : typ -> typ -> typ
+val glb : typ -> typ -> typ
 
 
 (* First-order substitution *)
@@ -134,7 +149,7 @@ val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
-val open_binds : con_env -> bind list -> typ list * con_env
+val open_binds : bind list -> typ list
 
 
 (* Environments *)
@@ -150,4 +165,4 @@ val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
 
-val string_of_typ_expand : con_env -> typ -> string
+val string_of_typ_expand : typ -> string

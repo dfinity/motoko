@@ -175,16 +175,13 @@ let make_async_message id v =
     (* assert (false) *)
 
 
-let make_message id t v : V.value =
-  match t with
-  | T.Func (_, _, _, _, []) ->
-    make_unit_message id.it v
-  | T.Func (_, _, _, _, [T.Async _]) ->
+let make_message x cc v : V.value =
+  match cc.V.control with
+  | T.Returns ->
+    make_unit_message x v
+  | T.Promises ->
     assert (not !Flags.async_lowering);
-    make_async_message id.it v
-  | _ ->
-    failwith (Printf.sprintf "actorfield: %s %s" id.it (T.string_of_typ t))
-    (* assert false *)
+    make_async_message x v
 
 
 let extended_prim s typ at =
@@ -300,10 +297,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ActorE (id, fields, _) ->
-    interpret_obj env id fields k
-  | DotE (exp1, {it = Syntax.Name n; _})
-  | ActorDotE (exp1, {it = Syntax.Name n; _}) ->
+  | DotE (exp1, {it = Name n; _})
+  | ActorDotE (exp1, {it = Name n; _}) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)
@@ -345,8 +340,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 *)
       )
     )
-  | BlockE (decs, _)->
-    interpret_block env decs None k
+  | BlockE (decs, exp1) ->
+     interpret_block env None decs exp1 k
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -434,16 +429,34 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | NewObjE (sort, ids, _) ->
+  | FuncE (x, cc, _typbinds, pat, _typ, exp) ->
+    let f = interpret_func env x pat
+      (fun env' -> interpret_exp env' exp) in
+    let v = V.Func (cc, f) in
+    let v =
+      match cc.Value.sort with
+      | T.Sharable -> make_message x cc v
+      | _-> v
+    in
+    k v
+  | ActorE (id, ds, fs, _) ->
+    let ve = declare_decs ds (declare_id id) in
+    let env' = adjoin_vals env ve in
+    interpret_decs env' ds (fun _ ->
+      let obj = interpret_fields env' fs in
+      define_id env' id obj;
+      k obj)
+  | NewObjE (sort, fs, _) ->
+    k (interpret_fields env fs)
+
+and interpret_fields env fs =
     let ve =
       List.fold_left
-        (fun ve (name, id) ->
-          V.Env.disjoint_add (Syntax.string_of_name name.it)
-            (Lib.Promise.value (find id.it env.vals)) ve
-        ) V.Env.empty ids
-    in k (V.Obj ve)
-
-
+        (fun ve f ->
+          let Name name = f.it.name.it in
+          V.Env.disjoint_add name (Lib.Promise.value (find f.it.var.it env.vals)) ve
+        ) V.Env.empty fs in
+    V.Obj ve
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -558,57 +571,19 @@ and match_pats pats vs ve : val_env option =
     )
   | _ -> assert false
 
-
-(* Actors *)
-
-and interpret_obj env id fields (k : V.value V.cont) =
-  let ve = declare_exp_fields fields (declare_id id) in
-  let env' = adjoin_vals env ve in
-  interpret_fields env'  fields V.Env.empty (fun v ->
-    define_id env' id v;
-    k v
-  )
-
-and declare_exp_fields fields ve : val_env =
-  match fields with
-  | [] -> ve
-  | {it = {id; name; mut; priv; _}; _}::fields' ->
-    let p = Lib.Promise.make () in
-    let ve' = V.Env.singleton id.it p in
-    declare_exp_fields fields' (V.Env.adjoin ve ve')
-
-
-and interpret_fields env fields ve (k : V.value V.cont) =
-  match fields with
-  | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
-  | {it = {id; name; mut; priv; exp}; _}::fields' ->
-    interpret_exp env exp (fun v ->
-      let v' =
-        match mut.it with
-        | Syntax.Const -> v
-        | Syntax.Var -> V.Mut (ref v)
-      in
-      define_id env id v';
-      let ve' =
-        if priv.it = Syntax.Private
-        then ve
-        else V.Env.add (Syntax.string_of_name name.it) (V.Env.find id.it env.vals) ve
-      in interpret_fields env fields' ve' k
-    )
-
 (* Blocks and Declarations *)
 
-and interpret_block env decs ro (k : V.value V.cont) =
+and interpret_block env ro decs exp k =
   let ve = declare_decs decs V.Env.empty in
   Lib.Option.app (fun r -> r := ve) ro;
-  interpret_decs (adjoin_vals env ve) decs k
-
+  let env' = adjoin_vals env ve in
+  interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
 
 and declare_dec dec : val_env =
   match dec.it with
-  | ExpD _ | TypD _ -> V.Env.empty
+  | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
-  | VarD (id, _) | FuncD (_, id, _, _, _, _) -> declare_id id
+  | VarD (id, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -618,44 +593,27 @@ and declare_decs decs ve : val_env =
     declare_decs decs' (V.Env.adjoin ve ve')
 
 
-and interpret_dec env dec (k : V.value V.cont) =
+and interpret_dec env dec k =
   match dec.it with
-  | ExpD exp ->
-    interpret_exp env exp k
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
-      k V.unit
+      k ()
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));
-      k V.unit
+      k ()
     )
-  | TypD _ ->
-    k V.unit
-  | FuncD (cc, id, _typbinds, pat, _typ, exp) ->
-    let f = interpret_func env id pat
-      (fun env' -> interpret_exp env' exp) in
-    let v = V.Func (V.call_conv_of_typ dec.note.Syntax.note_typ, f) in
-    let v =
-      match cc.Value.sort with
-      | T.Sharable -> make_message id dec.note.Syntax.note_typ v
-      | _-> v
-    in
-    define_id env id v;
-    k v
+  | TypD _ -> k ()
 
-and interpret_decs env decs (k : V.value V.cont) =
+and interpret_decs env decs (k : unit V.cont) =
   match decs with
-  | [] -> k V.unit
-  | [dec] -> interpret_dec env dec k
-  | dec::decs' ->
-    interpret_dec env dec (fun _v -> interpret_decs env decs' k)
+  | [] -> k ()
+  | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
-
-and interpret_func env id pat f v (k : V.value V.cont) =
-  if !Flags.trace then trace "%s%s" id.it (string_of_arg v);
+and interpret_func env x pat f v (k : V.value V.cont) =
+  if !Flags.trace then trace "%s%s" x (string_of_arg v);
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list"
@@ -678,13 +636,13 @@ and interpret_func env id pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope p : V.value option * scope =
+let interpret_prog scope ((ds, exp), _flavor) : V.value option * scope =
   let env = env_of_scope scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    interpret_block env (Some ve) ds exp  (fun v -> vo := Some v)
   );
   Scheduler.run ();
   !vo, !ve

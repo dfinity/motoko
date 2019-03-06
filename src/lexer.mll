@@ -163,6 +163,7 @@ rule token mode = parse
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 
+  | '.' (num as s) { DOT_NUM s }
   | nat as s { NAT s }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }

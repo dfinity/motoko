@@ -2,7 +2,7 @@ open Type
 
 type val_env = typ Env.t
 type typ_env = con Env.t
-type con_env = Type.con_env
+type con_env = ConSet.t
 
 type scope =
   { val_env : val_env;

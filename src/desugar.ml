@@ -41,21 +41,12 @@ and exp' at note = function
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
-  | S.ObjE (s, i, es) ->
-    let public_es = List.filter (fun e -> e.it.S.priv.it == Syntax.Public) es in
-    let obj_typ =
-      T.Obj(s.it,
-            List.sort T.compare_field
-              (List.map (fun {it = { Syntax.name; exp; mut; priv; _}; _} ->
-                   let t = exp.note.S.note_typ in
-                   let t = if mut.it = Syntax.Var then Type.Mut t else t in
-                   { Type.name = S.string_of_name name.it;
-                     Type.typ = t }) public_es))
-    in
-    obj at s None i es obj_typ
-  | S.DotE (e, sr, n) ->
-    begin match (!sr) with
-    | Type.Actor -> I.ActorDotE (exp e, n)
+  | S.ObjE (s, es) ->
+    obj at s None es note.S.note_typ
+  | S.DotE (e, x) ->
+    let n = {x with it = I.Name x.it} in
+    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    | Type.Actor, _ -> I.ActorDotE (exp e, n)
     | _ -> I.DotE (exp e, n)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
@@ -63,11 +54,16 @@ and exp' at note = function
     let t = Type.as_array note.S.note_typ in
     I.ArrayE (m, Type.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
+  | S.FuncE (name, s, tbs, p, ty, e) ->
+    let cc = Value.call_conv_of_typ note.S.note_typ in
+    I.FuncE (name, cc, typ_binds tbs, pat p, ty.note, exp e)
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
     I.CallE (cc, exp e1, inst, exp e2)
-  | S.BlockE (ds, ot) -> I.BlockE (decs ds, !ot)
+  | S.BlockE [] -> I.TupE []
+  | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
+  | S.BlockE ds -> I.BlockE (block (Type.is_unit note.S.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -84,46 +80,40 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.DecE (d, ot) -> I.BlockE (decs [d], !ot)
 
-and field_to_dec (f : S.exp_field) : Ir.dec =
-  let {it={S.id;S.exp=e;S.mut;_};at;note} = f in
-  let d = match mut.it with
-    | S.Const ->
-      letD (idE id (Effect.typ e))
-        (exp e)
-    | S.Var ->
-      varD id (exp e)
-  in
-  { d with at = at }
-
-and field_to_obj_entry (f : S.exp_field) =
-  match f.it.S.priv.it with
-  | S.Private -> []
-  | S.Public -> [ (f.it.S.name, f.it.S.id) ]
-
-and obj at s class_id self_id es obj_typ =
+and obj at s self_id es obj_typ =
   match s.it with
-  | Type.Object _ | Type.Module -> build_obj at None s self_id es obj_typ (* TBR *)
-  | Type.Actor -> I.ActorE (self_id, exp_fields es, obj_typ)
+  | Type.Object _ | T.Module -> build_obj at s self_id es obj_typ
+  | Type.Actor -> build_actor at self_id es obj_typ
 
-and build_obj at class_id s self_id es obj_typ =
-  let self =  idE self_id obj_typ in
-  I.BlockE (
-      List.map (field_to_dec) es @
-        [ letD self
-            (newObjE s (List.concat (List.map field_to_obj_entry es)) obj_typ);
-	  expD self
-        ],
-      obj_typ)
+and build_fields obj_typ =
+    match obj_typ with
+    | Type.Obj (_, fields) ->
+      List.map (fun {Type.lab; Type.typ} ->
+        { it = { I.name = I.Name lab @@ no_region
+               ; I.var = lab @@ no_region
+               }
+        ; at = no_region
+        ; note = typ
+        }) fields
+    | _ -> assert false
 
-and exp_fields fs = List.map exp_field fs
+and build_actor at self_id es obj_typ =
+  let fs = build_fields obj_typ in
+  let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let name = match self_id with
+    | Some n -> n
+    | None -> ("anon-actor-" ^ string_of_pos at.left) @@ at in
+  I.ActorE (name, ds, fs, obj_typ)
 
-and exp_field f = phrase exp_field' f
-
-and exp_field' (f : S.exp_field') =
-  S.{ I.name = f.name; I.id = f.id; I.exp = exp f.exp; I.mut = f.mut; I.priv = f.priv }
-
+and build_obj at s self_id es obj_typ =
+  let fs = build_fields obj_typ in
+  let obj_e = newObjE s.it fs obj_typ in
+  let ret_ds, ret_o =
+    match self_id with
+    | None -> [], obj_e
+    | Some id -> let self = idE id obj_typ in [ letD self obj_e ], self
+  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -137,20 +127,26 @@ and typ_bind tb =
   ; note = ()
   }
 
-and decs ds =
+and block force_unit ds =
+  let extra = extra_typDs ds in
+  let prefix, last = Lib.List.split_last ds in
+  match force_unit, last.it with
+  | _, S.ExpD e ->
+    (extra @ List.map dec prefix, exp e)
+  | false, S.LetD ({it = S.VarP x; _}, e) ->
+    (extra @ List.map dec ds, idE x e.note.S.note_typ)
+  | false, S.LetD (p', e') ->
+    let x = fresh_var (e'.note.S.note_typ) in
+    (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+  | _, _ ->
+    (extra @ List.map dec ds, tupE [])
+
+and extra_typDs ds =
   match ds with
   | [] -> []
   | d::ds ->
     match d.it with
-    | S.ClassD(_, con_id, _, _, _, _, _) ->
-      let (c,k) = match con_id.note with Some p -> p | _ -> assert false in
-      let typD = { it = I.TypD (c,k);
-                   at = d.at;
-                   note = { S.note_typ = T.unit;
-                            S.note_eff = T.Triv }
-                 }
-      in
-      typD :: (phrase' dec' d) :: (decs ds)
+(* CRUSSO TBD
     | S.ModuleD (id, _)->
         build_module id ds d.note.S.note_typ ::
         { it = I.ExpD (idE id d.note.S.note_typ);
@@ -158,19 +154,34 @@ and decs ds =
           note = d.note;
         } ::
           (decs ds)
-    | _ -> (phrase' dec' d) :: (decs ds)
+ *)
+    | S.ClassD (id, _, _, _, _, _) ->
+      let c = Lib.Option.value id.note in
+      let typD = I.TypD c @@ d.at in
+      typD :: extra_typDs ds
+    | _ -> extra_typDs ds
+
+and decs ds = extra_typDs ds @ List.map dec ds
+
+and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
-  | S.ExpD e -> I.ExpD (exp e)
-  | S.LetD (p, e) -> I.LetD (pat p, exp e)
+  | S.ExpD e -> (expD (exp e)).it
+  | S.LetD (p, e) ->
+    let p' = pat p in
+    let e' = exp e in
+    (* HACK: remove this once backend supports recursive actors *)
+    begin match p'.it, e'.it with
+    | I.VarP i, I.ActorE (_, ds, fs, t) ->
+      I.LetD (p', {e' with it = I.ActorE (i, ds, fs, t)})
+    | _ -> I.LetD (p', e')
+    end
   | S.VarD (i, e) -> I.VarD (i, exp e)
-  | S.FuncD (s, i, tbs, p, ty, e) ->
-    let cc = Value.call_conv_of_typ n.S.note_typ in
-    I.FuncD (cc, i, typ_binds tbs, pat p, ty.note, exp e)
-  | S.TypD (con_id, typ_bind, t) ->
-    let (c,k) = Lib.Option.value con_id.note in
-    I.TypD (c,k)
-  | S.ClassD (fun_id, typ_id, tbs, s, p, self_id, es) ->
+  | S.TypD (id, typ_bind, t) ->
+    let c = Lib.Option.value id.note in
+    I.TypD c
+  | S.ClassD (id, tbs, s, p, self_id, es) ->
+    let id' = {id with note = ()} in
     let cc = Value.call_conv_of_typ n.S.note_typ in
     let inst = List.map
                  (fun tb ->
@@ -178,17 +189,24 @@ and dec' at n d = match d with
                    | None -> assert false
                    | Some c -> T.Con (c, []))
                  tbs in
+    let fun_typ = n.S.note_typ in
     let obj_typ =
-      match n.S.note_typ with
+      match fun_typ with
       | T.Func(s,c,bds,dom,[rng]) ->
         assert(List.length inst = List.length bds);
-        T.open_ inst rng
+        T.promote (T.open_ inst rng)
       | _ -> assert false
     in
-    I.FuncD (cc, fun_id, typ_binds tbs, pat p, obj_typ, (* TBR *)
-             { it = obj at s (Some fun_id) self_id es obj_typ;
-               at = at;
-               note = { S.note_typ = obj_typ; S.note_eff = T.Triv } })
+    let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
+    let fn = {
+      it = I.FuncE (id.it, cc, typ_binds tbs, pat p, obj_typ,
+         { it = obj at s (Some self_id) es obj_typ;
+           at = at;
+           note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
+      at = at;
+      note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
+    } in
+    I.LetD (varPat, fn)
   | S.ModuleD(id, ds) -> assert false
 
 and field_typ_to_obj_entry (fld : T.field) =
@@ -229,16 +247,16 @@ and pat' = function
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _) -> pat' p.it
 
-and prog p = phrase decs p
+and prog (p : Syntax.prog) : Ir.prog =
+  begin match p.it with
+    | [] -> ([], tupE [])
+    | _ -> block false p.it
+  end
+  , { I.has_await = true
+    ; I.has_async_typ = true
+    }
 
 (* validation *)
 
-let check_prog scope prog =
-  let env = Check_ir.env_of_scope scope  in
-  Check_ir.check_prog env prog
-
-let transform scope p =
-  let p' = prog p in
-  check_prog scope p';
-  p'
+let transform scope p = prog p
 

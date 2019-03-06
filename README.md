@@ -27,6 +27,7 @@ git -C nix/dev submodule update --init --recursive
 
 To update, just run the last two commands again.
 
+
 ## Development using Nix
 
 This is the command that should always pass on master is the following, which builds everything:
@@ -52,6 +53,7 @@ nix-build -A js
 By default, `dvm` is built using the V8 engine. To build with the Haskell
 engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
+
 ## Development without Nix
 
 You can get a development environment that is independent of nix (although
@@ -68,7 +70,7 @@ installing all required tools without nix is out of scope).
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
    ```
-   cd $(nix-build -Q -A wasm.src)
+   cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
  * Install the `wasm` tool, using
@@ -84,6 +86,7 @@ installing all required tools without nix is out of scope).
    ./update-dvm.sh
    ```
    which also updates the `dev` checkout.
+
 
 ## Create a coverage report
 
@@ -181,6 +184,9 @@ and open the path printed on the last line of that command.
   - `[T]`
   - `[var T]`
 
+* Tuple types: heterogeneous aggregates of fixed size
+  - `(Bool, Float, Text)`
+
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
   - `? T`
 
@@ -231,6 +237,7 @@ and open the path printed on the last line of that command.
   - `[3, 4]`
   - `o.x`
   - `a[i]`
+  - `tuple.0`
 
 * Function calls, short-cut return
   - `f(x, y)`
@@ -300,59 +307,64 @@ and open the path printed on the last line of that command.
 
 ## Example
 
+```
+type List<T> = ?{head : T; var tail : List<T>};
 
-    /* a simple data structure: mutable, singly linked list */
-    type List<T> = ?{head: T; var tail: List<T>};
+type Post = shared Text -> ();
 
-    type post = shared Text -> async ();
+actor class Server() = {
+  private var clients : List<Client> = null;
 
-    type IClient = actor {
-       send: shared Text -> async ();
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null return;
+        case (?l) {
+          l.head.send(message);
+          next := l.tail;
+        };
+      };
     };
+  };
 
-    type IServer = actor {
-      post: Text -> async ();
-      subscribe: IClient -> async post;
-    };
-
-    actor Server = {
-       private var clients:List<IClient> = null;
-
-       post(message:Text) : async () {
-          var next = clients;
-          loop {
-             switch (next) {
-                case null return;
-                case (?l) {
-                    await l.head.send(message);
-                    next := l.tail;
-                  };
-               };
-            };
-         };
-
-       subscribe(client:IClient) : async post {
-         let cs = new { head = client; var tail = clients};
-         clients := ?cs;
-         return post;
-       };
-    };
+  subscribe(client : Client) : async Post {
+    let cs = new {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
+};
 
 
-    actor class Client() = this {
-       private var name : Text = "";
-       private var server: ?IServer  = null;
-       go (n:Text,s:IServer) : async () {
-           name := n;
-           server := ?s;
-           let post = await s.subscribe(this);
-           await post("hello from " # name);
-           await post("goodbye from " # name);
-       };
-       send(msg:Text) : async () {
-          print name; print " received "; print msg; print "\n";
-       };
-    };
+actor class Client() = this {
+  // TODO: these should be constructor params once we can compile them
+  private var name : Text = "";
+  private var server : ?Server  = null;
+
+  go(n : Text, s : Server) {
+    name := n;
+    server := ?s;
+    ignore(async {
+      let post = await s.subscribe(this);
+      post("hello from " # name);
+      post("goodbye from " # name);
+    });
+  };
+
+  send(msg : Text) {
+    print(name # " received " # msg # "\n");
+  };
+};
+
+
+let server = Server();
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+bob.go("bob", server);
+alice.go("alice", server);
+charlie.go("charlie", server);
+```
 
 
 ## Syntax

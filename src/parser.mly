@@ -24,8 +24,6 @@ let (@?) it at = {it; at; note = empty_typ_note}
 let (@!) it at = {it; at; note = Type.Pre}
 let (@=) it at = {it; at; note = None}
 
-let dummy_obj_sort() = ref (Type.Object Type.Local)
-
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
@@ -41,9 +39,9 @@ let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
     match lhs.it with
     | VarE x -> [], lhs, dup_var x
-    | DotE (e1, _, x) ->
+    | DotE (e1, x) ->
       let ds, ex11, ex12 = name_exp e1 in
-      ds, DotE (ex11, dummy_obj_sort(), x) @? lhs.at, DotE (ex12, dummy_obj_sort(), x.it @@ x.at) @? lhs.at
+      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
     | IdxE (e1, e2) ->
       let ds1, ex11, ex12 = name_exp e1 in
       let ds2, ex21, ex22 = name_exp e2 in
@@ -54,7 +52,12 @@ let assign_op lhs rhs_f at =
   let e = AssignE (lhs', rhs_f rhs') @? at in
   match ds with
   | [] -> e
-  | ds -> BlockE (ds @ [ExpD e @? e.at], ref Type.Pre) @? at
+  | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
+
+let let_or_exp named x e' at =
+  if named
+  then LetD(VarP(x) @! at, e' @? at) @? at
+  else ExpD(e' @? at) @? at
 
 let share_typ t =
   match t.it with
@@ -67,24 +70,21 @@ let share_typ t =
 let share_typfield tf =
   {tf with it = {tf.it with typ = share_typ tf.it.typ}}
 
-let share_dec d =
-  match d.it with
-  | FuncD ({it = Type.Local; _} as s, x, tbs, p, t, e) ->
-    FuncD ({s with it = Type.Sharable}, x, tbs, p, t, e) @? d.at
-  | _ -> d
-
 let share_exp e =
   match e.it with
-  | ObjE ({it = Type.Object Type.Local; _} as s, x, efs) ->
-    ObjE ({s with it = Type.Object Type.Sharable}, x, efs) @? e.at
-  | DecE (d, ot) ->
-    DecE (share_dec d, ot) @? e.at
+  | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
+    FuncE (x, {s with it = Type.Sharable}, tbs, p, t, e) @? e.at
   | _ -> e
 
+let share_dec d =
+  match d.it with
+  | LetD (p, e) -> LetD (p, share_exp e) @? d.at
+  | _ -> d
+
 let share_expfield (ef : exp_field) =
-  if ef.it.priv.it = Private
+  if ef.it.vis.it = Private
   then ef
-  else {ef with it = {ef.it with exp = share_exp ef.it.exp}}
+  else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
 %}
 
@@ -108,6 +108,7 @@ let share_expfield (ef : exp_field) =
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token MODULE
 %token NULL
+%token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
 %token<Value.unicode> CHAR
@@ -160,14 +161,16 @@ seplist1(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline con_id :
+%inline typ_id :
   | id=ID { id @= at $sloc }
 
 %inline id_opt :
-  | id=ID
-    { fun _ _ -> id @@ at $sloc }
-  | (* empty *)
-    { fun sort sloc -> anon sort (at sloc) @@ at sloc }
+  | id=id { fun _ _ -> true, id }
+  | (* empty *) { fun sort sloc -> false, anon sort (at sloc) @@ at sloc }
+
+%inline typ_id_opt :
+  | id=typ_id { fun _ _ -> id }
+  | (* empty *) { fun sort sloc -> anon sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -335,7 +338,7 @@ lit :
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
-    { BlockE(ds, ref Type.Pre) @? at $sloc }
+    { BlockE(ds) @? at $sloc }
 
 exp_nullary :
   | e=exp_block
@@ -358,10 +361,10 @@ exp_post :
     { ArrayE(m, es) @? at $sloc }
   | e1=exp_post LBRACKET e2=exp RBRACKET
     { IdxE(e1, e2) @? at $sloc }
-  | e=exp_post DOT s=NAT
+  | e=exp_post s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post DOT x=id
-    { DotE(e, dummy_obj_sort(), {x with it = Name x.it}) @? at $sloc }
+    { DotE(e, x) @? at $sloc }
   | e1=exp_post tso=typ_args? e2=exp_nullary
     { let typ_args = Lib.Option.get tso [] in
       CallE(e1, typ_args, e2) @? at $sloc }
@@ -447,21 +450,13 @@ exp_nonvar :
   | e=exp_nondec
     { e }
   | d=dec_nonvar
-    { DecE(d, ref Type.Pre) @? at $sloc }
-  (* TODO(andreas): hack, remove *)
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let anon = if s.it = Type.Actor then "actor" else "object" in
-      let efs' =
-        if s.it = Type.Object Type.Local
-        then efs
-        else List.map share_expfield efs
-      in ObjE(s, xf anon $sloc, efs') @? at $sloc }
+    { BlockE([d]) @? at $sloc }
 
 exp :
   | e=exp_nonvar
     { e }
   | d=dec_var
-    { DecE(d, ref Type.Pre) @? at $sloc }
+    { BlockE([d]) @? at $sloc }
 
 
 case :
@@ -472,16 +467,21 @@ case :
   | (* empty *) { Public @@ no_region }
   | PRIVATE { Private @@ at $sloc }
 
+(* TODO(andreas): separate short forms *)
+(* TODO(andreas): invert public/private default *)
 exp_field :
-  | p=private_opt m=var_opt x=id EQ e=exp
-    { {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
-  | p=private_opt m=var_opt x=id COLON t=typ EQ e=exp
-    { let e = AnnotE(e, t) @? span t.at e.at in
-      {name = {x with it = Name x.it}; id = x; mut = m; priv = p; exp = e} @@ at $sloc }
-  | priv=private_opt s=shared_opt x=id fd=func_dec
-    { let d = fd s x in
-      let e = DecE(d, ref Type.Pre) @? d.at in
-      {name = {x with it = Name x.it}; id = x; mut = Const @@ no_region; priv; exp = e} @@ at $sloc }
+  | v=private_opt x=id EQ e=exp
+    { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
+      {dec = d; vis = v} @@ at $sloc }
+  | v=private_opt s=shared_opt x=id fe=func_exp
+    { let d = LetD(VarP(x) @! x.at, fe s x.it) @? at $sloc in
+      {dec = d; vis = v} @@ at $sloc }
+  (* TODO(andreas): allow any dec *)
+  | v=private_opt d=dec_var
+    { {dec = d; vis = v} @@ at $sloc }
+  | v=private_opt d=dec_nonvar
+    { {dec = d; vis = v} @@ at $sloc }
+
 
 (* Patterns *)
 
@@ -527,38 +527,42 @@ return_typ_nullary :
 (* Declarations *)
 
 dec_var :
-  | LET p=pat EQ e=exp
-    { let p', e' =
-        match p.it with
-        | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
-        | _ -> p, e
-      in LetD (p', e') @? at $sloc }
   | VAR x=id t=return_typ? EQ e=exp
     { let e' =
         match t with
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
+  | LET p=pat EQ e=exp
+    { let p', e' =
+        match p.it with
+        | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
+        | _ -> p, e
+      in LetD (p', e') @? at $sloc }
+  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+    { TypD(x, tps, t) @? at $sloc }
 
 dec_nonvar :
-  | s=shared_opt FUNC xf=id_opt fd=func_dec
-    { (fd s (xf "func" $sloc)).it @? at $sloc }
-  | TYPE x=con_id tps=typ_params_opt EQ t=typ
-    { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort_opt CLASS xf=id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+  | s=obj_sort xf=id_opt EQ? efs=obj_body
+    { let named, x = xf "object" $sloc in
+      let efs' =
+        if s.it = Type.Object Type.Local
+        then efs
+        else List.map share_expfield efs
+      in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
+  | s=shared_opt FUNC xf=id_opt fe=func_exp
+    { let named, x = xf "func" $sloc in
+      let_or_exp named x (fe s x.it).it (at $sloc) }
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
-      in
-      let id = xf "class" $sloc in
-      let con_id = id.it @= at $sloc in
-      ClassD(id, con_id, tps, s, p, x, efs') @? at $sloc }
+      in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
   | MODULE xf=id_opt id_opt=id? EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
     { let id = xf "module" $sloc in
       ModuleD(id, ds) @? at $sloc }
-
 
 dec :
   | d=dec_var
@@ -567,25 +571,8 @@ dec :
     { d }
   | e=exp_nondec
     { ExpD e @? at $sloc }
-  (* TODO(andreas): move to dec_nonvar once other production is gone *)
-  | s=obj_sort id_opt=id? EQ? efs=obj_body
-    { let efs' =
-        if s.it = Type.Object Type.Local
-        then efs
-        else List.map share_expfield efs
-      in
-      let r = at $sloc in
-      (* desugar anonymous objects to ExpD, named ones to LetD. *)
-      match id_opt with
-      | None ->
-        let sort = if s.it = Type.Actor then "actor" else "object" in
-        let x = anon sort r @@ r  in
-        ExpD(ObjE(s, x, efs') @? r) @? r
-      | Some x ->
-        let p = VarP x @! r in
-        LetD(p, ObjE(s, x, efs') @? r) @? r }
 
-func_dec :
+func_exp :
   | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
@@ -597,7 +584,7 @@ func_dec :
           match t.it with
           | AsyncT _ -> AsyncE(e) @? e.at
           | _ -> e
-      in fun s x -> FuncD(s, x, tps, p, t, e) @? at $sloc }
+      in fun s x -> FuncE(x, s, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
@@ -608,7 +595,7 @@ obj_body :
     { efs }
 
 class_body :
-  | EQ xf=id_opt efs=obj_body { xf "object" $sloc, efs }
+  | EQ xf=id_opt efs=obj_body { snd (xf "object" $sloc), efs }
   | efs=obj_body { anon "object" (at $sloc) @@ at $sloc, efs }
 
 
