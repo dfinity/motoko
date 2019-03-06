@@ -622,7 +622,7 @@ module Heap = struct
     get_heap_obj
 
   (* Convenience functions related to memory *)
-  (* Works on unshifted memory addresses! *)
+  (* Copying bytes (works on unshifted memory addresses) *)
   let memcpy env =
     Func.share_code3 env "memcpy" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
       get_n ^^
@@ -640,13 +640,22 @@ module Heap = struct
       )
     )
 
-  (* Variant for shifted memory addresses! *)
+  (* Copying words (works on shifted memory addresses) *)
   let memcpy_words_shifted env =
-    Func.share_code3 env "memcpy_shifted" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
-      get_from ^^ compile_add_const ptr_unshift ^^
-      get_to ^^ compile_add_const ptr_unshift ^^
-      get_n ^^ compile_mul_const word_size ^^
-      memcpy env
+    Func.share_code3 env "memcpy_words_shifted" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
+      get_n ^^
+      from_0_to_n env (fun get_i ->
+          get_to ^^
+          get_i ^^ compile_mul_const word_size ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+
+          get_from ^^
+          get_i ^^ compile_mul_const word_size ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          load_ptr ^^
+
+          store_ptr
+      )
     )
 
 end (* Heap *)
