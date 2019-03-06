@@ -30,23 +30,23 @@ ListTest:
 Trie:
 	@echo $(MODULE_NAME) $@
 	@echo $(BEGIN)
-	$(ASC) -r list.as hashtrie.as
+	$(ASC) -r list.as trie.as
 	@echo $(DONE)
 
 Set:
 	@echo $(MODULE_NAME) $@
 	@echo $(BEGIN)
-	$(ASC) -r list.as hashtrie.as set.as
+	$(ASC) -r list.as trie.as set.as
 	@echo $(DONE)
 
 SetDb:
 	@echo $(MODULE_NAME) $@
 	@echo $(BEGIN)
-	$(ASC) -r list.as hashtrie.as set.as setDb.as
+	$(ASC) -r list.as trie.as set.as setDb.as
 	@echo $(DONE)
 
 SetDbTest:
 	@echo $(MODULE_NAME) $@
 	@echo $(BEGIN)
-	$(ASC) -r list.as hashtrie.as set.as setDb.as setDbTest.as > $@.out
+	$(ASC) -r list.as trie.as set.as setDb.as setDbTest.as > $@.out
 	@echo $(DONE)
