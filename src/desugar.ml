@@ -86,16 +86,18 @@ and obj at s self_id es obj_typ =
   | Type.Object _ | T.Module -> build_obj at s self_id es obj_typ
   | Type.Actor -> build_actor at self_id es obj_typ
 
+and build_field {Type.lab; Type.typ} =
+  { it = { I.name = I.Name lab @@ no_region
+         ; I.var = lab @@ no_region
+         }
+  ; at = no_region
+  ; note = typ
+  }
+
 and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.lab; Type.typ} ->
-        { it = { I.name = I.Name lab @@ no_region
-               ; I.var = lab @@ no_region
-               }
-        ; at = no_region
-        ; note = typ
-        }) fields
+      List.map build_field fields
     | _ -> assert false
 
 and build_actor at self_id es obj_typ =
@@ -207,25 +209,28 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
-  | S.ModuleD(id, ds) -> assert false
+  (* CRUSSO: TBC *)
+  | S.ModuleD(id, ds) ->
+    (build_module id ds (n.S.note_typ)).it
 
-and field_typ_to_obj_entry (fld : T.field) =
-  match fld.T.typ with
+
+and field_typ_to_obj_entry (f: T.field) =
+  match f.T.typ with
   | T.Kind _ -> []
-  | _ -> [ ((S.Name fld.T.name) @@ no_region, fld.T.name @@ no_region) ]
+  | _ -> [ build_field f ]
 
 and build_module id ds typ =
   let self =  idE id typ in
-  let (s, field_typs) = T.as_obj typ in
-  letD self (
-      blockE (
-          decs ds @
-            [ letD self
-                (newObjE (T.Module @@ no_region)
-                   (List.concat (List.map field_typ_to_obj_entry field_typs)) typ);
-	      expD self
-            ]
-        ))
+  let (s, fs) = T.as_obj typ in
+  letD self
+    (blockE
+       (decs ds @
+          [ letD self
+              (newObjE T.Module
+                 (List.concat (List.map field_typ_to_obj_entry fs)) typ);
+       ])
+       self
+    )
 
 and cases cs = List.map case cs
 

@@ -176,11 +176,11 @@ and subst_field sigma {lab; typ} =
 and subst_kind sigma k =
   match k with
   | Def (tbs, t) ->
-    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Def (List.map (subst_bind sigma') tbs,
          subst sigma' t)
   | Abs (tbs, t) ->
-    let sigma' = Con.Env.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Abs (List.map (subst_bind sigma') tbs,
          subst sigma' t)
 
@@ -338,17 +338,17 @@ let as_async_sub t = match promote t with
   | Non -> Non
   | _ -> invalid "as_async_sub"
 
-let lookup_field name' tfs =
-  match List.find_opt (fun {name; typ } ->
+let lookup_field lab' tfs =
+  match List.find_opt (fun {lab; typ } ->
                           match typ with Kind _ -> false
-                          | _ -> name = name') tfs with
+                          | _ -> lab = lab') tfs with
   | Some {typ = t; _} -> t
   | None -> invalid "lookup_field"
 
-let lookup_typ_field name' tfs =
-  match List.find_opt (fun {name; typ } ->
+let lookup_typ_field lab' tfs =
+  match List.find_opt (fun {lab; typ } ->
             match typ with
-            | Kind (c, k) -> name=name'
+            | Kind (c, k) -> lab=lab'
             | _ -> false) tfs with
   | Some {typ = Kind (c,k); _} -> (c,k)
   | Some _ -> assert false
@@ -423,8 +423,6 @@ and avoid_kind cons k =
 let avoid cons t =
   if cons = ConSet.empty then t else
   avoid' cons t
->>>>>>> master
-
 
 (* Equivalence & Subtyping *)
 

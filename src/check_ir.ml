@@ -549,32 +549,25 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check (T.is_obj t0) "bad annotation (object type expected)";
     t1 <: t0;
     t0 <: t;
-  | NewObjE (sort, labids, t0) ->
+  | NewObjE (s, fs, t0) ->
+    check (T.is_obj t0) "bad annotation (object type expected)";
     let is_typ_field {T.lab;T.typ} =
       match typ with T.Kind _ -> true | _ -> false
     in
-    let typ_fields =
-      match T.as_obj t0 with
-      |  (s,fields) ->
-         List.filter is_typ_field fields
-      | exception _ ->
-        []
+    let (_s,tfs0) = T.as_obj t0 in
+    let typ_tfs0, val_tfs0 = List.partition is_typ_field tfs0
     in
-    let fields = List.map (fun (lab,id) ->
-                     {T.lab = Syntax.string_of_name lab.it;
-                      T.typ = T.Env.find id.it env.vals}) labids
-    in
-    let t1 = T.Obj(sort.it, List.sort T.compare_field (typ_fields @ fields))
-    in
-    let t2 = T.promote env.cons t in
-    check (T.is_obj t2) "bad annotation (object type expected)";
-    t1 <: t2;
-  | NewObjE (s, fs, t0) ->
+    let t1 = type_obj env s fs in
+    let (_s, tfs1) = T.as_obj t1 in
+    let t1 = T.Obj(s, List.sort T.compare_field (typ_tfs0 @ tfs1)) in
+    t1 <: t0;
+    t0 <: t
+(*  | NewObjE (s, fs, t0) ->
     let t1 = type_obj env s fs in
     check (T.is_obj t0) "bad annotation (object type expected)";
     t1 <: t0;
     t0 <: t
-
+ *)
 (* Cases *)
 
 and check_cases env t_pat t cases =

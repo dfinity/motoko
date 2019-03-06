@@ -165,15 +165,15 @@ and check_path' env path : T.typ =
     end
   | DotH(path, id) ->
     let t = check_path env path in
-    match T.promote env.cons t with
+    match T.promote t with
     | T.Obj (T.Module, flds) ->
       begin
         try T.lookup_field id.it flds with
         | _ -> error env id.at "expecting path of module type, found %s"
-                 (T.string_of_typ_expand env.cons t)
+                 (T.string_of_typ_expand t)
       end
     | _ -> error env id.at "expecting path of module type, found %s"
-                 (T.string_of_typ_expand env.cons t)
+             (T.string_of_typ_expand t)
 
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
@@ -242,7 +242,7 @@ and check_typ' env typ : T.typ =
     T.Obj (sort.it, List.sort T.compare_field fs)
   | PathT (p, id, typs) ->
     let t = check_path env p in
-    (match T.promote env.cons t with
+    (match T.promote t with
      | T.Obj(_,flds) ->
       begin
         match T.lookup_typ_field id.it flds with
@@ -482,13 +482,14 @@ and infer_exp'' env exp : T.typ =
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let s, tfs = T.as_obj_sub id.it env.cons t1 in
-      begin
-        try T.lookup_field id.it tfs
-        with
-        |  Invalid_argument _ ->
-           error env exp1.at "field name %s does not exist in type\n  %s"
-             id.it (T.string_of_typ_expand t1)
+      let s, tfs = T.as_obj_sub id.it t1 in
+      try T.lookup_field id.it tfs with
+      |  Invalid_argument _ ->
+         error env exp1.at "field name %s does not exist in type\n  %s"
+           id.it (T.string_of_typ_expand t1)
+     with Invalid_argument _ ->
+       error env exp1.at "expected object type, but expression produces type\n  %s"
+         (T.string_of_typ_expand t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -941,6 +942,8 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | ClassD (id, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
+  | ModuleD (id, _) -> pub_val_id id xs
+
 
 and pub_pat pat xs : region T.Env.t * region T.Env.t =
   match pat.it with
@@ -990,6 +993,20 @@ and infer_block env decs at : T.typ * scope =
   let t = infer_block_exps (adjoin env scope) decs in
   t, scope
 
+  (* CRUSSO: new*)
+
+and infer_block_decs env decs : scope =
+  let scope = gather_block_typdecs env decs in
+  let env' = adjoin {env with pre = true} scope in
+  let scope_ce = infer_block_typdecs env' decs in
+  let env'' = adjoin env scope_ce in
+  let scope_ce' = infer_block_typdecs env'' decs in
+  (* TBR: assertion does not work for types with binders, due to stamping *)
+  (* assert (ce = ce'); *)
+  let pre_scope_ve' = gather_block_valdecs env decs scope_ce' in
+  let full_scope = infer_block_valdecs (adjoin env'' pre_scope_ve') decs pre_scope_ve' in
+  full_scope
+(*
 and infer_block_decs env decs : scope =
   let scope = gather_block_typdecs env decs in
   let env' = adjoin {env with pre = true} scope in
@@ -1001,7 +1018,8 @@ and infer_block_decs env decs : scope =
   let pre_ve' = gather_block_valdecs env decs in
   let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
   {scope with val_env = ve; con_env = ce}
-
+ *)
+  
 and infer_block_exps env decs : T.typ =
   match decs with
   | [] -> T.unit
@@ -1117,13 +1135,13 @@ and module_of_scope scope =
   let typ_fields =
     T.Env.fold
       (fun id con flds ->
-        let kind = Con.Env.find con scope.con_env in
-        { T.name = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
+        let kind = Con.kind con in
+        { T.lab = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
   in
   let fields =
     T.Env.fold
       (fun id typ flds ->
-        { T.name = id; T.typ = typ }::flds) scope.val_env typ_fields
+        { T.lab = id; T.typ = typ }::flds) scope.val_env typ_fields
   in
   T.Obj(T.Module, List.sort T.compare_field fields)
 
@@ -1132,28 +1150,15 @@ and scope_of_module t =
   match t with
   | T.Obj(T.Module, flds) ->
     List.fold_right
-      (fun {T.name;T.typ} scope ->
+      (fun {T.lab;T.typ} scope ->
         match typ with
         | T.Kind (c,k) ->
-          { scope with con_env = Con.Env.add c k scope.con_env;
-                       typ_env = T.Env.add name c scope.typ_env}
+          { scope with con_env = T.ConSet.add c scope.con_env;
+                       typ_env = T.Env.add lab c scope.typ_env}
         | typ ->
-          { scope with val_env = T.Env.add name typ scope.val_env }) flds empty_scope
+          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
   | _ -> assert false
 
-(* CRUSSO: new*)
-
-and infer_block_decs env decs : scope =
-  let scope = gather_block_typdecs env decs in
-  let env' = adjoin {env with pre = true} scope in
-  let scope_ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env scope_ce in
-  let scope_ce' = infer_block_typdecs env'' decs in
-  (* TBR: assertion does not work for types with binders, due to stamping *)
-  (* assert (ce = ce'); *)
-  let pre_scope_ve' = gather_block_valdecs env decs scope_ce' in
-  let full_scope = infer_block_valdecs (adjoin env'' pre_scope_ve') decs pre_scope_ve' in
-  full_scope
 
 (* Pass 1: collect type identifiers and their arity *)
 and gather_block_typdecs env decs : scope =
@@ -1194,7 +1199,7 @@ and infer_block_typdecs env decs : scope =
 
 and infer_dec_typdecs env dec : scope =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
+  | ExpD _ | LetD _ | VarD _ ->
     empty_scope
   | TypD (con_id, binds, typ) ->
     let c = T.Env.find con_id.it env.typs in
@@ -1205,7 +1210,7 @@ and infer_dec_typdecs env dec : scope =
     let k = T.Def (tbs, T.close cs t) in
     { empty_scope with
       typ_env = T.Env.singleton con_id.it c ;
-      con_env = infer_id_typdecs id c k }
+      con_env = infer_id_typdecs con_id c k }
   | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1217,7 +1222,7 @@ and infer_dec_typdecs env dec : scope =
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     { empty_scope with
-      typ_env = T.Env.singleton con_id.it c ;
+      typ_env = T.Env.singleton id.it c ;
       con_env =     infer_id_typdecs id c k }
   | ModuleD (id, decs) ->
     let t = T.Env.find id.it env.vals in
@@ -1337,12 +1342,11 @@ and infer_dec_valdecs env dec : scope =
           (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)) }
     *)
   | TypD (con_id, binds, typ) ->
-    let (c,k) = match con_id.note with
-      | Some (c,k) -> (c,k) | _ -> assert false in
+    let c = match con_id.note with
+      | Some c -> c| _ -> assert false in
     { empty_scope with typ_env = T.Env.singleton con_id.it c;
-                       con_env = Con.Env.singleton c k }
+                       con_env = T.ConSet.singleton c  }
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
->>>>>>> master
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
@@ -1350,15 +1354,15 @@ and infer_dec_valdecs env dec : scope =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let (c,k) = match con_id.note with
-      | Some (c,k) -> (c,k)
+    let c = match id.note with
+      | Some c -> c
       | _ -> assert false
     in
     { val_env =
         T.Env.singleton id.it
           (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]));
-      typ_env = T.Env.singleton con_id.it c;
-      con_env = Con.Env.singleton c k }
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c }
   | ModuleD (id, decs) ->
     let t = try T.Env.find id.it env.vals with _ -> assert false  in
     let mod_scope = scope_of_module t in

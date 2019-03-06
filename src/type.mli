@@ -40,16 +40,6 @@ and typ =
   | Kind of con * kind
 
 
-(* field ordering *)
-
-val compare_field : field -> field -> int
-
-(* CRUSSO TBD type con_env = kind Con.Env.t *)
-
-(* n-ary argument/result sequences *)
-
-val seq: typ list -> typ
-val as_seq : typ -> typ list
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
@@ -58,6 +48,8 @@ and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
+
+
 
 (* Short-hands *)
 
@@ -105,17 +97,25 @@ val as_func_sub : int -> typ -> bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
+(* n-ary argument/result sequences *)
+
 val seq : typ list -> typ
 val as_seq : typ -> typ list
 
+(* field lookup *)
+
+val lookup_typ_field : string -> field list -> (con * kind)
+
 val lookup_field : string -> field list -> typ
+
+(* field ordering *)
+
 val compare_field : field -> field -> int
 
 val span : typ -> int option
 
 
 
-val lookup_typ_field : string -> field list -> (con * kind)
 
 (* Constructors *)
 

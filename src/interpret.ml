@@ -563,11 +563,9 @@ and declare_dec dec : val_env =
   | ExpD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
-  | ModuleD (id, _)
   | VarD (id, _) -> declare_id id
   | ClassD (id, _, _, _, _, _) -> declare_id {id with note = ()}
-
-
+  | ModuleD (id, _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with

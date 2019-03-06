@@ -187,6 +187,7 @@ and dec' =
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * obj_sort * pat * id * exp_field list
   | ModuleD of id * dec list
+
 (* Program *)
 
 type prog = prog' Source.phrase
