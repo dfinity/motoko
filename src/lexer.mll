@@ -163,6 +163,7 @@ rule token mode = parse
   | "->" { ARROW }
   | "_" { UNDERSCORE }
 
+  | '.' (num as s) { DOT_NUM s }
   | nat as s { NAT s }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
@@ -190,8 +191,6 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
-  | "is" { IS }
-  | "like" { LIKE }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }

@@ -4,27 +4,22 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
+
 (* Identifiers *)
 
 type id = string Source.phrase
-type con_id = (string, (Type.con * Type.kind) option) Source.annotated_phrase
-
-(* Names (not alpha-convertible), used for field and class names *)
-type name = name' Source.phrase
-and name' = Name of string
-let string_of_name (Name s ) = s
+type typ_id = (string, Type.con option) Source.annotated_phrase
 
 
 (* Types *)
 
 type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
-type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
-type typ = (typ',Type.typ) Source.annotated_phrase
+type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
@@ -32,9 +27,8 @@ and typ' =
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | TupT of typ list                               (* tuple *)
-  | FuncT of func_sort * typ_bind list * typ * typ (* function *)
+  | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
-  | LikeT of typ                                   (* expansion *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 (*
   | UnionT of type * typ                           (* union *)
@@ -44,7 +38,7 @@ and typ' =
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
-and typ_bind = (typ_bind', Type.typ) Source.annotated_phrase
+and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}
 
 
@@ -109,6 +103,7 @@ and pat' =
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
+  | ParP of pat                                (* parenthesis *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
   | ObjP of pat_field list                     (* object *)
@@ -120,30 +115,30 @@ and pat_field' = {id : id; pat : pat}
 
 (* Expressions *)
 
-type priv = priv' Source.phrase
-and priv' = Public | Private
+type vis = vis' Source.phrase
+and vis' = Public | Private
 
-(* Filled in for overloaded operators and blocks during type checking. Initially Type.Pre. *)
-type op_type = Type.typ ref
+type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
-  | UnE of op_type * unop * exp                (* unary operator *)
-  | BinE of op_type * exp * binop * exp        (* binary operator *)
-  | RelE of op_type * exp * relop * exp        (* relational operator *)
+  | UnE of op_typ * unop * exp                 (* unary operator *)
+  | BinE of op_typ * exp * binop * exp         (* binary operator *)
+  | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of obj_sort * id * exp_field list     (* object *)
-  | DotE of exp * Type.obj_sort ref * name     (* object projection *)
+  | ObjE of obj_sort * exp_field list          (* object *)
+  | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
+  | FuncE of string * sharing * typ_bind list * pat * typ * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
-  | BlockE of dec list * op_type               (* block (with type after avoidance)*)
+  | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -158,12 +153,7 @@ and exp' =
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
-  | IsE of exp * exp                           (* instance-of *)
   | AnnotE of exp * typ                        (* type annotation *)
-  | DecE of dec * Type.typ ref                 (* declaration *)
-  | DeclareE of id * Type.typ * exp            (* local promise (internal) *)
-  | DefineE of id * mut * exp                  (* promise fulfillment (internal) *)
-  | NewObjE of obj_sort * (name * id) list     (* make an object, preserving mutable identity (internal) *)
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch eexception *)
@@ -172,7 +162,7 @@ and exp' =
 *)
 
 and exp_field = exp_field' Source.phrase
-and exp_field' = {name : name; id : id; exp : exp; mut : mut; priv : priv}
+and exp_field' = {dec : dec; vis : vis}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -185,11 +175,9 @@ and dec' =
   | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
-  | FuncD of                                   (* function *)
-      sharing * id * typ_bind list * pat * typ * exp
-  | TypD of con_id * typ_bind list * typ       (* type *)
+  | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      id * con_id * typ_bind list * obj_sort * pat * id * exp_field list
+      typ_id * typ_bind list * obj_sort * pat * id * exp_field list
 
 
 (* Program *)

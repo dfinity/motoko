@@ -32,7 +32,7 @@ let real-dvm =
     then
       if !builtins.pathExists ./nix/dev/default.nix
       then
-        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
+        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the required revision. "
       else
         # Pass devel = true until the dev test suite runs on MacOS again
         ((import ./nix/dev) { devel = true; }).dvm
@@ -91,6 +91,7 @@ rec {
     src = sourceByRegex ./. [
       "test/"
       "test/.*Makefile.*"
+      "test/quick.mk"
       "test/(run.*|fail)/"
       "test/(run.*|fail)/.*.as"
       "test/(run.*|fail)/ok/.*"
@@ -141,6 +142,7 @@ rec {
     src = sourceByRegex ./. [
       "test/"
       "test/.*Makefile.*"
+      "test/quick.mk"
       "test/(run.*|fail)/"
       "test/(run.*|fail)/.*.as"
       "test/(run.*|fail)/ok/.*"

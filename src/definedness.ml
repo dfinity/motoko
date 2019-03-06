@@ -2,7 +2,7 @@
 This module implements a check that rules out use-before define.
 It is a compositional algorithm that returns, for each subexpression,
  * Which variables are used eagerly and
- * which are delayd
+ * which are delayed
 these sets are disjoint and their union makes up the set of free variables, so
 the structure of this module is very similar to that of freevars.ml.
 
@@ -81,7 +81,18 @@ let close (f,d) =
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp msgs e : f = match e.it with
+  (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
+  (* Or anything that is occurring in a call (as this may call a closure): *)
+  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
+  (* And break and return can be thought of as calling a continuation: *)
+  | BreakE (i, e)       -> eagerify (exp msgs e)
+  | RetE e              -> eagerify (exp msgs e)
+
+  (* Uses are delayed by function expressions *)
+  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
+
+  (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
@@ -89,18 +100,15 @@ let rec exp msgs e : f = match e.it with
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, i, efs)    ->
-    let f = close (exp_fields msgs efs) // i.it in
-    begin match s.it with
-    | Type.Actor -> eagerify f
-    | Type.Object _ -> f
-    end
-  | DotE (e, _t, i)     -> exp msgs e
+  | ObjE (s, efs)       ->
+    (* For actors, this may be too permissive; to be revised when we work on actors again *)
+    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
+    close (exp_fields msgs efs)
+  | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
-  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
-  | BlockE (ds, _)      -> decs msgs ds
+  | BlockE ds           -> decs msgs ds
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
@@ -111,18 +119,11 @@ let rec exp msgs e : f = match e.it with
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
-  | BreakE (i, e)       -> exp msgs e
-  | RetE e              -> exp msgs e
   | AsyncE e            -> exp msgs e
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e
-  | IsE (e, t)          -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
-  | DecE (d, t)         -> close (dec msgs d)
   | OptE e              -> exp msgs e
-  | DeclareE (i, t, e)  -> exp msgs e  // i.it
-  | DefineE (i, m, e)   -> id i ++ exp msgs e
-  | NewObjE (_,ids)     -> unions id (List.map (fun (lab,id) -> id) ids)
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -130,7 +131,8 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
-  | AnnotP (p, t) -> pat msgs p
+  | AnnotP (p, _)
+  | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
   | OptP p        -> pat msgs p
@@ -143,21 +145,16 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 and cases msgs cs : f = unions (case msgs) cs
 
 and exp_field msgs (ef : exp_field) : fd
-  = (exp msgs ef.it.exp, S.singleton ef.it.id.it)
+  = dec msgs ef.it.dec
 
 and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
-
-and id i = M.singleton i.it Eager
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
-  | VarD (i, e) ->
-    (M.empty, S.singleton i.it) +++ exp msgs e
-  | FuncD (s, i, tp, p, t, e) ->
-    (M.empty, S.singleton i.it) +++ delayify (exp msgs e /// pat msgs p)
+  | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, l, tp, s, p, i', efs) ->
+  | ClassD (i, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
 
 and decs msgs decs : f =
@@ -193,7 +190,7 @@ and decs msgs decs : f =
   let e = set_unions (List.map (fun (_,_,eager,_) ->
     NameRel.range (NameRel.restricted_rtcl eager r)
   ) decs') in
-  (* Every thing else is lazy *)
+  (* Everything else is lazy *)
   let d = S.diff (set_unions (List.map (fun (_,_,_,delayed) -> delayed) decs')) e in
   (* And remove whats defined here  *)
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>

@@ -27,6 +27,7 @@ git -C nix/dev submodule update --init --recursive
 
 To update, just run the last two commands again.
 
+
 ## Development using Nix
 
 This is the command that should always pass on master is the following, which builds everything:
@@ -52,6 +53,7 @@ nix-build -A js
 By default, `dvm` is built using the V8 engine. To build with the Haskell
 engine, pass `--arg v8 false` to any of the above `nix-*` commands.
 
+
 ## Development without Nix
 
 You can get a development environment that is independent of nix (although
@@ -68,7 +70,7 @@ installing all required tools without nix is out of scope).
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
    ```
-   cd $(nix-build -Q -A wasm.src)
+   cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
  * Install the `wasm` tool, using
@@ -84,6 +86,7 @@ installing all required tools without nix is out of scope).
    ./update-dvm.sh
    ```
    which also updates the `dev` checkout.
+
 
 ## Create a coverage report
 
@@ -177,18 +180,18 @@ and open the path printed on the last line of that command.
 
     The fields of an actor are all of function type with a return type of `async t` or `()`.
 
-* Array types: Java-like, but elements can be mutable or immutable
-  - `T[]`
-  - `var T[]`
+* Array types: elements can be mutable or immutable
+  - `[T]`
+  - `[var T]`
+
+* Tuple types: heterogeneous aggregates of fixed size
+  - `(Bool, Float, Text)`
 
 * Option types: ML/Haskell-style option/maybe type, other types do not include null!
   - `? T`
 
 * Async types: like futures/promises
   - `async T`
-
-* Class types: the identity of a class (essentially, a modref)
-  - `class`
 
 * Like types: structural expansions of nominal types
   - `like T`
@@ -234,6 +237,7 @@ and open the path printed on the last line of that command.
   - `[3, 4]`
   - `o.x`
   - `a[i]`
+  - `tuple.0`
 
 * Function calls, short-cut return
   - `f(x, y)`
@@ -246,7 +250,7 @@ and open the path printed on the last line of that command.
 * Conditionals and switches
   - `if b ...`
   - `if b ... else ...`
-  - `switch x case 1 ... case 2 ... case _ ...`
+  - `switch x { case 1 ...; case 2 ...; case _ ...}`
 
 * While loops and iterations
   - `while (p()) ...`
@@ -301,64 +305,67 @@ and open the path printed on the last line of that command.
 
 * Every declaration is a statement (and thereby an expression)
 
-
-
 ## Example
 
-Here is a variant of the bank account example.
-
 ```
-actor class Bank(supply : Int) {
-  private issuer = Issuer();
-  private reserve = Account(supply);
-  getIssuer() : async Issuer { return issuer; };
-  getReserve() : async Account { return reserve; };
+type List<T> = ?{head : T; var tail : List<T>};
+
+type Post = shared Text -> ();
+
+actor class Server() = {
+  private var clients : List<Client> = null;
+
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null return;
+        case (?l) {
+          l.head.send(message);
+          next := l.tail;
+        };
+      };
+    };
+  };
+
+  subscribe(client : Client) : async Post {
+    let cs = new {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
 };
 
-actor class Issuer() {
-  hasIssued(account : like Account) : async Bool {
-    return (account is Account);
+
+actor class Client() = this {
+  // TODO: these should be constructor params once we can compile them
+  private var name : Text = "";
+  private var server : ?Server  = null;
+
+  go(n : Text, s : Server) {
+    name := n;
+    server := ?s;
+    ignore(async {
+      let post = await s.subscribe(this);
+      post("hello from " # name);
+      post("goodbye from " # name);
+    });
+  };
+
+  send(msg : Text) {
+    print(name # " received " # msg # "\n");
   };
 };
 
-actor class Account(initialBalance : Int) = this {
-  private var balance : Int = initialBalance;
 
-  getBalance() : async Int {
-    return balance;
-  };
-
-  split(amount : Int) : async Account {
-    balance -= amount;
-    return Account(amount);
-  };
-
-  join(account : like Account) {
-    assert(account is Account);
-    let amount = balance;
-    balance := 0;
-    account.credit(amount, Account);
-  };
-
-  credit(amount : Int, caller : Class) {
-    assert(this is caller);
-    balance += amount;
-  };
-
-  isCompatible(account : like Account) : async Bool {
-    return (account is Account);
-  };
-};
+let server = Server();
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+bob.go("bob", server);
+alice.go("alice", server);
+charlie.go("charlie", server);
 ```
 
-Example use:
-
-```
-func transfer(sender : Account, receiver : Account, amount : Int) : async ()  {
-  let trx = await sender.split(amount);
-  trx.join(receiver);
-};
-```
 
 ## Syntax
 

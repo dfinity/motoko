@@ -6,7 +6,7 @@
 #
 # Options:
 #
-#    -a:  Update the files in ok/
+#    -a: Update the files in ok/
 #    -d: Compile with --dfinity, use dvm to run
 #
 
@@ -21,8 +21,9 @@ EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
+ECHO=echo
 
-while getopts "ad" o; do
+while getopts "ads" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -31,12 +32,30 @@ while getopts "ad" o; do
             DFINITY=yes
             EXTRA_ASC_FLAGS=--dfinity
             ;;
+        s)
+            ECHO=true
+            ;;
     esac
 done
 
 shift $((OPTIND-1))
 
 failures=no
+
+function normalize () {
+  if [ -e "$1" ]
+  then
+    grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
+    sed 's/\x00//g' |
+    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
+    sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
+    sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
+    sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
+    cat > $1.norm
+    mv $1.norm $1
+  fi
+}
 
 for file in "$@";
 do
@@ -55,7 +74,7 @@ do
   out=_out
   ok=ok
 
-  echo -n "$base:"
+  $ECHO -n "$base:"
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
@@ -64,10 +83,11 @@ do
   # First run all the steps, and remember what to diff
   diff_files=
 
-  # Typeckeck
-  echo -n " [tc]"
+  # Typecheck
+  $ECHO -n " [tc]"
   $ASC $ASC_FLAGS --check $base.as > $out/$base.tc 2>&1
   tc_succeeded=$?
+  normalize $out/$base.tc
   diff_files="$diff_files $base.tc"
 
   if [ "$tc_succeeded" -eq 0 ];
@@ -75,63 +95,64 @@ do
     if [ "$SKIP_RUNNING" != yes ]
     then
       # Interpret
-      echo -n " [run]"
+      $ECHO -n " [run]"
       $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+      normalize $out/$base.run
       diff_files="$diff_files $base.run"
 
       # Interpret with lowering
-      echo -n " [run-low]"
+      $ECHO -n " [run-low]"
       $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
+      normalize $out/$base.run-low
       diff_files="$diff_files $base.run-low"
 
       # Diff interpretations without/with lowering
-      echo -n " [diff-low]"
-      diff -u -N $out/$base.run $out/$base.run-low > $out/$base.diff-low
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
       diff_files="$diff_files $base.diff-low"
+
+      # Interpret IR
+      $ECHO -n " [run-ir]"
+      $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
+      normalize $out/$base.run-ir
+      diff_files="$diff_files $base.run-ir"
+
+      # Diff interpretations without/with lowering
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+      diff_files="$diff_files $base.diff-ir"
     fi
 
     # Compile
-    echo -n " [wasm]"
+    $ECHO -n " [wasm]"
     if [ $DFINITY = 'yes' ]
     then
       $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as <(echo 'print("Top-level code done.\n")') -o $out/$base.wasm 2> $out/$base.wasm.stderr
     else
       $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
     fi
+    normalize $out/$base.wasm.stderr
     diff_files="$diff_files $base.wasm.stderr"
+
+    # Run compiled program
     if [ -e $out/$base.wasm ]
     then
       if [ "$SKIP_RUNNING" != yes ]
       then
         if [ $DFINITY = 'yes' ]
         then
-          echo -n " [dvm]"
+          $ECHO -n " [dvm]"
           $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
+          normalize $out/$base.dvm-run
           diff_files="$diff_files $base.dvm-run"
         else
-          echo -n " [wasm-run]"
+          $ECHO -n " [wasm-run]"
           $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
-          sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
-          mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
+          normalize $out/$base.wasm-run
           diff_files="$diff_files $base.wasm-run"
         fi
       fi
     fi
   fi
-  echo ""
-
-  # normalize files
-  for file in $diff_files
-  do
-    if [ -e "$out/$file" ]
-    then
-      grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file |
-      sed 's/\x00//g' |
-      sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-      sed 's/^.*W, hypervisor:/W, hypervisor:/g' > $out/$file.norm
-      mv $out/$file.norm $out/$file
-    fi
-  done
+  $ECHO ""
 
   if [ $ACCEPT = yes ]
   then
@@ -147,7 +168,7 @@ do
   else
     for file in $diff_files
     do
-      diff -a -u -N $ok/$file.ok $out/$file
+      diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
       if [ $? != 0 ]; then failures=yes; fi
     done
   fi
@@ -159,8 +180,5 @@ then
   echo "Some tests failed."
   exit 1
 else
-  echo "All tests passed."
+  $ECHO "All tests passed."
 fi
-
-
-

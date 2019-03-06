@@ -5,9 +5,7 @@ module T = Type
 module A = Effect
 
 
-(* Error bookkeeping *)
-
-(* Recovering from errors *)
+(* Error recovery *)
 
 exception Recover
 
@@ -15,11 +13,13 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
-(* Scope (the external interface) *)
+
+(* Scopes *)
 
 type val_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
-type con_env = T.con_env
+type con_env = T.ConSet.t
+
 
 type scope =
   { val_env : val_env;
@@ -30,14 +30,15 @@ type scope =
 let empty_scope : scope =
   { val_env = T.Env.empty;
     typ_env = T.Env.empty;
-    con_env = Con.Env.empty
+    con_env = T.ConSet.empty
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = Con.Env.adjoin scope1.con_env scope2.con_env;
+    con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
   }
+
 
 (* Contexts (internal) *)
 
@@ -66,7 +67,8 @@ let env_of_scope msgs scope =
     msgs;
   }
 
-(* More error bookkeeping *)
+
+(* Error bookkeeping *)
 
 let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"; text}
 let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
@@ -79,36 +81,29 @@ let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 
-let add_lab c x t = {c with labs = T.Env.add x t c.labs}
-let add_val c x t = {c with vals = T.Env.add x t c.vals}
-(*
-let add_con c con k = {c with cons = Con.Env.add con k c.cons}
-let add_typ c x con k =
-  { c with
-    typs = T.Env.add x con c.typs;
-    cons = Con.Env.add con k c.cons;
-  }
-*)
+(* Context extension *)
 
-let add_typs c xs cs ks =
-  { c with
-    typs = List.fold_right2 T.Env.add xs cs c.typs;
-    cons = List.fold_right2 Con.Env.add cs ks c.cons;
+let add_lab env x t = {env with labs = T.Env.add x t env.labs}
+let add_val env x t = {env with vals = T.Env.add x t env.vals}
+
+let add_typs env xs cs =
+  { env with
+    typs = List.fold_right2 T.Env.add xs cs env.typs;
+    cons = List.fold_right T.ConSet.disjoint_add cs env.cons;
   }
 
-let adjoin c scope =
-  { c with
-    vals = T.Env.adjoin c.vals scope.val_env;
-    typs = T.Env.adjoin c.typs scope.typ_env;
-    cons = Con.Env.adjoin c.cons scope.con_env;
+let adjoin env scope =
+  { env with
+    vals = T.Env.adjoin env.vals scope.val_env;
+    typs = T.Env.adjoin env.typs scope.typ_env;
+    cons = T.ConSet.disjoint_union env.cons scope.con_env;
   }
 
-let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
-let adjoin_cons c ce = {c with cons = Con.Env.adjoin c.cons ce}
-let adjoin_typs c te ce =
-  { c with
-    typs = T.Env.adjoin c.typs te;
-    cons = Con.Env.adjoin c.cons ce;
+let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
+let adjoin_typs env te ce =
+  { env with
+    typs = T.Env.adjoin env.typs te;
+    cons = T.ConSet.disjoint_union env.cons ce;
   }
 
 let disjoint_union env at fmt env1 env2 =
@@ -142,15 +137,14 @@ and check_typ' env typ : T.typ =
   | VarT (id, typs) ->
     (match T.Env.find_opt id.it env.typs with
     | Some c ->
-      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.Env.find c env.cons in
+      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.kind c in
       let ts = check_typ_bounds env tbs typs typ.at in
-	    T.Con (c, ts)
+      T.Con (c, ts)
     | None -> error env id.at "unbound type identifier %s" id.it
     )
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
-  | PrimT "Class" -> T.Class
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "unknown primitive type"
@@ -168,19 +162,19 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Call T.Sharable then begin
+    if sort.it = T.Sharable then begin
       let t1 = T.seq ts1 in
-      if not (T.sub env'.cons t1 T.Shared) then
+      if not (T.sub t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand env'.cons t1);
+          (T.string_of_typ_expand t1);
       (match ts2 with
       | [] -> ()
       | [T.Async t2] ->
-        if not (T.sub env'.cons t2 T.Shared) then
+        if not (T.sub t2 T.Shared) then
           error env typ1.at "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand env'.cons t2);
+            (T.string_of_typ_expand t2);
       | _ -> error env typ1.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons (T.seq ts2))
+          (T.string_of_typ_expand (T.seq ts2))
       )
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
@@ -189,13 +183,11 @@ and check_typ' env typ : T.typ =
     T.Opt (check_typ env typ)
   | AsyncT typ ->
     let t = check_typ env typ in
-    let t' = T.promote env.cons t in
-    if t' <> T.Pre && not (T.sub env.cons t' T.Shared) then
+    let t' = T.promote t in
+    if t' <> T.Pre && not (T.sub t' T.Shared) then
       error env typ.at "async type has non-shared parameter type\n  %s"
-        (T.string_of_typ_expand env.cons t');
+        (T.string_of_typ_expand t');
     T.Async t
-  | LikeT typ ->
-    T.Like (check_typ env typ)
   | ObjT (sort, fields) ->
     check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
@@ -206,41 +198,41 @@ and check_typ' env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (T.is_func (T.promote env.cons t)) then
+  if s = T.Actor && not (T.is_func (T.promote t)) then
     error env typ.at "actor field %s has non-function type\n  %s"
-      id.it (T.string_of_typ_expand env.cons t);
-  if s <> T.Object T.Local && not (T.sub env.cons t T.Shared) then
+      id.it (T.string_of_typ_expand t);
+  if s <> T.Object T.Local && not (T.sub t T.Shared) then
     error env typ.at "shared object or actor field %s has non-shared type\n  %s"
-      id.it (T.string_of_typ_expand env.cons t);
-  {T.name = id.it; typ = t}
+      id.it (T.string_of_typ_expand t);
+  T.{lab = id.it; typ = t}
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map (fun x -> Con.fresh x) xs in
-  List.iter2 (fun typ_bind c -> typ_bind.note <- T.Con (c, [])) typ_binds cs;
+  let cs = List.map (fun n -> Con.fresh n (T.Abs ([], T.Pre))) xs in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
         error env id.at "duplicate type name %s in type parameter list" id.it;
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
-  let pre_ks = List.map (fun c -> T.Abs ([], T.Pre)) cs in
-  let pre_env' = add_typs {env with pre = true} xs cs pre_ks in
+  let pre_env' = add_typs {env with pre = true} xs cs  in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
-  let ks = List.map2 (fun c t -> T.Abs ([], t)) cs ts in
-  let env' = add_typs env xs cs ks in
+  let ks = List.map (fun t -> T.Abs ([], t)) ts in
+  List.iter2 T.set_kind cs ks;
+  let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
-  cs, ts, te, Con.Env.from_list2 cs ks
+  List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
+  cs, ts, te, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
   match tbs, typs with
   | tb::tbs', typ::typs' ->
     let t = check_typ env typ in
     if not env.pre then begin
-      if not (T.sub env.cons t tb.T.bound) then
+      if not (T.sub t tb.T.bound) then
         local_error env typ.at "type argument\n  %s\ndoes not match parameter bound\n  %s"
-          (T.string_of_typ_expand env.cons t)
-          (T.string_of_typ_expand env.cons tb.T.bound)
+          (T.string_of_typ_expand t)
+          (T.string_of_typ_expand tb.T.bound)
     end;
     let ts' = check_typ_bounds env tbs' typs' at in
     t::ts'
@@ -294,7 +286,7 @@ let infer_lit env lit at : T.prim =
     assert false
 
 let check_lit env t lit at =
-  match T.normalize env.cons t, !lit with
+  match T.normalize t, !lit with
   | T.Opt _, NullLit -> ()
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
@@ -312,9 +304,9 @@ let check_lit env t lit at =
     lit := FloatLit (check_float env at s)
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
-    if not (T.sub env.cons t' t) then
+    if not (T.sub t' t) then
       local_error env at "literal of type\n  %s\ndoes not have expected type\n  %s"
-        (T.string_of_typ t') (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ t') (T.string_of_typ_expand t)
 
 
 (* Expressions *)
@@ -325,30 +317,32 @@ let isAsyncE exp =
   | _ -> false
 
 let rec infer_exp env exp : T.typ =
-  let t = T.as_immut (infer_exp_mut env exp) in
-  if not env.pre then
-    exp.note <- {exp.note with note_typ = T.as_immut exp.note.note_typ};
-  t
+  infer_exp' T.as_immut env exp
+
+and infer_exp_mut env exp : T.typ =
+  infer_exp' Lib.Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
-  let t' = T.promote env.cons t in
+  let t' = T.promote t in
   if t' = T.Pre then
     error env exp.at "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type\n  %s"
-      (T.string_of_typ_expand env.cons t);
+      (T.string_of_typ_expand  t);
   t'
 
-and infer_exp_mut env exp : T.typ =
+and infer_exp' f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
-  let t = infer_exp' env exp in
+  let t = infer_exp'' env exp in
   assert (t <> T.Pre);
+  let t' = f t in
   if not env.pre then begin
+    assert (T.normalize t' <> T.Pre);
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.normalize env.cons t; note_eff = e}
+    exp.note <- {note_typ = T.normalize t'; note_eff = e}
   end;
-  t
+  t'
 
-and infer_exp' env exp : T.typ =
+and infer_exp'' env exp : T.typ =
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -369,33 +363,33 @@ and infer_exp' env exp : T.typ =
       assert (!ot = Type.Pre);
       if not (Operator.has_unop t op) then
         error env exp.at "operator is not defined for operand type\n  %s"
-          (T.string_of_typ_expand env.cons t);
+          (T.string_of_typ_expand t);
       ot := t;
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
-    let t = T.lub env.cons t1 t2 in
+    let t = T.lub t1 t2 in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_binop t op) then
         error env exp.at "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2);
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2);
       ot := t
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
-    let t = T.lub env.cons t1 t2 in
+    let t = T.lub t1 t2 in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_relop t op) then
         error env exp.at "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand env.cons t1)
-          (T.string_of_typ_expand env.cons t2);
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2);
       ot := t;
     end;
     T.bool
@@ -408,32 +402,31 @@ and infer_exp' env exp : T.typ =
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let ts = T.as_tup_sub n env.cons t1 in
+      let ts = T.as_tup_sub n t1 in
       match List.nth_opt ts n with
       | Some t -> t
       | None ->
         error env exp.at "tuple projection %n is out of bounds for type\n  %s"
-          n (T.string_of_typ_expand env.cons t1)
+          n (T.string_of_typ_expand t1)
     with Invalid_argument _ ->
       error env exp1.at "expected tuple type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
+        (T.string_of_typ_expand t1)
     )
-  | ObjE (sort, id, fields) ->
+  | ObjE (sort, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
-    infer_obj env' sort.it id fields
-  | DotE (exp1, sr, {it = Name n; _}) ->
+    infer_obj env' sort.it fields exp.at
+  | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let s, tfs = T.as_obj_sub n env.cons t1 in
-      sr := s;
-      match List.find_opt (fun {T.name; _} -> name = n) tfs with
+      let _, tfs = T.as_obj_sub id.it t1 in
+      match List.find_opt (fun T.{lab; _} -> lab = id.it) tfs with
       | Some {T.typ = t; _} -> t
       | None ->
         error env exp1.at "field name %s does not exist in type\n  %s"
-          n (T.string_of_typ_expand env.cons t1)
+          id.it (T.string_of_typ_expand t1)
     with Invalid_argument _ ->
       error env exp1.at "expected object type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
+        (T.string_of_typ_expand t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -447,9 +440,9 @@ and infer_exp' env exp : T.typ =
     T.unit
   | ArrayE (mut, exps) ->
     let ts = List.map (infer_exp env) exps in
-    let t1 = List.fold_left (T.lub env.cons) T.Non ts in
+    let t1 = List.fold_left T.lub T.Non ts in
     if
-      t1 = T.Any && List.for_all (fun t -> T.promote env.cons t <> T.Any) ts
+      t1 = T.Any && List.for_all (fun t -> T.promote t <> T.Any) ts
     then
       warn env exp.at "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
@@ -457,34 +450,66 @@ and infer_exp' env exp : T.typ =
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let t = T.as_array_sub env.cons t1 in
+      let t = T.as_array_sub t1 in
       if not env.pre then check_exp env T.nat exp2;
       t
     with Invalid_argument _ ->
       error env exp1.at "expected array type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
+        (T.string_of_typ_expand t1)
     )
+  | FuncE (_, sort, typ_binds, pat, typ, exp) ->
+    let cs, ts, te, ce = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te ce in
+    let t1, ve = infer_pat_exhaustive env' pat in
+    let t2 = check_typ env' typ in
+    if not env.pre then begin
+      let env'' =
+        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
+      check_exp (adjoin_vals env'' ve) t2 exp;
+      if sort.it = T.Sharable then begin
+        if not (T.sub t1 T.Shared) then
+          error env pat.at "shared function has non-shared parameter type\n  %s"
+            (T.string_of_typ_expand t1);
+        begin match t2 with
+        | T.Tup [] -> ()
+        | T.Async t2 ->
+          if not (T.sub t2 T.Shared) then
+            error env typ.at "shared function has non-shared result type\n  %s"
+              (T.string_of_typ_expand t2);
+          if not (isAsyncE exp) then
+            error env exp.at "shared function with async type has non-async body"
+        | _ -> error env typ.at "shared function has non-async result type\n  %s"
+            (T.string_of_typ_expand t2)
+        end
+      end
+    end;
+    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
+    let c =
+      match sort.it, typ.it with
+      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | _ -> T.Returns
+    in
+    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let tbs, t2, t = T.as_func_sub (List.length insts) env.cons t1 in
+      let tbs, t2, t = T.as_func_sub (List.length insts) t1 in
       let ts = check_inst_bounds env tbs insts exp.at in
       if not env.pre then check_exp env (T.open_ ts t2) exp2;
       T.open_ ts t
     with Invalid_argument _ ->
       error env exp1.at "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
+        (T.string_of_typ_expand t1)
     )
-  | BlockE (decs, ot) ->
+  | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
-    let t' =
-      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-        error env exp.at "local class type %s is contained in inferred block type\n  %s"
-          (Con.to_string c)
-          (T.string_of_typ_expand (Con.Env.adjoin env.cons scope.con_env) t)
-    in
-    ot := t';
-    t'
+    (try T.avoid scope.con_env t with T.Unavoidable c ->
+      error env exp.at "local class type %s is contained in inferred block type\n  %s"
+        (Con.to_string c)
+        (T.string_of_typ_expand t)
+    )
   | NotE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.bool
@@ -504,21 +529,21 @@ and infer_exp' env exp : T.typ =
     if not env.pre then check_exp env T.bool exp1;
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
-    let t = T.lub env.cons t2 t3 in
+    let t = T.lub t2 t3 in
     if
       t = T.Any &&
-      T.promote env.cons t2 <> T.Any && T.promote env.cons t3 <> T.Any
+      T.promote t2 <> T.Any && T.promote t3 <> T.Any
     then
       warn env exp.at "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
         (T.string_of_typ t)
-        (T.string_of_typ_expand env.cons t2)
-        (T.string_of_typ_expand env.cons t3);
+        (T.string_of_typ_expand t2)
+        (T.string_of_typ_expand t3);
     t
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
     if not env.pre then
-      if not (Coverage.check_cases env.cons cases t1) then
+      if not (Coverage.check_cases cases t1) then
         warn env exp.at "the cases in this switch do not cover all possible values";
     t
   | WhileE (exp1, exp2) ->
@@ -527,26 +552,31 @@ and infer_exp' env exp : T.typ =
       check_exp env T.unit exp2
     end;
     T.unit
-  | LoopE (exp1, expo) ->
+  | LoopE (exp1, None) ->
     if not env.pre then begin
-      check_exp env T.unit exp1;
-      Lib.Option.app (check_exp env T.bool) expo
+      check_exp env T.unit exp1
     end;
     T.Non
+  | LoopE (exp1, Some exp2) ->
+    if not env.pre then begin
+      check_exp env T.unit exp1;
+      check_exp env T.bool exp2
+    end;
+    T.unit
   | ForE (pat, exp1, exp2) ->
     if not env.pre then begin
       let t1 = infer_exp_promote env exp1 in
       (try
-        let _, tfs = T.as_obj_sub "next" env.cons t1 in
+        let _, tfs = T.as_obj_sub "next" t1 in
         let t = T.lookup_field "next" tfs in
-        let t1, t2 = T.as_mono_func_sub env.cons t in
-        if not (T.sub env.cons T.unit t1) then raise (Invalid_argument "");
-        let t2' = T.as_opt_sub env.cons t2 in
+        let t1, t2 = T.as_mono_func_sub t in
+        if not (T.sub T.unit t1) then raise (Invalid_argument "");
+        let t2' = T.as_opt_sub t2 in
         let ve = check_pat_exhaustive env t2' pat in
         check_exp (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ ->
         local_error env exp1.at "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand env.cons t1)
+          (T.string_of_typ_expand t1)
       );
     end;
     T.unit
@@ -581,124 +611,90 @@ and infer_exp' env exp : T.typ =
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
-    if not (T.sub env.cons t T.Shared) then
+    if not (T.sub t T.Shared) then
       error env exp1.at "async type has non-shared parameter type\n  %s"
-        (T.string_of_typ_expand env.cons t);
+        (T.string_of_typ_expand t);
     T.Async t
   | AwaitE exp1 ->
     if not env.async then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
     (try
-      T.as_async_sub env.cons t1
+      T.as_async_sub t1
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
-        (T.string_of_typ_expand env.cons t1)
+        (T.string_of_typ_expand t1)
     )
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.unit
-  | IsE (exp1, exp2) ->
-    (* TBR: restrict t1 to objects? *)
-    if not env.pre then begin
-      let _t1 = infer_exp env exp1 in
-      check_exp env T.Class exp2
-    end;
-    T.bool
   | AnnotE (exp1, typ) ->
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
-  | DecE (dec, ot) ->
-    let t, scope = infer_block env [dec] exp.at in
-    let t' =
-      try T.avoid env.cons scope.con_env t with T.Unavoidable c ->
-        error env exp.at "local class name %s is contained in inferred declaration type\n  %s"
-          (Con.to_string c) (T.string_of_typ_expand env.cons t)
-    in
-    ot := t';
-    t'
-  (* DeclareE and DefineE should not occur in source code *)
-  | DeclareE (id, typ, exp1) ->
-    let env' = adjoin_vals env (T.Env.singleton id.it typ) in
-    infer_exp env' exp1
-  | DefineE (id, mut, exp1) ->
-    (match T.Env.find_opt id.it env.vals with
-    | Some T.Pre ->
-      error env id.at "cannot infer type of forward variable %s" id.it
-    | Some t1 ->
-      if not env.pre then begin
-        try
-          let t2 = match mut.it with Var -> T.as_mut t1 | Const -> t1 in
-          check_exp env t2 exp1
-        with Invalid_argument _ ->
-          error env exp.at "expected mutable assignment target"
-      end
-    | None -> error env id.at "unbound variable %s" id.it
-    );
-    T.unit
-  | NewObjE (sort, labids) ->
-    T.Obj (sort.it,
-      List.map (fun (name, id) ->
-        {T.name = string_of_name name.it; T.typ = T.Env.find id.it env.vals})
-      labids)
 
 and check_exp env t exp =
   assert (not env.pre);
   assert (exp.note.note_typ = T.Pre);
   assert (t <> T.Pre);
-  let t' = T.normalize env.cons t in
-  check_exp' env t' exp;
+  let t' = check_exp' env (T.normalize t) exp in
   let e = A.infer_effect_exp exp in
   exp.note <- {note_typ = t'; note_eff = e}
 
-and check_exp' env t exp =
+and check_exp' env t exp : T.typ =
   match exp.it, t with
   | PrimE s, T.Func _ ->
-    ()
+    t
   | LitE lit, _ ->
-    check_lit env t lit exp.at
-  | UnE (ot, op, exp1), t' when Operator.has_unop t' op ->
-    ot := t';
-    check_exp env t' exp1
-  | BinE (ot, exp1, op, exp2), t' when Operator.has_binop t' op ->
-    ot := t';
-    check_exp env t' exp1;
-    check_exp env t' exp2
+    check_lit env t lit exp.at;
+    t
+  | UnE (ot, op, exp1), _ when Operator.has_unop t op ->
+    ot := t;
+    check_exp env t exp1;
+    t
+  | BinE (ot, exp1, op, exp2), _ when Operator.has_binop t op ->
+    ot := t;
+    check_exp env t exp1;
+    check_exp env t exp2;
+    t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-    List.iter2 (check_exp env) ts exps
+    List.iter2 (check_exp env) ts exps;
+    t
   | OptE exp1, _ when T.is_opt t ->
-    check_exp env (T.as_opt t) exp1
-  | ObjE (sort, id, fields), T.Obj (s, tfs) when s = sort.it ->
-    let env' = if sort.it = T.Actor then {env with async = false} else env in
-    ignore (check_obj env' s tfs id fields exp.at)
+    check_exp env (T.as_opt t) exp1;
+    t
   | ArrayE (mut, exps), T.Array t' ->
     if (mut.it = Var) <> T.is_mut t' then
       local_error env exp.at "%smutable array expression cannot produce expected type\n  %s"
         (if mut.it = Const then "im" else "")
-        (T.string_of_typ_expand env.cons (T.Array t'));
-    List.iter (check_exp env (T.as_immut t')) exps
+        (T.string_of_typ_expand (T.Array t'));
+    List.iter (check_exp env (T.as_immut t')) exps;
+    t
   | AsyncE exp1, T.Async t' ->
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
-    check_exp env' t' exp1
-  | BlockE (decs, ot), _ ->
+    check_exp env' t' exp1;
+    t
+  | BlockE decs, _ ->
     ignore (check_block env t decs exp.at);
-    ot := t
+    t
   | IfE (exp1, exp2, exp3), _ ->
     check_exp env T.bool exp1;
     check_exp env t exp2;
-    check_exp env t exp3
+    check_exp env t exp3;
+    t
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not (Coverage.check_cases env.cons cases t1) then
+    if not (Coverage.check_cases cases t1) then
       warn env exp.at "the cases in this switch do not cover all possible values";
+    t
   | _ ->
     let t' = infer_exp env exp in
-    if not (T.sub env.cons t' t) then
+    if not (T.sub t' t) then
       local_error env exp.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t')
-        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand t')
+        (T.string_of_typ_expand t);
+    t'
 
 
 (* Cases *)
@@ -709,15 +705,15 @@ and infer_cases env t_pat t cases : T.typ =
 and infer_case env t_pat t {it = {pat; exp}; at; _} =
   let ve = check_pat env t_pat pat in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
-  let t'' = T.lub env.cons t t' in
+  let t'' = T.lub t t' in
   if
     t'' = T.Any &&
-    T.promote env.cons t <> T.Any && T.promote env.cons t' <> T.Any
+    T.promote t <> T.Any && T.promote t' <> T.Any
   then
     warn env at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
       (T.string_of_typ t'')
-      (T.string_of_typ_expand env.cons t)
-      (T.string_of_typ_expand env.cons t');
+      (T.string_of_typ_expand t)
+      (T.string_of_typ_expand t');
   t''
 
 and check_cases env t_pat t cases =
@@ -730,29 +726,10 @@ and check_case env t_pat t {it = {pat; exp}; _} =
 
 (* Patterns *)
 
-and gather_pat env ve0 pat : val_env =
-  let rec go ve pat =
-    match pat.it with
-    | WildP | LitP _ | SignP _ ->
-      ve
-    | VarP id ->
-      if T.Env.mem id.it ve0 then
-        error env pat.at "duplicate binding for %s in block" id.it;
-      T.Env.add id.it T.Pre ve
-    | TupP pats ->
-      List.fold_left go ve pats
-    | AltP (pat1, pat2) ->
-      go ve pat1
-    | OptP pat1
-    | AnnotP (pat1, _) ->
-      go ve pat1
-  in T.Env.adjoin ve0 (go T.Env.empty pat)
-
-
 and infer_pat_exhaustive env pat : T.typ * val_env =
   let t, ve = infer_pat env pat in
   if not env.pre then
-    if not (Coverage.check_pat env.cons pat t) then
+    if not (Coverage.check_pat pat t) then
       warn env pat.at "this pattern does not cover all possible values";
   t, ve
 
@@ -760,7 +737,7 @@ and infer_pat env pat : T.typ * val_env =
   assert (pat.note = T.Pre);
   let t, ve = infer_pat' env pat in
   if not env.pre then
-    pat.note <- T.normalize env.cons t;
+    pat.note <- T.normalize t;
   t, ve
 
 and infer_pat' env pat : T.typ * val_env =
@@ -777,7 +754,7 @@ and infer_pat' env pat : T.typ * val_env =
     let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
     if not (Operator.has_unop t op) then
       local_error env pat.at "operator is not defined for operand type\n  %s"
-        (T.string_of_typ_expand env.cons t);
+        (T.string_of_typ_expand t);
     t, T.Env.empty
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
@@ -788,13 +765,15 @@ and infer_pat' env pat : T.typ * val_env =
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
-    let t = T.lub env.cons t1 t2 in
+    let t = T.lub t1 t2 in
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "variables are not allowed in pattern alternatives";
     t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
+  | ParP pat1 ->
+     infer_pat env pat1
 
 and infer_pats at env pats ts ve : T.typ list * val_env =
   match pats with
@@ -808,14 +787,14 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
 and check_pat_exhaustive env t pat : val_env =
   let ve = check_pat env t pat in
   if not env.pre then
-    if not (Coverage.check_pat env.cons pat t) then
+    if not (Coverage.check_pat pat t) then
       warn env pat.at "this pattern does not cover all possible values";
   ve
 
 and check_pat env t pat : val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
-  let t' = T.normalize env.cons t in
+  let t' = T.normalize t in
   let ve = check_pat' env t' pat in
   if not env.pre then pat.note <- t';
   ve
@@ -832,20 +811,20 @@ and check_pat' env t pat : val_env =
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
-      let t' = T.normalize env.cons t in
+      let t' = T.normalize t in
       if not (Operator.has_unop t op) then
         local_error env pat.at "operator cannot consume expected type\n  %s"
-          (T.string_of_typ_expand env.cons t');
+          (T.string_of_typ_expand t');
       check_lit env t' lit pat.at
     end;
     T.Env.empty
   | TupP pats ->
     (try
-      let ts = T.as_tup_sub (List.length pats) env.cons t in
+      let ts = T.as_tup_sub (List.length pats) t in
       check_pats env ts pats T.Env.empty pat.at
     with Invalid_argument _ ->
       error env pat.at "tuple pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand t)
     )
   | OptP pat1 ->
     (try
@@ -853,7 +832,7 @@ and check_pat' env t pat : val_env =
       check_pat env t1 pat1
     with Invalid_argument _ ->
       error env pat.at "option pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -861,12 +840,14 @@ and check_pat' env t pat : val_env =
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "variables are not allowed in pattern alternatives";
     T.Env.empty
+  | ParP pat1 ->
+     check_pat env t pat1
   | _ ->
     let t', ve = infer_pat env pat in
-    if not (T.sub env.cons t t') then
+    if not (T.sub t t') then
       error env pat.at "pattern of type\n  %s\ncannot consume expected type\n  %s"
-        (T.string_of_typ_expand env.cons t')
-        (T.string_of_typ_expand env.cons t);
+        (T.string_of_typ_expand t')
+        (T.string_of_typ_expand t);
     ve
 
 and check_pats env ts pats ve at : val_env =
@@ -886,97 +867,64 @@ and check_pats env ts pats ve at : val_env =
 
 (* Objects *)
 
-and infer_obj env s id fields : T.typ =
-  let pre_ve = gather_exp_fields env id.it fields in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve in
-  let tfs, ve = infer_exp_fields pre_env s id.it T.Pre fields in
-  let t = T.Obj (s, tfs) in
-  if not env.pre then begin
-    let env' = adjoin_vals (add_val env id.it t) ve in
-    ignore (infer_exp_fields env' s id.it t fields)
-  end;
-  t
+and pub_fields fields : region T.Env.t * region T.Env.t =
+  List.fold_right pub_field fields (T.Env.empty, T.Env.empty)
 
+and pub_field field xs : region T.Env.t * region T.Env.t =
+  match field.it with
+  | {vis; dec} when vis.it = Public -> pub_dec dec xs
+  | _ -> xs
 
-and check_obj env s tfs id fields at : T.typ =
-  let pre_ve = gather_exp_fields env id.it fields in
-  let pre_ve' = List.fold_left
-    (fun ve {T.name; typ = t} ->
-      if not (T.Env.mem name ve) then
-        error env at "%s expression without field %s cannot produce expected type\n  %s"
-          (if s = T.Actor then "actor" else "object") name
-          (T.string_of_typ_expand env.cons t);
-      T.Env.add name t ve
-    ) pre_ve tfs
-  in
-  let pre_env = adjoin_vals {env with pre = true} pre_ve' in
-  let tfs', ve = infer_exp_fields pre_env s id.it T.Pre fields in
-  let t = T.Obj (s, tfs') in
-  let env' = adjoin_vals (add_val env id.it t) ve in
-  ignore (infer_exp_fields env' s id.it t fields);
-  t
-
-
-and gather_exp_fields env id fields : val_env =
-  let ve0 = T.Env.singleton id T.Pre in
-  List.fold_left (gather_exp_field env) ve0 fields
-
-and gather_exp_field env ve field : val_env =
-  let {id; _} : exp_field' = field.it in
-  if T.Env.mem id.it ve then
-    error env id.at "duplicate field name %s in object" id.it;
-  T.Env.add id.it T.Pre ve
-
-
-and infer_exp_fields env s id t fields : T.field list * val_env =
-  let env' = add_val env id t in
-  let tfs, ve =
-    List.fold_left (infer_exp_field env' s) ([], T.Env.empty) fields in
-  List.sort T.compare_field tfs, ve
-
-and is_func_exp exp =
-  match exp.it with
-  | DecE (dec, _) -> is_func_dec dec
-  | AnnotE (exp, _) -> is_func_exp exp
-  | _ -> Printf.printf "[1]%!"; false
-
-and is_func_dec dec =
+and pub_dec dec xs : region T.Env.t * region T.Env.t =
   match dec.it with
-  | FuncD _ -> true
-  | _ -> Printf.printf "[2]%!"; false
+  | ExpD _ -> xs
+  | LetD (pat, _) -> pub_pat pat xs
+  | VarD (id, _) -> pub_val_id id xs
+  | ClassD (id, _, _, _, _, _) ->
+    pub_val_id {id with note = ()} (pub_typ_id id xs)
+  | TypD (id, _, _) -> pub_typ_id id xs
 
-and infer_exp_field env s (tfs, ve) field : T.field list * val_env =
-  let {id; name; exp; mut; priv} = field.it in
-  let t =
-    match T.Env.find id.it env.vals with
-    | T.Pre ->
-      infer_mut mut (infer_exp (adjoin_vals env ve) exp)
-    | t ->
-      (* When checking object in analysis mode *)
-      if not env.pre then begin
-        check_exp (adjoin_vals env ve) (T.as_immut t) exp;
-        if (mut.it = Var) <> T.is_mut t then
-          local_error env field.at
-            "%smutable field %s cannot produce expected %smutable field of type\n  %s"
-            (if mut.it = Var then "" else "im") id.it
-            (if T.is_mut t then "" else "im")
-            (T.string_of_typ_expand env.cons (T.as_immut t))
-      end;
-      t
-  in
-  if not env.pre then begin
-    if s = T.Actor && priv.it = Public && not (is_func_exp exp) then
-      error env field.at "public actor field is not a function";
-    if s <> T.Object T.Local && priv.it = Public && not (T.sub env.cons t T.Shared) then
-      error env field.at "public shared object or actor field %s has non-shared type\n  %s"
-        (string_of_name name.it) (T.string_of_typ_expand env.cons t)
+and pub_pat pat xs : region T.Env.t * region T.Env.t =
+  match pat.it with
+  | WildP | LitP _ | SignP _ -> xs
+  | VarP id -> pub_val_id id xs
+  | TupP pats -> List.fold_right pub_pat pats xs
+  | AltP (pat1, _)
+  | OptP pat1
+  | AnnotP (pat1, _)
+  | ParP pat1
+    -> pub_pat pat1 xs
+
+and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
+  (T.Env.add id.it id.at xs, ys)
+
+and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
+  (xs, T.Env.add id.it id.at ys)
+
+and infer_obj env s fields at : T.typ =
+  let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
+  let _, scope = infer_block env decs at in
+  let pub_typ, pub_val = pub_fields fields in
+  (* TODO: type fields *)
+  T.Env.iter (fun _ at' ->
+    local_error env at' "public type fields not supported yet"
+  ) pub_typ;
+  let dom = T.Env.keys pub_val in
+  let tfs =
+    List.map (fun lab -> T.{lab; typ = T.Env.find lab scope.val_env}) dom in
+  if not env.pre && s <> T.Object T.Local then begin
+    List.iter (fun T.{lab; typ} ->
+      if not (T.sub typ T.Shared) then
+        error env (T.Env.find lab pub_val)
+          "public shared object or actor field %s has non-shared type\n  %s"
+          lab (T.string_of_typ_expand typ)
+    ) tfs
   end;
-  let ve' = T.Env.add id.it t ve in
-  let tfs' =
-    if priv.it = Private
-    then tfs
-    else {T.name = string_of_name name.it; typ = t} :: tfs
-  in tfs', ve'
+  let t = T.Obj (s, tfs) in
+  try T.avoid scope.con_env t with T.Unavoidable c ->
+    error env at "local class type %s is contained in object or actor type\n  %s"
+      (Con.to_string c)
+      (T.string_of_typ_expand t)
 
 
 (* Blocks and Declarations *)
@@ -985,6 +933,18 @@ and infer_block env decs at : T.typ * scope =
   let scope = infer_block_decs env decs in
   let t = infer_block_exps (adjoin env scope) decs in
   t, scope
+
+and infer_block_decs env decs : scope =
+  let scope = gather_block_typdecs env decs in
+  let env' = adjoin {env with pre = true} scope in
+  let ce = infer_block_typdecs env' decs in
+  let env'' = adjoin env {scope with con_env = ce} in
+  let _ce' = infer_block_typdecs env'' decs in
+  (* TBR: assertion does not work for types with binders, due to stamping *)
+  (* assert (ce = ce'); *)
+  let pre_ve' = gather_block_valdecs env decs in
+  let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
+  {scope with val_env = ve; con_env = ce}
 
 and infer_block_exps env decs : T.typ =
   match decs with
@@ -997,32 +957,27 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | ExpD exp ->
+  | ExpD exp
+  | LetD (_, exp) ->
     infer_exp env exp
-  | LetD (_, exp) | VarD (_, exp) ->
+  | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
+  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
+      let c = T.Env.find id.it env.typs in
+      let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
-      let t2 = check_typ env' typ in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env'' =
-        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
-      check_exp (adjoin_vals env'' ve) t2 exp
-    end;
-    t
-  | ClassD (id, tid, typ_binds, sort, pat, id', fields) ->
-    let t = T.Env.find id.it env.vals in
-    if not env.pre then begin
-      let _cs, _ts, te, ce = check_typ_binds env typ_binds in
-      let env' = adjoin_typs env te ce in
-      let _, ve = infer_pat_exhaustive env' pat in
-      let env'' =
-        {env' with labs = T.Env.empty; rets = None; async = false} in
-      ignore (infer_obj (adjoin_vals env'' ve) sort.it id' fields)
+        { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
+          labs = T.Env.empty;
+          rets = None;
+          async = false
+        }
+      in ignore (infer_obj env'' sort.it fields dec.at)
     end;
     t
   | TypD _ ->
@@ -1032,6 +987,7 @@ and infer_dec env dec : T.typ =
   dec.note <- {note_typ = t; note_eff = eff};
   t
 
+
 and check_block env t decs at : scope =
   let scope = infer_block_decs env decs in
   check_block_exps (adjoin env scope) t decs at;
@@ -1040,9 +996,9 @@ and check_block env t decs at : scope =
 and check_block_exps env t decs at =
   match decs with
   | [] ->
-    if not (T.sub env.cons T.unit t) then
+    if not (T.sub T.unit t) then
       local_error env at "empty block cannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t)
+        (T.string_of_typ_expand t)
   | [dec] ->
     check_dec env t dec
   | dec::decs' ->
@@ -1053,7 +1009,7 @@ and check_dec env t dec =
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
-    dec.note <- exp.note;
+    dec.note <- exp.note
 (* TBR: push in external type annotation;
    unfortunately, this isn't enough, because of the earlier recursive phases
   | FuncD (id, [], pat, typ, exp) ->
@@ -1079,35 +1035,10 @@ and check_dec env t dec =
 *)
   | _ ->
     let t' = infer_dec env dec in
-    (* TBR: special-case unit? *)
-    if not (T.eq env.cons t T.unit || T.sub env.cons t' t) then
+    if not (T.eq t T.unit || T.sub t' t) then
       local_error env dec.at "expression of type\n  %s\ncannot produce expected type\n  %s"
-        (T.string_of_typ_expand env.cons t')
-        (T.string_of_typ_expand env.cons t)
-(*
-and print_ce =
-  Con.Env.iter (fun c k ->
-    Printf.printf "  type %s %s\n" (Con.to_string c) (Type.string_of_kind k)
-  )
-and print_ve =
-  Type.Env.iter (fun x t ->
-    Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
-  )
-*)
-
-
-and infer_block_decs env decs : scope =
-  let scope = gather_block_typdecs env decs in
-  let env' = adjoin {env with pre = true} scope in
-  let ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env {scope with con_env = ce} in
-  let _ce' = infer_block_typdecs env'' decs in
-  (* TBR: assertion does not work for types with binders, due to stamping *)
-  (* assert (ce = ce'); *)
-  let pre_ve' = gather_block_valdecs env decs in
-  let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
-  {scope with val_env = ve; con_env = ce}
-
+        (T.string_of_typ_expand t')
+        (T.string_of_typ_expand t)
 
 (* Pass 1: collect type identifiers and their arity *)
 and gather_block_typdecs env decs : scope =
@@ -1115,39 +1046,30 @@ and gather_block_typdecs env decs : scope =
 
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ -> scope
-  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _) ->
+  | ExpD _ | LetD _ | VarD _ -> scope
+  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
-    let cs =
-      List.map (fun (bind : typ_bind) -> Con.fresh bind.it.var.it) binds in
-    let pre_tbs = List.map (fun c -> {T.var = Con.name c; bound = T.Pre}) cs in
-    let c = Con.fresh id.it in
+    let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
-    let ve' =
-      match dec.it with
-      | ClassD (conid, _, _ , _, _, _, _) ->
-        let t2 = T.Con (c, List.map (fun c' -> T.Con (c', [])) cs) in
-        T.Env.add conid.it (T.Func (T.Construct, T.Returns, pre_tbs, [T.Pre], [t2])) scope.val_env
-      | _ -> scope.val_env in
+    let c = Con.fresh id.it pre_k in
     let te' = T.Env.add id.it c scope.typ_env in
-    let ce' = Con.Env.add c pre_k scope.con_env in
-    {val_env = ve'; typ_env = te'; con_env = ce'}
+    let ce' = T.ConSet.disjoint_add c scope.con_env in
+    {scope with typ_env = te'; con_env = ce'}
 
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : con_env =
-  let _env', ce =
-    List.fold_left (fun (env, ce) dec ->
+  List.fold_left
+    (fun ce dec ->
       let ce' = infer_dec_typdecs env dec in
-      adjoin_cons env ce', Con.Env.adjoin ce ce'
-    ) (env, Con.Env.empty) decs
-  in ce
+      T.ConSet.disjoint_union ce ce'
+    )  T.ConSet.empty decs
 
 and infer_dec_typdecs env dec : con_env =
   match dec.it with
-  | ExpD _ | LetD _ | VarD _ | FuncD _ ->
-    Con.Env.empty
+  | ExpD _ | LetD _ | VarD _ ->
+    T.ConSet.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1155,18 +1077,30 @@ and infer_dec_typdecs env dec : con_env =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    id.note <- Some (c, k);
-    Con.Env.singleton c k
-  | ClassD (conid, id, binds, sort, pat, id', fields) ->
+    infer_id_typdecs id c k
+  | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
-    let t = infer_obj (adjoin_vals env' ve) sort.it id' fields in
+    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in 
+    let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let k = T.Abs (tbs, T.close cs t) in
-    id.note <- Some (c, k);
-    Con.Env.singleton c k
+    let k = T.Def (tbs, T.close cs t) in
+    infer_id_typdecs id c k
+
+and infer_id_typdecs id c k : con_env =
+  assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
+  (match Con.kind c with
+  | T.Abs (_, T.Pre) ->
+    T.set_kind c k;
+    id.note <- Some c
+  | k' ->
+    assert (T.eq_kind k' k)
+  );
+  T.ConSet.singleton c
+
 
 (* Pass 4: collect value identifiers *)
 and gather_block_valdecs env decs : val_env =
@@ -1174,14 +1108,22 @@ and gather_block_valdecs env decs : val_env =
 
 and gather_dec_valdecs env ve dec : val_env =
   match dec.it with
-  | ExpD _ | TypD _ ->
-    ve
-  | LetD (pat, _) ->
-    gather_pat env ve pat
-  | VarD (id, _) | FuncD (_, id, _, _, _, _) | ClassD (id, _ , _, _, _, _, _) ->
-    if T.Env.mem id.it ve then
-      error env dec.at "duplicate definition for %s in block" id.it;
-    T.Env.add id.it T.Pre ve
+  | ExpD _ | TypD _ -> ve
+  | LetD (pat, _) -> gather_pat env ve pat
+  | VarD (id, _) -> gather_id env ve id
+  | ClassD (id, _ , _, _, _, _) -> gather_id env ve {id with note = ()}
+
+and gather_pat env ve pat : val_env =
+  match pat.it with
+  | WildP | LitP _ | SignP _ -> ve
+  | VarP id -> gather_id env ve id
+  | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+
+and gather_id env ve id : val_env =
+  if T.Env.mem id.it ve then
+    error env id.at "duplicate definition for %s in block" id.it;
+  T.Env.add id.it T.Pre ve
 
 (* Pass 5: infer value types *)
 and infer_block_valdecs env decs : val_env =
@@ -1203,40 +1145,9 @@ and infer_dec_valdecs env dec : val_env =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     T.Env.singleton id.it (T.Mut t)
-  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
-    let env' = adjoin_typs env te ce in
-    let t1, _ = infer_pat {env' with pre = true} pat in
-    let t2 = check_typ env' typ in
-    if not env.pre && sort.it = T.Sharable then begin
-      if not (T.sub env'.cons t1 T.Shared) then
-        error env pat.at "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand env'.cons t1);
-      begin match t2 with
-      | T.Tup [] -> ()
-      | T.Async t2 ->
-        if not (T.sub env'.cons t2 T.Shared) then
-          error env typ.at "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand env'.cons t2);
-        if not (isAsyncE exp) then
-          error env dec.at "shared function with async type has non-async body"
-      | _ -> error env typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
-      end;
-    end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
-    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
-    let c =
-      match sort.it, typ.it with
-      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it
-      (T.Func (T.Call sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2))
   | TypD _ ->
     T.Env.empty
-  | ClassD (conid, id, typ_binds, sort, pat, id', fields) ->
+  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
@@ -1244,7 +1155,7 @@ and infer_dec_valdecs env dec : val_env =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton conid.it (T.Func (T.Construct, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
+    T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
 
 
 (* Programs *)

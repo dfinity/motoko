@@ -6,5 +6,6 @@ let async_lowering = ref false
 let dump_parse = ref false
 let dump_tc = ref false
 let dump_lowering = ref false
+let interpret_ir = ref false
 let source_map = ref false
 let prelude = ref true

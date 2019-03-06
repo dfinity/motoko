@@ -1,4 +1,4 @@
-# ActorScript Syntax Sketch
+# ActorScript Syntax (Sketch)
 
 Productions marked * probably deferred to later versions.
 
@@ -10,9 +10,8 @@ Productions marked * probably deferred to later versions.
   (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  (shared|class)? <typ-params>? <typ> -> <typ>  function
+  shared <typ-params>? <typ> -> <typ>  function
   async <typ>                                   future
-  like <typ>                                    structural expansion
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
@@ -74,7 +73,6 @@ Productions marked * probably deferred to later versions.
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
-  <exp> is <exp>                                 instance-of
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
@@ -82,9 +80,8 @@ Productions marked * probably deferred to later versions.
 * # <id>                                             atom
 
 <exp-field> ::=                                object expression fields
-  private? <id> (: <typ>)? = <exp>                        immutable
-  private? var <id> (: <typ>)? = <exp>                    mutable
-  private? <id> <typ-params>? <pat> (: <typ>)? = <exp>    function (short-hand)
+  private? dec                                   field
+  private? <id> = <exp>                          short-hand
 ```
 
 ## Patterns
