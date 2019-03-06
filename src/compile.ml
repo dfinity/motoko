@@ -25,6 +25,10 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 (* WebAssembly pages are 64kb. *)
 let page_size = Int32.of_int (64*1024)
 
+(* Pointers are shifted -1 relative to the actual offset *)
+let ptr_shift = -1l
+let ptr_unshift = 1l
+
 (* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 (* Dito, for the Source AST  *)
@@ -366,7 +370,7 @@ module E = struct
   let add_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    Int32.(add ptr (-1l)) (* Return a shifted pointer *)
+    Int32.(add ptr ptr_shift) (* Return a shifted pointer *)
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -455,10 +459,10 @@ let store_unshifted_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
 let load_ptr : G.t =
-  G.i (Load {ty = I32Type; align = 2; offset = 1l; sz = None})
+  G.i (Load {ty = I32Type; align = 2; offset = ptr_unshift; sz = None})
 
 let store_ptr : G.t =
-  G.i (Store {ty = I32Type; align = 2; offset = 1l; sz = None})
+  G.i (Store {ty = I32Type; align = 2; offset = ptr_unshift; sz = None})
 
 module Func = struct
   (* This module contains basic bookkeeping functionality to define functions,
@@ -522,7 +526,7 @@ module Heap = struct
   let heap_global = 2l
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
-  let get_shifted_heap_ptr = get_heap_ptr ^^ compile_add_const (-1l)
+  let get_shifted_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_shift
 
   (* Page allocation. Ensures that the memory up to the heap pointer is allocated. *)
   let grow_memory env =
@@ -584,21 +588,21 @@ module Heap = struct
   (* At this level of abstaction, heap objects are just flat arrays of words *)
 
   let load_field (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) 1l) in
+    let offset = Int32.(add (mul word_size i) ptr_unshift) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
 
   let store_field (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) 1l) in
+    let offset = Int32.(add (mul word_size i) ptr_unshift) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
   (* Although we occationally want to treat to of them as a 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) 1l) in
+    let offset = Int32.(add (mul word_size i) ptr_unshift) in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
 
   let store_field64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) 1l) in
+    let offset = Int32.(add (mul word_size i) ptr_unshift) in
     G.i (Store {ty = I64Type; align = 2; offset; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
@@ -639,8 +643,8 @@ module Heap = struct
   (* Variant for shifted memory addresses! *)
   let memcpy_shifted env =
     Func.share_code3 env "memcpy_shifted" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
-      get_from ^^ compile_add_const 1l ^^
-      get_to ^^ compile_add_const 1l ^^
+      get_from ^^ compile_add_const ptr_unshift ^^
+      get_to ^^ compile_add_const ptr_unshift ^^
       get_n ^^
       memcpy env
     )
@@ -1508,10 +1512,10 @@ module Text = struct
 
       (* Copy first string *)
       get_x ^^
-      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+      compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
 
       get_z ^^
-      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+      compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
 
       get_len1 ^^
 
@@ -1519,10 +1523,10 @@ module Text = struct
 
       (* Copy second string *)
       get_y ^^
-      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+      compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
 
       get_z ^^
-      compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+      compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
       get_len1 ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
 
@@ -1553,13 +1557,13 @@ module Text = struct
       get_len1 ^^
       from_0_to_n env (fun get_i ->
         get_x ^^
-        compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+        compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         get_y ^^
-        compile_add_const (Int32.(add 1l (mul Heap.word_size header_size))) ^^
+        compile_add_const (Int32.(add ptr_unshift (mul Heap.word_size header_size))) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
@@ -1972,7 +1976,7 @@ module Dfinity = struct
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
       (* Calculate the offset *)
       get_string ^^
-      compile_add_const (Int32.(add (mul Heap.word_size Text.header_size)) 1l) ^^
+      compile_add_const (Int32.(add (mul Heap.word_size Text.header_size)) ptr_unshift) ^^
 
       (* Calculate the length *)
       get_string ^^
@@ -2660,11 +2664,11 @@ module Serialization = struct
 
       (* Get scratch space (one word) *)
       Heap.alloc env 1l ^^ G.i Drop ^^
-      get_start ^^ compile_add_const 1l ^^ Heap.set_heap_ptr ^^
+      get_start ^^ compile_add_const ptr_unshift ^^ Heap.set_heap_ptr ^^
 
       (* First load databuf reference (last entry) at the heap position somehow *)
       (* now load the databuf *)
-      get_start ^^ compile_add_const 1l ^^
+      get_start ^^ compile_add_const ptr_unshift ^^
       compile_unboxed_const 1l ^^
       get_elembuf ^^
       get_tbl_size ^^ compile_sub_const 1l ^^
@@ -2677,10 +2681,10 @@ module Serialization = struct
 
       (* Get some scratch space *)
       get_data_len ^^ Heap.dyn_alloc_bytes env ^^ G.i Drop ^^
-      get_start ^^ compile_add_const 1l ^^ Heap.set_heap_ptr ^^
+      get_start ^^ compile_add_const ptr_unshift ^^ Heap.set_heap_ptr ^^
 
       (* Load data from databuf *)
-      get_start ^^ compile_add_const 1l ^^
+      get_start ^^ compile_add_const ptr_unshift ^^
       get_data_len ^^
       get_databuf ^^
       compile_unboxed_const 0l ^^
@@ -2698,14 +2702,14 @@ module Serialization = struct
           get_start ^^
           get_data_len ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          compile_add_const 1l ^^
+          compile_add_const ptr_unshift ^^
           Heap.set_heap_ptr ^^
           Heap.grow_memory env ^^
 
           (* Fix pointers *)
           get_start ^^
           Heap.get_shifted_heap_ptr ^^
-          get_start ^^ compile_add_const 1l ^^
+          get_start ^^ compile_add_const ptr_unshift ^^
           shift_pointers env ^^
 
           (* Load references *)
@@ -2743,12 +2747,14 @@ module GC = struct
        (could be mutable array of pointers, similar to the reference table)
   *)
 
-  let gc_enabled = false
+  let gc_enabled = true
 
   (* If the pointer at ptr_loc points after begin_from_space, copy
      to after end_to_space, and replace it with a pointer, adjusted for where
      the object will be finally. *)
+  (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
+  (* All pointers, including ptr_loc and space end markers, are shifted *)
   let evacuate env = Func.share_code4 env "evaucate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
     let (set_len, get_len) = new_local env "len" in
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
@@ -2781,7 +2787,7 @@ module GC = struct
     (* Copy the referenced object to to space *)
     get_obj ^^ Serialization.object_size env ^^ set_len ^^
 
-    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy env ^^
+    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_shifted env ^^
 
     (* Calculate new pointer *)
     get_end_to_space ^^
@@ -2817,9 +2823,9 @@ module GC = struct
     let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
-    compile_unboxed_const end_of_static_space ^^ set_begin_from_space ^^
-    Heap.get_heap_ptr ^^ set_begin_to_space ^^
-    Heap.get_heap_ptr ^^ set_end_to_space ^^
+    compile_unboxed_const end_of_static_space ^^ compile_add_const ptr_shift ^^ set_begin_from_space ^^
+    Heap.get_shifted_heap_ptr ^^ set_begin_to_space ^^
+    Heap.get_shifted_heap_ptr ^^ set_end_to_space ^^
 
 
     (* Common arguments for evalcuate *)
@@ -2837,11 +2843,12 @@ module GC = struct
       get_i ^^
       compile_add_const 1l ^^
       compile_mul_const Heap.word_size ^^
-      compile_add_const ClosureTable.loc
+      compile_add_const ClosureTable.loc ^^
+      compile_add_const ptr_shift
     )) ^^
     Serialization.walk_heap_from_to env
-      (compile_unboxed_const ClosureTable.table_end)
-      (compile_unboxed_const end_of_static_space)
+      (compile_unboxed_const (Int32.(add ClosureTable.table_end ptr_shift)))
+      (compile_unboxed_const (Int32.(add end_of_static_space ptr_shift)))
       (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
 
     (* Go through the to-space, and evacuate that.
@@ -2853,13 +2860,13 @@ module GC = struct
       (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
 
     (* Copy the to-space to the beginning of memory. *)
-    get_begin_to_space ^^
-    get_begin_from_space ^^
+    get_begin_to_space ^^ compile_add_const ptr_unshift ^^
+    get_begin_from_space ^^ compile_add_const ptr_unshift ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     Heap.memcpy env ^^
 
     (* Reset the heap pointer *)
-    get_begin_from_space ^^
+    get_begin_from_space ^^ compile_add_const ptr_unshift ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     Heap.set_heap_ptr
