@@ -3314,14 +3314,9 @@ let compile_unop env t op = Syntax.(match op, t with
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
       )
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
-      StackRep.of_type t,
-      Func.share_code env "not32" ["n", I32Type] [I32Type] (fun env ->
-        let get_n = G.i (LocalGet (nr 0l)) in
-        compile_unboxed_const (StackRep.mask_of_type ty) ^^
-        get_n ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-      )
-  | PosOp, Type.Prim (Type.Int | Type.Nat) ->
+      StackRep.of_type t, compile_unboxed_const (StackRep.mask_of_type ty) ^^
+                          G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+  | PosOp, Type.Prim Type.(Int | Nat) ->
       SR.UnboxedInt64,
       G.nop
   | PosOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
@@ -3407,7 +3402,7 @@ let compile_relop env t op =
   | _, NeqOp -> compile_eq env t ^^
              G.if_ (StackRep.to_block_type env SR.bool)
                    (Bool.lit false) (Bool.lit true)
-  | Type.Prim (Type.Nat | Type.Int | Type.Word8 | Type.Word16 | Type.Word32 as t1), op1 ->
+  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 as t1), op1 ->
      compile_comparison t1 op1
   | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
   )
