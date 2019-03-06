@@ -641,11 +641,11 @@ module Heap = struct
     )
 
   (* Variant for shifted memory addresses! *)
-  let memcpy_shifted env =
+  let memcpy_words_shifted env =
     Func.share_code3 env "memcpy_shifted" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
       get_from ^^ compile_add_const ptr_unshift ^^
       get_to ^^ compile_add_const ptr_unshift ^^
-      get_n ^^
+      get_n ^^ compile_mul_const word_size ^^
       memcpy env
     )
 
@@ -2200,8 +2200,8 @@ module Serialization = struct
 
             get_x ^^
             get_copy ^^
-            compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            Heap.memcpy_shifted env ^^
+            compile_unboxed_const 2l ^^
+            Heap.memcpy_words_shifted env ^^
 
             get_copy
           ; Tagged.Reference,
@@ -2209,8 +2209,8 @@ module Serialization = struct
 
             get_x ^^
             get_copy ^^
-            compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
-            Heap.memcpy_shifted env ^^
+            compile_unboxed_const 2l ^^
+            Heap.memcpy_words_shifted env ^^
 
             get_copy
           ; Tagged.Some,
@@ -2238,8 +2238,8 @@ module Serialization = struct
               (* Copy header *)
               get_x ^^
               get_copy ^^
-              compile_unboxed_const (Int32.mul Heap.word_size Array.header_size) ^^
-              Heap.memcpy_shifted env ^^
+              compile_unboxed_const Array.header_size ^^
+              Heap.memcpy_words_shifted env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2276,8 +2276,7 @@ module Serialization = struct
               get_x ^^
               get_copy ^^
               get_len ^^
-              compile_mul_const Heap.word_size ^^
-              Heap.memcpy_shifted env ^^
+              Heap.memcpy_words_shifted env ^^
 
               get_copy
             end
@@ -2297,8 +2296,8 @@ module Serialization = struct
               (* Copy header *)
               get_x ^^
               get_copy ^^
-              compile_unboxed_const (Int32.mul Heap.word_size Object.header_size) ^^
-              Heap.memcpy_shifted env ^^
+              compile_unboxed_const Object.header_size ^^
+              Heap.memcpy_words_shifted env ^^
 
               (* Copy fields *)
               get_len ^^
@@ -2367,44 +2366,40 @@ module Serialization = struct
         )
     )
 
-  (* Returns the object size (in bytes) *)
+  (* Returns the object size (in words) *)
   let object_size env =
     Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^
       Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
-          compile_unboxed_const (Int32.mul 3l Heap.word_size)
+          compile_unboxed_const 3l
         ; Tagged.Reference,
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+          compile_unboxed_const 2l
         ; Tagged.Some,
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+          compile_unboxed_const 2l
         ; Tagged.ObjInd,
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+          compile_unboxed_const 2l
         ; Tagged.MutBox,
-          compile_unboxed_const (Int32.mul 2l Heap.word_size)
+          compile_unboxed_const 2l
         ; Tagged.Array,
           get_x ^^
           Heap.load_field Array.len_field ^^
-          compile_add_const Array.header_size ^^
-          compile_mul_const Heap.word_size
+          compile_add_const Array.header_size
         ; Tagged.Text,
           get_x ^^
           Heap.load_field Text.len_field ^^
           compile_add_const 3l ^^
           compile_divU_const Heap.word_size ^^
-          compile_add_const Text.header_size ^^
-          compile_mul_const Heap.word_size
+          compile_add_const Text.header_size
         ; Tagged.Object,
           get_x ^^
           Heap.load_field Object.size_field ^^
           compile_mul_const 2l ^^
-          compile_add_const Object.header_size ^^
-          compile_mul_const Heap.word_size
+          compile_add_const Object.header_size
         ; Tagged.Closure,
           get_x ^^
           Heap.load_field Closure.len_field ^^
-          compile_add_const Closure.header_size ^^
-          compile_mul_const Heap.word_size
+          compile_add_const Closure.header_size
         ]
         (* Indirections have unknown size. *)
     )
@@ -2420,7 +2415,7 @@ module Serialization = struct
         )
         ( mk_code get_x ^^
           get_x ^^
-          get_x ^^ object_size env ^^
+          get_x ^^ object_size env ^^ compile_mul_const Heap.word_size ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           set_x
         )
@@ -2787,7 +2782,7 @@ module GC = struct
     (* Copy the referenced object to to space *)
     get_obj ^^ Serialization.object_size env ^^ set_len ^^
 
-    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_shifted env ^^
+    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_words_shifted env ^^
 
     (* Calculate new pointer *)
     get_end_to_space ^^
@@ -2811,7 +2806,7 @@ module GC = struct
 
     (* Calculate new end of to space *)
     get_end_to_space ^^
-    get_len ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add))
   )
 
