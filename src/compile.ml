@@ -2187,6 +2187,12 @@ module Serialization = struct
             compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
             Heap.memcpy env ^^
             get_copy
+          ; Tagged.SmallWord,
+            get_x ^^
+            Heap.alloc env 1l ^^
+            compile_unboxed_const Heap.word_size ^^
+            Heap.memcpy env ^^
+            get_copy
           ; Tagged.Reference,
             get_x ^^
             Heap.alloc env 2l ^^
@@ -2355,6 +2361,8 @@ module Serialization = struct
       Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
           compile_unboxed_const (Int32.mul 3l Heap.word_size)
+        ; Tagged.SmallWord,
+          compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Reference,
           compile_unboxed_const (Int32.mul 2l Heap.word_size)
         ; Tagged.Some,

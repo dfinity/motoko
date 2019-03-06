@@ -104,8 +104,7 @@ let w32 = actor {
     print("\n");
   };
   printW32(x : Word32) {
-    printInt(word32ToNat x);
-    print("\n");
+    printInt(word32ToInt x);
   };
   printCounter() {
     printW32(c);
