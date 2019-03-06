@@ -73,10 +73,7 @@ func Set__unitEq (_:(),_:()):Bool{ true };
 // Create a record,
 // as a standin until we have "real" modules to create namespaces:
 let Set = new {
-  // Meta-level stuff:
-  // ---------------------
   moduleName = "Set"
-
   ; empty          = Set__empty
   ; insert         = Set__insert
   ; remove         = Set__remove

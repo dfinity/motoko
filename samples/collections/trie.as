@@ -719,10 +719,7 @@ func Trie__equalStructure<K,V>(
 // Create a record,
 // as a standin until we have "real" modules to create namespaces:
 let Trie = new {
-  // Meta-level stuff:
-  // ---------------------
   moduleName = "Trie"
-
   ; empty          = Trie__empty
   ; insert         = Trie__insert
   ; remove         = Trie__remove

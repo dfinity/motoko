@@ -338,12 +338,7 @@ func List__tabulate<T>(n:Nat, f:Nat -> T) : List<T> {
 // Create a record,
 // as a standin until we have "real" modules to create namespaces:
 let List = new {
-  // Meta-level stuff:
-  // ---------------------
   moduleName = "List"
-
-  // Actual module contents
-  // -----------------------
   ; nil        = List__nil
   ; isNil      = List__isNil
   ; push       = List__push

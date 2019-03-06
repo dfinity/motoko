@@ -108,8 +108,6 @@ func SetDb__intersect(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Na
 // Create a record,
 // as a standin until we have "real" modules to create namespaces:
 let SetDb = new {
-  // Meta-level stuff:
-  // ---------------------
   moduleName = "SetDb"
   ; insert         = SetDb__insert
   ; mem            = SetDb__mem
