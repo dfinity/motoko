@@ -389,7 +389,7 @@ end
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
-(*let compile_unboxed_one = compile_unboxed_const 1l LATER*)
+let compile_unboxed_one = compile_unboxed_const 1l
 
 (* Some common arithmetic, used for pointer and index arithmetic *)
 let compile_op_const op i =
@@ -430,7 +430,7 @@ let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
     let (set_i, get_i) = new_local env "i" in
     set_n ^^
-    compile_unboxed_const 0l ^^
+    compile_unboxed_zero ^^
     set_i ^^
 
     compile_while
@@ -503,13 +503,13 @@ module Heap = struct
 
       (* Check that the new heap pointer is within the memory *)
       get_pages_needed ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
       G.if_ (ValBlockType None)
         ( get_pages_needed ^^
           G.i MemoryGrow ^^
           (* Check result *)
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           G.if_ (ValBlockType None) (G.i Unreachable) G.nop
         ) G.nop
@@ -730,8 +730,8 @@ module Bool = struct
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
   let lit = function
-    | false -> compile_unboxed_const 0l
-    | true -> compile_unboxed_const 1l
+    | false -> compile_unboxed_zero
+    | true -> compile_unboxed_one
 
 end (* Bool *)
 
@@ -747,42 +747,42 @@ module BitTagged = struct
       let get_x = G.i (LocalGet (nr 0l)) in
       (* Get bit *)
       get_x ^^
-      compile_unboxed_const 1l ^^
+      compile_unboxed_one ^^
       G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
       (* Check bit *)
-      compile_unboxed_const 1l ^^
+      compile_unboxed_one ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if_ (ValBlockType None)
         (Bool.lit true ^^ G.i Return) G.nop ^^
       (* Also check if it is the null-pointer *)
       get_x ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq))
     ) ^^
     G.if_ retty is1 is2
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
   (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
   let untag_i32 env =
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
 
   let tag_i32 =
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-    compile_unboxed_const 1l ^^
+    compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
 end (* BitTagged *)
@@ -874,7 +874,7 @@ module Var = struct
   let static_fun_pointer env fi =
     Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
-      compile_unboxed_const 0l (* number of parameters: none *)
+      compile_unboxed_zero (* number of parameters: none *)
     ]
 
   (* Local variables may in general be mutable (or at least late-defined).
@@ -1800,7 +1800,7 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let compile_unit = compile_unboxed_const 1l
+  let compile_unit = compile_unboxed_one
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (Int32.add Array.header_size n)
@@ -2091,7 +2091,7 @@ module OrthogonalPersistence = struct
        set_i ^^
 
        get_i ^^
-       compile_unboxed_const 0l ^^
+       compile_unboxed_zero ^^
        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
        G.if_ (ValBlockType None)
          (* First run, call the start function *)
@@ -2499,7 +2499,7 @@ module Serialization = struct
       let get_tbl_area = G.i (LocalGet (nr 2l)) in
       let (set_i, get_i) = new_local env "i" in
 
-      compile_unboxed_const 0l ^^ set_i ^^
+      compile_unboxed_zero ^^ set_i ^^
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
@@ -2579,7 +2579,7 @@ module Serialization = struct
           set_end ^^
 
           (* Empty table of references *)
-          compile_unboxed_const 0l ^^ set_tbl_size
+          compile_unboxed_zero ^^ set_tbl_size
         )
         (* We have real data on the heap. Copy.  *)
         ( get_x ^^
@@ -2665,7 +2665,7 @@ module Serialization = struct
       (* First load databuf reference (last entry) at the heap position somehow *)
       (* now load the databuf *)
       get_start ^^
-      compile_unboxed_const 1l ^^
+      compile_unboxed_one ^^
       get_elembuf ^^
       get_tbl_size ^^ compile_sub_const 1l ^^
       G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
@@ -2683,7 +2683,7 @@ module Serialization = struct
       get_start ^^
       get_data_len ^^
       get_databuf ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
 
       (* Check if we got something unboxed (data buf size 1 word) *)
@@ -2711,7 +2711,7 @@ module Serialization = struct
           Heap.get_heap_ptr ^^
           get_tbl_size ^^ compile_sub_const 1l ^^
           get_elembuf ^^
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
 
           (* Fix references *)
@@ -3332,7 +3332,7 @@ let compile_unop env t op = Syntax.(match op, t with
 let compile_binop env t op =
   StackRep.of_type t,
   Syntax.(match t, op with
-  | Type.Prim Type.Nat, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.Prim Type.(Nat | Int), AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.Prim Type.Nat, SubOp ->
     Func.share_code env "nat_sub" ["n1", I64Type; "n2", I64Type] [I64Type] (fun env ->
       let get_n1 = G.i (LocalGet (nr 0l)) in
@@ -3342,12 +3342,10 @@ let compile_binop env t op =
         (G.i Unreachable)
         (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
     )
-  | Type.Prim Type.Nat, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.Prim Type.(Nat | Int), MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.Prim Type.Nat, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.Prim Type.Nat, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
-  | Type.Prim Type.Int, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.Prim Type.Int, SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  | Type.Prim Type.Int, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.Prim Type.Int, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
   | Type.Prim Type.Int, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
 
@@ -3713,7 +3711,7 @@ and compile_exp (env : E.t) exp =
     let (env1, i) = E.add_local_with_offset env name.it 1l in
     let sr, code = compile_exp env1 e in
     sr,
-    Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
+    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
     G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
