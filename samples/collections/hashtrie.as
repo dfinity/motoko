@@ -42,6 +42,9 @@
 //
 //  - iterator objects, for use in 'for ... in ...' patterns
 
+
+// import List
+
 // TEMP: A "bit string" as a linked list of bits:
 type Bits = ?(Bool, Bits);
 
