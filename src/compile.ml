@@ -1533,10 +1533,10 @@ module Text = struct
 
       (* Copy first string *)
       get_x ^^
-      compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
 
       get_z ^^
-      compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
 
       get_len1 ^^
 
@@ -1544,10 +1544,10 @@ module Text = struct
 
       (* Copy second string *)
       get_y ^^
-      compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
 
       get_z ^^
-      compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
       get_len1 ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
 
@@ -1578,13 +1578,13 @@ module Text = struct
       get_len1 ^^
       from_0_to_n env (fun get_i ->
         get_x ^^
-        compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         get_y ^^
-        compile_add_const (Int32.(add ptr_unskew (mul Heap.word_size header_size))) ^^
+        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
@@ -1997,7 +1997,7 @@ module Dfinity = struct
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
       (* Calculate the offset *)
       get_string ^^
-      compile_add_const (Int32.(add (mul Heap.word_size Text.header_size)) ptr_unskew) ^^
+      compile_add_const Int32.(add (mul Heap.word_size Text.header_size) ptr_unskew) ^^
 
       (* Calculate the length *)
       get_string ^^
@@ -2863,8 +2863,8 @@ module GC = struct
       compile_add_const ptr_skew
     )) ^^
     Serialization.walk_heap_from_to env
-      (compile_unboxed_const (Int32.(add ClosureTable.table_end ptr_skew)))
-      (compile_unboxed_const (Int32.(add end_of_static_space ptr_skew)))
+      (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
+      (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
       (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
 
     (* Go through the to-space, and evacuate that.
@@ -3048,7 +3048,7 @@ module FuncDec = struct
       let (env3, destruct_args_code) = mk_pat env2  in
 
       closure_code ^^
-      let get i = G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) in
+      let get i = G.i (LocalGet (nr Int32.(add 1l (of_int i)))) in
       destruct_args_code get ^^
       mk_body env3
     ))
@@ -3081,7 +3081,7 @@ module FuncDec = struct
 
       closure_code ^^
       let get i =
-        G.i (LocalGet (nr (Int32.(add 1l (of_int i))))) ^^
+        G.i (LocalGet (nr Int32.(add 1l (of_int i)))) ^^
         Serialization.deserialize env in
       destruct_args_code get ^^
       mk_body env3 ^^
