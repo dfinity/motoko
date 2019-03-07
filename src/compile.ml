@@ -273,7 +273,7 @@ module E = struct
       let d = {
         materialize = (fun env -> (SR.Vanilla, materialize env));
         materialize_vanilla = (fun env -> materialize env) } in
-      { env with local_vars_env = NameEnv.add name (Deferred d) env.local_vars_env }
+      add_local_deferred env name d
 
   let add_direct_local (env : t) name =
       let i = add_anon_local env I32Type in

@@ -65,7 +65,7 @@ installing all required tools without nix is out of scope).
    ```
    opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
- * Install the `wasm` package. We use a newer version than is on opam, and a
+ * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
    fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
@@ -73,9 +73,11 @@ installing all required tools without nix is out of scope).
    cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
- * Install the `wasm` tool, using
+ * Install various command line tools used by, in particuar, the test suite:
    ```
    nix-env -i -f . -A wasm
+   nix-env -i -f . -A filecheck
+   nix-env -i -f . -A wabt
    ```
  * Install the `dvm` tool, using
    ```
