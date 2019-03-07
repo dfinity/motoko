@@ -83,7 +83,7 @@ func SetDb__union(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> =
   // also: test that merge agrees with disj:
   let r1 = Set.union<Nat>(s1, s2);
   let r2 = Trie.disj<Nat,(),(),()>(s1, s2, natEq, func (_:?(),_:?()):(())=());
-  assert(Trie.equalStructure<Nat,()>(r1, r2, natEq, Set__unitEq));
+  assert(Trie.equalStructure<Nat,()>(r1, r2, natEq, Set.unitEq));
   print ";\n";
   SetDb__print(r1);
   print "=========\n";

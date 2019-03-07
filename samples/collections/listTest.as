@@ -19,14 +19,14 @@ func List__tests() {
   };
 
   // ## Construction
-  let l1 = List__nil<X>();
-  let l2 = List__push<X>(2, l1);
-  let l3 = List__push<X>(3, l2);
+  let l1 = List.nil<X>();
+  let l2 = List.push<X>(2, l1);
+  let l3 = List.push<X>(3, l2);
 
   // ## Projection -- use nth
-  assert (opnatEq(List__nth<X>(l3, 0), ?3));
-  assert (opnatEq(List__nth<X>(l3, 1), ?2));
-  assert (opnatEq(List__nth<X>(l3, 2), null));
+  assert (opnatEq(List.nth<X>(l3, 0), ?3));
+  assert (opnatEq(List.nth<X>(l3, 1), ?2));
+  assert (opnatEq(List.nth<X>(l3, 2), null));
   //assert (opnatEq (hd<X>(l3), ?3));
   //assert (opnatEq (hd<X>(l2), ?2));
   //assert (opnat_isnull(hd<X>(l1)));

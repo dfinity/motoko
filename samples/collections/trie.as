@@ -88,8 +88,9 @@ type LeafNode<K,V> = { key:K; val:V };
 
 */
 
+let Trie = new {
 // XXX: until AST-42:
-func Trie__isNull<X>(x : ?X) : Bool {
+func isNull<X>(x : ?X) : Bool {
   switch x {
     case null { true  };
     case (?_) { false };
@@ -97,7 +98,7 @@ func Trie__isNull<X>(x : ?X) : Bool {
 };
 
 // XXX: until AST-42:
-func Trie__assertIsNull<X>(x : ?X) {
+func assertIsNull<X>(x : ?X) {
   switch x {
     case null { assert(true)  };
     case (?_) { assert(false) };
@@ -105,7 +106,7 @@ func Trie__assertIsNull<X>(x : ?X) {
 };
 
 // XXX: until AST-42:
-func Trie__makeEmpty<K,V>() : Trie<K,V>
+func makeEmpty<K,V>() : Trie<K,V>
   = null;
 
 // Note: More general version of this operation below, which tests for
@@ -122,7 +123,7 @@ func Trie__makeEmpty<K,V>() : Trie<K,V>
 // };
 
 // XXX: until AST-42:
-func Trie__assertIsEmpty<K,V>(t : Trie<K,V>) {
+func assertIsEmpty<K,V>(t : Trie<K,V>) {
   switch t {
     case null { assert(true)  };
     case (?_) { assert(false) };
@@ -130,12 +131,12 @@ func Trie__assertIsEmpty<K,V>(t : Trie<K,V>) {
 };
 
 // XXX: until AST-42:
-func Trie__makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
+func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
   ?(new {left=l; right=r; key=null; val=null })
 };
 
 // XXX: until AST-42:
-func Trie__isBin<K,V>(t:Trie<K,V>) : Bool {
+func isBin<K,V>(t:Trie<K,V>) : Bool {
   switch t {
   case null { false };
   case (?t_) {
@@ -148,12 +149,12 @@ func Trie__isBin<K,V>(t:Trie<K,V>) : Bool {
 };
 
 // XXX: until AST-42:
-func Trie__makeLeaf<K,V>(k:K, v:V) : Trie<K,V> {
+func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> {
   ?(new {left=null; right=null; key=?k; val=?v })
 };
 
 // XXX: until AST-42:
-func Trie__matchLeaf<K,V>(t:Trie<K,V>) : ?(K,V) {
+func matchLeaf<K,V>(t:Trie<K,V>) : ?(K,V) {
   switch t {
   case null { null };
   case (?t_) {
@@ -166,7 +167,7 @@ func Trie__matchLeaf<K,V>(t:Trie<K,V>) : ?(K,V) {
 };
 
 // XXX: until AST-42:
-func Trie__isLeaf<K,V>(t:Trie<K,V>) : Bool {
+func isLeaf<K,V>(t:Trie<K,V>) : Bool {
   switch t {
   case null { false };
   case (?t_) {
@@ -178,36 +179,36 @@ func Trie__isLeaf<K,V>(t:Trie<K,V>) : Bool {
   }
 };
 // XXX: until AST-42:
-func Trie__assertIsBin<K,V>(t : Trie<K,V>) {
+func assertIsBin<K,V>(t : Trie<K,V>) {
   switch t {
     case null { assert(false) };
     case (?n) {
-      Trie__assertIsNull<K>(n.key);
-      Trie__assertIsNull<V>(n.val);
+      assertIsNull<K>(n.key);
+      assertIsNull<V>(n.val);
    };
   }
 };
 
 // XXX: until AST-42:
-func Trie__getLeafKey<K,V>(t : Node<K,V>) : K {
-  Trie__assertIsNull<Node<K,V>>(t.left);
-  Trie__assertIsNull<Node<K,V>>(t.right);
+func getLeafKey<K,V>(t : Node<K,V>) : K {
+  assertIsNull<Node<K,V>>(t.left);
+  assertIsNull<Node<K,V>>(t.right);
   switch (t.key) {
     case (?k) { k };
-    case null { Trie__getLeafKey<K,V>(t) };
+    case null { getLeafKey<K,V>(t) };
   }
 };
 
 // XXX: this helper is an ugly hack; we need real sum types to avoid it, I think:
-func Trie__getLeafVal<K,V>(t : Node<K,V>) : ?V {
-  Trie__assertIsNull<Node<K,V>>(t.left);
-  Trie__assertIsNull<Node<K,V>>(t.right);
+func getLeafVal<K,V>(t : Node<K,V>) : ?V {
+  assertIsNull<Node<K,V>>(t.left);
+  assertIsNull<Node<K,V>>(t.right);
   t.val
 };
 
 // TODO: Replace with bitwise operations on Words, once we have each of those in AS.
 // For now, we encode hashes as lists of booleans.
-func Trie__getHashBit(h:Hash, pos:Nat) : Bool {
+func getHashBit(h:Hash, pos:Nat) : Bool {
   switch h {
   case null {
          // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
@@ -215,21 +216,21 @@ func Trie__getHashBit(h:Hash, pos:Nat) : Bool {
        };
   case (?(b, h_)) {
          if (pos == 0) { b }
-         else { Trie__getHashBit(h_, pos-1) }
+         else { getHashBit(h_, pos-1) }
        };
   }
 };
 
 // part of "public interface":
-func Trie__empty<K,V>() : Trie<K,V> = Trie__makeEmpty<K,V>();
+func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
 // helper function for constructing new paths of uniform length
-func Trie__buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
+func buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
   func rec(bitpos:Nat) : Trie<K,V> {
     if ( bitpos < HASH_BITS ) {
       // create new bin node for this bit of the hash
       let path = rec(bitpos+1);
-      let bit = Trie__getHashBit(k_hash, bitpos);
+      let bit = getHashBit(k_hash, bitpos);
       if (not bit) {
         ?(new {left=path; right=null; key=null; val=null})
       }
@@ -245,15 +246,15 @@ func Trie__buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
 };
 
 // replace the given key's value option with the given one, returning the previous one
-func Trie__replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
+func replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
   // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
   func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
     if ( bitpos < HASH_BITS ) {
       switch t {
-      case null { (Trie__buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
+      case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
       case (?n) {
-        Trie__assertIsBin<K,V>(t);
-        let bit = Trie__getHashBit(k_hash, bitpos);
+        assertIsBin<K,V>(t);
+        let bit = getHashBit(k_hash, bitpos);
         // rebuild either the left or right path with the inserted (k,v) pair
         if (not bit) {
           let (l, v_) = rec(n.left, bitpos+1);
@@ -268,7 +269,7 @@ func Trie__replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V)
     } else {
       // No more walking; we should be at a leaf now, by construction invariants.
       switch t {
-        case null { (Trie__buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
+        case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
         case (?l) {
            // TODO: Permit hash collisions by walking a list/array of KV pairs in each leaf:
            (?(new{left=null;right=null;key=?k;val=v}), l.val)
@@ -280,17 +281,17 @@ func Trie__replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V)
 };
 
 // insert the given key's value in the trie; return the new trie
-func Trie__insert<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:V) : (Trie<K,V>, ?V) {
-  Trie__replace<K,V>(t, k, k_hash, ?v)
+func insert<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:V) : (Trie<K,V>, ?V) {
+  replace<K,V>(t, k, k_hash, ?v)
 };
 
 // remove the given key's value in the trie; return the new trie
-func Trie__remove<K,V>(t : Trie<K,V>, k:K, k_hash:Hash) : (Trie<K,V>, ?V) {
-  Trie__replace<K,V>(t, k, k_hash, null)
+func remove<K,V>(t : Trie<K,V>, k:K, k_hash:Hash) : (Trie<K,V>, ?V) {
+  replace<K,V>(t, k, k_hash, null)
 };
 
 // find the given key's value in the trie, or return null if nonexistent
-func Trie__find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
+func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
   // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
   func rec(t : Trie<K,V>, bitpos:Nat) : ?V {
     if ( bitpos < HASH_BITS ) {
@@ -300,8 +301,8 @@ func Trie__find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
         null
       };
       case (?n) {
-        Trie__assertIsBin<K,V>(t);
-        let bit = Trie__getHashBit(k_hash, bitpos);
+        assertIsBin<K,V>(t);
+        let bit = getHashBit(k_hash, bitpos);
         if (not bit) { rec(n.left,  bitpos+1) }
         else         { rec(n.right, bitpos+1) }
         };
@@ -312,8 +313,8 @@ func Trie__find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
         case null { null };
         case (?l) {
            // TODO: Permit hash collisions by walking a list/array of KV pairs in each leaf:
-           if (keq(Trie__getLeafKey<K,V>(l), k)) {
-             Trie__getLeafVal<K,V>(l)
+           if (keq(getLeafKey<K,V>(l), k)) {
+             getLeafVal<K,V>(l)
            } else {
              null
            }
@@ -328,17 +329,17 @@ func Trie__find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
 // in common keys. note: the `disj` operation generalizes this `merge`
 // operation in various ways, and does not (in general) loose
 // information; this operation is a simpler, special case.
-func Trie__merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
   switch (tl, tr) {
     case (null, _) { return tr };
     case (_, null) { return tl };
     case (?nl,?nr) {
-    switch (Trie__isBin<K,V>(tl),
-            Trie__isBin<K,V>(tr)) {
+    switch (isBin<K,V>(tl),
+            isBin<K,V>(tr)) {
     case (true, true) {
-           let t0 = Trie__merge<K,V>(nl.left, nr.left);
-           let t1 = Trie__merge<K,V>(nl.right, nr.right);
-           Trie__makeBin<K,V>(t0, t1)
+           let t0 = merge<K,V>(nl.left, nr.left);
+           let t1 = merge<K,V>(nl.right, nr.right);
+           makeBin<K,V>(t0, t1)
          };
     case (false, true) {
            assert(false);
@@ -362,18 +363,18 @@ func Trie__merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
 // The key-value pairs of the final trie consists of those pairs of
 // the left trie whose keys are not present in the right trie; the
 // values of the right trie are irrelevant.
-func Trie__diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> {
+func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> {
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
     switch (tl, tr) {
-    case (null, _) { return Trie__makeEmpty<K,V>() };
+    case (null, _) { return makeEmpty<K,V>() };
     case (_, null) { return tl };
     case (?nl,?nr) {
-    switch (Trie__isBin<K,V>(tl),
-            Trie__isBin<K,W>(tr)) {
+    switch (isBin<K,V>(tl),
+            isBin<K,W>(tr)) {
     case (true, true) {
            let t0 = rec(nl.left, nr.left);
            let t1 = rec(nl.right, nr.right);
-           Trie__makeBin<K,V>(t0, t1)
+           makeBin<K,V>(t0, t1)
          };
     case (false, true) {
            assert(false);
@@ -390,7 +391,7 @@ func Trie__diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> 
            switch (nl.key, nr.key) {
              case (?kl, ?kr) {
                if (keq(kl, kr)) {
-                 Trie__makeEmpty<K,V>();
+                 makeEmpty<K,V>();
                } else {
                  tl
                }};
@@ -413,7 +414,7 @@ func Trie__diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, keq:(K,K)->Bool) : Trie<K,V> 
 // situations, the operator accepts optional values, but is never
 // applied to (null, null).
 //
-func Trie__disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
+func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
                          keq:(K,K)->Bool, vbin:(?V,?W)->X)
   : Trie<K,X>
 {
@@ -421,9 +422,9 @@ func Trie__disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
     switch t {
       case (null) null;
       case (? n) {
-      switch (Trie__matchLeaf<K,V>(t)) {
-        case (?(k,v)) { Trie__makeLeaf<K,X>(k, vbin(?v, null)) };
-        case _ { Trie__makeBin<K,X>(recL(n.left), recL(n.right)) }
+      switch (matchLeaf<K,V>(t)) {
+        case (?(k,v)) { makeLeaf<K,X>(k, vbin(?v, null)) };
+        case _ { makeBin<K,X>(recL(n.left), recL(n.right)) }
       }
     };
   }};
@@ -431,51 +432,51 @@ func Trie__disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
     switch t {
       case (null) null;
       case (? n) {
-      switch (Trie__matchLeaf<K,W>(t)) {
-        case (?(k,w)) { Trie__makeLeaf<K,X>(k, vbin(null, ?w)) };
-        case _ { Trie__makeBin<K,X>(recR(n.left), recR(n.right)) }
+      switch (matchLeaf<K,W>(t)) {
+        case (?(k,w)) { makeLeaf<K,X>(k, vbin(null, ?w)) };
+        case _ { makeBin<K,X>(recR(n.left), recR(n.right)) }
       }
     };
   }};
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
     // empty-empty terminates early, all other cases do not.
-    case (null, null) { Trie__makeEmpty<K,X>() };
+    case (null, null) { makeEmpty<K,X>() };
     case (null, _   ) { recR(tr) };
     case (_,    null) { recL(tl) };
     case (? nl, ? nr) {
-    switch (Trie__isBin<K,V>(tl),
-            Trie__isBin<K,W>(tr)) {
+    switch (isBin<K,V>(tl),
+            isBin<K,W>(tr)) {
     case (true, true) {
            let t0 = rec(nl.left, nr.left);
            let t1 = rec(nl.right, nr.right);
-           Trie__makeBin<K,X>(t0, t1)
+           makeBin<K,X>(t0, t1)
          };
     case (false, true) {
            assert(false);
            // XXX impossible, until we lift uniform depth assumption
-           Trie__makeEmpty<K,X>()
+           makeEmpty<K,X>()
          };
     case (true, false) {
            assert(false);
            // XXX impossible, until we lift uniform depth assumption
-           Trie__makeEmpty<K,X>()
+           makeEmpty<K,X>()
          };
     case (false, false) {
-           assert(Trie__isLeaf<K,V>(tl));
-           assert(Trie__isLeaf<K,W>(tr));
+           assert(isLeaf<K,V>(tl));
+           assert(isLeaf<K,W>(tr));
            switch (nl.key, nl.val, nr.key, nr.val) {
              // leaf-leaf case
              case (?kl, ?vl, ?kr, ?vr) {
                if (keq(kl, kr)) {
-                 Trie__makeLeaf<K,X>(kl, vbin(?vl, ?vr));
+                 makeLeaf<K,X>(kl, vbin(?vl, ?vr));
                } else {
                  // XXX: handle hash collisions here.
-                 Trie__makeEmpty<K,X>()
+                 makeEmpty<K,X>()
                }
              };
              // XXX impossible, and unnecessary with AST-42.
-             case _ { Trie__makeEmpty<K,X>() };
+             case _ { makeEmpty<K,X>() };
            }
          };
       }
@@ -488,48 +489,48 @@ func Trie__disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 // finite maps.  Produces a "conjuctive image" of the two tries, where
 // the values of matching keys are combined with the given binary
 // operator, and unmatched key-value pairs are not present in the output.
-func Trie__conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
+func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
                    keq:(K,K)->Bool, vbin:(V,W)->X)
   : Trie<K,X>
 {
   func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
     switch (tl, tr) {
-      case (null, null) { return Trie__makeEmpty<K,X>() };
-      case (null, ? nr) { return Trie__makeEmpty<K,X>() };
-      case (? nl, null) { return Trie__makeEmpty<K,X>() };
+      case (null, null) { return makeEmpty<K,X>() };
+      case (null, ? nr) { return makeEmpty<K,X>() };
+      case (? nl, null) { return makeEmpty<K,X>() };
       case (? nl, ? nr) {
-      switch (Trie__isBin<K,V>(tl),
-              Trie__isBin<K,W>(tr)) {
+      switch (isBin<K,V>(tl),
+              isBin<K,W>(tr)) {
       case (true, true) {
              let t0 = rec(nl.left, nr.left);
              let t1 = rec(nl.right, nr.right);
-             Trie__makeBin<K,X>(t0, t1)
+             makeBin<K,X>(t0, t1)
            };
       case (false, true) {
              assert(false);
              // XXX impossible, until we lift uniform depth assumption
-             Trie__makeEmpty<K,X>()
+             makeEmpty<K,X>()
            };
       case (true, false) {
              assert(false);
              // XXX impossible, until we lift uniform depth assumption
-             Trie__makeEmpty<K,X>()
+             makeEmpty<K,X>()
            };
       case (false, false) {
-             assert(Trie__isLeaf<K,V>(tl));
-             assert(Trie__isLeaf<K,W>(tr));
+             assert(isLeaf<K,V>(tl));
+             assert(isLeaf<K,W>(tr));
              switch (nl.key, nl.val, nr.key, nr.val) {
                // leaf-leaf case
              case (?kl, ?vl, ?kr, ?vr) {
                     if (keq(kl, kr)) {
-                      Trie__makeLeaf<K,X>(kl, vbin(vl, vr));
+                      makeLeaf<K,X>(kl, vbin(vl, vr));
                     } else {
                       // XXX: handle hash collisions here.
-                      Trie__makeEmpty<K,X>()
+                      makeEmpty<K,X>()
                     }
                   };
              // XXX impossible, and unnecessary with AST-42.
-             case _ { Trie__makeEmpty<K,X>() };
+             case _ { makeEmpty<K,X>() };
              }
            };
           }
@@ -542,12 +543,12 @@ func Trie__conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 // tries.  Many common operations are instantiations of this function,
 // either as clients, or as hand-specialized versions (e.g., see map,
 // mapFilter, exists and forAll below).
-func Trie__foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
+func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
   func rec(t:Trie<K,V>) : X {
     switch t {
     case (null) { empty };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) { leaf(k,v) };
            case null { bin(rec(n.left), rec(n.right)) };
            }
@@ -558,12 +559,12 @@ func Trie__foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X 
 
 // Fold over the key-value pairs of the trie, using an accumulator.
 // The key-value pairs have no reliable or meaningful ordering.
-func Trie__fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
+func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
   func rec(t:Trie<K,V>, x:X) : X {
     switch t {
     case (null) x;
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) { f(k,v,x) };
            case null { rec(n.left,rec(n.right,x)) };
            }
@@ -573,12 +574,12 @@ func Trie__fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
 };
 
 // specialized foldUp operation.
-func Trie__exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
   func rec(t:Trie<K,V>) : Bool {
     switch t {
     case (null) { false };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) { f(k,v) };
            case null { rec(n.left) or rec(n.right) };
            }
@@ -588,12 +589,12 @@ func Trie__exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
 };
 
 // specialized foldUp operation.
-func Trie__forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
   func rec(t:Trie<K,V>) : Bool {
     switch t {
     case (null) { true };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) { f(k,v) };
            case null { rec(n.left) and rec(n.right) };
            }
@@ -606,12 +607,12 @@ func Trie__forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
 // Test for "deep emptiness": subtrees that have branching structure,
 // but no leaves.  These can result from naive filtering operations;
 // filter uses this function to avoid creating such subtrees.
-func Trie__isEmpty<K,V>(t:Trie<K,V>) : Bool {
+func isEmpty<K,V>(t:Trie<K,V>) : Bool {
   func rec(t:Trie<K,V>) : Bool {
     switch t {
     case (null) { true };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) { false };
            case null { rec(n.left) and rec(n.right) };
            }
@@ -621,19 +622,19 @@ func Trie__isEmpty<K,V>(t:Trie<K,V>) : Bool {
   rec(t)
 };
 
-func Trie__filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
+func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
   func rec(t:Trie<K,V>) : Trie<K,V> {
     switch t {
     case (null) { null };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) {
                   // XXX-Typechecker:
                   //  This version of the next line gives _really_
                   //  strange type errors, and no parse errors.
                   // if f(k,v) {
                   if (f(k,v)) {
-                    Trie__makeLeaf<K,V>(k,v)
+                    makeLeaf<K,V>(k,v)
                   } else {
                     null
                   }
@@ -641,12 +642,12 @@ func Trie__filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
            case null {
                   let l = rec(n.left);
                   let r = rec(n.right);
-                  switch (Trie__isEmpty<K,V>(l),
-                          Trie__isEmpty<K,V>(r)) {
+                  switch (isEmpty<K,V>(l),
+                          isEmpty<K,V>(r)) {
                     case (true,  true)  null;
                     case (false, true)  r;
                     case (true,  false) l;
-                    case (false, false) Trie__makeBin<K,V>(l, r);
+                    case (false, false) makeBin<K,V>(l, r);
                   }
                 };
            }
@@ -656,26 +657,26 @@ func Trie__filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
   rec(t)
 };
 
-func Trie__mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?(K,W)) : Trie<K,W> {
+func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?(K,W)) : Trie<K,W> {
   func rec(t:Trie<K,V>) : Trie<K,W> {
     switch t {
     case (null) { null };
     case (?n) {
-           switch (Trie__matchLeaf<K,V>(t)) {
+           switch (matchLeaf<K,V>(t)) {
            case (?(k,v)) {
                   switch (f(k,v)) {
                     case (null) null;
-                    case (?(k,w)) { Trie__makeLeaf<K,W>(k,w) };
+                    case (?(k,w)) { makeLeaf<K,W>(k,w) };
                 }};
            case null {
                   let l = rec(n.left);
                   let r = rec(n.right);
-                  switch (Trie__isEmpty<K,W>(l),
-                          Trie__isEmpty<K,W>(r)) {
+                  switch (isEmpty<K,W>(l),
+                          isEmpty<K,W>(r)) {
                     case (true,  true)  null;
                     case (false, true)  r;
                     case (true,  false) l;
-                    case (false, false) Trie__makeBin<K,W>(l, r);
+                    case (false, false) makeBin<K,W>(l, r);
                   }
                 };
            }
@@ -692,7 +693,7 @@ func Trie__mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?(K,W)) : Trie<K,W> {
 // with
 //   `#empty`.
 // We do not observe that equality here.
-func Trie__equalStructure<K,V>(
+func equalStructure<K,V>(
   tl:Trie<K,V>,
   tr:Trie<K,V>,
   keq:(K,K)->Bool,
@@ -704,8 +705,8 @@ func Trie__equalStructure<K,V>(
     case (_,    null) { false };
     case (null, _)    { false };
     case (?nl, ?nr) {
-           switch (Trie__matchLeaf<K,V>(tl),
-                   Trie__matchLeaf<K,V>(tr)) {
+           switch (matchLeaf<K,V>(tl),
+                   matchLeaf<K,V>(tr)) {
            case (?(kl,vl), ?(kr,vr)) { keq(kl,kr) and veq(vl,vr) };
            case (null,     null)     { rec(nl.left, nr.left)
                                        and rec(nl.right, nr.right) };
@@ -716,25 +717,4 @@ func Trie__equalStructure<K,V>(
   rec(tl, tr)
 };
 
-// Create a record,
-// as a standin until we have "real" modules to create namespaces:
-let Trie = new {
-  moduleName = "Trie"
-  ; empty          = Trie__empty
-  ; insert         = Trie__insert
-  ; remove         = Trie__remove
-  ; find           = Trie__find
-  ; replace        = Trie__replace
-  ; merge          = Trie__merge
-  ; diff           = Trie__diff
-  ; disj           = Trie__disj
-  ; conj           = Trie__conj
-  ; foldUp         = Trie__foldUp
-  ; fold           = Trie__fold
-  ; exists         = Trie__exists
-  ; forAll         = Trie__forAll
-  ; isEmpty        = Trie__isEmpty
-  ; filter         = Trie__filter
-  ; mapFilter      = Trie__mapFilter
-  ; equalStructure = Trie__equalStructure
 };
