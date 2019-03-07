@@ -78,7 +78,7 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low}
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -131,6 +131,15 @@ do
     fi
     normalize $out/$base.wasm.stderr
     diff_files="$diff_files $base.wasm.stderr"
+
+    # Check filecheck
+    if grep -F -q CHECK $base.as
+    then
+      $ECHO -n " [Filecheck]"
+      wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+      cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
+      diff_files="$diff_files $base.filecheck"
+    fi
 
     # Run compiled program
     if [ -e $out/$base.wasm ]
