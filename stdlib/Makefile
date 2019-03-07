@@ -48,37 +48,37 @@ $(OUTDIR)/List.out: $(OUTDIR) list.as
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ListTest.out: list.as listTest.as
+$(OUTDIR)/ListTest.out: $(OUTDIR) list.as listTest.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Trie.out: list.as trie.as
+$(OUTDIR)/Trie.out: $(OUTDIR) list.as trie.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Set.out: list.as trie.as set.as
+$(OUTDIR)/Set.out: $(OUTDIR) list.as trie.as set.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDb.out: list.as trie.as set.as setDb.as
+$(OUTDIR)/SetDb.out: $(OUTDIR) list.as trie.as set.as setDb.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDbTest.out: list.as trie.as set.as setDb.as setDbTest.as
+$(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as trie.as set.as setDb.as setDbTest.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ProduceExchange.out: list.as trie.as produceExchange.as
+$(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as trie.as examples/produceExchange.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
