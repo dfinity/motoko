@@ -43,6 +43,11 @@ let a = actor {
     printInt(c);
     print("\n");
   };
+  printLabeledOpt(?l:?Text) {
+    print l;
+    printInt(c);
+    print("\n");
+  };
   readCounter(f : shared Nat -> ()) : () {
     f(c);
   };
@@ -63,7 +68,8 @@ a.incopt(?14);
 a.increcord(shared {x = 15; y = 16});
 a.increcord(shared {x = 17; y = 18; z = 19});
 a.printCounter();
-a.printLabeled("Foo: ");
+a.printLabeled("Foo1: ");
+a.printLabeledOpt(?"Foo2: ");
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });
 
 

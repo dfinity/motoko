@@ -1,4 +1,4 @@
-# ActorScript Syntax Sketch
+# ActorScript Syntax (Sketch)
 
 Productions marked * probably deferred to later versions.
 
