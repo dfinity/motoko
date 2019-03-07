@@ -2887,7 +2887,7 @@ module StackRep = struct
   let mask_of_type ty = Int32.lognot (padding_of_type ty)
 
   let name_of_type ty seed = match Arrange.prim ty with
-    | Wasm.Sexpr.Atom s -> s ^ "_" ^ seed
+    | Wasm.Sexpr.Atom s -> seed ^ "<" ^ s ^ ">"
     | wtf -> todo "name_of_type" wtf seed
 
   let to_block_type env = function
@@ -3337,34 +3337,7 @@ let rec compile_binop env t op =
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
-  | Type.Prim Type.                  Word32,  PowOp -> (* TODO(Gabor) use divide & conquer *)
-    let rec pow32 () = Func.share_code2 env "word32_pow" (("n", I32Type), ("exp", I32Type)) [I32Type] Wasm.Values.(fun env get_n get_exp ->
-      get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-      G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
-        compile_unboxed_one
-        (get_exp ^^ compile_unboxed_one ^^ G.i (Binary (I32 I32Op.Sub)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-         G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
-           get_n
-           (get_n ^^
-            get_exp ^^ compile_unboxed_one ^^ G.i (Binary (I32 I32Op.Sub)) ^^
-            pow32 () ^^
-            get_n ^^ G.i (Binary (I32 I32Op.Mul)))))
-    in pow32 ()
-  | Type.Prim Type.         (Word16 as ty),     PowOp -> (* TODO(Gabor) use divide & conquer *)
-     let rec pow16 () = Func.share_code2 env "word16_pow" (("n", I32Type), ("exp", I32Type)) [I32Type] Wasm.Values.(fun env get_n get_exp ->
-         let one = compile_unboxed_const (StackRep.const_of_type ty 1l) in
-         get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-         G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
-           one
-           (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.Sub)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-            G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
-              get_n
-              (get_n ^^
-               get_exp ^^ one ^^ G.i (Binary (I32 I32Op.Sub)) ^^
-               pow16 () ^^
-               get_n ^^ snd (compile_binop env t MulOp))))
-    in pow16 ()
-  | Type.Prim Type.(Word8 as ty),             PowOp -> (* TODO(Gabor) use divide & conquer *)
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp -> (* TODO(Gabor) use divide & conquer *)
      let rec pow () = Func.share_code2 env (StackRep.name_of_type ty "pow")
                         (("n", I32Type), ("exp", I32Type)) [I32Type]
                         Wasm.Values.(fun env get_n get_exp ->
@@ -3372,7 +3345,7 @@ let rec compile_binop env t op =
          get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
          G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
            one
-           (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.Sub)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
+           (get_exp ^^ one ^^ G.i (Compare (I32 I32Op.Eq)) ^^
             G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
               get_n
               (get_n ^^
