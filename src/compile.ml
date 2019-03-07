@@ -2200,7 +2200,7 @@ module Serialization = struct
       pointer.
     * The last entry of the table is the dataref from above. Since we don't
       need it after this, we decrement the table reference pointer by one.
-    * We internalize this databuf intot the heap space, bumping the heap
+    * We internalize this databuf into the heap space, bumping the heap
       pointer.
     * We traverse this space and adjust all pointers.
       Same for indices into the reference table.
@@ -2962,7 +2962,7 @@ module StackRep = struct
   let materialize env = function
     | StaticFun fi -> Var.static_fun_pointer env fi
 
-  let deferred_of_static_think env s =
+  let deferred_of_static_thing env s =
     { materialize = (fun env -> (StaticThing s, G.nop))
     ; materialize_vanilla = (fun env -> materialize env s)
     }
@@ -3391,7 +3391,7 @@ let compile_relop env t op =
 
 
 (* compile_lexp is used for expressions on the left of an
-assignment operator, produces some code (with sideffect), and some pure code *)
+assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
@@ -3940,7 +3940,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp pre_env how e in
-    let d = StackRep.deferred_of_static_think pre_env static_thing in
+    let d = StackRep.deferred_of_static_thing pre_env static_thing in
     let pre_env1 = E.add_local_deferred pre_env v.it d in
     ( pre_env1, G.nop, fun env -> fill env; G.nop)
   | LetD (p, e) ->
