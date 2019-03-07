@@ -109,9 +109,6 @@ let w32 = actor {
     printW32(c);
     print("\n");
   };
-  printW32(x : Word32) {
-    printInt(word32ToInt x);
-  };
   printCounter() {
     printW32(c);
     print("\n");
@@ -121,8 +118,16 @@ let w32 = actor {
     printW32(c);
     print("\n");
   };
+  printLabeledOpt(?l:?Text) {
+    print l;
+    printW32(c);
+    print("\n");
+  };
   readCounter(f : shared Word32 -> ()) : () {
     f(c);
+  };
+  printW32(x : Word32) {
+    printInt(word32ToInt x);
   };
 };
 
@@ -142,3 +147,82 @@ w32.increcord(shared {x = 15 : Word32; y = 16 : Word32});
 w32.increcord(shared {x = 17 : Word32; y = 18 : Word32; z = 19 : Word32});
 w32.printCounter();
 w32.printLabeled("Foo: ");
+w32.printLabeledOpt(?"Foo2: ");
+
+
+
+let w16 = actor {
+  private var c : Word16 = 0;
+  incn(n : Word16) : () {
+    c += n;
+    printW16(c);
+    print("\n");
+  };
+  incnn(n1 : Word16, n2 : Word16) : () {
+    c += n1 + n2;
+    printW16(c);
+    print("\n");
+  };
+  incnested(n1 : Word16, (n2 : Word16, n3 : Word16)) : () {
+    c += n1 + n2 + n3;
+    printW16(c);
+    print("\n");
+  };
+  incarray(a : [Word16]) : () {
+    for (i in a.vals()) { c += i };
+    printW16(c);
+    print("\n");
+  };
+  incopt(a : ?Word16) : () {
+    switch a {
+      case null { c += 10000 };
+      case (?a) { c += a };
+    };
+    printW16(c);
+    print("\n");
+  };
+  increcord(a : shared { x : Word16; y : Word16 }) : () {
+    c += a.x;
+    c += a.y;
+    printW16(c);
+    print("\n");
+  };
+  printCounter() {
+    printW16(c);
+    print("\n");
+  };
+  printLabeled(l:Text) {
+    print l;
+    printW16(c);
+    print("\n");
+  };
+  printLabeledOpt(?l:?Text) {
+    print l;
+    printW16(c);
+    print("\n");
+  };
+  readCounter(f : shared Word16 -> ()) : () {
+    f(c);
+  };
+  printW16(x : Word16) {
+    printInt(word16ToInt x);
+  };
+};
+
+
+w16.incn(1);
+w16.incn(2);
+w16.incn(3);
+w16.incn(4);
+w16.incn(1000);
+w16.incnn(5,6);
+w16.incnn(2000,3000);
+w16.incnested(7,(8,9));
+w16.incarray([10,11,12,13]);
+w16.incopt(null);
+w16.incopt(?14);
+w16.increcord(shared {x = 15 : Word16; y = 16 : Word16});
+w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16});
+w16.printCounter();
+w16.printLabeled("Foo: ");
+w16.printLabeledOpt(?"Foo2: ");
