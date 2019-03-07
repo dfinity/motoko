@@ -3430,11 +3430,17 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
   | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-  | Type.Prim Type.(Word8 | Word16 | Word32), ShLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp ->
+     let clamp_shift_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) in (* nop for Word32 *)
+     clamp_shift_amount ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.Shl))
   | Type.Prim Type.                  Word32,  ShROp -> G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
-  | Type.Prim Type.(Word8 | Word16 as ty),    ShROp -> G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-                                                       compile_unboxed_const (StackRep.mask_of_type ty) ^^
-                                                       G.i (Binary (Wasm.Values.I32 I32Op.And))
+  | Type.Prim Type.(Word8 | Word16 as ty),    ShROp ->
+     let clamp_shift_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) in (* nop for Word32 *)
+     clamp_shift_amount ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+     compile_unboxed_const (StackRep.mask_of_type ty) ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.Prim Type.                  Word32,  RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp ->
      Func.share_code2 env (StackRep.name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
