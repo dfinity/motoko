@@ -21,55 +21,55 @@ type Set<T> = Trie<T,()>;
 
 let Set = new {
 
-func empty<T>():Set<T> =
-  Trie.empty<T,()>();
+  func empty<T>():Set<T> =
+    Trie.empty<T,()>();
 
-func insert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-  let (s2, _) = Trie.insert<T,()>(s, x, xh, ());
-  s2
-};
+  func insert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
+    let (s2, _) = Trie.insert<T,()>(s, x, xh, ());
+    s2
+  };
 
-func remove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-  let (s2, _) = Trie.remove<T,()>(s, x, xh);
-  s2
-};
+  func remove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
+    let (s2, _) = Trie.remove<T,()>(s, x, xh);
+    s2
+  };
 
-func eq<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Bool {
-  // XXX: Todo: use a smarter check
-  Trie.equalStructure<T,()>(s1, s2, eq, unitEq)
-};
+  func eq<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Bool {
+    // XXX: Todo: use a smarter check
+    Trie.equalStructure<T,()>(s1, s2, eq, unitEq)
+  };
 
-func card<T>(s:Set<T>) : Nat {
-  Trie.foldUp<T,(),Nat>
-  (s,
-   func(n:Nat,m:Nat):Nat{n+m},
-   func(_:T,_:()):Nat{1},
-   0)
-};
+  func card<T>(s:Set<T>) : Nat {
+    Trie.foldUp<T,(),Nat>
+    (s,
+     func(n:Nat,m:Nat):Nat{n+m},
+     func(_:T,_:()):Nat{1},
+     0)
+  };
 
-func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
-  switch (Trie.find<T,()>(s, x, xh, eq)) {
-  case null { false };
-  case (?_) { true };
-  }
-};
+  func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
+    switch (Trie.find<T,()>(s, x, xh, eq)) {
+    case null { false };
+    case (?_) { true };
+    }
+  };
 
-func union<T>(s1:Set<T>, s2:Set<T>):Set<T> {
-  let s3 = Trie.merge<T,()>(s1, s2);
-  s3
-};
+  func union<T>(s1:Set<T>, s2:Set<T>):Set<T> {
+    let s3 = Trie.merge<T,()>(s1, s2);
+    s3
+  };
 
-func diff<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
-  let s3 = Trie.diff<T,(),()>(s1, s2, eq);
-  s3
-};
+  func diff<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+    let s3 = Trie.diff<T,(),()>(s1, s2, eq);
+    s3
+  };
 
-func intersect<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
-  let noop : ((),())->(()) = func (_:(),_:()):(())=();
-  let s3 = Trie.conj<T,(),(),()>(s1, s2, eq, noop);
-  s3
-};
+  func intersect<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+    let noop : ((),())->(()) = func (_:(),_:()):(())=();
+    let s3 = Trie.conj<T,(),(),()>(s1, s2, eq, noop);
+    s3
+  };
 
-func unitEq (_:(),_:()):Bool{ true };
+  func unitEq (_:(),_:()):Bool{ true };
 
 };
