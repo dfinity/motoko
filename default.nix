@@ -98,6 +98,11 @@ rec {
       "test/.*.sh"
       "samples/"
       "samples/.*"
+      "stdlib/"
+      "stdlib/.*Makefile.*"
+      "stdlib/.*.as"
+      "stdlib/examples/"
+      "stdlib/examples/.*.as"
       ];
 
     buildInputs =
@@ -112,6 +117,7 @@ rec {
     buildPhase = ''
       patchShebangs .
       asc --version
+      make -C stdlib ASC=asc all
       make -C samples ASC=asc all
       make -C test/run VERBOSE=1 ASC=asc all
       make -C test/fail VERBOSE=1 ASC=asc all
