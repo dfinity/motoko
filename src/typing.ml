@@ -36,7 +36,7 @@ let empty_scope : scope =
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
+    con_env = T.ConSet.(* disjoint_*)union scope1.con_env scope2.con_env;
   }
 
 
@@ -118,7 +118,7 @@ let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.val_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
-    cons = T.ConSet.disjoint_union env.cons scope.con_env;
+    cons = T.ConSet.(*disjoint*)union env.cons scope.con_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
@@ -1343,7 +1343,7 @@ and infer_dec_valdecs env dec : scope =
     *)
   | TypD (con_id, binds, typ) ->
     let c = match con_id.note with
-      | Some c -> c| _ -> assert false in
+      | Some c -> c | _ -> assert false in
     { empty_scope with typ_env = T.Env.singleton con_id.it c;
                        con_env = T.ConSet.singleton c  }
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
