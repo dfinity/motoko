@@ -1,62 +1,73 @@
 ASC=../../src/asc
+OUTDIR=out
 MODULE_NAME="\x1b[1;32mModule:\x1b[1;34m"
 BEGIN="\x1b[0;1mBegin...\x1b[0m"
 DONE="\x1b[1mDone.\n---------------------------------------------------\x1b[0m"
+
+# Add new module targets here:
+MODULES=\
+	List \
+	ListTest \
+	Trie \
+	Set \
+	SetDb \
+	SetDbTest \
+	ProduceExchange \
+
+OUTFILES=$(addsuffix .out, $(MODULES))
+
+OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 
 .PHONY: default all clean
 
 default: all
 
-all: \
-	List.out \
-	ListTest.out \
-	Trie.out \
-	Set.out \
-	SetDb.out \
-	SetDbTest.out \
-	ProduceExchange.out \
+all: $(OUTPATHS)
 
 clean:
-	rm -f *.out
+	rm -rf $(OUTDIR)
 
-List.out: list.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR):
+	mkdir $(OUTDIR)
+
+$(OUTDIR)/List.out: $(OUTDIR) list.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-ListTest.out: list.as listTest.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/ListTest.out: list.as listTest.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-Trie.out: list.as trie.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/Trie.out: list.as trie.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^  > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-Set.out: list.as trie.as set.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/Set.out: list.as trie.as set.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-SetDb.out: list.as trie.as set.as setDb.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/SetDb.out: list.as trie.as set.as setDb.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-SetDbTest.out: list.as trie.as set.as setDb.as setDbTest.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/SetDbTest.out: list.as trie.as set.as setDb.as setDbTest.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-ProduceExchange.out: list.as trie.as produceExchange.as
-	@echo $(MODULE_NAME) $(basename $@)
+$(OUTDIR)/ProduceExchange.out: list.as trie.as produceExchange.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
-	$(ASC) -r $^ > $@
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
