@@ -1,4 +1,4 @@
-ASC=../../src/asc
+ASC=../src/asc
 OUTDIR=out
 
 ## VT100 stuff
