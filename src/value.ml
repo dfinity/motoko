@@ -61,8 +61,8 @@ struct
   let lognot i = inj (Rep.lognot (proj i))
   let logxor i j = inj (Rep.logxor (proj i) (proj j))
   let shift_left i j = Rep.shift_left i j
-  let shift_right = Rep.shift_right
-  let shift_right_logical = Rep.shift_right_logical
+  let shift_right i j = let res = Rep.shift_right i j in inj (proj res)
+  let shift_right_logical i j = let res = Rep.shift_right_logical i j in inj (proj res)
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
