@@ -27,7 +27,7 @@
     // printW32ln(shrs d b); // TODO(Gabor)
     printW32ln(c <<> b);
     printW32ln(c <>> b);
-    // printW32ln(lognot d); // TODO(Gabor)
+    // printW32ln(popcnt d); // TODO(Gabor)
     // printW32ln(clz c); // TODO(Gabor)
     // printW32ln(ctz e); // TODO(Gabor)
 };
@@ -61,7 +61,7 @@
     // printW16ln(shrs d b); // TODO(Gabor)
     printW16ln(c <<> b);
     printW16ln(c <>> b);
-    // printW16ln(lognot d); // TODO(Gabor)
+    // printW16ln(popcnt d); // TODO(Gabor)
     // printW16ln(clz c); // TODO(Gabor)
     // printW16ln(ctz e); // TODO(Gabor)
 };
@@ -95,7 +95,7 @@
     // printW8ln(shrs d b); // TODO(Gabor)
     printW8ln(c <<> b);
     printW8ln(c <>> b);
-    // printW8ln(lognot d); // TODO(Gabor)
+    // printW8ln(popcnt d); // TODO(Gabor)
     // printW8ln(clz c); // TODO(Gabor)
     // printW8ln(ctz e); // TODO(Gabor)
 };
