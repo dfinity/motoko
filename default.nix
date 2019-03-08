@@ -106,6 +106,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+	filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []);
 
@@ -202,6 +203,9 @@ rec {
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
+  filecheck = nixpkgs.linkFarm "FileCheck"
+    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
+  wabt = nixpkgs.wabt;
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
