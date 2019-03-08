@@ -1315,11 +1315,11 @@ module Prim = struct
   *)
   let prim_word32toNat env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let prim_shiftWordNtoI32 b env =
+  let prim_shiftWordNtoI32 b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrU))
   let prim_shiftWordNtoUnsigned b env =
-    prim_shiftWordNtoI32 b env ^^
+    prim_shiftWordNtoI32 b ^^
     prim_word32toNat env
   let prim_word32toInt env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -3375,11 +3375,16 @@ let compile_unop env t op = Syntax.(match op, t with
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
-(* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
+(* Makes sure that the shift/rotate the maximum number of bits available in the word. *)
 let clamp_shift_amount = function
   | Type.Word32 -> G.nop
   | ty -> compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^
           G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+(* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
+let lsb_adjust = function
+  | Type.Word32 -> G.nop
+  | ty -> Prim.prim_shiftWordNtoI32 (StackRep.shift_of_type ty)
 
 (* Makes sure that the word representation invariant is restored. *)
 let sanitize_word_result = function
@@ -3411,8 +3416,7 @@ let rec compile_binop env t op =
 
   | Type.Prim Type.(Word8 | Word16 | Word32), AddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-  | Type.Prim Type.                  Word32,  MulOp -> G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-  | Type.Prim Type.(Word8 | Word16 as ty),    MulOp -> Prim.prim_shiftWordNtoI32 (StackRep.shift_of_type ty) env ^^
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> lsb_adjust ty ^^
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
@@ -3446,18 +3450,16 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp ->
      Func.share_code2 env (StackRep.name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let lsb_adjust = compile_unboxed_const (StackRep.shift_of_type ty) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       let beside_adjust = compile_unboxed_const (Int32.sub 32l (StackRep.shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
       sanitize_word_result ty)
   | Type.Prim Type.                  Word32,  RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotROp ->
      Func.share_code2 env (StackRep.name_of_type ty "rotr") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let lsb_adjust = compile_unboxed_const (StackRep.shift_of_type ty) ^^ G.i (Binary (I32 I32Op.ShrU)) in
-      get_n ^^ get_n ^^ lsb_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+      get_n ^^ get_n ^^ lsb_adjust ty ^^ G.i (Binary (I32 I32Op.Or)) ^^
+      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
       sanitize_word_result ty)
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
