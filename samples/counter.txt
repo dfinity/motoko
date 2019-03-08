@@ -23,7 +23,7 @@ testDec()
   <= ()
 testRead()
   -> async counter.as:37.11-46.4
-  <= ()
+  <= async _
 <- message dec()
   dec()
     show("dec", 10)

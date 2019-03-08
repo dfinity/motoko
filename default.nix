@@ -32,7 +32,7 @@ let real-dvm =
     then
       if !builtins.pathExists ./nix/dev/default.nix
       then
-        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the reqiure revision. "
+        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the required revision. "
       else
         # Pass devel = true until the dev test suite runs on MacOS again
         ((import ./nix/dev) { devel = true; }).dvm
@@ -106,6 +106,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+	filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []);
 
@@ -201,6 +202,9 @@ rec {
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
+  filecheck = nixpkgs.linkFarm "FileCheck"
+    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
+  wabt = nixpkgs.wabt;
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";

@@ -6,9 +6,9 @@ let _ = tictac_actor.tic_msg(10);
 
 func ignore(_ : async ()) = ();
 
-let tictac_async = new this {
-  tic_async(n : Int) : async () { if (n > 0) ignore(this.tac_async(n - 1)) };
-  tac_async(n : Int) : async () { if (n > 0) ignore(this.tic_async(n - 1)) };
+object tictac_async {
+  tic_async(n : Int) : async () { if (n > 0) ignore(tictac_async.tac_async(n - 1)) };
+  tac_async(n : Int) : async () { if (n > 0) ignore(tictac_async.tic_async(n - 1)) };
 };
 let _ = tictac_async.tic_async(10);
 

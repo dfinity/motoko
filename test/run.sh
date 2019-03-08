@@ -43,6 +43,21 @@ shift $((OPTIND-1))
 
 failures=no
 
+function normalize () {
+  if [ -e "$1" ]
+  then
+    grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
+    sed 's/\x00//g' |
+    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
+    sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
+    sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
+    sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
+    cat > $1.norm
+    mv $1.norm $1
+  fi
+}
+
 for file in "$@";
 do
   if ! [ -r $file ]
@@ -64,7 +79,7 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low}
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -73,6 +88,7 @@ do
   $ECHO -n " [tc]"
   $ASC $ASC_FLAGS --check $base.as > $out/$base.tc 2>&1
   tc_succeeded=$?
+  normalize $out/$base.tc
   diff_files="$diff_files $base.tc"
 
   if [ "$tc_succeeded" -eq 0 ];
@@ -82,11 +98,13 @@ do
       # Interpret
       $ECHO -n " [run]"
       $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+      normalize $out/$base.run
       diff_files="$diff_files $base.run"
 
       # Interpret with lowering
       $ECHO -n " [run-low]"
       $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
+      normalize $out/$base.run-low
       diff_files="$diff_files $base.run-low"
 
       # Diff interpretations without/with lowering
@@ -96,6 +114,7 @@ do
       # Interpret IR
       $ECHO -n " [run-ir]"
       $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
+      normalize $out/$base.run-ir
       diff_files="$diff_files $base.run-ir"
 
       # Diff interpretations without/with lowering
@@ -111,7 +130,19 @@ do
     else
       $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
     fi
+    normalize $out/$base.wasm.stderr
     diff_files="$diff_files $base.wasm.stderr"
+
+    # Check filecheck
+    if grep -F -q CHECK $base.as
+    then
+      $ECHO -n " [Filecheck]"
+      wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+      cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
+      diff_files="$diff_files $base.filecheck"
+    fi
+
+    # Run compiled program
     if [ -e $out/$base.wasm ]
     then
       if [ "$SKIP_RUNNING" != yes ]
@@ -120,31 +151,18 @@ do
         then
           $ECHO -n " [dvm]"
           $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
+          normalize $out/$base.dvm-run
           diff_files="$diff_files $base.dvm-run"
         else
           $ECHO -n " [wasm-run]"
           $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
-          sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' $out/$base.wasm-run >$out/$base.wasm-run.temp
-          mv -f $out/$base.wasm-run.temp $out/$base.wasm-run
+          normalize $out/$base.wasm-run
           diff_files="$diff_files $base.wasm-run"
         fi
       fi
     fi
   fi
   $ECHO ""
-
-  # normalize files
-  for file in $diff_files
-  do
-    if [ -e "$out/$file" ]
-    then
-      grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $out/$file |
-      sed 's/\x00//g' |
-      sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-      sed 's/^.*W, hypervisor:/W, hypervisor:/g' > $out/$file.norm
-      mv $out/$file.norm $out/$file
-    fi
-  done
 
   if [ $ACCEPT = yes ]
   then

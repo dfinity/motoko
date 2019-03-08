@@ -90,7 +90,8 @@ let rec match_pat ctxt desc pat t sets =
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
-  | AnnotP (pat1, _) ->
+  | AnnotP (pat1, _)
+  | ParP pat1 ->
     match_pat ctxt desc pat1 t sets
 
 and match_lit ctxt desc v t sets =
@@ -177,7 +178,7 @@ let warn at fmt =
   ) fmt
 
 let check_cases cases t : bool =
-	let sets = make_sets () in
+  let sets = make_sets () in
   let exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
   let unreached_alts = AtSet.diff sets.alts sets.reached_alts in
