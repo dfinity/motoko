@@ -41,6 +41,7 @@
                  "func"
                  "if"
                  "in"
+                 "module"
                  "new"
                  "not"
                  "object"
