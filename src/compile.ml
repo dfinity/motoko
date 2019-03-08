@@ -2930,7 +2930,7 @@ module StackRep = struct
     | Type.Prim Type.Nat -> UnboxedInt64
     | Type.Prim Type.Int -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
-    | Type.Prim Type.(Word8 | Word16) -> Vanilla
+    | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
@@ -3473,7 +3473,7 @@ let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.Prim (Type.Nat | Type.Int) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.Prim Type.(Word8 | Word16 | Word32) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.Prim Type.(Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo "compile_eq" (Arrange.relop Syntax.EqOp) (G.i Unreachable)
 
 let get_relops = Syntax.(function
@@ -3488,7 +3488,7 @@ let compile_comparison t op =
   in Type.(match t with
      | Nat -> G.i (Compare (Wasm.Values.I64 u64op))
      | Int -> G.i (Compare (Wasm.Values.I64 s64op))
-     | (Word8 | Word16 | Word32) -> G.i (Compare (Wasm.Values.I32 u32op))
+     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
      | _ -> todo "compile_comparison" (Arrange.prim t) (G.i Unreachable))
 
 let compile_relop env t op =
@@ -3498,7 +3498,7 @@ let compile_relop env t op =
   | _, NeqOp -> compile_eq env t ^^
              G.if_ (StackRep.to_block_type env SR.bool)
                    (Bool.lit false) (Bool.lit true)
-  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 as t1), op1 ->
+  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Char as t1), op1 ->
      compile_comparison t1 op1
   | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
   )
