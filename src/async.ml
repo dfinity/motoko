@@ -179,7 +179,8 @@ module Transform() = struct
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
-    | Kind (c,k) -> Kind (c, t_kind k)
+    | Kind (c,k) -> Kind (t_con c, t_kind k)
+
   and t_bind {var; bound} =
     {var; bound = t_typ bound}
 

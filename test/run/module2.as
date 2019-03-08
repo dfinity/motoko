@@ -2,4 +2,4 @@
 module X = { type x = Int; let x = 1; };
 type x = X.x;
 let x = X.x;
-assert (x == 1);
+/* assert (x == 1); */

@@ -102,7 +102,7 @@ val as_async_sub : typ -> typ
 val seq : typ list -> typ
 val as_seq : typ -> typ list
 
-(* field lookup *)
+(* field lookup, namespace sensitive *)
 
 val lookup_typ_field : string -> field list -> (con * kind)
 

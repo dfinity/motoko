@@ -3686,7 +3686,7 @@ and compile_exp (env : E.t) exp =
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env i ds fs exp.at
     else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
-  | NewObjE (Type.Object _ (*sharing*), fs, _) ->
+  | NewObjE ((Type.Object _ (*sharing*) | Type.Module), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun env ->

@@ -82,7 +82,13 @@ let prim = function
 
 let seq = function [t] -> t | ts -> Tup ts
 
-let compare_field {lab = l1; _} {lab = l2; _} = compare l1 l2
+let compare_field f1 f2 =
+  match f1,f2 with
+  | {lab = l1; typ = Kind _}, {lab = l2; typ = Kind _ } -> compare l1 l2
+  | {lab = l1; typ = Kind _}, {lab = l2; typ = _ } -> -1
+  | {lab = l1; typ = _}, {lab = l2; typ = Kind _ } -> 1
+  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+
 
 let iter_obj t =
   Obj (Object Local,
@@ -515,6 +521,8 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
+  | Kind (c1, k1), Kind (c2, k2) ->
+    Con.eq c1 c2 (* && eq_kind k1 k2 *)
   | _, _ -> false
   end
 
@@ -550,7 +558,7 @@ and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
-and sub  t1 t2 : bool =
+and sub t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
@@ -655,8 +663,6 @@ let rec string_of_typ_nullary vs = function
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
-  | Obj (Module, fs) ->
-    sprintf "module {%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | Kind (c,k) ->
     sprintf "= {%s}" (string_of_kind k)
   | t -> sprintf "(%s)" (string_of_typ' vs t)
@@ -700,15 +706,20 @@ and string_of_typ' vs t =
   | Obj (Actor, fs) ->
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Module, fs) ->
-    sprintf "module %s" (String.concat "; " (List.map (string_of_field vs) fs))
+    sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Kind (c,k) ->
-    sprintf "= %s" (string_of_kind k)
+    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind k)
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
 and string_of_field vs {lab; typ} =
-  sprintf "%s : %s" lab (string_of_typ' vs typ)
+  match typ with
+  | Kind (c,k) ->
+    let op, sbs, st = strings_of_kind k in
+    sprintf "type %s%s %s %s" lab sbs op st
+  | _ ->
+    sprintf "%s : %s" lab (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs

@@ -36,9 +36,8 @@ let empty_scope : scope =
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = T.ConSet.(* disjoint_*)union scope1.con_env scope2.con_env;
+    con_env = T.ConSet.union scope1.con_env scope2.con_env;
   }
-
 
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
 (*
@@ -118,7 +117,7 @@ let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.val_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
-    cons = T.ConSet.(*disjoint*)union env.cons scope.con_env;
+    cons = T.ConSet.union env.cons scope.con_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
@@ -1130,6 +1129,7 @@ and print_ve ve = () (*
     Printf.printf "  %s : %s\n" x (Type.string_of_typ t)
   )*)
  *)
+
 (* move me to type.ml *)
 and module_of_scope scope =
   let typ_fields =
@@ -1172,7 +1172,9 @@ and gather_dec_typdecs env scope dec : scope =
       error env dec.at "duplicate definition for type %s in block" id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
-    let c = Con.fresh id.it pre_k in
+    let c = match id.note with
+      | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
+      | Some c -> c  in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     {scope with typ_env = te'; con_env = ce'}
@@ -1185,8 +1187,6 @@ and gather_dec_typdecs env scope dec : scope =
     {val_env = ve';
      typ_env = scope.typ_env;
      con_env = scope.con_env }
-
-
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : scope =
@@ -1242,9 +1242,7 @@ and infer_id_typdecs id c k : con_env =
     assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
-
-
-
+ 
 (* Pass 4: collect value identifiers *)
 (* TODO: consider merging with gather_dec_type_decs so we can reject duplicate mod and
    val ids *)
@@ -1306,46 +1304,12 @@ and infer_dec_valdecs env dec : scope =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     { empty_scope with val_env = T.Env.singleton id.it (T.Mut t) }
-  (* TBD   
-  | FuncD (sort, id, typ_binds, pat, typ, exp) ->
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
-    let env' = adjoin_typs env te ce in
-    let t1, _ = infer_pat {env' with pre = true} pat in
-    let t2 = check_typ env' typ in
-    if not env.pre && sort.it = T.Sharable then begin
-      if not (T.sub env'.cons t1 T.Shared) then
-        error env pat.at "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand env'.cons t1);
-      begin match t2 with
-      | T.Tup [] -> ()
-      | T.Async t2 ->
-        if not (T.sub env'.cons t2 T.Shared) then
-          error env typ.at "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand env'.cons t2);
-        if not (isAsyncE exp) then
-          error env dec.at "shared function with async type has non-async body"
-      | _ -> error env typ.at "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand env'.cons t2)
-      end;
-    end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
-    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
-    let c =
-      match sort.it, typ.it with
-      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    { empty_scope with
-      val_env =
-        T.Env.singleton id.it
-          (T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)) }
-    *)
   | TypD (con_id, binds, typ) ->
     let c = match con_id.note with
       | Some c -> c | _ -> assert false in
-    { empty_scope with typ_env = T.Env.singleton con_id.it c;
-                       con_env = T.ConSet.singleton c  }
+    { empty_scope with
+      typ_env = T.Env.singleton con_id.it c;
+      con_env = T.ConSet.singleton c }
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -1354,15 +1318,11 @@ and infer_dec_valdecs env dec : scope =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let c = match id.note with
-      | Some c -> c
-      | _ -> assert false
-    in
-    { val_env =
-        T.Env.singleton id.it
-          (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]));
+    { val_env = T.Env.singleton id.it
+                  (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]));
       typ_env = T.Env.singleton id.it c;
-      con_env = T.ConSet.singleton c }
+      con_env = T.ConSet.singleton c
+    }
   | ModuleD (id, decs) ->
     let t = try T.Env.find id.it env.vals with _ -> assert false  in
     let mod_scope = scope_of_module t in

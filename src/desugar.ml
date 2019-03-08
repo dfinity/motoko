@@ -148,15 +148,6 @@ and extra_typDs ds =
   | [] -> []
   | d::ds ->
     match d.it with
-(* CRUSSO TBD
-    | S.ModuleD (id, _)->
-        build_module id ds d.note.S.note_typ ::
-        { it = I.ExpD (idE id d.note.S.note_typ);
-          at = d.at;
-          note = d.note;
-        } ::
-          (decs ds)
- *)
     | S.ClassD (id, _, _, _, _, _) ->
       let c = Lib.Option.value id.note in
       let typD = I.TypD c @@ d.at in
@@ -209,7 +200,6 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
-  (* CRUSSO: TBC *)
   | S.ModuleD(id, ds) ->
     (build_module id ds (n.S.note_typ)).it
 
@@ -220,17 +210,14 @@ and field_typ_to_obj_entry (f: T.field) =
   | _ -> [ build_field f ]
 
 and build_module id ds typ =
-  let self =  idE id typ in
+  let self = idE id typ in
   let (s, fs) = T.as_obj typ in
   letD self
     (blockE
-       (decs ds @
-          [ letD self
-              (newObjE T.Module
-                 (List.concat (List.map field_typ_to_obj_entry fs)) typ);
-       ])
-       self
-    )
+       (decs ds)
+       (newObjE T.Module
+          (List.concat (List.map field_typ_to_obj_entry fs)) typ));
+          (* ^^^^ TBR: do these need to be sorted? *)
 
 and cases cs = List.map case cs
 
