@@ -5,7 +5,7 @@
 /*
  Sets are partial maps from element type to unit type,
  i.e., the partial map represents the set with its domain.
-*/
+ */
 
 // TODO-Matthew:
 //

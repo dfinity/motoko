@@ -3,47 +3,47 @@
 ////////////////////////////////////////////////////////////////////
 let SetDb = new {
 
-   private func setDbPrint(s:Set<Nat>) {
+  private func setDbPrint(s:Set<Nat>) {
     func rec(s:Set<Nat>, ind:Nat, bits:Hash) {
       func indPrint(i:Nat) {
-	if (i == 0) { } else { print "| "; indPrint(i-1) }
+	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
       func bitsPrintRev(bits:Bits) {
-	switch bits {
-	  case null { print "" };
-	  case (?(bit,bits_)) {
-		 bitsPrintRev(bits_);
-		 if bit { print "1R." }
-		 else   { print "0L." }
-	       }
-	}
+	      switch bits {
+	      case null { print "" };
+	      case (?(bit,bits_)) {
+		           bitsPrintRev(bits_);
+		           if bit { print "1R." }
+		           else   { print "0L." }
+	           }
+	      }
       };
       switch s {
       case null {
-	     //indPrint(ind);
-	     //bitsPrintRev(bits);
-	     //print "(null)\n";
-	   };
+	           //indPrint(ind);
+	           //bitsPrintRev(bits);
+	           //print "(null)\n";
+	         };
       case (?n) {
-	     switch (n.key) {
-	     case null {
-		    //indPrint(ind);
-		    //bitsPrintRev(bits);
-		    //print "bin \n";
-		    rec(n.right, ind+1, ?(true, bits));
-		    rec(n.left,  ind+1, ?(false,bits));
-		    //bitsPrintRev(bits);
-		    //print ")\n"
-		  };
-	     case (?k) {
-		    //indPrint(ind);
-		    bitsPrintRev(bits);
-		    print "(leaf ";
-		    printInt k;
-		    print ")\n";
-		  };
-	     }
-	   };
+	           switch (n.key) {
+	           case null {
+		                //indPrint(ind);
+		                //bitsPrintRev(bits);
+		                //print "bin \n";
+		                rec(n.right, ind+1, ?(true, bits));
+		                rec(n.left,  ind+1, ?(false,bits));
+		                //bitsPrintRev(bits);
+		                //print ")\n"
+		              };
+	           case (?k) {
+		                //indPrint(ind);
+		                bitsPrintRev(bits);
+		                print "(leaf ";
+		                printInt k;
+		                print ")\n";
+		              };
+	           }
+	         };
       }
     };
     rec(s, 0, null);
