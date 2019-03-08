@@ -3339,6 +3339,9 @@ let compile_lit env lit = Syntax.(match lit with
   | Word32Lit n   -> SR.UnboxedWord32,
     (try compile_unboxed_const n
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable)
+  | CharLit c   -> SR.Vanilla,
+    (try compile_unboxed_const Int32.(shift_left (of_int c) 8)
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" c; G.i Unreachable)
   | NullLit       -> SR.Vanilla, Opt.null
   | TextLit t     -> SR.Vanilla, Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) (SR.Vanilla, G.i Unreachable)
@@ -3589,6 +3592,12 @@ and compile_exp (env : E.t) exp =
          compile_exp_as env SR.UnboxedInt64 e ^^
          Prim.prim_intToWord32
 
+       | "Char->Word32" ->
+         SR.UnboxedWord32,
+         compile_exp_vanilla env e ^^
+         compile_unboxed_const 8l ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+
        | "Word8->Nat" ->
          SR.UnboxedInt64,
          compile_exp_vanilla env e ^^
@@ -3615,6 +3624,12 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
          Prim.prim_word32toInt
+
+       | "Word32->Char" ->
+         SR.Vanilla,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         compile_unboxed_const 8l ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
        | "printInt" ->
          SR.unit,
