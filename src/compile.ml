@@ -1313,24 +1313,24 @@ module Prim = struct
      Both Word8/16 easily fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat env =
+  let prim_word32toNat =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let prim_shiftWordNtoI32 b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrU))
-  let prim_shiftWordNtoUnsigned b env =
+  let prim_shiftWordNtoUnsigned b =
     prim_shiftWordNtoI32 b ^^
-    prim_word32toNat env
-  let prim_word32toInt env =
+    prim_word32toNat
+  let prim_word32toInt =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-  let prim_shiftWordNtoSigned b env =
+  let prim_shiftWordNtoSigned b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrS)) ^^
-    prim_word32toInt env
-  let prim_intToWord32 env =
+    prim_word32toInt
+  let prim_intToWord32 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_shiftToWordN b env =
-    prim_intToWord32 env ^^
+  let prim_shiftToWordN b =
+    prim_intToWord32 ^^
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.Shl))
 end (* Prim *)
@@ -3575,46 +3575,46 @@ and compile_exp (env : E.t) exp =
        | "Int->Word8" ->
          SR.Vanilla,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_shiftToWordN (StackRep.shift_of_type Type.Word8) env
+         Prim.prim_shiftToWordN (StackRep.shift_of_type Type.Word8)
 
        | "Nat->Word16"
        | "Int->Word16" ->
          SR.Vanilla,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_shiftToWordN (StackRep.shift_of_type Type.Word16) env
+         Prim.prim_shiftToWordN (StackRep.shift_of_type Type.Word16)
 
        | "Nat->Word32"
        | "Int->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_intToWord32 env
+         Prim.prim_intToWord32
 
        | "Word8->Nat" ->
          SR.UnboxedInt64,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoUnsigned (StackRep.shift_of_type Type.Word8) env
+         Prim.prim_shiftWordNtoUnsigned (StackRep.shift_of_type Type.Word8)
        | "Word8->Int" ->
          SR.UnboxedInt64,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoSigned (StackRep.shift_of_type Type.Word8) env
+         Prim.prim_shiftWordNtoSigned (StackRep.shift_of_type Type.Word8)
 
        | "Word16->Nat" ->
          SR.UnboxedInt64,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoUnsigned (StackRep.shift_of_type Type.Word16) env
+         Prim.prim_shiftWordNtoUnsigned (StackRep.shift_of_type Type.Word16)
        | "Word16->Int" ->
          SR.UnboxedInt64,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoSigned (StackRep.shift_of_type Type.Word16) env
+         Prim.prim_shiftWordNtoSigned (StackRep.shift_of_type Type.Word16)
 
        | "Word32->Nat" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat env
+         Prim.prim_word32toNat
        | "Word32->Int" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toInt env
+         Prim.prim_word32toInt
 
        | "printInt" ->
          SR.unit,
