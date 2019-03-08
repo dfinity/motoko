@@ -2771,7 +2771,7 @@ module GC = struct
   (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
   (* All pointers, including ptr_loc and space end markers, are skewed *)
-  let evacuate env = Func.share_code4 env "evaucate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
     let (set_len, get_len) = new_local env "len" in
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
 
