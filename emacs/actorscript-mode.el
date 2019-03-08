@@ -57,30 +57,30 @@
                  "while"
                  "prim" ))
               (x-symbols
-               '( ;"("
-                  ;")"
-                  ;"["
-                  ;"]"
-                  ;"{"
-                  ;"}"
-                  ;";"
-                  ;","
+               '( "("
+                  ")"
+                  "["
+                  "]"
+                  "{"
+                  "}"
+                  ";"
+                  ","
                   ":"
                   "<:"
-                  ;"."
-                  "?"
+                  ;"\\."
+                  ;"\\?"
                   "="
                   "<"
                   ">"
-                  ;"+"
+                  ;"\\+"
                   "-"
-                  "*"
+                  ;"\\*"
                   "/"
                   "%"
                   "**"
                   "&"
-                  ;"|"
-                  ;"^"
+                  "|"
+                  ;"\\^"
                   "<<"
                   ">>"
                   "<<>"
@@ -106,18 +106,29 @@
                   "<>>="
                   "#="
                   ))
+              ;; xxx These still don't work:
+              (x-symbols-more
+               '( "\\."
+                  "\\?"
+                  "\\+"
+                  "\\-"
+                  "\\*"
+                  "\\^"
+                  ))
         ;; generate regex string for each category of keywords
         (x-types-regexp (regexp-opt x-types 'words))
         (x-constant-regexp (regexp-opt x-constants 'words))
         (x-keywords-regexp (regexp-opt x-keywords 'words))
-        (x-symbols-regexp (regexp-opt x-symbols 'words))
+        (x-symbols-regexp (regexp-opt x-symbols))
+        (x-symbols-more-regexp (regexp-opt x-symbols-more))
         )
         ;;
         `(
           (,x-types-regexp . font-lock-type-face)
           (,x-constant-regexp . font-lock-constant-face)
           (,x-keywords-regexp . font-lock-keyword-face)
-          (,x-symbols-regexp . font-lock-keyword-face)
+          (,x-symbols-regexp . font-lock-builtin-face)
+          (,x-symbols-more-regexp . font-lock-builtin-face)
           )))
 
 (define-derived-mode actorscript-mode
