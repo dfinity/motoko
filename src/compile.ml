@@ -2938,15 +2938,8 @@ module StackRep = struct
     | Type.Word8 -> 24l
     | Type.Word16 -> 16l
     | _ -> 0l
-(*
-  let bitwidth_of_type ty = match ty with
-    | Type.Word8 -> 8l(*Value.Word8.(to_bits (clz zero))*)
-    | Type.Word16 -> 16l(*Int32.shift_right_logical Value.Word16.(to_bits (clz zero)) (Int32.to_int (shift_of_type ty))*)
-    | Type.Word32 -> Value.Word32.(to_bits (clz zero))
-    | p -> todo "bitwidth_of_type" (Arrange_type.prim p) 0l
- *)
-  let bitwidth_mask_of_type = (*Int32.(sub (shift_left 1l (to_int (bitwidth_of_type ty))) one)*)
-    function
+
+  let bitwidth_mask_of_type = function
     | Type.Word8 -> 0b111l
     | Type.Word16 -> 0b1111l
     | Type.Word32 -> 0b11111l
@@ -3382,6 +3375,18 @@ let compile_unop env t op = Syntax.(match op, t with
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
+(* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
+let clamp_shift_amount = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+(* Makes sure that the word representation invariant is restored. *)
+let sanitize_word_result = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (StackRep.mask_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And))
+
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
    but none of these do, so a single value is fine.
@@ -3431,35 +3436,29 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
   | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp ->
-     let clamp_shift_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) in (* nop for Word32 *)
-     clamp_shift_amount ^^
+     clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Shl))
-  | Type.Prim Type.                  Word32,  ShROp -> G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
-  | Type.Prim Type.(Word8 | Word16 as ty),    ShROp ->
-     let clamp_shift_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) in (* nop for Word32 *)
-     clamp_shift_amount ^^
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  ShROp ->
+     clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-     compile_unboxed_const (StackRep.mask_of_type ty) ^^
-     G.i (Binary (Wasm.Values.I32 I32Op.And))
+     sanitize_word_result ty
   | Type.Prim Type.                  Word32,  RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp ->
      Func.share_code2 env (StackRep.name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let clamp_rot_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (I32 I32Op.And)) in
       let lsb_adjust = compile_unboxed_const (StackRep.shift_of_type ty) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       let beside_adjust = compile_unboxed_const (Int32.sub 32l (StackRep.shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ^^ clamp_rot_amount ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
-      compile_unboxed_const (StackRep.mask_of_type ty) ^^ G.i (Binary (I32 I32Op.And)))
+      get_by ^^ lsb_adjust ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+      sanitize_word_result ty)
   | Type.Prim Type.                  Word32,  RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotROp ->
      Func.share_code2 env (StackRep.name_of_type ty "rotr") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let clamp_rot_amount = compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^ G.i (Binary (I32 I32Op.And)) in
       let lsb_adjust = compile_unboxed_const (StackRep.shift_of_type ty) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       get_n ^^ get_n ^^ lsb_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ^^ clamp_rot_amount ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
-      compile_unboxed_const (StackRep.mask_of_type ty) ^^ G.i (Binary (I32 I32Op.And)))
+      get_by ^^ lsb_adjust ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+      sanitize_word_result ty)
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
