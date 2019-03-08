@@ -55,14 +55,20 @@
                  "type"
                  "var"
                  "while"
-                 "prim" ))
+                 "prim"
+                 ))
+              ;; Braces introduce blocks; it's nice to make them stand
+              ;; out more than ordinary symbols
+              (x-braces
+               '( "{"
+                  "}"))
               (x-symbols
                '( "("
                   ")"
                   "["
                   "]"
-                  "{"
-                  "}"
+                  ;"{"
+                  ;"}"
                   ";"
                   ","
                   ":"
@@ -119,6 +125,7 @@
         (x-types-regexp (regexp-opt x-types 'words))
         (x-constant-regexp (regexp-opt x-constants 'words))
         (x-keywords-regexp (regexp-opt x-keywords 'words))
+        (x-braces-regexp (regexp-opt x-braces))
         (x-symbols-regexp (regexp-opt x-symbols))
         (x-symbols-more-regexp (regexp-opt x-symbols-more))
         )
@@ -127,6 +134,7 @@
           (,x-types-regexp . font-lock-type-face)
           (,x-constant-regexp . font-lock-constant-face)
           (,x-keywords-regexp . font-lock-keyword-face)
+          (,x-braces-regexp . font-lock-keyword-face)
           (,x-symbols-regexp . font-lock-builtin-face)
           (,x-symbols-more-regexp . font-lock-builtin-face)
           )))
