@@ -117,7 +117,7 @@ rec {
       make -C test VERBOSE=1 ASC=asc quick
     '' +
       (if test-dvm then ''
-      make --load-average -j -C test/run-dfinity VERBOSE=1 ASC=asc quick
+      make --load-average -j2 -C test/run-dfinity VERBOSE=1 ASC=asc quick
       '' else "");
 
     installPhase = ''
