@@ -77,22 +77,22 @@ let w32 = actor {
   private var c : Word32 = 0;
   incn(n : Word32) : () {
     c += n;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   incnn(n1 : Word32, n2 : Word32) : () {
     c += n1 + n2;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   incnested(n1 : Word32, (n2 : Word32, n3 : Word32)) : () {
     c += n1 + n2 + n3;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   incarray(a : [Word32]) : () {
     for (i in a.vals()) { c += i };
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   incopt(a : ?Word32) : () {
@@ -100,34 +100,31 @@ let w32 = actor {
       case null { c += 1000000 };
       case (?a) { c += a };
     };
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   increcord(a : shared { x : Word32; y : Word32 }) : () {
     c += a.x;
     c += a.y;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   printCounter() {
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   printLabeled(l:Text) {
     print l;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   printLabeledOpt(?l:?Text) {
     print l;
-    printW32(c);
+    printInt(word32ToInt(c));
     print("\n");
   };
   readCounter(f : shared Word32 -> ()) : () {
     f(c);
-  };
-  printW32(x : Word32) {
-    printInt(word32ToInt x);
   };
 };
 
@@ -155,22 +152,22 @@ let w16 = actor {
   private var c : Word16 = 0;
   incn(n : Word16) : () {
     c += n;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   incnn(n1 : Word16, n2 : Word16) : () {
     c += n1 + n2;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   incnested(n1 : Word16, (n2 : Word16, n3 : Word16)) : () {
     c += n1 + n2 + n3;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   incarray(a : [Word16]) : () {
     for (i in a.vals()) { c += i };
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   incopt(a : ?Word16) : () {
@@ -178,34 +175,31 @@ let w16 = actor {
       case null { c += 10000 };
       case (?a) { c += a };
     };
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   increcord(a : shared { x : Word16; y : Word16 }) : () {
     c += a.x;
     c += a.y;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   printCounter() {
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   printLabeled(l:Text) {
     print l;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   printLabeledOpt(?l:?Text) {
     print l;
-    printW16(c);
+    printInt(word16ToInt(c));
     print("\n");
   };
   readCounter(f : shared Word16 -> ()) : () {
     f(c);
-  };
-  printW16(x : Word16) {
-    printInt(word16ToInt x);
   };
 };
 
