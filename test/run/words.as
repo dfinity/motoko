@@ -81,11 +81,11 @@
     printW16ln(c - a);
 
 // CHECK: get_local $a
-// CHECK: get_local $b
-// CHECK: i32.const 16
-// CHECK: i32.shr_u
-// CHECK: i32.mul
-// CHECK: call $printW16ln
+// CHECK-NEXT: get_local $b
+// CHECK-NEXT: i32.const 16
+// CHECK-NEXT: i32.shr_u
+// CHECK-NEXT: i32.mul
+// CHECK-NEXT: call $printW16ln
     printW16ln(a * b);
 // CHECK: call $printW16ln
     printW16ln(a / b);
@@ -113,7 +113,9 @@
     printW16ln(a >> b);
     // printW16ln(shrs d b); // TODO(Gabor)
 
-// CHECK: call $printW16ln
+// CHECK: get_local $b
+// CHECK-NEXT: call $rotl<Word16>
+// CHECK-NEXT: call $printW16ln
     printW16ln(c <<> b);
 
 // CHECK: get_local $b
@@ -146,7 +148,11 @@
     printW8ln(a + c);
 // CHECK: call $printW8ln
     printW8ln(c - a);
-// CHECK: call $printW8ln
+// CHECK: get_local $b
+// CHECK-NEXT: i32.const 24
+// CHECK-NEXT: i32.shr_u
+// CHECK-NEXT: i32.mul
+// CHECK-NEXT: call $printW8ln
     printW8ln(a * b);
 // CHECK: call $printW8ln
     printW8ln(a / b);
@@ -174,9 +180,13 @@
     printW8ln(a >> b);
     // printW8ln(shrs d b); // TODO(Gabor)
 
-// CHECK: call $printW8ln
+// CHECK: get_local $b
+// CHECK-NEXT: call $rotl<Word8>
+// CHECK-NEXT: call $printW8ln
     printW8ln(c <<> b);
-// CHECK: call $printW8ln
+// CHECK: get_local $b
+// CHECK-NEXT: call $rotr<Word8>
+// CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);
     // printW8ln(popcnt d); // TODO(Gabor)
     // printW8ln(clz c); // TODO(Gabor)
