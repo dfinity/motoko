@@ -42,7 +42,10 @@
     printW32ln(a << b);
 // CHECK: call $printW32ln
     printW32ln(a >> b);
-    // printW32ln(shrs d b); // TODO(Gabor)
+// CHECK: call $printW32ln
+    printW32ln(shrsWord32(d, 3));
+// CHECK: call $printW32ln
+    printW32ln(shrsWord32(-1216614433, 4)); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
 // CHECK: call $printW32ln
     printW32ln(c <<> b);
 // CHECK: call $printW32ln

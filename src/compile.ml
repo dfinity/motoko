@@ -3563,6 +3563,15 @@ and compile_exp (env : E.t) exp =
      match p with
       | "Array.init" -> Array.init env
       | "Array.tabulate" -> Array.tabulate env
+      | "shrs" ->
+         let (set_am, get_am) = new_local env "am" in
+         BoxedSmallWord.unbox env ^^
+         set_am ^^
+         BoxedSmallWord.unbox env ^^
+         get_am ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+         BoxedSmallWord.box env
+
       | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
   (* Unary prims *)
@@ -3635,12 +3644,10 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
-
        | "clz" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Clz))
-
        | "ctz" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
