@@ -2896,7 +2896,7 @@ module StackRep = struct
   open SR
 
   (*
-     Most expression have a “preferred”, most optimal, form. Hence,
+     Most expressions have a “preferred”, most optimal, form. Hence,
      compile_exp put them on the stack in that form, and also returns
      the form it chose.
 
