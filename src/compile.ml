@@ -3749,7 +3749,7 @@ and compile_exp_unit (env : E.t) exp =
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
-This requires conceptually thre passes:
+This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
     The environment is extended monotonously: The type-checker ensures that
