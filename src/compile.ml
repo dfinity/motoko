@@ -963,7 +963,7 @@ module Var = struct
     | Some (Deferred d) -> G.i Unreachable
     | None   -> G.i Unreachable
 
-  (* Returns the payload (vanialla representation) *)
+  (* Returns the payload (vanilla representation) *)
   let get_val_vanilla env var = match E.lookup_var env var with
     | Some (Local i) -> G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
