@@ -56,6 +56,11 @@
     printW32ln(clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
 // CHECK: call $printW32ln
     printW32ln(ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+
+    assert (3 : Word32 ** (4 : Word32) == (81 : Word32));
+    assert (3 : Word32 ** (7 : Word32) == (2187 : Word32));
+    assert (3 : Word32 ** (14 : Word32) == (4782969 : Word32));
+    assert (3 : Word32 ** (20 : Word32) == (3486784401 : Word32));
 };
 
 // Word16 operations
@@ -125,6 +130,12 @@
     // printW16ln(popcnt d); // TODO(Gabor)
     // printW16ln(clz c); // TODO(Gabor)
     // printW16ln(ctz e); // TODO(Gabor)
+
+
+    assert (3 : Word16 ** (0 : Word16) == (1 : Word16));
+    assert (3 : Word16 ** (1 : Word16) == (3 : Word16));
+    assert (3 : Word16 ** (4 : Word16) == (81 : Word16));
+    assert (3 : Word16 ** (7 : Word16) == (2187 : Word16));
 };
 
 // Word8 operations
@@ -191,4 +202,9 @@
     // printW8ln(popcnt d); // TODO(Gabor)
     // printW8ln(clz c); // TODO(Gabor)
     // printW8ln(ctz e); // TODO(Gabor)
+
+    assert (3 : Word8 ** (0 : Word8) == (1 : Word8));
+    assert (3 : Word8 ** (3 : Word8) == (27 : Word8));
+    assert (3 : Word8 ** (4 : Word8) == (81 : Word8));
+    assert (3 : Word8 ** (5 : Word8) == (243 : Word8));
 };
