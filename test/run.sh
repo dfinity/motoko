@@ -8,9 +8,10 @@
 #
 #    -a: Update the files in ok/
 #    -d: Compile with --dfinity, use dvm to run
+#    -s: Be silent in sunny-day execution
 #
 
-realpath() {
+function realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }
 

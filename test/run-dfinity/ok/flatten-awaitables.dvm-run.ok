@@ -4,4 +4,4 @@
 # Empty MaybeLocal.
 #
 
-dvm.sh: line 12: Illegal instruction dvm $@
+dvm.sh: line 14: Illegal instruction dvm $@
