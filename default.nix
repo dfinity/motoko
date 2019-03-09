@@ -117,7 +117,7 @@ rec {
       make -C test VERBOSE=1 ASC=asc quick
     '' +
       (if test-dvm then ''
-      make -C test VERBOSE=1 ASC=asc parallel
+      make -C test/run-dfinity VERBOSE=1 ASC=asc quick
       '' else "");
 
     installPhase = ''
