@@ -803,7 +803,7 @@ module BitTagged = struct
      This means we can store a small unboxed scalar x as (x << 2), and still
      tell it apart from a pointer.
 
-     We actually use the *second* lowest bit to tell apointer apart from a
+     We actually use the *second* lowest bit to tell a pointer apart from a
      scalar.
 
      It means that 0 and 1 are also recognized as non-pointers, and we can use
