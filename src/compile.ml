@@ -3567,7 +3567,7 @@ and compile_exp (env : E.t) exp =
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
        stack representation here.
-       So let’s go with Vanialla. *)
+       So let’s go with Vanilla. *)
     SR.Vanilla,
     G.block_ (StackRep.to_block_type env SR.Vanilla) (
       G.with_current_depth (fun depth ->
