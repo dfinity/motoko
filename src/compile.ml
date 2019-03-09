@@ -26,7 +26,7 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 let page_size = Int32.of_int (64*1024)
 
 (*
-Pointers are shifted -1 relative to the actual offset.
+Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
 *)
 let ptr_skew = -1l
