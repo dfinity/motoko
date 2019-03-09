@@ -128,7 +128,7 @@ let w32 = actor {
   };
 };
 
-
+/*
 w32.incn(1);
 w32.incn(2);
 w32.incn(3);
@@ -145,7 +145,7 @@ w32.increcord(shared {x = 17 : Word32; y = 18 : Word32; z = 19 : Word32});
 w32.printCounter();
 w32.printLabeled("Foo: ");
 w32.printLabeledOpt(?"Foo2: ");
-
+*/
 
 
 let w16 = actor {
@@ -203,7 +203,7 @@ let w16 = actor {
   };
 };
 
-
+/*
 w16.incn(1);
 w16.incn(2);
 w16.incn(3);
@@ -220,3 +220,4 @@ w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16});
 w16.printCounter();
 w16.printLabeled("Foo: ");
 w16.printLabeledOpt(?"Foo2: ");
+*/
