@@ -47,9 +47,12 @@
     printW32ln(c <<> b);
 // CHECK: call $printW32ln
     printW32ln(c <>> b);
-    // printW32ln(popcnt d); // TODO(Gabor)
-    // printW32ln(clz c); // TODO(Gabor)
-    // printW32ln(ctz e); // TODO(Gabor)
+// CHECK: call $printW32ln
+    printW32ln(popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
+// CHECK: call $printW32ln
+    printW32ln(clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
+// CHECK: call $printW32ln
+    printW32ln(ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
 };
 
 // Word16 operations

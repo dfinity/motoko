@@ -53,6 +53,11 @@ func word32ToInt(n : Word32) : Int = (prim "Word32->Int" : Word32 -> Int) n;
 func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
 
+// Exotic bitwise operations
+func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
+func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
+func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
+
 
 // This would be nicer as a objects, but lets do them as functions
 // until the compiler has a concept of “static objects”
@@ -150,7 +155,15 @@ let prim = function
   | "Word32->Char" -> fun v k ->
                       let i = Conv.of_signed_Word32 (as_word32 v)
                       in k (Char i)
-
+  | "popcnt" -> fun v k ->
+                let i = Word32.popcnt (as_word32 v)
+                in k (Word32 i)
+  | "clz" -> fun v k ->
+             let i = Word32.clz (as_word32 v)
+             in k (Word32 i)
+  | "ctz" -> fun v k ->
+             let i = Word32.ctz (as_word32 v)
+             in k (Word32 i)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->

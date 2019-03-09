@@ -3631,6 +3631,21 @@ and compile_exp (env : E.t) exp =
          compile_unboxed_const 8l ^^
          G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
+       | "popcnt" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
+
+       | "clz" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+
+       | "ctz" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
