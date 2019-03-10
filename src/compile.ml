@@ -3431,8 +3431,8 @@ let rec compile_binop env t op =
          let (set_res, get_res) = new_local env "res" in
          let mul = snd (compile_binop env t MulOp) in
          let square_recurse_with_shifted = get_n ^^ get_exp ^^ compile_unboxed_const 1l ^^
-                                           G.i (Binary (I32 I32Op.ShrU)) ^^ pow () ^^ set_res ^^
-                                           get_res ^^ get_res ^^ mul
+                                           G.i (Binary (I32 I32Op.ShrU)) ^^ sanitize_word_result ty ^^
+                                           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
          in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
             G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
              one
