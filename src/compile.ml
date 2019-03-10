@@ -3437,7 +3437,7 @@ let rec compile_binop env t op =
          in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
             G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
              one
-             (get_exp ^^ one ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
+             (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
               G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
                 (square_recurse_with_shifted G.nop)
                 (get_n ^^
