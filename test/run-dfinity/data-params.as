@@ -72,7 +72,7 @@ a.printLabeled("Foo1: ");
 a.printLabeledOpt(?"Foo2: ");
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });
 
-/*
+
 let w32 = actor {
   private var c : Word32 = 0;
   incn(n : Word32) : () {
@@ -147,6 +147,7 @@ w32.printLabeled("Foo: ");
 w32.printLabeledOpt(?"Foo2: ");
 
 
+
 let w16 = actor {
   private var c : Word16 = 0;
   incn(n : Word16) : () {
@@ -219,4 +220,3 @@ w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16});
 w16.printCounter();
 w16.printLabeled("Foo: ");
 w16.printLabeledOpt(?"Foo2: ");
-*/
