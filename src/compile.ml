@@ -3378,7 +3378,7 @@ let compile_unop env t op = Syntax.(match op, t with
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
-(* Makes sure that the shift/rotate the maximum number of bits available in the word. *)
+(* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
 let clamp_shift_amount = function
   | Type.Word32 -> G.nop
   | ty -> compile_unboxed_const (StackRep.bitwidth_mask_of_type ty) ^^
