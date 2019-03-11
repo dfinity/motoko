@@ -91,33 +91,132 @@ draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
 
 Productions marked * probably deferred to later versions.
 
+## Lexical conventions
+
+### Keywords
+TBC
+
+### Identifiers
+TBC
+
+### Literals
+TBC
+
+### Operators
+TBC
+
 ## Types
+
+
+Type expressions are used to specify the types of arguments, bound on type parameters,definitions of type constructors, and in type annotations.
+
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  shared <typ-params>? <typ> -> <typ>  function
+  shared? <typ-params>? <typ> -> <typ>          function
   async <typ>                                   future
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
-* <typ> | <typ>                                 union
-* # <id>                                        atom
+  Shared                                        sharable types
+```
+### Constructed types
 
+ `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. Int) or user defined, to zero or more type *arguments*. 
+ The type arguments must satisfy the bounds, if any, expected by the type constructor's type parameters (see below).
+
+### Object types
+
+`(shared|actor)? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*. 
+
+Within an object type, the names of fields must be distinct.
+
+Object types that differ only in the ordering of the fields are equivalent.
+
+The optional qualifier `shared` constrains the object's field to have *sharable* type. 
+
+Messages (see below), always requires arguments of *sharable* (think *serializable*) type.
+
+The optional qualifier `actor` constrains the object's fields to be *shared* functions (i.e. messages).
+
+
+### Array types
+
+`[ var? <typ> ]` specifies the type of arrays with elements of type '<typ>'.
+
+Arrays are immutable unless specified with qualifier `var`. 
+
+### Option types
+
+`? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `typ`.
+
+### Function types
+
+Type `shared? <typ-params>? <typ1> -> <typ2>` specifies the type of functions that consume (optional) type parameters `<typ-params>`, consume a value parameter of type `<typ1>` and produce a result of type `<typ2>`.
+
+Both `<typ1>` and `<typ2>` may reference type parameters declared in `<typ-params>`.
+
+If `<typ1>` or `<typ2>` (or both) is a tuple type, then the length of that tuple type determines the argument or result arity of the function type.
+
+The optional `shared` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see *Sharability* below).
+
+### Async types
+
+`async <typ>` specifes a promise producing a value of a type <typ>. 
+
+Promise types typically appear as the result type of a `shared` function that produces an `await`-able value.
+
+### Tuple types
+
+`( ((<id> :)? <typ>),* )` specifies the type of a tuple with zero or more ordered components.
+
+The optional identifer <id>, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
+
+### Any type
+
+Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type any.
+
+### None type
+
+Type `None` is the *bottom* type, a subtype of all other types. 
+No value has type `None`. 
+
+As an empty type, `None` can be used to specify the (non-existant) return value of an infinite loop or trap.
+
+### Shared type
+
+Type `Shared`  is the bound of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
+
+TBC
+
+### Type fields
+
+```
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
   <id> <typ-params>? <params> : <typ>           function (short-hand)
+```
 
+### Type arguments
+
+```
 <typ-args> ::=                                type arguments
   < <typ>,* >
+```
+### Type parameters
 
+```
 <typ-params> ::=                              type parameters
   < (<id> <: <typ>),* >                         constrained
   < <id>,* >                                    unconstrained (short-hand)
 ```
+
+### Variance
+
 
 ## Literals
 ```
