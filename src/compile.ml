@@ -2261,13 +2261,9 @@ module Serialization = struct
 
             get_copy
           ; Tagged.SmallWord,
-            Heap.alloc env 1l ^^
-            set_copy ^^
-            get_copy ^^ Tagged.store Tagged.SmallWord ^^
-
-            get_copy ^^ get_x ^^ Heap.load_field 1l ^^ Heap.store_field 1l ^^
-
-            get_copy
+            Tagged.obj env Tagged.SmallWord [
+                get_x ^^ Heap.load_field 1l
+            ]
           ; Tagged.Reference,
             Heap.alloc env 2l ^^ set_copy ^^
 
