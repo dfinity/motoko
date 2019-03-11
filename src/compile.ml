@@ -2221,7 +2221,7 @@ module Serialization = struct
 
             get_x ^^
             get_copy ^^
-            compile_unboxed_const 2l ^^
+            compile_unboxed_const 3l ^^
             Heap.memcpy_words_skewed env ^^
 
             get_copy
