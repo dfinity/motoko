@@ -33,6 +33,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         rev = "5e04e1ee6f076d2dd877992747e04fa459dcb476";
+        ref = "joachim/fetchgit";
       }; in
       # Pass devel = true until the dev test suite runs on MacOS again
       (import dev { devel = true; }).dvm
@@ -106,7 +107,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
-	filecheck
+        filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []);
 
