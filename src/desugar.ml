@@ -69,10 +69,10 @@ and exp' at note = function
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.WhileE (e1, e2) -> I.WhileE (exp e1, exp e2)
+  | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1, None)
-  | S.LoopE (e1, Some e2) -> I.LoopE (exp e1, Some (exp e2))
-  | S.ForE (p, e1, e2) -> I.ForE (pat p, exp e1, exp e2)
+  | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
+  | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.LabelE (l, t, e) -> I.LabelE (l, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l, exp e)
   | S.RetE e -> I.RetE (exp e)
