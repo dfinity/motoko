@@ -2227,6 +2227,7 @@ module Serialization = struct
         ( get_x ^^
           Tagged.branch env (ValBlockType (Some I32Type))
           [ Tagged.Int, purely_data 3l
+          ; Tagged.SmallWord, purely_data 2l
           ; Tagged.Reference, purely_data 2l
           ; Tagged.Some,
             Opt.inject env (
