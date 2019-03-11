@@ -71,3 +71,4 @@ a.printCounter();
 a.printLabeled("Foo1: ");
 a.printLabeledOpt(?"Foo2: ");
 // a.readCounter(func (n : Nat) = { printInt n; print("\n") });
+a.incn(10000000000000);
