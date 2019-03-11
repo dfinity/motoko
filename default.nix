@@ -30,12 +30,13 @@ let real-dvm =
   then
     if test-dvm
     then
-      if !builtins.pathExists ./nix/dev/default.nix
-      then
-        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the required revision. "
-      else
-        # Pass devel = true until the dev test suite runs on MacOS again
-        ((import ./nix/dev) { devel = true; }).dvm
+      let dev = builtins.fetchGit {
+        url = "ssh://git@github.com/dfinity-lab/dev";
+        rev = "e588f0efa687667076dfab52fddde6ff29e0d82c";
+        # sha256 = "0867nd4k2lypal7g2a7816wi5zs4kp4w2dv90xan9vvn3wi19b5i";
+      }; in
+      # Pass devel = true until the dev test suite runs on MacOS again
+      (import dev { devel = true; }).dvm
     else null
   else dvm; in
 
