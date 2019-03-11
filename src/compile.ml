@@ -26,7 +26,7 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 let page_size = Int32.of_int (64*1024)
 
 (*
-Pointers are shifted -1 relative to the actual offset.
+Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
 *)
 let ptr_skew = -1l
@@ -598,7 +598,7 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
-  (* Although we occationally want to treat to of them as a 64 bit number *)
+  (* Although we occasionally want to treat two 32 bit fields as one 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -803,7 +803,7 @@ module BitTagged = struct
      This means we can store a small unboxed scalar x as (x << 2), and still
      tell it apart from a pointer.
 
-     We actually use the *second* lowest bit to tell apointer apart from a
+     We actually use the *second* lowest bit to tell a pointer apart from a
      scalar.
 
      It means that 0 and 1 are also recognized as non-pointers, and we can use
@@ -963,7 +963,7 @@ module Var = struct
     | Some (Deferred d) -> G.i Unreachable
     | None   -> G.i Unreachable
 
-  (* Returns the payload (vanialla representation) *)
+  (* Returns the payload (vanilla representation) *)
   let get_val_vanilla env var = match E.lookup_var env var with
     | Some (Local i) -> G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
@@ -1015,7 +1015,7 @@ module Var = struct
 end (* Var *)
 
 module Opt = struct
-  (* The Option type. Not much intereting to see here *)
+  (* The Option type. Not much interesting to see here *)
 
   let payload_field = Tagged.header_size
 
@@ -2039,7 +2039,7 @@ module Dfinity = struct
       G.i Unreachable
 
   let default_exports env =
-    (* these export seems to be wanted by the hypervisor/v8 *)
+    (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
       name = explode "mem";
       edesc = nr (MemoryExport (nr 0l))
@@ -2766,7 +2766,7 @@ module GC = struct
   (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
   (* All pointers, including ptr_loc and space end markers, are skewed *)
-  let evacuate env = Func.share_code4 env "evaucate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
     let (set_len, get_len) = new_local env "len" in
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
 
@@ -2839,7 +2839,7 @@ module GC = struct
     Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
 
 
-    (* Common arguments for evalcuate *)
+    (* Common arguments for evacuate *)
     let evac get_ptr_loc =
         get_begin_from_space ^^
         get_begin_to_space ^^
@@ -2848,7 +2848,7 @@ module GC = struct
         evacuate env ^^
         set_end_to_space in
 
-    (* Go through the roots, and evacaute them *)
+    (* Go through the roots, and evacuate them *)
     ClosureTable.get_counter ^^
     from_0_to_n env (fun get_i -> evac (
       get_i ^^
@@ -2891,7 +2891,7 @@ module StackRep = struct
   open SR
 
   (*
-     Most expression have a “preferred”, most optimal, form. Hence,
+     Most expressions have a “preferred”, most optimal, form. Hence,
      compile_exp put them on the stack in that form, and also returns
      the form it chose.
 
@@ -3562,7 +3562,7 @@ and compile_exp (env : E.t) exp =
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
        stack representation here.
-       So let’s go with Vanialla. *)
+       So let’s go with Vanilla. *)
     SR.Vanilla,
     G.block_ (StackRep.to_block_type env SR.Vanilla) (
       G.with_current_depth (fun depth ->
@@ -3744,7 +3744,7 @@ and compile_exp_unit (env : E.t) exp =
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
-This requires conceptually thre passes:
+This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
     The environment is extended monotonously: The type-checker ensures that
