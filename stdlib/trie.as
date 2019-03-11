@@ -28,13 +28,11 @@
 //  - basic tests (and primitive debugging) for set operations
 //  - write trie operations that operate over pairs of tries:
 //    for set union, difference and intersection.
+//  - handle hash collisions gracefully using association list module
 
 // TODO-Matthew:
 //
 //  - (more) regression tests for everything that is below
-//
-//  - handle hash collisions gracefully;
-//    ==> Blocked on AS module support, for using List module.
 //
 //  - adapt the path length of each subtree to its cardinality; avoid
 //    needlessly long paths, or paths that are too short for their
@@ -77,12 +75,16 @@ type Key<K> = {
   // key field: for conservative equality checks, after equal hashes.
   key: K;
 };
-type Leaf<K,V> = {
-  keyvals:List<(Key<K>,V)>;
-};
+
+// Binary branch nodes
 type Branch<K,V> = {
   left:Trie<K,V>;
   right:Trie<K,V>;
+};
+// Leaf nodes are association lists of `Key<K>`s
+// Every key shares a common hash prefix, its trie path.
+type Leaf<K,V> = {
+  keyvals:List<(Key<K>,V)>;
 };
 
 // XXX: See AST-42
@@ -162,11 +164,6 @@ let Trie = new {
 	         };
 	       };
     }
-  };
-
-  // XXX: until AST-42:
-  func makeLeafPair<K,V>(k:Key<K>, v:V) : Trie<K,V> {
-    ?(new {left=null; right=null; keyvals=?((k,v),null) })
   };
 
   // XXX: until AST-42:
@@ -375,35 +372,49 @@ let Trie = new {
   // in common keys. note: the `disj` operation generalizes this `merge`
   // operation in various ways, and does not (in general) loose
   // information; this operation is a simpler, special case.
-  func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
-    switch (tl, tr) {
-    case (null, _) { return tr };
-    case (_, null) { return tl };
-    case (?nl,?nr) {
-           switch (isBin<K,V>(tl),
-	                 isBin<K,V>(tr)) {
-           case (true, true) {
-	                let t0 = merge<K,V>(nl.left, nr.left);
-	                let t1 = merge<K,V>(nl.right, nr.right);
-	                makeBin<K,V>(t0, t1)
-	              };
-           case (false, true) {
-	                assert(false);
-	                // XXX impossible, until we lift uniform depth assumption
-	                tr
-	              };
-           case (true, false) {
-	                assert(false);
-	                // XXX impossible, until we lift uniform depth assumption
-	                tr
-	              };
-           case (false, false) {
-	                /// XXX: handle hash collisions here.
-	                tr
-	              };
-	         }
-         };
-    }
+  func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+    let key_eq = keyEq<K>(k_eq);
+    func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+      switch (tl, tr) {
+      case (null, _) { return tr };
+      case (_, null) { return tl };
+      case (?nl,?nr) {
+             switch (isBin<K,V>(tl),
+	                   isBin<K,V>(tr)) {
+             case (true, true) {
+	                  let t0 = rec(nl.left, nr.left);
+	                  let t1 = rec(nl.right, nr.right);
+	                  makeBin<K,V>(t0, t1)
+	                };
+             case (false, true) {
+	                  assert(false);
+	                  // XXX impossible, until we lift uniform depth assumption
+	                  tr
+	                };
+             case (true, false) {
+	                  assert(false);
+	                  // XXX impossible, until we lift uniform depth assumption
+	                  tr
+	                };
+             case (false, false) {
+	                  /// handle hash collisions by using the association list:
+	                  makeLeaf<K,V>(
+                      AssocList.disj<Key<K>,V,V,V>(
+                        nl.keyvals, nr.keyvals,
+                        key_eq,
+                        func (x:?V, y:?V):V = {
+                          switch (x, y) {
+                          case (null, null) {/* IMPOSSIBLE case: diverge. */ func x():V=x(); x()};
+                          case (null, ?v) v;
+                          case (?v, _) v;
+                          }}
+                      ))
+	                };
+	           }
+           };
+      }
+    };
+    rec(tl, tr)
   };
 
   // The key-value pairs of the final trie consists of those pairs of

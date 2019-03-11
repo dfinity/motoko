@@ -54,8 +54,8 @@ let Set = new {
     }
   };
 
-  func union<T>(s1:Set<T>, s2:Set<T>):Set<T> {
-    let s3 = Trie.merge<T,()>(s1, s2);
+  func union<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+    let s3 = Trie.merge<T,()>(s1, s2, eq);
     s3
   };
 
