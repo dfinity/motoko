@@ -70,13 +70,28 @@ type Hash = Bits;
 //
 let HASH_BITS = 4;
 
+type Key<K> = {
+  // hash field: permits fast inequality checks, permits collisions;
+  // (eventually: permits incremental growth of deeper trie paths)
+  hash: Hash;
+  // key field: for conservative equality checks, after equal hashes.
+  key: K;
+};
+type Leaf<K,V> = {
+  keyvals:List<(Key<K>,V)>;
+};
+type Branch<K,V> = {
+  left:Trie<K,V>;
+  right:Trie<K,V>;
+};
+
 // XXX: See AST-42
 type Node<K,V> = {
   left:Trie<K,V>;
   right:Trie<K,V>;
-  key:?K;
-  val:?V
+  keyvals:List<(Key<K>,V)>;
 };
+
 type Trie<K,V> = ?Node<K,V>;
 
 /* See AST-42 (sum types); we want this type definition instead:
@@ -133,7 +148,7 @@ let Trie = new {
 
   // XXX: until AST-42:
   func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
-    ?(new {left=l; right=r; key=null; val=null })
+    ?(new {left=l; right=r; keyvals=null; })
   };
 
   // XXX: until AST-42:
@@ -141,7 +156,7 @@ let Trie = new {
     switch t {
     case null { false };
     case (?t_) {
-	         switch (t_.key) {
+	         switch (t_.keyvals) {
 	         case null { true };
 	         case _ { false };
 	         };
@@ -150,18 +165,23 @@ let Trie = new {
   };
 
   // XXX: until AST-42:
-  func makeLeaf<K,V>(k:K, v:V) : Trie<K,V> {
-    ?(new {left=null; right=null; key=?k; val=?v })
+  func makeLeafPair<K,V>(k:Key<K>, v:V) : Trie<K,V> {
+    ?(new {left=null; right=null; keyvals=?((k,v),null) })
   };
 
   // XXX: until AST-42:
-  func matchLeaf<K,V>(t:Trie<K,V>) : ?(K,V) {
+  func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
+    ?(new {left=null; right=null; keyvals=kvs })
+  };
+
+  // XXX: until AST-42:
+  func matchLeaf<K,V>(t:Trie<K,V>) : ?List<(Key<K>,V)> {
     switch t {
     case null { null };
     case (?t_) {
-	         switch (t_.key, t_.val) {
-	         case (?k,?v) ?(k,v);
-	         case (_)     null;
+	         switch (t_.keyvals) {
+	         case (?keyvals) ?(?(keyvals));
+	         case (_) null;
 	         }
 	       };
     }
@@ -172,7 +192,7 @@ let Trie = new {
     switch t {
     case null { false };
     case (?t_) {
-	         switch (t_.key) {
+	         switch (t_.keyvals) {
 	         case null { false };
 	         case _ { true };
 	         }
@@ -184,27 +204,29 @@ let Trie = new {
     switch t {
     case null { assert(false) };
     case (?n) {
-	         assertIsNull<K>(n.key);
-	         assertIsNull<V>(n.val);
+	         assertIsNull<((Key<K>,V),AssocList<Key<K>,V>)>(n.keyvals);
          };
     }
   };
 
   // XXX: until AST-42:
-  func getLeafKey<K,V>(t : Node<K,V>) : K {
+  func getLeafKey<K,V>(t : Node<K,V>) : Key<K> {
     assertIsNull<Node<K,V>>(t.left);
     assertIsNull<Node<K,V>>(t.right);
-    switch (t.key) {
-    case (?k) { k };
-    case null { getLeafKey<K,V>(t) };
+    switch (t.keyvals) {
+    case (?((k,v),_)) { k };
+    case (null) { /* ERROR */ getLeafKey<K,V>(t) };
     }
   };
 
   // XXX: this helper is an ugly hack; we need real sum types to avoid it, I think:
-  func getLeafVal<K,V>(t : Node<K,V>) : ?V {
+  func getLeafVal<K,V>(t : Node<K,V>) : V {
     assertIsNull<Node<K,V>>(t.left);
     assertIsNull<Node<K,V>>(t.right);
-    t.val
+    switch (t.keyvals) {
+    case (?((k,v),_)) { v };
+    case null { /* ERROR */ getLeafVal<K,V>(t) };
+    }
   };
 
   // TODO: Replace with bitwise operations on Words, once we have each of those in AS.
@@ -222,58 +244,84 @@ let Trie = new {
     }
   };
 
+  // Test if two lists of bits are equal.
+  func hashEq(ha:Hash, hb:Hash) : Bool {
+    switch (ha, hb) {
+    case (null, null) true;
+    case (null, _) false;
+    case (_, null) false;
+    case (?(bita, ha2), ?(bitb, hb2)) {
+	         if (bita == bitb) { hashEq(ha2, hb2) }
+	         else { false }
+	       };
+    }
+  };
+
+  // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
+  func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
+    func (key1:Key<K>, key2:Key<K>) : Bool =
+      (hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
+  };
+
   // part of "public interface":
   func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
   // helper function for constructing new paths of uniform length
-  func buildNewPath<K,V>(bitpos:Nat, k:K, k_hash:Hash, ov:?V) : Trie<K,V> {
+  func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
     func rec(bitpos:Nat) : Trie<K,V> {
       if ( bitpos < HASH_BITS ) {
 	      // create new bin node for this bit of the hash
 	      let path = rec(bitpos+1);
-	      let bit = getHashBit(k_hash, bitpos);
+	      let bit = getHashBit(k.hash, bitpos);
 	      if (not bit) {
-	        ?(new {left=path; right=null; key=null; val=null})
+	        ?(new {left=path; right=null; keyvals=null})
 	      }
 	      else {
-	        ?(new {left=null; right=path; key=null; val=null})
+	        ?(new {left=null; right=path; keyvals=null})
 	      }
       } else {
-	      // create new leaf for (k,v) pair
-	      ?(new {left=null; right=null; key=?k; val=ov })
+	      // create new leaf for (k,v) pair, if the value is non-null:
+        switch ov {
+          case null { ?(new {left=null; right=null; keyvals=null }) };
+          case (?v) { ?(new {left=null; right=null; keyvals=?((k,v),null) }) };
+        }
       }
     };
     rec(bitpos)
   };
 
   // replace the given key's value option with the given one, returning the previous one
-  func replace<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:?V) : (Trie<K,V>, ?V) {
+  func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) {
+    let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
     func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
       if ( bitpos < HASH_BITS ) {
 	      switch t {
-	      case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
+	      case null { (buildNewPath<K,V>(bitpos, k, v), null) };
 	      case (?n) {
 	             assertIsBin<K,V>(t);
-	             let bit = getHashBit(k_hash, bitpos);
+	             let bit = getHashBit(k.hash, bitpos);
 	             // rebuild either the left or right path with the inserted (k,v) pair
 	             if (not bit) {
 	               let (l, v_) = rec(n.left, bitpos+1);
-	               (?(new {left=l; right=n.right; key=null; val=null }), v_)
+	               (?(new {left=l; right=n.right; keyvals=null; }), v_)
 	             }
 	             else {
 	               let (r, v_) = rec(n.right, bitpos+1);
-	               (?(new {left=n.left; right=r; key=null; val=null }), v_)
+	               (?(new {left=n.left; right=r; keyvals=null; }), v_)
 	             }
 	           };
         }
       } else {
 	      // No more walking; we should be at a leaf now, by construction invariants.
 	      switch t {
-	      case null { (buildNewPath<K,V>(bitpos, k, k_hash, v), null) };
+	      case null { (buildNewPath<K,V>(bitpos, k, v), null) };
 	      case (?l) {
-	             // TODO: Permit hash collisions by walking a list/array of KV pairs in each leaf:
-	             (?(new{left=null;right=null;key=?k;val=v}), l.val)
+	             // Permit hash collisions by walking
+               // a list/array of KV pairs in each leaf:
+               let (kvs2, old_val) =
+                 AssocList.replace<Key<K>,V>(l.keyvals, k, key_eq, v);
+	             (?(new{left=null; right=null; keyvals=kvs2}), old_val)
 	           };
 	      }
       }
@@ -282,17 +330,18 @@ let Trie = new {
   };
 
   // insert the given key's value in the trie; return the new trie
-  func insert<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, v:V) : (Trie<K,V>, ?V) {
-    replace<K,V>(t, k, k_hash, ?v)
+  func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
+    replace<K,V>(t, k, k_eq, ?v)
   };
 
   // remove the given key's value in the trie; return the new trie
-  func remove<K,V>(t : Trie<K,V>, k:K, k_hash:Hash) : (Trie<K,V>, ?V) {
-    replace<K,V>(t, k, k_hash, null)
+  func remove<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool) : (Trie<K,V>, ?V) {
+    replace<K,V>(t, k, k_eq, null)
   };
 
   // find the given key's value in the trie, or return null if nonexistent
-  func find<K,V>(t : Trie<K,V>, k:K, k_hash:Hash, keq:(K,K) -> Bool) : ?V {
+  func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
+    let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
     func rec(t : Trie<K,V>, bitpos:Nat) : ?V {
       if ( bitpos < HASH_BITS ) {
@@ -303,7 +352,7 @@ let Trie = new {
 	           };
 	      case (?n) {
 	             assertIsBin<K,V>(t);
-	             let bit = getHashBit(k_hash, bitpos);
+	             let bit = getHashBit(k.hash, bitpos);
 	             if (not bit) { rec(n.left,  bitpos+1) }
 	             else         { rec(n.right, bitpos+1) }
 	           };
@@ -313,12 +362,8 @@ let Trie = new {
 	      switch t {
 	      case null { null };
 	      case (?l) {
-	             // TODO: Permit hash collisions by walking a list/array of KV pairs in each leaf:
-	             if (keq(getLeafKey<K,V>(l), k)) {
-	               getLeafVal<K,V>(l)
-	             } else {
-	               null
-	             }
+	             // Permit hash collisions by walking a list/array of KV pairs in each leaf:
+               AssocList.find<Key<K>,V>(l.keyvals, k, key_eq)
 	           };
 	      }
       }
@@ -388,17 +433,11 @@ let Trie = new {
 	                  tl
 	                };
              case (false, false) {
-	                  /// XXX: handle hash collisions here.
-	                  switch (nl.key, nr.key) {
-	                  case (?kl, ?kr) {
-		                       if (keq(kl, kr)) {
-		                         makeEmpty<K,V>();
-		                       } else {
-		                         tl
-		                       }};
-	                  // XXX impossible, and unnecessary with AST-42.
-	                  case _ { tl }
-	                  }
+                    assert(isLeaf<K,V>(tl));
+	                  assert(isLeaf<K,W>(tr));
+                    makeLeaf<K,V>(
+                      AssocList.diff<Key<K>,V,W>(nl.keyvals, nr.keyvals)
+                    )
 	                };
 	           }
            };
@@ -416,15 +455,16 @@ let Trie = new {
   // applied to (null, null).
   //
   func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
-			               keq:(K,K)->Bool, vbin:(?V,?W)->X)
+			               k_eq:(K,K)->Bool, vbin:(?V,?W)->X)
     : Trie<K,X>
   {
+    let key_eq = keyEq<K>(k_eq);
     func recL(t:Trie<K,V>) : Trie<K,X> {
       switch t {
 	    case (null) null;
 	    case (? n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { makeLeaf<K,X>(k, vbin(?v, null)) };
+	           case (?_) { makeLeaf<K,X>(AssocList.disj<Key<K>,V,W,X>(n.keyvals, null, key_eq, vbin)) };
 	           case _ { makeBin<K,X>(recL(n.left), recL(n.right)) }
 	           }
            };
@@ -434,7 +474,7 @@ let Trie = new {
 	    case (null) null;
 	    case (? n) {
 	           switch (matchLeaf<K,W>(t)) {
-	           case (?(k,w)) { makeLeaf<K,X>(k, vbin(null, ?w)) };
+	           case (?_) { makeLeaf<K,X>(AssocList.disj<Key<K>,V,W,X>(null, n.keyvals, key_eq, vbin)) };
 	           case _ { makeBin<K,X>(recR(n.left), recR(n.right)) }
 	           }
            };
@@ -466,20 +506,10 @@ let Trie = new {
              case (false, false) {
 	                  assert(isLeaf<K,V>(tl));
 	                  assert(isLeaf<K,W>(tr));
-	                  switch (nl.key, nl.val, nr.key, nr.val) {
-	                    // leaf-leaf case
-	                  case (?kl, ?vl, ?kr, ?vr) {
-		                       if (keq(kl, kr)) {
-		                         makeLeaf<K,X>(kl, vbin(?vl, ?vr));
-		                       } else {
-		                         // XXX: handle hash collisions here.
-		                         makeEmpty<K,X>()
-		                       }
-	                       };
-	                  // XXX impossible, and unnecessary with AST-42.
-	                  case _ { makeEmpty<K,X>() };
-	                  }
-	                };
+                    makeLeaf<K,X>(
+                      AssocList.disj<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
+                    )
+                  };
 	           }
            };
       }};
@@ -491,9 +521,10 @@ let Trie = new {
   // the values of matching keys are combined with the given binary
   // operator, and unmatched key-value pairs are not present in the output.
   func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
-		                 keq:(K,K)->Bool, vbin:(V,W)->X)
+		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
     : Trie<K,X>
   {
+    let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
       switch (tl, tr) {
 	    case (null, null) { return makeEmpty<K,X>() };
@@ -520,19 +551,9 @@ let Trie = new {
 	           case (false, false) {
 	                  assert(isLeaf<K,V>(tl));
 	                  assert(isLeaf<K,W>(tr));
-	                  switch (nl.key, nl.val, nr.key, nr.val) {
-		                  // leaf-leaf case
-	                  case (?kl, ?vl, ?kr, ?vr) {
-		                       if (keq(kl, kr)) {
-			                       makeLeaf<K,X>(kl, vbin(vl, vr));
-		                       } else {
-			                       // XXX: handle hash collisions here.
-			                       makeEmpty<K,X>()
-		                       }
-		                     };
-	                  // XXX impossible, and unnecessary with AST-42.
-	                  case _ { makeEmpty<K,X>() };
-	                  }
+                    makeLeaf<K,X>(
+                      AssocList.conj<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
+                    )
 	                };
 	           }
 	         }
@@ -550,7 +571,13 @@ let Trie = new {
       case (null) { empty };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { leaf(k,v) };
+	           case (?kvs) {
+                    AssocList.fold<Key<K>,V,X>(
+                      kvs, empty,
+                      func (k:Key<K>, v:V, x:X):X =
+                        bin(leaf(k.key,v),x)
+                    )
+                  };
 	           case null { bin(rec(n.left), rec(n.right)) };
 	           }
            };
@@ -566,7 +593,12 @@ let Trie = new {
       case (null) x;
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { f(k,v,x) };
+	           case (?kvs) {
+                    AssocList.fold<Key<K>,V,X>(
+                      kvs, x,
+                      func (k:Key<K>, v:V, x:X):X = f(k.key,v,x)
+                    )
+                  };
 	           case null { rec(n.left,rec(n.right,x)) };
 	           }
            };
@@ -581,13 +613,18 @@ let Trie = new {
       case (null) { false };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { f(k,v) };
+	           case (?kvs) {
+                    List.exists<(Key<K>,V)>(
+                      kvs, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
+                    )
+                  };
 	           case null { rec(n.left) or rec(n.right) };
 	           }
            };
       }};
     rec(t)
   };
+
 
   // specialized foldUp operation.
   func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
@@ -596,7 +633,11 @@ let Trie = new {
       case (null) { true };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { f(k,v) };
+	           case (?kvs) {
+                    List.all<(Key<K>,V)>(
+                      kvs, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
+                    )
+                  };
 	           case null { rec(n.left) and rec(n.right) };
 	           }
            };
@@ -614,7 +655,7 @@ let Trie = new {
       case (null) { true };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) { false };
+	           case (?kvs) { List.isNil<(Key<K>,V)>(kvs) };
 	           case null { rec(n.left) and rec(n.right) };
 	           }
 	         };
@@ -629,16 +670,10 @@ let Trie = new {
       case (null) { null };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) {
-		                // XXX-Typechecker:
-		                //  This version of the next line gives _really_
-		                //  strange type errors, and no parse errors.
-		                // if f(k,v) {
-		                if (f(k,v)) {
-		                  makeLeaf<K,V>(k,v)
-		                } else {
-		                  null
-		                }
+	           case (?kvs) {
+                    makeLeaf<K,V>(
+                      List.filter<(Key<K>,V)>(kvs, func ((k:Key<K>,v:V)):Bool = f(k.key,v))
+                    )
 		              };
 	           case null {
 		                let l = rec(n.left);
@@ -658,17 +693,24 @@ let Trie = new {
     rec(t)
   };
 
-  func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?(K,W)) : Trie<K,W> {
+  func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
     func rec(t:Trie<K,V>) : Trie<K,W> {
       switch t {
       case (null) { null };
       case (?n) {
 	           switch (matchLeaf<K,V>(t)) {
-	           case (?(k,v)) {
-		                switch (f(k,v)) {
-		                case (null) null;
-		                case (?(k,w)) { makeLeaf<K,W>(k,w) };
-		                }};
+	           case (?kvs) {
+                    makeLeaf<K,W>(
+                      List.mapFilter<(Key<K>,V),(Key<K>,W)>
+                    (kvs,
+                     // retain key and hash, but update key's value using f:
+                     func ((k:Key<K>,v:V)):?(Key<K>,W) = {
+                       switch (f(k.key,v)) {
+                         case (null) null;
+                         case (?w) (?(new {key=k.key; hash=k.hash}, w));
+                       }}
+                    ))
+                  };
 	           case null {
 		                let l = rec(n.left);
 		                let r = rec(n.right);
@@ -708,10 +750,19 @@ let Trie = new {
       case (?nl, ?nr) {
 	           switch (matchLeaf<K,V>(tl),
 		                 matchLeaf<K,V>(tr)) {
-	           case (?(kl,vl), ?(kr,vr)) { keq(kl,kr) and veq(vl,vr) };
-	           case (null,     null)     { rec(nl.left, nr.left)
-					                               and rec(nl.right, nr.right) };
-	           case _ { false }
+	           case (null,  null)  {
+                    rec(nl.left, nr.left)
+					          and rec(nl.right, nr.right)
+                  };
+	           case (null,  _) { false };
+	           case (_, null)  { false };
+	           case (?kvs1, ?kvs2) {
+                    List.isEq<(Key<K>,V)>
+                    (kvs1, kvs2,
+                     func ((k1:Key<K>, v1:V), (k2:Key<K>, v2:V)) : Bool =
+                       keq(k1.key, k2.key) and veq(v1,v2)
+                    )
+                  };
 	           }
            };
       }};

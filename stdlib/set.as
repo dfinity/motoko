@@ -24,13 +24,13 @@ let Set = new {
   func empty<T>():Set<T> =
     Trie.empty<T,()>();
 
-  func insert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-    let (s2, _) = Trie.insert<T,()>(s, x, xh, ());
+  func insert<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+    let (s2, _) = Trie.insert<T,()>(s, new {key=x; hash=xh}, eq, ());
     s2
   };
 
-  func remove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-    let (s2, _) = Trie.remove<T,()>(s, x, xh);
+  func remove<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+    let (s2, _) = Trie.remove<T,()>(s, new {key=x; hash=xh}, eq);
     s2
   };
 
@@ -48,7 +48,7 @@ let Set = new {
   };
 
   func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
-    switch (Trie.find<T,()>(s, x, xh, eq)) {
+    switch (Trie.find<T,()>(s, new {key=x; hash=xh}, eq)) {
     case null { false };
     case (?_) { true };
     }
