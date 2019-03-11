@@ -352,44 +352,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
     )
-  | WhileE (exp1, exp2) ->
-    let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
-    interpret_exp env exp1 (fun v1 ->
-      if V.as_bool v1
-      then interpret_exp env exp2 k_continue
-      else k V.unit
-    )
-  | LoopE (exp1, None) ->
+  | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
-  | LoopE (exp1, Some exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      V.as_unit v1;
-      interpret_exp env exp2 (fun v2 ->
-        if V.as_bool v2
-        then interpret_exp env exp k
-        else k V.unit
-      )
-    )
-  | ForE (pat, exp1, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      let fs = V.as_obj v1 in
-      let _, next = V.as_func (find "next" fs) in
-      let rec k_continue = fun v ->
-        V.as_unit v;
-        next V.unit (fun v' ->
-          match v' with
-          | V.Opt v1 ->
-            (match match_pat pat v1 with
-            | None ->
-              trap pat.at "value %s does not match pattern" (V.string_of_val v')
-            | Some ve ->
-              interpret_exp (adjoin_vals env ve) exp2 k_continue
-            )
-          | V.Null -> k V.unit
-          | _ -> assert false
-        )
-      in k_continue V.unit
-    )
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id.it k env.labs} in
     interpret_exp env' exp1 k

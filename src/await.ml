@@ -97,12 +97,8 @@ and t_exp' context exp' =
                   cases
     in
     SwitchE (t_exp context exp1, cases')
-  | WhileE (exp1, exp2) ->
-    WhileE (t_exp context exp1, t_exp context exp2)
-  | LoopE (exp1, exp2_opt) ->
-    LoopE (t_exp context exp1, Lib.Option.map (t_exp context) exp2_opt)
-  | ForE (pat, exp1, exp2) ->
-    ForE (pat, t_exp context exp1, t_exp context exp2)
+  | LoopE exp1 ->
+    LoopE (t_exp context exp1)
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add id.it Label context in
     LabelE (id, _typ, t_exp context' exp1)
@@ -214,32 +210,7 @@ and c_if context k e1 e2 e3 =
      c_exp context e1 (meta (typ e1) (fun v1 -> ifE v1 e2 e3 answerT))
   )
 
-and c_while context k e1 e2 =
-  let loop = fresh_var (contT T.unit) in
-  let v2 = fresh_var T.unit in
-  let e2 = match eff e2 with
-    | T.Triv -> loop -*- t_exp context e2
-    | T.Await -> c_exp context e2 (ContVar loop)
-  in
-  match eff e1 with
-  | T.Triv ->
-    blockE [funcD loop v2
-              (ifE (t_exp context e1)
-                 e2
-                 (k -@- unitE)
-                 answerT)]
-            (loop -*- unitE)
-  | T.Await ->
-    blockE [funcD loop v2
-              (c_exp context e1 (meta (T.bool)
-                                   (fun v1 ->
-                                     ifE v1
-                                       e2
-                                       (k -@- unitE)
-                                       answerT)))]
-            (loop -*- unitE)
-
-and c_loop_none context k e1 =
+and c_loop context k e1 =
   let loop = fresh_var (contT T.unit) in
   match eff e1 with
   | T.Triv ->
@@ -249,58 +220,6 @@ and c_loop_none context k e1 =
     blockE [funcD loop v1
               (c_exp context e1 (ContVar loop))]
             (loop -*- unitE)
-
-and c_loop_some context k e1 e2 =
-  let loop = fresh_var (contT T.unit) in
-  let u = fresh_var T.unit in
-  let v1 = fresh_var T.unit in
-  let e2 = match eff e2 with
-    | T.Triv -> ifE (t_exp context e2)
-                  (loop -*- unitE)
-                  (k -@- unitE)
-                  answerT
-   | T.Await ->
-     c_exp context e2
-       (meta (typ e2)
-          (fun v2 -> ifE v2
-                       (loop -*- unitE)
-                       (k -@- unitE)
-                       answerT))
-  in
-  match eff e1 with
-  | T.Triv ->
-    blockE [funcD loop u
-              (letE v1 (t_exp context e1) e2)]
-            (loop -*- unitE)
-  | T.Await ->
-    blockE [funcD loop u
-              (c_exp context e1 (meta (typ e1) (fun v1 -> e2)))]
-            (loop -*- unitE)
-
-and c_for context k pat e1 e2 =
-  let v1 = fresh_var (typ e1) in
-  let next_typ = (T.Func(T.Local, T.Returns, [], [], [T.Opt pat.note])) in
-  let dotnext v = dotE v nextN next_typ -*- unitE in
-  let loop = fresh_var (contT T.unit) in
-  let v2 = fresh_var T.unit in
-  let e2 = match eff e2 with
-    | T.Triv -> loop -*- t_exp context e2
-    | T.Await -> c_exp context e2 (ContVar loop) in
-  let body v1 =
-    blockE
-      [funcD loop v2
-         (switch_optE (dotnext v1)
-            (k -@- unitE)
-            pat e2
-            T.unit)]
-       (loop -*- unitE)
-  in
-  match eff e1 with
-  | T.Triv ->
-    letE v1 (t_exp context e1)
-      (body v1)
-  | T.Await ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> body v1))
 
 and c_exp context exp =
   c_exp' context exp
@@ -365,14 +284,8 @@ and c_exp' context exp k =
          (meta (typ exp1)
             (fun v1 -> {exp with it = SwitchE(v1,cases')}))
     end)
-  | WhileE (exp1, exp2) ->
-    c_while context k exp1 exp2
-  | LoopE (exp1, None) ->
-    c_loop_none context k exp1
-  | LoopE (exp1, Some exp2) ->
-    c_loop_some context k exp1 exp2
-  | ForE (pat, exp1, exp2) ->
-    c_for context k pat exp1 exp2
+  | LoopE exp1 ->
+    c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
      letcont k
        (fun k ->

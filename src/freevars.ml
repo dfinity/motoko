@@ -76,10 +76,7 @@ let rec exp e : f = match e.it with
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
-  | WhileE (e1, e2)     -> exps [e1; e2]
-  | LoopE (e1, None)    -> exp e1
-  | LoopE (e1, Some e2) -> exps [e1; e2]
-  | ForE (p, e1, e2)    -> exp e1 ++ (exp e2 /// pat p)
+  | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
   | BreakE (i, e)       -> exp e
   | RetE e              -> exp e

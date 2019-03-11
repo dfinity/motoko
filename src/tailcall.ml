@@ -105,11 +105,7 @@ and exp' env e  : exp' = match e.it with
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
-  | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
-  | LoopE (e1, None)    -> LoopE (exp env e1, None)
-  | LoopE (e1, Some e2) -> LoopE (exp env e1, Some (exp env e2))
-  | ForE (p, e1, e2)    -> let env1 = pat env p in
-                           ForE (p, exp env e1, exp env1 e2)
+  | LoopE e1            -> LoopE (exp env e1)
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
   | BreakE (i, e)       -> BreakE(i,exp env e)
@@ -196,10 +192,11 @@ and dec' env d =
         let args = seqP (List.map varP ids) in
         let l_typ = Type.unit in
         let body =
-          blockE [varD (id_of_exp temp) (seqE ids)]
-            (loopE
-              (labelE l l_typ
-                 (blockE [letP p (immuteE temp)] (retE exp0'))) None)
+          blockE [varD (id_of_exp temp) (seqE ids)] (
+            loopE (
+              labelE l l_typ (blockE [letP p (immuteE temp)] (retE exp0'))
+            )
+          )
         in
         LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
       else

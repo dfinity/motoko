@@ -226,19 +226,9 @@ let labelE l typ exp =
              S.note_typ = typ }
   }
 
-let loopE exp1 exp2Opt =
-  { it = LoopE (exp1, exp2Opt);
-    at = no_region;
-    note = { S.note_eff = Effect.max_eff (eff exp1)
-                            (match exp2Opt with
-                             | Some exp2 -> eff exp2
-                             | None -> Type.Triv);
-             S.note_typ = Type.Non }
-  }
-
 (* Used to desugar for loops, while loops and loop-while loops. *)
-let loopE' exp =
-  { it = LoopE (exp, None);
+let loopE exp =
+  { it = LoopE exp;
     at = no_region;
     note = { S.note_eff = eff exp ;
              S.note_typ = T.Non }
@@ -421,7 +411,7 @@ let whileE exp1 exp2 =
   *)
   let lab = fresh_id () in
   labelE lab T.unit (
-      loopE' (
+      loopE (
           ifE exp1
             exp2
             (breakE lab (tupE []))
@@ -438,7 +428,7 @@ let loopWhileE exp1 exp2 =
    *)
   let lab = fresh_id () in
   labelE lab T.unit (
-      loopE' (
+      loopE (
           thenE exp1
             ( ifE exp2
                (tupE [])
@@ -469,7 +459,7 @@ let forE pat exp1 exp2 =
   let nxt = fresh_var tnxt in
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab Type.unit (
-      loopE' (
+      loopE (
         switch_optE (callE nxt [] (tupE []) ty1_ret)
           (breakE lab (tupE []))
           pat exp2 Type.unit
