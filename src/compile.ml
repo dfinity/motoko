@@ -2211,12 +2211,12 @@ module Serialization = struct
       let (set_copy, get_copy) = new_local env "x'" in
 
       let purely_data n =
-            Heap.alloc env 3l ^^
+            Heap.alloc env n ^^
             set_copy ^^
 
             get_x ^^
             get_copy ^^
-            compile_unboxed_const 3l ^^
+            compile_unboxed_const n ^^
             Heap.memcpy_words_skewed env ^^
 
             get_copy in
