@@ -236,6 +236,14 @@ let loopE exp1 exp2Opt =
              S.note_typ = Type.Non }
   }
 
+(* Used to desugar for loops, while loops and loop-while loops. *)
+let loopE' exp =
+  { it = LoopE (exp, None);
+    at = no_region;
+    note = { S.note_eff = eff exp ;
+             S.note_typ = T.Non }
+  }
+
 let declare_idE x typ exp1 =
   { it = DeclareE (x, typ, exp1);
     at = no_region;
@@ -270,15 +278,17 @@ let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.note_typ } in
   LetD (pat, exp) @@ exp.at
 
+(* Derived expressions *)
+
+let letE x exp1 exp2 = blockE [letD x exp1] exp2
+
+let thenE exp1 exp2 = blockE [expD exp1] exp2
+
 let ignoreE exp =
   if typ exp = T.unit
   then exp
-  else blockE [expD exp] (tupE [])
+  else thenE exp (tupE [])
 
-
-(* let expressions (derived) *)
-
-let letE x exp1 exp2 = blockE [letD x exp1] exp2
 
 (* Mono-morphic function expression *)
 let funcE name t x exp =
@@ -400,3 +410,69 @@ let prim_async typ =
 
 let prim_await typ =
   primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+
+(* derived loop forms; each can be expressed as an unconditional loop *)
+
+let whileE exp1 exp2 =
+  (* while e1 e2
+     ~~> label l loop {
+           if e1 then { e2 } else { break l }
+         }
+  *)
+  let lab = fresh_id () in
+  labelE lab T.unit (
+      loopE' (
+          ifE exp1
+            exp2
+            (breakE lab (tupE []))
+            T.unit
+        )
+    )
+
+let loopWhileE exp1 exp2 =
+  (* loop e1 while e2
+    ~~> label l loop {
+          let () = e1 ;
+          if e2 { } else { break l }
+        }
+   *)
+  let lab = fresh_id () in
+  labelE lab T.unit (
+      loopE' (
+          thenE exp1
+            ( ifE exp2
+               (tupE [])
+               (breakE lab (tupE []))
+               T.unit
+            )
+        )
+    )
+
+let forE pat exp1 exp2 =
+  (* for p in e1 e2
+     ~~>
+     let nxt = e1.next ;
+     label l loop {
+       switch nxt () {
+         case null { break l };
+         case p    { e2 };
+       }
+     } *)
+  let lab = fresh_id () in
+  let ty1 = exp1.note.S.note_typ in
+  let _, tfs  = Type.as_obj_sub "next" ty1 in
+  let tnxt    = T.lookup_field "next" tfs in
+  let ty1_ret = match (T.as_func tnxt) with
+    | _,_,_,_,[x] -> x
+    | _           -> failwith "invalid return type"
+  in
+  let nxt = fresh_var tnxt in
+  letE nxt (dotE exp1 (nameN "next") tnxt) (
+    labelE lab Type.unit (
+      loopE' (
+        switch_optE (callE nxt [] (tupE []) ty1_ret)
+          (breakE lab (tupE []))
+          pat exp2 Type.unit
+      )
+    )
+  )
