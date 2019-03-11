@@ -32,7 +32,7 @@ let real-dvm =
     then
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
-        rev = "5e04e1ee6f076d2dd877992747e04fa459dcb476";
+        rev = "617d5571ecf458166693f795d127767992c0f58a";
         ref = "joachim/fetchgit";
       }; in
       # Pass devel = true until the dev test suite runs on MacOS again
