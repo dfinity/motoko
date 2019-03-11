@@ -2853,7 +2853,7 @@ module GC = struct
         evacuate env ^^
         set_end_to_space in
 
-    (* Go through the roots, and evacaute them *)
+    (* Go through the roots, and evacuate them *)
     ClosureTable.get_counter ^^
     from_0_to_n env (fun get_i -> evac (
       get_i ^^
