@@ -2210,12 +2210,7 @@ module Serialization = struct
     Func.share_code1 env "serialize_go" ("x", I32Type) [I32Type] (fun env get_x ->
       let (set_copy, get_copy) = new_local env "x'" in
 
-      get_x ^^
-      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-        ( get_x )
-        ( get_x ^^
-          Tagged.branch env (ValBlockType (Some I32Type))
-          [ Tagged.Int,
+      let purely_data n =
             Heap.alloc env 3l ^^
             set_copy ^^
 
@@ -2224,16 +2219,15 @@ module Serialization = struct
             compile_unboxed_const 3l ^^
             Heap.memcpy_words_skewed env ^^
 
-            get_copy
-          ; Tagged.Reference,
-            Heap.alloc env 2l ^^ set_copy ^^
+            get_copy in
 
-            get_x ^^
-            get_copy ^^
-            compile_unboxed_const 2l ^^
-            Heap.memcpy_words_skewed env ^^
-
-            get_copy
+      get_x ^^
+      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+        ( get_x )
+        ( get_x ^^
+          Tagged.branch env (ValBlockType (Some I32Type))
+          [ Tagged.Int, purely_data 3l
+          ; Tagged.Reference, purely_data 2l
           ; Tagged.Some,
             Opt.inject env (
               get_x ^^ Opt.project ^^
