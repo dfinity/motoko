@@ -2216,7 +2216,7 @@ module Serialization = struct
         ( get_x ^^
           Tagged.branch env (ValBlockType (Some I32Type))
           [ Tagged.Int,
-            Heap.alloc env 2l ^^
+            Heap.alloc env 3l ^^
             set_copy ^^
 
             get_x ^^
