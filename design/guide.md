@@ -5,12 +5,29 @@
 ActorScript is a new, general purpose programming language for the
 Dfinity platform.
 
-Dfinity has chosen WebAssembly as its low-level virtual machine. The currently
+### Why a new language?
+
+Dfinity has chosen WebAssembly as its low-level virtual machine. 
+
+The currently
 available compilers targeting WebAssembly are for languages that are
-either too unsafe (C, C++) or too complex (Java, C#, Rust) for mainstream
-programmers. To promote correctness and reduce complexity, Dfinity
-is designing its own language, ActorScript, that is safe and expressive, yet simple
-and approachable to mainstream programmers.
+either too unsafe (C, C++) or too complex (Rust) for mainstream
+programmers. 
+
+To promote correctness and reduce complexity, Dfinity is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
+
+#### Interoperability
+
+ActorScript is just one of hopefully many languages able to run on the Dfinity platform. 
+
+Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, Dfinity will provide an *Interface Definition Language* to support typed, cross-language communication.
+
+The ActorScript compiler will automate the production and consumption of IDL files, driven by type signatures ActorScript programs and the structure of imported IDL interfaces.
+
+The IDL language is currently under design and outside the scope of this document.
+
+
+### Design Goals
 
 ActorScript provides:
 
@@ -23,6 +40,8 @@ ActorScript provides:
 * A good fit for underlying Wasm and Dfinity execution model
 
 * A forward looking design that anticipates future extensions to WebAssembly
+
+### Key Features
 
 The key language features of ActorScript are:
 
@@ -41,6 +60,8 @@ The key language features of ActorScript are:
 
 * Functions (and messages) are first-class values, argument evaluation
   is strict (call-by-value).
+
+* Pattern matching on scalar and compound values.
 
 * A simple, class-based object system without inheritance.
 
@@ -66,7 +87,7 @@ The key language features of ActorScript are:
 Like most programming lanuages, ActorScript borrows features from others and
 draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
 
-# ActorScript Syntax (Sketch)
+## ActorScript Syntax (Sketch)
 
 Productions marked * probably deferred to later versions.
 
