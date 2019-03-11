@@ -1015,7 +1015,7 @@ module Var = struct
 end (* Var *)
 
 module Opt = struct
-  (* The Option type. Not much intereting to see here *)
+  (* The Option type. Not much interesting to see here *)
 
   let payload_field = Tagged.header_size
 
