@@ -1465,11 +1465,6 @@ module Object = struct
     idx env obj_type f ^^
     load_ptr
 
-  let load_idx_immut env name =
-    compile_unboxed_const (hash_field_name name) ^^
-    idx_hash env false ^^
-    load_ptr
-
 end (* Object *)
 
 module Text = struct
@@ -3580,28 +3575,12 @@ and compile_exp (env : E.t) exp =
     SR.Unreachable,
     compile_exp_vanilla env e ^^
     G.branch_to_ d
-  | LoopE (e, None) ->
+  | LoopE e ->
     SR.Unreachable,
     G.loop_ (ValBlockType None) (compile_exp_unit env e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
-  | LoopE (e1, Some e2) ->
-    SR.unit,
-    G.loop_ (ValBlockType None) (
-      compile_exp_unit env e1 ^^
-      compile_exp_as env SR.bool e2 ^^
-      G.if_ (ValBlockType None) (G.i (Br (nr 1l))) G.nop
-    )
-  | WhileE (e1, e2) ->
-    SR.unit,
-    G.loop_ (ValBlockType None) (
-      compile_exp_as env SR.bool e1 ^^
-      G.if_ (ValBlockType None) (
-        compile_exp_unit env e2 ^^
-        G.i (Br (nr 1l))
-      ) G.nop
-    )
   | RetE e ->
     SR.Unreachable,
     compile_exp_as env (StackRep.of_arity (E.get_n_res env)) e ^^
@@ -3661,36 +3640,6 @@ and compile_exp (env : E.t) exp =
           in
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap code2 ^^ get_j
-  | ForE (p, e1, e2) ->
-    SR.unit,
-    let code1 = compile_exp_vanilla env e1 in
-    let (env1, code2) = compile_mono_pat env p in
-    let code3 = compile_exp_unit env1 e2 in
-
-    let (set_i, get_i) = new_local env "iter" in
-    (* Store the iterator *)
-    code1 ^^
-    set_i ^^
-
-    G.loop_ (ValBlockType None) (
-      get_i ^^
-      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
-      get_i ^^
-      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
-      Closure.call_closure env1 (Value.local_cc 0 1) ^^
-      let (set_oi, get_oi) = new_local env "opt" in
-      set_oi ^^
-
-      (* Check for null *)
-      get_oi ^^
-      Opt.null ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None)
-        G.nop
-        ( get_oi ^^ Opt.project ^^
-          code2 ^^ code3 ^^ G.i (Br (nr 1l))
-        )
-    )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (env1, i) = E.add_local_with_offset env name.it 1l in
@@ -3863,11 +3812,6 @@ and compile_pat_local env pat : E.t * patternCode =
   let env1 = alloc_pat_local env pat in
   let fill_code = fill_pat env1 pat in
   (env1, fill_code)
-
-(* Used for mono patterns (ForE) *)
-and compile_mono_pat env pat =
-  let (env1, fill_code) = compile_pat_local env pat in
-  (env1, orTrap fill_code)
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.

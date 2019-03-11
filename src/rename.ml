@@ -47,11 +47,7 @@ and exp' rho e  = match e with
                            in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
-  | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
-  | LoopE (e1, None)    -> LoopE (exp rho e1, None)
-  | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
-  | ForE (p, e1, e2)    -> let p',rho' = pat rho p in
-                           ForE (p', exp rho e1, exp rho' e2)
+  | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
   | BreakE (i, e)       -> BreakE(id rho i,exp rho e)

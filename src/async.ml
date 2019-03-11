@@ -304,12 +304,8 @@ module Transform() = struct
                      cases
       in
       SwitchE (t_exp exp1, cases')
-    | WhileE (exp1, exp2) ->
-      WhileE (t_exp exp1, t_exp exp2)
-    | LoopE (exp1, exp2_opt) ->
-      LoopE (t_exp exp1, Lib.Option.map t_exp exp2_opt)
-    | ForE (pat, exp1, exp2) ->
-      ForE (t_pat pat, t_exp exp1, t_exp exp2)
+    | LoopE exp1 ->
+      LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
     | BreakE (id, exp1) ->
