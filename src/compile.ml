@@ -2844,7 +2844,7 @@ module GC = struct
     Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
 
 
-    (* Common arguments for evalcuate *)
+    (* Common arguments for evacuate *)
     let evac get_ptr_loc =
         get_begin_from_space ^^
         get_begin_to_space ^^
