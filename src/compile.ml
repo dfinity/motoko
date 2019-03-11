@@ -2039,7 +2039,7 @@ module Dfinity = struct
       G.i Unreachable
 
   let default_exports env =
-    (* these export seems to be wanted by the hypervisor/v8 *)
+    (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
       name = explode "mem";
       edesc = nr (MemoryExport (nr 0l))
