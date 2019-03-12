@@ -66,7 +66,7 @@ this actor's implementation defines the _semantic_ aspects of the PES
 standard.
 
 Outside the PES, are the implementation details of this actor, which
-are also present in this file.  By virtual of the actor interface
+are also present in this file.  By virtue of the actor interface
 boundary, the implementation details of this actor behavior are
 subject to change over time, independently of the standard's own
 evolution. We include them here because their behavior is needed to
