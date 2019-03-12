@@ -221,7 +221,9 @@ choice between (for now) using association lists and tries.
 Aside: Eventually, we'll likely have a more optimized trie that uses
 small arrays in its leaf nodes.  The current representation is simple,
 uses lots of pointers, and is likely not the optimal candidate for
-efficient Wasm.
+efficient Wasm.  However, its asymptotic behavior is good, and it thus
+provides a good approximation of the eventual design that we want.
+
 */
 
 //type Map = AssocList;
@@ -234,9 +236,10 @@ let Map = Trie;
 Nested structures
 -----------------
 
-Below, we define top-structures for representing each Producer,
+Below, we define top-level structures for representing each Producer,
 Retailer and Transporter's officially published state within the PES.
-These types define the types of forests (a set of trees with many
+
+Formally, these types define the types of forests (a set of trees with many
 roots) that constitute our internal data model.
 
 For each kind of structure below, we assume a type of unique Id
@@ -262,6 +265,29 @@ launches, and change seldomly.
 
 The next three tables contain the interesting state of the system.
 They give the three sets of roots into the structures defined below.
+
+Query implementation
+---------------------
+
+The retailers perform queries by joining information across the
+producers and transporters tables, and their inventory and route
+information, respectively.
+
+Orders (Reservations) implementation
+-------------------------------------
+
+We refer to orders placed by retailrs here as "reservations", since
+the latter word is less ambiguous.
+
+To simplify query implementation over reservations, and to improve
+this query response time, we store reservations in two places, with
+internal sharing:
+
+ - The currently-reserved routes and inventory are stored with their
+   transporters and producers, respectively.
+
+ - The currently-reserved routes and inventory of each retailer are
+   additionally stored with this retailer.
 
 */
 
