@@ -42,7 +42,7 @@ We decompose the ActorScript implementation of the Produce Exchange example Dapp
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Used internally to implement the actor, but not present in its
     interface.
-
+    
     These models use collections from the standard library.
  
  3. **Message types**: See

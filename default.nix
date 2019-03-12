@@ -101,8 +101,8 @@ rec {
       "stdlib/"
       "stdlib/.*Makefile.*"
       "stdlib/.*.as"
-      "stdlib/examples/"
-      "stdlib/examples/.*.as"
+      "stdlib/examples/produce-exchange/"
+      "stdlib/examples/produce-exchange/.*.as"
       ];
 
     buildInputs =
