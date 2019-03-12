@@ -79,6 +79,26 @@ actor class ProduceExchange() {
   */
   private var retailers : RetailerTable = null;
 
+  
+  // xxx for efficient queries, need some extra indexing:
+  // 
+  // Regions as keys in special global maps
+  // ---------------------------------------
+  // - inventory (across all producers) keyed by producer region
+  // - routes (across all transporters) keyed by source region
+  // - routes (across all transporters) keyed by destination region
+  //
+  // ?: Days as keys in a spatial-temporal data structure?
+  // -----------------
+  // - inventory, by availability window (start day, end day)
+  // - routes, by transport window (departure day, arrival day)
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
 
   /*
   // PES: Registrar-based ingress messages

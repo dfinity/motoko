@@ -417,6 +417,61 @@ let Trie = new {
     rec(tl, tr)
   };
 
+  // like `merge`, it merges tries, but unlike `merge`, it signals a
+  // dynamic error if there are collisions in common keys between the
+  // left and right inputs.
+  func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+    let key_eq = keyEq<K>(k_eq);
+    func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+      switch (tl, tr) {
+      case (null, _) { return tr };
+      case (_, null) { return tl };
+      case (?nl,?nr) {
+             switch (isBin<K,V>(tl),
+	                   isBin<K,V>(tr)) {
+             case (true, true) {
+	                  let t0 = rec(nl.left, nr.left);
+	                  let t1 = rec(nl.right, nr.right);
+	                  makeBin<K,V>(t0, t1)
+	                };
+             case (false, true) {
+	                  assert(false);
+	                  // XXX impossible, until we lift uniform depth assumption
+	                  tr
+	                };
+             case (true, false) {
+	                  assert(false);
+	                  // XXX impossible, until we lift uniform depth assumption
+	                  tr
+	                };
+             case (false, false) {
+	                  /// handle hash collisions by using the association list:
+	                  makeLeaf<K,V>(
+                      AssocList.disj<Key<K>,V,V,V>(
+                        nl.keyvals, nr.keyvals,
+                        key_eq,
+                        func (x:?V, y:?V):V = {
+                          switch (x, y) {
+                          case (null, null) {
+                                 /* IMPOSSIBLE case. */
+                                 assert false; func x():V=x(); x()
+                               };
+                          case (?_, ?_) {
+                                 /* INVALID case: left and right defined for the same key */
+                                 assert false; func x():V=x(); x()
+                               };
+                          case (null, ?v) v;
+                          case (?v, null) v;
+                          }}
+                      ))
+	                };
+	           }
+           };
+      }
+    };
+    rec(tl, tr)
+  };
+
   // The key-value pairs of the final trie consists of those pairs of
   // the left trie whose keys are not present in the right trie; the
   // values of the right trie are irrelevant.

@@ -115,6 +115,14 @@ type TruckType = {
 
 type TruckTypeTable = Map<TruckTypeId, TruckType>;
 
+type Region = {
+  id : RegionId;
+  short_name : Text;
+  description : Text;
+};
+
+type RegionTable = Map<RegionId, Region>;
+
 type Produce = {
   id : ProduceId;
   short_name : Text;
@@ -123,14 +131,6 @@ type Produce = {
 };
 
 type ProduceTable = Map<ProduceId, Produce>;
-
-type Region = {
-  id : RegionId;
-  short_name : Text;
-  description : Text;
-};
-
-type RegionTable = Map<RegionId, Region>;
 
 type Producer = {
   id : ProducerId;
