@@ -5,42 +5,12 @@ of a documentation tool for converting ActorScript into Markdown
 files.  I'll use an extra `*` in the opening comment when I expect the
 comment to be processed as markdown.
 
-
 Produce Exchange Dapp
 =====================
 
  Start here:
  - Detailed examples: https://dfinity.atlassian.net/wiki/x/joXUBg
  - More background: https://dfinity.atlassian.net/wiki/x/4gg5Bg
-
-
-Open Questions:
--------------------------------------------------
-
- 1. Massive result messages: How do we represent and send these?
-
-    - lazy lists? (seems "easy" from AS programmer perspective, but
-      requires non-first-order data in the IDL)
-
-    - list iterators? (almost as good as lazy lists, but requires
-      references in the IDL, and complicates the GC story).
-
-    - arrays? (expensive to build and send; can become way *too big*).
-
-
- 2. For now, wan we assume that the canister is maintained by the
-    central authority?
-
- 3. "Conditional updates" -- important to Mack
-
- 4. How complex can the queries become?  Can we do truck-sharing-based
-    queries, where we query as a retailer that expects to share trucks
-    across several producer orders (e.g., in the same origin region).
-    Alternatively, can we order multiple items from a single producer to
-    ship on a single truck route?  Presumably, we can?
-
- 5. Define a query language?
-    --- Not until ActorScript implements variant types.
 
 
 Produce Exchange Standards (PES)
@@ -103,5 +73,4 @@ actor will change, and will require a canister upgrade.
 
 */
 
-
-// xxx regression tests go here
+// xxx regression tests go somewhere
