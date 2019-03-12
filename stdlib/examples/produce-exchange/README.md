@@ -120,11 +120,12 @@ the _"Produce Exchange Standards"_, or _"PES"_ for short.
 PES, defined formally:
 -----------------------
 
-We break this definition into several files. These files make the PES
-formal, to the same degree that ActorScript has a formal semantics of
-its own, in terms of DFINITY's semantics, etc.
+We break this definition into several files, listed above in this
+file, and below. These files make the PES formal, to the same degree
+that ActorScript has a formal semantics of its own, in terms of
+DFINITY's semantics, etc.
 
-**Files**: The file `types.as` defines ActorScript data types that are
+**Specific files**: The file `types.as` defines ActorScript data types that are
 included in the PES.  These will appear in the messages to and from
 the produce exchange.  The actor class itself (see `actor.as`) gives
 the interface for the PE service, is also part of the formal PES.  The
