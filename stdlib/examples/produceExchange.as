@@ -39,7 +39,7 @@ Open Questions:
     Alternatively, can we order multiple items from a single producer to
     ship on a single truck route?  Presumably, we can?
 
- 5. Define a query language? 
+ 5. Define a query language?
     --- Not until ActorScript implements variant types.
 
 */
@@ -109,8 +109,6 @@ type Price = Nat;
 type Unit = Nat; // xxx replace with a variant type
 type Grade = Nat; // xxx replace with a variant type
 
-type TruckKind = Nat; // ??? replace with a variant type
-
 type TruckCapacity = Weight;
 
 type Quantity = Nat;
@@ -131,15 +129,16 @@ type RegionId = Nat; // xxx variant type?
 //
 */
 
+type TruckTypeId   = Nat;
 type ProduceId     = Nat;
+type InventoryId   = Nat;
+
 type ProducerId    = Nat;
 type RetailerId    = Nat;
-type TruckKindId   = Nat;
-type InventoryId   = Nat;
 type TransporterId = Nat;
+
 type RouteId       = Nat;
 type OrderId       = Nat;
-
 
 /**
 //
@@ -156,7 +155,7 @@ type OrderInfo = shared {
   quant:       Quantity;
   ppu:         PricePerUnit;
   transporter: TransporterId;
-  truck_kind:  TruckKindId;
+  truck_type:  TruckTypeId;
   weight:      Weight;
   region_begin:RegionId;
   region_end:  RegionId;
@@ -173,7 +172,7 @@ type QueryAllResult = shared {
   quant:       Quantity;
   ppu:         PricePerUnit;
   transporter: TransporterId;
-  truck_kind:  TruckKindId;
+  truck_type:  TruckTypeId;
   weight:      Weight;
   region_begin:RegionId;
   region_end:  RegionId;
@@ -306,6 +305,18 @@ internal sharing:
 // below, since "order" and "ordering" have too many meanings.
 type ReservationId = OrderId;
 
+type TruckType = {
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : TruckCapacity;
+  // xxx variant type for this temperature-control information:
+  isFridge : Bool;
+  isFreezer : Bool;
+};
+
+type TruckTypeTable = Map<TruckTypeId, TruckType>;
+
 type Produce = {
   id : ProduceId;
   short_name : Text;
@@ -381,6 +392,7 @@ type TransporterTable = Map<TransporterId, Transporter>;
 type Route = {
   id : RouteId;
   transporter : Transporter;
+  truck_type : TruckType;
   start_region : Region;
   end_region : Region;
   start_date : Date;
@@ -423,7 +435,7 @@ actor class ProduceExchange() {
   private var nextProduceId : ProduceId = 0;
   private var nextProducerId : ProducerId = 0;
   private var nextRetailerId : RetailerId = 0;
-  private var nextTruckKindId : TruckKindId = 0;
+  private var nextTruckTypeId : TruckTypeId = 0;
   private var nextInventoryId : InventoryId = 0;
   private var nextTransporterId : TransporterId = 0;
   private var nextxRouteId : RouteId = 0;
@@ -480,14 +492,45 @@ actor class ProduceExchange() {
   // ================================================
   // Add/remove support across various mostly-static tables:
   //
-  // - produce and region information.
+  // - truck types, produce (types) and region information.
   // - participants: producers, retailers and transporters.
   //
-  // For each of the five entities listed above, we have an add
+  // For each of the six entities listed above, we have an add
   // (`Add`) and remove (`Rem`) function below, prefixed by
-  // `registrar`-, and suffixed by one of the entities in `Region`,
-  // `Produce`, `Producer`, `Retailer`, `Transporter`.
+  // `registrar`-, and suffixed by one of the entities in `TruckType`,
+  // `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
+  */
 
+  /*
+   // reigstrarTruckType
+  // -------------------
+  //
+  */
+
+  registrarAddTruckType(
+    short_name:  Text,
+    description: Text,
+    capacity : Weight,
+    isFridge : Bool,
+    isFreezer : Bool,
+  ) : async ?TruckTypeId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemTruckType(
+    id: TruckTypeId
+  ) : async ?() {
+    // xxx
+    null
+  };
+
+  /**
   // registrarAddProduce
   // ---------------------
   //
@@ -673,7 +716,7 @@ actor class ProduceExchange() {
     start:  Date,
     end:    Date,
     cost:   Price,
-    tt:     TruckKindId
+    ttid:   TruckTypeId
   ) : async ?RouteId {
     // xxx
     null
