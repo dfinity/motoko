@@ -152,9 +152,10 @@ PES evolution via canister upgrade
 
 The PES evolves according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
-developer community that surrounds this implementation file.
+developer community that surrounds this implementation.
 
-Updating the types in the PES requires changing this file, and
-performing a canister upgrade on the running system.  Similarly, to
-evolve the behavioral definition of PES, the implementation of this
-actor will change, and will require a canister upgrade.
+Updating the types in the PES requires changing the file `types.as`
+mentioned above, and performing a canister upgrade on the running
+system.  Similarly, to evolve the behavioral definition of PES, the
+implementation of this actor will change (in `actor.as` and
+`model.as`), and will also require a canister upgrade.
