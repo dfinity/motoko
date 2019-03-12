@@ -47,7 +47,14 @@ We decompose the ActorScript implementation of the Produce Exchange example Dapp
     item 3, in terms of the model collection types defined in item 2.
     See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
- 
+
+
+Scripted uses of the Produce Exchange
+----------------------------------------
+
+- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/produceExchange.as)
+- [ ] Randomly-generated scripts
+
 
 To do list
 -----------
