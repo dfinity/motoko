@@ -113,8 +113,8 @@ Spec: Produce Exchange Standards (PES)
 ========================================
 
 The Produce Exchange is a DFINITY canister whose implementation
-defines a set of _standards_ that to which we refer to collectively as
-the Produce Exchange Standards, or PES.
+defines a set of _standards_ to which we refer to collectively as
+the _"Produce Exchange Standards"_, or _"PES"_ for short.
 
 
 PES, defined formally:
