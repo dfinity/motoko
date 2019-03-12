@@ -33,30 +33,29 @@ Components in ActorScript
 
 We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
- 1. **Interface types**:  
+ 1. **Interface types**: See
+    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
     Used in messages, and published/stored internally in the actor's
-    state.  
-    See
-    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
+    state.
  
- 2. **Model types**:  
+ 2. **Model types**: See
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Used internally to implement the actor, but not present in its
-    interface.  
-    See
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
+    interface.
+
     These models use collections from the standard library.
  
- 3. **Message types**:  
+ 3. **Message types**: See
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
     Defined by the actor's public signature, which specifies the
-    message formats for each participant.  
-    See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+    message formats for each participant.
 
- 3. **Message implementations**:  
+ 3. **Message implementations**: See
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as)
+    and
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
     Defined by the actor's implementation for each message defined in
-    item 3, in terms of the model collection types defined in item 2.  
-    See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+    item 3, in terms of the model collection types defined in item 2.
 
 
 
