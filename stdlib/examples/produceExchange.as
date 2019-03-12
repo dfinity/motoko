@@ -388,7 +388,15 @@ type ReservedRoute = {
 type ReservedRouteTable = Map<ReservationId, ReservedRoute>;
 
 
-// the "Service"
+//
+// the Produce Exchange interface, as an ActorScript actor.  This
+// actor gives a collection of ingress messages and corresponding
+// response types for each participant in the exchange.  As explained
+// above, it also gives a behavioral spec of the exchange's semantics,
+// by giving a prototype implementation of this behavior, whose
+// functional behavior, not implementation details, are part of the
+// formal PES.
+//
 actor class ProduceExchange() {
 
   private var nextProduceId : ProduceId = 0;
@@ -432,9 +440,43 @@ actor class ProduceExchange() {
   //  - orders table
   private var retailers : RetailerTable = null;
 
-  // Producer-based ingress messages:
-  // ================================
 
+  // Registrar-based ingress messages
+  // =======================================
+  // The registrar adds and removes producers, retailers and transporters.
+
+  // registrarAddProducer
+  // ---------------------
+  //
+
+  // registrarRemProducer
+  // ---------------------
+  //
+
+  // registrarAddRetailer
+  // ---------------------
+  //
+
+  // registrarRemRetailer
+  // ---------------------
+  //
+
+  // registrarAddTransporter
+  // ---------------------
+  //
+
+
+  // registrarRemTransporter
+  // ---------------------
+  //
+
+
+  // Producer-based ingress messages:
+  // ==========================================
+
+
+  // producerAddInventory
+  // ---------------------------
   producerAddInventory(
     id:   ProducerId,
     prod: ProduceId,
@@ -447,10 +489,16 @@ actor class ProduceExchange() {
     null
   };
 
+  // producerRemInventory
+  // ---------------------------
+
   producerRemInventory(id:InventoryId) : async ?() {
     // xxx
     null
   };
+
+  // producerOrders
+  // ---------------------------
 
   producerOrders(id:ProducerId) : async ?[OrderId] {
     // xxx
@@ -459,6 +507,9 @@ actor class ProduceExchange() {
 
   // Transporter-based ingress messages:
   // ===================================
+
+  // transporterAddRoute
+  // ---------------------------
 
   transporterAddRoute(
     trans:  TransporterId,
@@ -473,10 +524,16 @@ actor class ProduceExchange() {
     null
   };
 
+  // transporterRemRoute
+  // ---------------------------
+
   transporterRemRoute(id:RouteId) : async ?() {
     // xxx
     null
   };
+
+  // transporterOrders
+  // ---------------------------
 
   transporterOrders(id:TransporterId) : async ?[OrderId] {
     // xxx
@@ -486,10 +543,16 @@ actor class ProduceExchange() {
   // Retailer-based ingress messages:
   // ===================================
 
+  // retailerQueryAll
+  // ---------------------------
+
   retailerQueryAll(id:RetailerId) : async ?QueryAllResults {
     // xxx
     null
   };
+
+  // retailerPlaceOrder
+  // ---------------------------
 
   retailerPlaceOrder(
     id:RetailerId,
@@ -500,6 +563,9 @@ actor class ProduceExchange() {
     null
   };
 
+  // retailerOrders
+  // ---------------------------
+
   retailerOrders(id:RetailerId) : async ?[OrderId] {
     // xxx
     null
@@ -507,6 +573,9 @@ actor class ProduceExchange() {
 
   // (Producer/Transporter/Retailer) ingress messages:
   // ========================================================
+
+  // orderInfo
+  // ---------------------------
 
   orderInfo(id:OrderId) : async ?OrderInfo {
     // xxx
