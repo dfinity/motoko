@@ -26,7 +26,7 @@ As ActorScript Components
 
 We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
- 1. Interface **types**:  
+ 1. **Interface types**:  
     Used in messages, and published/stored internally in the actor's
     state. See
     [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
