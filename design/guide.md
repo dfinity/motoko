@@ -262,24 +262,43 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * `T` equals `None`.
 
+*  `T' is a type parameter `X`, declared with constraint 'U'.
+
 *  `T` is a tuple `(T0,...,Tn)`, `U` is a tuple `(U0,...,Un)`, 
     and for each `0 < i <= n`, `Ti <: Ui`.
 
-*  `T` is an immutable array type `[ T0 ]`, `U` is an immutable array type  `[ U0 ]`, 
-    and `T0 <: U0`.
+*  `T` is an immutable array type `[ V ]`, `U` is an immutable array type  `[ W ]` 
+    and `V <: W`.
 
-*  `T` is a mutable array type `[ var T0 ]`, `U` is a mutable array type  `[ var U0 ]`, 
-    and `T0 == U0`.
+*  `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]` 
+    and `V == W`.
+
+*  `T` is a promise `async V`, `U` is a promise `W`, 
+    and `V <: W`.
 
 *  `T` is an object type `sort0 { fts0 }`, 
    `U` is an object type `sort1 { fts1 }` and
    * `sort1` == `sort2`
-   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`,
+   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W` and
    * if field 'var id : V $ is in `fts0` then  `id : W` is in `fts1` and `V == W`.
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
-   
+*  `T` is a function type `shared? <X0:V0,...,Xn,Vn> T1 -> T2`, 
+   `U` is a function type `shared? <X0:W0,...,Xn,Wn> U1 -> U2` and
+   * `T` and `U` are either both `shared` or both non-`shared`,
+   *  for all `i`, `Vi <: Wi`,
+   * `U1 <: T1` and
+   * `T2 <: U2`.
+  
+    (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of 'U' suptypes the domain of `T` (contra-variance) and the range of 'T' subtypes the range of `U`).
+
+* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor 'C',  to 'W', then `T <: U` when `W <: U` (respectively `U <: W`).
+
+Subtyping is *transitive*: if `T <: U` and `U <: V`, then `T <: V`.
+
+
+
 
 
 
