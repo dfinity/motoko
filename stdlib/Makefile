@@ -85,7 +85,7 @@ $(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as assocList.as trie.as set.as setDb.as 
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as assocList.as trie.as examples/produceExchange.as
+$(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as assocList.as trie.as examples/produce-exchange/produceExchange.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
