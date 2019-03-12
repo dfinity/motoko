@@ -121,9 +121,9 @@ PES, defined formally:
 -----------------------
 
 We break this definition into several files, listed above in this
-file, and below. These files make the PES formal, to the same degree
-that ActorScript has a formal semantics of its own, in terms of
-DFINITY's semantics, etc.
+file, and below. These files make the PES definition into a **formal
+definition**, to the same degree that ActorScript has a formal
+semantics of its own, in terms of DFINITY's semantics, etc.
 
 **Specific files**: The file `types.as` defines ActorScript data types that are
 included in the PES.  These will appear in the messages to and from
