@@ -125,14 +125,14 @@ file, and below. These files make the PES definition into a **formal
 definition**, to the same degree that ActorScript has a formal
 semantics of its own, in terms of DFINITY's semantics, etc.
 
-**Specific files**: The file `types.as` defines ActorScript data types that are
+**PES files**: The file `types.as` defines ActorScript data types that are
 included in the PES.  These will appear in the messages to and from
 the produce exchange.  The actor class itself (see `actor.as`) gives
 the interface for the PE service, is also part of the formal PES.  The
 _behavior_ of this actor's implementation defines the _semantic_
 aspects of the PES standard.
 
-Additionally, the `model.as` file defines types used to
+**Non-PES files**: Additionally, the `model.as` file defines types used to
 implement the specification behavior given in `actor.as`; this file is
 not part of the PES.  The implementation details of this actor lie
 outside the PES but are also present in the file `actor.as`, in terms
