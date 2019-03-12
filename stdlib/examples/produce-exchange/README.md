@@ -9,16 +9,15 @@ giving its functional specifications.
 
 The design of PE now evolves in three places:
 
- 1. [Documentation on confluence, under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).
-
- 2. The SDK team's documentation:  
+ 2. The SDK and ActorScript teams' documentation:  
     i. [The design document, under the SDK
      space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).  
     ii. [The requirements document for the MVP
       Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+    iii. [Documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).
 
- 3. **This example folder** in the ActorScript repo, which is
- implementing the Produce Exchange as a way to push the development of
+ 3. [**This example folder** in the ActorScript Github repo](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange), 
+    which is implementing the Produce Exchange as a way to push the development of
  the ActorScript language, its standard library, and elsewhere, the
  ambient DFINITY system that runs ActorScript canisters.
 
