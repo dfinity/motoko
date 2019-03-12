@@ -21,6 +21,27 @@ The design of PE now evolves in three places:
  the ActorScript language, its standard library, and elsewhere, the
  ambient DFINITY system that runs ActorScript canisters.
 
+Sub-components
+---------------
+
+We decompose the ActorScript implementation into the following pieces:
+
+ 1. Exchange inteface **types** used in messages, and published/stored
+    internally in the actor's state. See [`types.as`]().
+ 
+ 2. Exchange **model types** used internally to implement actor, but
+    not present in its interface. See [`model.as`]().  These models
+    use collections from the standard library.
+ 
+ 3. Exchange **message types** defined by the actor's public
+    signature, which specifies the message formats for each
+    participant. See [`actor.as`]().
+
+ 3. Exchange **message implementations** defined by the actor's
+    implementation for each message defined in item 3, in terms of the
+    model collection types defined in item 2.  See [`actor.as`]().
+ 
+
 To do list
 -----------
 
