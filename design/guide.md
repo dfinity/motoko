@@ -259,6 +259,8 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
   `W == ()` or `W == async W`, and
 * if `T` is `C<T0, ..., TN>` where `type C<X0 <: U0, Xn <: Un>  = ...` then
    `Ti <: Ui[T0/X0,...,Tn/Xn]`, for each `0 <= i <= n`. 
+* if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
+* if `T` is `shared { ... }` then all fields in `...` are immutable and have a type that subtypes `Shared`.
 
 ### Subtyping
 
@@ -301,11 +303,11 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   
     (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of `U` suptypes the domain of `T` (contra-variance) and the range of `T` subtypes the range of `U`).
 
-* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
+* `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
 
-* If, for some type `V`, `T <: V` and `V <: U` (*transitivity*).
+* For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
-* `U` is type `Shared` and `T` equivalent to a:
+* `U` is type `Shared` and `T` is equivalent to a:
   * a `shared` function type, or
   * a `shared` object type, or
   * a `actor` object type, or
