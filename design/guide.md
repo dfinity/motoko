@@ -138,7 +138,7 @@ Object types that differ only in the ordering of the fields are equivalent.
 
 The optional qualifier `shared` constrains the object's field to have *sharable* type. 
 
-Messages (see below), always requires arguments of *sharable* (think *serializable*) type.
+Messages (see below) always requires arguments of *sharable* (think *serializable*) type.
 
 The optional qualifier `actor` constrains the object's fields to be *shared* functions (i.e. messages).
 
@@ -194,12 +194,48 @@ TBC
 
 ### Type fields
 
+
 ```
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
-  <id> <typ-params>? <params> : <typ>           function (short-hand)
+  <id> <typ-params>? <typ1> : <typ2>           function (short-hand)
 ```
+
+A type field specifies the name and types of fields of an object.
+
+`<id> : <typ>` specifies an *immutable* field, named `<id>` of type `<typ>`.
+
+`var <id> : <typ>` specifies a *mutable* field, named `<id>` of type `<typ>`.
+
+#### Sugar
+
+When enclosed by an `actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of `shared` function type 
+`shared <typ-params>? <typ1> -> <typ2>`.
+
+When enlosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of ordinary function type `<typ-params>? <typ1> -> <typ2>`.
+
+
+### Type parameters
+
+```
+<typ-params> ::=                              type parameters
+  < typ-param,* >                         
+<typ-param>
+  <id> <: <typ>                               constrained type parameter
+  <id>                                        unconstrained type parameter
+```
+
+A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters. 
+
+`<id> <: <typ>` declares a type parameter with constraint `<typ>`. 
+Any instantiation of `<id>` must subtype `<typ>` (at that same instantiation).
+
+Syntactic sugar `<id>` declares a type parameter with implicit, trivial constraint `Any`.
+
+The names of type parameters in a vector must be distinct. 
+
+All type parameters declared in a vector are in scope within its bounds.
 
 ### Type arguments
 
@@ -207,18 +243,60 @@ TBC
 <typ-args> ::=                                type arguments
   < <typ>,* >
 ```
-### Type parameters
 
-```
-<typ-params> ::=                              type parameters
-  < (<id> <: <typ>),* >                         constrained
-  < <id>,* >                                    unconstrained (short-hand)
-```
+Type constructors and functions may take type arguments. 
+
+The number of type arguments must agree with the number of declared type parameters of the function.
+
+Given a vector of type arguments instantiating a vector of type parameters, 
+each type argument must satisfy the instantiated bounds of the corresponding 
+type parameter.
+
+### Subtyping
+
+Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true.
+
+* `T` equals `U`.
+
+* `U` equals `Any`. 
+
+* `T` equals `None`.
+
+*  `T` is a tuple `(T0,...,Tn)`, `U` is a tuple `(U0,...,Un)`, 
+    and for each `0 < i <= n`, `Ti <: Ui`.
+
+*  `T` is an immutable array type `[ T0 ]`, `U` is an immutable array type  `[ U0 ]`, 
+    and `T0 <: U0`.
+
+*  `T` is a mutable array type `[ var T0 ]`, `U` is a mutable array type  `[ var U0 ]`, 
+    and `T0 == U0`.
+
+*  `T` is an object type `sort0 { fts0 }`, 
+   `U` is an object type `sort1 { fts1 }` and
+   * `sort1` == `sort2`
+   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`,
+   * if field 'var id : V $ is in `fts0` then  `id : W` is in `fts1` and `V == W`.
+
+   (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
+
+   
+
+
+
+
+
+
+
+
+
 
 ### Variance
 
 
+
+
 ## Literals
+
 ```
 <lit> ::=                                     literals
   <nat>                                         natural
