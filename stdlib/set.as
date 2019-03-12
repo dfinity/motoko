@@ -5,7 +5,7 @@
 /*
  Sets are partial maps from element type to unit type,
  i.e., the partial map represents the set with its domain.
-*/
+ */
 
 // TODO-Matthew:
 //
@@ -24,13 +24,13 @@ let Set = new {
   func empty<T>():Set<T> =
     Trie.empty<T,()>();
 
-  func insert<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-    let (s2, _) = Trie.insert<T,()>(s, x, xh, ());
+  func insert<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+    let (s2, _) = Trie.insert<T,()>(s, new {key=x; hash=xh}, eq, ());
     s2
   };
 
-  func remove<T>(s:Set<T>, x:T, xh:Hash):Set<T> = {
-    let (s2, _) = Trie.remove<T,()>(s, x, xh);
+  func remove<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+    let (s2, _) = Trie.remove<T,()>(s, new {key=x; hash=xh}, eq);
     s2
   };
 
@@ -48,14 +48,14 @@ let Set = new {
   };
 
   func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
-    switch (Trie.find<T,()>(s, x, xh, eq)) {
+    switch (Trie.find<T,()>(s, new {key=x; hash=xh}, eq)) {
     case null { false };
     case (?_) { true };
     }
   };
 
-  func union<T>(s1:Set<T>, s2:Set<T>):Set<T> {
-    let s3 = Trie.merge<T,()>(s1, s2);
+  func union<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
+    let s3 = Trie.merge<T,()>(s1, s2, eq);
     s3
   };
 

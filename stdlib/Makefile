@@ -13,6 +13,7 @@ NO_COLOR="\x1b[0m"
 MODULES=\
 	List \
 	ListTest \
+	AssocList \
 	Trie \
 	Set \
 	SetDb \
@@ -54,31 +55,37 @@ $(OUTDIR)/ListTest.out: $(OUTDIR) list.as listTest.as
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Trie.out: $(OUTDIR) list.as trie.as
+$(OUTDIR)/AssocList.out: $(OUTDIR) list.as assocList.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Set.out: $(OUTDIR) list.as trie.as set.as
+$(OUTDIR)/Trie.out: $(OUTDIR) list.as assocList.as trie.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDb.out: $(OUTDIR) list.as trie.as set.as setDb.as
+$(OUTDIR)/Set.out: $(OUTDIR) list.as assocList.as trie.as set.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as trie.as set.as setDb.as setDbTest.as
+$(OUTDIR)/SetDb.out: $(OUTDIR) list.as assocList.as trie.as set.as setDb.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as trie.as examples/produceExchange.as
+$(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as assocList.as trie.as set.as setDb.as setDbTest.as
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
+	@echo $(BEGIN)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	@echo $(DONE)
+
+$(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as assocList.as trie.as examples/produceExchange.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@

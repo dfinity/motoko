@@ -58,7 +58,7 @@ type Price = Nat;
 type Unit = Nat; // xxx replace with a variant type
 type Grade = Nat; // xxx replace with a variant type
 
-type TruckType = Nat; // ??? replace with a variant type
+type TruckKind = Nat; // ??? replace with a variant type
 
 type TruckCapacity = Weight;
 
@@ -81,7 +81,7 @@ type RegionId = Nat; // xxx variant type?
 type ProduceId     = Nat;
 type ProducerId    = Nat;
 type RetailerId    = Nat;
-type TruckTypeId   = Nat;
+type TruckKindId   = Nat;
 type InventoryId   = Nat;
 type TransporterId = Nat;
 type RouteId       = Nat;
@@ -98,7 +98,7 @@ type OrderInfo = shared {
   quant:       Quantity;
   ppu:         PricePerUnit;
   transporter: TransporterId;
-  truck_type:  TruckTypeId;
+  truck_kind:  TruckKindId;
   weight:      Weight;
   region_begin:RegionId;
   region_end:  RegionId;
@@ -115,7 +115,7 @@ type QueryAllResult = shared {
   quant:       Quantity;
   ppu:         PricePerUnit;
   transporter: TransporterId;
-  truck_type:  TruckTypeId;
+  truck_kind:  TruckKindId;
   weight:      Weight;
   region_begin:RegionId;
   region_end:  RegionId;
@@ -165,7 +165,7 @@ actor ProduceExchange {
     start:  Date,
     end:    Date,
     cost:   Price,
-    tt:     TruckTypeId
+    tt:     TruckKindId
   ) : async ?RouteId {
     // xxx
     null
