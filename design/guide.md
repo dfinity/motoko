@@ -194,7 +194,6 @@ TBC
 
 ### Type fields
 
-
 ```
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
@@ -252,6 +251,15 @@ Given a vector of type arguments instantiating a vector of type parameters,
 each type argument must satisfy the instantiated bounds of the corresponding 
 type parameter.
 
+### Wellformed types
+
+A type `T` is well-formed only if (recursively) its constituent types are well-formed,and: 
+* if `T` is `async U` then `U <: Shared`, and
+* if `T` is `shared < ... > V -> W` then `...` is empty, `U <: Shared` and
+  `W == ()` or `W == async W`, and
+* if `T` is `C<T0, ..., TN>` where `type C<X0 <: U0, Xn <: Un>  = ...` then
+   `Ti <: Ui[T0/X0,...,Tn/Xn]`, for each `0 <= i <= n`. 
+
 ### Subtyping
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true.
@@ -265,7 +273,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 *  `T` is a type parameter `X` declared with constraint 'U'.
 
 *  `T` is a tuple `(T0, ..., Tn)`, `U` is a tuple `(U0, ..., Un)`, 
-    and for each `0 < i <= n`, `Ti <: Ui`.
+    and for each `0 <= i <= n`, `Ti <: Ui`.
 
 *  `T` is an immutable array type `[ V ]`, `U` is an immutable array type  `[ W ]` 
     and `V <: W`.
@@ -284,32 +292,28 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
-*  `T` is a function type `shared? < X0 <: V0, ..., Xn <: Vn > T1 -> T2`, 
-   `U` is a function type `shared? < X0 <: W0, ..., Xn <: Wn > U1 -> U2` and
+*  `T` is a function type `shared? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, 
+   `U` is a function type `shared? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
    * `T` and `U` are either both `shared` or both non-`shared`,
    *  for all `i`, `Vi <: Wi`,
    * `U1 <: T1` and
    * `T2 <: U2`.
   
-    (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of 'U' suptypes the domain of `T` (contra-variance) and the range of 'T' subtypes the range of `U`).
+    (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of `U` suptypes the domain of `T` (contra-variance) and the range of `T` subtypes the range of `U`).
 
-* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor 'C',  to 'W', and `W <: U` (respectively `U <: W`).
+* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
 
 * If, for some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
-
-
-
-
-
-
-
-
-
-### Variance
-
-
-
+* `U` is type `Shared` and `T` equivalent to a:
+  * a `shared` function type, or
+  * a `shared` object type, or
+  * a `actor` object type, or
+  * a scalar primitive type, or
+  * the type`Text`, or
+  * an immutable array type `[V]` with `V <: Shared`, or
+  * an option type `? V` with `V <: Shared`, or
+  * a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti <: Shared`. 
 
 ## Literals
 
