@@ -132,11 +132,14 @@ the interface for the PE service, is also part of the formal PES.  The
 _behavior_ of this actor's implementation defines the _semantic_
 aspects of the PES standard.
 
-**Non-PES files**: Additionally, the `model.as` file defines types used to
-implement the specification behavior given in `actor.as`; this file is
-not part of the PES.  The implementation details of this actor lie
-outside the PES but are also present in the file `actor.as`, in terms
-of types defined in `model.as`.
+**Non-PES files**: Additionally, the `model.as` file defines types
+used to implement the specification behavior given in `actor.as`; this
+file is not part of the PES.  The implementation details of this actor
+lie outside the PES but are also present in the file `actor.as`, in
+terms of types defined in `model.as`.  Whenever possible, we will push
+the implementation of "business logic" into `model.as`, with the
+aspiration of `actor.as` being a minimal wrapper over definitions in
+`model.as`, and little to no logic of its own.
 
 **Interface boundary**: The actor interface boundary only uses types
 from `types.as`, and none from `model.as`; the implementation details
