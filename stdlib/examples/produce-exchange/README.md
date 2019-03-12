@@ -21,39 +21,43 @@ The design of PE now evolves in three places:
  the ActorScript language, its standard library, and elsewhere, the
  ambient DFINITY system that runs ActorScript canisters.
 
-As ActorScript Components
+Scripted uses of the Produce Exchange
+----------------------------------------
+
+- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/produceExchange.as)
+- [ ] Randomly-generated scripts
+
+
+Components in ActorScript
 --------------------------
 
 We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
  1. **Interface types**:  
     Used in messages, and published/stored internally in the actor's
-    state. See
+    state.  
+    See
     [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
  
  2. **Model types**:  
     Used internally to implement the actor, but not present in its
-    interface. See
+    interface.  
+    See
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
     These models use collections from the standard library.
  
  3. **Message types**:  
     Defined by the actor's public signature, which specifies the
-    message formats for each participant. See
+    message formats for each participant.  
+    See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
 
  3. **Message implementations**:  
     Defined by the actor's implementation for each message defined in
-    item 3, in terms of the model collection types defined in item 2.
+    item 3, in terms of the model collection types defined in item 2.  
     See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
 
-
-Scripted uses of the Produce Exchange
-----------------------------------------
-
-- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/produceExchange.as)
-- [ ] Randomly-generated scripts
 
 
 To do list
