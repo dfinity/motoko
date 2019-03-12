@@ -1,5 +1,5 @@
 Produce Exchange Example
-----------------------------
+========================
 
 The produce exchange (PE) is a canonical example Dapp, illustrating
 the DFINITY Dapp design process on a realistic marketplace-like
@@ -21,15 +21,15 @@ The design of PE now evolves in three places:
  the ActorScript language, its standard library, and elsewhere, the
  ambient DFINITY system that runs ActorScript canisters.
 
-Sub-components
----------------
+As ActorScript Components
+--------------------------
 
-We decompose the ActorScript implementation into the following pieces:
+We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
  1. Exchange interface **types** used in messages, and published/stored
     internally in the actor's state. See [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
  
- 2. Exchange **model types** used internally to implement actor, but
+ 2. Exchange **model types** used internally to implement the actor, but
     not present in its interface. See [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  These models
     use collections from the standard library.
  
@@ -66,3 +66,95 @@ those of the *Canister component* in Milestone 2.0 of the [MVP
 Requirements Spec, 1.ii
 above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
 
+
+
+Open Questions:
+================
+
+As part of the to do list above, we have the following questions:
+
+ 1. Massive result messages: How do we represent and send these?
+
+    - lazy lists? (seems "easy" from AS programmer perspective, but
+      requires non-first-order data in the IDL)
+
+    - list iterators? (almost as good as lazy lists, but requires
+      references in the IDL, and complicates the GC story).
+
+    - arrays? (expensive to build and send; can become way *too big*).
+
+
+ 2. For now, wan we assume that the canister is maintained by the
+    central authority?
+
+ 3. "Conditional updates" -- important to Mack
+
+ 4. How complex can the queries become?  Can we do truck-sharing-based
+    queries, where we query as a retailer that expects to share trucks
+    across several producer orders (e.g., in the same origin region).
+    Alternatively, can we order multiple items from a single producer to
+    ship on a single truck route?  Presumably, we can?
+
+ 5. Define a query language?
+    --- Not until ActorScript implements variant types.
+
+----------------------------------------------------------------------------
+
+
+Spec: Produce Exchange Standards (PES)
+========================================
+
+The Produce Exchange is a DFINITY canister whose implementation
+defines a set of _standards_ that to which we refer to collectively as
+the Produce Exchange Standards, or PES.
+
+
+PES, defined formally:
+-----------------------
+
+We break this definition into several files, two of which contain content that gives the
+PES, formally.
+
+```
+import types.as
+import actor.as
+```
+
+These files make the PES formal, to the same degree that ActorScript
+has a formal semantics of its own, in terms of DFINITY's semantics,
+etc.
+
+Additionally, the `model.as` file defines types used to implement the
+specification behavior given in `actor.as`; this file is not part of
+the PES.
+
+The file `types.as` defines ActorScript data types that are included
+in the PES.  These will appear in the messages to and from the produce
+exchange.  The actor class itself (see `actor.as`) gives the interface
+for the PE service, is also part of the formal PES.  The _behavior_ of
+this actor's implementation defines the _semantic_ aspects of the PES
+standard.
+
+The implementation details of this actor lie outside the PES but are
+also present in the file `actor.as`, in terms of types defined in
+`model.as`.
+
+The actor interface boundary only uses types from `types.as`, and none
+from `model.as`; the implementation details of this actor behavior are
+subject to change over time (including changes to `model.as`),
+independently of the standards' own evolution.  We include the full
+implementation details here because the associated behavior is needed
+to define the semantics of the PES, as explained above.
+
+
+PES evolution via canister upgrade
+-----------------------------------
+
+The PES evolves according to the "central authority" (cf PE spec
+document), who we identify as the github repo and open source
+developer community that surrounds this implementation file.
+
+Updating the types in the PES requires changing this file, and
+performing a canister upgrade on the running system.  Similarly, to
+evolve the behavioral definition of PES, the implementation of this
+actor will change, and will require a canister upgrade.
