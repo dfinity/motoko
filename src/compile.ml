@@ -2241,7 +2241,7 @@ module Serialization = struct
       Same for indices into the reference table.
   *)
 
-  let serialize_go env =
+  let rec serialize_go env =
     Func.share_code1 env "serialize_go" ("x", I32Type) [I32Type] (fun env get_x ->
       let (set_copy, get_copy) = new_local env "x'" in
 
@@ -2267,12 +2267,12 @@ module Serialization = struct
           ; Tagged.Some,
             Opt.inject env (
               get_x ^^ Opt.project ^^
-              G.i (Call (nr (E.built_in env "serialize_go")))
+              serialize_go env
             )
           ; Tagged.ObjInd,
             Tagged.obj env Tagged.ObjInd [
               get_x ^^ Heap.load_field 1l ^^
-              G.i (Call (nr (E.built_in env "serialize_go")))
+              serialize_go env
             ]
           ; Tagged.Array,
             begin
@@ -2303,7 +2303,7 @@ module Serialization = struct
                 get_i ^^
                 Array.idx env ^^
                 load_ptr ^^
-                G.i (Call (nr (E.built_in env "serialize_go"))) ^^
+                serialize_go env ^^
                 store_ptr
               ) ^^
               get_copy
@@ -2390,7 +2390,7 @@ module Serialization = struct
                 compile_add_const Heap.word_size ^^
 
                 load_ptr ^^
-                G.i (Call (nr (E.built_in env "serialize_go"))) ^^
+                serialize_go env ^^
                 store_ptr
               ) ^^
               get_copy
@@ -2945,6 +2945,7 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat -> UnboxedInt64
     | Type.Prim Type.Int -> UnboxedInt64
+    | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
     | Type.Prim Type.Text -> Vanilla
@@ -3345,7 +3346,7 @@ let compile_lit_as env sr_out lit =
   code ^^ StackRep.adjust env sr_in sr_out
 
 let compile_unop env t op = Syntax.(match op, t with
-  | NegOp, Type.Prim Type.Int ->
+  | NegOp, Type.(Prim (Int | Word64)) ->
       SR.UnboxedInt64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
@@ -3470,8 +3471,8 @@ let rec compile_binop env t op =
 let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.Prim (Type.Nat | Type.Int) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.Prim Type.(Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.(Prim (Nat | Int | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo "compile_eq" (Arrange.relop Syntax.EqOp) (G.i Unreachable)
 
 let get_relops = Syntax.(function
@@ -3484,7 +3485,7 @@ let get_relops = Syntax.(function
 let compile_comparison t op =
   let u64op, s64op, u32op, s32op = get_relops op
   in Type.(match t with
-     | Nat -> G.i (Compare (Wasm.Values.I64 u64op))
+     | (Nat | Word64) -> G.i (Compare (Wasm.Values.I64 u64op))
      | Int -> G.i (Compare (Wasm.Values.I64 s64op))
      | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
      | _ -> todo "compile_comparison" (Arrange.prim t) (G.i Unreachable))
@@ -3496,7 +3497,7 @@ let compile_relop env t op =
   | _, NeqOp -> compile_eq env t ^^
              G.if_ (StackRep.to_block_type env SR.bool)
                    (Bool.lit false) (Bool.lit true)
-  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Char as t1), op1 ->
+  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
      compile_comparison t1 op1
   | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
   )
