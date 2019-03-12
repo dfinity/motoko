@@ -26,24 +26,27 @@ As ActorScript Components
 
 We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
- 1. Exchange interface **types**  
-    used in messages, and published/stored
-    internally in the actor's state. See [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
+ 1. Interface **types**:  
+    Used in messages, and published/stored internally in the actor's
+    state. See
+    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
  
- 2. Exchange **model types**  
-    used internally to implement the actor, but
-    not present in its interface. See [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  These models
-    use collections from the standard library.
+ 2. **Model types**:  
+    Used internally to implement the actor, but not present in its
+    interface. See
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
+    These models use collections from the standard library.
  
- 3. Exchange **message types**  
-    defined by the actor's public
-    signature, which specifies the message formats for each
-    participant. See [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+ 3. **Message types**:  
+    Defined by the actor's public signature, which specifies the
+    message formats for each participant. See
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
 
- 3. Exchange **message implementations**  
-    defined by the actor's
-    implementation for each message defined in item 3, in terms of the
-    model collection types defined in item 2.  See [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+ 3. **Message implementations**:  
+    Defined by the actor's implementation for each message defined in
+    item 3, in terms of the model collection types defined in item 2.
+    See
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
  
 
 To do list
