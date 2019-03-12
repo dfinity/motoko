@@ -3,9 +3,9 @@ Internal Data Model
 ===============================
 
 Here, we depart from defining the PES, and turn our attention to the
-internal representation of the actor's state.  As explained above, the
-behavior of this actor is part of the PES, but the internal data model
-representations it uses are not.
+internal representation of the actor's state.  The behavior of this
+actor is part of the PES, but the internal data model representations
+it uses are not.
 
 Hence, we have the freedom to model the system to best match the kinds
 of updates and queries that we must handle now, and anticipate
@@ -54,7 +54,7 @@ Formally, these types define the types of forests (a set of trees with many
 roots) that constitute our internal data model.
 
 For each kind of structure below, we assume a type of unique Id
-(defined above, in the formal PES).  We associate information, such as
+(defined in `types.as`, in the formal PES).  We associate information, such as
 textual names and descriptions, where appropriate.  We include other
 fields from the PES, such as "units", "grades", "dates" and time
 intervals (start/end dates), each where appropriate.

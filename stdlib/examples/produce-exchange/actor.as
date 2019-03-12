@@ -35,6 +35,8 @@ actor class ProduceExchange() {
    Internal data model, in terms of the collection types defined above
    ====================================================================
 
+   First, see the types defined in `model.as`.
+
   // Mostly-static collections:
   // ---------------------------
   // Represents the following tables:

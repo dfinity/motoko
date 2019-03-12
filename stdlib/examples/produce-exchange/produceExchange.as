@@ -54,18 +54,21 @@ the Produce Exchange Standards, or PES.
 PES, defined formally:
 -----------------------
 
-We break this definition into three files, whose content gives the
+We break this definition into several files, two of which contain content that gives the
 PES, formally.
 
 ```
 import types.as
-import model.as
 import actor.as
 ```
 
 These files make the PES formal, to the same degree that ActorScript
 has a formal semantics of its own, in terms of DFINITY's semantics,
 etc.
+
+Additionally, the `model.as` file defines types used to implement the
+specification behavior given in `actor.as`; this file is not part of
+the PES.
 
 The file `types.as` defines ActorScript data types that are included
 in the PES.  These will appear in the messages to and from the produce
@@ -99,3 +102,6 @@ evolve the behavioral definition of PES, the implementation of this
 actor will change, and will require a canister upgrade.
 
 */
+
+
+// xxx regression tests go here
