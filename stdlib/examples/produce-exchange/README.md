@@ -101,6 +101,9 @@ As part of the to do list above, we have the following questions:
 
     - arrays? (expensive to build and send; can become way *too big*).
 
+    **2019.03.12 -- TODO-Cursors:** Introduce the idea of "cursors", with
+    allocation, de-allocation and movement messages, as per discussion in
+    the 2019.03.12 ActorScript Team meeting.
 
  2. For now, wan we assume that the canister is maintained by the
     central authority?

@@ -46,7 +46,7 @@ type RetailerId    = Nat;
 type TransporterId = Nat;
 
 type RouteId       = Nat;
-type OrderId       = Nat;
+type ReservationId = Nat;
 
 /**
 //
@@ -55,9 +55,14 @@ type OrderId       = Nat;
 // Externally, these types define the input and output structures for PES queries.
 // Internally, producing instances of the result structures will require
 // performing joins based on internal tables, and the information from the input structures.
+
+// Note: We are using "reserve", "reserved" and "reservation" in place of "order"
+// below, since "order" and "ordering" have too many meanings in a
+// broader CS/programming/query context.
+
 */
 
-type OrderInfo = shared {
+type ReservationInfo = shared {
   produce:     ProduceId;
   producer:    ProducerId;
   quant:       Quantity;
@@ -73,22 +78,8 @@ type OrderInfo = shared {
   trans_cost:  PriceTotal;
 };
 
-// xxx same as an OrderInfo?  If different, then how?
-type QueryAllResult = shared {
-  produce:     ProduceId;
-  producer:    ProducerId;
-  quant:       Quantity;
-  ppu:         PricePerUnit;
-  transporter: TransporterId;
-  truck_type:  TruckTypeId;
-  weight:      Weight;
-  region_begin:RegionId;
-  region_end:  RegionId;
-  date_begin:  Date;
-  date_end:    Date;
-  prod_cost:   PriceTotal;
-  trans_cost:  PriceTotal;
-};
+// xxx same as a reservation structure; represents a possible reservation to make
+type QueryAllResult = ReservationInfo;
 
 /**
 

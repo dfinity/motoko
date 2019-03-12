@@ -103,10 +103,6 @@ internal sharing:
 
 */
 
-// Using "reserve", "reserved" and "reservation" in place of "order"
-// below, since "order" and "ordering" have too many meanings.
-type ReservationId = OrderId;
-
 type TruckType = {
   id : TruckTypeId;
   short_name : Text;

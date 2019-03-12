@@ -28,7 +28,7 @@ actor class ProduceExchange() {
   private var nextInventoryId : InventoryId = 0;
   private var nextTransporterId : TransporterId = 0;
   private var nextxRouteId : RouteId = 0;
-  private var nextOrderId : OrderId = 0;
+  private var nextReservationId : ReservationId = 0;
 
   /**
 
@@ -288,7 +288,7 @@ actor class ProduceExchange() {
   // producerOrders
   // ---------------------------
   */
-  producerOrders(id:ProducerId) : async ?[OrderId] {
+  producerOrders(id:ProducerId) : async ?[ReservationId] {
     // xxx
     null
   };
@@ -328,7 +328,7 @@ actor class ProduceExchange() {
   // transporterOrders
   // ---------------------------
   */
-  transporterOrders(id:TransporterId) : async ?[OrderId] {
+  transporterOrders(id:TransporterId) : async ?[ReservationId] {
     // xxx
     null
   };
@@ -352,10 +352,10 @@ actor class ProduceExchange() {
   // retailerPlaceOrder
   // ---------------------------
   */
-  retailerPlaceOrder(
+  retailerReserve(
     id:RetailerId,
     inventory:InventoryId,
-    route:RouteId) : async ?OrderId
+    route:RouteId) : async ?ReservationId
   {
     // xxx
     null
@@ -368,7 +368,7 @@ actor class ProduceExchange() {
   TODO-Cursors (see above).
 
   */
-  retailerOrders(id:RetailerId) : async ?[OrderId] {
+  retailerReservations(id:RetailerId) : async ?[ReservationId] {
     // xxx
     null
   };
@@ -377,10 +377,10 @@ actor class ProduceExchange() {
   // PES: (Producer/Transporter/Retailer) ingress messages:
   // ========================================================
 
-  // orderInfo
+  // reservationInfo
   // ---------------------------
   **/
-  orderInfo(id:OrderId) : async ?OrderInfo {
+  reservationInfo(id:ReservationId) : async ?ReservationInfo {
     // xxx
     null
   };
