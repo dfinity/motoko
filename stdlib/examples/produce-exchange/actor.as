@@ -349,7 +349,7 @@ actor class ProduceExchange() {
   };
 
   /**
-  // retailerPlaceOrder
+  // retailerReserve
   // ---------------------------
   */
   retailerReserve(
@@ -362,7 +362,7 @@ actor class ProduceExchange() {
   };
 
   /**
-  // retailerOrders
+  // retailerReservations
   // ---------------------------
 
   TODO-Cursors (see above).
