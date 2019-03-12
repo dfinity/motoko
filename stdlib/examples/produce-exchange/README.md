@@ -29,7 +29,7 @@ This example is a work in progress.
 It will be finished (and merged to `master`) when the following are in
 a stable state, and working locally, as locally-running ActorScript.
 
-These same requirements overlap with those of **Milestone 2.0**
+The requirements below correspond with those of the Canister component in **Milestone 2.0**
 of the [MVP Requirements Spec, 1.ii above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
 
   1. **the exchange’s interface definition**, as an ActorScript actor.
