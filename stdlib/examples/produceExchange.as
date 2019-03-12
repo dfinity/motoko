@@ -262,15 +262,16 @@ To understand how this forest is rooted, see the private variables
 defined by the actor:
 
 ```
-  private var produce : ProduceTable = null;
-  private var regions : RegionTable = null;
+  private var trucktypes : TruckTypesTable = null;
+  private var produce    : ProduceTable = null;
+  private var regions    : RegionTable = null;
 
   private var producers    : ProducerTable = null;
   private var transporters : TransporterTable = null;
   private var retailers    : RetailerTable = null;
 ```
 
-The first two tables are set up by the central authority when the Dapp
+The first three tables are set up by the central authority when the Dapp
 launches, and change seldomly.
 
 The next three tables contain the interesting state of the system.
@@ -432,10 +433,11 @@ formal PES.
 */
 actor class ProduceExchange() {
 
+  private var nextTruckTypeId : TruckTypeId = 0;
+  private var nextRegionId : RegionId = 0;
   private var nextProduceId : ProduceId = 0;
   private var nextProducerId : ProducerId = 0;
   private var nextRetailerId : RetailerId = 0;
-  private var nextTruckTypeId : TruckTypeId = 0;
   private var nextInventoryId : InventoryId = 0;
   private var nextTransporterId : TransporterId = 0;
   private var nextxRouteId : RouteId = 0;
@@ -449,18 +451,20 @@ actor class ProduceExchange() {
   // Mostly-static collections:
   // ---------------------------
   // Represents the following tables:
-  //  - producers table
-  //  - inventory table
+  //  - regions table
+  //  - produce table
+  //  - truck type table
   */
 
-  private var produce : ProduceTable = null;
   private var regions : RegionTable = null;
+  private var produce : ProduceTable = null;
+  private var truckTypes : TruckTypeTable = null;
 
   /**
   // Producers collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
-  //  - producers table
+  //  - producer table
   //  - inventory table
   //  - orderedInventory table
   */
@@ -471,9 +475,9 @@ actor class ProduceExchange() {
   // Transporters collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
-  //  - transporters table
+  //  - transporter table
   //  - route table
-  //  - orderedRoutes table
+  //  - orderedRoute table
   */
   private var transporters : TransporterTable = null;
 
@@ -481,8 +485,8 @@ actor class ProduceExchange() {
   // Retailers collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
-  //  - retailers table
-  //  - orders table
+  //  - retailer table
+  //  - order table
   */
   private var retailers : RetailerTable = null;
 
