@@ -74,7 +74,7 @@ those of the *Canister component* in Milestone 2.0 of the [MVP
 Requirements Spec, 1.ii
 above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
 
-
+----------------------------------------------------------------------------
 
 Open Questions:
 ================
