@@ -39,6 +39,9 @@ Open Questions:
     Alternatively, can we order multiple items from a single producer to
     ship on a single truck route?  Presumably, we can?
 
+ 5. Define a query language? 
+    --- Not until ActorScript implements variant types.
+
 */
 
 
@@ -180,7 +183,15 @@ type QueryAllResult = shared {
   trans_cost:  PriceTotal;
 };
 
-// xxx how to represent huge result messages?
+/**
+
+xxx how to represent huge result messages?
+
+2019.03.12 *** TODO-Cursors: Introduce the idea of "cursors", with
+allocation, de-allocation and movement messages, as per discussion in
+the 2019.03.12 ActorScript Team meeting.
+
+*/
 
 type QueryAllResults = [QueryAllResult];
 
@@ -387,16 +398,26 @@ type ReservedRoute = {
 
 type ReservedRouteTable = Map<ReservationId, ReservedRoute>;
 
+/**
 
-//
-// the Produce Exchange interface, as an ActorScript actor.  This
-// actor gives a collection of ingress messages and corresponding
-// response types for each participant in the exchange.  As explained
-// above, it also gives a behavioral spec of the exchange's semantics,
-// by giving a prototype implementation of this behavior, whose
-// functional behavior, not implementation details, are part of the
-// formal PES.
-//
+PES: Produce Exchange message formats
+=======================================
+
+As part of the PES definition, we define format of each message sent
+by a participant, and response received in return.  In ActorScript,
+this format specification corresponds to the public-facing signature
+of the actor defined below.
+
+This actor gives a collection of ingress messages and corresponding
+response types for each participant in the exchange, using only types
+defined in the PES (e.g., no collection types, no standard library
+types, and no higher-order ActorScript types).  As explained above,
+this actor also gives a behavioral spec of the exchange's semantics,
+by giving a prototype implementation of this behavior, whose
+functional behavior, not implementation details, are part of the
+formal PES.
+
+*/
 actor class ProduceExchange() {
 
   private var nextProduceId : ProduceId = 0;
@@ -408,40 +429,54 @@ actor class ProduceExchange() {
   private var nextxRouteId : RouteId = 0;
   private var nextOrderId : OrderId = 0;
 
+  /**
+
+   Internal data model, in terms of the collection types defined above
+   ====================================================================
+
   // Mostly-static collections:
   // ---------------------------
   // Represents the following tables:
   //  - producers table
   //  - inventory table
+  */
+
   private var produce : ProduceTable = null;
   private var regions : RegionTable = null;
 
+  /**
   // Producers collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - producers table
   //  - inventory table
   //  - orderedInventory table
+  */
   private var producers : ProducerTable = null;
 
 
+  /**
   // Transporters collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - transporters table
   //  - route table
   //  - orderedRoutes table
+  */
   private var transporters : TransporterTable = null;
 
+  /**
   // Retailers collection:
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - retailers table
   //  - orders table
+  */
   private var retailers : RetailerTable = null;
 
 
-  // Registrar-based ingress messages
+  /*
+  // PES: Registrar-based ingress messages
   // ================================================
   // Add/remove support across various mostly-static tables:
   //
@@ -458,6 +493,7 @@ actor class ProduceExchange() {
   //
   // adds the produce to the system; fails if the given information is
   // invalid in any way.
+  */
 
   registrarAddRegion(
     short_name:  Text,
@@ -582,12 +618,15 @@ actor class ProduceExchange() {
   };
 
 
-  // Producer-based ingress messages:
+  /**
+  // PES: Producer-based ingress messages:
   // ==========================================
+  */
 
-
+  /**
   // producerAddInventory
   // ---------------------------
+  */
   producerAddInventory(
     id:   ProducerId,
     prod: ProduceId,
@@ -600,28 +639,33 @@ actor class ProduceExchange() {
     null
   };
 
+  /**
   // producerRemInventory
   // ---------------------------
-
+  */
   producerRemInventory(id:InventoryId) : async ?() {
     // xxx
     null
   };
 
+  /**
   // producerOrders
   // ---------------------------
-
+  */
   producerOrders(id:ProducerId) : async ?[OrderId] {
     // xxx
     null
   };
 
-  // Transporter-based ingress messages:
-  // ===================================
+  /**
+  // PES: Transporter-based ingress messages:
+  // ===========================================
+  */
 
+  /**
   // transporterAddRoute
   // ---------------------------
-
+  */
   transporterAddRoute(
     trans:  TransporterId,
     rstart: RegionId,
@@ -635,36 +679,43 @@ actor class ProduceExchange() {
     null
   };
 
+  /**
   // transporterRemRoute
   // ---------------------------
-
+  */
   transporterRemRoute(id:RouteId) : async ?() {
     // xxx
     null
   };
 
+  /**
   // transporterOrders
   // ---------------------------
-
+  */
   transporterOrders(id:TransporterId) : async ?[OrderId] {
     // xxx
     null
   };
 
-  // Retailer-based ingress messages:
-  // ===================================
+  /**
+  // PES: Retailer-based ingress messages:
+  // ======================================
 
   // retailerQueryAll
   // ---------------------------
 
+  TODO-Cursors (see above).
+
+  */
   retailerQueryAll(id:RetailerId) : async ?QueryAllResults {
     // xxx
     null
   };
 
+  /**
   // retailerPlaceOrder
   // ---------------------------
-
+  */
   retailerPlaceOrder(
     id:RetailerId,
     inventory:InventoryId,
@@ -674,20 +725,25 @@ actor class ProduceExchange() {
     null
   };
 
+  /**
   // retailerOrders
   // ---------------------------
 
+  TODO-Cursors (see above).
+
+  */
   retailerOrders(id:RetailerId) : async ?[OrderId] {
     // xxx
     null
   };
 
-  // (Producer/Transporter/Retailer) ingress messages:
+  /**
+  // PES: (Producer/Transporter/Retailer) ingress messages:
   // ========================================================
 
   // orderInfo
   // ---------------------------
-
+  **/
   orderInfo(id:OrderId) : async ?OrderInfo {
     // xxx
     null
