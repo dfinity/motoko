@@ -55,7 +55,7 @@ actor class ProduceExchange() {
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - producer table
   //  - inventory table
-  //  - orderedInventory table
+  //  - reservedInventory table (formerly "orderedInventory" table)
   */
   private var producers : ProducerTable = null;
 
@@ -66,7 +66,7 @@ actor class ProduceExchange() {
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - transporter table
   //  - route table
-  //  - orderedRoute table
+  //  - reservedRoute table (formerly "orderedRoutes" table)
   */
   private var transporters : TransporterTable = null;
 
@@ -75,7 +75,7 @@ actor class ProduceExchange() {
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - retailer table
-  //  - order table
+  //  - reservation table (formerly "orders" table)
   */
   private var retailers : RetailerTable = null;
 
@@ -285,10 +285,10 @@ actor class ProduceExchange() {
   };
 
   /**
-  // producerOrders
+  // producerReservations
   // ---------------------------
   */
-  producerOrders(id:ProducerId) : async ?[ReservationId] {
+  producerReservations(id:ProducerId) : async ?[ReservationId] {
     // xxx
     null
   };
@@ -325,10 +325,10 @@ actor class ProduceExchange() {
   };
 
   /**
-  // transporterOrders
+  // transporterReservations
   // ---------------------------
   */
-  transporterOrders(id:TransporterId) : async ?[ReservationId] {
+  transporterReservations(id:TransporterId) : async ?[ReservationId] {
     // xxx
     null
   };
