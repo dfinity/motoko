@@ -50,6 +50,15 @@ func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
 func intToWord32(n : Int) : Word32 = (prim "Int->Word32" : Int -> Word32) n;
 func word32ToInt(n : Word32) : Int = (prim "Word32->Int" : Word32 -> Int) n;
 
+func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
+func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
+
+// Exotic bitwise operations
+func shrsWord32(w : Word32, amount : Word32) : Word32 = (prim "shrs" : (Word32, Word32) -> Word32) (w, amount);
+func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
+func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
+func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
+
 
 // This would be nicer as a objects, but lets do them as functions
 // until the compiler has a concept of “static objects”
@@ -141,6 +150,25 @@ let prim = function
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
 
+  | "Char->Word32" -> fun v k ->
+                      let i = as_char v
+                      in k (Word32 (Word32.of_int_u i))
+  | "Word32->Char" -> fun v k ->
+                      let i = Conv.of_signed_Word32 (as_word32 v)
+                      in k (Char i)
+  | "shrs" -> fun v k ->
+              let w, a = as_pair v in
+              let i = Word32.shr_s (as_word32 w)  (as_word32 a)
+              in k (Word32 i)
+  | "popcnt" -> fun v k ->
+                let i = Word32.popcnt (as_word32 v)
+                in k (Word32 i)
+  | "clz" -> fun v k ->
+             let i = Word32.clz (as_word32 v)
+             in k (Word32 i)
+  | "ctz" -> fun v k ->
+             let i = Word32.ctz (as_word32 v)
+             in k (Word32 i)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->

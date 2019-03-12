@@ -1,3 +1,0 @@
-compile_lit: (Word8Lit 255)
-compile_lit: (Word16Lit 6_5535)
-compile_lit: (CharLit 2612)
