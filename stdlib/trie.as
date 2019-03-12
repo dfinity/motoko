@@ -118,8 +118,8 @@ let Trie = new {
   // XXX: until AST-42:
   func assertIsNull<X>(x : ?X) {
     switch x {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
+    case null { assert true  };
+    case (?_) { assert false };
     };
   };
 
@@ -143,8 +143,8 @@ let Trie = new {
   // XXX: until AST-42:
   func assertIsEmpty<K,V>(t : Trie<K,V>) {
     switch t {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
+    case null { assert true  };
+    case (?_) { assert false };
     };
   };
 
@@ -199,7 +199,7 @@ let Trie = new {
   // XXX: until AST-42:
   func assertIsBin<K,V>(t : Trie<K,V>) {
     switch t {
-    case null { assert(false) };
+    case null { assert false };
     case (?n) {
 	         assertIsNull<((Key<K>,V),AssocList<Key<K>,V>)>(n.keyvals);
          };
@@ -270,11 +270,11 @@ let Trie = new {
 	      // create new bin node for this bit of the hash
 	      let path = rec(bitpos+1);
 	      let bit = getHashBit(k.hash, bitpos);
-	      if (not bit) {
-	        ?(new {left=path; right=null; keyvals=null})
+	      if bit {
+	        ?(new {left=null; right=path; keyvals=null})
 	      }
 	      else {
-	        ?(new {left=null; right=path; keyvals=null})
+	        ?(new {left=path; right=null; keyvals=null})
 	      }
       } else {
 	      // create new leaf for (k,v) pair, if the value is non-null:
@@ -387,12 +387,12 @@ let Trie = new {
 	                  makeBin<K,V>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tr
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tr
 	                };
@@ -435,12 +435,12 @@ let Trie = new {
 	                  makeBin<K,V>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tl
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tl
 	                };
@@ -506,12 +506,12 @@ let Trie = new {
 	                  makeBin<K,X>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
@@ -551,12 +551,12 @@ let Trie = new {
 	                  makeBin<K,X>(t0, t1)
 	                };
 	           case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
 	           case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };

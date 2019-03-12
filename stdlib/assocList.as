@@ -61,7 +61,7 @@ let AssocList = new {
     rec(al)
   };
 
-  // The key-value pairs of the final list consists of those pairs of
+  // The key-value pairs of the final list consist of those pairs of
   // the left list whose keys are not present in the right list; the
   // values of the right list are irrelevant.
   func diff<K,V,W>(al1: AssocList<K,V>,
