@@ -56,6 +56,7 @@ This example is a work in progress.  It will be finished (and merged
 to `master`) when the following are in a stable state, and working
 locally, as locally-running ActorScript.
 
+**Requirements list**:  
   1. **the exchange’s interface definition**, as an ActorScript actor.
 
   2.  **the behavior of the exchange**, as that actor’s prototype
@@ -68,7 +69,7 @@ locally, as locally-running ActorScript.
   4. **tests** of the above, using local execution and
      ActorScript-based test cases.
 
-**Canister component**: These requirements above also correspond with
+**Canister component**: The requirements listed above also correspond with
 those of the *Canister component* in Milestone 2.0 of the [MVP
 Requirements Spec, 1.ii
 above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
