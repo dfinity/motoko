@@ -256,15 +256,15 @@ type parameter.
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true.
 
-* `T` equals `U`.
+* `T` equals `U` (reflectivity).
 
 * `U` equals `Any`. 
 
 * `T` equals `None`.
 
-*  `T' is a type parameter `X`, declared with constraint 'U'.
+*  `T` is a type parameter `X` declared with constraint 'U'.
 
-*  `T` is a tuple `(T0,...,Tn)`, `U` is a tuple `(U0,...,Un)`, 
+*  `T` is a tuple `(T0, ..., Tn)`, `U` is a tuple `(U0, ..., Un)`, 
     and for each `0 < i <= n`, `Ti <: Ui`.
 
 *  `T` is an immutable array type `[ V ]`, `U` is an immutable array type  `[ W ]` 
@@ -273,7 +273,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 *  `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]` 
     and `V == W`.
 
-*  `T` is a promise `async V`, `U` is a promise `W`, 
+*  `T` is a promise `async V`, `U` is a promise `async W`, 
     and `V <: W`.
 
 *  `T` is an object type `sort0 { fts0 }`, 
@@ -284,8 +284,8 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
-*  `T` is a function type `shared? <X0:V0,...,Xn,Vn> T1 -> T2`, 
-   `U` is a function type `shared? <X0:W0,...,Xn,Wn> U1 -> U2` and
+*  `T` is a function type `shared? < X0 <: V0, ..., Xn <: Vn > T1 -> T2`, 
+   `U` is a function type `shared? < X0 <: W0, ..., Xn <: Wn > U1 -> U2` and
    * `T` and `U` are either both `shared` or both non-`shared`,
    *  for all `i`, `Vi <: Wi`,
    * `U1 <: T1` and
@@ -293,12 +293,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   
     (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of 'U' suptypes the domain of `T` (contra-variance) and the range of 'T' subtypes the range of `U`).
 
-* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor 'C',  to 'W', then `T <: U` when `W <: U` (respectively `U <: W`).
+* If `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor 'C',  to 'W', and `W <: U` (respectively `U <: W`).
 
-Subtyping is *transitive*: if `T <: U` and `U <: V`, then `T <: V`.
-
-
-
+* If, for some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
 
 
