@@ -132,27 +132,26 @@ These files make the PES formal, to the same degree that ActorScript
 has a formal semantics of its own, in terms of DFINITY's semantics,
 etc.
 
-Additionally, the `model.as` file defines types used to implement the
-specification behavior given in `actor.as`; this file is not part of
-the PES.
+**Files**: The file `types.as` defines ActorScript data types that are
+included in the PES.  These will appear in the messages to and from
+the produce exchange.  The actor class itself (see `actor.as`) gives
+the interface for the PE service, is also part of the formal PES.  The
+_behavior_ of this actor's implementation defines the _semantic_
+aspects of the PES standard.
 
-The file `types.as` defines ActorScript data types that are included
-in the PES.  These will appear in the messages to and from the produce
-exchange.  The actor class itself (see `actor.as`) gives the interface
-for the PE service, is also part of the formal PES.  The _behavior_ of
-this actor's implementation defines the _semantic_ aspects of the PES
-standard.
+Additionally, the `model.as` file defines types used to
+implement the specification behavior given in `actor.as`; this file is
+not part of the PES.  The implementation details of this actor lie
+outside the PES but are also present in the file `actor.as`, in terms
+of types defined in `model.as`.
 
-The implementation details of this actor lie outside the PES but are
-also present in the file `actor.as`, in terms of types defined in
-`model.as`.
-
-The actor interface boundary only uses types from `types.as`, and none
+**Interface boundary**: The actor interface boundary only uses types from `types.as`, and none
 from `model.as`; the implementation details of this actor behavior are
 subject to change over time (including changes to `model.as`),
 independently of the standards' own evolution.  We include the full
 implementation details here because the associated behavior is needed
 to define the semantics of the PES, as explained above.
+
 
 
 PES evolution via canister upgrade
