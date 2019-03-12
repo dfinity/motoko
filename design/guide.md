@@ -266,7 +266,7 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true.
 
-* `T` equals `U` (reflectivity).
+* `T` equals `U` (reflexivity).
 
 * `U` equals `Any`. 
 
