@@ -24,13 +24,9 @@ The design of PE now evolves in three places:
 To do list
 -----------
 
-This example is a work in progress.
-
-It will be finished (and merged to `master`) when the following are in
-a stable state, and working locally, as locally-running ActorScript.
-
-The requirements below correspond with those of the Canister component in **Milestone 2.0**
-of the [MVP Requirements Spec, 1.ii above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
+This example is a work in progress.  It will be finished (and merged
+to `master`) when the following are in a stable state, and working
+locally, as locally-running ActorScript.
 
   1. **the exchange’s interface definition**, as an ActorScript actor.
 
@@ -43,4 +39,9 @@ of the [MVP Requirements Spec, 1.ii above](https://dfinity.atlassian.net/wiki/sp
 
   4. **tests** of the above, using local execution and
      ActorScript-based test cases.
+
+**Canister component**: These requirements above also correspond with
+those of the *Canister component* in Milestone 2.0 of the [MVP
+Requirements Spec, 1.ii
+above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
 
