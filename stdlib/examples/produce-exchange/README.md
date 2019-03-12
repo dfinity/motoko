@@ -138,12 +138,13 @@ not part of the PES.  The implementation details of this actor lie
 outside the PES but are also present in the file `actor.as`, in terms
 of types defined in `model.as`.
 
-**Interface boundary**: The actor interface boundary only uses types from `types.as`, and none
-from `model.as`; the implementation details of this actor behavior are
-subject to change over time (including changes to `model.as`),
-independently of the standards' own evolution.  We include the full
-implementation details here because the associated behavior is needed
-to define the semantics of the PES, as explained above.
+**Interface boundary**: The actor interface boundary only uses types
+from `types.as`, and none from `model.as`; the implementation details
+of this file and its use in the actor behavior are both subject to
+change over time, independently of the standards' own evolution.  We
+include the full implementation details here because the associated
+behavior is needed to define the semantics of the PES, as explained
+above.
 
 
 
