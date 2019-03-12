@@ -120,17 +120,9 @@ the _"Produce Exchange Standards"_, or _"PES"_ for short.
 PES, defined formally:
 -----------------------
 
-We break this definition into several files, two of which contain content that gives the
-PES, formally.
-
-```
-import types.as
-import actor.as
-```
-
-These files make the PES formal, to the same degree that ActorScript
-has a formal semantics of its own, in terms of DFINITY's semantics,
-etc.
+We break this definition into several files. These files make the PES
+formal, to the same degree that ActorScript has a formal semantics of
+its own, in terms of DFINITY's semantics, etc.
 
 **Files**: The file `types.as` defines ActorScript data types that are
 included in the PES.  These will appear in the messages to and from
