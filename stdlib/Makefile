@@ -2,12 +2,12 @@ ASC=../src/asc
 OUTDIR=_out
 
 ## VT100 stuff
-HRULE="\x1b[2;34m----------------------------------------------------------------\x1b[0m"
-MODULE_NAME="\x1b[1;32mModule:\x1b[1;34m"
-BEGIN="\x1b[0;1mBegin...\x1b[0m"
-DONE="\x1b[1mDone.\n"$(HRULE)
-MODULE_NAME_COLOR="\x1b[0;1;34m"
-NO_COLOR="\x1b[0m"
+HRULE=\x1b[2;34m----------------------------------------------------------------\x1b[0m
+MODULE_NAME=\x1b[1;32mModule:\x1b[1;34m
+BEGIN=\x1b[0;1mBegin...\x1b[0m
+DONE=\x1b[1mDone.\n$(HRULE)
+MODULE_NAME_COLOR=\x1b[0;1;34m
+NO_COLOR=\x1b[0m
 
 # Add new module targets here:
 MODULES=\
@@ -29,11 +29,11 @@ OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 default: all
 
 startmsg:
-	@echo Begin build: $(MODULE_NAME_COLOR)$(MODULES)$(NO_COLOR)...
-	@echo $(HRULE)
+	@echo -e 'Begin build: $(MODULE_NAME_COLOR)$(MODULES)$(NO_COLOR)...'
+	@echo -e '$(HRULE)'
 
 all: $(OUTDIR) startmsg $(OUTPATHS)
-	@echo Build done : $(MODULE_NAME_COLOR)$(MODULES)$(NO_COLOR)
+	@echo -e 'Build done : $(MODULE_NAME_COLOR)$(MODULES)$(NO_COLOR)'
 
 clean:
 	rm -rf $(OUTDIR)
@@ -43,46 +43,46 @@ $(OUTDIR):
 
 
 $(OUTDIR)/List.out: $(OUTDIR) list.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/ListTest.out: $(OUTDIR) list.as listTest.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/Trie.out: $(OUTDIR) list.as trie.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/Set.out: $(OUTDIR) list.as trie.as set.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/SetDb.out: $(OUTDIR) list.as trie.as set.as setDb.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as trie.as set.as setDb.as setDbTest.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 $(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as trie.as examples/produceExchange.as
-	@echo $(MODULE_NAME) $(basename $(notdir $@))
-	@echo $(BEGIN)
+	@echo -e '$(MODULE_NAME) $(basename $(notdir $@))'
+	@echo -e '$(BEGIN)'
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-	@echo $(DONE)
+	@echo -e '$(DONE)'
 
 
 #########################################################################################
