@@ -369,9 +369,9 @@ type TransporterTable = Map<TransporterId, Transporter>;
 
 type Route = {
   id : RouteId;
-  transporter : TransporterId;
-  start_region : RegionId;
-  end_region : RegionId;
+  transporter : Transporter;
+  start_region : Region;
+  end_region : Region;
   start_date : Date;
   end_date : Date;
   // ... more?
@@ -442,33 +442,144 @@ actor class ProduceExchange() {
 
 
   // Registrar-based ingress messages
-  // =======================================
-  // The registrar adds and removes producers, retailers and transporters.
+  // ================================================
+  // Add/remove support across various mostly-static tables:
+  //
+  // - produce and region information.
+  // - participants: producers, retailers and transporters.
+  //
+  // For each of the five entities listed above, we have an add
+  // (`Add`) and remove (`Rem`) function below, prefixed by
+  // `registrar`-, and suffixed by one of the entities in `Region`,
+  // `Produce`, `Producer`, `Retailer`, `Transporter`.
+
+  // registrarAddProduce
+  // ---------------------
+  //
+  // adds the produce to the system; fails if the given information is
+  // invalid in any way.
+
+  registrarAddRegion(
+    short_name:  Text,
+    description: Text,
+  ) : async ?RegionId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemRegion(
+    id: RegionId
+  ) : async ?() {
+    // xxx
+    null
+  };
+
+  // registrarAddProduce
+  // ---------------------
+  //
+  // adds the produce to the system; fails if the given information is invalid in any way.
+
+  registrarAddProduce(
+    short_name:  Text,
+    description: Text,
+    grade: Grade,
+  ) : async ?ProduceId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemProduce(
+    id: ProduceId
+  ) : async ?() {
+    // xxx
+    null
+  };
+
 
   // registrarAddProducer
   // ---------------------
   //
+  // adds the producer to the system; fails if the given region is non-existent.
+
+  registrarAddProducer(
+    short_name:  Text,
+    description: Text,
+    region: RegionId,
+  ) : async ?ProducerId {
+    // xxx
+    null
+  };
 
   // registrarRemProducer
   // ---------------------
   //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemProducer(
+    id: ProducerId
+  ) : async ?() {
+    // xxx
+    null
+  };
 
   // registrarAddRetailer
   // ---------------------
   //
+  // adds the producer to the system; fails if the given region is non-existent.
+
+  registrarAddRetailer(
+    short_name:  Text,
+    description: Text,
+    region: RegionId,
+  ) : async ?RetailerId {
+    // xxx
+    null
+  };
 
   // registrarRemRetailer
   // ---------------------
   //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemRetailer(
+    id: RetailerId
+  ) : async ?() {
+    // xxx
+    null
+  };
 
   // registrarAddTransporter
   // ---------------------
   //
+  registrarAddTransporter(
+    short_name:  Text,
+    description: Text,
+  ) : async ?TransporterId {
+    // xxx
+    null
+  };
 
 
   // registrarRemTransporter
   // ---------------------
   //
+
+  registrarRemTransporter(
+    id: TransporterId
+  ) : async ?() {
+    // xxx
+    null
+  };
 
 
   // Producer-based ingress messages:
