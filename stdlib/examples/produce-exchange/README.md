@@ -11,12 +11,10 @@ The design of PE now evolves in three places:
 
  1. [Documentation on confluence, under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).
 
- 2. The SDK team's documentation:
-
-  i. [The design document, under the SDK
+ 2. The SDK team's documentation:  
+    i. [The design document, under the SDK
      space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).
-
-  ii. [The requirements document for the MVP
+    ii. [The requirements document for the MVP
       Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
  3. This example folder in the ActorScript repo.  
