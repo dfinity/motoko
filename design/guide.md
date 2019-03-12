@@ -278,9 +278,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 *  `T` is an object type `sort0 { fts0 }`, 
    `U` is an object type `sort1 { fts1 }` and
-   * `sort1` == `sort2`
-   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W` and
-   * if field 'var id : V $ is in `fts0` then  `id : W` is in `fts1` and `V == W`.
+   * `sort1` == `sort2`, and, for all fields,
+   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and 
+   * if mutable field `var id : V` is in `fts0` then  `id : W` is in `fts1` and `V == W`.
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
