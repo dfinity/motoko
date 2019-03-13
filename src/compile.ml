@@ -421,7 +421,7 @@ let new_local env name =
   let (set_i, get_i, _) = new_local_ env I32Type name
   in (set_i, get_i)
 
-let new_local64 env name =
+let _new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
@@ -3564,31 +3564,15 @@ and compile_exp (env : E.t) exp =
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
-    SR.Vanilla,
     begin
-     compile_exp_vanilla env e1 ^^
-     compile_exp_vanilla env e2 ^^
-     match p with
-      | "Array.init" -> Array.init env
-      | "Array.tabulate" -> Array.tabulate env
-      | "shrs" ->
-         let (set_am, get_am) = new_local env "am" in
-         BoxedSmallWord.unbox env ^^
-         set_am ^^
-         BoxedSmallWord.unbox env ^^
-         get_am ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-         BoxedSmallWord.box env
-      | "shrs64" ->
-         let (set_am, get_am) = new_local64 env "am" in
-         BoxedInt.unbox env ^^
-         set_am ^^
-         BoxedInt.unbox env ^^
-         get_am ^^
-         G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-         BoxedInt.box env
+     let compile_args_as sr = compile_exp_as env sr e1 ^^ compile_exp_as env sr e2
+     in match p with
+      | "Array.init" -> SR.Vanilla, compile_args_as SR.Vanilla ^^ Array.init env
+      | "Array.tabulate" -> SR.Vanilla, compile_args_as SR.Vanilla ^^ Array.tabulate env
+      | "shrs" -> SR.UnboxedWord32, compile_args_as SR.UnboxedWord32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS))
+      | "shrs64" -> SR.UnboxedInt64, compile_args_as SR.UnboxedInt64 ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
 
-      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+      | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
   (* Unary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
