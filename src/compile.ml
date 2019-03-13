@@ -3603,8 +3603,7 @@ and compile_exp (env : E.t) exp =
 
        | "Nat->Word64"
        | "Int->Word64" ->
-         SR.UnboxedInt64, (* Vanilla? *)
-         compile_exp_as env SR.UnboxedInt64 e ^^ G.nop
+          let sr, code = compile_exp env e in sr, code ^^ G.nop
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
@@ -3641,8 +3640,7 @@ and compile_exp (env : E.t) exp =
 
        | "Word64->Nat"
        | "Word64->Int" ->
-         SR.UnboxedInt64, (* Vanilla? *)
-         compile_exp_as env SR.UnboxedInt64 e ^^ G.nop
+          let sr, code = compile_exp env e in sr, code ^^ G.nop
 
        | "Word32->Char" ->
          SR.Vanilla,
