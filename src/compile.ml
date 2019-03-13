@@ -2685,19 +2685,6 @@ module Serialization = struct
       G.i (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
-  let serialize_n env n = match n with
-    | 0 -> G.nop
-    | 1 -> serialize env
-    | _ ->
-      let name = Printf.sprintf "serialize_%i" n in
-      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-      let retty = Lib.List.make n I32Type in
-      Func.share_code env name args retty (fun env ->
-        G.table n (fun i ->
-          G.i (LocalGet (nr (Int32.of_int i))) ^^ serialize env
-        )
-      )
-
   let deserialize env =
     Func.share_code1 env "deserialize" ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
       let (set_databuf, get_databuf) = new_local env "databuf" in
@@ -3030,6 +3017,21 @@ module StackRep = struct
         (to_string sr_in) (to_string sr_out);
       G.nop
 
+  (* TODO: Replace this hack with nested stackreps *)
+  let unbox_reference_n env n = match n with
+    | 0 -> G.nop
+    | 1 -> adjust env SR.Vanilla SR.UnboxedReference
+    | _ ->
+      let name = Printf.sprintf "unbox_reference_n %i" n in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code env name args retty (fun env ->
+        G.table n (fun i ->
+          G.i (LocalGet (nr (Int32.of_int i))) ^^ adjust env SR.Vanilla SR.UnboxedReference 
+        )
+      )
+
+
 end (* StackRep *)
 
 
@@ -3118,7 +3120,8 @@ module FuncDec = struct
       closure_code ^^
       let get i =
         G.i (LocalGet (nr Int32.(add 1l (of_int i)))) ^^
-        Serialization.deserialize env in
+        (* TODO: Expose unboxed reference here *)
+        StackRep.adjust env SR.UnboxedReference SR.Vanilla in
       destruct_args_code get ^^
       mk_body env3 ^^
 
@@ -3625,6 +3628,16 @@ and compile_exp (env : E.t) exp =
   | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
     begin
       match p with
+       | "@serialize" ->
+         SR.UnboxedReference,
+         compile_exp_vanilla env e ^^
+         Serialization.serialize env
+
+       | "@deserialize" ->
+         SR.Vanilla,
+         compile_exp_as env SR.UnboxedReference e ^^
+         Serialization.deserialize env
+
        | "abs" ->
          SR.Vanilla,
          compile_exp_vanilla env e ^^
@@ -3863,7 +3876,7 @@ and compile_exp (env : E.t) exp =
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
         compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
-        Serialization.serialize_n env cc.Value.n_args ^^
+        StackRep.unbox_reference_n env cc.Value.n_args ^^
         FuncDec.call_funcref env cc get_funcref
     end
   | SwitchE (e, cs) ->

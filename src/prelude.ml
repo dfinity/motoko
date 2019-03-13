@@ -232,6 +232,8 @@ let prim = function
 
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
+  | "@serialize" -> fun v k -> k (Serialized v)
+  | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->
     (match Value.as_tup v with
     | [len; x] ->
