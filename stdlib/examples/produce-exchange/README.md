@@ -50,7 +50,7 @@ We decompose the Produce Exchange example Dapp into an _ActorScript-based_ imple
  4. **Server implementation**: See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as) and 
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
-    Defines the _behavior (input-output) semantics_ of each message from item 2, by
+    Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
     implementing the server, in terms of the _server model_ defined in item 3.
 
 Additional components, for testing
