@@ -48,7 +48,7 @@ We decompose the Produce Exchange example Dapp into an _ActorScript-based_ imple
     These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
  4. **Server actor implementation**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
     and
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Implement each message defined in item 2, in terms of the server model defined in item 3.
