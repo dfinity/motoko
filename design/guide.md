@@ -122,6 +122,7 @@ Type expressions are used to specify the types of arguments, bound on type param
   Any                                           top
   None                                          bottom
   Shared                                        sharable types
+  ( type )                                      parenthesized type
 ```
 ### Constructed types
 
@@ -188,9 +189,16 @@ As an empty type, `None` can be used to specify the (non-existant) return value 
 
 ### Shared type
 
-Type `Shared`  is the bound of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
+Type `Shared`  is the super-type of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
 
-TBC
+
+### Parenthesized type
+
+A function that takes an immediate, syntactic tuple of length *n >= 0* as its domain or range is a function that takes (respectively returns) *n* values.
+
+When enclosing the argument or result type of a function, which is itself a tuple type,  `( <tuple-typ> )` declares that the function takes or returns a single (boxed) value of type <tuple-type>.
+
+In all other positions, `( <typ> )` has the same meaning as `<typ>`.
 
 ### Type fields
 
@@ -250,6 +258,7 @@ The number of type arguments must agree with the number of declared type paramet
 Given a vector of type arguments instantiating a vector of type parameters, 
 each type argument must satisfy the instantiated bounds of the corresponding 
 type parameter.
+
 
 ### Wellformed types
 
@@ -381,13 +390,54 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   ? <pat>                                        option
   <pat> : <typ>                                  type annotation
   <pat> or <pat>                                 disjunctive pattern
-* <pat> and <pat>                                conjunctive pattern
-* { <pat-field>;* }                              object pattern
-* async <pat>                                    asynchronous
-
-<pat-field> ::=                                object pattern fields
-* <id> = <pat>                                   field
 ```
+*Patterns* `pat` are used to bind function parameters, declare identifiers and decompose values into their constituent parts in the cases of a `switch` expression.
+
+Matching a pattern against a value may *succeed*, binding the corresponding identifiers in the pattern to their matching values, or *fail*. Thus the result of a match is either a a successful mapping of identifiers to values, or failure.
+
+The consequences of pattern match failure depends on the context of the pattern. 
+* In a function application or `let`-binding, failure to match the formal argument pattern or 'let'-pattern causes a *trap*.
+* In a `case` branch of a `switch` expression, failure to match that case's pattern continues with an attempt to match the next case of the switch, trapping only when no such case remains.
+
+### Wildcard pattern
+
+`_`  matches a single value without binding its contents to an identifier. 
+
+
+### Identifier pattern
+
+`<id>` matches a single value and binds it to the identifier `<id>`.
+
+### Literal pattern
+
+`<unop>? <lit>` matches a single value against the constant value of literal `<lit>` and fails if they are not (structurally) equal values. 
+
+For integer literals only, the optional `<unop>` determines the sign of the value to match.
+
+### Typed pattern
+
+`<pat> : <typ>` matches value of `v` type <typ> against the pattern <pat>.
+
+`<pat> : <typ>` is *not* a dynamic type test, but is used to constraint the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
+
+
+### Option pattern
+
+`? <pat>` matches a value of option type `? <typ>`. 
+
+The match *fails* if the value is `null`. If the value is `? v`, for some value `v`, then the result of matching `? <pat>` is the result of matching `v` against <pat>.
+
+Conversely, the `null` literal pattern may be used to test whether a value of option type is the value `null` and not `? v` for some `v`.
+
+
+### Or pattern
+
+`<pat1> or <pat2>` is a disjunctive pattern. 
+
+The result of matching '<pat1> or <pat2>' against a value is the result of
+matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if it the first match failed.
+
+(Note, statically, neither <pat1> or <pat2> may contain indentifier ('<id>') patterns so a successful match always binds zero identifiers.)
 
 ## Declarations
 ```
