@@ -34,22 +34,22 @@ Server components
 We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation of a "**Server**" with the following definitional pieces:
 
  1. **Basic types**: See
-    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
+    [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
     Basic types used in messages, and published/stored internally in the server actor's state.
 
  2. **Server messages**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
+    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
     Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
  3. **Server model types**: See
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
+    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Defines structures that internally implement the server actor, and which are _not_ present in its public-facing interface.
 
     These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
  4. **Server implementation**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as) and 
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
+    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as) and 
+    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
     implementing the server, in terms of the _server model_ defined in item 3.
 
@@ -75,8 +75,8 @@ Additional components, for testing
 To do? Rename files and types
 ------------------------------------------------------------------------------------
 To make the definitions of the PE standards more explicit:
- - [x] file `types.as` **~> `serverTypes.as`**
- - [x] file `actor.as` **~> `serverActor.as`**
+ - [x] file `serverTypes.as` **~> `serverTypes.as`**
+ - [x] file `serverActor.as` **~> `serverActor.as`**
  - [x] actor class `ProduceExchange` **~> `Server`** ~~(or `PESServer`, or `ProduceExchangeStandardsServer`)~~
 
 To make room for more test files:
@@ -158,34 +158,38 @@ the _"Produce Exchange Standards"_, or _"PES"_ for short.
 The PES, defined formally, in ActorScript:
 -------------------------------------------
 
-We break this definition into several files, listed above in this
-file, and below. These files make the PES definition into a **formal
-definition**, to the same degree that ActorScript has a formal
-semantics of its own, in terms of DFINITY's semantics, etc.
+We break this definition into several files, listed above in the
+[server components list](#server-components), and mentioned again
+below.
 
-**PES files**: The file `types.as` defines ActorScript data types that are
-included in the PES.  These will appear in the messages to and from
-the produce exchange.  The actor class itself (see `actor.as`) gives
-the interface for the PE service, is also part of the formal PES.  The
-_behavior_ of this actor's implementation defines the _semantic_
-aspects of the PES standard.
+These files make the PES definition into a **formal definition**, to
+the same degree that ActorScript has a formal semantics of its own, in
+terms of DFINITY's semantics, etc.
+
+**Files for the PES definition**: The file `serverTypes.as` defines
+ActorScript data types that are included in the PES, and will appear
+in the messages to and from the produce exchange server.  The server
+actor class itself (see `serverActor.as`) gives the interface for the
+PE service, is also part of the formal PES.  The _behavior_ of this
+actor's implementation defines the _semantic_ aspects of the PES
+standard.
+
+**Non-PES files**: The `serverModel.as` file defines types used to
+implement the specification behavior given in `serverActor.as`; this
+file is not part of the PES.
 
 **Interface boundary**: The actor interface boundary only uses types
-from `types.as`, and none from `model.as`; the implementation details
-of this file and its use in the actor behavior are both subject to
+from `serverTypes.as`, and none from `serverModel.as`; the implementation details
+of this latter file and its use in the actor behavior are both subject to
 change over time, independently of the standards' own evolution.  We
 include the full implementation details here because the associated
 behavior is needed to define the semantics of the PES, as explained
 above.
 
-**Non-PES files**: Additionally, the `model.as` file defines types
-used to implement the specification behavior given in `actor.as`; this
-file is not part of the PES.  The implementation details of this actor
-lie outside the PES but are also present in the file `actor.as`, in
-terms of types defined in `model.as`.  Whenever possible, we will push
-the implementation of "business logic" into `model.as`, with the
-aspiration of `actor.as` being a minimal wrapper over definitions in
-`model.as`, and little to no logic of its own.
+**Design principle for PES interface**: Whenever possible, we will
+push the implementation of "business logic" into `serverModel.as`,
+with the aspiration of `serverActor.as` being a minimal wrapper over
+definitions in `serverModel.as`, and little to no logic of its own.
 
 
 PES evolution via canister upgrade
@@ -195,8 +199,8 @@ The PES evolves according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
 developer community that surrounds this implementation.
 
-Updating the types in the PES requires changing the file `types.as`
+Updating the types in the PES requires changing the file `serverTypes.as`
 mentioned above, and performing a canister upgrade on the running
 system.  Similarly, to evolve the behavioral definition of PES, the
-implementation of this actor will change (in `actor.as` and
-`model.as`), and will also require a canister upgrade.
+implementation of this actor will change (in `serverActor.as` and
+`serverModel.as`), and will also require a canister upgrade.
