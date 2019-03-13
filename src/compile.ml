@@ -3120,7 +3120,7 @@ module FuncDec = struct
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
   let compile_local_function env cc restore_env args mk_body at =
-    let arg_names = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+    let arg_names = List.map (fun a -> a.it, I32Type) args in
     let retty = Lib.List.make cc.Value.n_res I32Type in
     Func.of_body env (["clos", I32Type] @ arg_names) retty (fun env1 -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
@@ -3155,7 +3155,7 @@ module FuncDec = struct
      - Fake orthogonal persistence
   *)
   let compile_message env cc restore_env args mk_body at =
-    let arg_names = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+    let arg_names = List.map (fun a -> a.it, I32Type) args in
     assert (cc.Value.n_res = 0);
     Func.of_body env (["clos", I32Type] @ arg_names) [] (fun env1 -> G.with_region at (
       (* Restore memory *)
