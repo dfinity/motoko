@@ -135,60 +135,60 @@ As part of the to do list above, we have the following questions:
 ----------------------------------------------------------------------------
 
 
-Spec: Produce Exchange Standards (PES)
-========================================
+PES Spec: Produce Exchange Standards Specification
+==================================================
 
 The Produce Exchange is a DFINITY canister whose implementation
-defines a set of _standards_ to which we refer to collectively as
-the _"Produce Exchange Standards"_, or _"PES"_ for short.
+defines a set of _standards_ whose **formal specification** we refer to collectively as
+the _"Produce Exchange Standards Specification"_, or _"PESS"_ for short.
 
 
-The PES, defined formally, in ActorScript:
+The PESS, defined formally, in ActorScript:
 -------------------------------------------
 
 We break this definition into several files, listed above in the
 [server components list](#server-components), and mentioned again
 below.
 
-These files make the PES definition into a **formal definition**, to
+These files make the PESS definition into a **formal definition**, to
 the same degree that ActorScript has a formal semantics of its own, in
 terms of DFINITY's semantics, etc.
 
-**Files for the PES definition**: The file `serverTypes.as` defines
-ActorScript data types that are included in the PES, and will appear
+**Files for the PESS definition**: The file `serverTypes.as` defines
+ActorScript data types that are included in the PESS, and will appear
 in the messages to and from the produce exchange server.  The server
 actor class itself (see `serverActor.as`) gives the interface for the
-PE service, is also part of the formal PES.  The _behavior_ of this
-actor's implementation defines the _semantic_ aspects of the PES
+PE service, is also part of the formal PESS.  The _behavior_ of this
+actor's implementation defines the _semantic_ aspects of the PESS
 standard.
 
-**Non-PES files**: The `serverModel.as` file defines types used to
+**Non-PESS files**: The `serverModel.as` file defines types used to
 implement the specification behavior given in `serverActor.as`; this
-file is not part of the PES.
+file is not part of the PESS.
 
 **Server message formats**: The server actor defines an interface boundary that only uses types
 from `serverTypes.as`, and none from `serverModel.as`.  The implementation details
 of this latter file and its use in the actor behavior are both subject to
 change over time, independently of the standards' own evolution.  We
 include the full implementation details here because the associated
-behavior is needed to define the semantics of the PES, as explained
+behavior is needed to define the semantics of the PESS, as explained
 above.
 
-**Design principle for PES interface**: Whenever possible, we will
+**Design principle for PESS interface**: Whenever possible, we will
 push the implementation of "business logic" into `serverModel.as`,
 with the aspiration of `serverActor.as` being a minimal wrapper over
 definitions in `serverModel.as`, and little to no logic of its own.
 
 
-PES evolution via canister upgrade
+PESS evolution via canister upgrade
 -----------------------------------
 
-The PES evolves according to the "central authority" (cf PE spec
+The PESS evolves according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
 developer community that surrounds this implementation.
 
-Updating the types in the PES requires changing the file `serverTypes.as`
+Updating the types in the PESS requires changing the file `serverTypes.as`
 mentioned above, and performing a canister upgrade on the running
-system.  Similarly, to evolve the behavioral definition of PES, the
+system.  Similarly, to evolve the behavioral definition of PESS, the
 implementation of this actor will change (in `serverActor.as` and
 `serverModel.as`), and will also require a canister upgrade.
