@@ -34,22 +34,22 @@ Server components
 We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation of a "**Server**" with the following definitional pieces:
 
  1. **Basic types**: See
-    [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
+    [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as).  
     Basic types used in messages, and published/stored internally in the server actor's state.
 
  2. **Server messages**: See
-    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
+    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as).  
     Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
  3. **Server model types**: See
-    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
+    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as).  
     Defines structures that internally implement the server actor, and which are _not_ present in its public-facing interface.
 
     These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
  4. **Server implementation**: See
-    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as) and 
-    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
+    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) and 
+    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as).  
     Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
     implementing the server, in terms of the _server model_ defined in item 3.
 
