@@ -75,13 +75,13 @@ Additional components, for testing
 To do? Rename files and types
 ------------------------------------------------------------------------------------
 To make the definitions of the PE standards more explicit:
- - file `types.as` **~> `serverTypes.as`**
- - file `actor.as` **~> `serverActor.as`**
- - actor class `ProduceExchange` **~> `Server`** (or `PESServer`, or `ProduceExchangeStandardsServer`)
+ - [x] file `types.as` **~> `serverTypes.as`**
+ - [x] file `actor.as` **~> `serverActor.as`**
+ - [x] actor class `ProduceExchange` **~> `Server`** ~~(or `PESServer`, or `ProduceExchangeStandardsServer`)~~
 
 To make room for more test files:
- - file `produceExchange.as` **~> `test/simpleSetupAndQuery.as`**
- - optional: actor class `Test` ~> `TestSimpleSetupAndQuery`?
+ - [x] file `produceExchange.as` **~> `test/simpleSetupAndQuery.as`**
+ - [ ] optional: actor class `Test` ~> `TestSimpleSetupAndQuery`?
 
 
 To do list

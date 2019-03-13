@@ -212,3 +212,117 @@ type ReservedRoute = {
 };
 
 type ReservedRouteTable = Map<ReservationId, ReservedRoute>;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+class Model() = this {
+
+  var nextTruckTypeId : TruckTypeId = 0;
+  var nextRegionId : RegionId = 0;
+  var nextProduceId : ProduceId = 0;
+  var nextProducerId : ProducerId = 0;
+  var nextRetailerId : RetailerId = 0;
+  var nextInventoryId : InventoryId = 0;
+  var nextTransporterId : TransporterId = 0;
+  var nextxRouteId : RouteId = 0;
+  var nextReservationId : ReservationId = 0;
+
+  /**
+
+   Internal data model, in terms of the collection types defined above
+   ====================================================================
+
+   First, see the types defined in `model.as`.
+
+  // Mostly-static collections:
+  // ---------------------------
+  // Represents the following tables:
+  //  - regions table
+  //  - produce table
+  //  - truck type table
+  */
+
+  private var regions : RegionTable = null;
+  private var produce : ProduceTable = null;
+  private var truckTypes : TruckTypeTable = null;
+
+  /**
+  // Producers collection:
+  // ----------------------
+  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
+  //  - producer table
+  //  - inventory table
+  //  - reservedInventory table (formerly "orderedInventory" table)
+  */
+  private var producers : ProducerTable = null;
+
+
+  /**
+  // Transporters collection:
+  // ----------------------
+  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
+  //  - transporter table
+  //  - route table
+  //  - reservedRoute table (formerly "orderedRoutes" table)
+  */
+  private var transporters : TransporterTable = null;
+
+  /**
+  // Retailers collection:
+  // ----------------------
+  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
+  //  - retailer table
+  //  - reservation table (formerly "orders" table)
+  */
+  private var retailers : RetailerTable = null;
+
+
+  // xxx for efficient queries, need some extra indexing:
+  //
+  // Regions as keys in special global maps
+  // ---------------------------------------
+  // - inventory (across all producers) keyed by producer region
+  // - routes (across all transporters) keyed by source region
+  // - routes (across all transporters) keyed by destination region
+  //
+  // Indexing by time
+  // -----------------
+  // For now, we won't try to index based on days.
+  //
+  // If and when we want to do so, we would like to have a spatial
+  // data structure that knows about each object's "interval" in a
+  // single shared dimension (in time):
+  //
+  // - inventory, by availability window (start day, end day)
+  // - routes, by transport window (departure day, arrival day)
+  //
+
+  // Routes by region-region pair
+  // ----------------------------
+  //
+  // the actor maintains a possibly-sparse 3D table mapping each
+  // region-region-routeid triple to zero or one routes.  First index
+  // is destination region, second index is source region; this 2D
+  // spatial coordinate gives all routes that go to that destination
+  // from that source, keyed by their unique route ID, the third
+  // coordinate of the mapping.
+  private var routesByDstSrcRegions : ByRegionsRouteTable = null;
+
+  // Inventory by source region
+  // ----------------------------
+  //
+  // the actor maintains a possibly-sparse 3D table mapping each
+  // sourceregion-producerid-inventoryid triple to zero or one
+  // inventory items.  The 1D coordinate sourceregion gives all of the
+  // inventory items, by producer id, for this source region.
+  //
+  private var inventorybyRegion : ByRegionInventoryTable = null;
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
+
+};

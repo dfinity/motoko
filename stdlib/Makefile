@@ -86,10 +86,10 @@ $(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as assocList.as trie.as set.as setDb.as 
 	@echo $(DONE)
 
 $(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as assocList.as trie.as \
-	examples/produce-exchange/types.as \
-	examples/produce-exchange/model.as \
-	examples/produce-exchange/actor.as \
-	examples/produce-exchange/produceExchange.as
+	examples/produce-exchange/serverTypes.as \
+	examples/produce-exchange/serverModel.as \
+	examples/produce-exchange/serverActor.as \
+	examples/produce-exchange/test/simpleSetupAndQuery.as
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
