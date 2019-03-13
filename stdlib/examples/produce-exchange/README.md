@@ -34,24 +34,24 @@ Core components
 We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation with the following pieces:
 
  1. **Basic types**: See
-    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
+    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
     Basic types used in messages, and published/stored internally in the server actor's state.
 
  2. **Server message types**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
     Defined by the server actor's public signature, which specifies the message formats for each participant.
 
  3. **Server model types**: See
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
     Used internally to implement the server actor, and not present in its public-facing interface.
 
     These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
  4. **Server actor implementation**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as)
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
     and
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
-    Defined by the server actor's implementation for each message defined in item 3, in terms of the server model defined in item 2.
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
+    Implement each message defined in item 2, in terms of the server model defined in item 3.
 
 Additional components, for testing
 ----------------------------------
