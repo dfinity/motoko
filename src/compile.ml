@@ -57,6 +57,7 @@ module SR = struct
   type t =
     | Vanilla
     | UnboxedTuple of int
+    | UnboxedRefTuple of int
     | UnboxedInt64
     | UnboxedWord32
     | UnboxedReference
@@ -2942,6 +2943,9 @@ module StackRep = struct
   let of_arity n =
     if n = 1 then Vanilla else UnboxedTuple n
 
+  let refs_of_arity n =
+    if n = 1 then UnboxedReference else UnboxedRefTuple n
+
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
@@ -2961,6 +2965,9 @@ module StackRep = struct
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
+    | UnboxedRefTuple 0 -> ValBlockType None
+    | UnboxedRefTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedRefTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | StaticThing _ -> ValBlockType None
     | Unreachable -> ValBlockType None
 
@@ -2970,6 +2977,7 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
+    | UnboxedRefTuple n -> Printf.sprintf "UnboxedRefTuple %d" n
     | Unreachable -> "Unreachable"
     | StaticThing _ -> "StaticThing"
 
@@ -2992,6 +3000,7 @@ module StackRep = struct
     | UnboxedWord32 -> G.i Drop
     | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
+    | UnboxedRefTuple n -> G.table n (fun _ -> G.i Drop)
     | StaticThing _ -> G.nop
     | Unreachable -> G.nop
 
@@ -3004,7 +3013,33 @@ module StackRep = struct
     ; is_local = false
     }
 
-  let adjust env (sr_in : t) sr_out =
+  let unbox_reference_n env n = match n with
+    | 0 -> G.nop
+    | 1 -> Dfinity.unbox_reference env
+    | _ ->
+      let name = Printf.sprintf "unbox_reference_n %i" n in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code env name args retty (fun env ->
+        G.table n (fun i ->
+          G.i (LocalGet (nr (Int32.of_int i))) ^^ Dfinity.unbox_reference env
+        )
+      )
+
+  let box_reference_n env n = match n with
+    | 0 -> G.nop
+    | 1 -> Dfinity.box_reference env
+    | _ ->
+      let name = Printf.sprintf "box_reference_n %i" n in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code env name args retty (fun env ->
+        G.table n (fun i ->
+          G.i (LocalGet (nr (Int32.of_int i))) ^^ Dfinity.box_reference env
+        )
+      )
+
+  let rec adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
     then G.nop
     else match sr_in, sr_out with
@@ -3013,6 +3048,15 @@ module StackRep = struct
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
+
+    | UnboxedRefTuple n, UnboxedTuple m when n = m -> box_reference_n env n
+    | UnboxedTuple n, UnboxedRefTuple m when n = m -> unbox_reference_n env n
+
+    | UnboxedRefTuple n, sr ->
+      box_reference_n env n ^^ adjust env (UnboxedTuple n) sr
+    | sr,  UnboxedRefTuple n ->
+      adjust env sr (UnboxedTuple n) ^^ unbox_reference_n env n
+
 
     | UnboxedInt64, Vanilla -> BoxedInt.box env
     | Vanilla, UnboxedInt64 -> BoxedInt.unbox env
@@ -3031,19 +3075,6 @@ module StackRep = struct
         (to_string sr_in) (to_string sr_out);
       G.nop
 
-  (* TODO: Replace this hack with nested stackreps *)
-  let unbox_reference_n env n = match n with
-    | 0 -> G.nop
-    | 1 -> adjust env SR.Vanilla SR.UnboxedReference
-    | _ ->
-      let name = Printf.sprintf "unbox_reference_n %i" n in
-      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-      let retty = Lib.List.make n I32Type in
-      Func.share_code env name args retty (fun env ->
-        G.table n (fun i ->
-          G.i (LocalGet (nr (Int32.of_int i))) ^^ adjust env SR.Vanilla SR.UnboxedReference 
-        )
-      )
 
 
 end (* StackRep *)
@@ -3138,19 +3169,17 @@ module FuncDec = struct
 
       let (env2, closure_code) = restore_env env1 get_closure in
 
-      (* Add arguments to the environment *)
+      (* Add arguments to the environment, as unboxed references *)
       let env3 =
         let rec go i env = function
         | [] -> env
         | a::as_ ->
-          let get env = G.i (LocalGet (nr Int32.(of_int i))) ^^
-                       (* TODO: Expose unboxed reference here *)
-                       StackRep.adjust env SR.UnboxedReference SR.Vanilla
-          in
+          let get env = G.i (LocalGet (nr Int32.(of_int i))) in
           let env' =
             E.add_local_deferred env a.it
-              { materialize = (fun env -> SR.Vanilla, get env)
-              ; materialize_vanilla = (fun env -> get env)
+              { materialize = (fun env -> SR.UnboxedReference, get env)
+              ; materialize_vanilla = (fun env ->
+                  get env ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
               ; is_local = true
               } in
           go (i+1) env' as_ in
@@ -3909,8 +3938,7 @@ and compile_exp (env : E.t) exp =
         let (set_funcref, get_funcref) = new_local env "funcref" in
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
-        compile_exp_as env (StackRep.of_arity cc.Value.n_args) e2 ^^
-        StackRep.unbox_reference_n env cc.Value.n_args ^^
+        compile_exp_as env (StackRep.refs_of_arity cc.Value.n_args) e2 ^^
         FuncDec.call_funcref env cc get_funcref
     end
   | SwitchE (e, cs) ->
@@ -3966,8 +3994,20 @@ and compile_exp (env : E.t) exp =
 
 and compile_exp_as env sr_out e =
   G.with_region e.at (
-    let sr_in, code = compile_exp env e in
-    code ^^ StackRep.adjust env sr_in sr_out
+    match sr_out, e.it with
+    (* Some optimizations for certain sr_out and expressions *)
+    | SR.UnboxedRefTuple n, TupE es when n = List.length es ->
+      G.concat_map (fun e ->
+        compile_exp_as env SR.UnboxedReference e
+      ) es
+    | _ , BlockE (decs, exp) ->
+      let (env', code1) = compile_decs env decs in
+      let code2 = compile_exp_as env' sr_out exp in
+      code1 ^^ code2
+    (* Fallback to whatever stackrep compile_exp chooses *)
+    | _ ->
+      let sr_in, code = compile_exp env e in
+      code ^^ StackRep.adjust env sr_in sr_out
   )
 
 and compile_exp_as_opt env sr_out_o e =
