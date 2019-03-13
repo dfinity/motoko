@@ -25,10 +25,7 @@ let rec exp e = match e.it with
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
-  | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
-  | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
-  | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
-  | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
+  | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]

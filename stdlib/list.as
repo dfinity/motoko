@@ -46,9 +46,9 @@ let List = new {
   // last element, optionally; tail recursive
   func last<T>(l : List<T>) : ?T = {
     switch l {
-      case null        { null };
-      case (?(x,null)) { ?x };
-      case (?(_,t))    { last<T>(t) };
+    case null        { null };
+    case (?(x,null)) { ?x };
+    case (?(_,t))    { last<T>(t) };
     }
   };
 
@@ -64,8 +64,8 @@ let List = new {
   func len<T>(l : List<T>) : Nat = {
     func rec(l : List<T>, n : Nat) : Nat {
       switch l {
-	case null     { n };
-	case (?(_,t)) { rec(t,n+1) };
+	    case null     { n };
+	    case (?(_,t)) { rec(t,n+1) };
       }
     };
     rec(l,0)
@@ -84,8 +84,8 @@ let List = new {
   func rev<T>(l : List<T>) : List<T> = {
     func rec(l : List<T>, r : List<T>) : List<T> {
       switch l {
-	case null     { r };
-	case (?(h,t)) { rec(t,?(h,r)) };
+	    case null     { r };
+	    case (?(h,t)) { rec(t,?(h,r)) };
       }
     };
     rec(l, null)
@@ -95,8 +95,8 @@ let List = new {
   func iter<T>(l : List<T>, f:T -> ()) : () = {
     func rec(l : List<T>) : () {
       switch l {
-	case null     { () };
-	case (?(h,t)) { f(h) ; rec(t) };
+	    case null     { () };
+	    case (?(h,t)) { f(h) ; rec(t) };
       }
     };
     rec(l)
@@ -107,8 +107,8 @@ let List = new {
   func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
-	case null     { null };
-	case (?(h,t)) { ?(f(h),rec(t)) };
+	    case null     { null };
+	    case (?(h,t)) { ?(f(h),rec(t)) };
       }
     };
     rec(l)
@@ -119,8 +119,8 @@ let List = new {
   func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
     func rec(l : List<T>) : List<T> {
       switch l {
-	case null     { null };
-	case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
+	    case null     { null };
+	    case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
       }
     };
     rec(l)
@@ -131,13 +131,13 @@ let List = new {
   func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
-	case null     { null };
-	case (?(h,t)) {
-	  switch (f(h)) {
-	  case null { rec(t) };
-	  case (?h_){ ?(h_,rec(t)) };
-	  }
-	};
+	    case null     { null };
+	    case (?(h,t)) {
+	           switch (f(h)) {
+	           case null { rec(t) };
+	           case (?h_){ ?(h_,rec(t)) };
+	           }
+	         };
       }
     };
     rec(l)
@@ -160,7 +160,7 @@ let List = new {
     // 1/2: fold from left to right, reverse-appending the sublists...
     let r =
       { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
-	foldLeft<List<T>, List<T>>(l, null, f)
+	      foldLeft<List<T>, List<T>>(l, null, f)
       };
     // 2/2: ...re-reverse the elements, to their original order:
     rev<T>(r)
@@ -169,8 +169,8 @@ let List = new {
   // (See SML Basis library); tail recursive
   func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
     switch l1 {
-      case null     { l2 };
-      case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
+    case null     { l2 };
+    case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
     }
   };
 
@@ -219,8 +219,8 @@ let List = new {
   func find<T>(l: List<T>, f:T -> Bool) : ?T = {
     func rec(l:List<T>) : ?T {
       switch l {
-	case null     { null };
-	case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
+	    case null     { null };
+	    case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
       }
     };
     rec(l)
@@ -230,10 +230,10 @@ let List = new {
   func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
-	case null     { false };
-	// XXX/minor --- Missing parens on condition leads to unhelpful error:
-	//case (?(h,t)) { if f(h) { true } else { rec(t) } };
-	case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
+	    case null     { false };
+	    // XXX/minor --- Missing parens on condition leads to unhelpful error:
+	    //case (?(h,t)) { if f(h) { true } else { rec(t) } };
+	    case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
       }
     };
     rec(l)
@@ -243,8 +243,8 @@ let List = new {
   func all<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
-	case null     { true };
-	case (?(h,t)) { if (f(h)) { false } else { rec(t) } };
+	    case null     { true };
+	    case (?(h,t)) { if (f(h)) { false } else { rec(t) } };
       }
     };
     rec(l)
@@ -254,15 +254,15 @@ let List = new {
   func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
     func rec(l1: List<T>, l2: List<T>) : List<T> {
       switch (l1, l2) {
-	case (null, _) { l2 };
-	case (_, null) { l1 };
-	case (?(h1,t1), ?(h2,t2)) {
-	       if (lte(h1,h2)) {
-		 ?(h1, rec(t1, ?(h2,t2)))
-	       } else {
-		 ?(h2, rec(?(h1,t1), t2))
-	       }
-	     };
+	    case (null, _) { l2 };
+	    case (_, null) { l1 };
+	    case (?(h1,t1), ?(h2,t2)) {
+	           if (lte(h1,h2)) {
+		           ?(h1, rec(t1, ?(h2,t2)))
+	           } else {
+		           ?(h2, rec(?(h1,t1), t2))
+	           }
+	         };
       }
     };
     rec(l1, l2)
@@ -274,15 +274,9 @@ let List = new {
   func lessThanEq<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
-	case (null, _) { true };
-	case (_, null) { false };
-	case (?(h1,t1), ?(h2,t2)) {
-	       if (lte(h1,h2)) {
-		 rec(t1, t2)
-	       } else {
-		 false
-	       }
-	     };
+	    case (null, _) { true };
+	    case (_, null) { false };
+	    case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)
@@ -293,16 +287,10 @@ let List = new {
   func isEq<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
-	case (null, null) { true };
-	case (null, _)    { false };
-	case (_,    null) { false };
-	case (?(h1,t1), ?(h2,t2)) {
-	       if (eq(h1,h2)) {
-		 rec(t1, t2)
-	       } else {
-		 false
-	       }
-	     };
+	    case (null, null) { true };
+	    case (null, _)    { false };
+	    case (_,    null) { false };
+	    case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)
@@ -313,15 +301,15 @@ let List = new {
   func partition<T>(l: List<T>, f:T -> Bool) : (List<T>, List<T>) {
     func rec(l: List<T>) : (List<T>, List<T>) {
       switch l {
-	case null { (null, null) };
-	case (?(h,t)) {
-	       let (pl,pr) = rec(t);
-	       if (f(h)) {
-		 (?(h, pl), pr)
-	       } else {
-		 (pl, ?(h, pr))
-	       }
-	     };
+	    case null { (null, null) };
+	    case (?(h,t)) {
+	           let (pl,pr) = rec(t);
+	           if (f(h)) {
+		           (?(h, pl), pr)
+	           } else {
+		           (pl, ?(h, pr))
+	           }
+	         };
       }
     };
     rec(l)

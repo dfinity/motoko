@@ -3,47 +3,66 @@
 ////////////////////////////////////////////////////////////////////
 let SetDb = new {
 
-   private func setDbPrint(s:Set<Nat>) {
+  private func setDbPrint(s:Set<Nat>) {
     func rec(s:Set<Nat>, ind:Nat, bits:Hash) {
       func indPrint(i:Nat) {
-	if (i == 0) { } else { print "| "; indPrint(i-1) }
+	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
       func bitsPrintRev(bits:Bits) {
-	switch bits {
-	  case null { print "" };
-	  case (?(bit,bits_)) {
-		 bitsPrintRev(bits_);
-		 if bit { print "1R." }
-		 else   { print "0L." }
-	       }
-	}
+	      switch bits {
+	      case null { print "" };
+	      case (?(bit,bits_)) {
+		           bitsPrintRev(bits_);
+		           if bit { print "1R." }
+		           else   { print "0L." }
+	           }
+	      }
+      };
+      func hashPrintRev(bits:Bits) {
+	      switch bits {
+	      case null { print "" };
+	      case (?(bit,bits_)) {
+		           hashPrintRev(bits_);
+		           if bit { print "1" }
+		           else   { print "0" }
+	           }
+	      }
       };
       switch s {
       case null {
-	     //indPrint(ind);
-	     //bitsPrintRev(bits);
-	     //print "(null)\n";
-	   };
+	           //indPrint(ind);
+	           //bitsPrintRev(bits);
+	           //print "(null)\n";
+	         };
       case (?n) {
-	     switch (n.key) {
-	     case null {
-		    //indPrint(ind);
-		    //bitsPrintRev(bits);
-		    //print "bin \n";
-		    rec(n.right, ind+1, ?(true, bits));
-		    rec(n.left,  ind+1, ?(false,bits));
-		    //bitsPrintRev(bits);
-		    //print ")\n"
-		  };
-	     case (?k) {
-		    //indPrint(ind);
-		    bitsPrintRev(bits);
-		    print "(leaf ";
-		    printInt k;
-		    print ")\n";
-		  };
-	     }
-	   };
+	           switch (n.keyvals) {
+	           case null {
+		                //indPrint(ind);
+		                //bitsPrintRev(bits);
+		                //print "bin \n";
+		                rec(n.right, ind+1, ?(true, bits));
+		                rec(n.left,  ind+1, ?(false,bits));
+		                //bitsPrintRev(bits);
+		                //print ")\n"
+		              };
+	           case (?keyvals) {
+		                //indPrint(ind);
+		                print "(leaf [";
+                    List.iter<(Key<Nat>,())>(
+                      ?keyvals, 
+                      func ((k:Key<Nat>, ())) : () = {
+                        print("hash(");
+                        printInt(k.key);
+                        print(")=");
+		                    hashPrintRev(k.hash);
+                        print("; ");
+                        ()
+                      }
+                    );
+		                print "])\n";
+		              };
+	           }
+	         };
       }
     };
     rec(s, 0, null);
@@ -57,7 +76,7 @@ let SetDb = new {
     print "  setInsert(";
     printInt x;
     print ")";
-    let r = Set.insert<Nat>(s,x,xh);
+    let r = Set.insert<Nat>(s,x,xh,natEq);
     print ";\n";
     setDbPrint(r);
     r
@@ -82,7 +101,7 @@ let SetDb = new {
     print s2name;
     print ")";
     // also: test that merge agrees with disj:
-    let r1 = Set.union<Nat>(s1, s2);
+    let r1 = Set.union<Nat>(s1, s2, natEq);
     let r2 = Trie.disj<Nat,(),(),()>(s1, s2, natEq, func (_:?(),_:?()):(())=());
     assert(Trie.equalStructure<Nat,()>(r1, r2, natEq, Set.unitEq));
     print ";\n";
