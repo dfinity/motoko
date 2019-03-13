@@ -19,8 +19,19 @@ formal PES.
 
 */
 actor class Server() {
-  
-  private var model = null;
+
+  // See `serverModel.as` for the Model class's implementation
+  private var model : ?Model = null;
+
+  private getModel() : Model {
+    switch model {
+      case (null) {
+             let m = Model();
+             model := ?m; m
+           };
+      case (?m) m;
+    }
+  };
 
   /*
   // PES: Registrar-based ingress messages
@@ -36,6 +47,20 @@ actor class Server() {
   // `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
   */
 
+  /**
+  // ****** PES: To do: more registrar ingress messages:
+  // =======================================================
+  //
+  //  - Get a list of all ids for each entity class in the registry:
+  //    ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
+  //
+  //  - For each id kind, provide a server message to get back the other registry info
+  //    that the registrar stores in association with it (short_name, description, etc.).
+  //
+  //  - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
+  //
+  */
+
   /*
    // reigstrarTruckType
   // -------------------
@@ -49,8 +74,10 @@ actor class Server() {
     isFridge : Bool,
     isFreezer : Bool,
   ) : async ?TruckTypeId {
-    // xxx
-    null
+    getModel()
+      .registrarAddTruckType(
+        short_name, description, capacity, isFridge, isFreezer
+      )
   };
 
   // registrarRemProduce
@@ -60,10 +87,7 @@ actor class Server() {
 
   registrarRemTruckType(
     id: TruckTypeId
-  ) : async ?() {
-    // xxx
-    null
-  };
+  ) : async ?() { getModel().registrarRemTruckType(id) };
 
   /**
   // registrarAddProduce
@@ -76,10 +100,7 @@ actor class Server() {
   registrarAddRegion(
     short_name:  Text,
     description: Text,
-  ) : async ?RegionId {
-    // xxx
-    null
-  };
+  ) : async ?RegionId { getModel().registrarAddRegion(short_name, description) };
 
   // registrarRemProduce
   // ---------------------
@@ -89,8 +110,7 @@ actor class Server() {
   registrarRemRegion(
     id: RegionId
   ) : async ?() {
-    // xxx
-    null
+    getModel().registrarRemRegion(id)
   };
 
   // registrarAddProduce
@@ -103,8 +123,7 @@ actor class Server() {
     description: Text,
     grade: Grade,
   ) : async ?ProduceId {
-    // xxx
-    null
+    getModel().registrarAddProduce(short_name, description, grade)
   };
 
   // registrarRemProduce
@@ -115,8 +134,7 @@ actor class Server() {
   registrarRemProduce(
     id: ProduceId
   ) : async ?() {
-    // xxx
-    null
+    getModel().registrarRemProduce(id)
   };
 
 
@@ -130,8 +148,7 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?ProducerId {
-    // xxx
-    null
+    getModel().registrarAddProducer(short_name, description, region)
   };
 
   // registrarRemProducer
@@ -142,8 +159,8 @@ actor class Server() {
   registrarRemProducer(
     id: ProducerId
   ) : async ?() {
-    // xxx
-    null
+    getModel().registrarRemProducer(id)
+
   };
 
   // registrarAddRetailer
@@ -156,8 +173,7 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?RetailerId {
-    // xxx
-    null
+    getModel().registrarAddRetailer(short_name, description, region)
   };
 
   // registrarRemRetailer
@@ -168,8 +184,7 @@ actor class Server() {
   registrarRemRetailer(
     id: RetailerId
   ) : async ?() {
-    // xxx
-    null
+    getModel().registrarRemRetailer(id)
   };
 
   // registrarAddTransporter
@@ -179,8 +194,7 @@ actor class Server() {
     short_name:  Text,
     description: Text,
   ) : async ?TransporterId {
-    // xxx
-    null
+    getModel().registrarAddTransporter(short_name, description)
   };
 
 
@@ -191,8 +205,7 @@ actor class Server() {
   registrarRemTransporter(
     id: TransporterId
   ) : async ?() {
-    // xxx
-    null
+    getModel().registrarRemTransporter(id)
   };
 
 
@@ -222,8 +235,8 @@ actor class Server() {
   // ---------------------------
   */
   producerRemInventory(id:InventoryId) : async ?() {
-    // xxx
-    null
+    getModel()
+      .producerRemInventory(id)
   };
 
   /**
@@ -231,8 +244,8 @@ actor class Server() {
   // ---------------------------
   */
   producerReservations(id:ProducerId) : async ?[ReservationId] {
-    // xxx
-    null
+    getModel()
+      .producerReservations(id)
   };
 
   /**
@@ -253,8 +266,7 @@ actor class Server() {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async ?RouteId {
-    // xxx
-    null
+    getModel().transporterAddRoute(trans, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -262,8 +274,8 @@ actor class Server() {
   // ---------------------------
   */
   transporterRemRoute(id:RouteId) : async ?() {
-    // xxx
-    null
+    getModel()
+    .transporterRemRoute(id)
   };
 
   /**
@@ -271,8 +283,8 @@ actor class Server() {
   // ---------------------------
   */
   transporterReservations(id:TransporterId) : async ?[ReservationId] {
-    // xxx
-    null
+    getModel()
+    .transporterReservations(id)
   };
 
   /**
@@ -286,8 +298,8 @@ actor class Server() {
 
   */
   retailerQueryAll(id:RetailerId) : async ?QueryAllResults {
-    // xxx
-    null
+    getModel().
+      retailerQueryAll(id)
   };
 
   /**
@@ -299,8 +311,8 @@ actor class Server() {
     inventory:InventoryId,
     route:RouteId) : async ?ReservationId
   {
-    // xxx
-    null
+    getModel().
+      retailerReserve(id, inventory, route)
   };
 
   /**
@@ -311,8 +323,8 @@ actor class Server() {
 
   */
   retailerReservations(id:RetailerId) : async ?[ReservationId] {
-    // xxx
-    null
+    getModel().
+      retailerReservations(id)
   };
 
   /**
@@ -323,8 +335,8 @@ actor class Server() {
   // ---------------------------
   **/
   reservationInfo(id:ReservationId) : async ?ReservationInfo {
-    // xxx
-    null
+    getModel().
+      reservationInfo(id)
   };
 
 };

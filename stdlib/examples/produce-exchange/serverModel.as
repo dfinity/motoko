@@ -325,4 +325,295 @@ class Model() = this {
     }
   };
 
+  /*
+   // reigstrarTruckType
+  // -------------------
+  //
+  */
+
+  registrarAddTruckType(
+    short_name:  Text,
+    description: Text,
+    capacity : Weight,
+    isFridge : Bool,
+    isFreezer : Bool,
+  ) : ?TruckTypeId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemTruckType(
+    id: TruckTypeId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+  /**
+  // registrarAddProduce
+  // ---------------------
+  //
+  // adds the produce to the system; fails if the given information is
+  // invalid in any way.
+  */
+
+  registrarAddRegion(
+    short_name:  Text,
+    description: Text,
+  ) : ?RegionId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemRegion(
+    id: RegionId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+  // registrarAddProduce
+  // ---------------------
+  //
+  // adds the produce to the system; fails if the given information is invalid in any way.
+
+  registrarAddProduce(
+    short_name:  Text,
+    description: Text,
+    grade: Grade,
+  ) : ?ProduceId {
+    // xxx
+    null
+  };
+
+  // registrarRemProduce
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemProduce(
+    id: ProduceId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+
+  // registrarAddProducer
+  // ---------------------
+  //
+  // adds the producer to the system; fails if the given region is non-existent.
+
+  registrarAddProducer(
+    short_name:  Text,
+    description: Text,
+    region: RegionId,
+  ) : ?ProducerId {
+    // xxx
+    null
+  };
+
+  // registrarRemProducer
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemProducer(
+    id: ProducerId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+  // registrarAddRetailer
+  // ---------------------
+  //
+  // adds the producer to the system; fails if the given region is non-existent.
+
+  registrarAddRetailer(
+    short_name:  Text,
+    description: Text,
+    region: RegionId,
+  ) : ?RetailerId {
+    // xxx
+    null
+  };
+
+  // registrarRemRetailer
+  // ---------------------
+  //
+  // returns `?()` on success, and `null` on failure.
+
+  registrarRemRetailer(
+    id: RetailerId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+  // registrarAddTransporter
+  // ---------------------
+  //
+  registrarAddTransporter(
+    short_name:  Text,
+    description: Text,
+  ) : ?TransporterId {
+    // xxx
+    null
+  };
+
+
+  // registrarRemTransporter
+  // ---------------------
+  //
+
+  registrarRemTransporter(
+    id: TransporterId
+  ) : ?() {
+    // xxx
+    null
+  };
+
+
+  /**
+  // PES: Producer-based ingress messages:
+  // ==========================================
+  */
+
+  /**
+  // producerAddInventory
+  // ---------------------------
+  */
+  producerAddInventory(
+    id:   ProducerId,
+    prod: ProduceId,
+    quant:Quantity,
+    ppu:  PricePerUnit,
+    begin:Date,
+    end:  Date,
+  ) : ?InventoryId {
+    // xxx
+    null
+  };
+
+  /**
+  // producerRemInventory
+  // ---------------------------
+  */
+  producerRemInventory(id:InventoryId) : ?() {
+    // xxx
+    null
+  };
+
+  /**
+  // producerReservations
+  // ---------------------------
+  */
+  producerReservations(id:ProducerId) : ?[ReservationId] {
+    // xxx
+    null
+  };
+
+  /**
+  // PES: Transporter-based ingress messages:
+  // ===========================================
+  */
+
+  /**
+  // transporterAddRoute
+  // ---------------------------
+  */
+  transporterAddRoute(
+    trans:  TransporterId,
+    rstart: RegionId,
+    rend:   RegionId,
+    start:  Date,
+    end:    Date,
+    cost:   Price,
+    ttid:   TruckTypeId
+  ) : ?RouteId {
+    // xxx
+    null
+  };
+
+  /**
+  // transporterRemRoute
+  // ---------------------------
+  */
+  transporterRemRoute(id:RouteId) : ?() {
+    // xxx
+    null
+  };
+
+  /**
+  // transporterReservations
+  // ---------------------------
+  */
+  transporterReservations(id:TransporterId) : ?[ReservationId] {
+    // xxx
+    null
+  };
+
+  /**
+  // PES: Retailer-based ingress messages:
+  // ======================================
+
+  // retailerQueryAll
+  // ---------------------------
+
+  TODO-Cursors (see above).
+
+  */
+  retailerQueryAll(id:RetailerId) : ?QueryAllResults {
+    // xxx
+    null
+  };
+
+  /**
+  // retailerReserve
+  // ---------------------------
+  */
+  retailerReserve(
+    id:RetailerId,
+    inventory:InventoryId,
+    route:RouteId) : ?ReservationId
+  {
+    // xxx
+    null
+  };
+
+  /**
+  // retailerReservations
+  // ---------------------------
+
+  TODO-Cursors (see above).
+
+  */
+  retailerReservations(id:RetailerId) : ?[ReservationId] {
+    // xxx
+    null
+  };
+
+  /**
+  // PES: (Producer/Transporter/Retailer) ingress messages:
+  // ========================================================
+
+  // reservationInfo
+  // ---------------------------
+  **/
+  reservationInfo(id:ReservationId) : ?ReservationInfo {
+    // xxx
+    null
+  };
+
 };
