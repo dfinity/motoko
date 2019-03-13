@@ -21,16 +21,25 @@ formal PES.
 actor class Server() {
 
   // See `serverModel.as` for the Model class's implementation
-  private var model : ?Model = null;
+
+  // Matthew-Says:
+  // There are two initialization options for the model field:
+  // 1. Call Model() directly; using this option now.
+  // 2. Call Model() later, when we try to access the model field.
+
+  private var model : Model = Model(); // OPTION 2: null;
 
   private getModel() : Model {
-    switch model {
-      case (null) {
-             let m = Model();
-             model := ?m; m
-           };
-      case (?m) m;
-    }
+    model
+    // OPTION 2:
+    // switch model {
+    //   case (null) {
+    //          let m = Model();
+    //          model := ?m; m
+    //        };
+    //   case (?m) m;
+    // }
+    //
   };
 
   /*
