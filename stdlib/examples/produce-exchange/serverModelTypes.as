@@ -1,15 +1,13 @@
 /**
  
- Server Model Types
- ==================
+Server Model Types
+==================
 
- This file defines structures that implement the server actor's
- internal model of the exchange.  They are used in `serverModel`; they are _not_
- present in the public-facing interface of the server, only its internal model.
+This file defines structures that implement the server actor's
+internal model of the exchange.  They are used in `serverModel.as`;
+they are _not_ present in the public-facing interface of the server,
+only its internal model.
     
-*/
-
-/**
 
 Finite Maps
 --------------
