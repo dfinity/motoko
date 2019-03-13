@@ -53,8 +53,10 @@ We decompose the Produce Exchange example Dapp into an _ActorScript-based_ imple
     Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
     implementing the server, in terms of the _server model_ defined in item 3.
 
-Additional components, for testing
+Test suite components
 ----------------------------------
+
+We decompose the **test suite** for the Produce Exchange into the following milestones and associated test components:
 
  5. **Server actor example uses**:
     Use the system on small examples, whose output can be shown in a demo, presentation, slide deck, etc.
@@ -89,7 +91,7 @@ locally, as locally-running ActorScript.
      ActorScript language and standard library, used internally to the
      actor, to implement the specification behavior.
 
-  4. **tests** of the above, using local execution and
+  4. **test suite** for all of the above, using local execution and
      ActorScript-based test cases.
 
 **Canister component**: The requirements listed above also correspond with
