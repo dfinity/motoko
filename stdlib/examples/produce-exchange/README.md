@@ -28,36 +28,55 @@ Scripted uses of the Produce Exchange
 - [ ] Randomly-generated scripts
 
 
-Components in ActorScript
---------------------------
+Core components
+-----------------------
 
-We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
+We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation with the following pieces:
 
  1. **Basic types**: See
     [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
     Basic types used in messages, and published/stored internally in the server actor's state.
 
- 3. **Server message types**: See
+ 2. **Server message types**: See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
     Defined by the server actor's public signature, which specifies the message formats for each participant.
 
- 2. **Server model types**: See
+ 3. **Server model types**: See
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
     Used internally to implement the server actor, and not present in its public-facing interface.
 
-    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib)([Jira Story](https://dfinity.atlassian.net/browse/AST-31)).
+    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
- 3. **Server actor implementations**: See
+ 4. **Server actor implementation**: See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as)
     and
     [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
     Defined by the server actor's implementation for each message defined in item 3, in terms of the server model defined in item 2.
 
+Additional components, for testing
+----------------------------------
+
+ 5. **Server actor example uses**:
+    Use the system on small examples, whose output can be shown in a demo, presentation, slide deck, etc.
+
+    To do
+
+ 6. **Automated regression tests**:
+    Generate (online or offline) random example uses, and record the current output; check future revisions against this output.
+
+    To do
+
+ 7. **Performance models**:
+    Generate (online or offline) random example uses, and record time and space usage of the Wasm VM across different work loads; plot this data, and generate human-readable reports about it.
+
+    To do
+
+
 To do? Rename files and types
 ------------------------------------------------------------------------------------
 To make the definitions of the PE standards more explicit:
  - file `types.as` ~> `pesTypes.as`
- - file `actor.as` ~~> `pesServer.as`
+ - file `actor.as` ~> `pesServer.as`
  - actor class `ProduceExchange` ~> `Server` or `PESServer` or `ProduceExchangeStandardsServer`
 
 To make room for more test files:
