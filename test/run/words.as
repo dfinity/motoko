@@ -177,7 +177,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <>> b);
-    // printW16ln(popcnt d); // TODO(Gabor)
+    printW16ln(popcntWord16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
     // printW16ln(clz c); // TODO(Gabor)
     // printW16ln(ctz e); // TODO(Gabor)
 
@@ -248,7 +248,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $rotr<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);
-    // printW8ln(popcnt d); // TODO(Gabor)
+    printW8ln(popcntWord8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
     // printW8ln(clz c); // TODO(Gabor)
     // printW8ln(ctz e); // TODO(Gabor)
 

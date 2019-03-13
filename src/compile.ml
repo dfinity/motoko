@@ -1361,10 +1361,12 @@ module Prim = struct
     prim_word32toInt
   let prim_intToWord32 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_shiftToWordN b =
-    prim_intToWord32 ^^
+  let prim_shift_leftWordNtoI32 b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.Shl))
+  let prim_shiftToWordN b =
+    prim_intToWord32 ^^
+    prim_shift_leftWordNtoI32 b
 end (* Prim *)
 
 module Object = struct
@@ -3384,6 +3386,11 @@ let lsb_adjust = function
   | Type.Word32 -> G.nop
   | ty -> Prim.prim_shiftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
 
+(* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
+let msb_adjust = function
+  | Type.Word32 -> G.nop
+  | ty -> Prim.prim_shift_leftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
+
 (* Makes sure that the word representation invariant is restored. *)
 let sanitize_word_result = function
   | Type.Word32 -> G.nop
@@ -3680,6 +3687,12 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
+       | "popcnt8"
+       | "popcnt16" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+         msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
        | "popcnt64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
