@@ -1209,6 +1209,11 @@ module BoxedInt = struct
        │ tag │    i64    │
        └─────┴─────┴─────┘
 
+     Note, that due to the equivalence of in-memory and on-stack
+     representations, the 64-bit word type is also represented in this
+     way. As we get proper bigints, the memory representations should
+     be disambiguated and stack representations adapted. (Renaming
+     those will point out where the backend needs adjustments.)
   *)
 
   let payload_field = Tagged.header_size
