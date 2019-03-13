@@ -50,6 +50,11 @@ func word32ToNat(n : Word32) : Nat = (prim "Word32->Nat" : Word32 -> Nat) n;
 func intToWord32(n : Int) : Word32 = (prim "Int->Word32" : Int -> Word32) n;
 func word32ToInt(n : Word32) : Int = (prim "Word32->Int" : Word32 -> Int) n;
 
+func natToWord64(n : Nat) : Word64 = (prim "Nat->Word64" : Nat -> Word64) n;
+func word64ToNat(n : Word64) : Nat = (prim "Word64->Nat" : Word64 -> Nat) n;
+func intToWord64(n : Int) : Word64 = (prim "Int->Word64" : Int -> Word64) n;
+func word64ToInt(n : Word64) : Int = (prim "Word64->Int" : Word64 -> Int) n;
+
 func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
 
@@ -58,6 +63,11 @@ func shrsWord32(w : Word32, amount : Word32) : Word32 = (prim "shrs" : (Word32, 
 func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
 func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
 func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
+
+func shrsWord64(w : Word64, amount : Word64) : Word64 = (prim "shrs64" : (Word64, Word64) -> Word64) (w, amount);
+func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
+func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
+func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 
 
 // This would be nicer as a objects, but lets do them as functions
@@ -133,6 +143,13 @@ let prim = function
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_s i))
 
+  | "Nat->Word64" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word64 (Word64.of_int_u i))
+  | "Int->Word64" -> fun v k ->
+                     let i = Big_int.int_of_big_int (as_int v)
+                     in k (Word64 (Word64.of_int_s i))
+
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
@@ -150,6 +167,11 @@ let prim = function
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
 
+  | "Word64->Nat" -> fun v k ->
+                     let i = Int64.to_int (as_word64 v) (* ! *)
+                     in k (Int (Big_int.big_int_of_int i))
+  | "Word64->Int" -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
+
   | "Char->Word32" -> fun v k ->
                       let i = as_char v
                       in k (Word32 (Word32.of_int_u i))
@@ -160,15 +182,28 @@ let prim = function
               let w, a = as_pair v in
               let i = Word32.shr_s (as_word32 w)  (as_word32 a)
               in k (Word32 i)
+  | "shrs64" -> fun v k ->
+                let w, a = as_pair v in
+                let i = Word64.shr_s (as_word64 w)  (as_word64 a)
+                in k (Word64 i)
   | "popcnt" -> fun v k ->
                 let i = Word32.popcnt (as_word32 v)
                 in k (Word32 i)
+  | "popcnt64" -> fun v k ->
+                  let i = Word64.popcnt (as_word64 v)
+                  in k (Word64 i)
   | "clz" -> fun v k ->
              let i = Word32.clz (as_word32 v)
              in k (Word32 i)
+  | "clz64" -> fun v k ->
+               let i = Word64.clz (as_word64 v)
+               in k (Word64 i)
   | "ctz" -> fun v k ->
              let i = Word32.ctz (as_word32 v)
              in k (Word32 i)
+  | "ctz64" -> fun v k ->
+             let i = Word64.ctz (as_word64 v)
+             in k (Word64 i)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->
