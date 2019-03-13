@@ -138,7 +138,7 @@ do
     then
       if grep -F -q CHECK $base.as
       then
-        $ECHO -n " [Filecheck]"
+        $ECHO -n " [FileCheck]"
         wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
         cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
         diff_files="$diff_files $base.filecheck"
