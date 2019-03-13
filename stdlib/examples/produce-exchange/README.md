@@ -72,18 +72,6 @@ Additional components, for testing
     To do
 
 
-To do? Rename files and types
-------------------------------------------------------------------------------------
-To make the definitions of the PE standards more explicit:
- - [x] file `serverTypes.as` **~> `serverTypes.as`**
- - [x] file `serverActor.as` **~> `serverActor.as`**
- - [x] actor class `ProduceExchange` **~> `Server`** ~~(or `PESServer`, or `ProduceExchangeStandardsServer`)~~
-
-To make room for more test files:
- - [x] file `produceExchange.as` **~> `test/simpleSetupAndQuery.as`**
- - [ ] optional: actor class `Test` ~> `TestSimpleSetupAndQuery`?
-
-
 To do list
 -----------
 
@@ -178,8 +166,8 @@ standard.
 implement the specification behavior given in `serverActor.as`; this
 file is not part of the PES.
 
-**Interface boundary**: The actor interface boundary only uses types
-from `serverTypes.as`, and none from `serverModel.as`; the implementation details
+**Server message formats**: The server actor defines an interface boundary that only uses types
+from `serverTypes.as`, and none from `serverModel.as`.  The implementation details
 of this latter file and its use in the actor behavior are both subject to
 change over time, independently of the standards' own evolution.  We
 include the full implementation details here because the associated
