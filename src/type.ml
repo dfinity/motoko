@@ -20,6 +20,7 @@ type prim =
   | Float
   | Char
   | Text
+  | ElemBuf
 
 type t = typ
 and typ =
@@ -324,6 +325,7 @@ let rec span = function
   | Prim Word8 -> Some 0x100
   | Prim Word16 -> Some 0x10000
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
+  | Prim ElemBuf -> None
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
@@ -571,6 +573,7 @@ let string_of_prim = function
   | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
+  | ElemBuf -> "ElemBuf"
 
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
