@@ -326,14 +326,39 @@ let Trie = new {
     rec(t, 0)
   };
 
-  // insert the given key's value in the trie; return the new trie
+  // insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
   func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, ?v)
+  };
+
+  // insert the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
+  func insertFresh<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : Trie<K,V> {
+    let (t2, none) = replace<K,V>(t, k, k_eq, ?v);
+    switch none {
+      case (null) ();
+      case (?_) assert false;
+    };
+    t2
   };
 
   // remove the given key's value in the trie; return the new trie
   func remove<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, null)
+  };
+
+  // remove the given key's value in the trie,
+  // and only if successful, do the success continuation,
+  // otherwise, return the failure value
+  func removeThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool,
+                         success: (Trie<K,V>, V) -> X,
+                         fail: () -> X)
+    : X
+  {
+    let (t2, ov) = replace<K,V>(t, k, k_eq, null);
+    switch ov {
+      case (null) { /* no prior value; failure to remove */ fail() };
+      case (?v) { success(t2, v) };
+    }
   };
 
   // find the given key's value in the trie, or return null if nonexistent

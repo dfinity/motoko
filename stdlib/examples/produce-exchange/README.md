@@ -42,16 +42,15 @@ We decompose the Produce Exchange example Dapp into an _ActorScript-based_ imple
     Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
  3. **Server model types**: See
-    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as).  
+    [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as).  
     Defines structures that internally implement the server actor, and which are _not_ present in its public-facing interface.
 
     These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
 
  4. **Server implementation**: See
-    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) and 
     [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as).  
     Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
-    implementing the server, in terms of the _server model_ defined in item 3.
+    implementing the server's interface in terms of the _server model types_ defined in item 3.
 
 Test suite components
 ----------------------------------

@@ -1,21 +1,25 @@
 /**
 
-PES: Produce Exchange message formats
+PESS: Server Actor
 =======================================
 
-As part of the PES definition, we define format of each message sent
-by a participant, and response received in return.  In ActorScript,
-this format specification corresponds to the public-facing signature
-of the actor defined below.
+As part of the PESS definition, we define an interface that gives the
+format of each message sent by a participant, and response received in
+return.
 
-This actor gives a collection of ingress messages and corresponding
-response types for each participant in the exchange, using only types
-defined in the PES (e.g., no collection types, no standard library
-types, and no higher-order ActorScript types).  As explained above,
-this actor also gives a behavioral spec of the exchange's semantics,
-by giving a prototype implementation of this behavior, whose
-functional behavior, not implementation details, are part of the
-formal PES.
+In ActorScript, this format specification corresponds to the
+public-facing signature of the Server actor, defined below.
+
+This server actor gives a collection of ingress messages and
+corresponding response types for each participant in the exchange,
+using only types defined in the PESS (e.g., no collection types, no
+standard library types, and no higher-order ActorScript types).
+
+As explained in the `README.md` file,
+this actor also gives a behavioral spec of the
+exchange's semantics, by giving a prototype implementation of this
+behavior, whose functional behavior, not implementation details, are
+part of the formal PESS.
 
 */
 actor class Server() {
@@ -43,7 +47,7 @@ actor class Server() {
   };
 
   /*
-  // PES: Registrar-based ingress messages
+  // PESS: Registrar-based ingress messages
   // ================================================
   // Add/remove support across various mostly-static tables:
   //
@@ -57,7 +61,7 @@ actor class Server() {
   */
 
   /**
-  // ****** PES: To do: more registrar ingress messages:
+  // ****** PESS: To do: more registrar ingress messages:
   // =======================================================
   //
   //  - Get a list of all ids for each entity class in the registry:
@@ -89,7 +93,7 @@ actor class Server() {
       )
   };
 
-  // registrarRemProduce
+  // registrarRemTruckType
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
@@ -99,10 +103,10 @@ actor class Server() {
   ) : async ?() { getModel().registrarRemTruckType(id) };
 
   /**
-  // registrarAddProduce
+  // registrarTruckType
   // ---------------------
   //
-  // adds the produce to the system; fails if the given information is
+  // adds the truck type to the system; fails if the given information is
   // invalid in any way.
   */
 
@@ -219,7 +223,7 @@ actor class Server() {
 
 
   /**
-  // PES: Producer-based ingress messages:
+  // PESS: Producer-based ingress messages:
   // ==========================================
   */
 
@@ -258,7 +262,7 @@ actor class Server() {
   };
 
   /**
-  // PES: Transporter-based ingress messages:
+  // PESS: Transporter-based ingress messages:
   // ===========================================
   */
 
@@ -297,7 +301,7 @@ actor class Server() {
   };
 
   /**
-  // PES: Retailer-based ingress messages:
+  // PESS: Retailer-based ingress messages:
   // ======================================
 
   // retailerQueryAll
@@ -337,7 +341,7 @@ actor class Server() {
   };
 
   /**
-  // PES: (Producer/Transporter/Retailer) ingress messages:
+  // PESS: (Producer/Transporter/Retailer) ingress messages:
   // ========================================================
 
   // reservationInfo

@@ -87,6 +87,7 @@ $(OUTDIR)/SetDbTest.out: $(OUTDIR) list.as assocList.as trie.as set.as setDb.as 
 
 $(OUTDIR)/ProduceExchange.out: $(OUTDIR) list.as assocList.as trie.as \
 	examples/produce-exchange/serverTypes.as \
+	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
 	examples/produce-exchange/serverActor.as \
 	examples/produce-exchange/test/simpleSetupAndQuery.as

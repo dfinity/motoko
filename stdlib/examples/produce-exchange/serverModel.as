@@ -1,217 +1,23 @@
 /**
-Internal Data Model
+
+Server Model
 ===============================
 
-Here, we depart from defining the PES, and turn our attention to the
-internal representation of the actor's state.  The behavior of this
-actor is part of the PES, but the internal data model representations
-it uses are not.
+Here, we depart from defining PESS, and turn our attention to the
+internal representation of the server actor's state.  The behavior of
+this actor is part of the PESS definition, but the internal data model
+representations it uses are not.
 
-Hence, we have the freedom to model the system to best match the kinds
-of updates and queries that we must handle now, and anticipate
-handling in the future.
+We have the freedom to model the system to best match the kinds of
+updates and queries that we must handle now, and anticipate handling
+in the future.
 
 We employ a purely-functional repesentation based on tree-shaped data
-structures with sharing.  Below, we explain our representation of
-traditional SQL tables in terms of nested structures and finite maps.
-
-
-Finite Maps
---------------
-
-Finite maps, or just "maps", will serve as the cornerstone of our
-representations below.  The ActorScript standard library implements
-functional association lists (modules `List` and `AssocList`) and
-functional hash tries (module `Trie`), whose representation uses those
-lists, for its "buckets".
-
-These map representations could change and expand in the future, so we
-introduce the name `Map` here to abstract over the representation
-choice between (for now) using association lists and tries.
-
-Aside: Eventually, we'll likely have a more optimized trie that uses
-small arrays in its leaf nodes.  The current representation is simple,
-uses lots of pointers, and is likely not the optimal candidate for
-efficient Wasm.  However, its asymptotic behavior is good, and it thus
-provides a good approximation of the eventual design that we want.
+structures with sharing.  See `ServerModelTypes.as` for details.
+Below, we explain our representation of traditional SQL tables in
+terms of nested structures and finite maps.
 
 */
-
-//type Map = AssocList;
-//let Map = AssocList;
-
-type Map<K,V> = Trie<K,V>;
-let Map = Trie;
-
-/**
-Nested structures
------------------
-
-Below, we define top-level structures for representing each Producer,
-Retailer and Transporter's officially published state within the PES.
-
-Formally, these types define the types of forests (a set of trees with many
-roots) that constitute our internal data model.
-
-For each kind of structure below, we assume a type of unique Id
-(defined in `types.as`, in the formal PES).  We associate information, such as
-textual names and descriptions, where appropriate.  We include other
-fields from the PES, such as "units", "grades", "dates" and time
-intervals (start/end dates), each where appropriate.
-
-To understand how this forest is rooted, see the private variables
-defined by the actor (in `actor.as`):
-
-```
-  private var trucktypes : TruckTypesTable = null;
-  private var produce    : ProduceTable = null;
-  private var regions    : RegionTable = null;
-
-  private var producers    : ProducerTable = null;
-  private var transporters : TransporterTable = null;
-  private var retailers    : RetailerTable = null;
-```
-
-The first three tables are set up by the central authority when the Dapp
-launches, and change seldomly.
-
-The next three tables contain the interesting state of the system.
-They give the three sets of roots into the structures defined below.
-
-Query implementation
----------------------
-
-The retailers perform queries by joining information across the
-producers and transporters tables, and their inventory and route
-information, respectively.
-
-Orders (Reservations) implementation
--------------------------------------
-
-We refer to orders placed by retailrs here as "reservations", since
-the latter word is less ambiguous.
-
-To simplify query implementation over reservations, and to improve
-this query response time, we store reservations in two places, with
-internal sharing:
-
- - The currently-reserved routes and inventory are stored with their
-   transporters and producers, respectively.
-
- - The currently-reserved routes and inventory of each retailer are
-   additionally stored with this retailer.
-
-*/
-
-type TruckType = {
-  id : TruckTypeId;
-  short_name : Text;
-  description : Text;
-  capacity : TruckCapacity;
-  // xxx variant type for this temperature-control information:
-  isFridge : Bool;
-  isFreezer : Bool;
-};
-
-type TruckTypeTable = Map<TruckTypeId, TruckType>;
-
-type Region = {
-  id : RegionId;
-  short_name : Text;
-  description : Text;
-};
-
-type RegionTable = Map<RegionId, Region>;
-
-type Produce = {
-  id : ProduceId;
-  short_name : Text;
-  description : Text;
-  grade : Grade;
-};
-
-type ProduceTable = Map<ProduceId, Produce>;
-
-type Producer = {
-  id : ProducerId;
-  short_name : Text;
-  description : Text;
-  region : Region;
-  inventory : InventoryTable;
-  reserved : ReservedInventoryTable;
-};
-
-type ProducerTable = Map<ProducerId, Producer>;
-
-type InventoryItem = {
-  id : InventoryId;
-  produce : Produce;
-  producer : Producer;
-  // ... more ..
-  quantity : Quantity;
-  start_date : Date;
-  end_date : Date;
-  comments : Text;
-};
-
-type InventoryTable = Map<InventoryId, InventoryItem>;
-
-type ByRegionInventoryTable = Map<RegionId, Map<ProducerId, InventoryTable>>;
-
-type ReservedInventoryItem = {
-  id : ReservationId;
-  retailer : Retailer;
-  item : InventoryItem;
-};
-
-type ReservedInventoryTable = Map<ReservationId, ReservedInventoryItem>;
-
-type Retailer = {
-  id : RetailerId;
-  short_name : Text;
-  description : Text;
-  region : Region;
-  reserved_routes : ReservedRouteTable;
-  reserved_items : ReservedInventoryTable;
-};
-
-type RetailerTable = Map<RetailerId, Retailer>;
-
-type Transporter = {
-  id : TransporterId;
-  // no region; the transporters are the supply of routes, not "end
-  // points" of any single route.
-  name : Text;
-  description : Text;
-  route : RouteTable;
-  reserved : ReservedRouteTable;
-};
-
-type TransporterTable = Map<TransporterId, Transporter>;
-
-type Route = {
-  id : RouteId;
-  transporter : Transporter;
-  truck_type : TruckType;
-  start_region : Region;
-  end_region : Region;
-  start_date : Date;
-  end_date : Date;
-  // ... more?
-};
-
-type RouteTable = Map<RouteId, Route>;
-
-// A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
-type ByRegionsRouteTable = Map<RegionId, Map<RegionId, RouteTable>>;
-
-type ReservedRoute = {
-  id : ReservationId;
-  retailer : Retailer;
-  route : Route;
-};
-
-type ReservedRouteTable = Map<ReservationId, ReservedRoute>;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,6 +52,30 @@ class Model() = this {
   private var produce : ProduceTable = null;
   private var truckTypes : TruckTypeTable = null;
 
+  private getRegion(id:RegionId) : ?Region {
+    Map.find<RegionId, Region>(
+      regions,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq)
+  };
+
+  private getProduce(id:ProduceId) : ?Produce {
+    Map.find<ProduceId, Produce>(
+      produce,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq)
+  };
+
+  private getTruckType(id:TruckTypeId) : ?TruckType {
+    Map.find<TruckTypeId, TruckType>(
+      truckTypes,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq)
+  };
+
   /**
   // Producers collection:
   // ----------------------
@@ -256,6 +86,13 @@ class Model() = this {
   */
   private var producers : ProducerTable = null;
 
+  private getProducer(id:ProducerId) : ?Producer {
+    Map.find<ProducerId, Producer>(
+      producers,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq)
+  };
 
   /**
   // Transporters collection:
@@ -325,6 +162,10 @@ class Model() = this {
     }
   };
 
+  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+
+  private idHash(x:Nat):Hash { null /* xxx */ };
+
   /*
    // reigstrarTruckType
   // -------------------
@@ -338,11 +179,33 @@ class Model() = this {
     isFridge : Bool,
     isFreezer : Bool,
   ) : ?TruckTypeId {
-    // xxx
-    null
+    let id = nextTruckTypeId;
+    nextTruckTypeId := id + 1;
+    truckTypes :=
+    Map.insertFresh<TruckTypeId, TruckType>(
+      truckTypes,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      // xxx: AS should have more concise syntax for this pattern, below:
+      // two problems I see, that are separate:
+      // 1: repeating the label/variable name, which is the same in each case, twice.
+      // 2: explicit type annotations, because of "type error, cannot infer type of forward variable ..."
+      //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
+      //    and, the type of each of these `variables` is known, as well.
+      new { id=id:TruckTypeId;
+            short_name=short_name:Text;
+            description=description:Text;
+            capacity=capacity:Weight;
+            isFridge=isFridge:Bool;
+            isFreezer=isFreezer:Bool;
+      },
+    );
+    ?id
   };
 
-  // registrarRemProduce
+  // registrarRemTruckTypes
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
@@ -350,15 +213,24 @@ class Model() = this {
   registrarRemTruckType(
     id: TruckTypeId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<TruckTypeId, TruckType, ?()>(
+      truckTypes,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:TruckTypeTable, tt:TruckType) : ?() {
+        truckTypes := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
   /**
-  // registrarAddProduce
+  // registrarAddRegion
   // ---------------------
   //
-  // adds the produce to the system; fails if the given information is
+  // adds the region to the system; fails if the given information is
   // invalid in any way.
   */
 
@@ -366,8 +238,21 @@ class Model() = this {
     short_name:  Text,
     description: Text,
   ) : ?RegionId {
-    // xxx
-    null
+    let id = nextRegionId;
+    nextRegionId := id + 1;
+    regions :=
+    Map.insertFresh<RegionId, Region>(
+      regions,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      new { id=id:RegionId;
+            short_name=short_name:Text;
+            description=description:Text;
+      },
+    );
+    ?id
   };
 
   // registrarRemProduce
@@ -378,8 +263,17 @@ class Model() = this {
   registrarRemRegion(
     id: RegionId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<RegionId, Region, ?()>(
+      regions,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:RegionTable, r:Region) : ?() {
+        regions := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
   // registrarAddProduce
@@ -392,8 +286,22 @@ class Model() = this {
     description: Text,
     grade: Grade,
   ) : ?ProduceId {
-    // xxx
-    null
+    let id = nextProduceId;
+    nextProduceId := id + 1;
+    produce :=
+    Map.insertFresh<ProduceId, Produce>(
+      produce,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      new { id=id:ProduceId;
+            short_name=short_name:Text;
+            description=description:Text;
+            grade=grade:Grade;
+      },
+    );
+    ?id
   };
 
   // registrarRemProduce
@@ -404,8 +312,17 @@ class Model() = this {
   registrarRemProduce(
     id: ProduceId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<ProduceId, Produce, ?()>(
+      produce,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:ProduceTable, p:Produce) : ?() {
+        produce := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
 
@@ -419,8 +336,24 @@ class Model() = this {
     description: Text,
     region: RegionId,
   ) : ?ProducerId {
-    // xxx
-    null
+    let id = nextProducerId;
+    nextProducerId := id + 1;
+    producers :=
+    Map.insertFresh<ProducerId, Producer>(
+      producers,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      new { id=id:ProducerId;
+            short_name=short_name:Text;
+            description=description:Text;
+            region=region:Region;
+            inventory=null:InventoryTable;
+            reserved=null:ReservedInventoryTable;
+      },
+    );
+    ?id
   };
 
   // registrarRemProducer
@@ -431,8 +364,17 @@ class Model() = this {
   registrarRemProducer(
     id: ProducerId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<ProducerId, Producer, ?()>(
+      producers,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:ProducerTable, p:Producer) : ?() {
+        producers := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
   // registrarAddRetailer
@@ -443,10 +385,32 @@ class Model() = this {
   registrarAddRetailer(
     short_name:  Text,
     description: Text,
-    region: RegionId,
+    rid: RegionId,
   ) : ?RetailerId {
-    // xxx
-    null
+    // fail early if the region id is invalid
+    let region = switch (getRegion(rid)) {
+    case (null) { return null };
+    case (?r) r;
+    };
+    // pre: region id is well-defined.
+    let id = nextRetailerId;
+    nextRetailerId := id + 1;
+    retailers :=
+    Map.insertFresh<RetailerId, Retailer>(
+      retailers,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      new { id=id:RetailerId;
+            short_name=short_name:Text;
+            description=description:Text;
+            region=region:Region;
+            reserved_routes=null:ReservedRouteTable;
+            reserved_items=null:ReservedInventoryTable;
+      },
+    );
+    ?id
   };
 
   // registrarRemRetailer
@@ -457,8 +421,17 @@ class Model() = this {
   registrarRemRetailer(
     id: RetailerId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<RetailerId, Retailer, ?()>(
+      retailers,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:RetailerTable, r:Retailer) : ?() {
+        retailers := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
   // registrarAddTransporter
@@ -468,8 +441,23 @@ class Model() = this {
     short_name:  Text,
     description: Text,
   ) : ?TransporterId {
-    // xxx
-    null
+    let id = nextTransporterId;
+    nextTransporterId := id + 1;
+    transporters :=
+    Map.insertFresh<TransporterId, Transporter>(
+      transporters,
+      new { key=id;
+            hash=idHash(id)
+      },
+      idIsEq,
+      new { id=id:TransporterId;
+            short_name=short_name:Text;
+            description=description:Text;
+            route=null:RouteTable;
+            reserved=null:ReservedRouteTable;
+      },
+    );
+    ?id
   };
 
 
@@ -480,8 +468,17 @@ class Model() = this {
   registrarRemTransporter(
     id: TransporterId
   ) : ?() {
-    // xxx
-    null
+    Map.removeThen<TransporterId, Transporter, ?()>(
+      transporters,
+      new { key=id;
+            hash=idHash(id) },
+      idIsEq,
+      func (t:TransporterTable, tr:Transporter) : ?() {
+        transporters := t;
+        ?()
+      },
+      func ():?() = null
+    )
   };
 
 

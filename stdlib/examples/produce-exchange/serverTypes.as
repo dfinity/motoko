@@ -1,7 +1,18 @@
 /**
-// PES: Define types for PES
+
+ Server Types
+ ==================
+
+ This file defines structures that appear the server actor's messaging
+ interface.  They are part of the formal PESS definition.
+
+*/
+
+
+/**
+// PESS: Basic types for PESS
 // -----------------------------
-// These types standardize representations for many common PES notions
+// These types standardize representations for many common PESS notions
 */
 
 // import Date
@@ -30,7 +41,7 @@ type RegionId = Nat; // xxx variant type?
 
 /**
 //
-// PES: Unique Ids
+// PESS: Unique Ids
 // -----------------
 // Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
 // Internally, each type of Id serves as a "row key" for a table (or two).
@@ -50,9 +61,9 @@ type ReservationId = Nat;
 
 /**
 //
-// PES: Query parameters and results
+// PESS: Query parameters and results
 // ----------------------------------
-// Externally, these types define the input and output structures for PES queries.
+// Externally, these types define the input and output structures for PESS queries.
 // Internally, producing instances of the result structures will require
 // performing joins based on internal tables, and the information from the input structures.
 
