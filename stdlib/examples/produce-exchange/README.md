@@ -9,7 +9,7 @@ giving its functional specifications.
 
 The design of PE now evolves in three places:
 
- 1. The SDK and ActorScript teams' documentation:
+ 1. The SDK and ActorScript teams' documentation:  
     i. [The design document, under the SDK
      space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).  
     ii. [The requirements document for the MVP
