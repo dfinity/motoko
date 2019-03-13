@@ -135,7 +135,7 @@ As part of the to do list above, we have the following questions:
 ----------------------------------------------------------------------------
 
 
-PES Spec: Produce Exchange Standards Specification
+Produce Exchange Standards Specification (PESS)
 ==================================================
 
 The Produce Exchange is a DFINITY canister whose implementation
