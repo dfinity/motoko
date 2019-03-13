@@ -11,7 +11,7 @@
     let e : Word64 = 20000;
 
 // CHECK: get_local $c
-// LATER: HECK-NOT: call $box_i64
+// CHECK-NOT: call $box_i64
 // CHECK: call $printW64ln
     printW64ln(+c);
 // CHECK: call $printW64ln
@@ -77,7 +77,7 @@
     let e : Word32 = 20000;
 
 // CHECK: get_local $c
-// LATER: HECK-NOT: call $box_i32
+// CHECK-NOT: call $box_i32
 // CHECK: call $printW32ln
     printW32ln(+c);
 // CHECK: call $printW32ln

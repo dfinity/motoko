@@ -3365,12 +3365,6 @@ let compile_unop env t op = Syntax.(match op, t with
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
       StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
                           G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-  | PosOp, Type.Prim Type.(Int | Nat | Word64) ->
-      SR.UnboxedInt64,
-      G.nop
-  | PosOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
-      StackRep.of_type t,
-      G.nop
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
@@ -3699,6 +3693,7 @@ and compile_exp (env : E.t) exp =
     SR.unit,
     compile_exp_as env SR.bool e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
+  | UnE (_, Syntax.PosOp, e1) -> compile_exp env e1
   | UnE (t, op, e1) ->
     let sr, code = compile_unop env t op in
     sr,
