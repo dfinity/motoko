@@ -20,6 +20,7 @@ type prim =
   | Float
   | Char
   | Text
+  | ElemBuf
 
 type t = typ
 and typ =

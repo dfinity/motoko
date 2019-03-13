@@ -30,6 +30,7 @@ let prim p = match p with
   | Float -> Atom "Float"
   | Char -> Atom "Char"
   | Text -> Atom "Text"
+  | ElemBuf -> Atom "ElemBuf"
 
 let con c = Atom (Con.to_string c)
 
