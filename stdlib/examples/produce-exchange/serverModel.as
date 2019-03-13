@@ -334,8 +334,14 @@ class Model() = this {
   registrarAddProducer(
     short_name:  Text,
     description: Text,
-    region: RegionId,
+    rid: RegionId,
   ) : ?ProducerId {
+    // fail early if the region id is invalid
+    let region = switch (getRegion(rid)) {
+    case (null) { return null };
+    case (?r) r;
+    };
+    // pre: region id is well-defined.
     let id = nextProducerId;
     nextProducerId := id + 1;
     producers :=
