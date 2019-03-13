@@ -28,7 +28,7 @@ Scripted uses of the Produce Exchange
 - [ ] Randomly-generated scripts
 
 
-Core components
+Server components
 -----------------------
 
 We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation of a "**Server**" with the following definitional pieces:
