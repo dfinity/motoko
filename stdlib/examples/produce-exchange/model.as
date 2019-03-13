@@ -156,6 +156,8 @@ type InventoryItem = {
 
 type InventoryTable = Map<InventoryId, InventoryItem>;
 
+type ByRegionInventoryTable = Map<RegionId, Map<ProducerId, InventoryTable>>;
+
 type ReservedInventoryItem = {
   id : ReservationId;
   retailer : Retailer;
@@ -199,6 +201,9 @@ type Route = {
 };
 
 type RouteTable = Map<RouteId, Route>;
+
+// A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
+type ByRegionsRouteTable = Map<RegionId, Map<RegionId, RouteTable>>;
 
 type ReservedRoute = {
   id : ReservationId;

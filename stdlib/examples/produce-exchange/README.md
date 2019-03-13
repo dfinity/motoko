@@ -9,14 +9,14 @@ giving its functional specifications.
 
 The design of PE now evolves in three places:
 
- 1. The SDK and ActorScript teams' documentation:  
+ 1. The SDK and ActorScript teams' documentation:
     i. [The design document, under the SDK
-     space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).  
+     space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).
     ii. [The requirements document for the MVP
-      Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)  
+      Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
     iii. [Documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).
 
- 2. [**This example folder** in the ActorScript Github repo](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange), 
+ 2. [**This example folder** in the ActorScript Github repo](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange),
     which is implementing the Produce Exchange as a way to push the development of
  the ActorScript language, its standard library, and elsewhere, the
  ambient DFINITY system that runs ActorScript canisters.
@@ -33,30 +33,36 @@ Components in ActorScript
 
 We decompose the ActorScript implementation of the Produce Exchange example Dapp into the following pieces:
 
- 1. **Interface types**: See
-    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).  
-    Used in messages, and published/stored internally in the actor's
-    state.
- 
- 2. **Model types**: See
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).  
-    Used internally to implement the actor, but not present in its
-    interface.
-    
-    These models use collections from the standard library.
- 
- 3. **Message types**: See
-    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
-    Defined by the actor's public signature, which specifies the
-    message formats for each participant.
+ 1. **Basic types**: See
+    [`types.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/types.as).
+    Basic types used in messages, and published/stored internally in the server actor's state.
 
- 3. **Message implementations**: See
+ 3. **Server message types**: See
+    [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+    Defined by the server actor's public signature, which specifies the message formats for each participant.
+
+ 2. **Server model types**: See
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/model.as).
+    Used internally to implement the server actor, and not present in its public-facing interface.
+
+    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib)([Jira Story](https://dfinity.atlassian.net/browse/AST-31)).
+
+ 3. **Server actor implementations**: See
     [`actor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as)
     and
-    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).  
-    Defined by the actor's implementation for each message defined in
-    item 3, in terms of the model collection types defined in item 2.
+    [`model.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/actor.as).
+    Defined by the server actor's implementation for each message defined in item 3, in terms of the server model defined in item 2.
 
+To do? Rename files and types
+------------------------------------------------------------------------------------
+To make the definitions of the PE standards more explicit:
+ - file `types.as` ~> `pesTypes.as`
+ - file `actor.as` ~~> `pesServer.as`
+ - actor class `ProduceExchange` ~> `Server` or `PESServer` or `ProduceExchangeStandardsServer`
+
+To make room for more test files:
+ - file `produceExchange.as` ~> `test/simpleSetupAndQuery.as`
+ - optional: actor class `Test` ~> `TestSimpleSetupAndQuery`?
 
 
 To do list
@@ -66,7 +72,7 @@ This example is a work in progress.  It will be finished (and merged
 to `master`) when the following are in a stable state, and working
 locally, as locally-running ActorScript.
 
-**Requirements list**:  
+**Requirements list**:
   1. **the exchange’s interface definition**, as an ActorScript actor.
 
   2.  **the behavior of the exchange**, as that actor’s prototype

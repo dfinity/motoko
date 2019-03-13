@@ -79,19 +79,47 @@ actor class ProduceExchange() {
   */
   private var retailers : RetailerTable = null;
 
-  
+
   // xxx for efficient queries, need some extra indexing:
-  // 
+  //
   // Regions as keys in special global maps
   // ---------------------------------------
   // - inventory (across all producers) keyed by producer region
   // - routes (across all transporters) keyed by source region
   // - routes (across all transporters) keyed by destination region
   //
-  // ?: Days as keys in a spatial-temporal data structure?
+  // Indexing by time
   // -----------------
+  // For now, we won't try to index based on days.
+  //
+  // If and when we want to do so, we would like to have a spatial
+  // data structure that knows about each object's "interval" in a
+  // single shared dimension (in time):
+  //
   // - inventory, by availability window (start day, end day)
   // - routes, by transport window (departure day, arrival day)
+  //
+
+  // Routes by region-region pair
+  // ----------------------------
+  //
+  // the actor maintains a possibly-sparse 3D table mapping each
+  // region-region-routeid triple to zero or one routes.  First index
+  // is destination region, second index is source region; this 2D
+  // spatial coordinate gives all routes that go to that destination
+  // from that source, keyed by their unique route ID, the third
+  // coordinate of the mapping.
+  private var routesByDstSrcRegions : ByRegionsRouteTable = null;
+
+  // Inventory by source region
+  // ----------------------------
+  //
+  // the actor maintains a possibly-sparse 3D table mapping each
+  // sourceregion-producerid-inventoryid triple to zero or one
+  // inventory items.  The 1D coordinate sourceregion gives all of the
+  // inventory items, by producer id, for this source region.
+  //
+  private var inventorybyRegion : ByRegionInventoryTable = null;
 
   private unwrap<T>(ox:?T) : T {
     switch ox {
