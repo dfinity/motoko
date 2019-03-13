@@ -1,5 +1,16 @@
 // CHECK: func $start
 
+func checkpointAlpha() {};
+func checkpointBravo() {};
+func checkpointCharlie() {};
+func checkpointDelta() {};
+func checkpointEcho() {};
+func checkpointFoxtrot() {};
+func checkpointGolf() {};
+func checkpointHotel() {};
+func checkpointIndia() {};
+func checkpointJuliett() {};
+
 // Word64 operations
 {
     func printW64ln(w : Word64) { printInt(word64ToNat w);  print " "; printInt(word64ToInt w); print "\n" };
@@ -14,49 +25,34 @@
 // CHECK-NOT: call $box_i64
 // CHECK: call $printW64ln
     printW64ln(+c);
-// CHECK: call $printW64ln
     printW64ln(-c);
-// CHECK: call $printW64ln
     printW64ln(^c);
-// CHECK: call $printW64ln
     printW64ln(a + c);
-// CHECK: call $printW64ln
     printW64ln(c - a);
 
+// CHECK: call $checkpointAlpha
+    checkpointAlpha();
+// This is a native Wasm i64 multiplication, there should be no shift involved!
 // CHECK-NOT: i64.shr_u
 // CHECK: call $printW64ln
     printW64ln(a * b);
-// CHECK: call $printW64ln
+
     printW64ln(a / b);
-// CHECK: call $printW64ln
     printW64ln(c % a);
-// CHECK: call $printW64ln
     printW64ln(a ** 2);
 
-// CHECK: call $printW64ln
     printW64ln(a & c);
-// CHECK: call $printW64ln
     printW64ln(a | c);
-// CHECK: call $printW64ln
     printW64ln(a ^ c);
-// CHECK: call $printW64ln
     printW64ln(a << b);
-// CHECK: call $printW64ln
     printW64ln(a >> b);
-// CHECK: call $printW64ln
     printW64ln(shrsWord64(d, 3));
-// CHECK: call $printW64ln
-    printW64ln(shrsWord64(-1216614433, 4)); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
-// CHECK: call $printW64ln
+    printW64ln(shrsWord64(-5225319197819536385, 4)); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
     printW64ln(c <<> b);
-// CHECK: call $printW64ln
     printW64ln(c <>> b);
-// CHECK: call $printW64ln
-    printW64ln(popcntWord64 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
-// CHECK: call $printW64ln
-    printW64ln(clzWord64 e); // 20000 = 0x00004e20 (leading zeros = 17)
-// CHECK: call $printW64ln
-    printW64ln(ctzWord64 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+    printW64ln(popcntWord64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
+    printW64ln(clzWord64 e); // 20000 = 0x0000000000004e20 (leading zeros = 49)
+    printW64ln(ctzWord64 e); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
 
     assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
     assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
@@ -76,52 +72,38 @@
     let d : Word32 = -15;
     let e : Word32 = 20000;
 
+// CHECK: call $checkpointBravo
+    checkpointBravo();
 // CHECK: get_local $c
 // CHECK-NOT: call $box_i32
 // CHECK: call $printW32ln
     printW32ln(+c);
-// CHECK: call $printW32ln
     printW32ln(-c);
-// CHECK: call $printW32ln
     printW32ln(^c);
-// CHECK: call $printW32ln
     printW32ln(a + c);
-// CHECK: call $printW32ln
     printW32ln(c - a);
 
+// CHECK: call $checkpointCharlie
+    checkpointCharlie();
+// This is a native Wasm i32 multiplication, there should be no shift involved!
 // CHECK-NOT: i32.shr_u
 // CHECK: call $printW32ln
     printW32ln(a * b);
-// CHECK: call $printW32ln
     printW32ln(a / b);
-// CHECK: call $printW32ln
     printW32ln(c % a);
-// CHECK: call $printW32ln
     printW32ln(a ** 2);
 
-// CHECK: call $printW32ln
     printW32ln(a & c);
-// CHECK: call $printW32ln
     printW32ln(a | c);
-// CHECK: call $printW32ln
     printW32ln(a ^ c);
-// CHECK: call $printW32ln
     printW32ln(a << b);
-// CHECK: call $printW32ln
     printW32ln(a >> b);
-// CHECK: call $printW32ln
     printW32ln(shrsWord32(d, 3));
-// CHECK: call $printW32ln
     printW32ln(shrsWord32(-1216614433, 4)); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
-// CHECK: call $printW32ln
     printW32ln(c <<> b);
-// CHECK: call $printW32ln
     printW32ln(c <>> b);
-// CHECK: call $printW32ln
     printW32ln(popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
-// CHECK: call $printW32ln
     printW32ln(clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
-// CHECK: call $printW32ln
     printW32ln(ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
 
     assert (3 : Word32 ** (4 : Word32) == (81 : Word32));
@@ -141,55 +123,56 @@
     let e : Word16 = 20000;
 
 
-// CHECK: call $printW16ln
     printW16ln(+c);
-// CHECK: call $printW16ln
     printW16ln(-c);
-// CHECK: call $printW16ln
     printW16ln(^c);
-// CHECK: call $printW16ln
     printW16ln(a + c);
-// CHECK: call $printW16ln
     printW16ln(c - a);
 
+// CHECK: call $checkpointDelta
+    checkpointDelta();
 // CHECK: get_local $a
+// This is not a native Wasm i32 multiplication, we need to shift one of the args left by 16 bits!
 // CHECK-NEXT: get_local $b
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW16ln
     printW16ln(a * b);
-// CHECK: call $printW16ln
     printW16ln(a / b);
-// CHECK: call $printW16ln
     printW16ln(c % a);
-// CHECK: call $printW16ln
     printW16ln(a ** 2);
 
-// CHECK: call $printW16ln
     printW16ln(a & c);
-// CHECK: call $printW16ln
     printW16ln(a | c);
-// CHECK: call $printW16ln
     printW16ln(a ^ c);
-// CHECK: call $printW16ln
     printW16ln(a << b);
 
+// CHECK: call $checkpointEcho
+   checkpointEcho();
 // CHECK: get_local $b
+// This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
+// CHECK-NEXT: i32.const 16
+// CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.const 15
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: i32.shr_u
+// Then the result must be sanitised.
 // CHECK-NEXT: i32.const -65536
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: call $printW16ln
     printW16ln(a >> b);
     // printW16ln(shrs d b); // TODO(Gabor)
 
+// CHECK: call $checkpointFoxtrot
+   checkpointFoxtrot();
 // CHECK: get_local $b
 // CHECK-NEXT: call $rotl<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <<> b);
 
+// CHECK: call $checkpointGolf
+   checkpointGolf();
 // CHECK: get_local $b
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
@@ -216,48 +199,47 @@
     let e : Word8 = 200;
 
 
-// CHECK: call $printW8ln
     printW8ln(+c);
-// CHECK: call $printW8ln
     printW8ln(-c);
-// CHECK: call $printW8ln
     printW8ln(^c);
-// CHECK: call $printW8ln
     printW8ln(a + c);
-// CHECK: call $printW8ln
     printW8ln(c - a);
+// CHECK: call $checkpointHotel
+    checkpointHotel();
 // CHECK: get_local $b
+// This is not a native Wasm i32 multiplication, we need to shift one of the args left by 24 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
 // CHECK-NEXT: call $printW8ln
     printW8ln(a * b);
-// CHECK: call $printW8ln
     printW8ln(a / b);
-// CHECK: call $printW8ln
     printW8ln(c % a);
-// CHECK: call $printW8ln
     printW8ln(a ** 2);
 
-// CHECK: call $printW8ln
     printW8ln(a & c);
-// CHECK: call $printW8ln
     printW8ln(a | c);
-// CHECK: call $printW8ln
     printW8ln(a ^ c);
-// CHECK: call $printW8ln
     printW8ln(a << b);
 
+// CHECK: call $checkpointIndia
+    checkpointIndia();
 // CHECK: get_local $b
+// This is not a native Wasm i32 left shift, we need to shift the second arg left by 24 bits and clamp it to 3 bits!
+// CHECK-NEXT: i32.const 24
+// CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.const 7
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: i32.shr_u
+// Then the result must be sanitised.
 // CHECK-NEXT: i32.const -16777216
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: call $printW8ln
     printW8ln(a >> b);
     // printW8ln(shrs d b); // TODO(Gabor)
 
+// CHECK: call $checkpointJuliett
+    checkpointJuliett();
 // CHECK: get_local $b
 // CHECK-NEXT: call $rotl<Word8>
 // CHECK-NEXT: call $printW8ln

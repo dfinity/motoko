@@ -3476,11 +3476,11 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | Type.(Prim Word64),                       ShLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Shl))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp ->
-     clamp_shift_amount ty ^^
+     lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Shl))
   | Type.(Prim Word64),                       ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShROp ->
-     clamp_shift_amount ty ^^
+     lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
      sanitize_word_result ty
   | Type.(Prim Word64),                       RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
