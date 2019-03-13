@@ -1,4 +1,71 @@
 // CHECK: func $start
+
+// Word64 operations
+{
+    func printW64ln(w : Word64) { printInt(word64ToNat w);  print " "; printInt(word64ToInt w); print "\n" };
+
+    let a : Word64 = 4567;
+    let b : Word64 = 7;
+    let c : Word64 = 8912765;
+    let d : Word64 = -15;
+    let e : Word64 = 20000;
+
+// CHECK: get_local $c
+// LATER: HECK-NOT: call $box_i64
+// CHECK: call $printW64ln
+    printW64ln(+c);
+// CHECK: call $printW64ln
+    printW64ln(-c);
+// CHECK: call $printW64ln
+    printW64ln(^c);
+// CHECK: call $printW64ln
+    printW64ln(a + c);
+// CHECK: call $printW64ln
+    printW64ln(c - a);
+
+// CHECK-NOT: i64.shr_u
+// CHECK: call $printW64ln
+    printW64ln(a * b);
+// CHECK: call $printW64ln
+    printW64ln(a / b);
+// CHECK: call $printW64ln
+    printW64ln(c % a);
+// CXHECK: call $printW64ln
+    //printW64ln(a ** 2);
+
+// CHECK: call $printW64ln
+    printW64ln(a & c);
+// CHECK: call $printW64ln
+    printW64ln(a | c);
+// CHECK: call $printW64ln
+    printW64ln(a ^ c);
+// CHECK: call $printW64ln
+    printW64ln(a << b);
+// CHECK: call $printW64ln
+    printW64ln(a >> b);
+// CHECK: call $printW64ln
+    printW64ln(shrsWord64(d, 3));
+// CHECK: call $printW64ln
+    printW64ln(shrsWord64(-1216614433, 4)); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
+// CHECK: call $printW64ln
+    printW64ln(c <<> b);
+// CHECK: call $printW64ln
+    printW64ln(c <>> b);
+// CHECK: call $printW64ln
+    printW64ln(popcntWord64 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
+// CHECK: call $printW64ln
+    printW64ln(clzWord64 e); // 20000 = 0x00004e20 (leading zeros = 17)
+// CHECK: call $printW64ln
+    printW64ln(ctzWord64 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+
+    //assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
+    //assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
+    //assert (3 : Word64 ** (14 : Word64) == (4782969 : Word64));
+    //assert (3 : Word64 ** (20 : Word64) == (3486784401 : Word64));
+};
+
+
+
 // Word32 operations
 {
     func printW32ln(w : Word32) { printInt(word32ToNat w);  print " "; printInt(word32ToInt w); print "\n" };

@@ -30,15 +30,5 @@ compile_binop: PowOp
 of_type: Float
 compile_binop: PowOp
 of_type: Float
-compile_binop: AddOp
-compile_binop: AddOp
-compile_binop: SubOp
-compile_binop: SubOp
-compile_binop: MulOp
-compile_binop: MulOp
-compile_binop: DivOp
-compile_binop: DivOp
-compile_binop: ModOp
-compile_binop: ModOp
 compile_binop: PowOp
 compile_binop: PowOp
