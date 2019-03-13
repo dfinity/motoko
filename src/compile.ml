@@ -132,6 +132,7 @@ type 'env varloc =
 and 'env deferred_loc =
   { materialize : 'env -> (SR.t * G.t)
   ; materialize_vanilla : 'env -> G.t
+  ; is_local : bool (* Only valid within the current function *)
   }
 
 module E = struct
@@ -222,7 +223,7 @@ module E = struct
     | Local _ -> false
     | HeapInd _ -> false
     | Static _ -> true
-    | Deferred _ -> true
+    | Deferred d -> not d.is_local
   let mk_fun_env env n_param n_res =
     { env with
       n_param;
@@ -272,7 +273,9 @@ module E = struct
   let add_local_deferred_vanilla (env : t) name materialize =
       let d = {
         materialize = (fun env -> (SR.Vanilla, materialize env));
-        materialize_vanilla = (fun env -> materialize env) } in
+        materialize_vanilla = materialize;
+        is_local = false
+      } in
       add_local_deferred env name d
 
   let add_direct_local (env : t) name =
@@ -999,7 +1002,17 @@ module Var = struct
     | Some (Static i) ->
       ( compile_unboxed_zero, fun env1 -> (E.add_local_static env1 var i, G.i Drop))
     | Some (Deferred d) ->
-      ( compile_unboxed_zero, fun env1 -> (E.add_local_deferred env1 var d, G.i Drop))
+      if d.is_local
+      then
+        ( d.materialize_vanilla env,
+          fun env1 ->
+          let (env2, j) = E.add_direct_local env1 var in
+          let restore_code = G.i (LocalSet (nr j))
+          in (env2, restore_code)
+        )
+      else
+        ( compile_unboxed_zero,
+          fun env1 -> (E.add_local_deferred env1 var d, G.i Drop))
     | None -> (G.i Unreachable, fun env1 -> (env1, G.i Unreachable))
 
   (* Returns a pointer to a heap allocated box for this.
@@ -2988,6 +3001,7 @@ module StackRep = struct
   let deferred_of_static_thing env s =
     { materialize = (fun env -> (StaticThing s, G.nop))
     ; materialize_vanilla = (fun env -> materialize env s)
+    ; is_local = false
     }
 
   let adjust env (sr_in : t) sr_out =
@@ -3074,20 +3088,30 @@ module FuncDec = struct
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
-  let compile_local_function env cc restore_env mk_pat mk_body at =
-    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+  let compile_local_function env cc restore_env args mk_body at =
+    let arg_names = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     let retty = Lib.List.make cc.Value.n_res I32Type in
-    Func.of_body env (["clos", I32Type] @ args) retty (fun env1 -> G.with_region at (
+    Func.of_body env (["clos", I32Type] @ arg_names) retty (fun env1 -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
 
       let (env2, closure_code) = restore_env env1 get_closure in
 
-      (* Destruct the argument *)
-      let (env3, destruct_args_code) = mk_pat env2  in
+      (* Add arguments to the environment *)
+      let env3 =
+        let rec go i env = function
+        | [] -> env
+        | a::as_ ->
+          let get env = G.i (LocalGet (nr (Int32.of_int i))) in
+          let env' =
+            E.add_local_deferred env a.it
+              { materialize = (fun env -> SR.Vanilla, get env)
+              ; materialize_vanilla = get
+              ; is_local = true
+              } in
+          go (i+1) env' as_ in
+        go 1 (* skip closure*) env2 args in
 
       closure_code ^^
-      let get i = G.i (LocalGet (nr Int32.(add 1l (of_int i)))) in
-      destruct_args_code get ^^
       mk_body env3
     ))
 
@@ -3099,10 +3123,10 @@ module FuncDec = struct
      - Do GC at the end
      - Fake orthogonal persistence
   *)
-  let compile_message env cc restore_env mk_pat mk_body at =
-    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+  let compile_message env cc restore_env args mk_body at =
+    let arg_names = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     assert (cc.Value.n_res = 0);
-    Func.of_body env (["clos", I32Type] @ args) [] (fun env1 -> G.with_region at (
+    Func.of_body env (["clos", I32Type] @ arg_names) [] (fun env1 -> G.with_region at (
       (* Restore memory *)
       OrthogonalPersistence.restore_mem env1 ^^
 
@@ -3114,15 +3138,25 @@ module FuncDec = struct
 
       let (env2, closure_code) = restore_env env1 get_closure in
 
-      (* Destruct the argument *)
-      let (env3, destruct_args_code) = mk_pat env2  in
+      (* Add arguments to the environment *)
+      let env3 =
+        let rec go i env = function
+        | [] -> env
+        | a::as_ ->
+          let get env = G.i (LocalGet (nr Int32.(of_int i))) ^^
+                       (* TODO: Expose unboxed reference here *)
+                       StackRep.adjust env SR.UnboxedReference SR.Vanilla
+          in
+          let env' =
+            E.add_local_deferred env a.it
+              { materialize = (fun env -> SR.Vanilla, get env)
+              ; materialize_vanilla = (fun env -> get env)
+              ; is_local = true
+              } in
+          go (i+1) env' as_ in
+        go 1 (* skip closure*) env2 args in
 
       closure_code ^^
-      let get i =
-        G.i (LocalGet (nr Int32.(add 1l (of_int i)))) ^^
-        (* TODO: Expose unboxed reference here *)
-        StackRep.adjust env SR.UnboxedReference SR.Vanilla in
-      destruct_args_code get ^^
       mk_body env3 ^^
 
       (* Collect garbage *)
@@ -3158,16 +3192,16 @@ module FuncDec = struct
       )
 
   (* Compile a closed function declaration (has no free variables) *)
-  let closed pre_env cc name mk_pat mk_body at =
+  let closed pre_env cc name args mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name in
       ( SR.StaticFun fi, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
-        let f = compile_local_function env cc restore_no_env mk_pat mk_body at in
+        let f = compile_local_function env cc restore_no_env args mk_body at in
         fill f
       )
 
   (* Compile a closure declaration (has free variables) *)
-  let closure env cc name captured mk_pat mk_body at =
+  let closure env cc name captured args mk_body at =
       let is_local = cc.Value.sort <> Type.Sharable in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
@@ -3198,8 +3232,8 @@ module FuncDec = struct
 
       let f =
         if is_local
-        then compile_local_function env cc restore_env mk_pat mk_body at
-        else compile_message env cc restore_env mk_pat mk_body at in
+        then compile_local_function env cc restore_env args mk_body at
+        else compile_message env cc restore_env args mk_body at in
 
       let fi = E.add_fun env f name in
 
@@ -3246,14 +3280,14 @@ module FuncDec = struct
         ClosureTable.remember_closure env ^^
         G.i (Call (nr (Dfinity.func_bind_i env)))
 
-  let lit env how name cc captured mk_pat mk_body at =
+  let lit env how name cc captured args mk_body at =
     let is_local = cc.Value.sort <> Type.Sharable in
 
     if not is_local && E.mode env <> DfinityMode
     then SR.Unreachable, G.i Unreachable
     else
       (* TODO: Can we create a static function here? Do we ever have to? *)
-      closure env cc name captured mk_pat mk_body at
+      closure env cc name captured args mk_body at
 
 end (* FuncDec *)
 
@@ -3909,11 +3943,10 @@ and compile_exp (env : E.t) exp =
     SR.unit,
     compile_exp_vanilla env e ^^
     Var.set_val env name.it
-  | FuncE (x, cc, typ_binds, p, _rt, e) ->
-    let captured = Freevars.captured p e in
-    let mk_pat env1 = compile_func_pat env1 cc p in
+  | FuncE (x, cc, typ_binds, args, _rt, e) ->
+    let captured = Freevars.captured exp in
     let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
-    FuncDec.lit env typ_binds x cc captured mk_pat mk_body exp.at
+    FuncDec.lit env typ_binds x cc captured args mk_body exp.at
   | ActorE (i, ds, fs, _) ->
     SR.UnboxedReference,
     let captured = Freevars.exp exp in
@@ -4102,35 +4135,6 @@ and compile_n_ary_pat env how pat =
       orTrap (fill_pat env1 pat)
   in (env1, alloc_code, arity, fill_code)
 
-(* Used for function patterns
-   The complication is that functions are n-ary, and we get the elements
-   separately.
-   If the function is unary, that’s great.
-   If the pattern is a tuple pattern, that is great as well.
-   But if not, we need to construct the tuple first.
-*)
-and compile_func_pat env cc pat =
-  let env1 = alloc_pat_local env pat in
-  let fill_code get =
-    G.with_region pat.at @@
-    if cc.Value.n_args = 1
-    then
-      (* Easy case: unary *)
-      get 0 ^^ orTrap (fill_pat env1 pat)
-    else
-      match pat.it with
-      (* Another easy case: Nothing to match *)
-      | WildP -> G.nop
-      (* The good case: We have a tuple pattern *)
-      | TupP ps ->
-        assert (List.length ps = cc.Value.n_args);
-        G.concat_mapi (fun i p -> get i ^^ orTrap (fill_pat env1 p)) ps
-      (* The general case: Construct the tuple, and apply the full pattern *)
-      | _ ->
-        Array.lit env (Lib.List.table cc.Value.n_args (fun i -> get i)) ^^
-        orTrap (fill_pat env1 pat) in
-  (env1, fill_code)
-
 and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
   (fun (pre_env,alloc_code,mk_code) ->
        (pre_env, G.with_region dec.at alloc_code, fun env ->
@@ -4184,11 +4188,10 @@ and compile_prog env (ds, e) =
     (env', code1 ^^ code2 ^^ StackRep.drop env' sr)
 
 and compile_static_exp env how exp = match exp.it with
-  | FuncE (name, cc, typ_binds, p, _rt, e) ->
+  | FuncE (name, cc, typ_binds, args, _rt, e) ->
       (* Get captured variables *)
-      let mk_pat env1 = compile_func_pat env1 cc p in
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
-      FuncDec.closed env cc name mk_pat mk_body exp.at
+      FuncDec.closed env cc name args mk_body exp.at
   | _ -> assert false
 
 and compile_prelude env =

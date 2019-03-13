@@ -86,13 +86,17 @@ let rec exp e : f = match e.it with
   | OptE e              -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
-  | FuncE (x, cc, tp, p, t, e) -> under_lambda (exp e /// pat p)
+  | FuncE (x, cc, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i.it
   | NewObjE (_, fs, _)  -> fields fs
 
 and fields fs = unions (fun f -> id f.it.var) fs
 
 and exps es : f = unions exp es
+
+and arg a : fd = (M.empty, S.singleton a.it)
+
+and args as_ : fd = union_binders arg as_
 
 and pat p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
@@ -116,7 +120,7 @@ and dec d = match d.it with
   | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)
-and captured p e =
-  List.map fst (M.bindings (exp e /// pat p))
+and captured e =
+  List.map fst (M.bindings (exp e))
 
 and decs ps : fd = union_binders dec ps

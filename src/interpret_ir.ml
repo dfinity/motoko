@@ -393,9 +393,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, cc, _typbinds, pat, _typ, exp) ->
-    let f = interpret_func env x pat
-      (fun env' -> interpret_exp env' exp) in
+  | FuncE (x, cc, _typbinds, args, _typ, e) ->
+    let f = interpret_func env exp.at x args
+      (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in
     let v =
       match cc.Value.sort with
@@ -439,6 +439,21 @@ and interpret_cases env cases at v (k : V.value V.cont) =
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
     | None -> interpret_cases env cases' at v k
+
+(* Argument lists *)
+
+and match_arg a v : val_env = V.Env.singleton a.it (Lib.Promise.make_fulfilled v)
+
+and match_args at args v : val_env =
+  match args with
+  | [a] -> match_arg a v
+  | _ ->
+    match V.as_tup v with
+    | vs when List.length vs = List.length args ->
+      List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
+    | _ ->
+      trap at "argument value %s does not match parameter list"
+        (V.string_of_val v)
 
 
 (* Patterns *)
@@ -503,10 +518,13 @@ and match_lit lit v : bool =
   | PreLit _, _ -> assert false
   | _ -> false
 
+and match_id id v : val_env =
+  V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
+
 and match_pat pat v : val_env option =
   match pat.it with
   | WildP -> Some V.Env.empty
-  | VarP id -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
+  | VarP id -> Some (match_id id v)
   | LitP lit ->
     if match_lit lit v
     then Some V.Env.empty
@@ -576,26 +594,22 @@ and interpret_decs env decs (k : unit V.cont) =
   | [] -> k ()
   | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
-and interpret_func env x pat f v (k : V.value V.cont) =
+and interpret_func env at x args f v (k : V.value V.cont) =
   if !Flags.trace then trace "%s%s" x (string_of_arg v);
-  match match_pat pat v with
-  | None ->
-    trap pat.at "argument value %s does not match parameter list"
-      (V.string_of_val v)
-  | Some ve ->
-    incr trace_depth;
-    let k' = fun v' ->
-      if !Flags.trace then trace "<= %s" (V.string_of_val v');
-      decr trace_depth;
-      k v'
-    in
-    let env' =
-      { vals = V.Env.adjoin env.vals ve;
-        labs = V.Env.empty;
-        rets = Some k';
-        async = false
-      }
-    in f env' k'
+  let ve = match_args at args v in
+  incr trace_depth;
+  let k' = fun v' ->
+    if !Flags.trace then trace "<= %s" (V.string_of_val v');
+    decr trace_depth;
+    k v'
+  in
+  let env' =
+    { vals = V.Env.adjoin env.vals ve;
+      labs = V.Env.empty;
+      rets = Some k';
+      async = false
+    }
+  in f env' k'
 
 
 (* Programs *)
