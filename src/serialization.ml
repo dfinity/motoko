@@ -121,32 +121,22 @@ module Transform() = struct
           let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) in
           CallE (cc, t_exp exp1, [], exp2')
       end
-    | FuncE (x, cc, typbinds, pat, typT, exp) ->
+    | FuncE (x, cc, typbinds, args, typT, exp) ->
       begin match cc.Value.sort with
       | T.Local ->
-        FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+        FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
       | T.Sharable ->
         assert (typbinds = []);
         assert (T.is_unit typT);
-        match cc.Value.n_args with
-        | 0 -> FuncE (x, cc, [], t_pat pat, T.unit, t_exp exp)
-        | 1 ->
-          let arg_ty = t_typ pat.note in
-          let arg_v = fresh_var arg_t in
-          let pat' = varP arg_v in
-          let body' =
-            blockE [letP (t_pat pat) (deserialize arg_v arg_ty) ]
-              (t_exp exp) in
-          FuncE (x, cc, [], pat', T.unit, body')
-        | _ ->
-          let arg_tys = List.map t_typ (T.as_tup pat.note) in
-          let arg_vs = Lib.List.table cc.Value.n_args (fun _ -> fresh_var arg_t) in
-          let pat' = seqP (List.map varP arg_vs) in
-          let body' =
-            (* TODO: Optimize if pat is a manifest tuple pattern *)
-            blockE [letP (t_pat pat) (tupE (List.map2 deserialize arg_vs arg_tys)) ]
-              (t_exp exp) in
-          FuncE (x, cc, [], pat', T.unit, body')
+        let args' = t_args args in
+        let arg_tys = List.map (fun a -> a.note) args' in
+        let raw_arg_vs = List.map (fun _ -> fresh_var arg_t) args' in
+        let body' =
+          blockE [letP (tupP (List.map varP (List.map exp_of_arg args')))
+                       (tupE (List.map2 deserialize raw_arg_vs arg_tys)) ]
+            (t_exp exp) in
+        let args' = List.map arg_of_exp raw_arg_vs in
+        FuncE (x, cc, [], args', T.unit, body')
       end
     | PrimE _
       | LitE _ -> exp'
@@ -219,6 +209,9 @@ module Transform() = struct
 
   and t_fields fs =
     List.map (fun f -> { f with note = t_typ f.note }) fs
+
+  and t_args as_ =
+    List.map (fun a -> { a with note = t_typ a.note }) as_
 
   and t_pat pat =
     { pat with

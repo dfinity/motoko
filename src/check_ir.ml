@@ -470,10 +470,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
+  | FuncE (x, cc, typ_binds, args, ret_ty, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
-    let ve = check_pat_exhaustive env' pat in
+    let ve = check_args env' args in
     check_typ env' ret_ty;
     check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
            ==> isAsyncE exp)
@@ -483,10 +483,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) ret_ty;
     (* Now construct the function type and compare with the annotation *)
-    let arg_ty = pat.note in
-    let ts1 = if cc.Value.n_args = 1
-              then [arg_ty]
-              else T.as_seq arg_ty in
+    let ts1 = List.map (fun a -> a.note) args in
     let ts2 = if cc.Value.n_res = 1
               then [ret_ty]
               else T.as_seq ret_ty in
@@ -522,6 +519,18 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   check_exp (adjoin_vals env ve) exp;
   if not (T.sub (typ exp)  t) then
     error env exp.at "bad case"
+
+(* Arguments *)
+
+and check_args env args =
+  let rec go ve = function
+    | [] -> ve
+    | a::as_ ->
+      if T.Env.mem a.it ve
+      then error env a.at "duplicate binding for %s in argument list" a.it;
+      check_typ env a.note;
+      go (T.Env.add a.it a.note ve) as_
+  in go T.Env.empty args
 
 (* Patterns *)
 
