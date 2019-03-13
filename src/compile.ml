@@ -421,7 +421,7 @@ let new_local env name =
   let (set_i, get_i, _) = new_local_ env I32Type name
   in (set_i, get_i)
 
-let _new_local64 env name =
+let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
@@ -3432,6 +3432,27 @@ let rec compile_binop env t op =
                 (square_recurse_with_shifted G.nop)
                 (get_n ^^
                  square_recurse_with_shifted (sanitize_word_result ty) ^^
+                 mul)))
+     in pow ()
+  | Type.(Prim (Int|Nat|Word64)),             PowOp ->
+     let rec pow () = Func.share_code2 env "pow"
+                        (("n", I64Type), ("exp", I64Type)) [I64Type]
+                        Wasm.Values.(fun env get_n get_exp ->
+         let one = compile_const_64 1L in
+         let (set_res, get_res) = new_local64 env "res" in
+         let mul = snd (compile_binop env t MulOp) in
+         let square_recurse_with_shifted =
+           get_n ^^ get_exp ^^ one ^^
+           G.i (Binary (I64 I64Op.ShrU)) ^^
+           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
+         in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+            G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+             one
+             (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+              G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+                square_recurse_with_shifted
+                (get_n ^^
+                 square_recurse_with_shifted ^^
                  mul)))
      in pow ()
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))

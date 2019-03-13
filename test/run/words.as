@@ -30,8 +30,8 @@
     printW64ln(a / b);
 // CHECK: call $printW64ln
     printW64ln(c % a);
-// CXHECK: call $printW64ln
-    //printW64ln(a ** 2);
+// CHECK: call $printW64ln
+    printW64ln(a ** 2);
 
 // CHECK: call $printW64ln
     printW64ln(a & c);
@@ -58,10 +58,10 @@
 // CHECK: call $printW64ln
     printW64ln(ctzWord64 e); // 20000 = 0x00004e20 (trailing zeros = 5)
 
-    //assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
-    //assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
-    //assert (3 : Word64 ** (14 : Word64) == (4782969 : Word64));
-    //assert (3 : Word64 ** (20 : Word64) == (3486784401 : Word64));
+    assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
+    assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
+    assert (3 : Word64 ** (14 : Word64) == (4782969 : Word64));
+    assert (3 : Word64 ** (20 : Word64) == (3486784401 : Word64));
 };
 
 
