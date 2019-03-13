@@ -94,6 +94,8 @@ class Model() = this {
       idIsEq)
   };
 
+  private var inventory : InventoryTable = null;
+
   /**
   // Transporters collection:
   // ----------------------
@@ -153,7 +155,7 @@ class Model() = this {
   // inventory items.  The 1D coordinate sourceregion gives all of the
   // inventory items, by producer id, for this source region.
   //
-  private var inventorybyRegion : ByRegionInventoryTable = null;
+  private var inventoryByRegion : ByRegionInventoryTable = null;
 
   private unwrap<T>(ox:?T) : T {
     switch ox {
@@ -165,6 +167,10 @@ class Model() = this {
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
   private idHash(x:Nat):Hash { null /* xxx */ };
+
+  private keyOf(x:Nat):Key<Nat> {
+    new { key = x ; hash = idHash(x) }
+  };
 
   /*
    // reigstrarTruckType
@@ -184,9 +190,7 @@ class Model() = this {
     truckTypes :=
     Map.insertFresh<TruckTypeId, TruckType>(
       truckTypes,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       // xxx: AS should have more concise syntax for this pattern, below:
       // two problems I see, that are separate:
@@ -215,8 +219,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<TruckTypeId, TruckType, ?()>(
       truckTypes,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:TruckTypeTable, tt:TruckType) : ?() {
         truckTypes := t;
@@ -243,9 +246,7 @@ class Model() = this {
     regions :=
     Map.insertFresh<RegionId, Region>(
       regions,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       new { id=id:RegionId;
             short_name=short_name:Text;
@@ -265,8 +266,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<RegionId, Region, ?()>(
       regions,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:RegionTable, r:Region) : ?() {
         regions := t;
@@ -291,9 +291,7 @@ class Model() = this {
     produce :=
     Map.insertFresh<ProduceId, Produce>(
       produce,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       new { id=id:ProduceId;
             short_name=short_name:Text;
@@ -314,8 +312,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<ProduceId, Produce, ?()>(
       produce,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:ProduceTable, p:Produce) : ?() {
         produce := t;
@@ -347,9 +344,7 @@ class Model() = this {
     producers :=
     Map.insertFresh<ProducerId, Producer>(
       producers,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       new { id=id:ProducerId;
             short_name=short_name:Text;
@@ -372,8 +367,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<ProducerId, Producer, ?()>(
       producers,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:ProducerTable, p:Producer) : ?() {
         producers := t;
@@ -404,9 +398,7 @@ class Model() = this {
     retailers :=
     Map.insertFresh<RetailerId, Retailer>(
       retailers,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       new { id=id:RetailerId;
             short_name=short_name:Text;
@@ -429,8 +421,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<RetailerId, Retailer, ?()>(
       retailers,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:RetailerTable, r:Retailer) : ?() {
         retailers := t;
@@ -452,9 +443,7 @@ class Model() = this {
     transporters :=
     Map.insertFresh<TransporterId, Transporter>(
       transporters,
-      new { key=id;
-            hash=idHash(id)
-      },
+      keyOf(id),
       idIsEq,
       new { id=id:TransporterId;
             short_name=short_name:Text;
@@ -476,8 +465,7 @@ class Model() = this {
   ) : ?() {
     Map.removeThen<TransporterId, Transporter, ?()>(
       transporters,
-      new { key=id;
-            hash=idHash(id) },
+      keyOf(id),
       idIsEq,
       func (t:TransporterTable, tr:Transporter) : ?() {
         transporters := t;
@@ -504,9 +492,75 @@ class Model() = this {
     ppu:  PricePerUnit,
     begin:Date,
     end:  Date,
+    comments: Text,
   ) : ?InventoryId {
-    // xxx
-    null
+    let producer : ?Producer = getProducer(id);
+    let produce  : ?Produce  = getProduce(prod);
+    // check whether these ids are defined; fail fast if not defined
+    switch (producer, produce) {
+    case (?producer, ?produce) {
+           // create item; give it an id; catalog this id
+           let item: InventoryItem = new {
+             id= nextInventoryId;
+             produce= produce:Produce;
+             producer= prod:ProducerId;
+             quantity= quantity:Quantity;
+             start_date=begin:Date;
+             end_date=end:Date;
+             comments=comments:Text;
+           };
+           nextInventoryId += 1;
+           inventory :=
+           Map.insertFresh<InventoryId, InventoryItem>(
+             inventory,
+             keyOf(item.id),
+             idIsEq,
+             item
+           );
+
+           // Update the producer:
+           // xxx shorter syntax for this "record update" pattern?
+           let updatedProducer : Producer = new {
+             id = producer.id;
+             short_name = producer.short_name;
+             description = producer.description;
+             region = producer.region;
+             reserved = producer.reserved;
+             inventory =
+               Map.insertFresh<InventoryId, InventoryItem>(
+                 producer.inventory,
+                 keyOf(item.id),
+                 idIsEq,
+                 item
+               )
+           };
+
+           // Update producers table:
+           producers :=
+           Map.insertFresh<ProducerId, Producer>(
+             producers,
+             keyOf(id),
+             idIsEq,
+             updatedProducer
+           );
+
+           // Update inventoryByRegion table:
+           inventoryByRegion :=
+           Map.insertFresh2D<RegionId, ProducerId, InventoryTable>(
+             inventoryByRegion,
+             /* key1: region id of the producer */
+             keyOf(producer.region.id), idIsEq,
+             /* key2: producer id */
+             keyOf(producer.id), idIsEq,
+             /* value: producer's updated inventory table */
+             updatedProducer.inventory,
+           );
+
+           // return the item's id
+           ?item.id
+         };
+    case (_, _) { return null };
+    }
   };
 
   /**
@@ -515,6 +569,11 @@ class Model() = this {
   */
   producerRemInventory(id:InventoryId) : ?() {
     // xxx
+    // - remove from the inventory in inventory table; use `Trie.removeThen`
+    // - if successful, look up the producer ID; should not fail; `Trie.find`
+    // - update the producer, removing this inventory; use `Trie.{replace,remove}`
+    // - finally, use producer's region to update inventoryByRegion table,
+    //   removing this inventory item; use `Trie.remove2D`.
     null
   };
 

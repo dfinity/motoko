@@ -105,7 +105,6 @@ type TruckType = {
   isFridge : Bool;
   isFreezer : Bool;
 };
-
 type TruckTypeTable = Map<TruckTypeId, TruckType>;
 
 type Region = {
@@ -113,7 +112,6 @@ type Region = {
   short_name : Text;
   description : Text;
 };
-
 type RegionTable = Map<RegionId, Region>;
 
 type Produce = {
@@ -139,7 +137,7 @@ type ProducerTable = Map<ProducerId, Producer>;
 type InventoryItem = {
   id : InventoryId;
   produce : Produce;
-  producer : Producer;
+  producer : ProducerId;
   // ... more ..
   quantity : Quantity;
   start_date : Date;

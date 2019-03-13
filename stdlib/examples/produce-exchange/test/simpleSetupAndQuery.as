@@ -67,39 +67,39 @@ actor class Test() = this {
       // populate with inventory
       let praia = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pea), 100, 10, 0, 10
+        unwrap<ProduceId>(pea), 100, 10, 0, 10, ""
       );
       let paib = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(peb), 200, 10, 1, 11
+        unwrap<ProduceId>(peb), 200, 10, 1, 11, ""
       );
       let praic = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pec), 300, 10, 2, 12
+        unwrap<ProduceId>(pec), 300, 10, 2, 12, ""
       );
       let prbia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 10, 4, 7
+        unwrap<ProduceId>(peb), 200, 10, 4, 7, ""
       );
       let prbib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 9, 2, 15
+        unwrap<ProduceId>(peb), 1500, 9, 2, 15, ""
       );
       let prbic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 10, 2, 12
+        unwrap<ProduceId>(pec), 300, 10, 2, 12, ""
       );
       let prcia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 9, 4, 7
+        unwrap<ProduceId>(peb), 200, 9, 4, 7, ""
       );
       let prdib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 7, 2, 15
+        unwrap<ProduceId>(peb), 1500, 7, 2, 15, ""
       );
       let prdic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 6, 2, 12
+        unwrap<ProduceId>(pec), 300, 6, 2, 12, ""
       );
 
       // populate with routes

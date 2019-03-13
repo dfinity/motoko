@@ -96,6 +96,10 @@ type Node<K,V> = {
 
 type Trie<K,V> = ?Node<K,V>;
 
+// A 2D trie is just a trie that maps dimension-1 keys to another
+// layer of tries, each keyed on the dimension-2 keys.
+type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
+
 /* See AST-42 (sum types); we want this type definition instead:
 
  // Use a sum type (AST-42)
@@ -326,6 +330,21 @@ let Trie = new {
     rec(t, 0)
   };
 
+  // replace the given key's value in the trie,
+  // and only if successful, do the success continuation,
+  // otherwise, return the failure value
+  func replaceThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v2:V,
+                         success: (Trie<K,V>, V) -> X,
+                         fail: () -> X)
+    : X
+  {
+    let (t2, ov) = replace<K,V>(t, k, k_eq, ?v2);
+    switch ov {
+      case (null) { /* no prior value; failure to remove */ fail() };
+      case (?v1) { success(t2, v1) };
+    }
+  };
+
   // insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
   func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, ?v)
@@ -339,6 +358,23 @@ let Trie = new {
       case (?_) assert false;
     };
     t2
+  };
+
+  // insert the given key's value in the trie; return the new trie;
+  // assert that no prior value is associated with the key
+  func insertFresh2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
+                              k1:Key<K1>, k1_eq:(K1,K1)->Bool,
+                              k2:Key<K2>, k2_eq:(K2,K2)->Bool,
+                              v:V)
+    : Trie2D<K1,K2,V>
+  {
+    let inner = find<K1,Trie<K2,V>>(t, k1, k1_eq);
+    let updated_inner = switch inner {
+    case (null)   { insertFresh<K2,V>(null, k2, k2_eq, v) };
+    case (?inner) { insertFresh<K2,V>(inner, k2, k2_eq, v) };
+    };
+    let (updated_outer, _) = { insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner) };
+    updated_outer;
   };
 
   // remove the given key's value in the trie; return the new trie
@@ -358,6 +394,27 @@ let Trie = new {
     switch ov {
       case (null) { /* no prior value; failure to remove */ fail() };
       case (?v) { success(t2, v) };
+    }
+  };
+
+  // remove the given key-key pair's value in the 2D trie; return the
+  // new trie, and the prior value, if any.
+  func remove2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
+                         k1:Key<K1>, k1_eq:(K1,K1)->Bool,
+                         k2:Key<K2>, k2_eq:(K2,K2)->Bool)
+    : (Trie2D<K1,K2,V>, ?V)
+  {
+    switch (find<K1,Trie<K2,V>>(t, k1, k1_eq)) {
+    case (null)   {
+           (t, null)
+         };
+    case (?inner) {
+           let (updated_inner, ov) = remove<K2,V>(inner, k2, k2_eq);
+           let (updated_outer, _) = {
+             insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner)
+           };
+           (updated_outer, ov)
+         };
     }
   };
 

@@ -3,11 +3,13 @@ Produce Exchange Example
 
 The produce exchange (PE) is a canonical example Dapp, illustrating
 the DFINITY Dapp design process on a realistic marketplace-like
-application.  The PE concept began as a [two page Google drive
-document](https://docs.google.com/document/d/1AxpcuFH-x_0ZSa32DfM_BCYnGxCS37ETPNWE4BXDNdo/edit)
-giving its functional specifications.
+application.
 
-The design of PE now evolves in three places:
+The concept began as a [two page Google drive
+document](https://docs.google.com/document/d/1AxpcuFH-x_0ZSa32DfM_BCYnGxCS37ETPNWE4BXDNdo/edit)
+giving the Dapp's functional specifications.
+
+The design now evolves in three places:
 
  1. The SDK and ActorScript teams' documentation:  
     i. [The design document, under the SDK

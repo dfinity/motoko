@@ -238,9 +238,11 @@ actor class Server() {
     ppu:  PricePerUnit,
     begin:Date,
     end:  Date,
+    comments: Text,
   ) : async ?InventoryId {
-    // xxx
-    null
+    getModel().
+      producerAddInventory(
+        id, prod, quant, ppu, begin, end, comments)
   };
 
   /**
