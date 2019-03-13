@@ -5,11 +5,11 @@ The produce exchange (PE) is a canonical example Dapp, illustrating
 the DFINITY Dapp design process on a realistic marketplace-like
 application.
 
-The concept began as a [two page Google drive
+The design began as a [two page Google drive
 document](https://docs.google.com/document/d/1AxpcuFH-x_0ZSa32DfM_BCYnGxCS37ETPNWE4BXDNdo/edit)
 giving the Dapp's functional specifications.
 
-The design now evolves in three places:
+The design now evolves in two places:
 
  1. The SDK and ActorScript teams' documentation:  
     i. [The design document, under the SDK
@@ -33,7 +33,24 @@ Scripted uses of the Produce Exchange
 Server components
 -----------------------
 
-We decompose the Produce Exchange example Dapp into an _ActorScript-based_ implementation of a "**Server**" with the following definitional pieces:
+We decompose the Produce Exchange example Dapp into an
+_ActorScript-based_ implementation of a "**Server**" with the
+following definitional pieces:
+
+The first two server components give formal definitions for the
+Produce Exchange Standards Specification (PESS); See below for more
+about PESS.  The final two server components, the bulk of its
+implementation, give a formal specification of behavior that defines
+the behavior for PESS, but the implementation details of these two
+components themselves are not in PESS, and are subject to change
+independently of PESS.
+
+Currently, we use purely-functional data structures, since their
+design permits `O(1)`-time/space for sharing, and their immutability
+makes them suitable for mathematical reasoning.  These properties are
+practically important as a specification, but also suggest even more
+optimized representations, with the same mathematical properties.  See
+below, for more details on ["chunky representations".](#chunky-representations].
 
  1. **Basic types**: See
     [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as).  
@@ -135,6 +152,7 @@ As part of the to do list above, we have the following questions:
  5. Define a query language?
     --- Not until ActorScript implements variant types.
 
+
 ----------------------------------------------------------------------------
 
 
@@ -195,3 +213,91 @@ mentioned above, and performing a canister upgrade on the running
 system.  Similarly, to evolve the behavioral definition of PESS, the
 implementation of this actor will change (in `serverActor.as` and
 `serverModel.as`), and will also require a canister upgrade.
+
+----------------------------------------------------------------------------
+
+Performance tests, and alternative representations in `stdlib`
+====================================================================
+
+The main thrust of the work on this canister is currently focused on
+creating an executable prototype.
+
+At some point (near the end of our test suite components), we will
+want to consider the asymptotic properties of our implementation of
+the PESS server definition's update & query behavior.
+
+Notably, the one and only collection type used in this implementation
+is the `Map` type.  
+
+Crucially, we use a _functional representation_ (based on hash tries),
+with expected times as follows:
+
+```
+   Trie.copy                      : O(1)
+   Trie.find                      : O(log n)
+   Trie.replace, .insert, .remove : O(log n)
+   Trie.merge, .split             : O(log n)
+?? Trie.union                     : O(log n)
+?? Trie.intersect                 : O(log n)
+```
+
+We might consider validating the followin claim:
+
+    **Claim:** The asymptotic properties of the hash trie are ideal for a
+    practical (infinitely-scalable) implementation of PESS.
+
+Before considering other representations, we should evaluate this
+claim on randomly-generated use-cases of varying size, to simulate
+realistic (but synthetic) workloads, and measure time and space usage
+by the Wasm VM.
+
+Chunky Representations:
+------------------------
+
+Once we can generate performance plots, we should consider comparing
+different representations for `Map` that still use a hash trie.
+
+A simple variation uses **"chunks"** at the leaves of the hash trie,
+to represent sub-maps of the threshhold size where the pointers
+involved in the per-hash-bit branching no longer pays off.
+
+See also:
+
+ - [Hashtable representation](#hashtable-representation).
+ - [Association array representation](#association-array-representation).
+
+
+Association array representation:
+---------------------------------------
+
+Association arrays are optimized for cache locality.  They each store
+a key-value mapping as two arrays: one of keys, and one of values.  To
+find a key-value pair, do a linear-scan in the array of keys to
+find the corresponding position of the value, in that array. Regrow
+the two arrays by doubling, or some other scheme.
+
+```
+   Aa.copy                      : O(n)
+   Aa.find                      : O(n)
+   Aa.replace, .insert, .remove : O(n)
+   Aa.merge, .split             : O(n)
+?? Aa.union                     : O(n)
+?? Aa.intersect                 : O(n)
+```
+
+Hashtable representation:
+---------------------------------------
+
+A traditional hash table uses an array as a table, indexed by hashes.
+It handles hash collisions somehow, perhaps by doing a simple linear
+scan.  It regrows the table by doubling, or some other scheme.  It may
+or may not shrink the table.
+
+```
+   Htbl.copy                      : O(n)
+   Htbl.find                      : O(1)
+   Htbl.replace, .insert, .remove : O(1)
+   Htbl.merge, .split             : O(n)
+?? Htbl.union                     : O(n)
+?? Htbl.intersect                 : O(n)
+```
