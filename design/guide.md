@@ -371,14 +371,48 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
-* throw <exp>                                    raise exception
-* try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
-* # <id>                                             atom
 
 <exp-field> ::=                                object expression fields
   private? dec                                   field
   private? <id> = <exp>                          short-hand
 ```
+
+### Identifiers
+
+The expression '<id>` evaluates to the value bound this identifier in the current evaluation environment.
+
+### Literals
+
+The literal (or constant) expression `<lit>` evaluates to itself.
+
+### Unary operator
+
+The unary operator expressions `<unop> <exp>` evaluates `exp` to a result. If the result is a value it it returns the result of applying `<unop>` to that value.
+If the result is a trap, it, too traps.
+
+### Binary operator
+
+The unary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+Otherwise, `exp2` is evaluated to a result `r2`. If `r1` is `trap`, the expression results in `trap`.
+Otherwise `r1`  and `r2` are values `v1` and `v2` and the expression returns 
+the result of `v1 <binop> v2`.
+
+### Tuples 
+
+If <exp1>, ..., <expN> have type `T1`, ..., `Tn` then 
+tuple expressions `(<exp1>, ..., <expN>)` has tuple type `(T1, ..., Tn)`.
+
+The expression `(<exp1>, ..., <expN>)` evaluates  the expressions `exp1` ... `expN` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1` evaluates to values `v1`,...,`vn` then expression returns the value `(v1, ... , vn)`.
+
+
+
+
+
+
+
+
+
+
 
 ## Patterns
 ```
@@ -396,7 +430,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 Matching a pattern against a value may *succeed*, binding the corresponding identifiers in the pattern to their matching values, or *fail*. Thus the result of a match is either a a successful mapping of identifiers to values, or failure.
 
 The consequences of pattern match failure depends on the context of the pattern. 
-* In a function application or `let`-binding, failure to match the formal argument pattern or 'let'-pattern causes a *trap*.
+* In a function application or `let`-binding, failure to match the formal argument pattern or `let`-pattern causes a *trap*.
 * In a `case` branch of a `switch` expression, failure to match that case's pattern continues with an attempt to match the next case of the switch, trapping only when no such case remains.
 
 ### Wildcard pattern
@@ -434,10 +468,10 @@ Conversely, the `null` literal pattern may be used to test whether a value of op
 
 `<pat1> or <pat2>` is a disjunctive pattern. 
 
-The result of matching '<pat1> or <pat2>' against a value is the result of
-matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if it the first match failed.
+The result of matching `<pat1> or <pat2>` against a value is the result of
+matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
-(Note, statically, neither <pat1> or <pat2> may contain indentifier ('<id>') patterns so a successful match always binds zero identifiers.)
+(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier ('<id>') patterns so a successful match always binds zero identifiers.)
 
 ## Declarations
 ```
