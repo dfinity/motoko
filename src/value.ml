@@ -222,6 +222,7 @@ and value =
   | Func of call_conv * func
   | Async of async
   | Mut of value ref
+  | Serialized of value
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
@@ -258,6 +259,7 @@ let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
 
 let obj_of_array a =
   let get = local_func 1 1 @@ fun v k ->
