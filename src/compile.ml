@@ -3434,7 +3434,15 @@ let rec compile_binop env t op =
                  square_recurse_with_shifted (sanitize_word_result ty) ^^
                  mul)))
      in pow ()
-  | Type.(Prim (Int|Nat|Word64)),             PowOp ->
+  | Type.(Prim Int),                          PowOp ->
+     let _, pow = compile_binop env Type.(Prim Nat) PowOp in
+     let (set_n, get_n) = new_local64 env "n" in
+     let (set_exp, get_exp) = new_local64 env "exp"
+     in set_exp ^^ set_n ^^ get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+          G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+            (G.i Unreachable)
+            (get_n ^^ get_exp ^^ pow)
+  | Type.(Prim (Nat|Word64)),                 PowOp ->
      let rec pow () = Func.share_code2 env "pow"
                         (("n", I64Type), ("exp", I64Type)) [I64Type]
                         Wasm.Values.(fun env get_n get_exp ->
