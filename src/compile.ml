@@ -3565,12 +3565,12 @@ and compile_exp (env : E.t) exp =
   (* Binary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
     begin
-     let compile_args_as sr = compile_exp_as env sr e1 ^^ compile_exp_as env sr e2
+     let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
      in match p with
-      | "Array.init" -> SR.Vanilla, compile_args_as SR.Vanilla ^^ Array.init env
-      | "Array.tabulate" -> SR.Vanilla, compile_args_as SR.Vanilla ^^ Array.tabulate env
-      | "shrs" -> SR.UnboxedWord32, compile_args_as SR.UnboxedWord32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS))
-      | "shrs64" -> SR.UnboxedInt64, compile_args_as SR.UnboxedInt64 ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
+      | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
+      | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+      | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
 
       | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
