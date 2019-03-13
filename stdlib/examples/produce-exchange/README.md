@@ -24,7 +24,7 @@ The design of PE now evolves in three places:
 Scripted uses of the Produce Exchange
 ----------------------------------------
 
-- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/produceExchange.as)
+- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/test/simpleSetupAndQuery.as)
 - [ ] Randomly-generated scripts
 
 
