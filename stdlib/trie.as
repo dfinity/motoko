@@ -56,39 +56,6 @@ by making this number adaptive for each path, and based on the content
 of the trie along that path.
 
 
-Future work
-=============
-
-Tests
----------
-more regression tests for everything that is below
-
-
-Variant types
-------------------------
-See [AST-42]() (sum types); we want this type definition instead:
-
- ```
- // Use a sum type (AST-42)
- type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
- type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
- type LeafNode<K,V> = { key:K; val:V };
- ```
-
-Adaptive path lengths
-----------------------
-
-Currently we assume a uniform path length.  This can be inefficient,
-and requires careful tuning.  In the future, we could adapt the path
-length of each subtree to its cardinality; this wouild avoid
-needlessly long paths, or paths that are too short for their subtree's
-size.
-
-Iterator objects
--------------------
-for use in 'for ... in ...' patterns
-
-
 Implementation details
 =======================
 
@@ -140,9 +107,6 @@ type Trie<K,V> = ?Node<K,V>;
  layer of tries, each keyed on the dimension-2 keys.
 */
 type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
-
-/**
- */
 
 
 let Trie = new {
@@ -313,8 +277,12 @@ let Trie = new {
     };
     rec(bitpos)
   };
-
-  // replace the given key's value option with the given one, returning the previous one
+  
+  /**
+   replace
+   ---------
+   replace the given key's value option with the given one, returning the previous one
+   */
   func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) {
     let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
@@ -353,9 +321,13 @@ let Trie = new {
     rec(t, 0)
   };
 
-  // replace the given key's value in the trie,
-  // and only if successful, do the success continuation,
-  // otherwise, return the failure value
+  /**
+   `replaceThen`
+   ------------
+   replace the given key's value in the trie,
+   and only if successful, do the success continuation,
+   otherwise, return the failure value
+   */
   func replaceThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v2:V,
                          success: (Trie<K,V>, V) -> X,
                          fail: () -> X)
@@ -368,12 +340,20 @@ let Trie = new {
     }
   };
 
-  // insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
+  /** 
+   `insert`
+   ------------
+   insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
+   */
   func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, ?v)
   };
 
-  // insert the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
+  /**
+   `insertFresh`
+   ----------------
+   insert the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
+   */
   func insertFresh<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : Trie<K,V> {
     let (t2, none) = replace<K,V>(t, k, k_eq, ?v);
     switch none {
@@ -383,8 +363,12 @@ let Trie = new {
     t2
   };
 
-  // insert the given key's value in the trie; return the new trie;
-  // assert that no prior value is associated with the key
+  /**
+   `insertFresh2D`
+   ---------------
+   insert the given key's value in the trie; return the new trie;
+   assert that no prior value is associated with the key
+   */
   func insertFresh2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
                               k1:Key<K1>, k1_eq:(K1,K1)->Bool,
                               k2:Key<K2>, k2_eq:(K2,K2)->Bool,
@@ -400,14 +384,22 @@ let Trie = new {
     updated_outer;
   };
 
-  // remove the given key's value in the trie; return the new trie
+  /** 
+   `remove`   
+   -------------
+   remove the given key's value in the trie; return the new trie
+   */
   func remove<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, null)
   };
 
-  // remove the given key's value in the trie,
-  // and only if successful, do the success continuation,
-  // otherwise, return the failure value
+  /** 
+   `removeThen`
+   ------------
+   remove the given key's value in the trie,
+   and only if successful, do the success continuation,
+   otherwise, return the failure value
+   */
   func removeThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool,
                          success: (Trie<K,V>, V) -> X,
                          fail: () -> X)
@@ -420,8 +412,12 @@ let Trie = new {
     }
   };
 
-  // remove the given key-key pair's value in the 2D trie; return the
-  // new trie, and the prior value, if any.
+  /** 
+   `remove2D`
+   --------------
+   remove the given key-key pair's value in the 2D trie; return the
+   new trie, and the prior value, if any.
+   */
   func remove2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
                          k1:Key<K1>, k1_eq:(K1,K1)->Bool,
                          k2:Key<K2>, k2_eq:(K2,K2)->Bool)
@@ -441,7 +437,11 @@ let Trie = new {
     }
   };
 
-  // find the given key's value in the trie, or return null if nonexistent
+  /** 
+   `find`
+   ---------
+   find the given key's value in the trie, or return null if nonexistent
+   */
   func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
     let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
@@ -473,10 +473,14 @@ let Trie = new {
     rec(t, 0)
   };
 
-  // merge tries, preferring the right trie where there are collisions
-  // in common keys. note: the `disj` operation generalizes this `merge`
-  // operation in various ways, and does not (in general) loose
-  // information; this operation is a simpler, special case.
+  /**
+   `merge`
+   ---------
+   merge tries, preferring the right trie where there are collisions
+   in common keys. note: the `disj` operation generalizes this `merge`
+   operation in various ways, and does not (in general) loose
+   information; this operation is a simpler, special case.
+   */
   func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
@@ -522,9 +526,13 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  // like `merge`, it merges tries, but unlike `merge`, it signals a
-  // dynamic error if there are collisions in common keys between the
-  // left and right inputs.
+  /** 
+   `mergeDisjoint`
+   ----------------
+   like `merge`, it merges tries, but unlike `merge`, it signals a
+   dynamic error if there are collisions in common keys between the
+   left and right inputs.
+   */
   func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
@@ -577,9 +585,13 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  // The key-value pairs of the final trie consists of those pairs of
-  // the left trie whose keys are not present in the right trie; the
-  // values of the right trie are irrelevant.
+  /**
+   `diff`
+   ------
+   The key-value pairs of the final trie consists of those pairs of
+   the left trie whose keys are not present in the right trie; the
+   values of the right trie are irrelevant.
+   */
   func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, k_eq:(K,K)->Bool) : Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
@@ -617,15 +629,18 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  // This operation generalizes the notion of "set union" to finite maps.
-  // Produces a "disjunctive image" of the two tries, where the values of
-  // matching keys are combined with the given binary operator.
-  //
-  // For unmatched key-value pairs, the operator is still applied to
-  // create the value in the image.  To accomodate these various
-  // situations, the operator accepts optional values, but is never
-  // applied to (null, null).
-  //
+  /**
+   `disj`
+   --------
+   This operation generalizes the notion of "set union" to finite maps.
+   Produces a "disjunctive image" of the two tries, where the values of
+   matching keys are combined with the given binary operator.
+  
+   For unmatched key-value pairs, the operator is still applied to
+   create the value in the image.  To accomodate these various
+   situations, the operator accepts optional values, but is never
+   applied to (null, null).
+   */
   func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 			               k_eq:(K,K)->Bool, vbin:(?V,?W)->X)
     : Trie<K,X>
@@ -688,10 +703,14 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  // This operation generalizes the notion of "set intersection" to
-  // finite maps.  Produces a "conjuctive image" of the two tries, where
-  // the values of matching keys are combined with the given binary
-  // operator, and unmatched key-value pairs are not present in the output.
+  /** 
+   `conj`
+   ---------
+   This operation generalizes the notion of "set intersection" to
+   finite maps.  Produces a "conjuctive image" of the two tries, where
+   the values of matching keys are combined with the given binary
+   operator, and unmatched key-value pairs are not present in the output.
+   */
   func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
     : Trie<K,X>
@@ -733,10 +752,14 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  // This operation gives a recursor for the internal structure of
-  // tries.  Many common operations are instantiations of this function,
-  // either as clients, or as hand-specialized versions (e.g., see map,
-  // mapFilter, exists and forAll below).
+  /** 
+   `foldUp`
+   ------------
+   This operation gives a recursor for the internal structure of
+   tries.  Many common operations are instantiations of this function,
+   either as clients, or as hand-specialized versions (e.g., see map,
+   mapFilter, exists and forAll below).
+   */
   func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
     func rec(t:Trie<K,V>) : X {
       switch t {
@@ -757,8 +780,12 @@ let Trie = new {
     rec(t)
   };
 
-  // Fold over the key-value pairs of the trie, using an accumulator.
-  // The key-value pairs have no reliable or meaningful ordering.
+  /**
+   `fold`
+   ---------
+   Fold over the key-value pairs of the trie, using an accumulator.
+   The key-value pairs have no reliable or meaningful ordering.
+   */
   func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
     func rec(t:Trie<K,V>, x:X) : X {
       switch t {
@@ -778,7 +805,11 @@ let Trie = new {
     rec(t, x)
   };
 
-  // specialized foldUp operation.
+  /** 
+   `exists`
+   --------
+   Test whether a given key-value pair is present, or not.
+   */
   func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
@@ -798,7 +829,11 @@ let Trie = new {
   };
 
 
-  // specialized foldUp operation.
+  /** 
+   `forAll`
+   ---------
+   Test whether all key-value pairs have a given property.
+   */
   func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
@@ -817,10 +852,14 @@ let Trie = new {
     rec(t)
   };
 
-  // specialized foldUp operation.
-  // Test for "deep emptiness": subtrees that have branching structure,
-  // but no leaves.  These can result from naive filtering operations;
-  // filter uses this function to avoid creating such subtrees.
+  /**
+   `isEmpty`
+   -----------
+   specialized foldUp operation.
+   Test for "deep emptiness": subtrees that have branching structure,
+   but no leaves.  These can result from naive filtering operations;
+   filter uses this function to avoid creating such subtrees.
+   */
   func isEmpty<K,V>(t:Trie<K,V>) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
@@ -836,6 +875,11 @@ let Trie = new {
     rec(t)
   };
 
+  /**
+   `filter`
+   -----------
+   filter the key-value pairs by a given predicate.
+   */
   func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
     func rec(t:Trie<K,V>) : Trie<K,V> {
       switch t {
@@ -865,6 +909,11 @@ let Trie = new {
     rec(t)
   };
 
+  /**
+   `mapFilter`
+   -----------
+   map and filter the key-value pairs by a given partial mapping function.
+   */
   func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
     func rec(t:Trie<K,V>) : Trie<K,W> {
       switch t {
@@ -901,13 +950,18 @@ let Trie = new {
     rec(t)
   };
 
-  // Test for equality, but naively, based on structure.
-  // Does not attempt to remove "junk" in the tree;
-  // For instance, a "smarter" approach would equate
-  //   `#bin{left=#empty;right=#empty}`
-  // with
-  //   `#empty`.
-  // We do not observe that equality here.
+  /**
+   `equalStructure`
+   ------------------
+
+   Test for equality, but naively, based on structure.
+   Does not attempt to remove "junk" in the tree;
+   For instance, a "smarter" approach would equate
+     `#bin{left=#empty;right=#empty}`
+   with
+     `#empty`.
+   We do not observe that equality here.
+   */
   func equalStructure<K,V>(
     tl:Trie<K,V>,
     tr:Trie<K,V>,
@@ -942,3 +996,40 @@ let Trie = new {
   };
 
 };
+
+
+/**
+
+Future work
+=============
+
+Tests
+---------
+more regression tests for everything that is below
+
+
+Variant types
+------------------------
+See [AST-42]() (sum types); we want this type definition instead:
+
+ ```
+ // Use a sum type (AST-42)
+ type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
+ type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
+ type LeafNode<K,V> = { key:K; val:V };
+ ```
+
+Adaptive path lengths
+----------------------
+
+Currently we assume a uniform path length.  This can be inefficient,
+and requires careful tuning.  In the future, we could adapt the path
+length of each subtree to its cardinality; this wouild avoid
+needlessly long paths, or paths that are too short for their subtree's
+size.
+
+Iterator objects
+-------------------
+for use in 'for ... in ...' patterns
+
+*/
