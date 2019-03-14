@@ -253,7 +253,11 @@ let Trie = new {
       (hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
   };
 
-  // part of "public interface":
+  /**
+   `empty`
+   --------
+   An empty trie.
+   */
   func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
   // helper function for constructing new paths of uniform length
@@ -281,7 +285,7 @@ let Trie = new {
   };
   
   /**
-   replace
+   `replace`
    ---------
    replace the given key's value option with the given one, returning the previous one
    */
