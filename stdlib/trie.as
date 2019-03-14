@@ -1,58 +1,57 @@
 /**
- Hash Tries in ActorScript
- -------------------------
 
- Functional maps (and sets) whose representation is "canonical", and
- history independent.
+Hash Tries in ActorScript
+-------------------------
 
- See this POPL 1989 paper (Section 6):
+Functional maps (and sets) whose representation is "canonical", and
+history independent.
+
+Design Background
+------------------
+
+See this POPL 1989 paper (Section 6):
+
  - "Incremental computation via function caching", Pugh & Teitelbaum.
  - https://dl.acm.org/citation.cfm?id=75305
  - Public copy here: http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf
 
- By contrast, other usual functional representations of maps (AVL
- Trees, Red-Black Trees) do not enjoy history independence, and are
- each more complex to implement (e.g., each requires "rebalancing";
- these trees never do).
+By contrast, other usual functional representations of maps (AVL
+Trees, Red-Black Trees) do not enjoy history independence, and are
+each more complex to implement (e.g., each requires "rebalancing";
+these trees never do).
 
 
- Done:
- -------
+Status: 
+=========
 
-  - (hacky) type definition; XXX: need real sum types to clean it up
-  - find operation
-  - insert operation
-  - remove operation
-  - replace operation (remove+insert via a single traversal)
-  - basic encoding of sets, and some set operations
-  - basic tests (and primitive debugging) for set operations
-  - write trie operations that operate over pairs of tries:
-    for set union, difference and intersection.
-  - handle hash collisions gracefully using association list module
+Done:
+------
 
- TODO-Matthew:
+- (hacky) type definition; XXX: need real sum types to clean it up
+- find operation
+- insert operation
+- remove operation
+- replace operation (remove+insert via a single traversal)
+- basic encoding of sets, and some set operations
+- basic tests (and primitive debugging) for set operations
+- write trie operations that operate over pairs of tries:
+  for set union, difference and intersection.
+- handle hash collisions gracefully using association list module
+
+TODO-Matthew:
 ----------------
 
-  - (more) regression tests for everything that is below
+- (more) regression tests for everything that is below
 
-  - adapt the path length of each subtree to its cardinality; avoid
-    needlessly long paths, or paths that are too short for their
-    subtree's size.
+- adapt the path length of each subtree to its cardinality; avoid
+  needlessly long paths, or paths that are too short for their
+  subtree's size.
 
-  - iterator objects, for use in 'for ... in ...' patterns
-*/
+- iterator objects, for use in 'for ... in ...' patterns
 
-// import List
 
-// TEMP: A "bit string" as a linked list of bits:
-type Bits = ?(Bool, Bits);
-
-// TODO: Replace this definition WordX, for some X, once we have these types in AS.
-type Hash = Bits;
-//type Hash = Word16;
-//type Hash = Word8;
-
-/**
+Assumptions
+=============
 
 Uniform depth assumption:
 ------------------------------
@@ -70,7 +69,38 @@ hash, starting at the LSB, that we use for indexing.
 TODO: Make this more robust by making this number adaptive for each
 path, and based on the content of the trie along that path.
 
+
+Future work
+=============
+
+Variant types
+------------------------
+See [AST-42]() (sum types); we want this type definition instead:
+
+ ```
+ // Use a sum type (AST-42)
+ type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
+ type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
+ type LeafNode<K,V> = { key:K; val:V };
+ ```
+
+
+Implementation details
+=======================
+
+See below.
 */
+
+// import List
+
+// TEMP: A "bit string" as a linked list of bits:
+type Bits = ?(Bool, Bits);
+
+// TODO: Replace this definition WordX, for some X, once we have these types in AS.
+type Hash = Bits;
+//type Hash = Word16;
+//type Hash = Word8;
+
 let HASH_BITS = 4;
 
 type Key<K> = {
@@ -108,16 +138,6 @@ type Trie<K,V> = ?Node<K,V>;
 type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
 
 /**
- Variant types, eventually
- --------------------------
- See AST-42 (sum types); we want this type definition instead:
-
- ```
- // Use a sum type (AST-42)
- type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
- type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
- type LeafNode<K,V> = { key:K; val:V };
- ```
  */
 
 
