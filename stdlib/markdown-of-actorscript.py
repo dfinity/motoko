@@ -2,15 +2,17 @@
 import sys
 import re
 
-#showActorScript=True
-showActorScript=False
+showActorScript=True
+#showActorScript=False
 
 ActorScript="ActorScript"
 Markdown="Markdown"
 Comment="Comment"
 modeType=[ActorScript, Markdown, Comment]
 
-# eventually, detect this based on the input file name and handle the other way around:
+# eventually, detect this `outerMode` based on the input file name and
+# handle the other way around; for now, we assume only this way
+# around:
 outerMode = ActorScript
 ignoreNonMarkdownComments= False
 
