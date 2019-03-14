@@ -59,6 +59,16 @@ func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
 
 // Exotic bitwise operations
+func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word8) -> Word8) (w, amount);
+func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
+func clzWord8(w : Word8) : Word8 = (prim "clz8" : Word8 -> Word8) w;
+func ctzWord8(w : Word8) : Word8 = (prim "ctz8" : Word8 -> Word8) w;
+
+func shrsWord16(w : Word16, amount : Word16) : Word16 = (prim "shrs16" : (Word16, Word16) -> Word16) (w, amount);
+func popcntWord16(w : Word16) : Word16 = (prim "popcnt16" : Word16 -> Word16) w;
+func clzWord16(w : Word16) : Word16 = (prim "clz16" : Word16 -> Word16) w;
+func ctzWord16(w : Word16) : Word16 = (prim "ctz16" : Word16 -> Word16) w;
+
 func shrsWord32(w : Word32, amount : Word32) : Word32 = (prim "shrs" : (Word32, Word32) -> Word32) (w, amount);
 func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
 func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
@@ -178,32 +188,48 @@ let prim = function
   | "Word32->Char" -> fun v k ->
                       let i = Conv.of_signed_Word32 (as_word32 v)
                       in k (Char i)
-  | "shrs" -> fun v k ->
-              let w, a = as_pair v in
-              let i = Word32.shr_s (as_word32 w)  (as_word32 a)
-              in k (Word32 i)
+  | "shrs8"
+  | "shrs16"
+  | "shrs"
   | "shrs64" -> fun v k ->
-                let w, a = as_pair v in
-                let i = Word64.shr_s (as_word64 w)  (as_word64 a)
-                in k (Word64 i)
-  | "popcnt" -> fun v k ->
-                let i = Word32.popcnt (as_word32 v)
-                in k (Word32 i)
+                let w, a = as_pair v
+                in k (match w with
+                      | Word8  y -> Word8  (Word8 .shr_s y  (as_word8  a))
+                      | Word16 y -> Word16 (Word16.shr_s y  (as_word16 a))
+                      | Word32 y -> Word32 (Word32.shr_s y  (as_word32 a))
+                      | Word64 y -> Word64 (Word64.shr_s y  (as_word64 a))
+                      | _ -> failwith "shrs")
+  | "popcnt8"
+  | "popcnt16"
+  | "popcnt"
   | "popcnt64" -> fun v k ->
-                  let i = Word64.popcnt (as_word64 v)
-                  in k (Word64 i)
-  | "clz" -> fun v k ->
-             let i = Word32.clz (as_word32 v)
-             in k (Word32 i)
+                  k (match v with
+                     | Word8  w -> Word8  (Word8. popcnt w)
+                     | Word16 w -> Word16 (Word16.popcnt w)
+                     | Word32 w -> Word32 (Word32.popcnt w)
+                     | Word64 w -> Word64 (Word64.popcnt w)
+                     | _ -> failwith "popcnt")
+  | "clz8"
+  | "clz16"
+  | "clz"
   | "clz64" -> fun v k ->
-               let i = Word64.clz (as_word64 v)
-               in k (Word64 i)
-  | "ctz" -> fun v k ->
-             let i = Word32.ctz (as_word32 v)
-             in k (Word32 i)
+               k (match v with
+                  | Word8  w -> Word8  (Word8. clz w)
+                  | Word16 w -> Word16 (Word16.clz w)
+                  | Word32 w -> Word32 (Word32.clz w)
+                  | Word64 w -> Word64 (Word64.clz w)
+                  | _ -> failwith "clz")
+  | "ctz8"
+  | "ctz16"
+  | "ctz"
   | "ctz64" -> fun v k ->
-             let i = Word64.ctz (as_word64 v)
-             in k (Word64 i)
+               k (match v with
+                  | Word8  w -> Word8  (Word8. ctz w)
+                  | Word16 w -> Word16 (Word16.ctz w)
+                  | Word32 w -> Word32 (Word32.ctz w)
+                  | Word64 w -> Word64 (Word64.ctz w)
+                  | _ -> failwith "ctz")
+
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "Array.init" -> fun v k ->

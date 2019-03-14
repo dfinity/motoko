@@ -162,7 +162,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: call $printW16ln
     printW16ln(a >> b);
-    // printW16ln(shrs d b); // TODO(Gabor)
+    printW16ln(shrsWord16(d, 3 : Word16)); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
 
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
@@ -177,9 +177,9 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $rotr<Word16>
 // CHECK-NEXT: call $printW16ln
     printW16ln(c <>> b);
-    // printW16ln(popcnt d); // TODO(Gabor)
-    // printW16ln(clz c); // TODO(Gabor)
-    // printW16ln(ctz e); // TODO(Gabor)
+    printW16ln(popcntWord16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
+    printW16ln(clzWord16 e); // 20000 = 0x4e20 (leading zeros = 1)
+    printW16ln(ctzWord16 e); // 20000 = 0x4e20 (trailing zeros = 5)
 
 
     assert (3 : Word16 ** (0 : Word16) == (1 : Word16));
@@ -236,7 +236,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: i32.and
 // CHECK-NEXT: call $printW8ln
     printW8ln(a >> b);
-    // printW8ln(shrs d b); // TODO(Gabor)
+    printW8ln(shrsWord8(d, 3 : Word8)); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
 
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
@@ -248,9 +248,9 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $rotr<Word8>
 // CHECK-NEXT: call $printW8ln
     printW8ln(c <>> b);
-    // printW8ln(popcnt d); // TODO(Gabor)
-    // printW8ln(clz c); // TODO(Gabor)
-    // printW8ln(ctz e); // TODO(Gabor)
+    printW8ln(popcntWord8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
+    printW8ln(clzWord8 e); // 200 = 0xC8 (leading zeros = 0)
+    printW8ln(ctzWord8 e); // 200 = 0xC8 (trailing zeros = 3)
 
     assert (3 : Word8 ** (0 : Word8) == (1 : Word8));
     assert (3 : Word8 ** (3 : Word8) == (27 : Word8));
