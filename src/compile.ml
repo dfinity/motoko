@@ -1799,15 +1799,10 @@ module Array = struct
       | "vals" -> Some (fake_object_idx_option env "array_vals")
       | _ -> None
 
-  (* The primitive operations *)
-  (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
-  let init env =
+  (* Does not initialize the fields! *)
+  let alloc env =
     let (set_len, get_len) = new_local env "len" in
-    let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
-    set_x ^^
-    BoxedInt.unbox env ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     set_len ^^
 
     (* Allocate *)
@@ -1822,6 +1817,24 @@ module Array = struct
     get_r ^^
     get_len ^^
     Heap.store_field len_field ^^
+
+    get_r
+
+  (* The primitive operations *)
+  (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
+  let init env =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_x, get_x) = new_local env "x" in
+    let (set_r, get_r) = new_local env "r" in
+    set_x ^^
+    BoxedInt.unbox env ^^
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    set_len ^^
+
+    (* Allocate *)
+    get_len ^^
+    alloc env ^^
+    set_r ^^
 
     (* Write fields *)
     get_len ^^
@@ -1845,16 +1858,8 @@ module Array = struct
 
     (* Allocate *)
     get_len ^^
-    compile_add_const header_size ^^
-    Heap.dyn_alloc_words env ^^
+    alloc env ^^
     set_r ^^
-
-    (* Write header *)
-    get_r ^^
-    Tagged.store Tagged.Array ^^
-    get_r ^^
-    get_len ^^
-    Heap.store_field len_field ^^
 
     (* Write fields *)
     get_len ^^
