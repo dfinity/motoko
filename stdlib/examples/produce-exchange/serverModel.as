@@ -679,7 +679,7 @@ class Model() = this {
 
   /**
    `transporterReservations`
-    ---------------------------
+   ---------------------------
   */
   transporterReservations(id:TransporterId) : ?[ReservationId] {
     // xxx
