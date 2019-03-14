@@ -655,6 +655,31 @@ class Model() = this {
   };
 
   /**
+  // retailerReserveCheapest
+  // ---------------------------
+  //
+  // Like `retailerReserve`, but chooses cheapest choice among all
+  // feasible produce inventory items and routes, given a grade,
+  // quant, and delivery window.
+  //
+  // ?? This may be an example of what Mack described to me as
+  // wanting, and being important -- a "conditional update"?
+  //
+  */
+  retailerReserveCheapest(
+    id:RetailerId,
+    produce:ProduceId,
+    grade:Grade,
+    quant:Quantity,
+    begin:Date,
+    end:Date
+  ) : ?ReservationId
+  {
+    // xxx
+    null
+  };
+
+  /**
   // retailerReservations
   // ---------------------------
 
