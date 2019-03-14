@@ -27,16 +27,25 @@ module Transform() = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  (* The type of a serialized argument *)
+  (* The primitive serialization functions *)
+  let deserialize_prim =
+    let open Type in
+    let var : var = "A" in
+    primE "@deserialize"
+      (Func (Local, Returns, [{var; bound = Shared}], [Serialized (Var (var, 0))], [(Var (var, 0))]))
+  let serialize_prim =
+    let open Type in
+    let var : var = "A" in
+    primE "@serialize"
+      (Func (Local, Returns, [{var; bound = Shared}], [Var (var, 0)], [Serialized (Var (var, 0))]))
+
   let deserialize e =
     let t = T.as_serialized e.note.note_typ in
-    primE "@deserialize" (T.Func (T.Local, T.Returns, [], [T.Serialized t], [t]))
-    -*- e
+    callE deserialize_prim [t] e
 
   let serialize e =
     let t = e.note.note_typ in
-    primE "@serialize" (T.Func (T.Local, T.Returns, [], [t], [T.Serialized t]))
-    -*- e
+    callE serialize_prim [t] e
 
   let serialized_arg a =
     { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
