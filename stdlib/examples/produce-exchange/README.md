@@ -38,19 +38,16 @@ _ActorScript-based_ implementation of a "**Server**" with the
 following definitional pieces:
 
 The first two server components give formal definitions for the
-Produce Exchange Standards Specification (PESS); See below for more
-about PESS.  The final two server components, the bulk of its
-implementation, give a formal specification of behavior that defines
-the behavior for PESS, but the implementation details of these two
-components themselves are not in PESS, and are subject to change
-independently of PESS.
+[Produce Exchange Standards Specification
+(PESS)](#Produce-Exchange-Standards-Specification-PESS); See below for
+more
+about PESS.  
 
-Currently, we use purely-functional data structures, since their
-design permits `O(1)`-time/space for sharing, and their immutability
-makes them suitable for mathematical reasoning.  These properties are
-practically important as a specification, but also suggest even more
-optimized representations, with the same mathematical properties.  See
-below, for more details on ["chunky representations".](#chunky-representations].
+The final two server components (server model types and server model
+implementation), give a formal specification of behavior that defines
+the **behavior for the PESS**, but the _implementation details of
+these two components themselves are not in PESS, and are subject to
+change independently of PESS._
 
  1. **Basic types**: See
     [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as).  
@@ -90,6 +87,16 @@ We decompose the **test suite** for the Produce Exchange into the following mile
     Generate (online or offline) random example uses, and record time and space usage of the Wasm VM across different work loads; plot this data, and generate human-readable reports about it.
 
     To do
+
+See below for [more thoughts about performance testing]().
+
+Currently, we use purely-functional data structures, since their
+design permits `O(1)`-time/space for sharing, and their immutability
+makes them suitable for mathematical reasoning.  These properties are
+practically important as a specification, but also suggest even more
+optimized representations, with the same mathematical properties.  See
+below, for more details on ["chunky representations".](#chunky-representations].
+
 
 
 To do list
@@ -216,21 +223,40 @@ implementation of this actor will change (in `serverActor.as` and
 
 ----------------------------------------------------------------------------
 
-Performance tests, and alternative representations in `stdlib`
+Performance considerations
 ====================================================================
+
+After having a functioning specification, we will employ the thoughts
+below toward getting better performance.
 
 The main thrust of the work on this canister is currently focused on
 creating an executable prototype.
 
 At some point (near the end of our test suite components), we will
-want to consider the asymptotic properties of our implementation of
-the PESS server definition's update & query behavior.
+want to consider botj the **asymptotic** and **constant-factor** performance 
+properties of our implementation.
+
+In particular, this performance is phrased in terms of **workloads**,
+executing update & query behavior over the PESS server definition
+implementation.
+
+We shall vary workloads in kind and size, and measure space and time
+usage of the Wasm VM running this implementation, in terms of the
+standard library of collections implemented here.
+
+Alternative representations in `stdlib`
+-------------------------------------------
 
 Notably, the one and only collection type used in this implementation
-is the `Map` type.  
+is the `Map` type.
 
-Crucially, we use a _functional representation_ (based on hash tries),
-with expected times as follows:
+Changing this type out amounts to extending the standard library with
+additional implementations of the finite map interface that it
+provides.
+
+Crucially, we the hash trie implementation of `Map` uses a _functional
+representation_, with expected times as follows (expected time
+analysis, because of hashing):
 
 ```
    Trie.copy                      : O(1)
@@ -243,8 +269,8 @@ with expected times as follows:
 
 We might consider validating the followin claim:
 
-    **Claim:** The asymptotic properties of the hash trie are ideal for a
-    practical (infinitely-scalable) implementation of PESS.
+>    **Claim:** The asymptotic properties of the hash trie are ideal
+>    for a practical (infinitely-scalable) implementation of PESS.
 
 Before considering other representations, we should evaluate this
 claim on randomly-generated use-cases of varying size, to simulate
