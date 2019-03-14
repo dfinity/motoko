@@ -3397,6 +3397,12 @@ let sanitize_word_result = function
   | ty -> compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
           G.i (Binary (Wasm.Values.I32 I32Op.And))
 
+(* Makes sure that the word representation invariant is restored. *)
+let compile_word_padding = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (UnboxedSmallWord.padding_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Or))
+
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
    but none of these do, so a single value is fine.
@@ -3701,6 +3707,14 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+       | "clz8"
+       | "clz16" ->
+         SR.Vanilla,
+         let ty = match p with | "clz8" -> Type.Word8 | _ -> Type.Word16
+         in compile_exp_vanilla env e ^^
+            compile_word_padding ty ^^
+            G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+            msb_adjust ty
        | "clz64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
@@ -3709,6 +3723,16 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+       | "ctz8"
+       | "ctz16" ->
+         SR.Vanilla,
+         let ty = match p with | "ctz8" -> Type.Word8 | _ -> Type.Word16
+         in compile_exp_vanilla env e ^^
+            compile_word_padding ty ^^
+            compile_unboxed_const (UnboxedSmallWord.shift_of_type ty) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+            G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+            msb_adjust ty
        | "ctz64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
