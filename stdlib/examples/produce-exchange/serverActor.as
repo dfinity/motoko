@@ -59,18 +59,6 @@ actor class Server() {
    (`Add`) and remove (`Rem`) function below, prefixed by
    `registrar`-, and suffixed by one of the entities in `TruckType`,
    `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
-
-   To do: more registrar ingress messages:
-   =======================================================
-
-   - Get a list of all ids for each entity class in the registry:
-   ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
-
-   - For each id kind, provide a server message to get back the other registry info
-   that the registrar stores in association with it (short_name, description, etc.).
-
-   - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
-
    */
 
   /**
@@ -397,4 +385,20 @@ actor class Server() {
       reservationInfo(id)
   };
 
+
+  /**
+   ------------------------------------------------------------------------------------------------------
+
+   To do: more registrar ingress messages:
+   =======================================================
+
+   - Get a list of all ids for each entity class in the registry:
+   ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
+
+   - For each id kind, provide a server message to get back the other registry info
+   that the registrar stores in association with it (short_name, description, etc.).
+
+   - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
+
+   */
 };
