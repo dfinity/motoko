@@ -11,9 +11,8 @@ Background
 
 See this POPL 1989 paper (Section 6):
 
- - "Incremental computation via function caching", Pugh & Teitelbaum.
- - https://dl.acm.org/citation.cfm?id=75305
- - Public copy here: http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf
+ - ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
+ - [Public copy here](http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf).
 
 By contrast, other usual functional representations of maps (AVL
 Trees, Red-Black Trees) do not enjoy history independence, and are
