@@ -448,13 +448,9 @@ and match_args at args v : val_env =
   match args with
   | [a] -> match_arg a v
   | _ ->
-    match V.as_tup v with
-    | vs when List.length vs = List.length args ->
-      List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
-    | _ ->
-      trap at "argument value %s does not match parameter list"
-        (V.string_of_val v)
-
+    let vs = V.as_tup v in
+    assert (List.length vs = List.length args);
+    List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
 
 (* Patterns *)
 
