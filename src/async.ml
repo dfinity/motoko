@@ -166,6 +166,7 @@ module Transform() = struct
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
+    | Serialized t -> Serialized (t_typ t)
     | Any -> Any
     | Non -> Non
     | Pre -> Pre

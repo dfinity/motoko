@@ -30,7 +30,6 @@ let prim p = match p with
   | Float -> Atom "Float"
   | Char -> Atom "Char"
   | Text -> Atom "Text"
-  | ElemBuf -> Atom "ElemBuf"
 
 let con c = Atom (Con.to_string c)
 
@@ -45,6 +44,7 @@ let rec typ (t:Type.typ) = match t with
   | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (sharing s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]
   | Mut t                 -> "Mut" $$ [typ t]
+  | Serialized t          -> "Serialized" $$ [typ t]
   | Shared                -> Atom "Shared"
   | Any                   -> Atom "Any"
   | Non                   -> Atom "Non"

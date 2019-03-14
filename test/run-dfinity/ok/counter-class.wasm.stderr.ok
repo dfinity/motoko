@@ -51,5 +51,5 @@ non-closed actor: (ActorE
   )
   (read read)
   (dec dec)
-  actor {dec : shared () -> (); read : shared ElemBuf -> ()}
+  actor {dec : shared () -> (); read : shared (serialized shared (serialized Int) -> ()) -> ()}
 )

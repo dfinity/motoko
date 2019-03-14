@@ -28,13 +28,15 @@ module Transform() = struct
   let con_renaming = ref ConRenaming.empty
 
   (* The type of a serialized argument *)
-  let arg_t = T.Prim T.ElemBuf
-
-  let deserialize e t =
-    primE "@deserialize" (T.Func (T.Local, T.Returns, [], [arg_t], [t]))
+  let deserialize e =
+    let t = T.as_serialized e.note.note_typ in
+    primE "@deserialize" (T.Func (T.Local, T.Returns, [], [T.Serialized t], [t]))
     -*- e
+
+
   let serialize e =
-    primE "@serialize" (T.Func (T.Local, T.Returns, [], [e.note.note_typ], [arg_t]))
+    let t = e.note.note_typ in
+    primE "@serialize" (T.Func (T.Local, T.Returns, [], [t], [T.Serialized t]))
     -*- e
 
   let map_tuple n f e =
@@ -63,13 +65,14 @@ module Transform() = struct
       assert (c = T.Returns);
       assert (tbs = []); (* We do not support parametric messages *)
       assert (t2 = []); (* A returning sharable function has no return values *)
-      T.Func (T.Sharable, T.Returns, [], List.map (fun _ -> arg_t) t1, [])
+      T.Func (T.Sharable, T.Returns, [], List.map (fun t -> T.Serialized (t_typ t)) t1, [])
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
     | T.Mut t -> T.Mut (t_typ t)
 
+    | T.Serialized t -> assert false (* This transformation should only run once *)
     | T.Async t -> assert false (* Should happen after async-translation *)
 
   and t_bind {T.var; T.bound} =
@@ -129,11 +132,10 @@ module Transform() = struct
         assert (typbinds = []);
         assert (T.is_unit typT);
         let args' = t_args args in
-        let arg_tys = List.map (fun a -> a.note) args' in
-        let raw_arg_vs = List.map (fun _ -> fresh_var arg_t) args' in
+        let raw_arg_vs = List.map (fun a -> fresh_var (T.Serialized a.note)) args' in
         let body' =
           blockE [letP (tupP (List.map varP (List.map exp_of_arg args')))
-                       (tupE (List.map2 deserialize raw_arg_vs arg_tys)) ]
+                       (tupE (List.map deserialize raw_arg_vs)) ]
             (t_exp exp) in
         let args' = List.map arg_of_exp raw_arg_vs in
         FuncE (x, cc, [], args', T.unit, body')
@@ -239,7 +241,7 @@ module Transform() = struct
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) = (t_block prog, flavor)
+  and t_prog (prog, flavor) = (t_block prog, { flavor with serialized = true })
 
 end
 
