@@ -63,11 +63,7 @@ module Transform() = struct
     idE ("@new_async"@@no_region) new_asyncT
 
   let new_async t1 =
-    let call_new_async =
-      callE new_asyncE
-        [t1]
-        (tupE [])
-        (T.seq (new_async_ret unary t1)) in
+    let call_new_async = callE new_asyncE [t1] (tupE []) in
     let async = fresh_var (typ (projE call_new_async 0)) in
     let fullfill = fresh_var (typ (projE call_new_async 1)) in
     (async,fullfill),call_new_async
@@ -285,7 +281,7 @@ module Transform() = struct
       (blockE ( letP (tupP [varP nary_async; varP nary_reply]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
-                    [ expD (callE v1 typs (seqE (vs@[nary_reply])) T.unit) ]
+                    [ expD (callE v1 typs (seqE (vs@[nary_reply]))) ]
                   )
                  )
                )
