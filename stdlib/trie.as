@@ -1,12 +1,12 @@
 /**
 
-Hash Tries in ActorScript
--------------------------
+Hash tries
+======================
 
 Functional maps (and sets) whose representation is "canonical", and
 history independent.
 
-Design Background
+Background
 ------------------
 
 See this POPL 1989 paper (Section 6):
@@ -19,7 +19,6 @@ By contrast, other usual functional representations of maps (AVL
 Trees, Red-Black Trees) do not enjoy history independence, and are
 each more complex to implement (e.g., each requires "rebalancing";
 these trees never do).
-
 
 Done:
 ----------
