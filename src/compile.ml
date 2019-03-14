@@ -3618,11 +3618,28 @@ and compile_exp (env : E.t) exp =
                                                   sanitize_word_result Type.Word16)
       | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+      | "btst8" -> compile_kernel_as SR.Vanilla (
+                       let ty = Type.Word8 in
+                       let (set_b, get_b) = new_local env "b"
+                       in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
+                          compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
+                          G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+                          G.i (Binary (Wasm.Values.I32 I32Op.And)))
+      | "btst16" -> compile_kernel_as SR.Vanilla (
+                        let ty = Type.Word16 in
+                        let (set_b, get_b) = new_local env "b"
+                        in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
+                           compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
+                           G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+                           G.i (Binary (Wasm.Values.I32 I32Op.And)))
+      | "btst" -> compile_kernel_as SR.UnboxedWord32 (
+                      let (set_b, get_b) = new_local env "b"
+                      in set_b ^^ compile_unboxed_one ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+                         G.i (Binary (Wasm.Values.I32 I32Op.And)))
       | "btst64" -> compile_kernel_as SR.UnboxedInt64 (
                         let (set_b, get_b) = new_local64 env "b"
-                        in
-                        set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-                        G.i (Binary (Wasm.Values.I64 I64Op.And)))
+                        in set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+                           G.i (Binary (Wasm.Values.I64 I64Op.And)))
 
       | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end

@@ -108,6 +108,9 @@ func checkpointJuliett() {};
     printW32ln(popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
     printW32ln(clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
     printW32ln(ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+    print(if (btstWord32(e, 5 : Word32)) "set" else "clear"); print "\n";// 20000 = 0x00004e20 (result = true)
+    print(if (btstWord32(e, 31 : Word32)) "set" else "clear"); print "\n";// 20000 = 0x00004e20 (result = false)
+    print(if (btstWord32(e, 37 : Word32)) "set" else "clear"); print "\n";// 20000 = 0x00004e20 (mod 32, result = true)
 
     assert (3 : Word32 ** (4 : Word32) == (81 : Word32));
     assert (3 : Word32 ** (7 : Word32) == (2187 : Word32));
@@ -183,6 +186,9 @@ func checkpointJuliett() {};
     printW16ln(popcntWord16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
     printW16ln(clzWord16 e); // 20000 = 0x4e20 (leading zeros = 1)
     printW16ln(ctzWord16 e); // 20000 = 0x4e20 (trailing zeros = 5)
+    print(if (btstWord16(e, 5 : Word16)) "set" else "clear"); print "\n";// 20000 = 0x4e20 (result = true)
+    print(if (btstWord16(e, 15 : Word16)) "set" else "clear"); print "\n";// 20000 = 0x4e20 (result = false)
+    print(if (btstWord16(e, 21 : Word16)) "set" else "clear"); print "\n";// 20000 = 0x4e20 (mod 16, result = true)
 
 
     assert (3 : Word16 ** (0 : Word16) == (1 : Word16));
@@ -254,6 +260,9 @@ func checkpointJuliett() {};
     printW8ln(popcntWord8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
     printW8ln(clzWord8 e); // 200 = 0xC8 (leading zeros = 0)
     printW8ln(ctzWord8 e); // 200 = 0xC8 (trailing zeros = 3)
+    print(if (btstWord8(e, 3 : Word8)) "set" else "clear"); print "\n";// 200 = 0xC8 (result = true)
+    print(if (btstWord8(e, 5 : Word8)) "set" else "clear"); print "\n";// 200 = 0xC8 (result = false)
+    print(if (btstWord8(e, 11 : Word8)) "set" else "clear"); print "\n";// 200 = 0xC8 (mod 8, result = true)
 
     assert (3 : Word8 ** (0 : Word8) == (1 : Word8));
     assert (3 : Word8 ** (3 : Word8) == (27 : Word8));

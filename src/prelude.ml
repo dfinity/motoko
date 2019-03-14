@@ -63,16 +63,19 @@ func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
 func clzWord8(w : Word8) : Word8 = (prim "clz8" : Word8 -> Word8) w;
 func ctzWord8(w : Word8) : Word8 = (prim "ctz8" : Word8 -> Word8) w;
+func btstWord8(w : Word8, amount : Word8) : Bool = (prim "btst8" : (Word8, Word8) -> Word8) (w, amount) != (0 : Word8);
 
 func shrsWord16(w : Word16, amount : Word16) : Word16 = (prim "shrs16" : (Word16, Word16) -> Word16) (w, amount);
 func popcntWord16(w : Word16) : Word16 = (prim "popcnt16" : Word16 -> Word16) w;
 func clzWord16(w : Word16) : Word16 = (prim "clz16" : Word16 -> Word16) w;
 func ctzWord16(w : Word16) : Word16 = (prim "ctz16" : Word16 -> Word16) w;
+func btstWord16(w : Word16, amount : Word16) : Bool = (prim "btst16" : (Word16, Word16) -> Word16) (w, amount) != (0 : Word16);
 
 func shrsWord32(w : Word32, amount : Word32) : Word32 = (prim "shrs" : (Word32, Word32) -> Word32) (w, amount);
 func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
 func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
 func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
+func btstWord32(w : Word32, amount : Word32) : Bool = (prim "btst" : (Word32, Word32) -> Word32) (w, amount) != (0 : Word32);
 
 func shrsWord64(w : Word64, amount : Word64) : Word64 = (prim "shrs64" : (Word64, Word64) -> Word64) (w, amount);
 func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
@@ -231,6 +234,9 @@ let prim = function
                   | Word64 w -> Word64 (Word64.ctz w)
                   | _ -> failwith "ctz")
 
+  | "btst8"
+  | "btst16"
+  | "btst"
   | "btst64" -> fun v k ->
                 let w, a = as_pair v
                 in k (match w with
