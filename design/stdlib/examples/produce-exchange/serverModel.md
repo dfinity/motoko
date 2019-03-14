@@ -1,0 +1,285 @@
+
+
+Server Model
+===============================
+
+Here, we depart from defining PESS, and turn our attention to the
+internal representation of the server actor's state.  The behavior of
+this actor is part of the PESS definition, but the internal data model
+representations it uses are not.
+
+We have the freedom to model the system to best match the kinds of
+updates and queries that we must handle now, and anticipate handling
+in the future.
+
+We employ a purely-functional repesentation based on tree-shaped data
+structures with sharing.  See `ServerModelTypes.as` for details.
+Below, we explain our representation of traditional SQL tables in
+terms of nested structures and finite maps.
+
+```
+...
+```
+
+
+   Generate Symbols
+   -----------------
+   We implement "gensym" functionality with a collection of counters, one per kind of named entity:
+
+```
+...
+```
+
+
+   Mostly-static collections:
+   ---------------------------
+   We use the following variables to represent the following tables from the design documents:
+
+   - regions table
+   - produce table
+   - truck type table
+
+```
+...
+```
+Producers collection:
+----------------------
+We use the following variable to represents the following tables, as a tree-shaped functional data structure, with sharing:
+ - producer table
+ - inventory table (shared with variable inventory)
+ - reservedInventory table (formerly "orderedInventory" table) (xxx shared with variable reservations)
+```
+...
+```
+Transporters collection:
+----------------------
+Represents the following tables, as a tree-shaped functional data structure, with sharing:
+ - transporter table
+ - route table (shared with variable routes)
+ - reservedRoute table (formerly "orderedRoutes" table) (xxx shared with variable reservations)
+```
+...
+```
+Retailers collection:
+----------------------
+Represents the following tables, as a tree-shaped functional data structure, with sharing:
+ - retailer table
+ - reservation table (formerly "orders" table)
+```
+...
+```
+
+   Indexing for queries
+   ====================
+
+   For efficient queries, need some extra indexing.
+
+   Regions as keys in special global maps
+   ---------------------------------------
+   - inventory (across all producers) keyed by producer region
+   - routes (across all transporters) keyed by source region
+   - routes (across all transporters) keyed by destination region
+
+   Indexing by time
+   -----------------
+   For now, we won't try to index based on days.
+
+   If and when we want to do so, we would like to have a spatial
+   data structure that knows about each object's "interval" in a
+   single shared dimension (in time):
+
+   - inventory, by availability window (start day, end day)
+   - routes, by transport window (departure day, arrival day)
+
+   Routes by region-region pair
+   ----------------------------
+
+   the actor maintains a possibly-sparse 3D table mapping each
+   region-region-routeid triple to zero or one routes.  First index
+   is destination region, second index is source region; this 2D
+   spatial coordinate gives all routes that go to that destination
+   from that source, keyed by their unique route ID, the third
+   coordinate of the mapping.
+
+```
+...
+```
+Inventory by source region
+----------------------------
+the actor maintains a possibly-sparse 3D table mapping each
+sourceregion-producerid-inventoryid triple to zero or one
+inventory items.  The 1D coordinate sourceregion gives all of the
+inventory items, by producer id, for this source region.
+```
+...
+```
+
+   Misc helpers
+   ==================
+
+```
+...
+```
+
+   PESS Interface: Server message and response formats
+   ======================================================
+
+   PESS: Registrar-based ingress messages
+   ======================================
+
+   reigstrarAddTruckType
+   -------------------
+
+```
+...
+```
+
+   registrarRemTruckTypes
+   ---------------------
+
+   returns `?()` on success, and `null` on failure.
+
+```
+...
+```
+registrarAddRegion
+---------------------
+adds the region to the system; fails if the given information is
+invalid in any way.
+```
+...
+```
+registrarRemProduce
+---------------------
+returns `?()` on success, and `null` on failure.
+```
+...
+```
+registrarAddProduce
+---------------------
+adds the produce to the system; fails if the given information is invalid in any way.
+```
+...
+```
+registrarRemProduce
+---------------------
+returns `?()` on success, and `null` on failure.
+```
+...
+```
+registrarAddProducer
+---------------------
+adds the producer to the system; fails if the given region is non-existent.
+```
+...
+```
+registrarRemProducer
+---------------------
+returns `?()` on success, and `null` on failure.
+```
+...
+```
+registrarAddRetailer
+---------------------
+adds the producer to the system; fails if the given region is non-existent.
+```
+...
+```
+registrarRemRetailer
+---------------------
+returns `?()` on success, and `null` on failure.
+```
+...
+```
+registrarAddTransporter
+---------------------
+```
+...
+```
+registrarRemTransporter
+---------------------
+```
+...
+```
+
+
+   PESS: Producer-based ingress messages:
+   ==========================================
+
+   `producerAddInventory`
+   ---------------------------
+
+```
+...
+```
+/* 
+
+return the item's id
+*/
+producerRemInventory
+---------------------------
+```
+...
+```
+producerReservations
+---------------------------
+```
+...
+```
+PES: Transporter-based ingress messages:
+===========================================
+transporterAddRoute
+---------------------------
+```
+...
+```
+transporterRemRoute
+---------------------------
+```
+...
+```
+transporterReservations
+---------------------------
+```
+...
+```
+PES: Retailer-based ingress messages:
+======================================
+retailerQueryAll
+---------------------------
+
+
+  TODO-Cursors (see above).
+
+```
+...
+```
+retailerReserve
+---------------------------
+```
+...
+```
+retailerReserveCheapest
+---------------------------
+Like `retailerReserve`, but chooses cheapest choice among all
+feasible produce inventory items and routes, given a grade,
+quant, and delivery window.
+?? This may be an example of what Mack described to me as
+wanting, and being important -- a "conditional update"?
+```
+...
+```
+retailerReservations
+---------------------------
+
+
+  TODO-Cursors (see above).
+
+```
+...
+```
+PES: (Producer/Transporter/Retailer) ingress messages:
+========================================================
+reservationInfo
+---------------------------
+xxx
