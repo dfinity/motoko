@@ -661,6 +661,7 @@ module Heap = struct
       )
     )
 
+
 end (* Heap *)
 
 module ElemHeap = struct
@@ -2213,6 +2214,127 @@ module OrthogonalPersistence = struct
 
 end (* OrthogonalPersistence *)
 
+module HeapTraversal = struct
+  (* Returns the object size (in words) *)
+  let object_size env =
+    Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
+      get_x ^^
+      Tagged.branch env (ValBlockType (Some I32Type))
+        [ Tagged.Int,
+          compile_unboxed_const 3l
+        ; Tagged.SmallWord,
+          compile_unboxed_const 2l
+        ; Tagged.Reference,
+          compile_unboxed_const 2l
+        ; Tagged.Some,
+          compile_unboxed_const 2l
+        ; Tagged.ObjInd,
+          compile_unboxed_const 2l
+        ; Tagged.MutBox,
+          compile_unboxed_const 2l
+        ; Tagged.Array,
+          get_x ^^
+          Heap.load_field Array.len_field ^^
+          compile_add_const Array.header_size
+        ; Tagged.Text,
+          get_x ^^
+          Heap.load_field Text.len_field ^^
+          compile_add_const 3l ^^
+          compile_divU_const Heap.word_size ^^
+          compile_add_const Text.header_size
+        ; Tagged.Object,
+          get_x ^^
+          Heap.load_field Object.size_field ^^
+          compile_mul_const 2l ^^
+          compile_add_const Object.header_size
+        ; Tagged.Closure,
+          get_x ^^
+          Heap.load_field Closure.len_field ^^
+          compile_add_const Closure.header_size
+        ]
+        (* Indirections have unknown size. *)
+    )
+
+  let walk_heap_from_to env compile_from compile_to mk_code =
+      let (set_x, get_x) = new_local env "x" in
+      compile_from ^^ set_x ^^
+      compile_while
+        (* While we have not reached the end of the area *)
+        ( get_x ^^
+          compile_to ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+        )
+        ( mk_code get_x ^^
+          get_x ^^
+          get_x ^^ object_size env ^^ compile_mul_const Heap.word_size ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          set_x
+        )
+
+  (* Calls mk_code for each pointer in the object pointed to by get_x,
+     passing code get the address of the pointer. *)
+  let for_each_pointer env get_x mk_code =
+    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    get_x ^^
+    Tagged.branch_default env (ValBlockType None) G.nop
+      [ Tagged.MutBox,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Some,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.ObjInd,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size 1l) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Array,
+        get_x ^^
+        Heap.load_field Array.len_field ^^
+        (* Adjust fields *)
+        from_0_to_n env (fun get_i ->
+          get_x ^^
+          get_i ^^
+          Array.idx env ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Object,
+        get_x ^^
+        Heap.load_field Object.size_field ^^
+
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_mul_const 2l ^^
+          compile_add_const 1l ^^
+          compile_add_const Object.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ; Tagged.Closure,
+        get_x ^^
+        Heap.load_field Closure.len_field ^^
+
+        from_0_to_n env (fun get_i ->
+          get_i ^^
+          compile_add_const Closure.header_size ^^
+          compile_mul_const Heap.word_size ^^
+          get_x ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          set_ptr_loc ^^
+          mk_code get_ptr_loc
+        )
+      ]
+
+end (* HeapTraversal *)
+
 module Serialization = struct
   (*
     The serialization strategy is as follows:
@@ -2419,128 +2541,10 @@ module Serialization = struct
         )
     )
 
-  (* Returns the object size (in words) *)
-  let object_size env =
-    Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^
-      Tagged.branch env (ValBlockType (Some I32Type))
-        [ Tagged.Int,
-          compile_unboxed_const 3l
-        ; Tagged.SmallWord,
-          compile_unboxed_const 2l
-        ; Tagged.Reference,
-          compile_unboxed_const 2l
-        ; Tagged.Some,
-          compile_unboxed_const 2l
-        ; Tagged.ObjInd,
-          compile_unboxed_const 2l
-        ; Tagged.MutBox,
-          compile_unboxed_const 2l
-        ; Tagged.Array,
-          get_x ^^
-          Heap.load_field Array.len_field ^^
-          compile_add_const Array.header_size
-        ; Tagged.Text,
-          get_x ^^
-          Heap.load_field Text.len_field ^^
-          compile_add_const 3l ^^
-          compile_divU_const Heap.word_size ^^
-          compile_add_const Text.header_size
-        ; Tagged.Object,
-          get_x ^^
-          Heap.load_field Object.size_field ^^
-          compile_mul_const 2l ^^
-          compile_add_const Object.header_size
-        ; Tagged.Closure,
-          get_x ^^
-          Heap.load_field Closure.len_field ^^
-          compile_add_const Closure.header_size
-        ]
-        (* Indirections have unknown size. *)
-    )
-
-  let walk_heap_from_to env compile_from compile_to mk_code =
-      let (set_x, get_x) = new_local env "x" in
-      compile_from ^^ set_x ^^
-      compile_while
-        (* While we have not reached the end of the area *)
-        ( get_x ^^
-          compile_to ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtU))
-        )
-        ( mk_code get_x ^^
-          get_x ^^
-          get_x ^^ object_size env ^^ compile_mul_const Heap.word_size ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_x
-        )
-
-  (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer. *)
-  let for_each_pointer env get_x mk_code =
-    let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
-    get_x ^^
-    Tagged.branch_default env (ValBlockType None) G.nop
-      [ Tagged.MutBox,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
-        set_ptr_loc ^^
-        mk_code get_ptr_loc
-      ; Tagged.Some,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
-        set_ptr_loc ^^
-        mk_code get_ptr_loc
-      ; Tagged.ObjInd,
-        get_x ^^
-        compile_add_const (Int32.mul Heap.word_size 1l) ^^
-        set_ptr_loc ^^
-        mk_code get_ptr_loc
-      ; Tagged.Array,
-        get_x ^^
-        Heap.load_field Array.len_field ^^
-        (* Adjust fields *)
-        from_0_to_n env (fun get_i ->
-          get_x ^^
-          get_i ^^
-          Array.idx env ^^
-          set_ptr_loc ^^
-          mk_code get_ptr_loc
-        )
-      ; Tagged.Object,
-        get_x ^^
-        Heap.load_field Object.size_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_mul_const 2l ^^
-          compile_add_const 1l ^^
-          compile_add_const Object.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          mk_code get_ptr_loc
-        )
-      ; Tagged.Closure,
-        get_x ^^
-        Heap.load_field Closure.len_field ^^
-
-        from_0_to_n env (fun get_i ->
-          get_i ^^
-          compile_add_const Closure.header_size ^^
-          compile_mul_const Heap.word_size ^^
-          get_x ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_ptr_loc ^^
-          mk_code get_ptr_loc
-        )
-      ]
-
   let shift_pointers env =
     Func.share_code3 env "shift_pointers" (("start", I32Type), ("to", I32Type), ("ptr_offset", I32Type)) [] (fun env get_start get_to get_ptr_offset ->
-      walk_heap_from_to env get_start get_to (fun get_x ->
-        for_each_pointer env get_x (fun get_ptr_loc ->
+      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
+        HeapTraversal.for_each_pointer env get_x (fun get_ptr_loc ->
           get_ptr_loc ^^
           get_ptr_offset ^^
           shift_pointer_at env
@@ -2554,7 +2558,7 @@ module Serialization = struct
 
       compile_unboxed_zero ^^ set_i ^^
 
-      walk_heap_from_to env get_start get_to (fun get_x ->
+      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
         Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
@@ -2580,7 +2584,7 @@ module Serialization = struct
 
   let intract_references env =
     Func.share_code3 env "intract_references" (("start", I32Type), ("to", I32Type), ("tbl_area", I32Type)) [] (fun env get_start get_to get_tbl_area ->
-      walk_heap_from_to env get_start get_to (fun get_x ->
+      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
         Tagged.branch_default env (ValBlockType None) G.nop
           [ Tagged.Reference,
@@ -2835,7 +2839,7 @@ module GC = struct
     ] ^^
 
     (* Copy the referenced object to to space *)
-    get_obj ^^ Serialization.object_size env ^^ set_len ^^
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
 
     get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
 
@@ -2896,18 +2900,18 @@ module GC = struct
       compile_add_const ClosureTable.loc ^^
       compile_add_const ptr_skew
     )) ^^
-    Serialization.walk_heap_from_to env
+    HeapTraversal.walk_heap_from_to env
       (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
       (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
 
     (* Go through the to-space, and evacuate that.
        Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
      *)
-    Serialization.walk_heap_from_to env
+    HeapTraversal.walk_heap_from_to env
       get_begin_to_space
       get_end_to_space
-      (fun get_x -> Serialization.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
 
     (* Copy the to-space to the beginning of memory. *)
     get_begin_to_space ^^ compile_add_const ptr_unskew ^^
