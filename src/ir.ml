@@ -95,6 +95,7 @@ should hold.
 type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
+  serialized : bool; (* Shared function arguments are serialized *)
 }
 
 
