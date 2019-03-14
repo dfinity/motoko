@@ -1,0 +1,88 @@
+
+ Hash Tries in ActorScript
+ -------------------------
+
+ Functional maps (and sets) whose representation is "canonical", and
+ history independent.
+
+ See this POPL 1989 paper (Section 6):
+ - "Incremental computation via function caching", Pugh & Teitelbaum.
+ - https://dl.acm.org/citation.cfm?id=75305
+ - Public copy here: http://matthewhammer.org/courses/csci7000-s17/readings/Pugh89.pdf
+
+ By contrast, other usual functional representations of maps (AVL
+ Trees, Red-Black Trees) do not enjoy history independence, and are
+ each more complex to implement (e.g., each requires "rebalancing";
+ these trees never do).
+
+ Done:
+ -------
+
+  - (hacky) type definition; XXX: need real sum types to clean it up
+  - find operation
+  - insert operation
+  - remove operation
+  - replace operation (remove+insert via a single traversal)
+  - basic encoding of sets, and some set operations
+  - basic tests (and primitive debugging) for set operations
+  - write trie operations that operate over pairs of tries:
+    for set union, difference and intersection.
+  - handle hash collisions gracefully using association list module
+
+ TODO-Matthew:
+----------------
+
+  - (more) regression tests for everything that is below
+
+  - adapt the path length of each subtree to its cardinality; avoid
+    needlessly long paths, or paths that are too short for their
+    subtree's size.
+
+  - iterator objects, for use in 'for ... in ...' patterns
+
+```
+...
+```
+
+
+Uniform depth assumption:
+------------------------------
+
+We make a simplifying assumption, for now: All defined paths in the
+trie have a uniform length, the same as the number of bits of a
+hash, starting at the LSB, that we use for indexing.
+
+- If the number is too low, our expected O(log n) bounds become
+  expected O(n).
+
+- If the number is too high, we waste constant factors for
+  representing small sets/maps.
+
+TODO: Make this more robust by making this number adaptive for each
+path, and based on the content of the trie along that path.
+
+```
+...
+```
+
+ A 2D trie is just a trie that maps dimension-1 keys to another
+ layer of tries, each keyed on the dimension-2 keys.
+
+```
+...
+```
+Use a sum type (AST-42)
+
+ Variant types, eventually
+ --------------------------
+ See AST-42 (sum types); we want this type definition instead:
+
+ ```
+ type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
+ type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
+ type LeafNode<K,V> = { key:K; val:V };
+ ```
+
+```
+...
+```

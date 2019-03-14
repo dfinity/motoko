@@ -1,0 +1,91 @@
+
+
+Server Model Types
+==================
+
+This file defines structures that implement the server actor's
+internal model of the exchange.  They are used in `serverModel.as`;
+they are _not_ present in the public-facing interface of the server,
+only its internal model.
+
+Finite Maps
+--------------
+
+Finite maps, or just "maps", will serve as the cornerstone of our
+representations below.  The ActorScript standard library implements
+functional association lists (modules `List` and `AssocList`) and
+functional hash tries (module `Trie`), whose representation uses those
+lists, for its "buckets".
+
+These map representations could change and expand in the future, so we
+introduce the name `Map` here to abstract over the representation
+choice between (for now) using association lists and tries.
+
+Aside: Eventually, we'll likely have a more optimized trie that uses
+small arrays in its leaf nodes.  The current representation is simple,
+uses lots of pointers, and is likely not the optimal candidate for
+efficient Wasm.  However, its asymptotic behavior is good, and it thus
+provides a good approximation of the eventual design that we want.
+
+```
+...
+```
+
+
+Nested structures
+-----------------
+
+Below, we define top-level structures for representing each Producer,
+Retailer and Transporter's officially published state within the PESS.
+
+Formally, these types define the types of forests (a set of trees with many
+roots) that constitute our internal data model.
+
+For each kind of structure below, we assume a type of unique Id
+(defined in `types.as`, in the formal PESS).  We associate information, such as
+textual names and descriptions, where appropriate.  We include other
+fields from the PESS, such as "units", "grades", "dates" and time
+intervals (start/end dates), each where appropriate.
+
+To understand how this forest is rooted, see the private variables
+defined by the class `Model` (in `serverModel.as`):
+
+```
+  private var trucktypes : TruckTypesTable = null;
+  private var produce    : ProduceTable = null;
+  private var regions    : RegionTable = null;
+
+  private var producers    : ProducerTable = null;
+  private var transporters : TransporterTable = null;
+  private var retailers    : RetailerTable = null;
+```
+
+The first three tables are set up by the central authority when the Dapp
+launches, and change seldomly.
+
+The next three tables contain the interesting state of the system.
+They give the three sets of roots into the structures defined below.
+
+Query implementation
+---------------------
+
+The retailers perform queries by joining information across the
+producers and transporters tables, and their inventory and route
+information, respectively.
+
+Orders (Reservations) implementation
+-------------------------------------
+
+We refer to orders placed by retailrs here as "reservations", since
+the latter word is less ambiguous.
+
+To simplify query implementation over reservations, and to improve
+this query response time, we store reservations in two places, with
+internal sharing:
+
+ - The currently-reserved routes and inventory are stored with their
+   transporters and producers, respectively.
+
+ - The currently-reserved routes and inventory of each retailer are
+   additionally stored with this retailer.
+

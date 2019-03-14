@@ -1,0 +1,40 @@
+
+
+ Server Types
+ ==================
+
+ This file defines structures that appear the server actor's messaging
+ interface.  They are part of the formal PESS definition.
+
+PESS: Basic types for PESS
+-----------------------------
+These types standardize representations for many common PESS notions
+```
+...
+```
+PESS: Unique Ids
+-----------------
+Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
+Internally, each type of Id serves as a "row key" for a table (or two).
+```
+...
+```
+PESS: Query parameters and results
+----------------------------------
+Externally, these types define the input and output structures for PESS queries.
+Internally, producing instances of the result structures will require
+performing joins based on internal tables, and the information from the input structures.
+Note: We are using "reserve", "reserved" and "reservation" in place of "order"
+below, since "order" and "ordering" have too many meanings in a
+broader CS/programming/query context.
+```
+...
+```
+
+
+xxx how to represent huge result messages?
+
+2019.03.12 *** TODO-Cursors: Introduce the idea of "cursors", with
+allocation, de-allocation and movement messages, as per discussion in
+the 2019.03.12 ActorScript Team meeting.
+
