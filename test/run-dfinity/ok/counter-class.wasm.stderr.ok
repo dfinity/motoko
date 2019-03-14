@@ -23,7 +23,14 @@ non-closed actor: (ActorE
       (BlockE
         (LetD
           (TupP (VarP $k/0))
-          (TupE (CallE ( 1 -> 1) (PrimE @deserialize) (VarE $k/0/raw)))
+          (TupE
+            (CallE
+              ( 1 -> 1)
+              (PrimE @deserialize)
+              shared (serialized Int) -> ()
+              (VarE $k/0/raw)
+            )
+          )
         )
         (CallE
           ( 1 -> 0)
@@ -42,7 +49,7 @@ non-closed actor: (ActorE
             (CallE
               (shared  1 -> 0)
               (VarE $k/0)
-              (CallE ( 1 -> 1) (PrimE @serialize) (VarE $y/0))
+              (CallE ( 1 -> 1) (PrimE @serialize) Int (VarE $y/0))
             )
           )
         )

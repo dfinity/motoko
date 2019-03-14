@@ -2677,7 +2677,7 @@ module Serialization = struct
       )
     )
 
-  let serialize env =
+  let serialize env t =
     if E.mode env <> DfinityMode
     then Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env _ -> G.i Unreachable)
     else Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -2764,7 +2764,7 @@ module Serialization = struct
       G.i (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
-  let deserialize env =
+  let deserialize env t =
     Func.share_code1 env "deserialize" ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
       let (set_databuf, get_databuf) = new_local env "databuf" in
       let (set_start, get_start) = new_local env "start" in
@@ -3704,19 +3704,21 @@ and compile_exp (env : E.t) exp =
     compile_exp_as env SR.UnboxedReference e ^^
     actor_fake_object_idx env {name with it = n}
   (* We only allow prims of certain shapes, as they occur in the prelude *)
-  | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
+  | CallE (_, ({ it = PrimE p; _} as pe), typ_args, e) ->
     begin
       (* First check for all unary prims. *)
       match p with
        | "@serialize" ->
          SR.UnboxedReference,
+         let t = match typ_args with [t] -> t | _ -> assert false in
          compile_exp_vanilla env e ^^
-         Serialization.serialize env
+         Serialization.serialize env t
 
        | "@deserialize" ->
          SR.Vanilla,
+         let t = match typ_args with [t] -> t | _ -> assert false in
          compile_exp_as env SR.UnboxedReference e ^^
-         Serialization.deserialize env
+         Serialization.deserialize env t
 
        | "abs" ->
          SR.Vanilla,
