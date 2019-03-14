@@ -3610,6 +3610,12 @@ and compile_exp (env : E.t) exp =
      in match p with
       | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
       | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+      | "shrs8" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word8 ^^
+                                                 G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                 sanitize_word_result Type.Word8)
+      | "shrs16" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word16 ^^
+                                                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                  sanitize_word_result Type.Word16)
       | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
 
