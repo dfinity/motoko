@@ -27,30 +27,6 @@
  */
 actor class Server() {
 
-// @Omit:
-
-  // See `serverModel.as` for the Model class's implementation
-
-  // Matthew-Says:
-  // There are two initialization options for the model field:
-  // 1. Call Model() directly; using this option now.
-  // 2. Call Model() later, when we try to access the model field.
-
-  private var model : Model = Model(); // OPTION 2: null;
-
-  private getModel() : Model {
-    model
-    // OPTION 2:
-    // switch model {
-    //   case (null) {
-    //          let m = Model();
-    //          model := ?m; m
-    //        };
-    //   case (?m) m;
-    // }
-    //
-  };
-
   /**
 
    PESS: Registrar-based ingress messages
@@ -390,18 +366,46 @@ actor class Server() {
       reservationInfo(id)
   };
 
+  ///////////////////////////////////////////////////////////////////////////
+  // @Omit:
 
+  // See `serverModel.as` for the Model class's implementation
 
-///////////////////////////////////////////////////////////////////////////
+  // Matthew-Says:
+  // There are two initialization options for the model field:
+  // 1. Call Model() directly; using this option now.
+  // 2. Call Model() later, when we try to access the model field.
 
+  private var model : Model = Model(); // OPTION 2: null;
+
+  private getModel() : Model {
+    model
+    // OPTION 2:
+    // switch model {
+    //   case (null) {
+    //          let m = Model();
+    //          model := ?m; m
+    //        };
+    //   case (?m) m;
+    // }
+    //
+  };
+
+/**
+ End of PESS interface definition
+-----------------------------------
+  With the following closing brace, the interface of the PESS `Server` is thusly defined.
+ */
 }; // end: actor class `Server`
 
 /////////////////////////////////////////////////////////////////////////////
 
-/**
+/** 
+ To do: PESS definition
+ ================================================
  
- To do: more registrar ingress messages:
- =======================================================
+ More registrar ingress messages:
+ --------------------------------
  
  - Get a list of all ids for each entity class in the registry:
  ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
