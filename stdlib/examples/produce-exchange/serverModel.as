@@ -606,11 +606,11 @@ class Model() = this {
            inventoryByRegion :=
            Map.insertFresh2D<RegionId, ProducerId, InventoryTable>(
              inventoryByRegion,
-             /* key1: region id of the producer */
+             // key1: region id of the producer
              keyOf(producer.region.id), idIsEq,
-             /* key2: producer id */
+             // key2: producer id */
              keyOf(producer.id), idIsEq,
-             /* value: producer's updated inventory table */
+             // value: producer's updated inventory table
              updatedProducer.inventory,
            );
 
