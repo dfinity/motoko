@@ -49,22 +49,30 @@ the **behavior for the PESS**, but the _implementation details of
 these two components themselves are not in PESS, and are subject to
 change independently of PESS._
 
- 1. **Basic types**: See
-    [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as).  
+ 1. **Basic types**: 
+    See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.  
+    See [`serverTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md) for auto-generated design document.  
     Basic types used in messages, and published/stored internally in the server actor's state.
 
  2. **Server messages**: See
-    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as).  
+    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) for the source code.  
+See [`serverActor.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md) for auto-generated design document.  
     Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
  3. **Server model types**: See
-    [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as).  
-    Defines structures that internally implement the server actor, and which are _not_ present in its public-facing interface.
+    [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.  
+    [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md) for the auto-generated design document.  
 
-    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31).
+    This component defines structures that the next component uses to implement the server actor; neither component is exposed by the actor's public-facing interface.
+
+    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31):
+    - [Maps via `Trie` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).  
+    - [Maps via `AssocList` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md).  
+
 
  4. **Server implementation**: See
-    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as).  
+    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.  
+    [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for the source code.  
     Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
     implementing the server's interface in terms of the _server model types_ defined in item 3.
 
