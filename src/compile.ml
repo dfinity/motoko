@@ -407,7 +407,7 @@ let compile_op_const op i =
     compile_unboxed_const i ^^
     G.i (Binary (Wasm.Values.I32 op))
 let compile_add_const = compile_op_const I32Op.Add
-let compile_sub_const = compile_op_const I32Op.Sub
+let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 
@@ -495,7 +495,7 @@ module Func = struct
     G.i (Call (nr (E.built_in env name)))
 
   (* Shorthands for various arities *)
-  let share_code0 env name retty mk_body =
+  let _share_code0 env name retty mk_body =
     share_code env name [] retty (fun env -> mk_body env)
   let share_code1 env name p1 retty mk_body =
     share_code env name [p1] retty (fun env -> mk_body env
@@ -535,11 +535,11 @@ module Heap = struct
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
   let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
 
-  (* Page allocation. Ensures that the memory up to the heap pointer is allocated. *)
+  (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
-    Func.share_code0 env "grow_memory" [] (fun env ->
+    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
       let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_heap_ptr ^^ compile_divU_const page_size ^^
+      get_ptr ^^ compile_divU_const page_size ^^
       compile_add_const 1l ^^
       G.i MemorySize ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
@@ -572,7 +572,7 @@ module Heap = struct
       get_n ^^ compile_mul_const word_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       set_heap_ptr ^^
-      grow_memory env
+      get_heap_ptr ^^ grow_memory env
     )
 
   let dyn_alloc_bytes env =
@@ -2246,7 +2246,7 @@ module OrthogonalPersistence = struct
            get_i ^^
            compile_add_const ElemHeap.table_end ^^
            Heap.set_heap_ptr ^^
-           Heap.grow_memory env ^^
+           Heap.get_heap_ptr ^^ Heap.grow_memory env ^^
 
            (* Load memory *)
            compile_unboxed_const ElemHeap.table_end ^^
@@ -2413,438 +2413,476 @@ end (* HeapTraversal *)
 module Serialization = struct
   (*
     The serialization strategy is as follows:
-    * We remember the current heap pointer and reference table pointer
-    * We deeply and compactly copy the arguments into the space beyond the heap
-      pointer.
-    * Special handling for closures: These are turned into funcrefs.
-    * We traverse this space and make all pointers relative to the beginning of
-      the space. Same for indices into the reference table.
-    * We externalize all that new data space into a databuf, and add it to the
-      reference table
-    * We externalize all that new table space into a elembuf
+    * We traverse the data to calculate the size needed for the data buffer and the
+      reference buffer.
+    * We remember the current heap pointer, and use the space after as scratch space.
+    * The scratch space is separated into two region:
+      One for references, and one for raw data.
+    * We traverse the data, in a type-driven way, and copy it to the scratch space.
+      We thread through pointers to the current free space of the two scratch spaces.
+      This is type driven, and we use the `share_code` machinery and names that
+      properly encode the type to resolve loops in a convenient way.
+    * We externalize all that new data space into a databuf, and add this reference
+      to the reference space.
+    * We externalize the reference space into a elembuf
     * We reset the heap pointer and table pointer, to garbage collect the scratch space.
 
-    TODO: Cycles are not detected yet.
-
-    We separate code for copying and the code for pointer adjustment because
-    the latter can be used again in the deserialization code.
+    TODO: Cycles are not detected.
 
     The deserialization is analogous:
-    * We internalize the elembuf into the table, bumping the table reference
-      pointer.
-    * The last entry of the table is the dataref from above. Since we don't
-      need it after this, we decrement the table reference pointer by one.
-    * We internalize this databuf into the heap space, bumping the heap
-      pointer.
-    * We traverse this space and adjust all pointers.
-      Same for indices into the reference table.
+    * We allocate some scratch space, and internalize the elembuf into it.
+    * We allocate some more scratch space, and internalize the databuf into it.
+    * We parse the data, in a type-driven way, using normal construction and
+      allocation.
+    * At the end, the scratch space is a hole in the heap, and will be reclaimed
+      by the next GC.
   *)
 
-  let rec serialize_go env =
-    Func.share_code1 env "serialize_go" ("x", I32Type) [I32Type] (fun env get_x ->
-      let (set_copy, get_copy) = new_local env "x'" in
+  (* A type identifier *)
 
-      let purely_data n =
-            Heap.alloc env n ^^
-            set_copy ^^
+  (*
+    This needs to map types to some identifier with the following properties:
+     - Its domain are normalized types that do not mention any type parameters
+     - It needs to be injective wrt. type equality
+     - It needs to terminate, even for recursive types
+     - It may fail upon type parameters (i.e. no polymorphism)
+    We can use string_of_typ here for now, it seems.
+  *)
+  let typ_id : Type.typ -> string = Type.string_of_typ
 
-            get_x ^^
-            get_copy ^^
-            compile_unboxed_const n ^^
-            Heap.memcpy_words_skewed env ^^
 
-            get_copy in
+  (* Returns data (in bytes) and reference buffer size (in entries) needed *)
+  let rec buffer_size env t =
+    let open Type in
+    let t = normalize t in
+    let name = "@buffer_size<" ^ typ_id t ^ ">" in
+    Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
+    (fun env get_x ->
 
-      get_x ^^
-      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-        ( get_x )
-        ( get_x ^^
-          Tagged.branch env (ValBlockType (Some I32Type))
-          [ Tagged.Int, purely_data 3l
-          ; Tagged.SmallWord, purely_data 2l
-          ; Tagged.Reference, purely_data 2l
-          ; Tagged.Some,
-            Opt.inject env (
-              get_x ^^ Opt.project ^^
-              serialize_go env
-            )
-          ; Tagged.ObjInd,
-            Tagged.obj env Tagged.ObjInd [
-              get_x ^^ Heap.load_field 1l ^^
-              serialize_go env
-            ]
-          ; Tagged.Array,
-            begin
-              let (set_len, get_len) = new_local env "len" in
-              get_x ^^
-              Heap.load_field Array.len_field ^^
-              set_len ^^
+      (* Some combinators for writing values *)
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_ref_size, get_ref_size) = new_local env "ref_size" in
+      compile_unboxed_const 0l ^^ set_data_size ^^
+      compile_unboxed_const 0l ^^ set_ref_size ^^
 
-              get_len ^^
-              compile_add_const Array.header_size ^^
-              Heap.dyn_alloc_words env ^^
-              set_copy ^^
+      let inc_data_size code =
+        get_data_size ^^ code ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        set_data_size
+      in
+      let inc_ref_size i =
+        get_ref_size ^^ compile_add_const i ^^ set_ref_size
+      in
 
-              (* Copy header *)
-              get_x ^^
-              get_copy ^^
-              compile_unboxed_const Array.header_size ^^
-              Heap.memcpy_words_skewed env ^^
+      let size env t =
+        buffer_size env t ^^
+        get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
+        get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_size
+      in
 
-              (* Copy fields *)
-              get_len ^^
-              from_0_to_n env (fun get_i ->
-                get_copy ^^
-                get_i ^^
-                Array.idx env ^^
-
-                get_x ^^
-                get_i ^^
-                Array.idx env ^^
-                load_ptr ^^
-                serialize_go env ^^
-                store_ptr
-              ) ^^
-              get_copy
-            end
-          ; Tagged.Text,
-            begin
-              let (set_len, get_len) = new_local env "len" in
-              get_x ^^
-              Heap.load_field Text.len_field ^^
-              (* get length in words *)
-              compile_add_const 3l ^^
-              compile_divU_const Heap.word_size ^^
-              compile_add_const Text.header_size ^^
-              set_len ^^
-
-              get_len ^^
-              Heap.dyn_alloc_words env ^^
-              set_copy ^^
-
-              (* Copy header and data *)
-              get_x ^^
-              get_copy ^^
-              get_len ^^
-              Heap.memcpy_words_skewed env ^^
-
-              get_copy
-            end
-          ; Tagged.Object,
-            begin
-              let (set_len, get_len) = new_local env "len" in
-              get_x ^^
-              Heap.load_field Object.size_field ^^
-              set_len ^^
-
-              get_len ^^
-              compile_mul_const 2l ^^
-              compile_add_const Object.header_size ^^
-              Heap.dyn_alloc_words env ^^
-              set_copy ^^
-
-              (* Copy header *)
-              get_x ^^
-              get_copy ^^
-              compile_unboxed_const Object.header_size ^^
-              Heap.memcpy_words_skewed env ^^
-
-              (* Copy fields *)
-              get_len ^^
-              from_0_to_n env (fun get_i ->
-                (* Copy hash *)
-                get_i ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_copy ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
-                get_i ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_x ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
-                load_ptr ^^
-                store_ptr ^^
-
-                (* Copy data *)
-
-                get_i ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_copy ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                compile_add_const Heap.word_size ^^
-
-                get_i ^^
-                compile_mul_const 2l ^^
-                compile_add_const Object.header_size ^^
-                compile_mul_const Heap.word_size ^^
-                get_x ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                compile_add_const Heap.word_size ^^
-
-                load_ptr ^^
-                serialize_go env ^^
-                store_ptr
-              ) ^^
-              get_copy
-            end
-          ]
-        )
-    )
-
-  let shift_pointer_at env =
-    Func.share_code2 env "shift_pointer_at" (("loc", I32Type), ("ptr_offset", I32Type)) [] (fun env get_loc get_ptr_offset ->
-      let (set_ptr, get_ptr) = new_local env "ptr" in
-      get_loc ^^
-      load_ptr ^^
-      set_ptr ^^
-      get_ptr ^^
-      BitTagged.if_unboxed env (ValBlockType None)
-        (* nothing to do *)
-        ( G.nop )
-        ( get_loc ^^
-          get_ptr ^^
-          get_ptr_offset ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          store_ptr
-        )
-    )
-
-  let shift_pointers env =
-    Func.share_code3 env "shift_pointers" (("start", I32Type), ("to", I32Type), ("ptr_offset", I32Type)) [] (fun env get_start get_to get_ptr_offset ->
-      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
-        HeapTraversal.for_each_pointer env get_x (fun get_ptr_loc ->
-          get_ptr_loc ^^
-          get_ptr_offset ^^
-          shift_pointer_at env
-        )
-      )
-    )
-
-  let extract_references env =
-    Func.share_code3 env "extract_references" (("start", I32Type), ("to", I32Type), ("tbl_area", I32Type)) [I32Type] (fun env get_start get_to get_tbl_area ->
-      let (set_i, get_i) = new_local env "i" in
-
-      compile_unboxed_zero ^^ set_i ^^
-
-      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
+      (* Now the actual type-dependent code *)
+      begin match t with
+      | Prim (Nat|Int|Word64) -> inc_data_size (compile_unboxed_const 8l) (* 64 bit *)
+      | Prim Word8 -> inc_data_size (compile_unboxed_const 1l)
+      | Prim Word16 -> inc_data_size (compile_unboxed_const 2l)
+      | Prim Word32 -> inc_data_size (compile_unboxed_const 4l)
+      | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
+      | Tup ts ->
+        G.concat_mapi (fun i t ->
+          get_x ^^ Tuple.load_n (Int32.of_int i) ^^
+          size env t
+        ) ts
+      | Obj (Object Sharable, fs) ->
+        (* Disregarding all subtyping, and assuming sorted fields, we can just
+           treat this like a tuple *)
+        G.concat_mapi (fun i f ->
+          let n = { it = Name f.Type.lab; at = no_region; note = () } in
+          get_x ^^ Object.load_idx env t n ^^
+          size env f.typ
+        ) fs
+      | Array t ->
+        inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* 32 bit length field *)
         get_x ^^
-        Tagged.branch_default env (ValBlockType None) G.nop
-          [ Tagged.Reference,
-            (* Adjust reference *)
-            get_tbl_area ^^
-            get_i ^^ compile_mul_const Heap.word_size ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            get_x ^^
-            Dfinity.unbox_reference env ^^
-            store_ptr ^^
-
-            get_x ^^
-            get_i ^^
-            Heap.store_field 1l ^^
-
-            get_i ^^
-            compile_add_const 1l ^^
-            set_i
-          ]
-      ) ^^
-      get_i
+        Heap.load_field Array.len_field ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          size env t
+        )
+      | Prim Text ->
+        inc_data_size (
+          compile_unboxed_const Heap.word_size ^^ (* 32 bit length field *)
+          get_x ^^ Heap.load_field Text.len_field ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add))
+        )
+      | (Prim Null | Shared) -> G.nop
+      | Opt t ->
+        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        get_x ^^
+        Opt.null ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ (ValBlockType None) G.nop
+          ( get_x ^^ Opt.project ^^ size env t)
+      | (Func _ | Obj (Actor, _)) ->
+        inc_data_size (compile_unboxed_const Heap.word_size) ^^
+        inc_ref_size 1l
+      | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
+      end ^^
+      get_data_size ^^
+      get_ref_size
     )
 
-  let intract_references env =
-    Func.share_code3 env "intract_references" (("start", I32Type), ("to", I32Type), ("tbl_area", I32Type)) [] (fun env get_start get_to get_tbl_area ->
-      HeapTraversal.walk_heap_from_to env get_start get_to (fun get_x ->
+  (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
+  let rec serialize_go env t =
+    let open Type in
+    let t = normalize t in
+    let name = "@serialize_go<" ^ typ_id t ^ ">" in
+    Func.share_code4 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_base", I32Type), ("ref_count" , I32Type)) [I32Type; I32Type]
+    (fun env get_x get_data_buf get_ref_base get_ref_count ->
+      let set_data_buf = G.i (LocalSet (nr 1l)) in
+      let set_ref_count = G.i (LocalSet (nr 3l)) in
+
+      (* Some combinators for writing values *)
+
+      let advance_data_buf =
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
+      let allocate_ref =
+        get_ref_count ^^
+        get_ref_count ^^ compile_add_const 1l ^^ set_ref_count in
+
+      let write_word code =
+        get_data_buf ^^ code ^^ store_unskewed_ptr ^^
+        compile_unboxed_const Heap.word_size ^^ advance_data_buf
+      in
+
+      let write_byte code =
+        get_data_buf ^^ code ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      in
+
+      let write env t =
+        get_data_buf ^^
+        get_ref_base ^^
+        get_ref_count ^^
+        serialize_go env t ^^
+        set_ref_count ^^
+        set_data_buf
+      in
+
+      (* Now the actual serialization *)
+
+      begin match t with
+      | Prim (Nat | Int | Word64) ->
+        get_data_buf ^^
+        get_x ^^ BoxedInt.unbox env ^^
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l ^^ advance_data_buf
+      | Prim Word32 ->
+        get_data_buf ^^
+        get_x ^^ BoxedSmallWord.unbox env ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l ^^ advance_data_buf
+      | Prim Word16 ->
+        get_data_buf ^^
+        get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack16}) ^^
+        compile_unboxed_const 2l ^^ advance_data_buf
+      | Prim Word8 ->
+        get_data_buf ^^
+        get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      | Prim Bool ->
+        get_data_buf ^^
         get_x ^^
-        Tagged.branch_default env (ValBlockType None) G.nop
-          [ Tagged.Reference,
-            get_x ^^
-            (* Adjust reference *)
-            get_x ^^
-            Heap.load_field 1l ^^
-            compile_mul_const Heap.word_size ^^
-            get_tbl_area ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            load_ptr ^^
-            ElemHeap.remember_reference env ^^
-            Heap.store_field 1l
-          ]
-      )
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      | Tup ts ->
+        G.concat_mapi (fun i t ->
+          get_x ^^ Tuple.load_n (Int32.of_int i) ^^
+          write env t
+        ) ts
+      | Obj (Object Sharable, fs) ->
+        (* Disregarding all subtyping, and assuming sorted fields, we can just
+           treat this like a tuple *)
+        G.concat_mapi (fun i f ->
+          let n = { it = Name f.Type.lab; at = no_region; note = () } in
+          get_x ^^ Object.load_idx env t n ^^
+          write env f.typ
+        ) fs
+      | Array t ->
+        write_word (get_x ^^ Heap.load_field Array.len_field) ^^
+        get_x ^^ Heap.load_field Array.len_field ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          write env t
+        )
+      | (Prim Null | Shared) -> G.nop
+      | Opt t ->
+        get_x ^^
+        Opt.null ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ (ValBlockType None)
+          ( write_byte (compile_unboxed_const 0l) )
+          ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
+      | Prim Text ->
+        let (set_len, get_len) = new_local env "len" in
+        get_x ^^ Heap.load_field Text.len_field ^^
+        compile_add_const Heap.word_size ^^
+        set_len ^^
+        get_x ^^ compile_add_const (Int32.mul Tagged.header_size Heap.word_size) ^^
+        compile_add_const ptr_unskew ^^
+        get_data_buf ^^
+        get_len ^^
+        Heap.memcpy env ^^
+        get_len ^^ advance_data_buf
+      | (Func _ | Obj (Actor, _)) ->
+        get_ref_base ^^
+        get_ref_count ^^ compile_mul_const Heap.word_size ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_x ^^ Dfinity.unbox_reference env ^^
+        store_unskewed_ptr ^^
+        write_word allocate_ref
+      | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
+      end ^^
+      get_data_buf ^^
+      get_ref_count
+    )
+
+  let rec deserialize_go env t =
+    let open Type in
+    let t = normalize t in
+    let name = "@deserialize_go<" ^ typ_id t ^ ">" in
+    Func.share_code2 env name (("data_buffer", I32Type), ("ref_base", I32Type)) [I32Type; I32Type]
+    (fun env get_data_buf get_ref_base ->
+      let set_data_buf = G.i (LocalSet (nr 0l)) in
+
+      (* Some combinators for reading values *)
+      let advance_data_buf =
+        get_data_buf ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        set_data_buf
+      in
+
+      let read_byte =
+        get_data_buf ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      in
+
+      let read_word =
+        get_data_buf ^^ load_unskewed_ptr ^^
+        compile_unboxed_const Heap.word_size ^^ advance_data_buf
+      in
+
+      let read env t =
+        get_data_buf ^^
+        get_ref_base ^^
+        deserialize_go env t ^^
+        set_data_buf
+      in
+
+      (* Now the actual deserialization *)
+      begin match t with
+      | Prim (Nat | Int | Word64) ->
+        get_data_buf ^^
+        G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
+        BoxedInt.box env ^^
+        compile_unboxed_const 8l ^^ advance_data_buf (* 64 bit *)
+      | Prim Word32 ->
+        get_data_buf ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        BoxedSmallWord.box env ^^
+        compile_unboxed_const 4l ^^ advance_data_buf
+      | Prim Word16 ->
+        get_data_buf ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
+        UnboxedSmallWord.msb_adjust Word16 ^^
+        compile_unboxed_const 2l ^^ advance_data_buf
+      | Prim Word8 ->
+        get_data_buf ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+        UnboxedSmallWord.msb_adjust Word8 ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      | Prim Bool ->
+        get_data_buf ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+        compile_unboxed_const 1l ^^ advance_data_buf
+      | Tup ts ->
+        G.concat_map (fun t -> read env t) ts ^^
+        Tuple.from_stack env (List.length ts)
+      | Obj (Object Sharable, fs) ->
+        (* Disregarding all subtyping, and assuming sorted fields, we can just
+           treat this like a tuple *)
+        Object.lit_raw env (List.map (fun f ->
+          let n = { it = Name f.Type.lab; at = no_region; note = () } in
+          n, fun env -> read env f.typ
+        ) fs)
+      | Array t ->
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+
+        read_word ^^ set_len ^^
+        get_len ^^ Array.alloc env ^^ set_x ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Array.idx env ^^
+          read env t ^^ store_ptr
+        ) ^^
+        get_x
+      | (Prim Null | Shared) -> Opt.null
+      | Opt t ->
+        read_byte ^^
+        compile_unboxed_const 0l ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ (ValBlockType (Some I32Type))
+          ( Opt.null )
+          ( Opt.inject env (read env t) )
+      | Prim Text ->
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        read_word ^^ set_len ^^
+
+        (* Refactor into Text.alloc *)
+        get_len ^^ Text.alloc env ^^ set_x ^^
+
+        get_data_buf ^^
+        get_x ^^
+        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size Text.header_size)) ^^
+        get_len ^^
+        Heap.memcpy env ^^
+
+        get_len ^^ advance_data_buf ^^
+
+        get_x
+      | (Func _ | Obj (Actor, _)) ->
+        get_ref_base ^^
+        read_word ^^ compile_mul_const Heap.word_size ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        load_unskewed_ptr ^^
+        Dfinity.box_reference env
+      | _ -> todo "deserialize" (Arrange_ir.typ t) (G.i Unreachable)
+      end ^^
+      get_data_buf
     )
 
   let serialize env t =
+    let name = "@serialize<" ^ typ_id t ^ ">" in
     if E.mode env <> DfinityMode
-    then Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env _ -> G.i Unreachable)
-    else Func.share_code1 env "serialize" ("x", I32Type) [I32Type] (fun env get_x ->
-      let (set_start, get_start) = new_local env "old_heap" in
-      let (set_start_skewed, get_start_skewed) = new_local env "old_heap_skewed" in
-      let (set_end, get_end) = new_local env "end" in
-      let (set_end_skewed, get_end_skewed) = new_local env "end_skewed" in
-      let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
-      let (set_databuf, get_databuf) = new_local env "databuf" in
+    then Func.share_code1 env name ("x", I32Type) [I32Type] (fun env _ -> G.i Unreachable)
+    else Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      (* Remember where we start to copy to *)
-      Heap.get_skewed_heap_ptr ^^
-      set_start_skewed ^^
-      Heap.get_heap_ptr ^^
-      set_start ^^
-
-      (* Copy data *)
+      (* Get object sizes *)
       get_x ^^
-      BitTagged.if_unboxed env (ValBlockType None)
-        (* We have a bit-tagged raw value. Put this into a singleton databuf,
-           which will be recognized as such by its size.
-        *)
-        ( Heap.alloc env 1l ^^
-          get_x ^^
-          store_ptr ^^
+      buffer_size env t ^^
+      set_refs_size ^^
+      set_data_size ^^
 
-          (* Remember the end *)
-          Heap.get_skewed_heap_ptr ^^
-          set_end_skewed ^^
-          Heap.get_heap_ptr ^^
-          set_end ^^
+      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-          (* Empty table of references *)
-          compile_unboxed_zero ^^ set_tbl_size
-        )
-        (* We have real data on the heap. Copy.  *)
-        ( get_x ^^
-          serialize_go env ^^
-          G.i Drop ^^
+      Heap.get_heap_ptr ^^
+      set_data_start ^^
 
-          (* Remember the end *)
-          Heap.get_skewed_heap_ptr ^^
-          set_end_skewed ^^
-          Heap.get_heap_ptr ^^
-          set_end ^^
-
-          (* Adjust pointers *)
-          get_start_skewed ^^
-          get_end_skewed ^^
-          compile_unboxed_zero ^^ get_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-          shift_pointers env ^^
-
-          (* Extract references, and remember how many there were *)
-          get_start_skewed ^^
-          get_end_skewed ^^
-          get_end_skewed ^^
-          extract_references env ^^
-          set_tbl_size
-        ) ^^
-
-      (* Create databuf *)
-      get_start ^^
-      get_end_skewed ^^ get_start_skewed ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
-      set_databuf ^^
-
-      (* Append this reference at the end of the extracted references *)
-      get_end_skewed ^^
-      get_tbl_size ^^ compile_mul_const Heap.word_size ^^
+      Heap.get_heap_ptr ^^
+      get_data_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      get_databuf ^^
-      store_ptr ^^
-      (* And bump table end *)
-      get_tbl_size ^^ compile_add_const 1l ^^ set_tbl_size ^^
+      set_refs_start ^^
 
-      (* Reset the heap counter, to free some space *)
-      get_start ^^
-      Heap.set_heap_ptr ^^
+      (* Allocate space, if needed *)
+      get_refs_start ^^
+      get_refs_size ^^
+      compile_divU_const Heap.word_size ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       Heap.grow_memory env ^^
 
+      (* Serialize x into the buffer *)
+      get_x ^^
+      get_data_start ^^
+      get_refs_start ^^
+      compile_unboxed_const 1l ^^ (* Leave space for databuf *)
+      serialize_go env t ^^
+
+      (* Sanity check: Did we fill exactly the buffer *)
+      get_refs_size ^^ compile_add_const 1l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+
+      get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+
+      (* Create databuf, and store at beginning of ref area *)
+      get_refs_start ^^
+      get_data_start ^^
+      get_data_size ^^
+      G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
+      store_unskewed_ptr  ^^
+
       (* Finally, create elembuf *)
-      get_end ^^
-      get_tbl_size ^^
+      get_refs_start ^^
+      get_refs_size ^^ compile_add_const 1l ^^
       G.i (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
   let deserialize env t =
-    Func.share_code1 env "deserialize" ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
+    let name = "@deserialize<" ^ typ_id t ^ ">" in
+    Func.share_code1 env name ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_databuf, get_databuf) = new_local env "databuf" in
-      let (set_start, get_start) = new_local env "start" in
-      let (set_data_len, get_data_len) = new_local env "data_len" in
-      let (set_tbl_size, get_tbl_size) = new_local env "tbl_size" in
 
-      (* new positions *)
-      Heap.get_skewed_heap_ptr ^^
-      set_start ^^
-
-      get_elembuf ^^ G.i (Call (nr (Dfinity.elem_length_i env))) ^^
-      set_tbl_size ^^
-
-      (* Get scratch space (one word) *)
-      Heap.alloc env 1l ^^ G.i Drop ^^
-      get_start ^^ compile_add_const ptr_unskew ^^ Heap.set_heap_ptr ^^
-
-      (* First load databuf reference (last entry) at the heap position somehow *)
-      (* now load the databuf *)
-      get_start ^^ compile_add_const ptr_unskew ^^
-      compile_unboxed_one ^^
+      (* Allocate space for the elem buffer *)
       get_elembuf ^^
-      get_tbl_size ^^ compile_sub_const 1l ^^
+      G.i (Call (nr (Dfinity.elem_length_i env))) ^^
+      set_refs_size ^^
+
+      get_refs_size ^^
+      Array.alloc env ^^
+      compile_add_const Array.header_size ^^
+      compile_add_const ptr_unskew ^^
+      set_refs_start ^^
+
+      (* Copy elembuf *)
+      get_refs_start ^^
+      get_refs_size ^^
+      get_elembuf ^^
+      compile_unboxed_const 0l ^^
       G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
-      get_start ^^ load_ptr ^^
+
+      (* Get databuf *)
+      get_refs_start ^^
+      load_unskewed_ptr ^^
       set_databuf ^^
 
-      get_databuf ^^ G.i (Call (nr (Dfinity.data_length_i env)))  ^^
-      set_data_len ^^
-
-      (* Get some scratch space *)
-      get_data_len ^^ Heap.dyn_alloc_bytes env ^^ G.i Drop ^^
-      get_start ^^ compile_add_const ptr_unskew ^^ Heap.set_heap_ptr ^^
-
-      (* Load data from databuf *)
-      get_start ^^ compile_add_const ptr_unskew ^^
-      get_data_len ^^
+      (* Allocate space for the data buffer *)
       get_databuf ^^
-      compile_unboxed_zero ^^
+      G.i (Call (nr (Dfinity.data_length_i env))) ^^
+      set_data_size ^^
+
+      get_data_size ^^
+      compile_add_const 3l ^^
+      compile_divU_const Heap.word_size ^^
+      Array.alloc env ^^
+      compile_add_const Array.header_size ^^
+      compile_add_const ptr_unskew ^^
+      set_data_start ^^
+
+      (* Copy data *)
+      get_data_start ^^
+      get_data_size ^^
+      get_databuf ^^
+      compile_unboxed_const 0l ^^
       G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
 
-      (* Check if we got something unboxed (data buf size 1 word) *)
-      get_data_len ^^
-      compile_unboxed_const Heap.word_size ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType (Some I32Type))
-        (* Yes, we got something unboxed. Return it, and do _not_ bump the heap pointer *)
-        ( get_start ^^ load_ptr )
-        (* No, it is actual heap-data *)
-        ( (* update heap pointer *)
-          get_start ^^
-          get_data_len ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          compile_add_const ptr_unskew ^^
-          Heap.set_heap_ptr ^^
-          Heap.grow_memory env ^^
-
-          (* Fix pointers *)
-          get_start ^^
-          Heap.get_skewed_heap_ptr ^^
-          get_start ^^ compile_add_const ptr_unskew ^^
-          shift_pointers env ^^
-
-          (* Load references *)
-          Heap.get_heap_ptr ^^
-          get_tbl_size ^^ compile_sub_const 1l ^^
-          get_elembuf ^^
-          compile_unboxed_zero ^^
-          G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
-
-          (* Fix references *)
-          (* Extract references *)
-          get_start ^^
-          Heap.get_skewed_heap_ptr ^^
-          Heap.get_skewed_heap_ptr ^^
-          intract_references env ^^
-
-          (* return allocated thing *)
-          get_start
-        )
+      (* Go! *)
+      get_data_start ^^
+      get_refs_start ^^
+      deserialize_go env t ^^
+      G.i Drop
     )
 
 

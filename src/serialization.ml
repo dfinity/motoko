@@ -79,9 +79,8 @@ module Transform() = struct
     | T.Tup ts -> T.Tup (List.map t_typ ts)
     | T.Func (T.Sharable, c, tbs, t1, t2) ->
       assert (c = T.Returns);
-      assert (tbs = []); (* We do not support parametric messages *)
       assert (t2 = []); (* A returning sharable function has no return values *)
-      T.Func (T.Sharable, T.Returns, [], List.map (fun t -> T.Serialized (t_typ t)) t1, [])
+      T.Func (T.Sharable, T.Returns, tbs, List.map (fun t -> T.Serialized (t_typ t)) t1, [])
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
@@ -130,7 +129,6 @@ module Transform() = struct
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
       | T.Sharable ->
-        assert (typs = []);
         assert (T.is_unit exp.note.note_typ);
         if cc.Value.n_args = 1
         then
@@ -145,7 +143,6 @@ module Transform() = struct
       | T.Local ->
         FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
       | T.Sharable ->
-        assert (typbinds = []);
         assert (T.is_unit typT);
         let args' = t_args args in
         let raw_args = List.map serialized_arg args' in
