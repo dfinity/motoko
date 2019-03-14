@@ -78,6 +78,7 @@ func shrsWord64(w : Word64, amount : Word64) : Word64 = (prim "shrs64" : (Word64
 func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
+func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
 
 
 // This would be nicer as a objects, but lets do them as functions
@@ -229,6 +230,15 @@ let prim = function
                   | Word32 w -> Word32 (Word32.ctz w)
                   | Word64 w -> Word64 (Word64.ctz w)
                   | _ -> failwith "ctz")
+
+  | "btst64" -> fun v k ->
+                let w, a = as_pair v
+                in k (match w with
+                      | Word8  y -> Word8  Word8.(and_ y (shl (of_int_u 1) (as_word8  a)))
+                      | Word16 y -> Word16 Word16.(and_ y (shl (of_int_u 1) (as_word16  a)))
+                      | Word32 y -> Word32 (Word32.and_ y (Word32.shl 1l  (as_word32 a)))
+                      | Word64 y -> Word64 (Word64.and_ y (Word64.shl 1L  (as_word64 a)))
+                      | _ -> failwith "btst")
 
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit

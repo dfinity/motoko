@@ -53,6 +53,9 @@ func checkpointJuliett() {};
     printW64ln(popcntWord64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
     printW64ln(clzWord64 e); // 20000 = 0x0000000000004e20 (leading zeros = 49)
     printW64ln(ctzWord64 e); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
+    print(if (btstWord64(e, 5 : Word64)) "set" else "clear"); print "\n";// 20000 = 0x0000000000004e20 (result = true)
+    print(if (btstWord64(e, 63 : Word64)) "set" else "clear"); print "\n";// 20000 = 0x0000000000004e20 (result = false)
+    print(if (btstWord64(e, 69 : Word64)) "set" else "clear"); print "\n";// 20000 = 0x0000000000004e20 (mod 64, result = true)
 
     assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
     assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));

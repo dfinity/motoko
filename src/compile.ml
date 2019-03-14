@@ -3618,6 +3618,11 @@ and compile_exp (env : E.t) exp =
                                                   sanitize_word_result Type.Word16)
       | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+      | "btst64" -> compile_kernel_as SR.UnboxedInt64 (
+                        let (set_b, get_b) = new_local64 env "b"
+                        in
+                        set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+                        G.i (Binary (Wasm.Values.I64 I64Op.And)))
 
       | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
