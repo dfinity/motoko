@@ -52,6 +52,7 @@ docMd: \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
 	$(DOCDIR)/trie.md \
+	$(DOCDIR)/set.md \
 	$(DOCDIR)/setDb.md \
 	$(DOCDIR)/setDbTest.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
