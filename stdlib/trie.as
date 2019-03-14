@@ -21,11 +21,8 @@ each more complex to implement (e.g., each requires "rebalancing";
 these trees never do).
 
 
-Status: 
-=========
-
 Done:
-------
+----------
 
 - (hacky) type definition; XXX: need real sum types to clean it up
 - find operation
@@ -37,17 +34,6 @@ Done:
 - write trie operations that operate over pairs of tries:
   for set union, difference and intersection.
 - handle hash collisions gracefully using association list module
-
-TODO-Matthew:
-----------------
-
-- (more) regression tests for everything that is below
-
-- adapt the path length of each subtree to its cardinality; avoid
-  needlessly long paths, or paths that are too short for their
-  subtree's size.
-
-- iterator objects, for use in 'for ... in ...' patterns
 
 
 Assumptions
@@ -66,12 +52,18 @@ hash, starting at the LSB, that we use for indexing.
 - If the number is too high, we waste constant factors for
   representing small sets/maps.
 
-TODO: Make this more robust by making this number adaptive for each
-path, and based on the content of the trie along that path.
+In [future work](#adaptive-path-lengths), we can make this more robust
+by making this number adaptive for each path, and based on the content
+of the trie along that path.
 
 
 Future work
 =============
+
+Tests
+---------
+more regression tests for everything that is below
+
 
 Variant types
 ------------------------
@@ -83,6 +75,19 @@ See [AST-42]() (sum types); we want this type definition instead:
  type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
  type LeafNode<K,V> = { key:K; val:V };
  ```
+
+Adaptive path lengths
+----------------------
+
+Currently we assume a uniform path length.  This can be inefficient,
+and requires careful tuning.  In the future, we could adapt the path
+length of each subtree to its cardinality; this wouild avoid
+needlessly long paths, or paths that are too short for their subtree's
+size.
+
+Iterator objects
+-------------------
+for use in 'for ... in ...' patterns
 
 
 Implementation details
