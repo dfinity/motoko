@@ -147,10 +147,13 @@ let boolE b =
              S.note_eff = T.Triv}
   }
 
-let callE exp1 ts exp2 t =
+let callE exp1 ts exp2 =
+  let ret_ty = match T.promote (typ exp1) with
+    | T.Func (_, _, tbs, _, ts2) -> T.open_ ts (T.seq ts2)
+    | _ -> assert false in
   { it = CallE (Value.call_conv_of_typ (typ exp1), exp1, ts, exp2);
     at = no_region;
-    note = { S.note_typ = t;
+    note = { S.note_typ = ret_ty;
              S.note_eff = max_eff (eff exp1) (eff exp2) }
   }
 
@@ -475,15 +478,11 @@ let forE pat exp1 exp2 =
   let ty1 = exp1.note.S.note_typ in
   let _, tfs  = Type.as_obj_sub "next" ty1 in
   let tnxt    = T.lookup_field "next" tfs in
-  let ty1_ret = match (T.as_func tnxt) with
-    | _,_,_,_,[x] -> x
-    | _           -> failwith "invalid return type"
-  in
   let nxt = fresh_var tnxt in
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab Type.unit (
       loopE (
-        switch_optE (callE nxt [] (tupE []) ty1_ret)
+        switch_optE (callE nxt [] (tupE []))
           (breakE lab (tupE []))
           pat exp2 Type.unit
       )
