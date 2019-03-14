@@ -30,7 +30,7 @@ def switchModeTo(toMode, toModeOpen, toModeClose):
 
     if len(modeLines) > 0:
         if (showActorScript or mode != ActorScript):
-            print ">>> begin dumping", mode, "content:"
+            #debug "begin dumping", mode, "content:"
             print modeOpen
             if  modeLines[-1] == "":
                 modeLines.pop()
@@ -38,9 +38,9 @@ def switchModeTo(toMode, toModeOpen, toModeClose):
             for l in modeLines:
                 print(l.rstrip())
             print modeClose
-            print ">>> end dumping", mode, "content."
+            #debug "end dumping", mode, "content."
         else:
-            print ">>> omitting ActorScript"
+            #debug "omitting ActorScript"
             print "```"
             print "..."
             print "```"
@@ -52,14 +52,14 @@ def switchModeTo(toMode, toModeOpen, toModeClose):
 
 # empty line, or just whitespace; 
 def whiteSpaceLine():
-    print ">>> whitespace-only line, noted."
+    #debug "whitespace-only line, noted."
     # record if its not the first, or last thing we saw
     if len(modeLines) > 0 and modeLines[-1] != "":
         modeLines.append("")
 
 with open(sys.argv[1], "r") as ins:
     for line in ins:
-        print ">>> read line (", mode, "): `", line.rstrip(), "`"
+        #debug "read line (", mode, "): `", line.rstrip(), "`"
 
         # Now discriminate between lines that switch modes, and "ordinary lines"
         # For now, assume 0 or 1 mode switches per line; later, handle breaking those on the same line up
@@ -81,7 +81,7 @@ with open(sys.argv[1], "r") as ins:
                     modeLines.append("-----------------------------------------------------------------------")
                     modeLines.append("```")
                 else:
-                    print ">>> ignoring horizontal rule with no preceding ActorScript content"
+                    assert True
 
         # One-line comment
         elif re.match(r'//+ \S*\s*', line.lstrip()):
@@ -90,14 +90,15 @@ with open(sys.argv[1], "r") as ins:
                 print (matches[1]).rstrip()
             elif mode == ActorScript:
                 if ignoreNonMarkdownComments:
-                    print ">>> ignoring single-line comment."
+                    #debug "ignoring single-line comment."
+                    assert True
                 else:
-                    print ">>> append single-line comment (", mode, "): `", line.rstrip(), "`"
+                    #debug "append single-line comment (", mode, "): `", line.rstrip(), "`"
                     modeLines.append(line.rstrip())
             elif mode == Comment:
                 modeLines.append(matches[1].rstrip())
             else:
-                print ">>> invalid mode"
+                assert False
 
         # One-line comment, with no content
         elif re.match(r'//', line.lstrip()):
@@ -108,18 +109,15 @@ with open(sys.argv[1], "r") as ins:
             switchModeTo(ActorScript, "```ActorScript", "```")
 
         else:
-            print ">>> non-empty line"
+            #debug "non-empty line"
             # non-empty line
             if re.match(r'\S', line.lstrip()):
                 if mode == Comment:
                     # do nothing
-                    print ">>> ignore line (", mode, "): `", line.rstrip(), "`"
+                    #debug "ignore line (", mode, "): `", line.rstrip(), "`"
+                    assert True
                 else:
-                    print ">>> append line (", mode, "): `", line.rstrip(), "`"
+                    #debug "append line (", mode, "): `", line.rstrip(), "`"
                     modeLines.append(line.rstrip())
             else:
                 whiteSpaceLine()
-
-                
-
-

@@ -1,0 +1,40 @@
+
+ * Association Lists
+ * ==================
+ *
+ *  Association Lists, a la functional programming, in ActorScript.
+ *
+ *  Implements the same interface as `Trie`, but as a linked-list of key-value pairs.
+
+```
+...
+```
+find the value associated with a given key, or null if absent.
+```
+...
+```
+replace the value associated with a given key, or add it, if missing.
+returns old value, or null, if no prior value existed.
+```
+...
+```
+The key-value pairs of the final list consists of those pairs of
+the left list whose keys are not present in the right list; the
+values of the right list are irrelevant.
+```
+...
+```
+This operation generalizes the notion of "set union" to finite maps.
+Produces a "disjunctive image" of the two lists, where the values of
+matching keys are combined with the given binary operator.
+For unmatched key-value pairs, the operator is still applied to
+create the value in the image.  To accomodate these various
+situations, the operator accepts optional values, but is never
+applied to (null, null).
+```
+...
+```
+This operation generalizes the notion of "set intersection" to
+finite maps.  Produces a "conjuctive image" of the two lists, where
+the values of matching keys are combined with the given binary
+operator, and unmatched key-value pairs are not present in the output.

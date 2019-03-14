@@ -1,27 +1,27 @@
 /**
 
-PESS: Server Actor
-=======================================
+ PESS: Server Actor
+ =======================================
 
-As part of the PESS definition, we define an interface that gives the
-format of each message sent by a participant, and response received in
-return.
+ As part of the PESS definition, we define an interface that gives the
+ format of each message sent by a participant, and response received in
+ return.
 
-In ActorScript, this format specification corresponds to the
-public-facing signature of the Server actor, defined below.
+ In ActorScript, this format specification corresponds to the
+ public-facing signature of the Server actor, defined below.
 
-This server actor gives a collection of ingress messages and
-corresponding response types for each participant in the exchange,
-using only types defined in the PESS (e.g., no collection types, no
-standard library types, and no higher-order ActorScript types).
+ This server actor gives a collection of ingress messages and
+ corresponding response types for each participant in the exchange,
+ using only types defined in the PESS (e.g., no collection types, no
+ standard library types, and no higher-order ActorScript types).
 
-As explained in the `README.md` file,
-this actor also gives a behavioral spec of the
-exchange's semantics, by giving a prototype implementation of this
-behavior, whose functional behavior, not implementation details, are
-part of the formal PESS.
+ As explained in the `README.md` file,
+ this actor also gives a behavioral spec of the
+ exchange's semantics, by giving a prototype implementation of this
+ behavior, whose functional behavior, not implementation details, are
+ part of the formal PESS.
 
-*/
+ */
 actor class Server() {
 
   // See `serverModel.as` for the Model class's implementation
@@ -46,39 +46,38 @@ actor class Server() {
     //
   };
 
-  /*
-  // PESS: Registrar-based ingress messages
-  // ================================================
-  // Add/remove support across various mostly-static tables:
-  //
-  // - truck types, produce (types) and region information.
-  // - participants: producers, retailers and transporters.
-  //
-  // For each of the six entities listed above, we have an add
-  // (`Add`) and remove (`Rem`) function below, prefixed by
-  // `registrar`-, and suffixed by one of the entities in `TruckType`,
-  // `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
-  */
+  /**
+
+   PESS: Registrar-based ingress messages
+   ================================================
+   Add/remove support across various mostly-static tables:
+
+   - truck types, produce (types) and region information.
+   - participants: producers, retailers and transporters.
+
+   For each of the six entities listed above, we have an add
+   (`Add`) and remove (`Rem`) function below, prefixed by
+   `registrar`-, and suffixed by one of the entities in `TruckType`,
+   `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
+
+   To do: more registrar ingress messages:
+   =======================================================
+
+   - Get a list of all ids for each entity class in the registry:
+   ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
+
+   - For each id kind, provide a server message to get back the other registry info
+   that the registrar stores in association with it (short_name, description, etc.).
+
+   - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
+
+   */
 
   /**
-  // ****** PESS: To do: more registrar ingress messages:
-  // =======================================================
-  //
-  //  - Get a list of all ids for each entity class in the registry:
-  //    ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
-  //
-  //  - For each id kind, provide a server message to get back the other registry info
-  //    that the registrar stores in association with it (short_name, description, etc.).
-  //
-  //  - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
-  //
-  */
-
-  /*
-   // reigstrarTruckType
-  // -------------------
-  //
-  */
+   // `reigstrarTruckType`
+   // -------------------
+   //
+   */
 
   registrarAddTruckType(
     short_name:  Text,
@@ -93,32 +92,36 @@ actor class Server() {
       )
   };
 
-  // registrarRemTruckType
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   // `registrarRemTruckType`
+   // ---------------------
+   //
+   // returns `?()` on success, and `null` on failure.
+   */
 
   registrarRemTruckType(
     id: TruckTypeId
   ) : async ?() { getModel().registrarRemTruckType(id) };
 
   /**
-  // registrarTruckType
-  // ---------------------
-  //
-  // adds the truck type to the system; fails if the given information is
-  // invalid in any way.
-  */
+   // `registrarTruckType`
+   // ---------------------
+   //
+   // adds the truck type to the system; fails if the given information is
+   // invalid in any way.
+   */
 
   registrarAddRegion(
     short_name:  Text,
     description: Text,
   ) : async ?RegionId { getModel().registrarAddRegion(short_name, description) };
 
-  // registrarRemProduce
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   // `registrarRemProduce`
+   // ---------------------
+   //
+   // returns `?()` on success, and `null` on failure.
+   */
 
   registrarRemRegion(
     id: RegionId
@@ -126,10 +129,12 @@ actor class Server() {
     getModel().registrarRemRegion(id)
   };
 
-  // registrarAddProduce
-  // ---------------------
-  //
-  // adds the produce to the system; fails if the given information is invalid in any way.
+  /**
+   // `registrarAddProduce`
+   // ---------------------
+   //
+   // adds the produce to the system; fails if the given information is invalid in any way.
+   */
 
   registrarAddProduce(
     short_name:  Text,
@@ -139,10 +144,12 @@ actor class Server() {
     getModel().registrarAddProduce(short_name, description, grade)
   };
 
-  // registrarRemProduce
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   // `registrarRemProduce`
+   // ---------------------
+   //
+   // returns `?()` on success, and `null` on failure.
+   */
 
   registrarRemProduce(
     id: ProduceId
@@ -150,11 +157,12 @@ actor class Server() {
     getModel().registrarRemProduce(id)
   };
 
-
-  // registrarAddProducer
-  // ---------------------
-  //
-  // adds the producer to the system; fails if the given region is non-existent.
+  /**
+   // `registrarAddProducer`
+   // ---------------------
+   //
+   // adds the producer to the system; fails if the given region is non-existent.
+   */
 
   registrarAddProducer(
     short_name:  Text,
@@ -164,10 +172,12 @@ actor class Server() {
     getModel().registrarAddProducer(short_name, description, region)
   };
 
-  // registrarRemProducer
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   // `registrarRemProducer`
+   // ---------------------
+   //
+   // returns `?()` on success, and `null` on failure.
+   */
 
   registrarRemProducer(
     id: ProducerId
@@ -176,10 +186,12 @@ actor class Server() {
 
   };
 
-  // registrarAddRetailer
-  // ---------------------
-  //
-  // adds the producer to the system; fails if the given region is non-existent.
+  /**
+   // `registrarAddRetailer`
+   // ---------------------
+   //
+   // adds the producer to the system; fails if the given region is non-existent.
+   */
 
   registrarAddRetailer(
     short_name:  Text,
@@ -189,10 +201,12 @@ actor class Server() {
     getModel().registrarAddRetailer(short_name, description, region)
   };
 
-  // registrarRemRetailer
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   // `registrarRemRetailer`
+   // ---------------------
+   //
+   // returns `?()` on success, and `null` on failure.
+   */
 
   registrarRemRetailer(
     id: RetailerId
@@ -200,9 +214,11 @@ actor class Server() {
     getModel().registrarRemRetailer(id)
   };
 
-  // registrarAddTransporter
-  // ---------------------
-  //
+  /**
+   // `registrarAddTransporter`
+   // ---------------------
+   //
+   */
   registrarAddTransporter(
     short_name:  Text,
     description: Text,
@@ -210,10 +226,11 @@ actor class Server() {
     getModel().registrarAddTransporter(short_name, description)
   };
 
-
-  // registrarRemTransporter
-  // ---------------------
-  //
+  /**
+   // `registrarRemTransporter`
+   // ---------------------
+   //
+   */
 
   registrarRemTransporter(
     id: TransporterId
@@ -221,16 +238,15 @@ actor class Server() {
     getModel().registrarRemTransporter(id)
   };
 
+  /**
+   // PESS: Producer-based ingress messages:
+   // ==========================================
+   */
 
   /**
-  // PESS: Producer-based ingress messages:
-  // ==========================================
-  */
-
-  /**
-  // producerAddInventory
-  // ---------------------------
-  */
+   // `producerAddInventory`
+   // ---------------------------
+   */
   producerAddInventory(
     id:   ProducerId,
     prod: ProduceId,
@@ -246,32 +262,32 @@ actor class Server() {
   };
 
   /**
-  // producerRemInventory
-  // ---------------------------
-  */
+   // `producerRemInventory`
+   // ---------------------------
+   */
   producerRemInventory(id:InventoryId) : async ?() {
     getModel()
       .producerRemInventory(id)
   };
 
   /**
-  // producerReservations
-  // ---------------------------
-  */
+   // `producerReservations`
+   // ---------------------------
+   */
   producerReservations(id:ProducerId) : async ?[ReservationId] {
     getModel()
       .producerReservations(id)
   };
 
   /**
-  // PESS: Transporter-based ingress messages:
-  // ===========================================
-  */
+   // PESS: Transporter-based ingress messages:
+   // ===========================================
+   */
 
   /**
-  // transporterAddRoute
-  // ---------------------------
-  */
+   // `transporterAddRoute`
+   // ---------------------------
+   */
   transporterAddRoute(
     trans:  TransporterId,
     rstart: RegionId,
@@ -285,42 +301,42 @@ actor class Server() {
   };
 
   /**
-  // transporterRemRoute
-  // ---------------------------
-  */
+   // `transporterRemRoute`
+   // ---------------------------
+   */
   transporterRemRoute(id:RouteId) : async ?() {
     getModel()
-    .transporterRemRoute(id)
+      .transporterRemRoute(id)
   };
 
   /**
-  // transporterReservations
-  // ---------------------------
-  */
+   // `transporterReservations`
+   // ---------------------------
+   */
   transporterReservations(id:TransporterId) : async ?[ReservationId] {
     getModel()
-    .transporterReservations(id)
+      .transporterReservations(id)
   };
 
   /**
-  // PESS: Retailer-based ingress messages:
-  // ======================================
+   // PESS: Retailer-based ingress messages:
+   // ======================================
 
-  // retailerQueryAll
-  // ---------------------------
+   // `retailerQueryAll`
+   // ---------------------------
 
-  TODO-Cursors (see above).
+   TODO-Cursors (see above).
 
-  */
+   */
   retailerQueryAll(id:RetailerId) : async ?QueryAllResults {
     getModel().
       retailerQueryAll(id)
   };
 
   /**
-  // retailerReserve
-  // ---------------------------
-  */
+   // `retailerReserve`
+   // ---------------------------
+   */
   retailerReserve(
     id:RetailerId,
     inventory:InventoryId,
@@ -331,17 +347,17 @@ actor class Server() {
   };
 
   /**
-  // retailerReserveCheapest
-  // ---------------------------
-  //
-  // Like `retailerReserve`, but chooses cheapest choice among all
-  // feasible produce inventory items and routes, given a grade,
-  // quant, and delivery window.
-  //
-  // ?? This may be an example of what Mack described to me as
-  // wanting, and being important -- a "conditional update"?
-  //
-  */
+   // `retailerReserveCheapest`
+   // ---------------------------
+   //
+   // Like `retailerReserve`, but chooses cheapest choice among all
+   // feasible produce inventory items and routes, given a grade,
+   // quant, and delivery window.
+   //
+   // ?? This may be an example of what Mack described to me as
+   // wanting, and being important -- a "conditional update"?
+   //
+   */
   retailerReserveCheapest(
     id:RetailerId,
     produce:ProduceId,
@@ -356,24 +372,26 @@ actor class Server() {
   };
 
   /**
-  // retailerReservations
-  // ---------------------------
+   // `retailerReservations`
+   // ---------------------------
 
-  TODO-Cursors (see above).
+   TODO-Cursors (see above).
 
-  */
+   */
   retailerReservations(id:RetailerId) : async ?[ReservationId] {
     getModel().
       retailerReservations(id)
   };
 
   /**
-  // PESS: (Producer/Transporter/Retailer) ingress messages:
-  // ========================================================
+   // PESS: (Producer/Transporter/Retailer) ingress messages:
+   // ========================================================
+   */
 
-  // reservationInfo
-  // ---------------------------
-  **/
+  /**
+   // `reservationInfo`
+   // ---------------------------
+   */
   reservationInfo(id:ReservationId) : async ?ReservationInfo {
     getModel().
       reservationInfo(id)

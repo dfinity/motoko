@@ -23,6 +23,14 @@ terms of nested structures and finite maps.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class Model() = this {
 
+  /**
+
+   Generate Symbols
+   -----------------
+   We implement "gensym" functionality with a collection of counters, one per kind of named entity:
+
+   */
+
   var nextTruckTypeId : TruckTypeId = 0;
   var nextRegionId : RegionId = 0;
   var nextProduceId : ProduceId = 0;
@@ -35,18 +43,15 @@ class Model() = this {
 
   /**
 
-   Internal data model, in terms of the collection types defined above
-   ====================================================================
+   Mostly-static collections:
+   ---------------------------
+   We use the following variables to represent the following tables from the design documents:
 
-   First, see the types defined in `model.as`.
+   - regions table
+   - produce table
+   - truck type table
 
-  // Mostly-static collections:
-  // ---------------------------
-  // Represents the following tables:
-  //  - regions table
-  //  - produce table
-  //  - truck type table
-  */
+   */
 
   private var regions : RegionTable = null;
   private var produce : ProduceTable = null;
@@ -79,10 +84,12 @@ class Model() = this {
   /**
   // Producers collection:
   // ----------------------
-  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
+  //
+  // We use the following variable to represents the following tables, as a tree-shaped functional data structure, with sharing:
+  //
   //  - producer table
-  //  - inventory table
-  //  - reservedInventory table (formerly "orderedInventory" table)
+  //  - inventory table (shared with variable inventory)
+  //  - reservedInventory table (formerly "orderedInventory" table) (xxx shared with variable reservations)
   */
   private var producers : ProducerTable = null;
 
@@ -101,8 +108,8 @@ class Model() = this {
   // ----------------------
   // Represents the following tables, as a tree-shaped functional data structure, with sharing:
   //  - transporter table
-  //  - route table
-  //  - reservedRoute table (formerly "orderedRoutes" table)
+  //  - route table (shared with variable routes)
+  //  - reservedRoute table (formerly "orderedRoutes" table) (xxx shared with variable reservations)
   */
   private var transporters : TransporterTable = null;
 
@@ -116,37 +123,46 @@ class Model() = this {
   private var retailers : RetailerTable = null;
 
 
-  // xxx for efficient queries, need some extra indexing:
-  //
-  // Regions as keys in special global maps
-  // ---------------------------------------
-  // - inventory (across all producers) keyed by producer region
-  // - routes (across all transporters) keyed by source region
-  // - routes (across all transporters) keyed by destination region
-  //
-  // Indexing by time
-  // -----------------
-  // For now, we won't try to index based on days.
-  //
-  // If and when we want to do so, we would like to have a spatial
-  // data structure that knows about each object's "interval" in a
-  // single shared dimension (in time):
-  //
-  // - inventory, by availability window (start day, end day)
-  // - routes, by transport window (departure day, arrival day)
-  //
+  /**
 
-  // Routes by region-region pair
-  // ----------------------------
-  //
-  // the actor maintains a possibly-sparse 3D table mapping each
-  // region-region-routeid triple to zero or one routes.  First index
-  // is destination region, second index is source region; this 2D
-  // spatial coordinate gives all routes that go to that destination
-  // from that source, keyed by their unique route ID, the third
-  // coordinate of the mapping.
+   Indexing for queries
+   ====================
+
+   For efficient queries, need some extra indexing.
+
+
+   Regions as keys in special global maps
+   ---------------------------------------
+   - inventory (across all producers) keyed by producer region
+   - routes (across all transporters) keyed by source region
+   - routes (across all transporters) keyed by destination region
+
+   Indexing by time
+   -----------------
+   For now, we won't try to index based on days.
+
+   If and when we want to do so, we would like to have a spatial
+   data structure that knows about each object's "interval" in a
+   single shared dimension (in time):
+
+   - inventory, by availability window (start day, end day)
+   - routes, by transport window (departure day, arrival day)
+
+
+   Routes by region-region pair
+   ----------------------------
+
+   the actor maintains a possibly-sparse 3D table mapping each
+   region-region-routeid triple to zero or one routes.  First index
+   is destination region, second index is source region; this 2D
+   spatial coordinate gives all routes that go to that destination
+   from that source, keyed by their unique route ID, the third
+   coordinate of the mapping.
+   */
+
   private var routesByDstSrcRegions : ByRegionsRouteTable = null;
 
+  /**
   // Inventory by source region
   // ----------------------------
   //
@@ -155,7 +171,13 @@ class Model() = this {
   // inventory items.  The 1D coordinate sourceregion gives all of the
   // inventory items, by producer id, for this source region.
   //
+  */
   private var inventoryByRegion : ByRegionInventoryTable = null;
+
+  /**
+   Misc helpers
+   ==================
+   */
 
   private unwrap<T>(ox:?T) : T {
     switch ox {
@@ -172,10 +194,18 @@ class Model() = this {
     new { key = x ; hash = idHash(x) }
   };
 
-  /*
-   // reigstrarTruckType
-  // -------------------
-  //
+  /**
+
+   PESS Interface: Server message and response formats
+   ======================================================
+
+
+   PESS: Registrar-based ingress messages
+   ======================================
+
+
+   reigstrarAddTruckType
+   -------------------
   */
 
   registrarAddTruckType(
@@ -184,7 +214,8 @@ class Model() = this {
     capacity : Weight,
     isFridge : Bool,
     isFreezer : Bool,
-  ) : ?TruckTypeId {
+  ) : ?TruckTypeId
+  {
     let id = nextTruckTypeId;
     nextTruckTypeId := id + 1;
     truckTypes :=
@@ -209,14 +240,17 @@ class Model() = this {
     ?id
   };
 
-  // registrarRemTruckTypes
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+  /**
+   registrarRemTruckTypes
+   ---------------------
+
+   returns `?()` on success, and `null` on failure.
+  */
 
   registrarRemTruckType(
     id: TruckTypeId
-  ) : ?() {
+  ) : ?()
+  {
     Map.removeThen<TruckTypeId, TruckType, ?()>(
       truckTypes,
       keyOf(id),
@@ -240,7 +274,8 @@ class Model() = this {
   registrarAddRegion(
     short_name:  Text,
     description: Text,
-  ) : ?RegionId {
+  ) : ?RegionId
+  {
     let id = nextRegionId;
     nextRegionId := id + 1;
     regions :=
@@ -256,14 +291,17 @@ class Model() = this {
     ?id
   };
 
+  /**
   // registrarRemProduce
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
+  */
 
   registrarRemRegion(
     id: RegionId
-  ) : ?() {
+  ) : ?()
+  {
     Map.removeThen<RegionId, Region, ?()>(
       regions,
       keyOf(id),
@@ -276,16 +314,19 @@ class Model() = this {
     )
   };
 
+  /**
   // registrarAddProduce
   // ---------------------
   //
   // adds the produce to the system; fails if the given information is invalid in any way.
+  */
 
   registrarAddProduce(
     short_name:  Text,
     description: Text,
     grade: Grade,
-  ) : ?ProduceId {
+  ) : ?ProduceId
+  {
     let id = nextProduceId;
     nextProduceId := id + 1;
     produce :=
@@ -302,14 +343,17 @@ class Model() = this {
     ?id
   };
 
+  /**
   // registrarRemProduce
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
+  */
 
   registrarRemProduce(
     id: ProduceId
-  ) : ?() {
+  ) : ?()
+  {
     Map.removeThen<ProduceId, Produce, ?()>(
       produce,
       keyOf(id),
@@ -322,17 +366,19 @@ class Model() = this {
     )
   };
 
-
+  /**
   // registrarAddProducer
   // ---------------------
   //
   // adds the producer to the system; fails if the given region is non-existent.
+  */
 
   registrarAddProducer(
     short_name:  Text,
     description: Text,
     rid: RegionId,
-  ) : ?ProducerId {
+  ) : ?ProducerId
+  {
     // fail early if the region id is invalid
     let region = switch (getRegion(rid)) {
     case (null) { return null };
@@ -357,14 +403,17 @@ class Model() = this {
     ?id
   };
 
+  /**
   // registrarRemProducer
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
+  */
 
   registrarRemProducer(
     id: ProducerId
-  ) : ?() {
+  ) : ?()
+  {
     Map.removeThen<ProducerId, Producer, ?()>(
       producers,
       keyOf(id),
@@ -377,16 +426,19 @@ class Model() = this {
     )
   };
 
+  /**
   // registrarAddRetailer
   // ---------------------
   //
   // adds the producer to the system; fails if the given region is non-existent.
+  */
 
   registrarAddRetailer(
     short_name:  Text,
     description: Text,
     rid: RegionId,
-  ) : ?RetailerId {
+  ) : ?RetailerId
+  {
     // fail early if the region id is invalid
     let region = switch (getRegion(rid)) {
     case (null) { return null };
@@ -411,14 +463,17 @@ class Model() = this {
     ?id
   };
 
+  /**
   // registrarRemRetailer
   // ---------------------
   //
   // returns `?()` on success, and `null` on failure.
+  */
 
   registrarRemRetailer(
     id: RetailerId
-  ) : ?() {
+  ) : ?()
+  {
     Map.removeThen<RetailerId, Retailer, ?()>(
       retailers,
       keyOf(id),
@@ -431,13 +486,16 @@ class Model() = this {
     )
   };
 
+  /**
   // registrarAddTransporter
   // ---------------------
   //
+  */
   registrarAddTransporter(
     short_name:  Text,
     description: Text,
-  ) : ?TransporterId {
+  ) : ?TransporterId
+  {
     let id = nextTransporterId;
     nextTransporterId := id + 1;
     transporters :=
@@ -456,9 +514,11 @@ class Model() = this {
   };
 
 
+  /**
   // registrarRemTransporter
   // ---------------------
   //
+  */
 
   registrarRemTransporter(
     id: TransporterId
@@ -475,15 +535,14 @@ class Model() = this {
     )
   };
 
-
   /**
-  // PES: Producer-based ingress messages:
-  // ==========================================
-  */
 
-  /**
-  // producerAddInventory
-  // ---------------------------
+   PESS: Producer-based ingress messages:
+   ==========================================
+
+   `producerAddInventory`
+   ---------------------------
+
   */
   producerAddInventory(
     id:   ProducerId,

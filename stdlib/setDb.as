@@ -1,6 +1,9 @@
-// import Set
+/** 
 
-////////////////////////////////////////////////////////////////////
+ Debugging wrapper around `Set` module
+ ========================================
+
+ */
 let SetDb = new {
 
   private func setDbPrint(s:Set<Nat>) {

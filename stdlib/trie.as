@@ -1,4 +1,4 @@
-/*
+/**
  Hash Tries in ActorScript
  -------------------------
 
@@ -15,31 +15,32 @@
  each more complex to implement (e.g., each requires "rebalancing";
  these trees never do).
 
- */
 
-// Done:
-//
-//  - (hacky) type definition; XXX: need real sum types to clean it up
-//  - find operation
-//  - insert operation
-//  - remove operation
-//  - replace operation (remove+insert via a single traversal)
-//  - basic encoding of sets, and some set operations
-//  - basic tests (and primitive debugging) for set operations
-//  - write trie operations that operate over pairs of tries:
-//    for set union, difference and intersection.
-//  - handle hash collisions gracefully using association list module
+ Done:
+ -------
 
-// TODO-Matthew:
-//
-//  - (more) regression tests for everything that is below
-//
-//  - adapt the path length of each subtree to its cardinality; avoid
-//    needlessly long paths, or paths that are too short for their
-//    subtree's size.
-//
-//  - iterator objects, for use in 'for ... in ...' patterns
+  - (hacky) type definition; XXX: need real sum types to clean it up
+  - find operation
+  - insert operation
+  - remove operation
+  - replace operation (remove+insert via a single traversal)
+  - basic encoding of sets, and some set operations
+  - basic tests (and primitive debugging) for set operations
+  - write trie operations that operate over pairs of tries:
+    for set union, difference and intersection.
+  - handle hash collisions gracefully using association list module
 
+ TODO-Matthew:
+----------------
+
+  - (more) regression tests for everything that is below
+
+  - adapt the path length of each subtree to its cardinality; avoid
+    needlessly long paths, or paths that are too short for their
+    subtree's size.
+
+  - iterator objects, for use in 'for ... in ...' patterns
+*/
 
 // import List
 
@@ -51,21 +52,25 @@ type Hash = Bits;
 //type Hash = Word16;
 //type Hash = Word8;
 
-// Uniform depth assumption:
-//
-// We make a simplifying assumption, for now: All defined paths in the
-// trie have a uniform length, the same as the number of bits of a
-// hash, starting at the LSB, that we use for indexing.
-//
-// - If the number is too low, our expected O(log n) bounds become
-//   expected O(n).
-//
-// - If the number is too high, we waste constant factors for
-//   representing small sets/maps.
-//
-// TODO: Make this more robust by making this number adaptive for each
-// path, and based on the content of the trie along that path.
-//
+/**
+
+Uniform depth assumption:
+------------------------------
+
+We make a simplifying assumption, for now: All defined paths in the
+trie have a uniform length, the same as the number of bits of a
+hash, starting at the LSB, that we use for indexing.
+
+- If the number is too low, our expected O(log n) bounds become
+  expected O(n).
+
+- If the number is too high, we waste constant factors for
+  representing small sets/maps.
+
+TODO: Make this more robust by making this number adaptive for each
+path, and based on the content of the trie along that path.
+
+*/
 let HASH_BITS = 4;
 
 type Key<K> = {
@@ -96,18 +101,25 @@ type Node<K,V> = {
 
 type Trie<K,V> = ?Node<K,V>;
 
-// A 2D trie is just a trie that maps dimension-1 keys to another
-// layer of tries, each keyed on the dimension-2 keys.
+/**
+ A 2D trie is just a trie that maps dimension-1 keys to another
+ layer of tries, each keyed on the dimension-2 keys.
+*/
 type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
 
-/* See AST-42 (sum types); we want this type definition instead:
+/**
+ Variant types, eventually
+ --------------------------
+ See AST-42 (sum types); we want this type definition instead:
 
+ ```
  // Use a sum type (AST-42)
  type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
  type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
  type LeafNode<K,V> = { key:K; val:V };
-
+ ```
  */
+
 
 let Trie = new {
 
@@ -131,20 +143,7 @@ let Trie = new {
   func makeEmpty<K,V>() : Trie<K,V>
     = null;
 
-  // Note: More general version of this operation below, which tests for
-  // "deep emptiness" (subtrees that have branching structure, but no
-  // leaves; these can result from naive filtering operations, for
-  // instance).
-  //
-  // // XXX: until AST-42:
-  // func isEmpty<K,V>(t:Trie<K,V>) : Bool {
-  //   switch t {
-  //     case null { true  };
-  //     case (?_) { false };
-  //   };
-  // };
-
-  // XXX: until AST-42:
+   // XXX: until AST-42:
   func assertIsEmpty<K,V>(t : Trie<K,V>) {
     switch t {
     case null { assert(true)  };

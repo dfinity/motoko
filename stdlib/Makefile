@@ -52,6 +52,8 @@ docMd: \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
 	$(DOCDIR)/trie.md \
+	$(DOCDIR)/setDb.md \
+	$(DOCDIR)/setDbTest.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.md \
 	$(DOCDIR)/examples/produce-exchange/serverActor.md \
@@ -67,6 +69,9 @@ docHtml: \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
 	$(DOCDIR)/trie.html \
+	$(DOCDIR)/set.html \
+	$(DOCDIR)/setDb.html \
+	$(DOCDIR)/setDbTest.html \
 	$(DOCDIR)/examples/produce-exchange/README.html \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.html \
 	$(DOCDIR)/examples/produce-exchange/serverActor.html \

@@ -1,4 +1,9 @@
-// import SetDb
+/** 
+
+ Tests with debugging wrapper around `Set` module
+ ===============================================
+
+ */
 
 func SetDb__test() {
   let hash_0 = ?(false,?(false,?(false,?(false, null))));
