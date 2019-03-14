@@ -96,14 +96,7 @@ We decompose the **test suite** for the Produce Exchange into the following mile
 
     To do
 
-See below for [more thoughts about performance testing]().
-
-Currently, we use purely-functional data structures, since their
-design permits `O(1)`-time/space for sharing, and their immutability
-makes them suitable for mathematical reasoning.  These properties are
-practically important as a specification, but also suggest even more
-optimized representations, with the same mathematical properties.  See
-below, for more details on ["chunky representations".](#chunky-representations].
+See below for [more thoughts about performance testing](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#performance-considerations).
 
 
 
@@ -252,17 +245,36 @@ We shall vary workloads in kind and size, and measure space and time
 usage of the Wasm VM running this implementation, in terms of the
 standard library of collections implemented here.
 
-Alternative representations in `stdlib`
--------------------------------------------
+We shall compare the performance on fixed workloads across varying
+representations of the `Map` data structure that we use.
 
 Notably, the one and only collection type used in this implementation
-is the `Map` type.
+is the `Map` type.  With two implementations:
 
-Changing this type out amounts to extending the standard library with
-additional implementations of the finite map interface that it
-provides.
+ - [Association lists]()
+ - [Hash tries]()
 
-Crucially, we the hash trie implementation of `Map` uses a _functional
+We use purely-functional data structures for `Map` since their design
+permits `O(1)`-time/space for sharing, and their immutability makes
+them suitable for mathematical reasoning.
+
+As explained below, the hash trie representation is asymptotically
+efficient for large sizes; while association lists are not, they are
+suitable for small sub-cases, including those where hash collisions
+occur in the trie structure.
+
+These mathematical properties are practically important for affording
+a reasonably-efficient executable specification, but they also suggest
+even more optimized representations, with the same mathematical
+properties.  First, 
+
+Hash tries
+---------------------------------
+
+Before considering other variations, we review the basic properties of
+the hash trie representation.
+
+Crucially, the hash trie implementation of `Map` uses a _functional
 representation_, with expected times as follows (expected time
 analysis, because of hashing):
 
@@ -271,11 +283,17 @@ analysis, because of hashing):
    Trie.find                      : O(log n)
    Trie.replace, .insert, .remove : O(log n)
    Trie.merge, .split             : O(log n)
-?? Trie.union                     : O(log n)
-?? Trie.intersect                 : O(log n)
+   Trie.union                     : O(n)
+   Trie.intersect                 : O(n)
 ```
 
-We might consider validating the followin claim:
+Alternative representations
+----------------------------
+
+We consider variations of how to represent a `Map`, both as variations
+of the hash trie, and as other representations as well (see below).
+
+First, we might consider validating the followin claim:
 
 >    **Claim:** The asymptotic properties of the hash trie are ideal
 >    for a practical (infinitely-scalable) implementation of PESS.
@@ -285,20 +303,23 @@ claim on randomly-generated use-cases of varying size, to simulate
 realistic (but synthetic) workloads, and measure time and space usage
 by the Wasm VM.
 
-Chunky Representations:
-------------------------
-
 Once we can generate performance plots, we should consider comparing
 different representations for `Map` that still use a hash trie.
 
-A simple variation uses **"chunks"** at the leaves of the hash trie,
+Chunks
+-------
+
+A simple variation of the hash trie uses **"chunks"** at the leaves,
 to represent sub-maps of the threshhold size where the pointers
 involved in the per-hash-bit branching no longer pays off.
 
-See also:
+So, we may first consider additional implementations by varying the
+details of these chunks:
+    
+ - when the basecase of the hash trie occurs, and
+ - how the basecase of the hash trie is represented
 
- - [Hashtable representation](#hashtable-representation).
- - [Association array representation](#association-array-representation).
+We consider several simple, but practical representations of chunks below.
 
 
 Association array representation:
