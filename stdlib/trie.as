@@ -34,6 +34,8 @@ Done:
   for set union, difference and intersection.
 - handle hash collisions gracefully using association list module
 
+See [Future work](#future-work) below
+--------------------------------------
 
 Assumptions
 =============
