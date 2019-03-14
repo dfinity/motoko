@@ -22,8 +22,6 @@ terms of nested structures and finite maps.
 
 */
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 class Model() = this {
 
   /**
@@ -88,7 +86,7 @@ class Model() = this {
   // Producers collection:
   // ----------------------
   //
-  // We use the following variable to represents the following tables, as a tree-shaped functional data structure, with sharing:
+  // We use the following variable to represent the following tables, as a tree-shaped functional data structure, with sharing:
   //
   //  - producer table
   //  - inventory table (shared with variable inventory)
@@ -176,26 +174,6 @@ class Model() = this {
   //
   */
   private var inventoryByRegion : ByRegionInventoryTable = null;
-
-  /**
-   Misc helpers
-   ==================
-   */
-
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
-  private idIsEq(x:Nat,y:Nat):Bool { x == y };
-
-  private idHash(x:Nat):Hash { null /* xxx */ };
-
-  private keyOf(x:Nat):Key<Nat> {
-    new { key = x ; hash = idHash(x) }
-  };
 
   /**
 
@@ -760,10 +738,32 @@ class Model() = this {
 
    reservationInfo
    ---------------------------
-  **/
+   */
   reservationInfo(id:ReservationId) : ?ReservationInfo {
     // xxx
     null
+  };
+
+
+
+  /**
+   Misc helpers
+   ==================
+   */ 
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
+
+  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+
+  private idHash(x:Nat):Hash { null /* xxx */ };
+
+  private keyOf(x:Nat):Key<Nat> {
+    new { key = x ; hash = idHash(x) }
   };
 
 };
