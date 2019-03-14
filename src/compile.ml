@@ -3669,27 +3669,9 @@ and compile_exp (env : E.t) exp =
     compile_exp_as env SR.UnboxedReference e ^^
     actor_fake_object_idx env {name with it = n}
   (* We only allow prims of certain shapes, as they occur in the prelude *)
-  (* Binary prims *)
-  | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
-    begin
-     let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
-     in match p with
-      | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
-      | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
-      | "shrs8" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word8 ^^
-                                                 G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                 sanitize_word_result Type.Word8)
-      | "shrs16" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word16 ^^
-                                                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                  sanitize_word_result Type.Word16)
-      | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
-      | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
-
-      | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
-    end
-  (* Unary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
     begin
+      (* First check for all unary prims. *)
       match p with
        | "@serialize" ->
          SR.UnboxedReference,
@@ -3829,8 +3811,27 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Dfinity.prim_print env
        | _ ->
-         SR.Unreachable,
-         todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+        (* Now try the binary prims, expecting a manifest tuple argument *)
+        begin match e.it with
+        | TupE [e1;e2] ->
+          begin
+           let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
+           in match p with
+             | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
+             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+             | "shrs8" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word8 ^^
+                                                        G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                        sanitize_word_result Type.Word8)
+             | "shrs16" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word16 ^^
+                                                         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                         sanitize_word_result Type.Word16)
+             | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+             | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+
+             | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+          end
+        | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+        end
     end
   | VarE var ->
     Var.get_val env var.it

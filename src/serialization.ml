@@ -39,14 +39,19 @@ module Transform() = struct
     primE "@serialize" (T.Func (T.Local, T.Returns, [], [t], [T.Serialized t]))
     -*- e
 
-  let map_tuple n f e =
-    if n = 0 then e else
-    (* TODO: optimize if e is a manifest tuple *)
-    let ts = T.as_tup e.note.note_typ in
-    assert (List.length ts = n);
-    let vs = List.map fresh_var ts in
-      blockE [letP (seqP (List.map varP vs)) e]
-        (tupE (List.map serialize vs))
+  let rec map_tuple n f e = match n, e.it with
+    | 0, _ -> e
+    | _, TupE es ->
+      assert (List.length es = n);
+      tupE (List.map f es)
+    | _, BlockE (ds, e) ->
+      blockE ds (map_tuple n f e)
+    | _, _ ->
+      let ts = T.as_tup e.note.note_typ in
+      assert (List.length ts = n);
+      let vs = List.map fresh_var ts in
+        blockE [letP (seqP (List.map varP vs)) e]
+          (tupE (List.map f vs))
 
   let rec t_typ (t:T.typ) =
     match t with
