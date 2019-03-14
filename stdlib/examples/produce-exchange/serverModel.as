@@ -204,7 +204,7 @@ class Model() = this {
    ======================================
 
 
-   reigstrarAddTruckType
+   `reigstrarAddTruckType`
    -------------------
   */
 
@@ -241,7 +241,8 @@ class Model() = this {
   };
 
   /**
-   registrarRemTruckTypes
+   
+   `registrarRemTruckTypes`
    ---------------------
 
    returns `?()` on success, and `null` on failure.
@@ -264,11 +265,11 @@ class Model() = this {
   };
 
   /**
-  // registrarAddRegion
-  // ---------------------
-  //
-  // adds the region to the system; fails if the given information is
-  // invalid in any way.
+   `registrarAddRegion`
+   ---------------------
+   
+   adds the region to the system; fails if the given information is
+   invalid in any way.
   */
 
   registrarAddRegion(
@@ -292,10 +293,10 @@ class Model() = this {
   };
 
   /**
-  // registrarRemProduce
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+   `registrarRemProduce`
+   ---------------------
+   
+   returns `?()` on success, and `null` on failure.
   */
 
   registrarRemRegion(
@@ -315,10 +316,10 @@ class Model() = this {
   };
 
   /**
-  // registrarAddProduce
-  // ---------------------
-  //
-  // adds the produce to the system; fails if the given information is invalid in any way.
+   `registrarAddProduce`
+   ---------------------
+  
+   adds the produce to the system; fails if the given information is invalid in any way.
   */
 
   registrarAddProduce(
@@ -344,10 +345,9 @@ class Model() = this {
   };
 
   /**
-  // registrarRemProduce
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+   `registrarRemProduce`
+   ---------------------  
+   returns `?()` on success, and `null` on failure.
   */
 
   registrarRemProduce(
@@ -367,10 +367,9 @@ class Model() = this {
   };
 
   /**
-  // registrarAddProducer
-  // ---------------------
-  //
-  // adds the producer to the system; fails if the given region is non-existent.
+   `registrarAddProducer`
+   ---------------------   
+   adds the producer to the system; fails if the given region is non-existent.
   */
 
   registrarAddProducer(
@@ -404,10 +403,10 @@ class Model() = this {
   };
 
   /**
-  // registrarRemProducer
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+   `registrarRemProducer`
+   ---------------------
+  
+   returns `?()` on success, and `null` on failure.
   */
 
   registrarRemProducer(
@@ -427,10 +426,10 @@ class Model() = this {
   };
 
   /**
-  // registrarAddRetailer
-  // ---------------------
-  //
-  // adds the producer to the system; fails if the given region is non-existent.
+   `registrarAddRetailer`
+   ---------------------
+   
+   adds the producer to the system; fails if the given region is non-existent.
   */
 
   registrarAddRetailer(
@@ -464,10 +463,10 @@ class Model() = this {
   };
 
   /**
-  // registrarRemRetailer
-  // ---------------------
-  //
-  // returns `?()` on success, and `null` on failure.
+   `registrarRemRetailer`
+   ---------------------
+  
+   returns `?()` on success, and `null` on failure.
   */
 
   registrarRemRetailer(
@@ -487,9 +486,9 @@ class Model() = this {
   };
 
   /**
-  // registrarAddTransporter
-  // ---------------------
-  //
+   `registrarAddTransporter`
+   ---------------------
+  
   */
   registrarAddTransporter(
     short_name:  Text,
@@ -515,9 +514,9 @@ class Model() = this {
 
 
   /**
-  // registrarRemTransporter
-  // ---------------------
-  //
+   `registrarRemTransporter`
+   ----------------------------
+   
   */
 
   registrarRemTransporter(
@@ -623,9 +622,10 @@ class Model() = this {
   };
 
   /**
-  // producerRemInventory
-  // ---------------------------
-  */
+   `producerRemInventory`
+   ---------------------------
+   
+   */
   producerRemInventory(id:InventoryId) : ?() {
     // xxx
     // - remove from the inventory in inventory table; use `Trie.removeThen`
@@ -637,22 +637,23 @@ class Model() = this {
   };
 
   /**
-  // producerReservations
-  // ---------------------------
-  */
+   `producerReservations`
+   ---------------------------
+   
+   */
   producerReservations(id:ProducerId) : ?[ReservationId] {
     // xxx
     null
   };
 
   /**
-  // PES: Transporter-based ingress messages:
-  // ===========================================
+   PES: Transporter-based ingress messages:
+   ===========================================
   */
 
   /**
-  // transporterAddRoute
-  // ---------------------------
+   `transporterAddRoute`
+   ---------------------------
   */
   transporterAddRoute(
     trans:  TransporterId,
@@ -668,8 +669,8 @@ class Model() = this {
   };
 
   /**
-  // transporterRemRoute
-  // ---------------------------
+   `transporterRemRoute`
+   ---------------------------
   */
   transporterRemRoute(id:RouteId) : ?() {
     // xxx
@@ -677,8 +678,8 @@ class Model() = this {
   };
 
   /**
-  // transporterReservations
-  // ---------------------------
+   `transporterReservations`
+    ---------------------------
   */
   transporterReservations(id:TransporterId) : ?[ReservationId] {
     // xxx
@@ -686,13 +687,13 @@ class Model() = this {
   };
 
   /**
-  // PES: Retailer-based ingress messages:
-  // ======================================
+   PES: Retailer-based ingress messages:
+   ======================================
 
-  // retailerQueryAll
-  // ---------------------------
+   retailerQueryAll
+   ---------------------------
 
-  TODO-Cursors (see above).
+   TODO-Cursors (see above).
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
@@ -701,8 +702,8 @@ class Model() = this {
   };
 
   /**
-  // retailerReserve
-  // ---------------------------
+   retailerReserve
+   ---------------------------
   */
   retailerReserve(
     id:RetailerId,
@@ -714,16 +715,16 @@ class Model() = this {
   };
 
   /**
-  // retailerReserveCheapest
-  // ---------------------------
-  //
-  // Like `retailerReserve`, but chooses cheapest choice among all
-  // feasible produce inventory items and routes, given a grade,
-  // quant, and delivery window.
-  //
-  // ?? This may be an example of what Mack described to me as
-  // wanting, and being important -- a "conditional update"?
-  //
+   retailerReserveCheapest
+   ---------------------------
+  
+   Like `retailerReserve`, but chooses cheapest choice among all
+   feasible produce inventory items and routes, given a grade,
+   quant, and delivery window.
+  
+   ?? This may be an example of what Mack described to me as
+   wanting, and being important -- a "conditional update"?
+  
   */
   retailerReserveCheapest(
     id:RetailerId,
@@ -739,10 +740,10 @@ class Model() = this {
   };
 
   /**
-  // retailerReservations
-  // ---------------------------
+   retailerReservations
+   ---------------------------
 
-  TODO-Cursors (see above).
+   TODO-Cursors (see above).
 
   */
   retailerReservations(id:RetailerId) : ?[ReservationId] {
@@ -751,11 +752,11 @@ class Model() = this {
   };
 
   /**
-  // PES: (Producer/Transporter/Retailer) ingress messages:
-  // ========================================================
+   PES: (Producer/Transporter/Retailer) ingress messages:
+   ========================================================
 
-  // reservationInfo
-  // ---------------------------
+   reservationInfo
+   ---------------------------
   **/
   reservationInfo(id:ReservationId) : ?ReservationInfo {
     // xxx
