@@ -2449,10 +2449,30 @@ module Dfinity = struct
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
-      BoxedInt.unbox env ^^
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Call (nr (test_show_i32_i env))) ^^
-      G.i (Call (nr (test_print_i env)))
+      let (set_n, get_n) = new_local64 env "n" in
+      set_n ^^ get_n ^^ compile_const_64 1000000000L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+      G.if_ (ValBlockType None)
+      begin
+          get_n ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          G.i (Call (nr (test_show_i32_i env))) ^^
+          G.i (Call (nr (test_print_i env)))
+      end
+      begin
+        get_n ^^ compile_const_64 1000000000000000000L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+        G.if_ (ValBlockType None)
+        begin
+          (*get_n ^^ compile_const_64 1000000000L ^^ G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          G.i (Call (nr (test_show_i32_i env))) ^^*)
+          get_n ^^ compile_const_64 1000000000L ^^ G.i (Binary (Wasm.Values.I64 I64Op.RemU)) ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          G.i (Call (nr (test_show_i32_i env))) ^^
+            (*Text.concat env ^^*)
+          G.i (Call (nr (test_print_i env)))
+        end
+        (G.i Unreachable)
+      end
     else
       G.i Unreachable
 
@@ -4322,7 +4342,7 @@ and compile_exp (env : E.t) exp =
 
        | "printInt" ->
          SR.unit,
-         compile_exp_vanilla env e ^^
+         compile_exp_as env SR.UnboxedInt64 e ^^
          Dfinity.prim_printInt env
        | "print" ->
          SR.unit,
