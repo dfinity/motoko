@@ -31,21 +31,35 @@ actor class Server() {
 
    PESS: Registrar-based ingress messages
    ================================================
-   Add/remove support across various mostly-static tables:
 
-   - truck types, produce (types) and region information.
-   - participants: producers, retailers and transporters.
+   The registrar provides functions to add and to remove entities from
+   the following (mostly-static) tables:
+   
+   - **Resource information:** truck types, produce (types) and region information.
+   - **Participant information:** producers, retailers and transporters.
+   
+   For each of the six entities listed above, we have an add (`Add`)
+   and remove (`Rem`) function below, prefixed by `registrar`-, and
+   suffixed by one of the entities in the following list:
+   
+   - `TruckType`,
+   - `Region`, 
+   - `Produce`, 
+   - `Producer`, 
+   - `Retailer`, or
+   - `Transporter`.
+   
 
-   For each of the six entities listed above, we have an add
-   (`Add`) and remove (`Rem`) function below, prefixed by
-   `registrar`-, and suffixed by one of the entities in `TruckType`,
-   `Region`, `Produce`, `Producer`, `Retailer`, `Transporter`.
+  `TruckType`
+  ==============
+   Messages to `Add` and `Rem` truck types.
    */
 
+  
   /**
-   // `reigstrarTruckType`
-   // -------------------
-   //
+   `reigstrarAddTruckType`
+   ------------------------
+
    */
 
   registrarAddTruckType(
@@ -62,10 +76,9 @@ actor class Server() {
   };
 
   /**
-   // `registrarRemTruckType`
-   // ---------------------
-   //
-   // returns `?()` on success, and `null` on failure.
+   `registrarRemTruckType`
+   ---------------------
+   returns `?()` on success, and `null` on failure.
    */
 
   registrarRemTruckType(
@@ -73,11 +86,27 @@ actor class Server() {
   ) : async ?() { getModel().registrarRemTruckType(id) };
 
   /**
-   // `registrarTruckType`
-   // ---------------------
-   //
-   // adds the truck type to the system; fails if the given information is
-   // invalid in any way.
+   `getTruckTypeInfo`
+   ---------------------
+   */
+
+  getTruckTypeInfo(
+    id: TruckTypeId
+  ) : async ?TruckTypeInfo { getModel().getTruckTypeInfo(id) };
+
+
+  /**
+   `Region`
+   ==============
+   Messages to `Add`, `Rem` and `Inspect` regions.
+
+   */
+
+  /**
+   `registrarAddRegion`
+   ---------------------
+   adds the region to the system; fails if the given information is
+   invalid in any way.
    */
 
   registrarAddRegion(
@@ -86,10 +115,10 @@ actor class Server() {
   ) : async ?RegionId { getModel().registrarAddRegion(short_name, description) };
 
   /**
-   // `registrarRemProduce`
-   // ---------------------
-   //
-   // returns `?()` on success, and `null` on failure.
+   `registrarRemRegion`
+   ---------------------
+   
+   returns `?()` on success, and `null` on failure.
    */
 
   registrarRemRegion(
@@ -97,6 +126,24 @@ actor class Server() {
   ) : async ?() {
     getModel().registrarRemRegion(id)
   };
+
+  /**
+   `getRegionInfo`
+   ---------------------
+   */
+
+  getRegionInfo(
+    id: RegionId
+  ) : async ?RegionInfo {
+    getModel().getRegionInfo(id)
+  };
+
+  /**
+   `Produce`
+   =================
+   Messages to `Add`, `Rem` and `Inspect` produce.
+
+   */
 
   /**
    // `registrarAddProduce`
@@ -126,6 +173,25 @@ actor class Server() {
     getModel().registrarRemProduce(id)
   };
 
+
+  /**
+   `getProduceInfo`
+   ---------------------
+   */
+
+  getProduceInfo(
+    id: ProduceId
+  ) : async ?ProduceInfo {
+    getModel().getProduceInfo(id)
+  };
+ 
+  /**
+   `Producer`
+   ===============
+   Messages to `Add`, `Rem` and `Inspect` prodcuers.
+
+   */
+
   /**
    // `registrarAddProducer`
    // ---------------------
@@ -152,8 +218,19 @@ actor class Server() {
     id: ProducerId
   ) : async ?() {
     getModel().registrarRemProducer(id)
-
   };
+
+  /**
+   `getProducerInfo`
+   ---------------------
+   To do
+   */
+
+  /**
+   `Retailer`
+   ============
+   Messages to `Add`, `Rem` and `Inspect` retailers.
+   */
 
   /**
    // `registrarAddRetailer`
@@ -184,6 +261,18 @@ actor class Server() {
   };
 
   /**
+   `getRetailerInfo`
+   ---------------------
+   To do
+   */
+
+  /**
+   `Transporter`
+   ================
+   Messages to `Add`, `Rem` and `Inspect` transporters.
+   */
+
+  /**
    // `registrarAddTransporter`
    // ---------------------
    //
@@ -208,7 +297,13 @@ actor class Server() {
   };
 
   /**
-   // PESS: Producer-based ingress messages:
+   `getTransporterInfo`
+   ---------------------
+   To do
+   */
+
+  /**
+   // PESS: `Producer`-based ingress messages:
    // ==========================================
    */
 
@@ -249,7 +344,7 @@ actor class Server() {
   };
 
   /**
-   // PESS: Transporter-based ingress messages:
+   // PESS: `Transporter`-based ingress messages:
    // ===========================================
    */
 
@@ -288,7 +383,7 @@ actor class Server() {
   };
 
   /**
-   // PESS: Retailer-based ingress messages:
+   // PESS: `Retailer`-based ingress messages:
    // ======================================
 
    // `retailerQueryAll`
@@ -353,8 +448,13 @@ actor class Server() {
   };
 
   /**
-   // PESS: (Producer/Transporter/Retailer) ingress messages:
-   // ========================================================
+   
+   PESS: general-use ingress messages:
+   ========================================================
+   
+   The following messages may originate from any entity; they access
+   published information in the tables maintained above.  
+
    */
 
   /**

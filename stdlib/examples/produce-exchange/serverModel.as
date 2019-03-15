@@ -159,37 +159,70 @@ class Model() = this {
    spatial coordinate gives all routes that go to that destination
    from that source, keyed by their unique route ID, the third
    coordinate of the mapping.
+
    */
 
   private var routesByDstSrcRegions : ByRegionsRouteTable = null;
 
   /**
-  // Inventory by source region
-  // ----------------------------
-  //
-  // the actor maintains a possibly-sparse 3D table mapping each
-  // sourceregion-producerid-inventoryid triple to zero or one
-  // inventory items.  The 1D coordinate sourceregion gives all of the
-  // inventory items, by producer id, for this source region.
-  //
+   Inventory by source region
+   ----------------------------
+  
+   the actor maintains a possibly-sparse 3D table mapping each
+   sourceregion-producerid-inventoryid triple to zero or one
+   inventory items.  The 1D coordinate sourceregion gives all of the
+   inventory items, by producer id, for this source region.
+  
   */
   private var inventoryByRegion : ByRegionInventoryTable = null;
 
   /**
 
-   PESS Interface: Server message and response formats
+   PESS Behavior: message-response specifications
    ======================================================
 
+   As explained in the `README.md` file, this actor also gives a
+   behavioral spec of the exchange's semantics, by giving a prototype
+   implementation of this behavior (and wrapped trivially by `Server`).
 
-   PESS: Registrar-based ingress messages
+   The functional behavior of this interface, but not implementation
+   details, are part of the formal PESS.
+
+
+   PESS: `Registrar`-based ingress messages
    ======================================
 
+   The registrar provides functions to add and to remove entities from
+   the following (mostly-static) tables:
+   
+   - **Resource information:** truck types, produce (types) and region information.
+   - **Participant information:** producers, retailers and transporters.
+   
+   For each of the six entities listed above, we have an add (`Add`)
+   and remove (`Rem`) function below, prefixed by `registrar`-, and
+   suffixed by one of the entities in the following list:
+   
+   - `TruckType`,
+   - `Region`, 
+   - `Produce`, 
+   - `Producer`, 
+   - `Retailer`, or
+   - `Transporter`.
+   */
 
+   /**
+   `TruckType`
+   =============
+   Messages to `Add` and `Rem` truck types.
+   */
+
+
+   /**
    `reigstrarAddTruckType`
    -------------------
-  */
+   */
 
-  registrarAddTruckType(
+   registrarAddTruckType(
     short_name:  Text,
     description: Text,
     capacity : Weight,
@@ -246,6 +279,35 @@ class Model() = this {
   };
 
   /**
+   `getTruckTypeInfo`
+   ---------------------
+   */
+
+  getTruckTypeInfo(
+    id: TruckTypeId
+  ) : ?TruckTypeInfo {
+    switch (Map.find<TruckTypeId, TruckType>(truckTypes, keyOf(id), idIsEq)) {
+      case (null) null;      
+      case (?x) {
+             let i:TruckTypeInfo= shared {
+               id=x.id:TruckTypeId;
+               short_name=x.short_name:Text;
+               description=x.description:Text;
+               capacity=x.capacity:TruckCapacity;
+               isFridge=x.isFridge:Bool;
+               isFreezer=x.isFreezer:Bool;
+             };
+             ?i
+           };
+    }
+  };
+
+  /**
+   `Region`
+   ==============
+   */
+
+  /**
    `registrarAddRegion`
    ---------------------
    
@@ -273,8 +335,9 @@ class Model() = this {
     ?id
   };
 
+
   /**
-   `registrarRemProduce`
+   `registrarRemRegion`
    ---------------------
    
    returns `?()` on success, and `null` on failure.
@@ -295,6 +358,33 @@ class Model() = this {
       func ():?() = null
     )
   };
+
+  /**
+   `getRegionInfo`
+   ---------------------
+   */
+
+  getRegionInfo(
+    id: RegionId
+  ) : ?RegionInfo {
+    switch (Map.find<RegionId, Region>(regions, keyOf(id), idIsEq)) {
+      case (null) null;      
+      case (?x) {
+             let i:RegionInfo= shared {
+               id=x.id:RegionId;
+               short_name=x.short_name:Text;
+               description=x.description:Text;
+             };
+             ?i
+           };
+    }
+  };
+
+
+   /**
+   `Produce`
+   ================
+   */
 
   /**
    `registrarAddProduce`
@@ -346,6 +436,34 @@ class Model() = this {
       func ():?() = null
     )
   };
+
+
+  /**
+   `getProduceInfo`
+   ---------------------
+   */
+
+  getProduceInfo(
+    id: ProduceId
+  ) : ?ProduceInfo {
+    switch (Map.find<ProduceId, Produce>(produce, keyOf(id), idIsEq)) {
+      case (null) null;      
+      case (?x) {
+             let i:ProduceInfo= shared {
+               id=x.id:RegionId;
+               short_name=x.short_name:Text;
+               description=x.description:Text;
+               grade=x.grade:Grade;
+             };
+             ?i
+           };
+    }
+  };
+
+   /**
+   `Producer`
+   -------------
+   */
 
   /**
    `registrarAddProducer`
@@ -405,6 +523,18 @@ class Model() = this {
       func ():?() = null
     )
   };
+
+  /**
+   `getProducerInfo`
+   ---------------------
+   To do
+   */
+
+
+   /**
+   `Retailer`
+   ====================
+   */
 
   /**
    `registrarAddRetailer`
@@ -467,6 +597,17 @@ class Model() = this {
   };
 
   /**
+   `getRetailerInfo`
+   ---------------------
+   To do
+   */
+
+   /**
+   `Transporter`
+   =================
+   */
+
+  /**
    `registrarAddTransporter`
    ---------------------
   
@@ -514,6 +655,12 @@ class Model() = this {
       func ():?() = null
     )
   };
+
+  /**
+   `getTransporterInfo`
+   ---------------------
+   To do
+   */
 
   /**
 
@@ -606,14 +753,17 @@ class Model() = this {
    `producerRemInventory`
    ---------------------------
    
+
+   **Implementation summary:**
+
+    - remove from the inventory in inventory table; use `Trie.removeThen`
+    - if successful, look up the producer ID; should not fail; `Trie.find`
+    - update the producer, removing this inventory; use `Trie.{replace,remove}`
+    - finally, use producer's region to update inventoryByRegion table,
+      removing this inventory item; use `Trie.remove2D`.   
    */
   producerRemInventory(id:InventoryId) : ?() {
-    // xxx
-    // - remove from the inventory in inventory table; use `Trie.removeThen`
-    // - if successful, look up the producer ID; should not fail; `Trie.find`
-    // - update the producer, removing this inventory; use `Trie.{replace,remove}`
-    // - finally, use producer's region to update inventoryByRegion table,
-    //   removing this inventory item; use `Trie.remove2D`.
+    // xxx-next
     null
   };
 
@@ -628,13 +778,14 @@ class Model() = this {
   };
 
   /**
-   PES: Transporter-based ingress messages:
+   PESS: `Transporter`-based ingress messages:
    ===========================================
   */
 
   /**
    `transporterAddRoute`
    ---------------------------
+   - a
   */
   transporterAddRoute(
     trans:  TransporterId,
@@ -668,7 +819,7 @@ class Model() = this {
   };
 
   /**
-   PES: Retailer-based ingress messages:
+   PESS: `Retailer`-based ingress messages:
    ======================================
 
    retailerQueryAll
@@ -733,9 +884,16 @@ class Model() = this {
   };
 
   /**
-   PES: (Producer/Transporter/Retailer) ingress messages:
+   
+   PESS: general-use ingress messages:
    ========================================================
+   
+   The following messages may originate from any entity; they access
+   published information in the tables maintained above.  
 
+   */
+
+   /**
    reservationInfo
    ---------------------------
    */

@@ -191,6 +191,7 @@ type Route = {
   end_region : Region;
   start_date : Date;
   end_date : Date;
+  cost : Price;
   // ... more?
 };
 

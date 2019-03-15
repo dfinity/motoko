@@ -63,6 +63,77 @@ type RouteId       = Nat;
 type ReservationId = Nat;
 
 /**
+PESS: Public info associated with Ids
+-------------------------------------
+*/
+
+type TruckTypeInfo = shared {
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : TruckCapacity;
+  // xxx variant type for this temperature-control information:
+  isFridge : Bool;
+  isFreezer : Bool;
+};
+
+type RegionInfo = shared {
+  id : RegionId;
+  short_name : Text;
+  description : Text;
+};
+
+type ProduceInfo = shared {
+  id : ProduceId;
+  short_name : Text;
+  description : Text;
+  grade : Grade;
+};
+
+type ProducerInfo = shared {
+  id : ProducerId;
+  short_name : Text;
+  description : Text;
+  region : RegionId;
+};
+
+type InventoryInfo = shared {
+  id : InventoryId;
+  produce : ProduceId;
+  producer : ProducerId;
+  quantity : Quantity;
+  start_date : Date;
+  end_date : Date;
+  comments : Text;
+};
+
+type RetailerInfo = shared {
+  id : RetailerId;
+  short_name : Text;
+  description : Text;
+  region : RegionId;
+};
+
+type TransporterInfo = shared {
+  id : TransporterId;
+  // no region; the transporters are the supply of routes, not "end
+  // points" of any single route.
+  short_name : Text;
+  description : Text;
+};
+
+type RouteInfo = shared {
+  id : RouteId;
+  transporter : TransporterId;
+  truck_type : TruckTypeInfo;
+  start_region : RegionId;
+  end_region : RegionId;
+  start_date : Date;
+  end_date : Date;
+  cost : Price;
+};
+
+/**
 //
 // PESS: Query parameters and results
 // ----------------------------------
