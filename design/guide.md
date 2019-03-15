@@ -462,26 +462,6 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (an mutable identifi
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Patterns
 ```
 <pat> ::=                                      patterns
@@ -503,38 +483,37 @@ The consequences of pattern match failure depends on the context of the pattern.
 
 ### Wildcard pattern
 
-`_`  matches a single value without binding its contents to an identifier. 
+The wildcard pattern `_`  matches a single value without binding its contents to an identifier. 
 
 
 ### Identifier pattern
 
-`<id>` matches a single value and binds it to the identifier `<id>`.
+The identifier pattern `<id>` matches a single value and binds it to the identifier `<id>`.
 
 ### Literal pattern
 
-`<unop>? <lit>` matches a single value against the constant value of literal `<lit>` and fails if they are not (structurally) equal values. 
+The literal pattern `<unop>? <lit>` matches a single value against the constant value of literal `<lit>` and fails if they are not (structurally) equal values. 
 
 For integer literals only, the optional `<unop>` determines the sign of the value to match.
 
-### Typed pattern
+### Annotated pattern
 
-`<pat> : <typ>` matches value of `v` type <typ> against the pattern <pat>.
+The annotated pattern `<pat> : <typ>` matches value of `v` type `<typ>` against the pattern `<pat>`.
 
-`<pat> : <typ>` is *not* a dynamic type test, but is used to constraint the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
+`<pat> : <typ>` is *not* a dynamic type test, but is used to constrain the types of identifiers bound in `<pat>`, e.g. in the argument pattern to a function.
 
 
 ### Option pattern
 
-`? <pat>` matches a value of option type `? <typ>`. 
+The option `? <pat>` matches a value of option type `? <typ>`. 
 
 The match *fails* if the value is `null`. If the value is `? v`, for some value `v`, then the result of matching `? <pat>` is the result of matching `v` against <pat>.
 
 Conversely, the `null` literal pattern may be used to test whether a value of option type is the value `null` and not `? v` for some `v`.
 
-
 ### Or pattern
 
-`<pat1> or <pat2>` is a disjunctive pattern. 
+The or pattern `<pat1> or <pat2>` is a disjunctive pattern. 
 
 The result of matching `<pat1> or <pat2>` against a value is the result of
 matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
@@ -542,6 +521,7 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 (Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier ('<id>') patterns so a successful match always binds zero identifiers.)
 
 ## Declarations
+
 ```
 <dec> ::=                                                 declaration
   <exp>                                                       expression
