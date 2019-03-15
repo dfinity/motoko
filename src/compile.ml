@@ -1541,6 +1541,22 @@ module Text = struct
     let ptr = E.add_static_bytes env data in
     compile_unboxed_const ptr
 
+  let alloc env = Func.share_code1 env "text_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
+      let (set_x, get_x) = new_local env "x" in
+      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
+      get_len ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      Heap.dyn_alloc_bytes env ^^
+      set_x ^^
+
+      get_x ^^ Tagged.store Tagged.Text ^^
+      get_x ^^ get_len ^^ Heap.store_field len_field ^^
+      get_x
+   )
+
+   let payload_ptr_unskewed =
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size))
+
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       let (set_z, get_z) = new_local env "z" in
@@ -1551,46 +1567,22 @@ module Text = struct
       get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
 
       (* allocate memory *)
-      compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
       get_len1 ^^
       get_len2 ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.dyn_alloc_bytes env ^^
+      alloc env ^^
       set_z ^^
 
-      (* Set tag *)
-      get_z ^^ Tagged.store Tagged.Text ^^
-
-      (* Set length *)
-      get_z ^^
-      get_len1 ^^
-      get_len2 ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.store_field len_field ^^
-
       (* Copy first string *)
-      get_x ^^
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
-
-      get_z ^^
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
-
+      get_x ^^ payload_ptr_unskewed ^^
+      get_z ^^ payload_ptr_unskewed ^^
       get_len1 ^^
-
       Heap.memcpy env ^^
 
       (* Copy second string *)
-      get_y ^^
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
-
-      get_z ^^
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
-      get_len1 ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
+      get_y ^^ payload_ptr_unskewed ^^
+      get_z ^^ payload_ptr_unskewed ^^ get_len1 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       get_len2 ^^
-
       Heap.memcpy env ^^
 
       (* Done *)
@@ -1616,13 +1608,13 @@ module Text = struct
       get_len1 ^^
       from_0_to_n env (fun get_i ->
         get_x ^^
-        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
+        payload_ptr_unskewed ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
 
         get_y ^^
-        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size)) ^^
+        payload_ptr_unskewed ^^
         get_i ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
