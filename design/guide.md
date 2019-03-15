@@ -411,15 +411,15 @@ The unary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a resu
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise `r1`  and `r2` are values `v1` and `v2` and the expression returns 
+Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns 
 the result of `v1 <binop> v2`.
 
 ### Tuples 
 
 If `<exp1>`, ..., `<expN>` have type `T1`, ..., `Tn` then 
-tuple expressions `(<exp1>, ..., <expN>)` has tuple type `(T1, ..., Tn)`.
+tuple expressions `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`.
 
-The tuple expression `(<exp1>, ..., <expN>)` evaluates the expressions `exp1` ... `expN` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expN>` evaluate to values `v1`,...,`vn` then the tuple expression returns the value `(v1, ... , vn)`.
+The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
 The tuple projection '<exp> . <nat>' has type `Ti` provided <exp> has tuple type 
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 <= i <= n`.
@@ -457,7 +457,7 @@ The assignment expression `<exp1> := <exp2>` evaluates `<exp1>` to a result `r1`
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple '()'.
+Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple `()`.
 
 ### Unary Compound Assignment
 
@@ -482,7 +482,32 @@ For binary operator <binop>, `<exp1> <binop>= <exp1>`,
 the compound assignment expression `<exp1> <binop>= <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple '()'.
+Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple `()`.
+
+### Arrays 
+
+The expression `[ var? <exp>,* ]` has type `[var? T]` provided
+ each expression in the sequence `<exp,>*` has type T.
+
+ The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions `exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
+
+The array indexing expression '<exp1> [ <exp2> ]' has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
+
+The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`. 
+
+Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+
+Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and r2 is a natural integer `i`. If  'i > n' the index expression returns `trap`.
+
+Otherwise, the index expression returns the value `v`, as follows:
+
+If `var` is absent from `var? T` then the value `v` is the constant value `vi`.
+
+Otherwise,
+* if the projection occurs as the target an assignment statement;
+  `v` is the `i`-th location in the array. 
+* otherwise, 
+  `v` is `vi`, the current value stored in the mutable field.
 
 ## Patterns
 ```
