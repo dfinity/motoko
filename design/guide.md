@@ -3,6 +3,7 @@
 <!---
 TODO
 * use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
+* perhaps use notions of left-evaluation and evaluation to talk about variable deref in just on place?
 -->
 
 ## Introduction
@@ -176,7 +177,7 @@ The optional `shared` qualifier specifies whether the function value is shared, 
 
 ### Async types
 
-`async <typ>` specifes a promise producing a value of a type <typ>. 
+`async <typ>` specifes a promise producing a value of a type `<typ>`. 
 
 Promise types typically appear as the result type of a `shared` function that produces an `await`-able value.
 
@@ -184,7 +185,7 @@ Promise types typically appear as the result type of a `shared` function that pr
 
 `( ((<id> :)? <typ>),* )` specifies the type of a tuple with zero or more ordered components.
 
-The optional identifer <id>, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
+The optional identifer `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
 
 ### Any type
 
@@ -380,7 +381,8 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   label <id> (: <typ>)? <exp>                    label
   break <id> <exp>?                              break
   continue <id>                                  continue
-  return <exp>?                                  return
+  return <exp>?                                  return                    function call
+
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
@@ -393,6 +395,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 ```
 
 ### Identifiers
+                    function call
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
@@ -415,6 +418,7 @@ Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns
 the result of `v1 <binop> v2`.
 
 ### Tuples 
+                    function call
 
 If `<exp1>`, ..., `<expN>` have type `T1`, ..., `Tn` then 
 tuple expressions `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`.
@@ -437,15 +441,20 @@ The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `nu
 
 The object projection '<exp> . <id>' has type `var? T` provided <exp> has object type 
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`. 
+                    function call
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an object value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
+The object projection `<exp> . <id>` evaluates `exp` to a res                    function call
+ult `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an o                    function call
+bject value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the proj                    function call
+ection is the value `v` of field `id`.
 
 
-If `var` is absent from `var? T` then the value `v` is the constant value of immutable field <id>, otherwise:
+If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
 * if the projection occurs as the target an assignment statement;
-  `v` is the mutable location of the field <id>. 
+  `v` is the mutable location of the field `<id>`. 
 * otherwise, 
-  `v` (of type `T`) is the current value stored in the mutable field.
+  `v` (of type `T`) is the value currently stored in mutable field `<id>`.
+                    function call
 
 ### Assignment
 
@@ -499,15 +508,41 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and r2 is a natural integer `i`. If  'i > n' the index expression returns `trap`.
 
-Otherwise, the index expression returns the value `v`, as follows:
+Otherwise, the index expression returns the value `v`, obtained as follows:
 
 If `var` is absent from `var? T` then the value `v` is the constant value `vi`.
 
 Otherwise,
-* if the projection occurs as the target an assignment statement;
-  `v` is the `i`-th location in the array. 
+* if the projection occurs as the target an assignment statement
+  then `v` is the `i`-th location in the array;
 * otherwise, 
-  `v` is `vi`, the current value stored in the mutable field.
+  `v` is `vi`, the value currently stored in the `i`-th location of the array.
+
+### Function Calls
+
+The function call expression `<exp1> <T0,...,Tn>? <exp2>` has type `T` provided
+* the function `<exp1>` has function type `shared? <X0 <: V0, ..., n <: Vn> U1-> U2`; and
+* each type argument satisfies the corresponding type parameter's bounds:
+  for each `1<= i <= n`, `Ti <: [T0/X0, ..., Tn/Xn]Vi`; and
+* the argument `<exp2>` has type `[T0/X0, ..., Tn/Xn]U1`, and
+* `T == [T0/X0, ..., Tn/Xn]U2`.
+
+The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`. 
+
+Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+
+Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation contiues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
+
+
+
+
+
+
+
+
+
+
+
 
 ## Patterns
 ```
