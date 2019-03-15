@@ -521,7 +521,7 @@ Otherwise,
 ### Function Calls
 
 The function call expression `<exp1> <T0,...,Tn>? <exp2>` has type `T` provided
-* the function `<exp1>` has function type `shared? <X0 <: V0, ..., n <: Vn> U1-> U2`; and
+* the function `<exp1>` has function type `shared? < X0 <: V0, ..., Xn <: Vn > U1-> U2`; and
 * each type argument satisfies the corresponding type parameter's bounds:
   for each `1<= i <= n`, `Ti <: [T0/X0, ..., Tn/Xn]Vi`; and
 * the argument `<exp2>` has type `[T0/X0, ..., Tn/Xn]U1`, and
@@ -532,6 +532,19 @@ The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation contiues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
+
+### Functions
+
+The function expression `shared? func < X0 <: T1, ..., Xn <: Tn > <pat> (: T2)? =?  <exp>` has type `shared? < X0 <: T0, ..., Xn <: Tn > T1-> T2` if, under the 
+assumption that `X0 <: T1, ..., Xn <: Tn`:
+* all the types in `T1, ..., Tn` and T are well-formed and well-constrained. 
+* pattern `pat` has type `T1`;
+* expression `<exp>` has type return type `T2` under the assumption that `pat` has type `T1`.
+
+`shared? func <typ-params>? <pat> (: <typ>)? =? <exp>` evaluates to a function
+value (a.k.a. closure), denoted `shared? func <typ-params>? <pat> = <exp>`, that stores the code of the function together with the bindings from the current evaluation environment (not shown) needed to evaluate calls to the function value.
+
+
 
 
 
