@@ -449,7 +449,7 @@ If `var` is absent from `var? T` then the value `v` is the constant value of imm
 
 ### Assignment
 
-The assigment `<exp1> := <exp2>` has type `()` provided `<exp1>`is a:
+The assigment `<exp1> := <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`.
 
@@ -457,10 +457,32 @@ The assignment expression `<exp1> := <exp2>` evaluates `<exp1>` to a result `r1`
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise `r1`  and `r2` are (respectively) a location `v1` (an mutable identifier, an entry of a mutable array or a field of a mutable object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple '()'.
+Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple '()'.
 
+### Unary Compound Assignment
 
+The inary assigment `<exp1> <unop>= <exp2>` has type `()` provided:
+* `<exp1>` has type `var T`, and
+* `<exp2>` has type `T`, and
+* <unop> is one of `+` (identity), `-` (negation) or  `^` (xor),
+* <unop> is defined for type `(T,T) -> T`.
 
+For unary operator `<unop>` in `+` (identity), `-` (negation) or  `^` (xor), the unary compound assignment
+`<unop>= <exp>`  evaluates <exp> to a result `r`. If `r` is 'trap' the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to 
+contain the value '<unop> v'.
+
+### Binary Compound Assignment
+
+The assigment `<exp1> <binop>= <exp2>` has type `()` provided:
+* `<exp1>` has type `var T`, and
+* `<exp2>` has type `T`, and
+* <binop> is defined for type `(T,T) -> T`.
+
+For binary operator <binop>, `<exp1> <binop>= <exp1>`,
+the compound assignment expression `<exp1> <binop>= <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+
+Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple '()'.
 
 ## Patterns
 ```
@@ -516,7 +538,7 @@ Conversely, the `null` literal pattern may be used to test whether a value of op
 The or pattern `<pat1> or <pat2>` is a disjunctive pattern. 
 
 The result of matching `<pat1> or <pat2>` against a value is the result of
-matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
+matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails. 
 
 (Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier ('<id>') patterns so a successful match always binds zero identifiers.)
 
