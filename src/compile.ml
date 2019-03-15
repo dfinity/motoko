@@ -3116,6 +3116,15 @@ module FuncDec = struct
     Dfinity.compile_databuf_of_bytes env name ^^
     export_self_message env
 
+  let bind_args env0 as_ bind_arg =
+    let rec go i env = function
+    | [] -> env
+    | a::as_ ->
+      let get = G.i (LocalGet (nr (Int32.of_int i))) in
+      let env' = bind_arg env a get in
+      go (i+1) env' as_ in
+    go 1 (* skip closure*) env0 as_
+
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
@@ -3128,19 +3137,13 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Add arguments to the environment *)
-      let env3 =
-        let rec go i env = function
-        | [] -> env
-        | a::as_ ->
-          let get env = G.i (LocalGet (nr (Int32.of_int i))) in
-          let env' =
-            E.add_local_deferred env a.it
-              { materialize = (fun env -> SR.Vanilla, get env)
-              ; materialize_vanilla = get
-              ; is_local = true
-              } in
-          go (i+1) env' as_ in
-        go 1 (* skip closure*) env2 args in
+      let env3 = bind_args env2 args (fun env a get ->
+        E.add_local_deferred env a.it
+          { materialize = (fun env -> SR.Vanilla, get)
+          ; materialize_vanilla = (fun _ -> get)
+          ; is_local = true
+          }
+      ) in
 
       closure_code ^^
       mk_body env3
@@ -3170,20 +3173,14 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Add arguments to the environment, as unboxed references *)
-      let env3 =
-        let rec go i env = function
-        | [] -> env
-        | a::as_ ->
-          let get env = G.i (LocalGet (nr Int32.(of_int i))) in
-          let env' =
-            E.add_local_deferred env a.it
-              { materialize = (fun env -> SR.UnboxedReference, get env)
-              ; materialize_vanilla = (fun env ->
-                  get env ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
-              ; is_local = true
-              } in
-          go (i+1) env' as_ in
-        go 1 (* skip closure*) env2 args in
+      let env3 = bind_args env2 args (fun env a get ->
+        E.add_local_deferred env a.it
+          { materialize = (fun env -> SR.UnboxedReference, get)
+          ; materialize_vanilla = (fun env ->
+               get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
+          ; is_local = true
+          }
+      ) in
 
       closure_code ^^
       mk_body env3 ^^
