@@ -60,10 +60,10 @@ semantics, etc.
 
 **Files for the PESS definition**: 
 
-The [server types component](#servertypes) defines
+The [server types component](#server-types) defines
 ActorScript data types that are included in the server messages.  
 
-The [server actor component](#serveractor)gives the interface for the
+The [server actor component](#server-actor)gives the interface for the
 PE service, and is the bulk of the formal PESS.
 
 The _behavior_ of this actor's implementation defines the _semantic_
@@ -106,7 +106,7 @@ We decompose the _Canister_ for the **Produce Exchange example Dapp**
 into an _ActorScript-based_ implementation of a "**Server**" with the
 following definitional pieces, listed below.
 
-**Basic types**
+**Server types**
 -----------------
 
 Basic types used in messages, and published/stored internally in the server actor's state.
@@ -115,7 +115,7 @@ See [`serverTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-ex
 
 See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.
 
-**Server messages**
+**Server actor**
 ----------------------
 
 Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
@@ -143,8 +143,8 @@ These models use [collections from the standard library](https://github.com/dfin
 --------------------------------
 
 Defines the _behavioral (input-output-based) semantics_ of [each
-message type](#serveractor), by implementing the server's interface in terms
-of the [_server model types_](#servermodeltypes).
+message type](#server-actor), by implementing the server's interface in terms
+of the [_server model types_](#server-model-types).
 
 See  [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for authoritative documentation.
 
@@ -152,7 +152,7 @@ See [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-ex
 
 This server component gives a formal specification of behavior that
 defines the **behavior for the PESS**, but the _implementation details
-of this component and [server model types](#servermodeltypes)
+of this component and [server model types](#server-model-types)
 themselves are not in PESS, and are subject to change independently of
 PESS.
 
