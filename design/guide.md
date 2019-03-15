@@ -313,7 +313,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
    `U` is an object type `sort1 { fts1 }` and
    * `sort1` == `sort2`, and, for all fields,
    * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and 
-   * if mutable field `var id : V` is in `fts0` then  `id : W` is in `fts1` and `V == W`.
+   * if mutable field `var id : V` is in `fts0` then  `var id : W` is in `fts1` and `V == W`.
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
@@ -394,7 +394,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 ### Identifiers
 
-The expression '<id>` evaluates to the value bound this identifier in the current evaluation environment.
+The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
 ### Literals
 
@@ -424,15 +424,44 @@ The tuple expression `(<exp1>, ..., <expN>)` evaluates the expressions `exp1` ..
 The tuple projection '<exp> . <nat>' has type `Ti` provided <exp> has tuple type 
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 <= i <= n`.
 
-The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` traps, then then the expression trap. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
 
 ### Option expressions
 
 The option expression `? <exp>` has type `? T` provided `<exp>` has type `T`.
 
-The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `null` also has type `? T`.
+The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `null` also has type `? T` and signifies the "missing" value at type `? T`.
 
-### 
+### Object projection (Member access)
+
+
+The object projection '<exp> . <id>' has type `var? T` provided <exp> has object type 
+`sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`. 
+
+The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an object value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
+
+
+If `var` is absent from `var? T` then the value `v` is the constant value of immutable field <id>, otherwise:
+* if the projection occurs as the target an assignment statement;
+  `v` is the mutable location of the field <id>. 
+* otherwise, 
+  `v` (of type `T`) is the current value stored in the mutable field.
+
+### Assignment
+
+The assigment `<exp1> := <exp2>` has type `()` provided `<exp1>`is a:
+* `<exp1>` has type `var T`, and
+* `<exp2>` has type `T`.
+
+The assignment expression `<exp1> := <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+
+Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+
+Otherwise `r1`  and `r2` are (respectively) a location `v1` (an mutable identifier, an entry of a mutable array or a field of a mutable object) and a value `v2`. The expression updates the current value stored in `v1` with the new value `v2` and returns the empty tuple '()'.
+
+
+
+
 
 
 
