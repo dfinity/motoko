@@ -187,6 +187,15 @@ See below for [more thoughts about performance testing](https://github.com/dfini
 [Produce Exchange Canister: MVP Requirements](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 =============================================
 
+**User interaction and design**
+
+The only thing established are five views for the MVP:
+
+-    Sign up/Login/Logout page
+-    Producer view - if user authenticated is a producer
+-    Transporter view - if user authenticated is a transporter
+-    Retailer view - if user authenticated is a retailer
+-    Developer view - if user authenticated is a Developer
 
 ALL USERS
 ---------------
@@ -194,9 +203,9 @@ ALL USERS
 > **Sign up**	User can add their name and role and receive a unique ID	
 
 See these, provided by the [**registrar** role](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#pess-registrar-based-ingress-messages):
- - [**registrarAddProducer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
-  - [**registrarAddTransporter**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
-   - [**registrarAddRetailer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
+- [**registrarAddProducer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
+- [**registrarAddTransporter**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
+- [**registrarAddRetailer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
 	
 > **Log in**	A user can identify themselves from a dropdown and "log in"	
 
@@ -221,8 +230,6 @@ To do
 Note: We call them "reservations".
 
 See [**producerReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreservations)
-
-To do
 	
 > **View "market price"**	Producer can see the last sales price for any good within any geographic area	
 	
@@ -273,29 +280,27 @@ EXCHANGE DAPP DEVELOPER
 ---------------------------
 
 > **View GMV**	Developer can see aggregate sum of how many sales have been processed	
-	
+
+To do
+
 > **View queries**	Developer can see how many aggregate queries have been made by all retailers	
-	
+
+To do
+
 > **View sales orders**	Developer can see how many aggregate sales orders have been made by all retailers	
-	
+
+To do
+
 > **View producers**	Developer can see how many producers in the system and how many goods each has	
-	
+
+To do
+
 > **View transporters**	Developer can see how many producers in the system and how many goods each has	
-	
+
+To do
+
 > ****View retailers**	Developer can see how many retailers in the system and how many queries and how many sales orders	
 	
-
-User interaction and design
--------------------------------
-
-The only thing established are five views for the MVP:
-
--    Sign up/Login/Logout page
--    Producer view - if user authenticated is a producer
--    Transporter view - if user authenticated is a transporter
--    Retailer view - if user authenticated is a retailer
--    Developer view - if user authenticated is a Developer
-
 
 
 ---------------------------------------------------------------------------------
