@@ -381,8 +381,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   label <id> (: <typ>)? <exp>                    label
   break <id> <exp>?                              break
   continue <id>                                  continue
-  return <exp>?                                  return                    function call
-
+  return <exp>?                                  return 
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
@@ -395,7 +394,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 ```
 
 ### Identifiers
-                    function call
+
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
@@ -404,11 +403,13 @@ The expression `<id>` evaluates to the value bound to `<id>` in the current eval
 The literal (or constant) expression `<lit>` evaluates to itself.
 
 ### Unary operators
+TBC (typing)
 
 The unary operator expressions `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v` it returns the result of `<unop> v`.
 If the result is a trap, it, too traps.
 
 ### Binary operators
+TBC (typing)
 
 The unary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
@@ -418,10 +419,10 @@ Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns
 the result of `v1 <binop> v2`.
 
 ### Tuples 
-                    function call
 
-If `<exp1>`, ..., `<expN>` have type `T1`, ..., `Tn` then 
-tuple expressions `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`.
+
+Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
+`<exp1>`, ..., `<expN>` have types `T1`, ..., `Tn`.
 
 The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
@@ -439,14 +440,11 @@ The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `nu
 ### Object projection (Member access)
 
 
-The object projection '<exp> . <id>' has type `var? T` provided <exp> has object type 
+The object projection `<exp> . <id>` has type `var? T` provided <exp> has object type 
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`. 
-                    function call
 
-The object projection `<exp> . <id>` evaluates `exp` to a res                    function call
-ult `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an o                    function call
-bject value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the proj                    function call
-ection is the value `v` of field `id`.
+The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an o 
+bject value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
@@ -454,7 +452,7 @@ If `var` is absent from `var? T` then the value `v` is the constant value of imm
   `v` is the mutable location of the field `<id>`. 
 * otherwise, 
   `v` (of type `T`) is the value currently stored in mutable field `<id>`.
-                    function call
+
 
 ### Assignment
 
@@ -470,7 +468,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 
 ### Unary Compound Assignment
 
-The inary assigment `<exp1> <unop>= <exp2>` has type `()` provided:
+The unary compound assigment `<exp1> <unop>= <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
 * <unop> is one of `+` (identity), `-` (negation) or  `^` (xor),
@@ -482,7 +480,7 @@ contain the value '<unop> v'.
 
 ### Binary Compound Assignment
 
-The assigment `<exp1> <binop>= <exp2>` has type `()` provided:
+The binary compounda ssigment `<exp1> <binop>= <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
 * <binop> is defined for type `(T,T) -> T`.
@@ -496,7 +494,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 ### Arrays 
 
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
- each expression in the sequence `<exp,>*` has type T.
+each expression `<exp>` in the sequence `<exp,>*` has type T.
 
  The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions `exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
 
@@ -531,33 +529,35 @@ The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation contiues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation continues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
 
 ### Functions
 
 The function expression `shared? func < X0 <: T1, ..., Xn <: Tn > <pat> (: T2)? =?  <exp>` has type `shared? < X0 <: T0, ..., Xn <: Tn > T1-> T2` if, under the 
 assumption that `X0 <: T1, ..., Xn <: Tn`:
-* all the types in `T1, ..., Tn` and T are well-formed and well-constrained. 
+* all the types in `T1, ..., Tn` and `T` are well-formed and well-constrained. 
 * pattern `pat` has type `T1`;
 * expression `<exp>` has type return type `T2` under the assumption that `pat` has type `T1`.
 
 `shared? func <typ-params>? <pat> (: <typ>)? =? <exp>` evaluates to a function
 value (a.k.a. closure), denoted `shared? func <typ-params>? <pat> = <exp>`, that stores the code of the function together with the bindings from the current evaluation environment (not shown) needed to evaluate calls to the function value.
 
+### Blocks
 
+The block expression `{ <dec>;* }` has type `T` provided the last declaration in the sequence `<dec>;*` has type `T`.
+All identifiers declared in block must be distinct type identifiers or distinct value identifiers and are in scope in the definition of all other declarations in the block.
 
+The bindings of identifiers declared in { dec;* } are local to the block. 
+The type `T` must be well-formed in the enclosing environment of the block. In particular, any local, recursive types that cannot be expanded to types well-formed the enclosing environment must not appear in `T`.
 
+The type system ensures that a value identifer cannot be evaluated before its declaration has been evaluated, precluding run-time errors at the cost of rejection some well-behaved programs.
 
+Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see Annotated patterns) to satisfy the type checker.
 
-
-
-
-
-
-
-
+The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in sequence (program order). The first declaration in `<dec>;*` that results in a trap cause the block to result in `trap`, without evaluating subsequent declarations.
 
 ## Patterns
+
 ```
 <pat> ::=                                      patterns
   _                                              wildcard
