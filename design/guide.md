@@ -1,5 +1,10 @@
 # A Guide to ActorScript
 
+<!---
+TODO
+* use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
+-->
+
 ## Introduction
 
 ActorScript is a new, general purpose programming language for the
@@ -115,6 +120,7 @@ Type expressions are used to specify the types of arguments, bound on type param
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
   [ var? <typ> ]                                array
+  Null                                          null type
   ? <typ>                                       option
   shared? <typ-params>? <typ> -> <typ>          function
   async <typ>                                   future
@@ -146,9 +152,13 @@ The optional qualifier `actor` constrains the object's fields to be *shared* fun
 
 ### Array types
 
-`[ var? <typ> ]` specifies the type of arrays with elements of type '<typ>'.
+`[ var? <typ> ]` specifies the type of arrays with elements of type '<typ>'.menhir --only-preprocess-uu parser.mly 
 
 Arrays are immutable unless specified with qualifier `var`. 
+
+### Null type
+
+The `Null` type has a single value, the literal `null`. `Null` is a subtype of the option `? T`, for any type `T`. 
 
 ### Option types
 
@@ -292,6 +302,10 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 *  `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]` 
     and `V == W`.
 
+*  `T` is `Null` and `U` is the an option type `? W`.
+
+*  `T` is `? V`, `U` is `? W` and `V <: U`.
+
 *  `T` is a promise `async V`, `U` is a promise `async W`, 
     and `V <: W`.
 
@@ -316,13 +330,14 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
-* `U` is type `Shared` and `T` is equivalent to a:
+* `U` is type `Shared` and `T` is equivalent to:
   * a `shared` function type, or
   * a `shared` object type, or
   * a `actor` object type, or
   * a scalar primitive type, or
-  * the type`Text`, or
+  * the type `Text`, or
   * an immutable array type `[V]` with `V <: Shared`, or
+  * the type `Null`, or
   * an option type `? V` with `V <: Shared`, or
   * a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti <: Shared`. 
 
@@ -385,24 +400,48 @@ The expression '<id>` evaluates to the value bound this identifier in the curren
 
 The literal (or constant) expression `<lit>` evaluates to itself.
 
-### Unary operator
+### Unary operators
 
-The unary operator expressions `<unop> <exp>` evaluates `exp` to a result. If the result is a value it it returns the result of applying `<unop>` to that value.
+The unary operator expressions `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v` it returns the result of `<unop> v`.
 If the result is a trap, it, too traps.
 
-### Binary operator
+### Binary operators
 
 The unary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
-Otherwise, `exp2` is evaluated to a result `r2`. If `r1` is `trap`, the expression results in `trap`.
+
+Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+
 Otherwise `r1`  and `r2` are values `v1` and `v2` and the expression returns 
 the result of `v1 <binop> v2`.
 
 ### Tuples 
 
-If <exp1>, ..., <expN> have type `T1`, ..., `Tn` then 
+If `<exp1>`, ..., `<expN>` have type `T1`, ..., `Tn` then 
 tuple expressions `(<exp1>, ..., <expN>)` has tuple type `(T1, ..., Tn)`.
 
-The expression `(<exp1>, ..., <expN>)` evaluates  the expressions `exp1` ... `expN` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1` evaluates to values `v1`,...,`vn` then expression returns the value `(v1, ... , vn)`.
+The tuple expression `(<exp1>, ..., <expN>)` evaluates the expressions `exp1` ... `expN` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expN>` evaluate to values `v1`,...,`vn` then the tuple expression returns the value `(v1, ... , vn)`.
+
+The tuple projection '<exp> . <nat>' has type `Ti` provided <exp> has tuple type 
+`(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 <= i <= n`.
+
+The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` traps, then then the expression trap. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
+
+### Option expressions
+
+The option expression `? <exp>` has type `? T` provided `<exp>` has type `T`.
+
+The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `null` also has type `? T`.
+
+### 
+
+
+
+
+
+
+
+
+
 
 
 
