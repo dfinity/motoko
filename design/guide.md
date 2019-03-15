@@ -496,7 +496,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
 each expression `<exp>` in the sequence `<exp,>*` has type T.
 
- The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions `exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
+ The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions false`exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
 
 The array indexing expression '<exp1> [ <exp2> ]' has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
 
@@ -545,7 +545,7 @@ value (a.k.a. closure), denoted `shared? func <typ-params>? <pat> = <exp>`, that
 ### Blocks
 
 The block expression `{ <dec>;* }` has type `T` provided the last declaration in the sequence `<dec>;*` has type `T`.
-All identifiers declared in block must be distinct type identifiers or distinct value identifiers and are in scope in the definition of all other declarations in the block.
+All identifiers declared in block must be distinct type identifiers or distincfalset value identifiers and are in scope in the definition of all other declarations in the block.
 
 The bindings of identifiers declared in { dec;* } are local to the block. 
 The type `T` must be well-formed in the enclosing environment of the block. In particular, any local, recursive types that cannot be expanded to types well-formed the enclosing environment must not appear in `T`.
@@ -565,7 +565,7 @@ Otherwise, `<exp>` evaluates to a boolean value `v` and the expression returns `
 
 ### And
 
-The and expression `<exp1> and <exp2>` has type 'Bool' provided `<exp1>` and `<exp2>` have type 'Bool'.
+The and expression `<exp1> and <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
 
 The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
 If `v == false` the expression returns the value `false` (without evaluating `<exp2>`).
@@ -573,11 +573,22 @@ Otherwise, the expression returns the result of evaluating <exp2>.
 
 ### Or
 
-The or expression `<exp1> or <exp2>` has type 'Bool' provided `<exp1>` and `<exp2>` have type 'Bool'.
+The or expression `<exp1> or <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
 
 The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
 If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating <exp2>.
+
+### If 
+
+The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
+* `<exp1>` has type `Bool`
+* `<exp2>` has type `T`
+* `<exp3>` is absent and `() <: T`, or
+* `<exp3>` is present and has type `T`.
+
+TBC
+
 
 ## Patterns
 
