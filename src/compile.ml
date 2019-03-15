@@ -26,7 +26,7 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 let page_size = Int32.of_int (64*1024)
 
 (*
-Pointers are shifted -1 relative to the actual offset.
+Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
 *)
 let ptr_skew = -1l
@@ -396,7 +396,7 @@ end
 let compile_unboxed_const i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 i)))
 let compile_const_64 i = G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 i)))
 let compile_unboxed_zero = compile_unboxed_const 0l
-(*let compile_unboxed_one = compile_unboxed_const 1l LATER*)
+let compile_unboxed_one = compile_unboxed_const 1l
 
 (* Some common arithmetic, used for pointer and index arithmetic *)
 let compile_op_const op i =
@@ -421,7 +421,7 @@ let new_local env name =
   let (set_i, get_i, _) = new_local_ env I32Type name
   in (set_i, get_i)
 
-let _new_local64 env name =
+let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
@@ -437,7 +437,7 @@ let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
     let (set_i, get_i) = new_local env "i" in
     set_n ^^
-    compile_unboxed_const 0l ^^
+    compile_unboxed_zero ^^
     set_i ^^
 
     compile_while
@@ -543,13 +543,13 @@ module Heap = struct
 
       (* Check that the new heap pointer is within the memory *)
       get_pages_needed ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
       G.if_ (ValBlockType None)
         ( get_pages_needed ^^
           G.i MemoryGrow ^^
           (* Check result *)
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           G.if_ (ValBlockType None) (G.i Unreachable) G.nop
         ) G.nop
@@ -598,7 +598,7 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
-  (* Although we occationally want to treat to of them as a 64 bit number *)
+  (* Although we occasionally want to treat two 32 bit fields as one 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -781,8 +781,8 @@ module Bool = struct
      directly, and to use the booleans directly with WebAssembly’s If.
   *)
   let lit = function
-    | false -> compile_unboxed_const 0l
-    | true -> compile_unboxed_const 1l
+    | false -> compile_unboxed_zero
+    | true -> compile_unboxed_one
 
 end (* Bool *)
 
@@ -803,7 +803,7 @@ module BitTagged = struct
      This means we can store a small unboxed scalar x as (x << 2), and still
      tell it apart from a pointer.
 
-     We actually use the *second* lowest bit to tell apointer apart from a
+     We actually use the *second* lowest bit to tell a pointer apart from a
      scalar.
 
      It means that 0 and 1 are also recognized as non-pointers, and we can use
@@ -930,7 +930,7 @@ module Var = struct
   let static_fun_pointer env fi =
     Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
-      compile_unboxed_const 0l (* number of parameters: none *)
+      compile_unboxed_zero (* number of parameters: none *)
     ]
 
   (* Local variables may in general be mutable (or at least late-defined).
@@ -963,7 +963,7 @@ module Var = struct
     | Some (Deferred d) -> G.i Unreachable
     | None   -> G.i Unreachable
 
-  (* Returns the payload (vanialla representation) *)
+  (* Returns the payload (vanilla representation) *)
   let get_val_vanilla env var = match E.lookup_var env var with
     | Some (Local i) -> G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
@@ -1015,7 +1015,7 @@ module Var = struct
 end (* Var *)
 
 module Opt = struct
-  (* The Option type. Not much intereting to see here *)
+  (* The Option type. Not much interesting to see here *)
 
   let payload_field = Tagged.header_size
 
@@ -1209,6 +1209,11 @@ module BoxedInt = struct
        │ tag │    i64    │
        └─────┴─────┴─────┘
 
+     Note, that due to the equivalence of in-memory and on-stack
+     representations, the 64-bit word type is also represented in this
+     way. As we get proper bigints, the memory representations should
+     be disambiguated and stack representations adapted. (Renaming
+     those will point out where the backend needs adjustments.)
   *)
 
   let payload_field = Tagged.header_size
@@ -1264,8 +1269,7 @@ module BoxedSmallWord = struct
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
-  let box env = Func.share_code env "box_i32" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
+  let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ (ValBlockType (Some I32Type))
@@ -1273,17 +1277,43 @@ module BoxedSmallWord = struct
         (compile_box env get_n)
     )
 
-  let unbox env = Func.share_code env "unbox_i32" ["n", I32Type] [I32Type] (fun env ->
-      let get_n = G.i (LocalGet (nr 0l)) in
+  let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         ( get_n ^^ BitTagged.untag_i32 env)
         ( get_n ^^ Heap.load_field payload_field)
     )
 
-  (*let lit env n = compile_unboxed_const n ^^ box env*)
+  let _lit env n = compile_unboxed_const n ^^ box env
 
 end (* BoxedSmallWord *)
+
+module UnboxedSmallWord = struct
+  (* While smaller-than-32bit words are treated as i32 from the WebAssembly perspective,
+     there are certain differences that are type based. This module provides helpers to abstract
+     over those. *)
+
+  let shift_of_type = function
+    | Type.Word8 -> 24l
+    | Type.Word16 -> 16l
+    | _ -> 0l
+
+  let bitwidth_mask_of_type = function
+    | Type.Word8 -> 0b111l
+    | Type.Word16 -> 0b1111l
+    | p -> todo "bitwidth_mask_of_type" (Arrange_type.prim p) 0l
+
+  let const_of_type ty n = Int32.(shift_left n (to_int (shift_of_type ty)))
+
+  let padding_of_type ty = Int32.(sub (const_of_type ty 1l) one)
+
+  let mask_of_type ty = Int32.lognot (padding_of_type ty)
+
+  let name_of_type ty seed = match Arrange.prim ty with
+    | Wasm.Sexpr.Atom s -> seed ^ "<" ^ s ^ ">"
+    | wtf -> todo "name_of_type" wtf seed
+
+end (* UnboxedSmallWord *)
 
 (* Primitive functions *)
 module Prim = struct
@@ -1305,26 +1335,38 @@ module Prim = struct
       )
       ( get_i )
 
-  let prim_word32toNat env =
+  (* The Word8 and Word16 bits sit in the MSBs of the i32, in this manner
+     we can perform almost all operations, with the exception of
+     - Mul (needs shr of one operand)
+     - Shr (needs masking of result)
+     - Rot (needs duplication into LSBs, masking of amount and masking of result)
+     - ctz (needs shr of operand or sub from result)
+
+     Both Word8/16 easily fit into the vanilla stackrep, so no boxing is necessary.
+     This MSB-stored schema is also essentially what the interpreter is using.
+  *)
+  let prim_word32toNat =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let prim_maskedWord32toNat mask env =
-    compile_unboxed_const mask ^^
-    G.i (Binary (I32 I32Op.And)) ^^
-    prim_word32toNat env
-  let prim_by_shiftWord32toInt b env =
+  let prim_shiftWordNtoI32 b =
     compile_unboxed_const b ^^
-    G.i (Binary (I32 I32Op.Shl)) ^^
+    G.i (Binary (I32 I32Op.ShrU))
+  let prim_shiftWordNtoUnsigned b =
+    prim_shiftWordNtoI32 b ^^
+    prim_word32toNat
+  let prim_word32toInt =
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+  let prim_shiftWordNtoSigned b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrS)) ^^
-    prim_word32toNat env
-  let prim_intToWord32 env =
+    prim_word32toInt
+  let prim_intToWord32 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_word32toInt env =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-  let prim_maskToWord32 mask env =
-    prim_intToWord32 env ^^
-    compile_unboxed_const mask ^^
-    G.i (Binary (I32 I32Op.And))
+  let prim_shift_leftWordNtoI32 b =
+    compile_unboxed_const b ^^
+    G.i (Binary (I32 I32Op.Shl))
+  let prim_shiftToWordN b =
+    prim_intToWord32 ^^
+    prim_shift_leftWordNtoI32 b
 end (* Prim *)
 
 module Object = struct
@@ -1463,11 +1505,6 @@ module Object = struct
 
   let load_idx env obj_type f =
     idx env obj_type f ^^
-    load_ptr
-
-  let load_idx_immut env name =
-    compile_unboxed_const (hash_field_name name) ^^
-    idx_hash env false ^^
     load_ptr
 
 end (* Object *)
@@ -1834,7 +1871,7 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let compile_unit = compile_unboxed_const 1l
+  let compile_unit = compile_unboxed_one
 
   (* Expects on the stack the pointer to the array. *)
   let load_n n = Heap.load_field (Int32.add Array.header_size n)
@@ -2039,7 +2076,7 @@ module Dfinity = struct
       G.i Unreachable
 
   let default_exports env =
-    (* these export seems to be wanted by the hypervisor/v8 *)
+    (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
       name = explode "mem";
       edesc = nr (MemoryExport (nr 0l))
@@ -2122,7 +2159,7 @@ module OrthogonalPersistence = struct
        set_i ^^
 
        get_i ^^
-       compile_unboxed_const 0l ^^
+       compile_unboxed_zero ^^
        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
        G.if_ (ValBlockType None)
          (* First run, call the start function *)
@@ -2206,43 +2243,38 @@ module Serialization = struct
       Same for indices into the reference table.
   *)
 
-  let serialize_go env =
+  let rec serialize_go env =
     Func.share_code1 env "serialize_go" ("x", I32Type) [I32Type] (fun env get_x ->
       let (set_copy, get_copy) = new_local env "x'" in
+
+      let purely_data n =
+            Heap.alloc env n ^^
+            set_copy ^^
+
+            get_x ^^
+            get_copy ^^
+            compile_unboxed_const n ^^
+            Heap.memcpy_words_skewed env ^^
+
+            get_copy in
 
       get_x ^^
       BitTagged.if_unboxed env (ValBlockType (Some I32Type))
         ( get_x )
         ( get_x ^^
           Tagged.branch env (ValBlockType (Some I32Type))
-          [ Tagged.Int,
-            Heap.alloc env 2l ^^
-            set_copy ^^
-
-            get_x ^^
-            get_copy ^^
-            compile_unboxed_const 2l ^^
-            Heap.memcpy_words_skewed env ^^
-
-            get_copy
-          ; Tagged.Reference,
-            Heap.alloc env 2l ^^ set_copy ^^
-
-            get_x ^^
-            get_copy ^^
-            compile_unboxed_const 2l ^^
-            Heap.memcpy_words_skewed env ^^
-
-            get_copy
+          [ Tagged.Int, purely_data 3l
+          ; Tagged.SmallWord, purely_data 2l
+          ; Tagged.Reference, purely_data 2l
           ; Tagged.Some,
             Opt.inject env (
               get_x ^^ Opt.project ^^
-              G.i (Call (nr (E.built_in env "serialize_go")))
+              serialize_go env
             )
           ; Tagged.ObjInd,
             Tagged.obj env Tagged.ObjInd [
               get_x ^^ Heap.load_field 1l ^^
-              G.i (Call (nr (E.built_in env "serialize_go")))
+              serialize_go env
             ]
           ; Tagged.Array,
             begin
@@ -2273,7 +2305,7 @@ module Serialization = struct
                 get_i ^^
                 Array.idx env ^^
                 load_ptr ^^
-                G.i (Call (nr (E.built_in env "serialize_go"))) ^^
+                serialize_go env ^^
                 store_ptr
               ) ^^
               get_copy
@@ -2360,7 +2392,7 @@ module Serialization = struct
                 compile_add_const Heap.word_size ^^
 
                 load_ptr ^^
-                G.i (Call (nr (E.built_in env "serialize_go"))) ^^
+                serialize_go env ^^
                 store_ptr
               ) ^^
               get_copy
@@ -2394,6 +2426,8 @@ module Serialization = struct
       Tagged.branch env (ValBlockType (Some I32Type))
         [ Tagged.Int,
           compile_unboxed_const 3l
+        ; Tagged.SmallWord,
+          compile_unboxed_const 2l
         ; Tagged.Reference,
           compile_unboxed_const 2l
         ; Tagged.Some,
@@ -2518,7 +2552,7 @@ module Serialization = struct
     Func.share_code3 env "extract_references" (("start", I32Type), ("to", I32Type), ("tbl_area", I32Type)) [I32Type] (fun env get_start get_to get_tbl_area ->
       let (set_i, get_i) = new_local env "i" in
 
-      compile_unboxed_const 0l ^^ set_i ^^
+      compile_unboxed_zero ^^ set_i ^^
 
       walk_heap_from_to env get_start get_to (fun get_x ->
         get_x ^^
@@ -2598,7 +2632,7 @@ module Serialization = struct
           set_end ^^
 
           (* Empty table of references *)
-          compile_unboxed_const 0l ^^ set_tbl_size
+          compile_unboxed_zero ^^ set_tbl_size
         )
         (* We have real data on the heap. Copy.  *)
         ( get_x ^^
@@ -2685,7 +2719,7 @@ module Serialization = struct
       (* First load databuf reference (last entry) at the heap position somehow *)
       (* now load the databuf *)
       get_start ^^ compile_add_const ptr_unskew ^^
-      compile_unboxed_const 1l ^^
+      compile_unboxed_one ^^
       get_elembuf ^^
       get_tbl_size ^^ compile_sub_const 1l ^^
       G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
@@ -2703,7 +2737,7 @@ module Serialization = struct
       get_start ^^ compile_add_const ptr_unskew ^^
       get_data_len ^^
       get_databuf ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
 
       (* Check if we got something unboxed (data buf size 1 word) *)
@@ -2732,7 +2766,7 @@ module Serialization = struct
           Heap.get_heap_ptr ^^
           get_tbl_size ^^ compile_sub_const 1l ^^
           get_elembuf ^^
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
 
           (* Fix references *)
@@ -2771,7 +2805,7 @@ module GC = struct
   (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
   (* All pointers, including ptr_loc and space end markers, are skewed *)
-  let evacuate env = Func.share_code4 env "evaucate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
     let (set_len, get_len) = new_local env "len" in
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
 
@@ -2844,7 +2878,7 @@ module GC = struct
     Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
 
 
-    (* Common arguments for evalcuate *)
+    (* Common arguments for evacuate *)
     let evac get_ptr_loc =
         get_begin_from_space ^^
         get_begin_to_space ^^
@@ -2853,7 +2887,7 @@ module GC = struct
         evacuate env ^^
         set_end_to_space in
 
-    (* Go through the roots, and evacaute them *)
+    (* Go through the roots, and evacuate them *)
     ClosureTable.get_counter ^^
     from_0_to_n env (fun get_i -> evac (
       get_i ^^
@@ -2896,7 +2930,7 @@ module StackRep = struct
   open SR
 
   (*
-     Most expression have a “preferred”, most optimal, form. Hence,
+     Most expressions have a “preferred”, most optimal, form. Hence,
      compile_exp put them on the stack in that form, and also returns
      the form it chose.
 
@@ -2913,7 +2947,9 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat -> UnboxedInt64
     | Type.Prim Type.Int -> UnboxedInt64
+    | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
+    | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
@@ -3290,9 +3326,21 @@ let compile_lit env lit = Syntax.(match lit with
   | NatLit n      -> SR.UnboxedInt64,
     (try compile_const_64 (Big_int.int64_of_big_int n)
     with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
+  | Word8Lit n    -> SR.Vanilla,
+    (try compile_unboxed_const (Value.Word8.to_bits n)
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int (Value.Word8.to_bits n)); G.i Unreachable)
+  | Word16Lit n   -> SR.Vanilla,
+    (try compile_unboxed_const (Value.Word16.to_bits n)
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int (Value.Word16.to_bits n)); G.i Unreachable)
   | Word32Lit n   -> SR.UnboxedWord32,
     (try compile_unboxed_const n
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable) (* TODO: check we are 64 bit *)
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable)
+  | Word64Lit n   -> SR.UnboxedInt64,
+    (try compile_const_64 n
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int64.to_int n); G.i Unreachable)
+  | CharLit c   -> SR.Vanilla,
+    (try compile_unboxed_const Int32.(shift_left (of_int c) 8)
+    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" c; G.i Unreachable)
   | NullLit       -> SR.Vanilla, Opt.null
   | TextLit t     -> SR.Vanilla, Text.lit env t
   | _ -> todo "compile_lit" (Arrange.lit lit) (SR.Vanilla, G.i Unreachable)
@@ -3303,63 +3351,169 @@ let compile_lit_as env sr_out lit =
   code ^^ StackRep.adjust env sr_in sr_out
 
 let compile_unop env t op = Syntax.(match op, t with
-  | NegOp, Type.Prim Type.Int ->
+  | NegOp, Type.(Prim (Int | Word64)) ->
       SR.UnboxedInt64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
-  | NegOp, Type.Prim Type.Word16 ->
-      SR.UnboxedWord32,
-      Func.share_code env "neg16" ["n", I32Type] [I32Type] (fun env ->
-        let get_n = G.i (LocalGet (nr 0l)) in
-        compile_unboxed_zero ^^
-        get_n ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_unboxed_const 0xFFFFl ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.And))
-      )
-  | NegOp, Type.Prim Type.Word32 ->
-      SR.UnboxedWord32,
-      Func.share_code env "neg32" ["n", I32Type] [I32Type] (fun env ->
-        let get_n = G.i (LocalGet (nr 0l)) in
+  | NegOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
+      StackRep.of_type t,
+      Func.share_code1 env "neg32" ("n", I32Type) [I32Type] (fun env get_n ->
         compile_unboxed_zero ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
       )
-  | PosOp, Type.Prim (Type.Int | Type.Nat) ->
-      SR.UnboxedInt64,
-      G.nop
-  | PosOp, Type.Prim (Type.Word8 | Type.Word16 | Type.Word32) ->
-      SR.UnboxedWord32,
-      G.nop
+  | NotOp, Type.(Prim Word64) ->
+     SR.UnboxedInt64,
+     compile_const_64 (-1L) ^^
+     G.i (Binary (Wasm.Values.I64 I64Op.Xor))
+  | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
+      StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
+                          G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
+
+(* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
+let clamp_shift_amount = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (UnboxedSmallWord.bitwidth_mask_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+(* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
+let lsb_adjust = function
+  | Type.Word32 -> G.nop
+  | ty -> Prim.prim_shiftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
+
+(* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
+let msb_adjust = function
+  | Type.Word32 -> G.nop
+  | ty -> Prim.prim_shift_leftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
+
+(* Makes sure that the word representation invariant is restored. *)
+let sanitize_word_result = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+(* Makes sure that the word representation invariant is restored. *)
+let compile_word_padding = function
+  | Type.Word32 -> G.nop
+  | ty -> compile_unboxed_const (UnboxedSmallWord.padding_of_type ty) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
    but none of these do, so a single value is fine.
 *)
-let compile_binop env t op =
+let rec compile_binop env t op =
   StackRep.of_type t,
   Syntax.(match t, op with
-  | Type.Prim Type.Nat, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Prim Type.Nat, SubOp ->
+  | Type.(Prim (Nat | Int | Word64)),         AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.Prim Type.Nat,                       SubOp ->
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
         (G.i Unreachable)
         (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
     )
-  | Type.Prim Type.Nat, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.Prim Type.Nat, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.Prim Type.Nat, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
-  | Type.Prim Type.Int, AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Prim Type.Int, SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  | Type.Prim Type.Int, MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.Prim Type.Int, DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
-  | Type.Prim Type.Int, ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+  | Type.(Prim (Nat | Int | Word64)),         MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.(Prim (Nat | Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.(Prim (Nat | Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim (Int | Word64)),               SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.(Prim Int),                          DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
+  | Type.(Prim Int),                          ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+
+  | Type.Prim Type.(Word8 | Word16 | Word32), AddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
+  | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> lsb_adjust ty ^^
+                                                       G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+  | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
+  | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp ->
+     let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
+                        (("n", I32Type), ("exp", I32Type)) [I32Type]
+                        Wasm.Values.(fun env get_n get_exp ->
+         let one = compile_unboxed_const (UnboxedSmallWord.const_of_type ty 1l) in
+         let (set_res, get_res) = new_local env "res" in
+         let mul = snd (compile_binop env t MulOp) in
+         let square_recurse_with_shifted sanitize =
+           get_n ^^ get_exp ^^ compile_unboxed_const 1l ^^
+           G.i (Binary (I32 I32Op.ShrU)) ^^ sanitize ^^
+           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
+         in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
+            G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
+             one
+             (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
+              G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
+                (square_recurse_with_shifted G.nop)
+                (get_n ^^
+                 square_recurse_with_shifted (sanitize_word_result ty) ^^
+                 mul)))
+     in pow ()
+  | Type.(Prim Int),                          PowOp ->
+     let _, pow = compile_binop env Type.(Prim Nat) PowOp in
+     let (set_n, get_n) = new_local64 env "n" in
+     let (set_exp, get_exp) = new_local64 env "exp"
+     in set_exp ^^ set_n ^^ get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+          G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+            (G.i Unreachable)
+            (get_n ^^ get_exp ^^ pow)
+  | Type.(Prim (Nat|Word64)),                 PowOp ->
+     let rec pow () = Func.share_code2 env "pow"
+                        (("n", I64Type), ("exp", I64Type)) [I64Type]
+                        Wasm.Values.(fun env get_n get_exp ->
+         let one = compile_const_64 1L in
+         let (set_res, get_res) = new_local64 env "res" in
+         let mul = snd (compile_binop env t MulOp) in
+         let square_recurse_with_shifted =
+           get_n ^^ get_exp ^^ one ^^
+           G.i (Binary (I64 I64Op.ShrU)) ^^
+           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
+         in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+            G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+             one
+             (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+              G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
+                square_recurse_with_shifted
+                (get_n ^^
+                 square_recurse_with_shifted ^^
+                 mul)))
+     in pow ()
+  | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
+  | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
+  | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
+  | Type.Prim Type.(Word8 | Word16 | Word32), OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
+  | Type.(Prim Word64),                       XorOp -> G.i (Binary (Wasm.Values.I64 I64Op.Xor))
+  | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+  | Type.(Prim Word64),                       ShLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Shl))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp ->
+     lsb_adjust ty ^^ clamp_shift_amount ty ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+  | Type.(Prim Word64),                       ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  ShROp ->
+     lsb_adjust ty ^^ clamp_shift_amount ty ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+     sanitize_word_result ty
+  | Type.(Prim Word64),                       RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
+  | Type.Prim Type.                  Word32,  RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+  | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp ->
+     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
+       Wasm.Values.(fun env get_n get_by ->
+      let beside_adjust = compile_unboxed_const (Int32.sub 32l (UnboxedSmallWord.shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
+      get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
+      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+      sanitize_word_result ty)
+  | Type.(Prim Word64),                       RotROp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotr))
+  | Type.Prim Type.                  Word32,  RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
+  | Type.Prim Type.(Word8 | Word16 as ty),    RotROp ->
+     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "rotr") (("n", I32Type), ("by", I32Type)) [I32Type]
+       Wasm.Values.(fun env get_n get_by ->
+      get_n ^^ get_n ^^ lsb_adjust ty ^^ G.i (Binary (I32 I32Op.Or)) ^^
+      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+      sanitize_word_result ty)
+
   | Type.Prim Type.Text, CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
   )
@@ -3367,9 +3521,24 @@ let compile_binop env t op =
 let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.Prim (Type.Nat | Type.Int) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.Prim Type.Word32 -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.(Prim (Nat | Int | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo "compile_eq" (Arrange.relop Syntax.EqOp) (G.i Unreachable)
+
+let get_relops = Syntax.(function
+  | GeOp -> I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
+  | GtOp -> I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
+  | LeOp -> I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
+  | LtOp -> I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
+  | _ -> failwith "uncovered relop")
+
+let compile_comparison t op =
+  let u64op, s64op, u32op, s32op = get_relops op
+  in Type.(match t with
+     | (Nat | Word64) -> G.i (Compare (Wasm.Values.I64 u64op))
+     | Int -> G.i (Compare (Wasm.Values.I64 s64op))
+     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
+     | _ -> todo "compile_comparison" (Arrange.prim t) (G.i Unreachable))
 
 let compile_relop env t op =
   StackRep.of_type t,
@@ -3378,17 +3547,10 @@ let compile_relop env t op =
   | _, NeqOp -> compile_eq env t ^^
              G.if_ (StackRep.to_block_type env SR.bool)
                    (Bool.lit false) (Bool.lit true)
-  | Type.Prim Type.Nat, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeU))
-  | Type.Prim Type.Nat, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtU))
-  | Type.Prim Type.Nat, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeU))
-  | Type.Prim Type.Nat, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtU))
-  | Type.Prim Type.Int, GeOp -> G.i (Compare (Wasm.Values.I64 I64Op.GeS))
-  | Type.Prim Type.Int, GtOp -> G.i (Compare (Wasm.Values.I64 I64Op.GtS))
-  | Type.Prim Type.Int, LeOp -> G.i (Compare (Wasm.Values.I64 I64Op.LeS))
-  | Type.Prim Type.Int, LtOp -> G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
+     compile_comparison t1 op1
   | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
   )
-
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
@@ -3443,14 +3605,21 @@ and compile_exp (env : E.t) exp =
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   (* Binary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, { it = TupE [e1;e2]; _}) ->
-    SR.Vanilla,
     begin
-     compile_exp_vanilla env e1 ^^
-     compile_exp_vanilla env e2 ^^
-     match p with
-      | "Array.init" -> Array.init env
-      | "Array.tabulate" -> Array.tabulate env
-      | _ -> todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+     let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
+     in match p with
+      | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
+      | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+      | "shrs8" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word8 ^^
+                                                 G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                 sanitize_word_result Type.Word8)
+      | "shrs16" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word16 ^^
+                                                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                                                  sanitize_word_result Type.Word16)
+      | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+
+      | _ -> SR.Vanilla, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
     end
   (* Unary prims *)
   | CallE (_, ({ it = PrimE p; _} as pe), _, e) ->
@@ -3463,48 +3632,117 @@ and compile_exp (env : E.t) exp =
 
        | "Nat->Word8"
        | "Int->Word8" ->
-         SR.UnboxedWord32,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_maskToWord32 0xFFl env
+         Prim.prim_shiftToWordN (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Nat->Word16"
        | "Int->Word16" ->
-         SR.UnboxedWord32,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_maskToWord32 0xFFFFl env
+         Prim.prim_shiftToWordN (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Nat->Word32"
        | "Int->Word32" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_intToWord32 env
+         Prim.prim_intToWord32
+
+       | "Nat->Word64"
+       | "Int->Word64" ->
+          let sr, code = compile_exp env e in sr, code ^^ G.nop
+
+       | "Char->Word32" ->
+         SR.UnboxedWord32,
+         compile_exp_vanilla env e ^^
+         compile_unboxed_const 8l ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
 
        | "Word8->Nat" ->
          SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_maskedWord32toNat 0xFFl env
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftWordNtoUnsigned (UnboxedSmallWord.shift_of_type Type.Word8)
        | "Word8->Int" ->
          SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_by_shiftWord32toInt 24l env
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftWordNtoSigned (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Word16->Nat" ->
          SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_maskedWord32toNat 0xFFFFl env
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftWordNtoUnsigned (UnboxedSmallWord.shift_of_type Type.Word16)
        | "Word16->Int" ->
          SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_by_shiftWord32toInt 16l env
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftWordNtoSigned (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Word32->Nat" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat env
+         Prim.prim_word32toNat
        | "Word32->Int" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toInt env
+         Prim.prim_word32toInt
+
+       | "Word64->Nat"
+       | "Word64->Int" ->
+          let sr, code = compile_exp env e in sr, code ^^ G.nop
+
+       | "Word32->Char" ->
+         SR.Vanilla,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         compile_unboxed_const 8l ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+
+       | "popcnt" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
+       | "popcnt8"
+       | "popcnt16" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+         msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
+       | "popcnt64" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
+       | "clz" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+       | "clz8"
+       | "clz16" ->
+         SR.Vanilla,
+         let ty = match p with | "clz8" -> Type.Word8 | _ -> Type.Word16
+         in compile_exp_vanilla env e ^^
+            compile_word_padding ty ^^
+            G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+            msb_adjust ty
+       | "clz64" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         G.i (Unary (Wasm.Values.I64 I64Op.Clz))
+       | "ctz" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+       | "ctz8"
+       | "ctz16" ->
+         SR.Vanilla,
+         let ty = match p with | "ctz8" -> Type.Word8 | _ -> Type.Word16
+         in compile_exp_vanilla env e ^^
+            compile_word_padding ty ^^
+            compile_unboxed_const (UnboxedSmallWord.shift_of_type ty) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+            G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+            msb_adjust ty
+       | "ctz64" ->
+         SR.UnboxedInt64,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
        | "printInt" ->
          SR.unit,
@@ -3532,6 +3770,7 @@ and compile_exp (env : E.t) exp =
     SR.unit,
     compile_exp_as env SR.bool e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
+  | UnE (_, Syntax.PosOp, e1) -> compile_exp env e1
   | UnE (t, op, e1) ->
     let sr, code = compile_unop env t op in
     sr,
@@ -3567,7 +3806,7 @@ and compile_exp (env : E.t) exp =
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
        stack representation here.
-       So let’s go with Vanialla. *)
+       So let’s go with Vanilla. *)
     SR.Vanilla,
     G.block_ (StackRep.to_block_type env SR.Vanilla) (
       G.with_current_depth (fun depth ->
@@ -3580,28 +3819,12 @@ and compile_exp (env : E.t) exp =
     SR.Unreachable,
     compile_exp_vanilla env e ^^
     G.branch_to_ d
-  | LoopE (e, None) ->
+  | LoopE e ->
     SR.Unreachable,
     G.loop_ (ValBlockType None) (compile_exp_unit env e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
-  | LoopE (e1, Some e2) ->
-    SR.unit,
-    G.loop_ (ValBlockType None) (
-      compile_exp_unit env e1 ^^
-      compile_exp_as env SR.bool e2 ^^
-      G.if_ (ValBlockType None) (G.i (Br (nr 1l))) G.nop
-    )
-  | WhileE (e1, e2) ->
-    SR.unit,
-    G.loop_ (ValBlockType None) (
-      compile_exp_as env SR.bool e1 ^^
-      G.if_ (ValBlockType None) (
-        compile_exp_unit env e2 ^^
-        G.i (Br (nr 1l))
-      ) G.nop
-    )
   | RetE e ->
     SR.Unreachable,
     compile_exp_as env (StackRep.of_arity (E.get_n_res env)) e ^^
@@ -3661,42 +3884,12 @@ and compile_exp (env : E.t) exp =
           in
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap code2 ^^ get_j
-  | ForE (p, e1, e2) ->
-    SR.unit,
-    let code1 = compile_exp_vanilla env e1 in
-    let (env1, code2) = compile_mono_pat env p in
-    let code3 = compile_exp_unit env1 e2 in
-
-    let (set_i, get_i) = new_local env "iter" in
-    (* Store the iterator *)
-    code1 ^^
-    set_i ^^
-
-    G.loop_ (ValBlockType None) (
-      get_i ^^
-      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
-      get_i ^^
-      Object.load_idx_immut env1 (nr_ (Name "next")) ^^
-      Closure.call_closure env1 (Value.local_cc 0 1) ^^
-      let (set_oi, get_oi) = new_local env "opt" in
-      set_oi ^^
-
-      (* Check for null *)
-      get_oi ^^
-      Opt.null ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None)
-        G.nop
-        ( get_oi ^^ Opt.project ^^
-          code2 ^^ code3 ^^ G.i (Br (nr 1l))
-        )
-    )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (env1, i) = E.add_local_with_offset env name.it 1l in
     let sr, code = compile_exp env1 e in
     sr,
-    Tagged.obj env Tagged.MutBox [ compile_unboxed_const 0l ] ^^
+    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
     G.i (LocalSet (nr i)) ^^
     code
   | DefineE (name, _, e) ->
@@ -3749,7 +3942,7 @@ and compile_exp_unit (env : E.t) exp =
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
-This requires conceptually thre passes:
+This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
     The environment is extended monotonously: The type-checker ensures that
@@ -3863,11 +4056,6 @@ and compile_pat_local env pat : E.t * patternCode =
   let env1 = alloc_pat_local env pat in
   let fill_code = fill_pat env1 pat in
   (env1, fill_code)
-
-(* Used for mono patterns (ForE) *)
-and compile_mono_pat env pat =
-  let (env1, fill_code) = compile_pat_local env pat in
-  (env1, orTrap fill_code)
 
 (* Used for let patterns: If the patterns is an n-ary tuple pattern,
    we want to compile the expression accordingly, to avoid the reboxing.

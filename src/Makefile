@@ -50,6 +50,7 @@ clean:
 	$(MAKE) -C ../test clean
 
 test: $(NAME)
+	$(MAKE) -C ../stdlib ASC=$(ASC) all
 	$(MAKE) -C ../test ASC=$(ASC) all
 	$(MAKE) -C ../samples ASC=$(ASC) all
 

@@ -394,42 +394,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases;
-  | WhileE (exp1, exp2) ->
-    check_exp env exp1;
-    typ exp1 <: T.bool;
-    check_exp env exp2;
-    typ exp2 <: T.unit;
-    T.unit <: t;
-  | LoopE (exp1, expo) ->
+  | LoopE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.unit;
-    begin match expo with
-    | Some exp2 ->
-      check_exp env exp2;
-      typ exp2 <: T.bool;
-      T.unit <: t;
-    | _ ->
-      T.Non <: t; (* vacuously true *)
-    end;
-  | ForE (pat, exp1, exp2) ->
-    begin
-      check_exp env exp1;
-      let t1 = T.promote (typ exp1) in
-      try
-        let _, tfs = T.as_obj_sub "next" t1 in
-        let t0 = T.lookup_field "next" tfs in
-        let t1, t2 = T.as_mono_func_sub t0 in
-        T.unit <: t1;
-        let t2' = T.as_opt_sub t2 in
-        let ve = check_pat_exhaustive env pat in
-        pat.note <: t2';
-        check_exp (adjoin_vals env ve) exp2;
-        typ exp2 <: T.unit;
-        T.unit <: t
-      with Invalid_argument _ ->
-        error env exp1.at "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand t1)
-    end;
+    T.Non <: t (* vacuously true *)
   | LabelE (id, t0, exp1) ->
     assert (t0 <> T.Pre);
     check_typ env t0;

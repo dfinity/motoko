@@ -30,12 +30,13 @@ let real-dvm =
   then
     if test-dvm
     then
-      if !builtins.pathExists ./nix/dev/default.nix
-      then
-        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the required revision. "
-      else
-        # Pass devel = true until the dev test suite runs on MacOS again
-        ((import ./nix/dev) { devel = true; }).dvm
+      let dev = builtins.fetchGit {
+        url = "ssh://git@github.com/dfinity-lab/dev";
+        rev = "1ab8900eafb3a588372a9d71294df75b504539eb";
+        ref = "master";
+      }; in
+      # Pass devel = true until the dev test suite runs on MacOS again
+      (import dev { devel = true; }).dvm
     else null
   else dvm; in
 
@@ -98,6 +99,11 @@ rec {
       "test/.*.sh"
       "samples/"
       "samples/.*"
+      "stdlib/"
+      "stdlib/.*Makefile.*"
+      "stdlib/.*.as"
+      "stdlib/examples/"
+      "stdlib/examples/.*.as"
       ];
 
     buildInputs =
@@ -106,13 +112,14 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
-	filecheck
+        filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []);
 
     buildPhase = ''
       patchShebangs .
       asc --version
+      make -C stdlib ASC=asc all
       make -C samples ASC=asc all
       make -C test VERBOSE=1 ASC=asc quick
     '' +

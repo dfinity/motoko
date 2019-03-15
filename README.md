@@ -13,21 +13,6 @@ To install the `asc` binary into your nix environment, use
 $ nix-env -i -f . -A native
 ```
 
-## Setup of `dev`
-
-Until we join the monorepo, we need a checkout the `dev` repository in
-`nix/dev`; see the `Jenkinsfile` the precise revision to use.
-
-For a fresh checkout, run
-```
-git clone --recursive git@github.com:dfinity-lab/dev nix/dev
-git -C nix/dev checkout 2bc6…see…Jenkinsfile…fecd
-git -C nix/dev submodule update --init --recursive
-```
-
-To update, just run the last two commands again.
-
-
 ## Development using Nix
 
 This is the command that should always pass on master is the following, which builds everything:
@@ -78,16 +63,8 @@ installing all required tools without nix is out of scope).
    nix-env -i -f . -A wasm
    nix-env -i -f . -A filecheck
    nix-env -i -f . -A wabt
-   ```
- * Install the `dvm` tool, using
-   ```
    nix-env -i -f . -A dvm
    ```
-   or simply
-   ```
-   ./update-dvm.sh
-   ```
-   which also updates the `dev` checkout.
 
 
 ## Create a coverage report
