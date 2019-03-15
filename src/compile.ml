@@ -1313,6 +1313,42 @@ module UnboxedSmallWord = struct
     | Wasm.Sexpr.Atom s -> seed ^ "<" ^ s ^ ">"
     | wtf -> todo "name_of_type" wtf seed
 
+  (* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
+  let clamp_shift_amount = function
+    | Type.Word32 -> G.nop
+    | ty -> compile_unboxed_const (bitwidth_mask_of_type ty) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+  let shiftWordNtoI32 b =
+    compile_unboxed_const b ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+
+  let shift_leftWordNtoI32 b =
+    compile_unboxed_const b ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+
+  (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
+  let lsb_adjust = function
+    | Type.Word32 -> G.nop
+    | ty -> shiftWordNtoI32 (shift_of_type ty)
+
+  (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
+  let msb_adjust = function
+    | Type.Word32 -> G.nop
+    | ty -> shift_leftWordNtoI32 (shift_of_type ty)
+
+  (* Makes sure that the word representation invariant is restored. *)
+  let sanitize_word_result = function
+    | Type.Word32 -> G.nop
+    | ty -> compile_unboxed_const (mask_of_type ty) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+  (* Makes sure that the word representation invariant is restored. *)
+  let compile_word_padding = function
+    | Type.Word32 -> G.nop
+    | ty -> compile_unboxed_const (padding_of_type ty) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Or))
+
 end (* UnboxedSmallWord *)
 
 (* Primitive functions *)
@@ -1347,11 +1383,8 @@ module Prim = struct
   *)
   let prim_word32toNat =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let prim_shiftWordNtoI32 b =
-    compile_unboxed_const b ^^
-    G.i (Binary (I32 I32Op.ShrU))
   let prim_shiftWordNtoUnsigned b =
-    prim_shiftWordNtoI32 b ^^
+    UnboxedSmallWord.shiftWordNtoI32 b ^^
     prim_word32toNat
   let prim_word32toInt =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -1361,12 +1394,9 @@ module Prim = struct
     prim_word32toInt
   let prim_intToWord32 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_shift_leftWordNtoI32 b =
-    compile_unboxed_const b ^^
-    G.i (Binary (I32 I32Op.Shl))
   let prim_shiftToWordN b =
     prim_intToWord32 ^^
-    prim_shift_leftWordNtoI32 b
+    UnboxedSmallWord.shift_leftWordNtoI32 b
 end (* Prim *)
 
 module Object = struct
@@ -3375,33 +3405,6 @@ let compile_unop env t op = Syntax.(match op, t with
   | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
   )
 
-(* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
-let clamp_shift_amount = function
-  | Type.Word32 -> G.nop
-  | ty -> compile_unboxed_const (UnboxedSmallWord.bitwidth_mask_of_type ty) ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.And))
-
-(* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
-let lsb_adjust = function
-  | Type.Word32 -> G.nop
-  | ty -> Prim.prim_shiftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
-
-(* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
-let msb_adjust = function
-  | Type.Word32 -> G.nop
-  | ty -> Prim.prim_shift_leftWordNtoI32 (UnboxedSmallWord.shift_of_type ty)
-
-(* Makes sure that the word representation invariant is restored. *)
-let sanitize_word_result = function
-  | Type.Word32 -> G.nop
-  | ty -> compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.And))
-
-(* Makes sure that the word representation invariant is restored. *)
-let compile_word_padding = function
-  | Type.Word32 -> G.nop
-  | ty -> compile_unboxed_const (UnboxedSmallWord.padding_of_type ty) ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
@@ -3427,7 +3430,7 @@ let rec compile_binop env t op =
 
   | Type.Prim Type.(Word8 | Word16 | Word32), AddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> lsb_adjust ty ^^
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
@@ -3449,7 +3452,7 @@ let rec compile_binop env t op =
               G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
                 (square_recurse_with_shifted G.nop)
                 (get_n ^^
-                 square_recurse_with_shifted (sanitize_word_result ty) ^^
+                 square_recurse_with_shifted (UnboxedSmallWord.sanitize_word_result ty) ^^
                  mul)))
      in pow ()
   | Type.(Prim Int),                          PowOp ->
@@ -3489,13 +3492,13 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | Type.(Prim Word64),                       ShLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Shl))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp ->
-     lsb_adjust ty ^^ clamp_shift_amount ty ^^
+     UnboxedSmallWord.lsb_adjust ty ^^ UnboxedSmallWord.clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Shl))
   | Type.(Prim Word64),                       ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShROp ->
-     lsb_adjust ty ^^ clamp_shift_amount ty ^^
+     UnboxedSmallWord.lsb_adjust ty ^^ UnboxedSmallWord.clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-     sanitize_word_result ty
+     UnboxedSmallWord.sanitize_word_result ty
   | Type.(Prim Word64),                       RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
   | Type.Prim Type.                  Word32,  RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp ->
@@ -3503,16 +3506,16 @@ let rec compile_binop env t op =
        Wasm.Values.(fun env get_n get_by ->
       let beside_adjust = compile_unboxed_const (Int32.sub 32l (UnboxedSmallWord.shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
       get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
-      sanitize_word_result ty)
+      get_by ^^ UnboxedSmallWord.lsb_adjust ty ^^ UnboxedSmallWord.clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+      UnboxedSmallWord.sanitize_word_result ty)
   | Type.(Prim Word64),                       RotROp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotr))
   | Type.Prim Type.                  Word32,  RotROp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
   | Type.Prim Type.(Word8 | Word16 as ty),    RotROp ->
      Func.share_code2 env (UnboxedSmallWord.name_of_type ty "rotr") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      get_n ^^ get_n ^^ lsb_adjust ty ^^ G.i (Binary (I32 I32Op.Or)) ^^
-      get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
-      sanitize_word_result ty)
+      get_n ^^ get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (I32 I32Op.Or)) ^^
+      get_by ^^ UnboxedSmallWord.lsb_adjust ty ^^ UnboxedSmallWord.clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+      UnboxedSmallWord.sanitize_word_result ty)
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
   | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
@@ -3610,12 +3613,12 @@ and compile_exp (env : E.t) exp =
      in match p with
       | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
       | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
-      | "shrs8" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word8 ^^
+      | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.lsb_adjust Type.Word8 ^^
                                                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                 sanitize_word_result Type.Word8)
-      | "shrs16" -> compile_kernel_as SR.Vanilla (lsb_adjust Type.Word16 ^^
+                                                 UnboxedSmallWord.sanitize_word_result Type.Word8)
+      | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.lsb_adjust Type.Word16 ^^
                                                   G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                  sanitize_word_result Type.Word16)
+                                                  UnboxedSmallWord.sanitize_word_result Type.Word16)
       | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
 
@@ -3704,7 +3707,7 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-         msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
+         UnboxedSmallWord.msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
        | "popcnt64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
@@ -3718,9 +3721,9 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          let ty = match p with | "clz8" -> Type.Word8 | _ -> Type.Word16
          in compile_exp_vanilla env e ^^
-            compile_word_padding ty ^^
+            UnboxedSmallWord.compile_word_padding ty ^^
             G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-            msb_adjust ty
+            UnboxedSmallWord.msb_adjust ty
        | "clz64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
@@ -3734,11 +3737,11 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          let ty = match p with | "ctz8" -> Type.Word8 | _ -> Type.Word16
          in compile_exp_vanilla env e ^^
-            compile_word_padding ty ^^
+            UnboxedSmallWord.compile_word_padding ty ^^
             compile_unboxed_const (UnboxedSmallWord.shift_of_type ty) ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
             G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-            msb_adjust ty
+            UnboxedSmallWord.msb_adjust ty
        | "ctz64" ->
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
@@ -3753,8 +3756,31 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Dfinity.prim_print env
        | _ ->
-         SR.Unreachable,
-         todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+        (* Now try the binary prims, expecting a manifest tuple argument *)
+        begin match e.it with
+        | TupE [e1;e2] ->
+          begin
+           let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
+           in match p with
+             | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
+             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+             | "shrs8" -> compile_kernel_as SR.Vanilla (
+                  UnboxedSmallWord.lsb_adjust Type.Word8 ^^
+                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                  UnboxedSmallWord.sanitize_word_result Type.Word8
+                )
+             | "shrs16" -> compile_kernel_as SR.Vanilla (
+                  UnboxedSmallWord.lsb_adjust Type.Word16 ^^
+                  G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+                  UnboxedSmallWord.sanitize_word_result Type.Word16
+                )
+             | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+             | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+
+             | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+          end
+        | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+        end
     end
   | VarE var ->
     Var.get_val env var.it
