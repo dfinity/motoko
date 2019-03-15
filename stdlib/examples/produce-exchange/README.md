@@ -1,83 +1,164 @@
-Produce Exchange Example
-========================
+Produce Exchange Canister Component
+=====================================
 
 The produce exchange (PE) is a canonical example Dapp, illustrating
 the DFINITY Dapp design process on a realistic marketplace-like
 application.
 
-The design began as a [two page Google drive
-document](https://docs.google.com/document/d/1AxpcuFH-x_0ZSa32DfM_BCYnGxCS37ETPNWE4BXDNdo/edit)
+We give an example of ActorScript's role in DFINITY by implementing
+the Produce Exchange Canister Component in ActorScript.
+
+Prior documentation
+-------------------
+
+The design of the Produce Exchange example Dapp began as a [two page
+Google drive
+document](https://docs.google.com/document/d/1AxpcuFH-x_0ZSa32DfM_BCYnGxCS37ETPNWE4BXDNdo/edit),
 giving the Dapp's functional specifications.
 
-The design now evolves in two places:
+Current design documentation:
+-----------------------------
+
+The documentation of this design now evolves in two places:
 
  1. The SDK and ActorScript teams' documentation:  
-    i. [The design document, under the SDK
+    i. Current [design document, under the SDK
      space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).  
-    ii. [The requirements document for the MVP
+    ii. Current [requirements document for the MVP
       Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).  
-    iii. [Documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).  
+    iii. Early, older [documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).  
 
- 2. [**This example folder** in the ActorScript Github repo](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange),
-    which is implementing the Produce Exchange as a way to push the development of
- the ActorScript language, its standard library, and elsewhere, the
- ambient DFINITY system that runs ActorScript canisters.
+ 2. [**This documentation and associated source
+    code**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange),
+    which is implementing the **Produce Exchange Canister component**,
+    as a way to push the development of the ActorScript language, its
+    standard library, and elsewhere, the ambient DFINITY system that
+    runs ActorScript canisters.
 
-Scripted uses of the Produce Exchange
-----------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
 
-- [x] [Simple setup-and-query script](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/test/simpleSetupAndQuery.as)
-- [ ] Randomly-generated scripts
+
+Produce Exchange Standards Specification (PESS)
+==================================================
+
+The Produce Exchange is a DFINITY canister whose implementation
+defines a set of _standards_ whose **formal specification** we refer to collectively as
+the _"Produce Exchange Standards Specification"_, or _"PESS"_ for short.
+
+
+The PESS, defined formally, in ActorScript:
+-------------------------------------------
+
+We break this definition into several files, described below in detail as
+[**server components**](#server-components).
+
+As ActorScript-based documentation, this documentation makes the PESS
+definition into a **formal definition**, to the same degree that
+ActorScript has a formal semantics of its own, in terms of DFINITY's
+semantics, etc.
+
+**Files for the PESS definition**: 
+
+The [server types component](#servertypes) defines
+ActorScript data types that are included in the server messages.  
+
+The [server actor component](#serveractor)gives the interface for the
+PE service, and is the bulk of the formal PESS.
+
+The _behavior_ of this actor's implementation defines the _semantic_
+aspects of the PESS standard; the implementation details of this
+behavior are not included in the PESS standard.  We include a
+prototype specification of this behavior, which is subject to change.
+
+**Server message formats**:
+
+The server actor defines an interface boundary that only uses types
+from the server types component (no model types, no collection types
+from the standard library).
+
+**Design principle for interface design**:
+
+Whenever possible, we will push the implementation of **"business logic"**
+into the **server _model_ components**, with the aspiration of the server
+component itself being a minimal wrapper over model definitions, and
+little to no logic of its own.
+
+These models are based closely on the ActorScript **standard library**,
+and basic functional programming design patterns, which we
+demonstrate through this example.
+
+The standard library provides programming abstractions for
+_executable_ functional specifications that run on the DFINITY system.
+
+Whenever possible, we push reusable patterns and structures from the
+model components into the standard library, with the aspiration of the
+model components themselves being minimal wrappers over the standard
+library.  The latter gives the former a simple **mathematical
+vocabulary**, based on **pure functional programming**, for the
+specified Canister behavior.
 
 
 Server components
------------------------
+==========================
 
-We decompose the Produce Exchange example Dapp into an
-_ActorScript-based_ implementation of a "**Server**" with the
-following definitional pieces:
+We decompose the _Canister_ for the **Produce Exchange example Dapp**
+into an _ActorScript-based_ implementation of a "**Server**" with the
+following definitional pieces, listed below.
 
-The first two server components give formal definitions for the
-[Produce Exchange Standards Specification
-(PESS)](#Produce-Exchange-Standards-Specification-PESS); See below for
-more
-about PESS.  
+**Basic types**
+-----------------
 
-The final two server components (server model types and server model
-implementation), give a formal specification of behavior that defines
-the **behavior for the PESS**, but the _implementation details of
-these two components themselves are not in PESS, and are subject to
-change independently of PESS._
+Basic types used in messages, and published/stored internally in the server actor's state.
 
- 1. **Basic types**: 
-    See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.  
-    See [`serverTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md) for auto-generated design document.  
-    Basic types used in messages, and published/stored internally in the server actor's state.
+See [`serverTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md) for authoritative documentation.
 
- 2. **Server messages**: See
-    [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) for the source code.  
-See [`serverActor.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md) for auto-generated design document.  
-    Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
+See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.
 
- 3. **Server model types**: See
-    [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.  
-    [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md) for the auto-generated design document.  
+**Server messages**
+----------------------
 
-    This component defines structures that the next component uses to implement the server actor; neither component is exposed by the actor's public-facing interface.
+Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
-    These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31):
-    - [Maps via `Trie` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).  
-    - [Maps via `AssocList` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md).  
+See [`serverActor.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md) for authoritative documentation.
+
+See [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) for the source code.
 
 
- 4. **Server implementation**: See
-    [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.  
-    [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for the source code.  
-    Defines the _behavioral (input-output-based) semantics_ of each message from item 2, by
-    implementing the server's interface in terms of the _server model types_ defined in item 3.
+**Server model types**
+------------------------
+
+This component defines structures that the next component uses to implement the server actor; neither component is exposed by the actor's public-facing interface.
+
+See [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md) for authoritative documentation.
+
+See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.
+
+These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31):
+
+- Maps via the [`Trie` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).  
+- Maps via the [`AssocList` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md).  
+
+**Server implementation**
+--------------------------------
+
+Defines the _behavioral (input-output-based) semantics_ of [each
+message type](#serveractor), by implementing the server's interface in terms
+of the [_server model types_](#servermodeltypes).
+
+See  [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for authoritative documentation.
+
+See [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.
+
+This server component gives a formal specification of behavior that
+defines the **behavior for the PESS**, but the _implementation details
+of this component and [server model types](#servermodeltypes)
+themselves are not in PESS, and are subject to change independently of
+PESS.
+
 
 Test suite components
-----------------------------------
+=========================
 
 We decompose the **test suite** for the Produce Exchange into the following milestones and associated test components:
 
@@ -100,8 +181,130 @@ See below for [more thoughts about performance testing](https://github.com/dfini
 
 
 
-To do list
------------
+----------------------------------------------------------------------------
+
+
+[Produce Exchange Canister: MVP Requirements](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+=============================================
+
+
+ALL USERS
+---------------
+
+> **Sign up**	User can add their name and role and receive a unique ID	
+
+See these, provided by the [**registrar** role](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#pess-registrar-based-ingress-messages):
+ - [**registrarAddProducer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
+  - [**registrarAddTransporter**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
+   - [**registrarAddRetailer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
+	
+> **Log in**	A user can identify themselves from a dropdown and "log in"	
+
+??? no op
+
+> **Log out**	User can log out of the app	
+
+??? no op
+	
+PRODUCER
+-------------
+> **Add/update inventory**	Producer updates the goods, prices in the inventory available on the exchange	
+	
+See [**produerAddInventory**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#produceraddinventory)
+    
+> **View inventory**	Producer can see their inventory	
+	
+To do
+    
+> **View past sales orders**	Producer can see sales orders they fulfilled in the past	
+
+Note: We call them "reservations".
+
+See [**producerReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreservations)
+
+To do
+	
+> **View "market price"**	Producer can see the last sales price for any good within any geographic area	
+	
+To do
+	
+TRANSPORTER
+---------------------
+> **Add/update routes**	Transporter updates the routes available on the exchange. Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
+
+See [**transporterAddRoute**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporteraddroute)
+	
+> **View routes**	Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
+
+To do
+
+> **View past sales orders**	Transporter can see routes which were utilized in the past	
+	
+Note: We call them "reservations".
+
+See [**transporterReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservations)
+
+	
+RETAILER
+-------------------
+> **Query inventory**	Retailer can query a good with a delivery date. The Exchange will return a list of goods (and prices) that can be delivered to that retailer's geography within that date. 	
+
+See [**retailerQueryAll**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
+and
+to do, to query for all available produce information.
+	
+> **Place a sales order**	Retailer can place order for one or more of options presented by any query.	
+
+Note: We call them "reservations".
+
+See [**retailerReserve**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreserve)
+and
+[**retailerReserveCheapest**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservecheapest)
+	
+> **View past sales orders**	Retailer can see sales orders they placed in the past	
+
+Note: We call them "reservations".
+
+See [**retailerReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservations)
+
+	
+	
+EXCHANGE DAPP DEVELOPER
+---------------------------
+
+> **View GMV**	Developer can see aggregate sum of how many sales have been processed	
+	
+> **View queries**	Developer can see how many aggregate queries have been made by all retailers	
+	
+> **View sales orders**	Developer can see how many aggregate sales orders have been made by all retailers	
+	
+> **View producers**	Developer can see how many producers in the system and how many goods each has	
+	
+> **View transporters**	Developer can see how many producers in the system and how many goods each has	
+	
+> ****View retailers**	Developer can see how many retailers in the system and how many queries and how many sales orders	
+	
+
+User interaction and design
+-------------------------------
+
+The only thing established are five views for the MVP:
+
+-    Sign up/Login/Logout page
+-    Producer view - if user authenticated is a producer
+-    Transporter view - if user authenticated is a transporter
+-    Retailer view - if user authenticated is a retailer
+-    Developer view - if user authenticated is a Developer
+
+
+
+---------------------------------------------------------------------------------
+
+Define "Done"
+================================
+
+Merge to `master` requirements:
+--------------------------------
 
 This example is a work in progress.  It will be finished (and merged
 to `master`) when the following are in a stable state, and working
@@ -125,12 +328,13 @@ those of the *Canister component* in Milestone 2.0 of the [MVP
 Requirements Spec, 1.ii
 above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
 
+
 ----------------------------------------------------------------------------
 
 Open Questions:
 ================
 
-As part of the to do list above, we have the following questions:
+We have the following questions:
 
  1. Massive result messages: How do we represent and send these?
 
@@ -160,57 +364,13 @@ As part of the to do list above, we have the following questions:
  5. Define a query language?
     --- Not until ActorScript implements variant types.
 
+ 6. [Canister upgrades](#canisterupgrades)
 
-----------------------------------------------------------------------------
-
-
-Produce Exchange Standards Specification (PESS)
-==================================================
-
-The Produce Exchange is a DFINITY canister whose implementation
-defines a set of _standards_ whose **formal specification** we refer to collectively as
-the _"Produce Exchange Standards Specification"_, or _"PESS"_ for short.
+--------------------------------------------------------------------------------
 
 
-The PESS, defined formally, in ActorScript:
--------------------------------------------
-
-We break this definition into several files, listed above in the
-[server components list](#server-components), and mentioned again
-below.
-
-These files make the PESS definition into a **formal definition**, to
-the same degree that ActorScript has a formal semantics of its own, in
-terms of DFINITY's semantics, etc.
-
-**Files for the PESS definition**: The file `serverTypes.as` defines
-ActorScript data types that are included in the PESS, and will appear
-in the messages to and from the produce exchange server.  The server
-actor class itself (see `serverActor.as`) gives the interface for the
-PE service, is also part of the formal PESS.  The _behavior_ of this
-actor's implementation defines the _semantic_ aspects of the PESS
-standard.
-
-**Non-PESS files**: The `serverModel.as` file defines types used to
-implement the specification behavior given in `serverActor.as`; this
-file is not part of the PESS.
-
-**Server message formats**: The server actor defines an interface boundary that only uses types
-from `serverTypes.as`, and none from `serverModel.as`.  The implementation details
-of this latter file and its use in the actor behavior are both subject to
-change over time, independently of the standards' own evolution.  We
-include the full implementation details here because the associated
-behavior is needed to define the semantics of the PESS, as explained
-above.
-
-**Design principle for PESS interface**: Whenever possible, we will
-push the implementation of "business logic" into `serverModel.as`,
-with the aspiration of `serverActor.as` being a minimal wrapper over
-definitions in `serverModel.as`, and little to no logic of its own.
-
-
-PESS evolution via canister upgrade
------------------------------------
+Canister upgrades
+====================
 
 The PESS evolves according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
@@ -222,7 +382,9 @@ system.  Similarly, to evolve the behavioral definition of PESS, the
 implementation of this actor will change (in `serverActor.as` and
 `serverModel.as`), and will also require a canister upgrade.
 
-----------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------
+
 
 Performance considerations
 ====================================================================
