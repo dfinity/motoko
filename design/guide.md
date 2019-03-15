@@ -411,7 +411,7 @@ If the result is a trap, it, too traps.
 ### Binary operators
 TBC (typing)
 
-The unary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+The binary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
@@ -480,7 +480,7 @@ contain the value '<unop> v'.
 
 ### Binary Compound Assignment
 
-The binary compounda ssigment `<exp1> <binop>= <exp2>` has type `()` provided:
+The binary compound assigment `<exp1> <binop>= <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
 * <binop> is defined for type `(T,T) -> T`.
@@ -555,6 +555,29 @@ The type system ensures that a value identifer cannot be evaluated before its de
 Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see Annotated patterns) to satisfy the type checker.
 
 The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in sequence (program order). The first declaration in `<dec>;*` that results in a trap cause the block to result in `trap`, without evaluating subsequent declarations.
+
+### Not
+
+The not expression 'not <exp>' has type 'Bool' provided `<exp>` has type `Bool`.
+
+If `<exp>` evaluates to `trap`, the expression returns `trap`.
+Otherwise, `<exp>` evaluates to a boolean value `v` and the expression returns `not v`, (the boolean negation of `v`).
+
+### And
+
+The and expression `<exp1> and <exp2>` has type 'Bool' provided `<exp1>` and `<exp2>` have type 'Bool'.
+
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
+If `v == false` the expression returns the value `false` (without evaluating `<exp2>`).
+Otherwise, the expression returns the result of evaluating <exp2>.
+
+### Or
+
+The or expression `<exp1> or <exp2>` has type 'Bool' provided `<exp1>` and `<exp2>` have type 'Bool'.
+
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
+If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
+Otherwise, the expression returns the result of evaluating <exp2>.
 
 ## Patterns
 
