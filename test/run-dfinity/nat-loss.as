@@ -7,16 +7,14 @@ printInt yyy; print "@@@@@@@ \n";
 
 func intToNat(i : Int) : Nat = word64ToNat (intToWord64 i);
 
-func And (x : Bool, y : Bool) : Bool = switch (x, y) { case (true, true) true; case _ false }; 
-
-func refShowInt (acc : Text, n : Int) : Text {
+func refShowInt(acc : Text, n : Int) : Text {
     if (0 > n) "-" # (refShowInt("", -n))
-    else if (And(0 == n, acc == ""))
+    else if (0 == n and acc == "")
         "0"
     else {
         let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
         if (n == 0) acc else refShowInt(digits[intToNat(n % 10)] # acc, n / 10)
-       }
+    }
 };
 
 
