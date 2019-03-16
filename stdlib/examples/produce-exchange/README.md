@@ -1,12 +1,14 @@
 Produce Exchange Canister Component
 =====================================
 
-The produce exchange (PE) is a canonical example Dapp, illustrating
-the DFINITY Dapp design process on a realistic marketplace-like
-application.
-
 We give an example of ActorScript's role in DFINITY by implementing
-the Produce Exchange Canister Component in ActorScript.
+the **Produce Exchange Canister Component** in ActorScript.
+
+The **produce exchange** gives a realistic marketplace-like
+application, and servers as our canonical example Dapp.
+
+We use it here to illustrate ActorScript the language, the standard
+library, and the associated the DFINITY Dapp design process.
 
 Prior documentation
 -------------------
@@ -29,15 +31,14 @@ The documentation of this design now evolves in two places:
     iii. Early, older [documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).  
 
  2. [**This documentation and associated source
-    code**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange),
-    which is implementing the **Produce Exchange Canister component**,
+    code**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
+    
+    This code is implementing the **Produce Exchange Canister component**,
     as a way to push the development of the ActorScript language, its
     standard library, and elsewhere, the ambient DFINITY system that
     runs ActorScript canisters.
 
 --------------------------------------------------------------
---------------------------------------------------------------
-
 
 Produce Exchange Standards Specification (PESS)
 ==================================================
@@ -58,18 +59,20 @@ definition into a **formal definition**, to the same degree that
 ActorScript has a formal semantics of its own, in terms of DFINITY's
 semantics, etc.
 
-**Files for the PESS definition**: 
+**Components for the PESS definition**: 
 
-The [server types component](#server-types) defines
-ActorScript data types that are included in the server messages.  
+- The [Server Types component](#server-types) defines ActorScript data
+types that are included in the server messages.
 
-The [server actor component](#server-actor)gives the interface for the
-PE service, and is the bulk of the formal PESS.
+- The [Server Actor component](#server-actor) gives the interface for
+the service, and is the bulk of the formal PESS.
 
 The _behavior_ of this actor's implementation defines the _semantic_
 aspects of the PESS standard; the implementation details of this
 behavior are not included in the PESS standard.  We include a
 prototype specification of this behavior, which is subject to change.
+See the [server model types](#server-model-types) and [server model
+implementation](#server-model-implementation) for details.
 
 **Server message formats**:
 
@@ -134,27 +137,33 @@ See [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdl
 
 See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.
 
-These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib) [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31):
+These models use [collections from the standard library](https://github.com/dfinity-lab/actorscript/tree/master/stdlib)
 
 - Maps via the [`Trie` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).  
 - Maps via the [`AssocList` module](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md).  
 
-**Server implementation**
+**Server model implementation**
 --------------------------------
 
-Defines the _behavioral (input-output-based) semantics_ of [each
-message type](#server-actor), by implementing the server's interface in terms
-of the [_server model types_](#server-model-types).
+The model implementation formally defines the _behavioral
+(input-output-based) semantics_ of [each message type](#server-actor),
+by implementing the server's interface in terms of the [_server model
+types_](#server-model-types).
 
 See  [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for authoritative documentation.
 
 See [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.
 
-This server component gives a formal specification of behavior that
-defines the **behavior for the PESS**, but the _implementation details
-of this component and [server model types](#server-model-types)
-themselves are not in PESS, and are subject to change independently of
-PESS.
+Note that while we define the **behavior for the PESS**, the
+_implementation details of this component and [server model
+types](#server-model-types) themselves are not in PESS, and are
+subject to change independently of PESS.
+
+**Aside:** This model implementation is highly formulaic.  In the
+future, we could likely _derive_ such implementations (auto-generate
+them) from a higher-level property and relation markup language
+defined over, and targeting, the existing actorscript type system and
+associated standard library patterns. (#fumola).
 
 
 Test suite components
@@ -390,136 +399,3 @@ implementation of this actor will change (in `serverActor.as` and
 
 ---------------------------------------------------------------------------------------
 
-
-Performance considerations
-====================================================================
-
-After having a functioning specification, we will employ the thoughts
-below toward getting better performance.
-
-The main thrust of the work on this canister is currently focused on
-creating an executable prototype.
-
-At some point (near the end of our test suite components), we will
-want to consider botj the **asymptotic** and **constant-factor** performance 
-properties of our implementation.
-
-In particular, this performance is phrased in terms of **workloads**,
-executing update & query behavior over the PESS server definition
-implementation.
-
-We shall vary workloads in kind and size, and measure space and time
-usage of the Wasm VM running this implementation, in terms of the
-standard library of collections implemented here.
-
-We shall compare the performance on fixed workloads across varying
-representations of the `Map` data structure that we use.
-
-Notably, the one and only collection type used in this implementation
-is the `Map` type.  With two implementations:
-
- - [Association lists]()
- - [Hash tries]()
-
-We use purely-functional data structures for `Map` since their design
-permits `O(1)`-time/space for sharing, and their immutability makes
-them suitable for mathematical reasoning.
-
-As explained below, the hash trie representation is asymptotically
-efficient for large sizes; while association lists are not, they are
-suitable for small sub-cases, including those where hash collisions
-occur in the trie structure.
-
-These mathematical properties are practically important for affording
-a reasonably-efficient executable specification, but they also suggest
-even more optimized representations, with the same mathematical
-properties.  First, 
-
-Hash tries
----------------------------------
-
-Before considering other variations, we review the basic properties of
-the hash trie representation.
-
-Crucially, the hash trie implementation of `Map` uses a _functional
-representation_, with expected times as follows (expected time
-analysis, because of hashing):
-
-```
-   Trie.copy                      : O(1)
-   Trie.find                      : O(log n)
-   Trie.replace, .insert, .remove : O(log n)
-   Trie.merge, .split             : O(log n)
-   Trie.union                     : O(n)
-   Trie.intersect                 : O(n)
-```
-
-Alternative representations
-----------------------------
-
-We consider variations of how to represent a `Map`, both as variations
-of the hash trie, and as other representations as well (see below).
-
-First, we might consider validating the followin claim:
-
->    **Claim:** The asymptotic properties of the hash trie are ideal
->    for a practical (infinitely-scalable) implementation of PESS.
-
-Before considering other representations, we should evaluate this
-claim on randomly-generated use-cases of varying size, to simulate
-realistic (but synthetic) workloads, and measure time and space usage
-by the Wasm VM.
-
-Once we can generate performance plots, we should consider comparing
-different representations for `Map` that still use a hash trie.
-
-Chunks
--------
-
-A simple variation of the hash trie uses **"chunks"** at the leaves,
-to represent sub-maps of the threshhold size where the pointers
-involved in the per-hash-bit branching no longer pays off.
-
-So, we may first consider additional implementations by varying the
-details of these chunks:
-    
- - when the basecase of the hash trie occurs, and
- - how the basecase of the hash trie is represented
-
-We consider several simple, but practical representations of chunks below.
-
-
-Association array representation:
----------------------------------------
-
-Association arrays are optimized for cache locality.  They each store
-a key-value mapping as two arrays: one of keys, and one of values.  To
-find a key-value pair, do a linear-scan in the array of keys to
-find the corresponding position of the value, in that array. Regrow
-the two arrays by doubling, or some other scheme.
-
-```
-   Aa.copy                      : O(n)
-   Aa.find                      : O(n)
-   Aa.replace, .insert, .remove : O(n)
-   Aa.merge, .split             : O(n)
-?? Aa.union                     : O(n)
-?? Aa.intersect                 : O(n)
-```
-
-Hashtable representation:
----------------------------------------
-
-A traditional hash table uses an array as a table, indexed by hashes.
-It handles hash collisions somehow, perhaps by doing a simple linear
-scan.  It regrows the table by doubling, or some other scheme.  It may
-or may not shrink the table.
-
-```
-   Htbl.copy                      : O(n)
-   Htbl.find                      : O(1)
-   Htbl.replace, .insert, .remove : O(1)
-   Htbl.merge, .split             : O(n)
-?? Htbl.union                     : O(n)
-?? Htbl.intersect                 : O(n)
-```
