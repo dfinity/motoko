@@ -1358,7 +1358,7 @@ module UnboxedSmallWord = struct
     | ty -> compile_unboxed_const (mask_of_type ty) ^^
             G.i (Binary (Wasm.Values.I32 I32Op.And))
 
-  (* Makes sure that the word representation invariant is restored. *)
+  (* Sets the number (according to the type's word invariant) of LSBs. *)
   let compile_word_padding = function
     | Type.Word32 -> G.nop
     | ty -> compile_unboxed_const (padding_of_type ty) ^^
