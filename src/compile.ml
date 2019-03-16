@@ -1364,6 +1364,20 @@ module UnboxedSmallWord = struct
     | ty -> compile_unboxed_const (padding_of_type ty) ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
+  (* Kernel for arithmetic (signed) shift, according to the word invariant. *)
+  let shrs_kernel ty =
+    lsb_adjust ty ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+    sanitize_word_result ty
+
+  (* Kernel for testing a bit position, according to the word invariant. *)
+  let btst_kernel env ty =
+    let (set_b, get_b) = new_local env "b"
+    in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
+       compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
+       G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+       G.i (Binary (Wasm.Values.I32 I32Op.And))
+
 end (* UnboxedSmallWord *)
 
 (* Primitive functions *)
@@ -3822,32 +3836,13 @@ and compile_exp (env : E.t) exp =
            in match p with
              | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
              | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
-             | "shrs8" -> compile_kernel_as SR.Vanilla UnboxedSmallWord.(lsb_adjust Type.Word8 ^^
-                                                        G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                        sanitize_word_result Type.Word8)
-             | "shrs16" -> compile_kernel_as SR.Vanilla UnboxedSmallWord.(lsb_adjust Type.Word16 ^^
-                                                         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-                                                         sanitize_word_result Type.Word16)
+             | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word8)
+             | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word16)
              | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
              | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
-             | "btst8" -> compile_kernel_as SR.Vanilla UnboxedSmallWord.(
-                          let ty = Type.Word8 in
-                          let (set_b, get_b) = new_local env "b"
-                          in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
-                             compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
-                             G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                             G.i (Binary (Wasm.Values.I32 I32Op.And)))
-             | "btst16" -> compile_kernel_as SR.Vanilla UnboxedSmallWord.(
-                               let ty = Type.Word16 in
-                               let (set_b, get_b) = new_local env "b"
-                               in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
-                                  compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
-                                  G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                                  G.i (Binary (Wasm.Values.I32 I32Op.And)))
-             | "btst" -> compile_kernel_as SR.UnboxedWord32 (
-                             let (set_b, get_b) = new_local env "b"
-                             in set_b ^^ compile_unboxed_one ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                                G.i (Binary (Wasm.Values.I32 I32Op.And)))
+             | "btst8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
+             | "btst16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
+             | "btst" -> compile_kernel_as SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
              | "btst64" -> compile_kernel_as SR.UnboxedInt64 (
                                let (set_b, get_b) = new_local64 env "b"
                                in set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
