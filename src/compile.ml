@@ -1364,6 +1364,20 @@ module UnboxedSmallWord = struct
     | ty -> compile_unboxed_const (padding_of_type ty) ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
+  (* Kernel for counting leading zeros, according to the word invariant. *)
+  let clz_kernel ty =
+    compile_word_padding ty ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+    msb_adjust ty
+    
+  (* Kernel for counting trailing zeros, according to the word invariant. *)
+  let ctz_kernel ty =
+    compile_word_padding ty ^^
+    compile_unboxed_const (shift_of_type ty) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+    msb_adjust ty
+
   (* Kernel for arithmetic (signed) shift, according to the word invariant. *)
   let shrs_kernel ty =
     lsb_adjust ty ^^
@@ -3782,42 +3796,14 @@ and compile_exp (env : E.t) exp =
          SR.UnboxedInt64,
          compile_exp_as env SR.UnboxedInt64 e ^^
          G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
-       | "clz" ->
-         SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         G.i (Unary (Wasm.Values.I32 I32Op.Clz))
-       | "clz8"
-       | "clz16" ->
-         SR.Vanilla,
-         let ty = match p with | "clz8" -> Type.Word8 | _ -> Type.Word16
-         in UnboxedSmallWord.(
-            compile_exp_vanilla env e ^^
-            compile_word_padding ty ^^
-            G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-            msb_adjust ty)
-       | "clz64" ->
-         SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedInt64 e ^^
-         G.i (Unary (Wasm.Values.I64 I64Op.Clz))
-       | "ctz" ->
-         SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
-       | "ctz8"
-       | "ctz16" ->
-         SR.Vanilla,
-         let ty = match p with | "ctz8" -> Type.Word8 | _ -> Type.Word16
-         in UnboxedSmallWord.(
-            compile_exp_vanilla env e ^^
-            compile_word_padding ty ^^
-            compile_unboxed_const (shift_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
-            G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-            msb_adjust ty)
-       | "ctz64" ->
-         SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedInt64 e ^^
-         G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
+       | "clz" -> SR.UnboxedWord32, compile_exp_as env SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+       | "clz8" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.clz_kernel Type.Word8
+       | "clz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.clz_kernel Type.Word16
+       | "clz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
+       | "ctz" -> SR.UnboxedWord32, compile_exp_as env SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+       | "ctz8" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word8
+       | "ctz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
+       | "ctz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
        | "printInt" ->
          SR.unit,
