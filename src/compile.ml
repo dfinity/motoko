@@ -2450,7 +2450,11 @@ module Dfinity = struct
     if E.mode env = DfinityMode
     then
       let (set_n, get_n) = new_local64 env "n" in
-      set_n ^^ get_n ^^ compile_const_64 1000000000L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+      let (set_tenEnine, get_tenEnine) = new_local64 env "tenEnine"
+      in
+      compile_const_64 1000000000L ^^
+      set_tenEnine ^^
+      set_n ^^ get_n ^^ get_tenEnine ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (ValBlockType None)
       begin
           get_n ^^
@@ -2462,13 +2466,16 @@ module Dfinity = struct
         get_n ^^ compile_const_64 1000000000000000000L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
         G.if_ (ValBlockType None)
         begin
-          (*get_n ^^ compile_const_64 1000000000L ^^ G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
-          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-          G.i (Call (nr (test_show_i32_i env))) ^^*)
-          get_n ^^ compile_const_64 1000000000L ^^ G.i (Binary (Wasm.Values.I64 I64Op.RemU)) ^^
+          get_n ^^ get_tenEnine ^^ G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
           G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
           G.i (Call (nr (test_show_i32_i env))) ^^
-            (*Text.concat env ^^*)
+          G.i (Call (nr (test_print_i env))) ^^
+          get_n ^^ get_tenEnine ^^ G.i (Binary (Wasm.Values.I64 I64Op.RemU)) ^^
+          get_tenEnine ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          G.i (Call (nr (test_show_i32_i env))) ^^
+          (*Text.lit env "hey" ^^
+          Text.concat env ^^*)
           G.i (Call (nr (test_print_i env)))
         end
         (G.i Unreachable)
