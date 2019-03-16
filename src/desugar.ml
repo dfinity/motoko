@@ -56,7 +56,8 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
-    I.FuncE (name, cc, typ_binds tbs, param p, ty.note, exp e)
+    let args, wrap = to_args cc p in
+    I.FuncE (name, cc, typ_binds tbs, args, ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -156,12 +157,6 @@ and decs ds = extra_typDs ds @ List.map dec ds
 
 and dec d = { (phrase' dec' d) with note = () }
 
-and param p =
-  pat (match p.it, p.note with
-       | S.ParP p1, _ -> p1
-       | S.TupP [p1], Type.Tup [n] -> { p with it = p1.it; note = n }
-       | _ ->  p)
-
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
@@ -195,8 +190,9 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
+    let args, wrap = to_args cc p in
     let fn = {
-      it = I.FuncE (id.it, cc, typ_binds tbs, param p, obj_typ,
+      it = I.FuncE (id.it, cc, typ_binds tbs, args, obj_typ, wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
@@ -226,6 +222,62 @@ and pat' = function
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
 
+and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
+  match p.it with
+  | S.VarP i ->
+    { i with note = p.note },
+    (fun e -> e)
+  | S.WildP ->
+    let v = fresh_var p.note in
+    arg_of_exp v,
+    (fun e -> e)
+  |  _ ->
+    let v = fresh_var p.note in
+    arg_of_exp v,
+    (fun e -> blockE [letP (pat p) v] e)
+
+
+and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
+  let p = match p0.it, p0.note with
+    | S.ParP p1, _ -> p1
+    | S.TupP [p1], Type.Tup [n] -> { p0 with it = p1.it; note = n }
+    | _ -> p0 in
+
+  let n = cc.Value.n_args in
+  let tys = if n = 1 then [p.note] else T.as_seq p.note in
+
+  let args, wrap =
+    match n, p.it with
+    | _, S.WildP ->
+      let vs = List.map fresh_var tys in
+      List.map arg_of_exp vs,
+      (fun e -> e)
+    | 1, _ ->
+      let a, wrap = to_arg p in
+      [a], wrap
+    | 0, S.TupP [] ->
+      [] , (fun e -> e)
+    | _, S.TupP ps ->
+      assert (List.length ps = n);
+      List.fold_right (fun p (args, wrap) ->
+        let (a, wrap1) = to_arg p in
+        (a::args, fun e -> wrap1 (wrap e))
+      ) ps ([], (fun e -> e))
+    | _, _ ->
+      let vs = List.map fresh_var tys in
+      List.map arg_of_exp vs,
+      (fun e -> blockE [letP (pat p) (tupE vs)] e)
+  in
+
+  let wrap_under_async e =
+    if cc.Value.sort = T.Sharable && cc.Value.control = T.Promises
+    then match e.it with
+      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | _ -> assert false
+    else wrap e in
+
+  args, wrap_under_async
+
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
     | [] -> ([], tupE [])
@@ -233,6 +285,7 @@ and prog (p : Syntax.prog) : Ir.prog =
   end
   , { I.has_await = true
     ; I.has_async_typ = true
+    ; I.serialized = false
     }
 
 (* validation *)

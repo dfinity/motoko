@@ -6,7 +6,6 @@ non-closed actor: (ActorE
     (FuncE
       dec
       (shared  0 -> 0)
-      (TupP)
       ()
       (BlockE
         (LetD WildP (CallE ( 1 -> 0) (VarE show) (VarE c)))
@@ -19,25 +18,32 @@ non-closed actor: (ActorE
     (FuncE
       read
       (shared  1 -> 0)
-      (VarP $2)
+      (params $68)
       ()
       (BlockE
-        (LetD (TupP) (TupE))
+        (LetD
+          (TupP (VarP $66))
+          (TupE (CallE ( 1 -> 1) (PrimE @deserialize) (VarE $68)))
+        )
         (CallE
           ( 1 -> 0)
           (FuncE
             $lambda
             ( 1 -> 0)
-            (VarP $1)
+            (params $65)
             ()
-            (CallE ( 1 -> 0) (VarE $1) (VarE c))
+            (CallE ( 1 -> 0) (VarE $65) (VarE c))
           )
           (FuncE
             $lambda
             ( 1 -> 0)
-            (VarP $3)
+            (params $67)
             ()
-            (CallE (shared  1 -> 0) (VarE $2) (VarE $3))
+            (CallE
+              (shared  1 -> 0)
+              (VarE $66)
+              (CallE ( 1 -> 1) (PrimE @serialize) (VarE $67))
+            )
           )
         )
       )
@@ -45,5 +51,5 @@ non-closed actor: (ActorE
   )
   (read read)
   (dec dec)
-  actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
+  actor {dec : shared () -> (); read : shared (serialized shared (serialized Int) -> ()) -> ()}
 )

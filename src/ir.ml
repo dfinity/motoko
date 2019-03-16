@@ -23,6 +23,9 @@ and pat' =
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
 
+(* Like id, but with a type attached *)
+type arg = (string, Type.typ) Source.annotated_phrase
+
 (* Expressions *)
 
 type exp = exp' phrase
@@ -56,7 +59,7 @@ and exp' =
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * Value.call_conv * typ_bind list * pat * Type.typ * exp
+      string * Value.call_conv * typ_bind list * arg list * Type.typ * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of  Type.obj_sort * field list * Type.typ  (* make an object *)
 
@@ -92,6 +95,7 @@ should hold.
 type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
+  serialized : bool; (* Shared function arguments are serialized *)
 }
 
 

@@ -132,6 +132,9 @@ let await_lowering =
 let async_lowering =
   transform_ir "Async Lowering" Async.transform
 
+let serialization =
+  transform_ir "Synthesizing serialization code" Serialization.transform
+
 let tailcall_optimization =
   transform_ir "Tailcall optimization" (fun _ -> Tailcall.transform)
 
@@ -168,6 +171,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
         Check_ir.check_prog senv "desugaring" prog_ir;
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
+        let prog_ir = serialization (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         let prog_ir = tailcall_optimization true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
@@ -294,6 +298,7 @@ let compile_with check mode name : compile_result =
     Check_ir.check_prog initial_stat_env "desugaring" prog;
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
+    let prog = serialization true initial_stat_env prog name in
     let prog = tailcall_optimization true initial_stat_env prog name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude [prog] in
