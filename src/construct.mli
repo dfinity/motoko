@@ -1,4 +1,4 @@
-open Ir   
+open Ir
 open Type
 
 (* A miscellany of helpers to construct typed terms from typed terms *)
@@ -27,7 +27,9 @@ val fresh_id : unit -> id
 val fresh_var : typ -> var
 
 val idE : id -> typ -> exp
-val id_of_exp : exp -> id
+val id_of_exp : var -> id
+val arg_of_exp : var -> arg
+val exp_of_arg : arg -> var
 
 (* Patterns *)
 

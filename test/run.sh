@@ -101,16 +101,6 @@ do
       normalize $out/$base.run
       diff_files="$diff_files $base.run"
 
-      # Interpret with lowering
-      $ECHO -n " [run-low]"
-      $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
-      normalize $out/$base.run-low
-      diff_files="$diff_files $base.run-low"
-
-      # Diff interpretations without/with lowering
-      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-      diff_files="$diff_files $base.diff-low"
-
       # Interpret IR
       $ECHO -n " [run-ir]"
       $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
@@ -120,6 +110,17 @@ do
       # Diff interpretations without/with lowering
       diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
       diff_files="$diff_files $base.diff-ir"
+
+      # Interpret IR with lowering
+      $ECHO -n " [run-low]"
+      $ASC $ASC_FLAGS -r -iR -a -A $base.as > $out/$base.run-low 2>&1
+      normalize $out/$base.run-low
+      diff_files="$diff_files $base.run-low"
+
+      # Diff interpretations without/with lowering
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+      diff_files="$diff_files $base.diff-low"
+
     fi
 
     # Compile

@@ -117,16 +117,6 @@ module Transform() = struct
 
   let extendTup ts t2 = ts @ [t2]
 
-  let extendTupP p1 p2 =
-    match p1.it with
-    | TupP ps ->
-      begin
-        match ps with
-        | [] -> p2, fun e -> blockE [letP p1 (tupE [])] e
-        | ps -> tupP (ps@[p2]), fun e -> e
-      end
-    | _ -> tupP [p1;p2], fun e -> e
-
   (* Given sequence type ts, bind e of type (seq ts) to a
    sequence of expressions supplied to decs d_of_es,
    preserving effects of e when the sequence type is empty.
@@ -176,6 +166,7 @@ module Transform() = struct
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
+    | Serialized t -> Serialized (t_typ t)
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
@@ -320,25 +311,24 @@ module Transform() = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, cc, typbinds, pat, typT, exp) ->
+    | FuncE (x, cc, typbinds, args, typT, exp) ->
       let s = cc.Value.sort in
       begin
         match s with
         | T.Local  ->
-          FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+          FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
         | T.Sharable ->
           begin
             match typ exp with
             | T.Tup [] ->
-              FuncE (x, cc, t_typ_binds typbinds, t_pat pat, t_typ typT, t_exp exp)
+              FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
             | T.Async res_typ ->
               let cc' = Value.message_cc (cc.Value.n_args + 1) in
               let res_typ = t_typ res_typ in
-              let pat = t_pat pat in
               let reply_typ = replyT nary res_typ in
               let typ' = T.Tup []  in
               let k = fresh_var reply_typ in
-              let pat',d = extendTupP pat (varP k) in
+              let args' = t_args args @ [ arg_of_exp k ] in
               let typbinds' = t_typ_binds typbinds in
               let y = fresh_var res_typ in
               let exp' =
@@ -346,12 +336,12 @@ module Transform() = struct
                 | CallE(_, async,_,cps) ->
                   begin
                     match async.it with
-                    | PrimE("@async") -> d ((t_exp cps) -*- (y --> (k -*- y)))
+                    | PrimE("@async") -> ((t_exp cps) -*- (y --> (k -*- y)))
                     | _ -> assert false
                   end
                 | _ -> assert false
               in
-              FuncE (x, cc', typbinds', pat', typ', exp')
+              FuncE (x, cc', typbinds', args', typ', exp')
             | _ -> assert false
           end
       end
@@ -374,6 +364,10 @@ module Transform() = struct
 
   and t_fields fs =
     List.map (fun f -> { f with note = t_typ f.note }) fs
+
+  and t_args as_ = List.map t_arg as_
+
+  and t_arg a = { a with note = t_typ a.note }
 
   and t_pat pat =
     { pat with

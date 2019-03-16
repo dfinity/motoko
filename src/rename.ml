@@ -21,6 +21,10 @@ let id_bind rho i =
   let i' = fresh_id i in
   ({i with it = i'}, Renaming.add i.it i' rho)
 
+let arg_bind rho i =
+  let i' = fresh_id i in
+  ({i with it = i'}, Renaming.add i.it i' rho)
+
 let rec exp rho e  =
     {e with it = exp' rho e.it}
 
@@ -60,7 +64,7 @@ and exp' rho e  = match e with
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
   | FuncE (x, s, tp, p, t, e) ->
-     let p', rho' = pat rho p in
+     let p', rho' = args rho p in
      let e' = exp rho' e in
      FuncE (x, s, tp, p', t, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
@@ -69,6 +73,14 @@ and exps rho es  = List.map (exp rho) es
 
 and fields rho fs =
   List.map (fun f -> { f with it = { f.it with var = id rho f.it.var } }) fs
+
+and args rho as_ =
+  match as_ with
+  | [] -> ([],rho)
+  | a::as_ ->
+     let (a', rho') = arg_bind rho a in
+     let (as_', rho'') = args rho' as_ in
+     (a'::as_', rho'')
 
 and pat rho p =
     let p',rho = pat' rho p.it in

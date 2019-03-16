@@ -33,6 +33,13 @@ let id_of_exp x =
   | VarE x -> x
   | _ -> failwith "Impossible: id_of_exp"
 
+let arg_of_exp x =
+  match x.it with
+  | VarE i -> { i with note = x.note.note_typ }
+  | _ -> failwith "Impossible: arg_of_exp"
+
+let exp_of_arg a = idE {a with note = () } a.note
+
 (* Fresh id generation *)
 
 let id_stamp = ref 0
@@ -99,18 +106,24 @@ let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> eff e
 
+let is_useful_dec dec = match dec.it with
+  | LetD ({it = WildP;_}, {it = TupE [];_}) -> false
+  | LetD ({it = TupP [];_}, {it = TupE [];_}) -> false
+  | _ -> true
+
 let blockE decs exp =
-  match decs with
+  let decs' = List.filter is_useful_dec decs in
+  match decs' with
   | [] -> exp
   | _ ->
-  let es = List.map dec_eff decs in
-  let typ = typ exp in
-  let e =  List.fold_left max_eff (eff exp) es in
-  { it = BlockE (decs, exp);
-    at = no_region;
-    note = {S.note_typ = typ;
-            S.note_eff = e }
-  }
+    let es = List.map dec_eff decs' in
+    let typ = typ exp in
+    let e =  List.fold_left max_eff (eff exp) es in
+    { it = BlockE (decs', exp);
+      at = no_region;
+      note = {S.note_typ = typ;
+              S.note_eff = e }
+    }
 
 let textE s =
   { it = LitE (S.TextLit s);
@@ -282,18 +295,27 @@ let ignoreE exp =
 
 (* Mono-morphic function expression *)
 let funcE name t x exp =
-  let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+  let arg_tys, retty = match t with
+    | T.Func(_, _, _, ts1, ts2) -> ts1, T.seq ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
+  let args, exp' =
+    if cc.Value.n_args = 1;
+    then
+      [ arg_of_exp x ], exp
+    else
+      let vs = List.map fresh_var arg_tys in
+      List.map arg_of_exp vs,
+      blockE [letD x (tupE vs)] exp
+  in
   ({it = FuncE
      ( name,
        cc,
        [],
-       varP x,
+       args,
        (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
        retty,
-       exp
+       exp'
      );
     at = no_region;
     note = { S.note_eff = T.Triv; S.note_typ = t }
@@ -304,11 +326,12 @@ let nary_funcE name t xs exp =
     | T.Func(_, _, _, _, ts2) -> T.seq ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
+  assert (cc.Value.n_args = List.length xs);
   ({it = FuncE
       ( name,
         cc,
         [],
-        seqP (List.map varP xs),
+        List.map arg_of_exp xs,
         retty,
         exp
       );
