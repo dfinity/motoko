@@ -202,7 +202,7 @@ and open the path printed on the last line of that command.
 
 * Unary and binary arithmetic operators
   - `- x`, `not b`
-  - `a + b`
+  - `a + b`, `c or d`
 
 * Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
