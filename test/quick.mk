@@ -10,6 +10,5 @@ _out:
 	@ mkdir -p $@
 
 # run single test, e.g. make _out/AST-56.done
-.SECONDEXPANSION:
-_out/%.done: %.as $$(wildcard $(ASC)) ../run.sh  | _out
+_out/%.done: %.as $(wildcard ../../src/asc) ../run.sh  | _out
 	@ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
