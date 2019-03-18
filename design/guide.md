@@ -377,7 +377,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   switch <exp> { (case <pat> <exp>)+ }           switch
   while <exp> <exp>                              while loop
   loop <exp> (while <exp>)?                      loop
-  for <id>? in <exp> <exp>                       iteration
+  for ( <pat> in <exp1> ) <exp2>                 iteration
   label <id> (: <typ>)? <exp>                    label
   break <id> <exp>?                              break
   continue <id>                                  continue
@@ -394,7 +394,6 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 ```
 
 ### Identifiers
-
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
@@ -587,8 +586,125 @@ The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
 * `<exp3>` is absent and `() <: T`, or
 * `<exp3>` is present and has type `T`.
 
+The expression evaluates `<exp1>` to a result `r1`. 
+If `r1` is `trap`, the result is  `trap`. 
+Otherwise, 'r1' is the value `true` or `false`. 
+If `r1` is `true`, the result is the result of evaluating `<exp2>`. 
+Otherwise, `r1` is `false` and the result is `()` (if <exp3> is absent) or the result of `<exp3>` (if <exp3> is present).
+
+### Switch
+
+The switch exression 
+  `switch <exp0> { (case <pat> <exp>)+ }`  
+has type `T` provided:
+* `exp0` has type `U`; and
+* for each case `case <pat> <exp>` in the sequence `(case <pat> <exp>)+` :
+  * pattern `<pat>` has type `U`; and, 
+  * expression `<exp>` has type `T` 
+    (in an environment extended with `<pat>`'s bindings).
+
+The expression evaluates `<exp0>` to a result `r1`. 
+If `r1` is `trap`, the result is `trap`. 
+Otherwise, 'r1' is some value `v`. 
+Let 'case <pat> <exp>' be the first case in `(case <pat> <exp>)+` such that `<pat>` matches `v` with for some bindings of identifiers to values.
+Then result of the `switch` is the result of evaluating `<exp>` unders those bindings.
+If no case has a pattern that matches `v`, the result of the switch is `trap`.
+
+### While
+
+The expression `while <exp1> <exp2>` has type `()` provided:
+* `<exp1>` has type `Bool`, and
+* `<exp2>` has type `()`.
+
+The expression evaluates `<exp1>` to a result `r1`. 
+If `r1` is `trap`, the result is `trap`. 
+Otherwise, `r1` is the value `true` or `false`. 
+If `r1` is `true`, the result is the result of re-evaluating `while <exp1> <exp2>`. 
+Otherwise, the result is `()`.
+
+### Loop
+
+The expression `loop <exp>` has type `None` provided `<exp>` has type `()`.
+
+The expression evaluates `<exp>` to a result `r1`. 
+If `r1` is `trap`, the result is `trap`. 
+Otherwise, the result is the result of (re-)evaluating `loop <exp1>`. 
+
+### Loop While
+
+The expression `loop <exp1> while <exp2>` has type `()` provided:
+* `<exp1>` has type `()`, and
+* `<exp2>` has type `Bool`.
+
+The expression evaluates `<exp1>` to a result `r1`. 
+If `r1` is `trap`, the result is `trap`. 
+Otherwise, evaluation continues with `<exp2>`, producing result `r2`.
+If `r2` is `trap` the result is `trap`.
+Otherwise, if `r2` is `true`, the result is the result of re-evaluating `loop <exp1> while <exp2>`. 
+Otherwise, `r2` is false and the result is `()`.
+
+### For
+
+The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
+* `<exp1>` has type `(object|shared) { Next : () -> ?T; }`;
+* pattern `<pat>` has type `U`; and, 
+* expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
+
+The `for`-expression is syntactic sugar for
+
+```
+{ 
+  let x = exp1;
+  label l
+  loop {
+    switch (x.Next()) {
+       case (? pat) exp2;
+       case (null) break l;
+    };
+  };
+};
+```
+In particular, the `for` loops will trap if evaluation of exp1 traps; as soon as some value of `x.Next()` `traps` or a soon as the value of `x.Next()` does not match pattern <pat>.
+
+_TBR: do we want this semantics? We could, instead, skip values that don't match `<pat>`?_
+
+### Label
+
+The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
+* (: <typ>)? is absent and `T` is unit; or (: <typ>)? is present and `T == <typ>`;
+* <exp> has type `T` in the static environment extended with `label l : T`.
+
+The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating '<exp>'.
+
+
+### Break
+
+The expression `break <id>` is equivalent to `break <id> ()`.
+
+The expression `break <id> <exp>` has type `Any` provided:
+* The label <id> is declared with type `label l : T`.
+* `<exp>` has type `T`.
+
+The evaluation of `break <id> <exp>` evaluates exp to some result `r`. 
+If `r` is `trap`, the result is `trap`.
+If `r` is a value `v`, the evaluation abandons the current computation up to dynamically enclosing declaration `label <id> ...` using the value `v` as the result of that labelled expression.
+
+### Continue
+
+The expression `continue <id>` is equivalent to `break <id_continue>`, implicitly declared around looping constructs.
+
 TBC
 
+### Return
+
+`return`; is equivalent to `return ();`
+
+The expression `return <exp>` has type `None` provided:
+* `<exp>` has type `T` and
+  * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
+  * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
+
+The `return` expression exits the corresponding dynamic function invocation or completes the dynamic async expression with the result of `exp`.
 
 ## Patterns
 
