@@ -544,7 +544,10 @@ actor class Server() {
   /**
    `devViewGMV`
    -------------
-   Developer can see the GMV, the aggregate sum of how many sales have
+   
+   MVP:
+   
+   > Developer can see the GMV, the aggregate sum of how many sales have
 been processed 
 */
   
@@ -556,7 +559,10 @@ been processed
   /**
    `devViewQueries`
    ----------------
-   Developer can see how many aggregate queries have been made by all retailers
+
+   MVP:
+   
+   > Developer can see how many aggregate queries have been made by all retailers
 
    */
 
@@ -569,7 +575,10 @@ been processed
   /**
    `devViewReservations`
    ----------------------
-   Developer can see how many aggregate sales orders have been made by all retailers
+
+   MVP:
+
+   > Developer can see how many aggregate sales orders have been made by all retailers
 
    */
   
@@ -581,7 +590,10 @@ been processed
   /**
    `devViewReservationInfo`
    ----------------------
-   Developer can see how many aggregate sales orders have been made by all retailers
+
+   MVP:
+
+   > Developer can see how many aggregate sales orders have been made by all retailers
 
    */
   devViewReservationInfo(id:ReservationId) : async ?ReservationInfo {
@@ -595,6 +607,7 @@ been processed
    -------------------   
 
    MVP:
+
    > Developer can see how many producers in the system and how many goods each has
 
    See also [`producerInfo`](#producerinfo).
