@@ -70,7 +70,7 @@ actor class Server() {
     isFreezer : Bool,
   ) : async ?TruckTypeId {
     getModel()
-      .registrarAddTruckType(
+      .addTruckType(
         short_name, description, capacity, isFridge, isFreezer
       )
   };
@@ -83,7 +83,7 @@ actor class Server() {
 
   registrarRemTruckType(
     id: TruckTypeId
-  ) : async ?() { getModel().registrarRemTruckType(id) };
+  ) : async ?() { getModel().remTruckType(id) };
 
   /**
    `getTruckTypeInfo`
@@ -112,7 +112,7 @@ actor class Server() {
   registrarAddRegion(
     short_name:  Text,
     description: Text,
-  ) : async ?RegionId { getModel().registrarAddRegion(short_name, description) };
+  ) : async ?RegionId { getModel().addRegion(short_name, description) };
 
   /**
    `registrarRemRegion`
@@ -124,7 +124,7 @@ actor class Server() {
   registrarRemRegion(
     id: RegionId
   ) : async ?() {
-    getModel().registrarRemRegion(id)
+    getModel().remRegion(id)
   };
 
   /**
@@ -157,7 +157,7 @@ actor class Server() {
     description: Text,
     grade: Grade,
   ) : async ?ProduceId {
-    getModel().registrarAddProduce(short_name, description, grade)
+    getModel().addProduce(short_name, description, grade)
   };
 
   /**
@@ -170,7 +170,7 @@ actor class Server() {
   registrarRemProduce(
     id: ProduceId
   ) : async ?() {
-    getModel().registrarRemProduce(id)
+    getModel().remProduce(id)
   };
 
 
@@ -204,7 +204,7 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?ProducerId {
-    getModel().registrarAddProducer(short_name, description, region)
+    getModel().addProducer(short_name, description, region)
   };
 
   /**
@@ -217,7 +217,7 @@ actor class Server() {
   registrarRemProducer(
     id: ProducerId
   ) : async ?() {
-    getModel().registrarRemProducer(id)
+    getModel().remProducer(id)
   };
 
   /**
@@ -244,7 +244,7 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?RetailerId {
-    getModel().registrarAddRetailer(short_name, description, region)
+    getModel().addRetailer(short_name, description, region)
   };
 
   /**
@@ -257,7 +257,7 @@ actor class Server() {
   registrarRemRetailer(
     id: RetailerId
   ) : async ?() {
-    getModel().registrarRemRetailer(id)
+    getModel().remRetailer(id)
   };
 
   /**
@@ -281,7 +281,7 @@ actor class Server() {
     short_name:  Text,
     description: Text,
   ) : async ?TransporterId {
-    getModel().registrarAddTransporter(short_name, description)
+    getModel().addTransporter(short_name, description)
   };
 
   /**
@@ -293,7 +293,7 @@ actor class Server() {
   registrarRemTransporter(
     id: TransporterId
   ) : async ?() {
-    getModel().registrarRemTransporter(id)
+    getModel().remTransporter(id)
   };
 
   /**
@@ -514,6 +514,91 @@ actor class Server() {
     getModel().
       reservationInfo(id)
   };
+
+  /**
+   
+   PESS: Developer-based ingress messages:
+   ========================================================
+   
+   The following messages may originate from developers
+
+   */
+
+  /**
+   `devViewGMV`
+   -------------
+   Developer can see the GMV, the aggregate sum of how many sales have
+been processed 
+*/
+
+  /**
+   `devViewQueries`
+   ----------------
+   Developer can see how many aggregate queries have been made by all retailers
+
+   */
+
+
+  /**
+   `devViewReservations`
+   ----------------------
+   Developer can see how many aggregate sales orders have been made by all retailers
+
+   */
+
+  /**
+   `devViewReservationInfo`
+   ----------------------
+   Developer can see how many aggregate sales orders have been made by all retailers
+
+   */
+
+
+  /**
+   `devViewProducers`
+   -------------------   
+   Developer can see how many producers in the system and how many goods each has
+
+   */
+
+  /**
+   `devViewProducerInfo`
+   -------------------   
+   Developer can see how many producers in the system and how many goods each has
+
+   */
+
+
+  /**
+   `devViewTransporters`
+   -------------------   
+ 
+   Developer can see how many transporters in the system and how many routes each has
+   */
+
+  /**
+   `devViewTransporterInfo`
+   -------------------   
+ 
+   Developer can see how many transporters in the system and how many routes each has
+   */
+
+
+  /**
+   `devViewRetailer`
+   -------------------   
+
+   View retailers	Developer can see how many retailers in the system and how many queries and how many sales orders
+   */
+
+  /**
+   `devViewRetailerInfo`
+   -------------------   
+
+   View retailers	Developer can see how many retailers in the system and how many queries and how many sales orders
+   */
+
+
 
   ///////////////////////////////////////////////////////////////////////////
   // @Omit:

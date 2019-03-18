@@ -189,18 +189,17 @@ class Model() = this {
    details, are part of the formal PESS.
 
 
-   PESS: `Registrar`-based ingress messages
+   PESS: Add/remove messages
    ======================================
 
-   The registrar provides functions to add and to remove entities from
+   The model provides functions to add and to remove entities from
    the following (mostly-static) tables:
    
    - **Resource information:** truck types, produce (types) and region information.
    - **Participant information:** producers, retailers and transporters.
    
    For each of the six entities listed above, we have an add (`Add`)
-   and remove (`Rem`) function below, prefixed by `registrar`-, and
-   suffixed by one of the entities in the following list:
+   and remove (`Rem`) function below suffixed by one of the entities in the following list:
    
    - `TruckType`,
    - `Region`, 
@@ -211,18 +210,17 @@ class Model() = this {
    */
 
    /**
-   `TruckType`
+   `TruckType`-oriented operations
    =============
-   Messages to `Add` and `Rem` truck types.
    */
 
 
    /**
-   `reigstrarAddTruckType`
+    addTruckType`
    -------------------
    */
 
-   registrarAddTruckType(
+   addTruckType(
     short_name:  Text,
     description: Text,
     capacity : Weight,
@@ -256,13 +254,13 @@ class Model() = this {
 
   /**
    
-   `registrarRemTruckTypes`
+   `remTruckTypes`
    ---------------------
 
    returns `?()` on success, and `null` on failure.
   */
 
-  registrarRemTruckType(
+  remTruckType(
     id: TruckTypeId
   ) : ?()
   {
@@ -303,19 +301,19 @@ class Model() = this {
   };
 
   /**
-   `Region`
+   `Region`-oriented operations
    ==============
    */
 
   /**
-   `registrarAddRegion`
+   `addRegion`
    ---------------------
    
    adds the region to the system; fails if the given information is
    invalid in any way.
   */
 
-  registrarAddRegion(
+  addRegion(
     short_name:  Text,
     description: Text,
   ) : ?RegionId
@@ -337,13 +335,13 @@ class Model() = this {
 
 
   /**
-   `registrarRemRegion`
+   `remRegion`
    ---------------------
    
    returns `?()` on success, and `null` on failure.
   */
 
-  registrarRemRegion(
+  remRegion(
     id: RegionId
   ) : ?()
   {
@@ -382,18 +380,18 @@ class Model() = this {
 
 
    /**
-   `Produce`
+   `Produce`-oriented operations
    ================
    */
 
   /**
-   `registrarAddProduce`
+   `addProduce`
    ---------------------
   
    adds the produce to the system; fails if the given information is invalid in any way.
   */
 
-  registrarAddProduce(
+  addProduce(
     short_name:  Text,
     description: Text,
     grade: Grade,
@@ -416,12 +414,12 @@ class Model() = this {
   };
 
   /**
-   `registrarRemProduce`
+   `remProduce`
    ---------------------  
    returns `?()` on success, and `null` on failure.
   */
 
-  registrarRemProduce(
+  remProduce(
     id: ProduceId
   ) : ?()
   {
@@ -476,12 +474,12 @@ class Model() = this {
    */
 
   /**
-   `registrarAddProducer`
+   `addProducer`
    ---------------------   
    adds the producer to the system; fails if the given region is non-existent.
   */
 
-  registrarAddProducer(
+  addProducer(
     short_name:  Text,
     description: Text,
     rid: RegionId,
@@ -512,13 +510,13 @@ class Model() = this {
   };
 
   /**
-   `registrarRemProducer`
+   `remProducer`
    ---------------------
   
    returns `?()` on success, and `null` on failure.
   */
 
-  registrarRemProducer(
+  remProducer(
     id: ProducerId
   ) : ?()
   {
@@ -551,18 +549,18 @@ class Model() = this {
   };
 
    /**
-   `Retailer`
+   `Retailer`-oriented operations
    ====================
    */
 
   /**
-   `registrarAddRetailer`
+   `addRetailer`
    ---------------------
    
    adds the producer to the system; fails if the given region is non-existent.
   */
 
-  registrarAddRetailer(
+  addRetailer(
     short_name:  Text,
     description: Text,
     rid: RegionId,
@@ -593,13 +591,13 @@ class Model() = this {
   };
 
   /**
-   `registrarRemRetailer`
+   `remRetailer`
    ---------------------
   
    returns `?()` on success, and `null` on failure.
   */
 
-  registrarRemRetailer(
+  remRetailer(
     id: RetailerId
   ) : ?()
   {
@@ -622,16 +620,16 @@ class Model() = this {
    */
 
    /**
-   `Transporter`
+   `Transporter`-oriented operations
    =================
    */
 
   /**
-   `registrarAddTransporter`
+   `addTransporter`
    ---------------------
   
   */
-  registrarAddTransporter(
+  addTransporter(
     short_name:  Text,
     description: Text,
   ) : ?TransporterId
@@ -655,12 +653,12 @@ class Model() = this {
 
 
   /**
-   `registrarRemTransporter`
+   `remTransporter`
    ----------------------------
    
   */
 
-  registrarRemTransporter(
+  remTransporter(
     id: TransporterId
   ) : ?() {
     Map.removeThen<TransporterId, Transporter, ?()>(
@@ -683,7 +681,7 @@ class Model() = this {
 
   /**
 
-   PESS: Producer-based ingress messages:
+   Producer-oriented operations
    ==========================================
 
    `producerAddInventory`
@@ -797,14 +795,13 @@ class Model() = this {
   };
 
   /**
-   PESS: `Transporter`-based ingress messages:
+   `Transporter`-oriented operations:
    ===========================================
   */
 
   /**
    `transporterAddRoute`
    ---------------------------
-   - a
   */
   transporterAddRoute(
     trans:  TransporterId,
@@ -857,7 +854,7 @@ class Model() = this {
 
 
   /**
-   PESS: `Retailer`-based ingress messages:
+   `Retailer`-oriented operations:
    ======================================
 
    retailerQueryAll
@@ -939,16 +936,6 @@ class Model() = this {
     // xxx
     null
   };
-
-  /**
-   
-   PESS: general-use ingress messages:
-   ========================================================
-   
-   The following messages may originate from any entity; they access
-   published information in the tables maintained above.  
-
-   */
 
    /**
    reservationInfo

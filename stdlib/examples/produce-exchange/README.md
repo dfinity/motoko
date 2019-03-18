@@ -228,7 +228,7 @@ PRODUCER
 -------------
 > **Add/update inventory**	Producer updates the goods, prices in the inventory available on the exchange	
 	
-See [**produerAddInventory**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#produceraddinventory)
+See [**`produerAddInventory`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#produceraddinventory)
     
 > **View inventory**	Producer can see their inventory	
 	
@@ -238,7 +238,7 @@ See [**`producerAllInventoryInfo`**](https://github.com/dfinity-lab/actorscript/
 
 Note: We call them "reservations".
 
-See [**producerReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreservations)
+See [**`producerReservations`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreservations)
 	
 > **View "market price"**	Producer can see the last sales price for any good within any geographic area	
 	
@@ -248,41 +248,41 @@ TRANSPORTER
 ---------------------
 > **Add/update routes**	Transporter updates the routes available on the exchange. Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
 
-See [**transporterAddRoute**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporteraddroute)
+See [**`transporterAddRoute`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporteraddroute)
 	
 > **View routes**	Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
 
-See [**transporterAllRouteInfo**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallrouteinfo)
+See [**`transporterAllRouteInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallrouteinfo)
 
 > **View past sales orders**	Transporter can see routes which were utilized in the past	
 	
 Note: We call them "reservations".
 
-See [**transporterReservationInfo**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservationinfo)
+See [**`transporterReservationInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservationinfo)
 
 	
 RETAILER
 -------------------
 > **Query inventory**	Retailer can query a good with a delivery date. The Exchange will return a list of goods (and prices) that can be delivered to that retailer's geography within that date. 	
 
-See [**`retailerQueryDates`**]https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerquerydates)
+See [**`retailerQueryDates`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerquerydates)
 and
-[**retailerQueryAll**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
+[**`retailerQueryAll`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
 
 	
 > **Place a sales order**	Retailer can place order for one or more of options presented by any query.	
 
 Note: We call them "reservations".
 
-See [**retailerReserve**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreserve)
+See [**`retailerReserve`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreserve)
 and
-[**retailerReserveCheapest**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservecheapest)
+[**`retailerReserveCheapest`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservecheapest)
 	
 > **View past sales orders**	Retailer can see sales orders they placed in the past	
 
 Note: We call them "reservations".
 
-See [**retailerReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservations)
+See [**`retailerReservations`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservations)
 
 	
 	

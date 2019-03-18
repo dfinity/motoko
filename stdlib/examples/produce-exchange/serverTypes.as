@@ -95,6 +95,14 @@ type ProducerInfo = shared {
   short_name : Text;
   description : Text;
   region : RegionId;
+  inventory : [InventoryId];
+  reservations : [ReservationId]
+};
+
+type ReservedInventoryInfo = shared {
+  id : ReservationId;
+  retailer : RetailerId;
+  item : InventoryId;
 };
 
 type InventoryInfo = shared {
@@ -137,6 +145,14 @@ type TransporterInfo = shared {
   // points" of any single route.
   short_name : Text;
   description : Text;
+  routes : [RouteId];
+  reservations : [ReservationId]
+};
+
+type ReservedRouteInfo = shared {
+  id : ReservationId;
+  retailer : RetailerId;
+  route : RouteId;
 };
 
 type RouteInfo = shared {
