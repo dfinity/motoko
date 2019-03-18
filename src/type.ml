@@ -306,9 +306,9 @@ let as_pair_sub t = match promote t with
   | Tup [t1; t2] -> t1, t2
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
-let as_func_sub n t = match promote t with
-  | Func (_, _, tbs, ts1, ts2) -> tbs, seq ts1,  seq ts2
-  | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
+let as_func_sub default_s default_arity t = match promote t with
+  | Func (s, _, tbs, ts1, ts2) -> s, tbs, seq ts1,  seq ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -386,6 +386,44 @@ and avoid_field cons {lab; typ} =
 let avoid cons t =
   if cons = ConSet.empty then t else
   avoid' cons t
+
+(* Checking for concrete types *)
+
+module TS = Set.Make (struct type t = typ let compare = compare end)
+
+(*
+This check is a stop-gap measure until we have an IDL strategy that
+allows polymorphic types, see #250. It is not what we desire for ActorScript.
+*)
+
+let is_concrete t =
+  let seen = ref TS.empty in (* break the cycles *)
+  let rec go t =
+    TS.mem t !seen ||
+    begin
+      seen := TS.add t !seen;
+      match t with
+      | Var _ -> assert false
+      | (Prim _ | Any | Non | Shared | Pre) -> true
+      | Con (c, ts) ->
+        begin match Con.kind c with
+        | Abs _ -> false
+        | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+        end
+      | Array t -> go t
+      | Tup ts -> List.for_all go ts
+      | Func (s, c, tbs, ts1, ts2) ->
+        let ts = open_binds tbs in
+        List.for_all go (List.map (open_ ts) ts1) &&
+        List.for_all go (List.map (open_ ts) ts2)
+      | Opt t -> go t
+      | Async t -> go t
+      | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+      | Mut t -> go t
+      | Serialized t -> go t
+    end
+  in go t
+
 
 
 (* Equivalence & Subtyping *)
