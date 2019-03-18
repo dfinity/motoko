@@ -107,6 +107,23 @@ type InventoryInfo = shared {
   comments : Text;
 };
 
+// for now, this is the same as a ReservationInfo
+type ProduceMarketInfo = shared {
+  produce:     ProduceId;
+  producer:    ProducerId;
+  quant:       Quantity;
+  ppu:         PricePerUnit;
+  transporter: TransporterId;
+  truck_type:  TruckTypeId;
+  weight:      Weight;
+  region_begin:RegionId;
+  region_end:  RegionId;
+  date_begin:  Date;
+  date_end:    Date;
+  prod_cost:   PriceTotal;
+  trans_cost:  PriceTotal;  
+};
+
 type RetailerInfo = shared {
   id : RetailerId;
   short_name : Text;

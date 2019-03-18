@@ -232,7 +232,7 @@ See [**produerAddInventory**](https://github.com/dfinity-lab/actorscript/blob/st
     
 > **View inventory**	Producer can see their inventory	
 	
-To do
+See [**`producerAllInventoryInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerallinventoryinfo)
     
 > **View past sales orders**	Producer can see sales orders they fulfilled in the past	
 
@@ -242,8 +242,8 @@ See [**producerReservations**](https://github.com/dfinity-lab/actorscript/blob/s
 	
 > **View "market price"**	Producer can see the last sales price for any good within any geographic area	
 	
-To do
-	
+See [**`produceMarketInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producermarketinfo)
+
 TRANSPORTER
 ---------------------
 > **Add/update routes**	Transporter updates the routes available on the exchange. Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
@@ -252,22 +252,23 @@ See [**transporterAddRoute**](https://github.com/dfinity-lab/actorscript/blob/st
 	
 > **View routes**	Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
 
-To do
+See [**transporterAllRouteInfo**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallrouteinfo)
 
 > **View past sales orders**	Transporter can see routes which were utilized in the past	
 	
 Note: We call them "reservations".
 
-See [**transporterReservations**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservations)
+See [**transporterReservationInfo**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservationinfo)
 
 	
 RETAILER
 -------------------
 > **Query inventory**	Retailer can query a good with a delivery date. The Exchange will return a list of goods (and prices) that can be delivered to that retailer's geography within that date. 	
 
-See [**retailerQueryAll**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
+See [**`retailerQueryDates`**]https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerquerydates)
 and
-to do, to query for all available produce information.
+[**retailerQueryAll**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
+
 	
 > **Place a sales order**	Retailer can place order for one or more of options presented by any query.	
 

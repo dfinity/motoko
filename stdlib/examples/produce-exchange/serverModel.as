@@ -460,6 +460,16 @@ class Model() = this {
     }
   };
 
+  /**
+   `produceMarketInfo`
+   ---------------------------
+   The last sales price for produce within a given geographic area; null region id means "all areas."
+   */
+  produceMarketInfo(id:ProduceId, reg:?RegionId) : ?[ProduceMarketInfo] {
+    // xxx
+    null
+  };
+
    /**
    `Producer`
    -------------
@@ -530,6 +540,15 @@ class Model() = this {
    To do
    */
 
+
+  /**
+   // `producerAllInventoryInfo`
+   // ---------------------------
+   */
+  producerAllInventoryInfo(id:ProducerId) : ?[InventoryInfo] {
+    // xxx
+    null
+  };
 
    /**
    `Retailer`
@@ -810,13 +829,32 @@ class Model() = this {
   };
 
   /**
-   `transporterReservations`
+   // `transporterAllRouteInfo`
+   // ---------------------------
+   */
+  transporterAllRouteInfo(id:TransporterId) : ?[RouteInfo] {
+    // xxx
+    null
+  };
+
+  /**
+   `transporterAllReservationInfo`
+   ---------------------------
+  */
+  transporterAllReservationInfo(id:TransporterId) : ?[ReservationInfo] {
+    // xxx
+    null
+  };
+
+  /**
+   `transporterAReservations`
    ---------------------------
   */
   transporterReservations(id:TransporterId) : ?[ReservationId] {
     // xxx
     null
   };
+
 
   /**
    PESS: `Retailer`-based ingress messages:
@@ -829,6 +867,25 @@ class Model() = this {
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
+    // xxx
+    null
+  };
+
+  /**
+    `retailerQueryDates`
+    ---------------------------
+    
+    Retailer queries available produce by delivery date range; returns
+    a list of inventory items that can be delivered to that retailer's
+    geography within that date.
+   
+   */
+  retailerQueryDates(
+    id:RetailerId,
+    begin:Date,
+    end:Date
+  ) : ?[InventoryInfo]
+  {
     // xxx
     null
   };

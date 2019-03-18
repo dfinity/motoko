@@ -335,6 +335,15 @@ actor class Server() {
   };
 
   /**
+   // `producerAllInventoryInfo`
+   // ---------------------------
+   */
+  producerAllInventoryInfo(id:ProducerId) : async ?[InventoryInfo] {
+    getModel()
+      .producerAllInventoryInfo(id)
+  };
+  
+  /**
    // `producerReservations`
    // ---------------------------
    */
@@ -342,6 +351,18 @@ actor class Server() {
     getModel()
       .producerReservations(id)
   };
+
+
+  /**
+   `produceMarketInfo`
+   ---------------------------
+   The last sales price for produce within a given geographic area; null region id means "all areas."
+   */
+  produceMarketInfo(id:ProduceId, reg:?RegionId) : async ?[ProduceMarketInfo] {
+    getModel()
+      .produceMarketInfo(id, reg)
+  };
+
 
   /**
    // PESS: `Transporter`-based ingress messages:
@@ -374,12 +395,21 @@ actor class Server() {
   };
 
   /**
+   // `transporterAllRouteInfo`
+   // ---------------------------
+   */
+  transporterAllRouteInfo(id:TransporterId) : async ?[RouteInfo] {
+    getModel()
+      .transporterAllRouteInfo(id)
+  };
+
+  /**
    // `transporterReservations`
    // ---------------------------
    */
-  transporterReservations(id:TransporterId) : async ?[ReservationId] {
+  transporterAllReservationInfo(id:TransporterId) : async ?[ReservationInfo] {
     getModel()
-      .transporterReservations(id)
+      .transporterAllReservationInfo(id)
   };
 
   /**
@@ -395,6 +425,25 @@ actor class Server() {
   retailerQueryAll(id:RetailerId) : async ?QueryAllResults {
     getModel().
       retailerQueryAll(id)
+  };
+
+  /**
+    `retailerQueryDates`
+    ---------------------------
+    
+    Retailer queries available produce by delivery date range; returns
+    a list of inventory items that can be delivered to that retailer's
+    geography within that date.
+   
+   */
+  retailerQueryDates(
+    id:RetailerId,
+    begin:Date,
+    end:Date
+  ) : async ?[InventoryInfo]
+  {
+    getModel().
+      retailerQueryDates(id, begin, end)
   };
 
   /**
