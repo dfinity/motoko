@@ -1,11 +1,11 @@
 Produce Exchange Canister Component
 =====================================
 
-We give an example of ActorScript's role in DFINITY by implementing
-the **Produce Exchange Canister Component** in ActorScript.
+We give an example of ActorScript by implementing
+the **Produce Exchange Canister** in ActorScript.
 
 The **produce exchange** gives a realistic marketplace-like
-application, and servers as our canonical example Dapp.
+application, and serves as a canonical example DFINITY Dapp.
 
 We use it here to illustrate ActorScript the language, the standard
 library, and the associated the DFINITY Dapp design process.
@@ -61,18 +61,18 @@ semantics, etc.
 
 **Components for the PESS definition**: 
 
-- The [Server Types component](#server-types) defines ActorScript data
-types that are included in the server messages.
+- The [Server Types](#server-types) define ActorScript data types for server messages.
 
-- The [Server Actor component](#server-actor) gives the interface for
-the service, and is the bulk of the formal PESS.
+- The [Server Actor](#server-actor) defines the server interface, including all server messages.
 
-The _behavior_ of this actor's implementation defines the _semantic_
+The _behavior_ of this server defines the _semantic_
 aspects of the PESS standard; the implementation details of this
-behavior are not included in the PESS standard.  We include a
-prototype specification of this behavior, which is subject to change.
-See the [server model types](#server-model-types) and [server model
-implementation](#server-model-implementation) for details.
+behavior are not included in the PESS standard.  
+
+We include a prototype specification of this behavior, which is
+subject to change.  See the [server model types](#server-model-types)
+and [server model implementation](#server-model-implementation) for
+details.
 
 **Server message formats**:
 
