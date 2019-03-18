@@ -421,7 +421,7 @@ actor class Server() {
   };
 
   /**
-   `transporterReservations`
+   `transporterAllReservationInfo`
    ---------------------------
    */
   transporterAllReservationInfo(id:TransporterId) : async ?[ReservationInfo] {

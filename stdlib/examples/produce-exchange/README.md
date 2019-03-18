@@ -260,7 +260,7 @@ See [**`transporterAllRouteInfo`**](https://github.com/dfinity-lab/actorscript/b
 	
 Note: We call them "reservations".
 
-See [**`transporterReservationInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterreservationinfo)
+See [**`transporterAllReservationInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallreservationinfo)
 
 	
 RETAILER
