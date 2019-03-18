@@ -468,9 +468,11 @@ class Model() = this {
     null
   };
 
-   /**
-   `Producer`
-   -------------
+  /**
+
+   `Producer`-oriented operations
+   ==========================================
+
    */
 
   /**
@@ -548,142 +550,7 @@ class Model() = this {
     null
   };
 
-   /**
-   `Retailer`-oriented operations
-   ====================
-   */
-
   /**
-   `addRetailer`
-   ---------------------
-   
-   adds the producer to the system; fails if the given region is non-existent.
-  */
-
-  addRetailer(
-    short_name:  Text,
-    description: Text,
-    rid: RegionId,
-  ) : ?RetailerId
-  {
-    // fail early if the region id is invalid
-    let region = switch (getRegion(rid)) {
-    case (null) { return null };
-    case (?r) r;
-    };
-    // pre: region id is well-defined.
-    let id = nextRetailerId;
-    nextRetailerId := id + 1;
-    retailers :=
-    Map.insertFresh<RetailerId, Retailer>(
-      retailers,
-      keyOf(id),
-      idIsEq,
-      new { id=id:RetailerId;
-            short_name=short_name:Text;
-            description=description:Text;
-            region=region:Region;
-            reserved_routes=null:ReservedRouteTable;
-            reserved_items=null:ReservedInventoryTable;
-      },
-    );
-    ?id
-  };
-
-  /**
-   `remRetailer`
-   ---------------------
-  
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remRetailer(
-    id: RetailerId
-  ) : ?()
-  {
-    Map.removeThen<RetailerId, Retailer, ?()>(
-      retailers,
-      keyOf(id),
-      idIsEq,
-      func (t:RetailerTable, r:Retailer) : ?() {
-        retailers := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getRetailerInfo`
-   ---------------------
-   To do
-   */
-
-   /**
-   `Transporter`-oriented operations
-   =================
-   */
-
-  /**
-   `addTransporter`
-   ---------------------
-  
-  */
-  addTransporter(
-    short_name:  Text,
-    description: Text,
-  ) : ?TransporterId
-  {
-    let id = nextTransporterId;
-    nextTransporterId := id + 1;
-    transporters :=
-    Map.insertFresh<TransporterId, Transporter>(
-      transporters,
-      keyOf(id),
-      idIsEq,
-      new { id=id:TransporterId;
-            short_name=short_name:Text;
-            description=description:Text;
-            route=null:RouteTable;
-            reserved=null:ReservedRouteTable;
-      },
-    );
-    ?id
-  };
-
-
-  /**
-   `remTransporter`
-   ----------------------------
-   
-  */
-
-  remTransporter(
-    id: TransporterId
-  ) : ?() {
-    Map.removeThen<TransporterId, Transporter, ?()>(
-      transporters,
-      keyOf(id),
-      idIsEq,
-      func (t:TransporterTable, tr:Transporter) : ?() {
-        transporters := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getTransporterInfo`
-   ---------------------
-   To do
-   */
-
-  /**
-
-   Producer-oriented operations
-   ==========================================
-
    `producerAddInventory`
    ---------------------------
 
@@ -794,10 +661,66 @@ class Model() = this {
     null
   };
 
+
+   /**
+   `Transporter`-oriented operations
+   =================
+   */
+
   /**
-   `Transporter`-oriented operations:
-   ===========================================
+   `addTransporter`
+   ---------------------
+  
   */
+  addTransporter(
+    short_name:  Text,
+    description: Text,
+  ) : ?TransporterId
+  {
+    let id = nextTransporterId;
+    nextTransporterId := id + 1;
+    transporters :=
+    Map.insertFresh<TransporterId, Transporter>(
+      transporters,
+      keyOf(id),
+      idIsEq,
+      new { id=id:TransporterId;
+            short_name=short_name:Text;
+            description=description:Text;
+            route=null:RouteTable;
+            reserved=null:ReservedRouteTable;
+      },
+    );
+    ?id
+  };
+
+
+  /**
+   `remTransporter`
+   ----------------------------
+   
+  */
+
+  remTransporter(
+    id: TransporterId
+  ) : ?() {
+    Map.removeThen<TransporterId, Transporter, ?()>(
+      transporters,
+      keyOf(id),
+      idIsEq,
+      func (t:TransporterTable, tr:Transporter) : ?() {
+        transporters := t;
+        ?()
+      },
+      func ():?() = null
+    )
+  };
+
+  /**
+   `getTransporterInfo`
+   ---------------------
+   To do
+   */
 
   /**
    `transporterAddRoute`
@@ -853,9 +776,79 @@ class Model() = this {
   };
 
 
+
   /**
-   `Retailer`-oriented operations:
-   ======================================
+   `Retailer`-oriented operations
+   ====================
+   */
+  
+  /**
+   `addRetailer`
+   ---------------------
+   
+   adds the producer to the system; fails if the given region is non-existent.
+   */
+
+  addRetailer(
+    short_name:  Text,
+    description: Text,
+    rid: RegionId,
+  ) : ?RetailerId
+  {
+    // fail early if the region id is invalid
+    let region = switch (getRegion(rid)) {
+    case (null) { return null };
+    case (?r) r;
+    };
+    // pre: region id is well-defined.
+    let id = nextRetailerId;
+    nextRetailerId := id + 1;
+    retailers :=
+    Map.insertFresh<RetailerId, Retailer>(
+      retailers,
+      keyOf(id),
+      idIsEq,
+      new { id=id:RetailerId;
+            short_name=short_name:Text;
+            description=description:Text;
+            region=region:Region;
+            reserved_routes=null:ReservedRouteTable;
+            reserved_items=null:ReservedInventoryTable;
+      },
+    );
+    ?id
+  };
+
+  /**
+   `remRetailer`
+   ---------------------
+  
+   returns `?()` on success, and `null` on failure.
+  */
+
+  remRetailer(
+    id: RetailerId
+  ) : ?()
+  {
+    Map.removeThen<RetailerId, Retailer, ?()>(
+      retailers,
+      keyOf(id),
+      idIsEq,
+      func (t:RetailerTable, r:Retailer) : ?() {
+        retailers := t;
+        ?()
+      },
+      func ():?() = null
+    )
+  };
+
+  /**
+   `getRetailerInfo`
+   ---------------------
+   To do
+   */
+
+  /**
 
    retailerQueryAll
    ---------------------------

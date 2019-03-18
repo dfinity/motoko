@@ -212,9 +212,9 @@ ALL USERS
 > **Sign up**	User can add their name and role and receive a unique ID	
 
 See these, provided by the [**registrar** role](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#pess-registrar-based-ingress-messages):
-- [**registrarAddProducer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
-- [**registrarAddTransporter**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
-- [**registrarAddRetailer**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
+- [**`registrarAddProducer`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
+- [**`registrarAddTransporter`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
+- [**`registrarAddRetailer`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
 	
 > **Log in**	A user can identify themselves from a dropdown and "log in"	
 
