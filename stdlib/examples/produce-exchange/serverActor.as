@@ -146,10 +146,10 @@ actor class Server() {
    */
 
   /**
-   // `registrarAddProduce`
-   // ---------------------
-   //
-   // adds the produce to the system; fails if the given information is invalid in any way.
+   `registrarAddProduce`
+   ---------------------
+   
+   adds the produce to the system; fails if the given information is invalid in any way.
    */
 
   registrarAddProduce(
@@ -161,10 +161,10 @@ actor class Server() {
   };
 
   /**
-   // `registrarRemProduce`
-   // ---------------------
-   //
-   // returns `?()` on success, and `null` on failure.
+   `registrarRemProduce`
+   ---------------------
+   
+   returns `?()` on success, and `null` on failure.
    */
 
   registrarRemProduce(
@@ -193,10 +193,10 @@ actor class Server() {
    */
 
   /**
-   // `registrarAddProducer`
-   // ---------------------
-   //
-   // adds the producer to the system; fails if the given region is non-existent.
+   `registrarAddProducer`
+   ---------------------
+   
+   adds the producer to the system; fails if the given region is non-existent.
    */
 
   registrarAddProducer(
@@ -208,10 +208,10 @@ actor class Server() {
   };
 
   /**
-   // `registrarRemProducer`
-   // ---------------------
-   //
-   // returns `?()` on success, and `null` on failure.
+   `registrarRemProducer`
+   ---------------------
+   
+   returns `?()` on success, and `null` on failure.
    */
 
   registrarRemProducer(
@@ -221,10 +221,15 @@ actor class Server() {
   };
 
   /**
-   `getProducerInfo`
+   `producerInfo`
    ---------------------
-   To do
    */
+  producerInfo(id: ProducerId) 
+    : async ?ProducerInfo {
+      // xxx
+      null
+  };
+
 
   /**
    `Retailer`
@@ -233,10 +238,10 @@ actor class Server() {
    */
 
   /**
-   // `registrarAddRetailer`
-   // ---------------------
-   //
-   // adds the producer to the system; fails if the given region is non-existent.
+   `registrarAddRetailer`
+   ---------------------
+   
+   adds the producer to the system; fails if the given region is non-existent.
    */
 
   registrarAddRetailer(
@@ -248,10 +253,10 @@ actor class Server() {
   };
 
   /**
-   // `registrarRemRetailer`
-   // ---------------------
-   //
-   // returns `?()` on success, and `null` on failure.
+   `registrarRemRetailer`
+   ---------------------
+   
+   returns `?()` on success, and `null` on failure.
    */
 
   registrarRemRetailer(
@@ -261,10 +266,16 @@ actor class Server() {
   };
 
   /**
-   `getRetailerInfo`
+   `retailerInfo`
    ---------------------
-   To do
    */
+  
+  retailerInfo(
+    id: RetailerId
+  ) : async ?RetailerInfo {
+    /// xxx
+    null
+  };
 
   /**
    `Transporter`
@@ -273,9 +284,9 @@ actor class Server() {
    */
 
   /**
-   // `registrarAddTransporter`
-   // ---------------------
-   //
+   `registrarAddTransporter`
+   ---------------------
+   
    */
   registrarAddTransporter(
     short_name:  Text,
@@ -285,9 +296,9 @@ actor class Server() {
   };
 
   /**
-   // `registrarRemTransporter`
-   // ---------------------
-   //
+   `registrarRemTransporter`
+   ---------------------
+   
    */
 
   registrarRemTransporter(
@@ -297,19 +308,25 @@ actor class Server() {
   };
 
   /**
-   `getTransporterInfo`
+   `transporterInfo`
    ---------------------
-   To do
+   */
+
+  transporterInfo(
+    id: TransporterId
+  ) : async ?TransporterInfo {
+    /// xxx
+    null
+  };
+
+  /**
+   PESS: `Producer`-based ingress messages:
+   ==========================================
    */
 
   /**
-   // PESS: `Producer`-based ingress messages:
-   // ==========================================
-   */
-
-  /**
-   // `producerAddInventory`
-   // ---------------------------
+   `producerAddInventory`
+   ---------------------------
    */
   producerAddInventory(
     id:   ProducerId,
@@ -326,8 +343,8 @@ actor class Server() {
   };
 
   /**
-   // `producerRemInventory`
-   // ---------------------------
+   `producerRemInventory`
+   ---------------------------
    */
   producerRemInventory(id:InventoryId) : async ?() {
     getModel()
@@ -335,8 +352,8 @@ actor class Server() {
   };
 
   /**
-   // `producerAllInventoryInfo`
-   // ---------------------------
+   `producerAllInventoryInfo`
+   ---------------------------
    */
   producerAllInventoryInfo(id:ProducerId) : async ?[InventoryInfo] {
     getModel()
@@ -344,8 +361,8 @@ actor class Server() {
   };
   
   /**
-   // `producerReservations`
-   // ---------------------------
+   `producerReservations`
+   ---------------------------
    */
   producerReservations(id:ProducerId) : async ?[ReservationId] {
     getModel()
@@ -365,13 +382,13 @@ actor class Server() {
 
 
   /**
-   // PESS: `Transporter`-based ingress messages:
-   // ===========================================
+   PESS: `Transporter`-based ingress messages:
+   ===========================================
    */
 
   /**
-   // `transporterAddRoute`
-   // ---------------------------
+   `transporterAddRoute`
+   ---------------------------
    */
   transporterAddRoute(
     trans:  TransporterId,
@@ -386,8 +403,8 @@ actor class Server() {
   };
 
   /**
-   // `transporterRemRoute`
-   // ---------------------------
+   `transporterRemRoute`
+   ---------------------------
    */
   transporterRemRoute(id:RouteId) : async ?() {
     getModel()
@@ -395,8 +412,8 @@ actor class Server() {
   };
 
   /**
-   // `transporterAllRouteInfo`
-   // ---------------------------
+   `transporterAllRouteInfo`
+   ---------------------------
    */
   transporterAllRouteInfo(id:TransporterId) : async ?[RouteInfo] {
     getModel()
@@ -404,8 +421,8 @@ actor class Server() {
   };
 
   /**
-   // `transporterReservations`
-   // ---------------------------
+   `transporterReservations`
+   ---------------------------
    */
   transporterAllReservationInfo(id:TransporterId) : async ?[ReservationInfo] {
     getModel()
@@ -413,11 +430,11 @@ actor class Server() {
   };
 
   /**
-   // PESS: `Retailer`-based ingress messages:
-   // ======================================
+   PESS: `Retailer`-based ingress messages:
+   ======================================
 
-   // `retailerQueryAll`
-   // ---------------------------
+   `retailerQueryAll`
+   ---------------------------
 
    TODO-Cursors (see above).
 
@@ -428,12 +445,12 @@ actor class Server() {
   };
 
   /**
-    `retailerQueryDates`
-    ---------------------------
-    
-    Retailer queries available produce by delivery date range; returns
-    a list of inventory items that can be delivered to that retailer's
-    geography within that date.
+   `retailerQueryDates`
+   ---------------------------
+   
+   Retailer queries available produce by delivery date range; returns
+   a list of inventory items that can be delivered to that retailer's
+   geography within that date.
    
    */
   retailerQueryDates(
@@ -447,8 +464,8 @@ actor class Server() {
   };
 
   /**
-   // `retailerReserve`
-   // ---------------------------
+   `retailerReserve`
+   ---------------------------
    */
   retailerReserve(
     id:RetailerId,
@@ -460,16 +477,16 @@ actor class Server() {
   };
 
   /**
-   // `retailerReserveCheapest`
-   // ---------------------------
-   //
-   // Like `retailerReserve`, but chooses cheapest choice among all
-   // feasible produce inventory items and routes, given a grade,
-   // quant, and delivery window.
-   //
-   // ?? This may be an example of what Mack described to me as
-   // wanting, and being important -- a "conditional update"?
-   //
+   `retailerReserveCheapest`
+   ---------------------------
+   
+   Like `retailerReserve`, but chooses cheapest choice among all
+   feasible produce inventory items and routes, given a grade,
+   quant, and delivery window.
+   
+   ?? This may be an example of what Mack described to me as
+   wanting, and being important -- a "conditional update"?
+   
    */
   retailerReserveCheapest(
     id:RetailerId,
@@ -485,8 +502,8 @@ actor class Server() {
   };
 
   /**
-   // `retailerReservations`
-   // ---------------------------
+   `retailerReservations`
+   ---------------------------
 
    TODO-Cursors (see above).
 
@@ -507,8 +524,8 @@ actor class Server() {
    */
 
   /**
-   // `reservationInfo`
-   // ---------------------------
+   `reservationInfo`
+   ---------------------------
    */
   reservationInfo(id:ReservationId) : async ?ReservationInfo {
     getModel().
@@ -530,6 +547,11 @@ actor class Server() {
    Developer can see the GMV, the aggregate sum of how many sales have
 been processed 
 */
+  
+  devViewGMV() : async ?Nat {
+    // xxx
+    null
+  };
 
   /**
    `devViewQueries`
@@ -538,6 +560,11 @@ been processed
 
    */
 
+  devViewQueries() : async ?Nat {
+    // xxx
+    null
+  };
+
 
   /**
    `devViewReservations`
@@ -545,6 +572,11 @@ been processed
    Developer can see how many aggregate sales orders have been made by all retailers
 
    */
+  
+  devViewReservations() : async ?Nat {
+    // xxx
+    null
+  };
 
   /**
    `devViewReservationInfo`
@@ -552,52 +584,62 @@ been processed
    Developer can see how many aggregate sales orders have been made by all retailers
 
    */
+  devViewReservationInfo(id:ReservationId) : async ?ReservationInfo {
+    // xxx
+    null
+  };
 
 
   /**
    `devViewProducers`
    -------------------   
-   Developer can see how many producers in the system and how many goods each has
+
+   MVP:
+   > Developer can see how many producers in the system and how many goods each has
+
+   See also [`producerInfo`](#producerinfo).
 
    */
 
-  /**
-   `devViewProducerInfo`
-   -------------------   
-   Developer can see how many producers in the system and how many goods each has
-
-   */
+  devViewProducers() : async ?[ProducerId] {
+    // xxx
+    null
+  };
 
 
   /**
    `devViewTransporters`
    -------------------   
  
-   Developer can see how many transporters in the system and how many routes each has
+   MVP:
+
+   > Developer can see how many transporters in the system and how many routes each has
+
+   See also [`transporterInfo`](#transporterinfo).
+
    */
 
-  /**
-   `devViewTransporterInfo`
-   -------------------   
- 
-   Developer can see how many transporters in the system and how many routes each has
-   */
-
+  devViewTransporters() : async ?[TransporterId] {
+    // xxx
+    null
+  };
 
   /**
    `devViewRetailer`
    -------------------   
+   
+   MVP:
 
-   View retailers	Developer can see how many retailers in the system and how many queries and how many sales orders
+   > Developer can see how many retailers in the system and how many queries and how many sales orders
+
+   See also [`retailerInfo`](#retailerinfo).
+
    */
 
-  /**
-   `devViewRetailerInfo`
-   -------------------   
-
-   View retailers	Developer can see how many retailers in the system and how many queries and how many sales orders
-   */
-
+  devViewRetailers() : async ?[RetailerId] {
+    // xxx
+    null
+  };
 
 
   ///////////////////////////////////////////////////////////////////////////
