@@ -588,21 +588,6 @@ been processed
   };
 
   /**
-   `devViewReservationInfo`
-   ----------------------
-
-   MVP:
-
-   > Developer can see how many aggregate sales orders have been made by all retailers
-
-   */
-  devViewReservationInfo(id:ReservationId) : async ?ReservationInfo {
-    // xxx
-    null
-  };
-
-
-  /**
    `devViewProducers`
    -------------------   
 
