@@ -3782,6 +3782,11 @@ and compile_exp (env : E.t) exp =
          compile_unboxed_const 8l ^^
          G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
+       | "Int~hash" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         Prim.prim_intToWord32
+
        | "popcnt" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
