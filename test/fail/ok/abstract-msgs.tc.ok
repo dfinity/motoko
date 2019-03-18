@@ -1,0 +1,12 @@
+abstract-msgs.as:2.13-2.40: type error, shared functions cannot be polymorphic
+abstract-msgs.as:3.13-3.40: type error, shared functions cannot be polymorphic
+abstract-msgs.as:4.34-4.35: type error, shared function parameter contains abstract type
+  A/2
+abstract-msgs.as:5.40-5.47: type error, shared function result contains abstract type
+  A/3
+abstract-msgs.as:8.48-8.50: type error, shared functions cannot be polymorphic
+abstract-msgs.as:9.41-9.45: type error, shared functions cannot be polymorphic
+abstract-msgs.as:11.22-11.27: type error, shared function parameter contains abstract type
+  A/9
+abstract-msgs.as:12.25-12.27: type error, shared function has non-async result type
+  ?A/9

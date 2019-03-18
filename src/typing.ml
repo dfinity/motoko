@@ -163,17 +163,25 @@ and check_typ' env typ : T.typ =
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
     if sort.it = T.Sharable then begin
+      if not (binds = []) then
+        error env typ.at "shared functions cannot be polymorphic";
       let t1 = T.seq ts1 in
       if not (T.sub t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
+          (T.string_of_typ_expand t1);
+      if not (T.is_concrete t1) then
+        error env typ1.at "shared function parameter contains abstract type\n  %s"
           (T.string_of_typ_expand t1);
       (match ts2 with
       | [] -> ()
       | [T.Async t2] ->
         if not (T.sub t2 T.Shared) then
-          error env typ1.at "shared function has non-shared result type\n  %s"
+          error env typ2.at "shared function has non-shared result type\n  %s"
             (T.string_of_typ_expand t2);
-      | _ -> error env typ1.at "shared function has non-async result type\n  %s"
+        if not (T.is_concrete t2) then
+          error env typ2.at "shared function result contains abstract type\n  %s"
+            (T.string_of_typ_expand t2);
+      | _ -> error env typ2.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
       )
     end;
@@ -467,14 +475,22 @@ and infer_exp'' env exp : T.typ =
         {env' with labs = T.Env.empty; rets = Some t2; async = false} in
       check_exp (adjoin_vals env'' ve) t2 exp;
       if sort.it = T.Sharable then begin
+        if not (typ_binds = []) then
+          error env exp.at "shared functions cannot be polymorphic";
         if not (T.sub t1 T.Shared) then
           error env pat.at "shared function has non-shared parameter type\n  %s"
+            (T.string_of_typ_expand t1);
+        if not (T.is_concrete t1) then
+          error env pat.at "shared function parameter contains abstract type\n  %s"
             (T.string_of_typ_expand t1);
         begin match t2 with
         | T.Tup [] -> ()
         | T.Async t2 ->
           if not (T.sub t2 T.Shared) then
             error env typ.at "shared function has non-shared result type\n  %s"
+              (T.string_of_typ_expand t2);
+          if not (T.is_concrete t2) then
+            error env typ.at "shared function result contains abstract type\n  %s"
               (T.string_of_typ_expand t2);
           if not (isAsyncE exp) then
             error env exp.at "shared function with async type has non-async body"

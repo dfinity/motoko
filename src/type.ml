@@ -380,6 +380,32 @@ let avoid cons t =
   if cons = ConSet.empty then t else
   avoid' cons t
 
+let is_concrete t =
+  let good_cons = ref ConSet.empty in (* break the cycles *)
+  let rec go = function
+    | (Prim _ | Var _ | Any | Non | Shared | Pre) -> true
+    | Con (c, ts) ->
+      if ConSet.mem c !good_cons
+      then true
+      else begin
+        match Con.kind c with
+        | Abs _ -> false
+        | Def (_,t) ->
+          good_cons := ConSet.add c !good_cons; go t
+        end
+      && List.for_all go ts
+    | Array t -> go t
+    | Tup ts -> List.for_all go ts
+    | Func (s, c, tbs, ts1, ts2) ->
+      List.for_all go ts1 &&
+      List.for_all go ts2
+    | Opt t -> go t
+    | Async t -> go t
+    | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+    | Mut t -> go t
+    | Serialized t -> go t
+  in go t
+
 
 (* Equivalence & Subtyping *)
 

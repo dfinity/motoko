@@ -121,7 +121,9 @@ let check_shared env at t =
   then check env at (T.is_serialized t)
     "message argument is not serialized:\n  %s" (T.string_of_typ_expand t)
   else check env at (T.sub t T.Shared)
-    "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
+    "message argument is not sharable:\n  %s" (T.string_of_typ_expand t);
+  check env at (T.is_concrete t)
+    "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
 let rec check_typ env typ : unit =
   match typ with
