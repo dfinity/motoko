@@ -243,7 +243,7 @@ See [**`producerReservations`**](https://github.com/dfinity-lab/actorscript/blob
 	
 > **View "market price"**	Producer can see the last sales price for any good within any geographic area	
 	
-See [**`produceMarketInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producermarketinfo)
+See [**`produceMarketInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producemarketinfo)
 
 TRANSPORTER
 ---------------------

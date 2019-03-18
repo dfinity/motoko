@@ -625,7 +625,7 @@ been processed
   };
 
   /**
-   `devViewRetailer`
+   `devViewRetailers`
    -------------------   
    
    MVP:
