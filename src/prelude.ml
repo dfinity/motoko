@@ -143,7 +143,7 @@ let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
   | "Int~hash" -> fun v k ->
-                  let i = Word64.of_int_u (Big_int.int_of_big_int (as_int v)) in
+                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
                   let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
                   in k (Word32 (Word32.of_int_u (Int64.to_int j)))
   | "Nat->Word8" -> fun v k ->
