@@ -171,9 +171,9 @@ and check_typ' env typ : T.typ =
       | [] -> ()
       | [T.Async t2] ->
         if not (T.sub t2 T.Shared) then
-          error env typ1.at "shared function has non-shared result type\n  %s"
+          error env typ2.at "shared function has non-shared result type\n  %s"
             (T.string_of_typ_expand t2);
-      | _ -> error env typ1.at "shared function has non-async result type\n  %s"
+      | _ -> error env typ2.at "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
       )
     end;
@@ -470,11 +470,17 @@ and infer_exp'' env exp : T.typ =
         if not (T.sub t1 T.Shared) then
           error env pat.at "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
+        if not (T.is_concrete t1) then
+          error env pat.at "shared function parameter contains abstract type\n  %s"
+            (T.string_of_typ_expand t1);
         begin match t2 with
         | T.Tup [] -> ()
         | T.Async t2 ->
           if not (T.sub t2 T.Shared) then
             error env typ.at "shared function has non-shared result type\n  %s"
+              (T.string_of_typ_expand t2);
+          if not (T.is_concrete t2) then
+            error env typ.at "shared function result contains abstract type\n  %s"
               (T.string_of_typ_expand t2);
           if not (isAsyncE exp) then
             error env exp.at "shared function with async type has non-async body"
@@ -494,15 +500,27 @@ and infer_exp'' env exp : T.typ =
     T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let tbs, t2, t = T.as_func_sub (List.length insts) t1 in
-      let ts = check_inst_bounds env tbs insts exp.at in
-      if not env.pre then check_exp env (T.open_ ts t2) exp2;
-      T.open_ ts t
-    with Invalid_argument _ ->
-      error env exp1.at "expected function type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
-    )
+    let sort, tbs, t_arg, t_ret =
+      try T.as_func_sub T.Local (List.length insts) t1
+      with Invalid_argument _ ->
+        error env exp1.at "expected function type, but expression produces type\n  %s"
+          (T.string_of_typ_expand t1)
+      in
+    let ts = check_inst_bounds env tbs insts exp.at in
+    let t_arg = T.open_ ts t_arg in
+    let t_ret = T.open_ ts t_ret in
+    if not env.pre then begin
+      check_exp env t_arg exp2;
+      if sort = T.Sharable then begin
+        if not (T.is_concrete t_arg) then
+          error env exp1.at "shared function argument contains abstract type\n  %s"
+            (T.string_of_typ_expand t_arg);
+        if not (T.is_concrete t_ret) then
+          error env exp2.at "shared function call result contains abstract type\n  %s"
+            (T.string_of_typ_expand t_ret);
+      end
+    end;
+    t_ret
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
     (try T.avoid scope.con_env t with T.Unavoidable c ->

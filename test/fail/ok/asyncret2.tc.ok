@@ -1,4 +1,4 @@
-asyncret2.as:1.63-1.66: type error, expression of type
-  async B/1
+asyncret2.as:1.54-1.57: type error, expression of type
+  async Int
 cannot produce expected type
-  B/1
+  Int

@@ -123,6 +123,10 @@ let check_shared env at t =
   else check env at (T.sub t T.Shared)
     "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
+let check_concrete env at t =
+  check env at (T.is_concrete t)
+    "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
+
 let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
@@ -372,16 +376,22 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     (* TODO: check call_conv (assuming there's something to check) *)
     let t1 = T.promote (typ exp1) in
-    let tbs, t2, t3 =
-      try T.as_func_sub (List.length insts) t1 with
+    let _, tbs, t2, t3 =
+      try T.as_func_sub call_conv.Value.sort (List.length insts) t1 with
       |  Invalid_argument _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    typ exp2 <: T.open_ insts t2;
-    T.open_ insts t3 <: t;
+    let t_arg = T.open_ insts t2 in
+    let t_ret = T.open_ insts t3 in
+    if (call_conv.Value.sort = T.Sharable) then begin
+      check_concrete env exp.at t_arg;
+      check_concrete env exp.at t_ret;
+    end;
+    typ exp2 <: t_arg;
+    t_ret <: t;
   | BlockE (ds, exp1) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
@@ -487,6 +497,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
+    if (cc.Value.sort = T.Sharable) then check_concrete env exp.at ret_ty;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
@@ -496,6 +507,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let ts2 = if cc.Value.n_res = 1
               then [ret_ty]
               else T.as_seq ret_ty in
+    if (cc.Value.sort = T.Sharable) then begin
+      List.iter (check_concrete env exp.at) ts1;
+      List.iter (check_concrete env exp.at) ts2;
+    end;
     let fun_ty = T.Func
       ( cc.Value.sort, cc.Value.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
