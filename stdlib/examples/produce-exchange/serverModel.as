@@ -388,7 +388,7 @@ class Model() = this {
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
   produceMarketInfo(id:ProduceId, reg:?RegionId) : ?[ProduceMarketInfo] {
-    // xxx
+    // xxx aggregate
     null
   };
 
@@ -405,7 +405,7 @@ class Model() = this {
    // ---------------------------
    */
   producerAllInventoryInfo(id:ProducerId) : ?[InventoryInfo] {
-    // xxx
+    // xxx view
     null
   };
 
@@ -500,7 +500,7 @@ class Model() = this {
       removing this inventory item; use `Trie.remove2D`.   
    */
   producerRemInventory(id:InventoryId) : ?() {
-    // xxx-next
+    // xxx rem
     null
   };
 
@@ -510,7 +510,7 @@ class Model() = this {
    
    */
   producerReservations(id:ProducerId) : ?[ReservationId] {
-    // xxx
+    // xxx view
     null
   };
 
@@ -534,7 +534,7 @@ class Model() = this {
     cost:   Price,
     ttid:   TruckTypeId
   ) : ?RouteId {
-    // xxx
+    // xxx add
     null
   };
 
@@ -552,7 +552,7 @@ class Model() = this {
       removing this inventory item; use `Trie.remove2D`.   
    */
   transporterRemRoute(id:RouteId) : ?() {
-    // xxx-next
+    // xxx rem
     null
   };
 
@@ -561,7 +561,7 @@ class Model() = this {
    ---------------------------
    */
   transporterAllRouteInfo(id:RouteId) : ?[RouteInfo] {
-    // xxx
+    // xxx view
     null
   };
 
@@ -571,7 +571,7 @@ class Model() = this {
    
    */
   transporterAllReservationInfo(id:TransporterId) : ?[ReservedRouteInfo] {
-    // xxx
+    // xxx view
     null
   };
 
@@ -591,7 +591,7 @@ class Model() = this {
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
-    // xxx
+    // xxx join
     null
   };
 
@@ -604,7 +604,7 @@ class Model() = this {
 
   */
   retailerAllReservationInfo(id:RetailerId) : ?[ReservedInventoryInfo] {
-    // xxx
+    // xxx view
     null
   };
 
@@ -623,7 +623,7 @@ class Model() = this {
     end:Date
   ) : ?[InventoryInfo]
   {
-    // xxx
+    // xxx join+filter
     null
   };
 
@@ -636,7 +636,7 @@ class Model() = this {
     inventory:InventoryId,
     route:RouteId) : ?ReservationId
   {
-    // xxx
+    // xxx add/rem
     null
   };
 
@@ -661,7 +661,7 @@ class Model() = this {
     end:Date
   ) : ?ReservationId
   {
-    // xxx
+    // xxx query+add/rem
     null
   };
 
