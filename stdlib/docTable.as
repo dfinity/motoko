@@ -238,7 +238,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `count`
    ---------
-   */
+  
+   See also [`Table.count`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#count)
+  */
 
   count() : Nat {
     Table.count<Id, Doc>(table)
@@ -247,6 +249,8 @@ class DocTable<Id,Doc,Info>(
   /** 
    `allDoc`
    ---------
+
+   See also [`Table.toArray`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#toarray)
    */
 
   allDoc() : [Doc] {
@@ -257,7 +261,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `allInfo`
    ---------
-   */
+   
+   See also [`Table.toArray`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#toarray)
+  */
 
   allInfo() : [Info] {
     Table.toArray<Id, Doc, Info>
