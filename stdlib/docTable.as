@@ -24,20 +24,24 @@ type information.
 /**
  Representation
  ================
- A table is a finite map (currently a trie) mapping ids to documents.
+ A table is a finite map (currently a [Trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)) mapping ids to documents.
  */
 type Table<Id, Doc> = Trie<Id, Doc>;
 let Table = Trie;
 
 /**
- Interface and implementation
+ Client interface
  ===============================
+ 
+ When the client provides the [parameters below](#client-parameters),
+this module [implements the public interface given further
+below](#public-interface).
+ 
  */
-
 
 /**
  Client parameters
- ------------------
+ ==================
  
  The document table abstracts over the following client choices:
 
@@ -60,6 +64,11 @@ class DocTable<Id,Doc,Info>(
   infoOfDoc:Doc->Info,
   docOfInfo:Info->?Doc
 ) = this {
+
+/**
+ Public interface 
+ ===============================
+*/
 
   /** 
    `addDoc`
