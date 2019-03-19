@@ -518,8 +518,15 @@ secondary maps.
    // ---------------------------
    */
   producerAllInventoryInfo(id:ProducerId) : ?[InventoryInfo] {
-    // xxx view
-    null
+    let doc = switch (producerTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };    
+    ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
+      doc.inventory,
+      func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] = 
+        [inventoryTable.getInfoOfDoc()(doc)]
+    )
   };
 
   /**
