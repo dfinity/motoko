@@ -52,7 +52,7 @@ actor class Server() {
 
   `TruckType`
   ==============
-   Messages to `Add` and `Rem` truck types.
+   Messages about truck types.
    */
 
   
@@ -70,20 +70,36 @@ actor class Server() {
     isFreezer : Bool,
   ) : async ?TruckTypeId {
     getModel()
-      .addTruckType(
-        short_name, description, capacity, isFridge, isFreezer
-      )
+      .truckTypeTable.addInfoGetId(
+        func (id:TruckTypeId) : TruckTypeInfo =
+
+        // xxx: AS should have more concise syntax for this pattern, below:
+        // two problems I see, that are separate:
+        // 1: repeating the label/variable name, which is the same in each case, twice.
+        // 2: explicit type annotations, because of "type error, cannot infer type of forward variable ..."
+        //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
+        //    and, the type of each of these `variables` is known, as well.
+
+        shared { id=id:TruckTypeId;
+                 short_name=short_name:Text;
+                 description=description:Text;
+                 capacity=capacity:Weight;
+                 isFridge=isFridge:Bool;
+                 isFreezer=isFreezer:Bool;
+        })
   };
 
   /**
    `registrarRemTruckType`
    ---------------------
-   returns `?()` on success, and `null` on failure.
+   returns `?` on success, and `null` on failure.
    */
 
   registrarRemTruckType(
     id: TruckTypeId
-  ) : async ?() { getModel().remTruckType(id) };
+  ) : async ?() { 
+    getModel().truckTypeTable.remGetUnit(id)
+  };
 
   /**
    `getTruckTypeInfo`
@@ -92,13 +108,24 @@ actor class Server() {
 
   getTruckTypeInfo(
     id: TruckTypeId
-  ) : async ?TruckTypeInfo { getModel().getTruckTypeInfo(id) };
+  ) : async ?TruckTypeInfo { 
+    getModel().truckTypeTable.getInfo(id) 
+  };
+
+  /**
+   `allTruckTypeInfo`
+   ---------------------
+   */
+
+  allTruckTypeInfo() : async [TruckTypeInfo] { 
+    getModel().truckTypeTable.allInfo()
+  };
 
 
   /**
    `Region`
    ==============
-   Messages to `Add`, `Rem` and `Inspect` regions.
+   Messages about regions.
 
    */
 
@@ -112,7 +139,15 @@ actor class Server() {
   registrarAddRegion(
     short_name:  Text,
     description: Text,
-  ) : async ?RegionId { getModel().addRegion(short_name, description) };
+  ) : async ?RegionId { 
+    getModel().regionTable.addInfoGetId(
+      func (id:RegionId) : RegionInfo =
+        shared {
+          id = id:RegionId;
+          short_name=short_name:Text;
+          description=description:Text 
+        })
+  };
 
   /**
    `registrarRemRegion`
@@ -124,7 +159,7 @@ actor class Server() {
   registrarRemRegion(
     id: RegionId
   ) : async ?() {
-    getModel().remRegion(id)
+    getModel().regionTable.remGetUnit(id)
   };
 
   /**
@@ -135,13 +170,24 @@ actor class Server() {
   getRegionInfo(
     id: RegionId
   ) : async ?RegionInfo {
-    getModel().getRegionInfo(id)
+    getModel().regionTable.getInfo(id)
   };
+  
+
+  /**
+   `allRegionInfo`
+   ---------------------
+   */
+
+  allRegionInfo() : async [RegionInfo] {
+    getModel().regionTable.allInfo()
+  };
+
 
   /**
    `Produce`
    =================
-   Messages to `Add`, `Rem` and `Inspect` produce.
+   Messages about produce
 
    */
 
@@ -157,7 +203,14 @@ actor class Server() {
     description: Text,
     grade: Grade,
   ) : async ?ProduceId {
-    getModel().addProduce(short_name, description, grade)
+    getModel().produceTable.addInfoGetId(
+      func (id:ProduceId) : ProduceInfo =
+        shared {
+          id = id:ProduceId;
+          short_name=short_name:Text;
+          description=description:Text;
+          grade=grade:Grade
+        })
   };
 
   /**
@@ -170,7 +223,7 @@ actor class Server() {
   registrarRemProduce(
     id: ProduceId
   ) : async ?() {
-    getModel().remProduce(id)
+    getModel().produceTable.remGetUnit(id)
   };
 
 
@@ -182,13 +235,22 @@ actor class Server() {
   getProduceInfo(
     id: ProduceId
   ) : async ?ProduceInfo {
-    getModel().getProduceInfo(id)
+    getModel().produceTable.getInfo(id)
+  };
+
+  /**
+   `allProduceInfo`
+   ---------------------
+   */
+
+  allProduceInfo() : async [ProduceInfo] {
+    getModel().produceTable.allInfo()
   };
  
   /**
    `Producer`
    ===============
-   Messages to `Add`, `Rem` and `Inspect` prodcuers.
+   Messages about prodcuers.
 
    */
 
@@ -204,7 +266,17 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?ProducerId {
-    getModel().addProducer(short_name, description, region)
+    getModel().producerTable.addInfoGetId(
+      func(id:ProducerId):ProducerInfo {
+        shared {
+          id=id:ProducerId;
+          short_name=short_name:Text;
+          description=description:Text;
+          region=region:RegionId;
+          inventory=[];
+          reserved=[];
+        }
+      })
   };
 
   /**
@@ -217,18 +289,30 @@ actor class Server() {
   registrarRemProducer(
     id: ProducerId
   ) : async ?() {
-    getModel().remProducer(id)
+    getModel().producerTable.remGetUnit(id)
+  };
+
+
+  /**
+   `getProduceInfo`
+   ---------------------
+   */
+
+  getProducerInfo(
+    id: ProducerId
+  ) : async ?ProducerInfo {
+    getModel().producerTable.getInfo(id)
   };
 
   /**
-   `producerInfo`
+   `allProducerInfo`
    ---------------------
    */
-  producerInfo(id: ProducerId) 
-    : async ?ProducerInfo {
-      // xxx
-      null
+
+  allProducerInfo() : async [ProducerInfo] {
+    getModel().producerTable.allInfo()
   };
+
 
 
   /**
@@ -249,7 +333,15 @@ actor class Server() {
     description: Text,
     region: RegionId,
   ) : async ?RetailerId {
-    getModel().addRetailer(short_name, description, region)
+    getModel().retailerTable.addInfoGetId(
+      func(id:RetailerId):RetailerInfo {
+        shared {
+          id=id:RetailerId;
+          short_name=short_name:Text;
+          description=description:Text;
+          region=region:RegionId
+        }
+      })
   };
 
   /**
@@ -262,20 +354,29 @@ actor class Server() {
   registrarRemRetailer(
     id: RetailerId
   ) : async ?() {
-    getModel().remRetailer(id)
+    getModel().retailerTable.remGetUnit(id)
   };
 
   /**
-   `retailerInfo`
+   `getRetailerInfo`
    ---------------------
    */
   
-  retailerInfo(
+  getRetailerInfo(
     id: RetailerId
   ) : async ?RetailerInfo {
-    /// xxx
-    null
+    getModel().retailerTable.getInfo(id)
   };
+
+  /**
+   `allRetailerInfo`
+   ---------------------
+   */
+  
+  allRetailerInfo() : async [RetailerInfo] {
+    getModel().retailerTable.allInfo()
+  };
+
 
   /**
    `Transporter`
@@ -292,7 +393,17 @@ actor class Server() {
     short_name:  Text,
     description: Text,
   ) : async ?TransporterId {
-    getModel().addTransporter(short_name, description)
+    getModel().transporterTable.addInfoGetId(
+      func(id:TransporterId):TransporterInfo {
+        shared {
+          id=id:TransporterId;
+          short_name=short_name:Text;
+          description=description:Text;
+          routes=[];
+          reserved=[];
+        }
+      })
+      
   };
 
   /**
@@ -304,20 +415,30 @@ actor class Server() {
   registrarRemTransporter(
     id: TransporterId
   ) : async ?() {
-    getModel().remTransporter(id)
+    getModel().transporterTable.remGetUnit(id)
   };
 
   /**
-   `transporterInfo`
+   `getTransporterInfo`
    ---------------------
    */
 
-  transporterInfo(
+  getTransporterInfo(
     id: TransporterId
   ) : async ?TransporterInfo {
-    /// xxx
-    null
+    getModel().transporterTable.getInfo(id)
   };
+
+
+  /**
+   `allTransporterInfo`
+   ---------------------
+   */
+
+  allTransporterInfo() : async [TransporterInfo] {
+    getModel().transporterTable.allInfo()
+  };
+
 
   /**
    PESS: `Producer`-based ingress messages:
@@ -424,7 +545,7 @@ actor class Server() {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  transporterAllReservationInfo(id:TransporterId) : async ?[ReservationInfo] {
+  transporterAllReservationInfo(id:TransporterId) : async ?[ReservedRouteInfo] {
     getModel()
       .transporterAllReservationInfo(id)
   };
@@ -508,11 +629,14 @@ actor class Server() {
    TODO-Cursors (see above).
 
    */
-  retailerReservations(id:RetailerId) : async ?[ReservationId] {
+  retailerReservations(id:RetailerId) : async ?[ReservedInventoryInfo] {
     getModel().
-      retailerReservations(id)
+      retailerAllReservationInfo(id)
   };
 
+  
+  //////////////////////////////////////////////////////////////
+  
   /**
    
    PESS: general-use ingress messages:
@@ -520,17 +644,13 @@ actor class Server() {
    
    The following messages may originate from any entity; they access
    published information in the tables maintained above.  
+   
+   xxx
+
+   To do
 
    */
 
-  /**
-   `reservationInfo`
-   ---------------------------
-   */
-  reservationInfo(id:ReservationId) : async ?ReservationInfo {
-    getModel().
-      reservationInfo(id)
-  };
 
   /**
    
@@ -599,7 +719,7 @@ been processed
 
    */
 
-  devViewProducers() : async ?[ProducerId] {
+  devViewProducers() : async ?[ProducerInfo] {
     // xxx
     null
   };
@@ -617,7 +737,7 @@ been processed
 
    */
 
-  devViewTransporters() : async ?[TransporterId] {
+  devViewTransporters() : async ?[TransporterInfo] {
     // xxx
     null
   };
@@ -634,7 +754,7 @@ been processed
 
    */
 
-  devViewRetailers() : async ?[RetailerId] {
+  devViewRetailers() : async ?[RetailerInfo] {
     // xxx
     null
   };

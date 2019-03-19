@@ -7,72 +7,62 @@ Server Model Types
 ==================
 
 This file defines structures that implement the server actor's
-internal model of the exchange.  They are used in `serverModel.as`;
-they are _not_ present in the public-facing interface of the server,
-only its internal model.
+internal model of the exchange.
+
+They are _not_ present in the public-facing interface of the server;
+they are only are used in its internal model implementation
+`serverModel.as`.
     
+*/
 
-Finite Maps
---------------
 
-Finite maps, or just "maps", will serve as the cornerstone of our
-representations below.  The ActorScript standard library implements
-functional association lists (modules `List` and `AssocList`) and
-functional hash tries (module `Trie`), whose representation uses those
-lists, for its "buckets".
+/**
 
-These map representations could change and expand in the future, so we
-introduce the name `Map` here to abstract over the representation
-choice between (for now) using association lists and tries.
-
-Aside: Eventually, we'll likely have a more optimized trie that uses
-small arrays in its leaf nodes.  The current representation is simple,
-uses lots of pointers, and is likely not the optimal candidate for
-efficient Wasm.  However, its asymptotic behavior is good, and it thus
-provides a good approximation of the eventual design that we want.
+Representation
+=================
 
 */
 
-//type Map = AssocList;
-//let Map = AssocList;
+/**
+ Finite maps
+ ------------
 
-type Map<K,V> = Trie<K,V>;
+ See also [`Trie`]() module.
+*/
+
+type Map<X, Y> = Trie<X, Y>;
 let Map = Trie;
 
+
 /**
-Nested structures
+
+Document tables
 -----------------
 
-Below, we define top-level structures for representing each Producer,
-Retailer and Transporter's officially published state within the PESS.
+Document tables abstract over the various finite map operations we
+commonly need for each kind of entity in the exchange model.
+
+
+Each table is a map from distinct ids to documents.  These tables, and
+the documents that they manage, serve as the central abstraction in
+the representation of the exchange.
+
+Nested document structures
+-----------------------------
+
+Below, we define top-level **document structures** for representing each `Producer`,
+`Retailer` and `Transporter`'s officially published state within the PESS.
 
 Formally, these types define the types of forests (a set of trees with many
 roots) that constitute our internal data model.
 
-For each kind of structure below, we assume a type of unique Id
-(defined in `types.as`, in the formal PESS).  We associate information, such as
-textual names and descriptions, where appropriate.  We include other
-fields from the PESS, such as "units", "grades", "dates" and time
-intervals (start/end dates), each where appropriate.
+For each kind of structure below, we assume a type of unique Id.  
 
-To understand how this forest is rooted, see the private variables
-defined by the class `Model` (in `serverModel.as`):
+We associate document information, such as textual names and
+descriptions, where appropriate.
 
-```
-  private var trucktypes : TruckTypesTable = null;
-  private var produce    : ProduceTable = null;
-  private var regions    : RegionTable = null;
-
-  private var producers    : ProducerTable = null;
-  private var transporters : TransporterTable = null;
-  private var retailers    : RetailerTable = null;
-```
-
-The first three tables are set up by the central authority when the Dapp
-launches, and change seldomly.
-
-The next three tables contain the interesting state of the system.
-They give the three sets of roots into the structures defined below.
+We include other fields from the PESS, such as "units", "grades",
+"dates" and time intervals (start/end dates), each where appropriate.
 
 Query implementation
 ---------------------
@@ -99,7 +89,15 @@ internal sharing:
 
 */
 
-type TruckType = {
+/**
+ `TruckType` documents
+ ==================
+
+ - See also [`serverTypes`]() for `TypeTypeId` and `TypeTypeInfo`.
+ - See also [`DocTable`](). 
+ */
+
+type TruckTypeDoc = {
   id : TruckTypeId;
   short_name : Text;
   description : Text;
@@ -108,38 +106,64 @@ type TruckType = {
   isFridge : Bool;
   isFreezer : Bool;
 };
-type TruckTypeTable = Map<TruckTypeId, TruckType>;
 
-type Region = {
+type TruckTypeTable = 
+  DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>;
+
+/**
+ `Region` documents
+ ==========================
+ */
+
+type RegionDoc = {
   id : RegionId;
   short_name : Text;
   description : Text;
 };
-type RegionTable = Map<RegionId, Region>;
 
-type Produce = {
+type RegionTable = 
+  DocTable<RegionId, RegionDoc, RegionInfo>;
+
+/**
+ `Produce` documents
+ ==================
+ */
+
+type ProduceDoc = {
   id : ProduceId;
   short_name : Text;
   description : Text;
   grade : Grade;
 };
 
-type ProduceTable = Map<ProduceId, Produce>;
+type ProduceTable = 
+  DocTable<ProduceId, ProduceDoc, ProduceInfo>;
 
-type Producer = {
+/**
+ `Producer` documents
+ =======================
+ */
+
+type ProducerDoc = {
   id : ProducerId;
   short_name : Text;
   description : Text;
-  region : Region;
-  inventory : InventoryTable;
-  reserved : ReservedInventoryTable;
+  region : RegionDoc;
+  inventory : InventoryMap;
+  reserved : ReservedInventoryMap;
 };
 
-type ProducerTable = Map<ProducerId, Producer>;
+type ProducerTable = 
+  DocTable<ProducerId, ProducerDoc, ProducerInfo>;
 
-type InventoryItem = {
+/**
+ `Inventory` documents
+ ========================
+ */
+
+type InventoryDoc = {
   id : InventoryId;
-  produce : Produce;
+  produce : ProduceDoc;
   producer : ProducerId;
   // ... more ..
   quantity : Quantity;
@@ -148,62 +172,113 @@ type InventoryItem = {
   comments : Text;
 };
 
-type InventoryTable = Map<InventoryId, InventoryItem>;
+type InventoryTable = 
+  DocTable<InventoryId, InventoryDoc, InventoryInfo>;
 
-type ByRegionInventoryTable = Map<RegionId, Map<ProducerId, InventoryTable>>;
+type InventoryMap = 
+  Map<InventoryId, InventoryDoc>;
 
-type ReservedInventoryItem = {
+/**
+ By-region inventory indexing
+ -----------------------------
+*/
+type ByRegionInventoryMap = Map<RegionId, Map<ProducerId, InventoryMap>>;
+
+type ReservedInventoryDoc= {
   id : ReservationId;
-  retailer : Retailer;
-  item : InventoryItem;
+  retailer : RetailerId;
+  item : InventoryDoc;
 };
 
-type ReservedInventoryTable = Map<ReservationId, ReservedInventoryItem>;
+/**
+ Reserved inventory indexing
+ -----------------------------
+*/
 
-type Retailer = {
+type ReservedInventoryTable = 
+  DocTable<ReservationId, ReservedInventoryDoc, ReservedInventoryInfo>;
+
+type ReservedInventoryMap = 
+  Map<ReservationId, ReservedInventoryDoc>;
+
+/**
+ `Retailer` documents
+ ==================
+ */
+
+type RetailerDoc = {
   id : RetailerId;
   short_name : Text;
   description : Text;
-  region : Region;
-  reserved_routes : ReservedRouteTable;
-  reserved_items : ReservedInventoryTable;
+  region : RegionDoc;
+  reserved_routes : ReservedRouteMap;
+  reserved_items : ReservedInventoryMap;
 };
 
-type RetailerTable = Map<RetailerId, Retailer>;
+type RetailerTable = 
+  DocTable<RetailerId, RetailerDoc, RetailerInfo>;
 
-type Transporter = {
+/**
+ `Transporter` documents
+ ==================
+ */
+
+type TransporterDoc = {
   id : TransporterId;
   // no region; the transporters are the supply of routes, not "end
   // points" of any single route.
   short_name : Text;
   description : Text;
-  route : RouteTable;
-  reserved : ReservedRouteTable;
+  routes : RouteMap;
+  reserved : ReservedRouteMap;
 };
 
-type TransporterTable = Map<TransporterId, Transporter>;
+type TransporterTable = 
+  DocTable<TransporterId, TransporterDoc, TransporterInfo>;
 
-type Route = {
+/**
+ `Route` documents
+ ==================
+ */
+
+type RouteDoc = {
   id : RouteId;
-  transporter : Transporter;
-  truck_type : TruckType;
-  start_region : Region;
-  end_region : Region;
+  transporter : TransporterId;
+  truck_type : TruckTypeDoc;
+  start_region : RegionDoc;
+  end_region : RegionDoc;
   start_date : Date;
   end_date : Date;
   cost : Price;
   // ... more?
 };
 
-type RouteTable = Map<RouteId, Route>;
+type RouteTable = 
+  DocTable<RouteId, RouteDoc, RouteInfo>;
+
+
+type RouteMap = 
+  Map<RouteId, RouteDoc>;
+
+/**
+ By-region inventory indexing
+ -----------------------------
+*/
 
 // A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
-type ByRegionsRouteTable = Map<RegionId, Map<RegionId, RouteTable>>;
+type ByRegionsRouteMap = Map<RegionId, Map<RegionId, RouteTable>>;
 
-type ReservedRoute = {
+/**
+ Reserved inventory indexing
+ -----------------------------
+*/
+
+type ReservedRouteDoc = {
   id : ReservationId;
-  retailer : Retailer;
-  route : Route;
+  retailer : RetailerId;
+  route : RouteDoc;
 };
 
-type ReservedRouteTable = Map<ReservationId, ReservedRoute>;
+type ReservedRouteTable = DocTable<ReservationId, ReservedRouteDoc, ReservedRouteInfo>;
+
+type ReservedRouteMap = Map<ReservationId, ReservedRouteDoc>;

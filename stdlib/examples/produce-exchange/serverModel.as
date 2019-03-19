@@ -24,110 +24,219 @@ terms of nested structures and finite maps.
 
 class Model() = this {
 
-  /**
 
-   Generate Symbols
-   -----------------
-   We implement "gensym" functionality with a collection of counters, one per kind of named entity:
+  /**
+   Representation
+   =================
+   We use several public-facing **tables.**
+   
+   xxx
+   
+   To do: We initialize these tables with callbacks so that add/remove
+   operations also maintain secondary tables.
+
+
+   Basic operations via document tables
+   =============================================
+
+   The model provides functions to add and to remove entities from
+   the following (mostly-static) tables:
+   
+   - **Resource information:** truck types, produce (types) and region information.
+   - **Participant information:** producers, retailers and transporters.
+   
+   For each of the six entities listed above, we have an add (`Add`)
+   and remove (`Rem`) below by using one of the following document
+   tables.
 
    */
+  
+  var truckTypeTable : TruckTypeTable = 
+    DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>
+  (
+    0,
+    func(x:TruckTypeId):TruckTypeId{x+1},
+    func(x:TruckTypeId,y:TruckTypeId):Bool{x==y},
+    idHash,
+    func(doc:TruckTypeDoc):TruckTypeInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+      capacity=doc.capacity;
+      isFridge=doc.isFridge;
+      isFreezer=doc.isFreezer;
+    },
+    func(info:TruckTypeInfo):?TruckTypeDoc = ?(new {
+      id=info.id; 
+      short_name=info.short_name; 
+      description=info.description;
+      capacity=info.capacity;
+      isFridge=info.isFridge;
+      isFreezer=info.isFreezer;
+    }),
+  );    
 
-  var nextTruckTypeId : TruckTypeId = 0;
-  var nextRegionId : RegionId = 0;
-  var nextProduceId : ProduceId = 0;
-  var nextProducerId : ProducerId = 0;
-  var nextRetailerId : RetailerId = 0;
-  var nextInventoryId : InventoryId = 0;
-  var nextTransporterId : TransporterId = 0;
-  var nextxRouteId : RouteId = 0;
-  var nextReservationId : ReservationId = 0;
+  var regionTable : RegionTable = 
+    DocTable<RegionId, RegionDoc, RegionInfo>
+  (
+    0,
+    func(x:RegionId):RegionId{x+1},
+    func(x:RegionId,y:RegionId):Bool{x==y},
+    idHash,
+    func(doc:RegionDoc):RegionInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+    },
+    func(info:RegionInfo):?RegionDoc = ?(new {
+      id=info.id; 
+      short_name=info.short_name; 
+      description=info.description;
+    }),
+  );
 
-  /**
+  var produceTable : ProduceTable = 
+    DocTable<ProduceId, ProduceDoc, ProduceInfo>
+  (
+    0,
+    func(x:ProduceId):ProduceId{x+1},
+    func(x:ProduceId,y:ProduceId):Bool{x==y},
+    idHash,
+    func(doc:ProduceDoc):ProduceInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+      grade=doc.grade;
+    },
+    func(info:ProduceInfo):?ProduceDoc = ?(new {
+      id=info.id; 
+      short_name=info.short_name; 
+      description=info.description;
+      grade=info.grade;
+    }),
+  );
 
-   Mostly-static collections:
-   ---------------------------
-   We use the following variables to represent the following tables from the design documents:
 
-   - regions table
-   - produce table
-   - truck type table
-
-   */
-
-  private var regions : RegionTable = null;
-  private var produce : ProduceTable = null;
-  private var truckTypes : TruckTypeTable = null;
-
-  private getRegion(id:RegionId) : ?Region {
-    Map.find<RegionId, Region>(
-      regions,
-      new { key=id;
-            hash=idHash(id) },
-      idIsEq)
+  private emptyInventory() : InventoryTable = {
+    /// xxx todo
+    emptyInventory()
   };
 
-  private getProduce(id:ProduceId) : ?Produce {
-    Map.find<ProduceId, Produce>(
-      produce,
-      new { key=id;
-            hash=idHash(id) },
-      idIsEq)
+  private emptyReservedInventory() : ReservedInventoryTable = {
+    /// xxx todo
+    emptyReservedInventory()
   };
 
-  private getTruckType(id:TruckTypeId) : ?TruckType {
-    Map.find<TruckTypeId, TruckType>(
-      truckTypes,
-      new { key=id;
-            hash=idHash(id) },
-      idIsEq)
+  var producerTable : ProducerTable = 
+    DocTable<ProducerId, ProducerDoc, ProducerInfo>
+  (
+    0,
+    func(x:ProducerId):ProducerId{x+1},
+    func(x:ProducerId,y:ProducerId):Bool{x==y},
+    idHash,
+    func(doc:ProducerDoc):ProducerInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+      region=doc.region.id;
+      inventory=[];
+      reserved=[];
+    },
+    func(info:ProducerInfo):?ProducerDoc = 
+      switch (regionTable.getDoc(info.region)) {
+        case (?regionDoc) {
+               ?(new {
+                   id=info.id; 
+                   short_name=info.short_name; 
+                   description=info.description;
+                   region=regionDoc;
+                   inventory=emptyInventory().copy();
+                   reserved=emptyReservedInventory().copy();
+                 }
+               )};
+        case (null) {
+               null
+             };
+      }
+  );
+
+
+  private emptyRoutes() : RouteTable = {
+    /// xxx todo
+    emptyRoutes()
   };
 
-  /**
-  // Producers collection:
-  // ----------------------
-  //
-  // We use the following variable to represent the following tables, as a tree-shaped functional data structure, with sharing:
-  //
-  //  - producer table
-  //  - inventory table (shared with variable inventory)
-  //  - reservedInventory table (formerly "orderedInventory" table) (xxx shared with variable reservations)
-  */
-  private var producers : ProducerTable = null;
-
-  private getProducer(id:ProducerId) : ?Producer {
-    Map.find<ProducerId, Producer>(
-      producers,
-      new { key=id;
-            hash=idHash(id) },
-      idIsEq)
+  private emptyReservedRoutes() : ReservedRouteTable = {
+    /// xxx todo
+    emptyReservedRoutes()
   };
 
-  private var inventory : InventoryTable = null;
+  var transporterTable : TransporterTable = 
+    DocTable<TransporterId, TransporterDoc, TransporterInfo>
+  (
+    0,
+    func(x:TransporterId):TransporterId{x+1},
+    func(x:TransporterId,y:TransporterId):Bool{x==y},
+    idHash,
+    func(doc:TransporterDoc):TransporterInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+      routes=[];
+      reserved=[];
+    },
+    func(info:TransporterInfo):?TransporterDoc = ?(new {
+      id=info.id; 
+      short_name=info.short_name; 
+      description=info.description;
+      routes=emptyRoutes().copy();
+      reserved=emptyReservedRoutes().copy();
+    }),
+  );
+
+  var retailerTable : RetailerTable = 
+    DocTable<RetailerId, RetailerDoc, RetailerInfo>
+  (
+    0,
+    func(x:RetailerId):RetailerId{x+1},
+    func(x:RetailerId,y:RetailerId):Bool{x==y},
+    idHash,
+    func(doc:RetailerDoc):RetailerInfo = shared {
+      id=doc.id; 
+      short_name=doc.short_name; 
+      description=doc.description;
+      region=doc.region.id;
+      reserved_routes=[];
+      reserved_items=[];
+    },
+    func(info:RetailerInfo):?RetailerDoc = 
+      switch (regionTable.getDoc(info.region)) {
+        case (?regionDoc) {
+               ?(new {
+                   id=info.id; 
+                   short_name=info.short_name; 
+                   description=info.description;
+                   region=regionDoc;
+                   reserved_routes=emptyReservedRoutes().copy();
+                   reserved_items=emptyReservedInventory().copy();
+                 }
+               )};
+        case (null) {
+               null
+             };
+      }
+  );
+
+  var inventoryTable : InventoryTable = emptyInventory();
+  var reservedInventoryTable : ReservedInventoryTable = emptyReservedInventory();
+
+  var routeTable : RouteTable = emptyRoutes();
+  var reservedRouteTable : ReservedRouteTable = emptyReservedRoutes();
 
   /**
-  // Transporters collection:
-  // ----------------------
-  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
-  //  - transporter table
-  //  - route table (shared with variable routes)
-  //  - reservedRoute table (formerly "orderedRoutes" table) (xxx shared with variable reservations)
-  */
-  private var transporters : TransporterTable = null;
 
-  /**
-  // Retailers collection:
-  // ----------------------
-  // Represents the following tables, as a tree-shaped functional data structure, with sharing:
-  //  - retailer table
-  //  - reservation table (formerly "orders" table)
-  */
-  private var retailers : RetailerTable = null;
-
-
-  /**
-
-   Indexing for queries
-   ====================
+   Indexing for `RegionId`-based queries
+   =====================================
 
    For efficient queries, need some extra indexing.
 
@@ -137,18 +246,6 @@ class Model() = this {
    - inventory (across all producers) keyed by producer region
    - routes (across all transporters) keyed by source region
    - routes (across all transporters) keyed by destination region
-
-   Indexing by time
-   -----------------
-   For now, we won't try to index based on days.
-
-   If and when we want to do so, we would like to have a spatial
-   data structure that knows about each object's "interval" in a
-   single shared dimension (in time):
-
-   - inventory, by availability window (start day, end day)
-   - routes, by transport window (departure day, arrival day)
-
 
    Routes by region-region pair
    ----------------------------
@@ -162,7 +259,7 @@ class Model() = this {
 
    */
 
-  private var routesByDstSrcRegions : ByRegionsRouteTable = null;
+  private var routesByDstSrcRegions : ByRegionsRouteMap = null;
 
   /**
    Inventory by source region
@@ -174,7 +271,24 @@ class Model() = this {
    inventory items, by producer id, for this source region.
   
   */
-  private var inventoryByRegion : ByRegionInventoryTable = null;
+  
+  private var inventoryByRegion : ByRegionInventoryMap = null;
+
+
+  /**
+
+   Future work: Indexing by time
+   --------------------------------
+   For now, we won't try to index based on days.
+
+   If and when we want to do so, we would like to have a spatial
+   data structure that knows about each object's "interval" in a
+   single shared dimension (in time):
+
+   - inventory, by availability window (start day, end day)
+   - routes, by transport window (departure day, arrival day)
+
+   */
 
   /**
 
@@ -188,275 +302,17 @@ class Model() = this {
    The functional behavior of this interface, but not implementation
    details, are part of the formal PESS.
 
-
-   PESS: Add/remove messages
-   ======================================
-
-   The model provides functions to add and to remove entities from
-   the following (mostly-static) tables:
-   
-   - **Resource information:** truck types, produce (types) and region information.
-   - **Participant information:** producers, retailers and transporters.
-   
-   For each of the six entities listed above, we have an add (`Add`)
-   and remove (`Rem`) function below suffixed by one of the entities in the following list:
-   
-   - `TruckType`,
-   - `Region`, 
-   - `Produce`, 
-   - `Producer`, 
-   - `Retailer`, or
-   - `Transporter`.
-   */
-
-   /**
-   `TruckType`-oriented operations
-   =============
    */
 
 
-   /**
-    addTruckType`
-   -------------------
-   */
-
-   addTruckType(
-    short_name:  Text,
-    description: Text,
-    capacity : Weight,
-    isFridge : Bool,
-    isFreezer : Bool,
-  ) : ?TruckTypeId
-  {
-    let id = nextTruckTypeId;
-    nextTruckTypeId := id + 1;
-    truckTypes :=
-    Map.insertFresh<TruckTypeId, TruckType>(
-      truckTypes,
-      keyOf(id),
-      idIsEq,
-      // xxx: AS should have more concise syntax for this pattern, below:
-      // two problems I see, that are separate:
-      // 1: repeating the label/variable name, which is the same in each case, twice.
-      // 2: explicit type annotations, because of "type error, cannot infer type of forward variable ..."
-      //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
-      //    and, the type of each of these `variables` is known, as well.
-      new { id=id:TruckTypeId;
-            short_name=short_name:Text;
-            description=description:Text;
-            capacity=capacity:Weight;
-            isFridge=isFridge:Bool;
-            isFreezer=isFreezer:Bool;
-      },
-    );
-    ?id
-  };
 
   /**
-   
-   `remTruckTypes`
-   ---------------------
 
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remTruckType(
-    id: TruckTypeId
-  ) : ?()
-  {
-    Map.removeThen<TruckTypeId, TruckType, ?()>(
-      truckTypes,
-      keyOf(id),
-      idIsEq,
-      func (t:TruckTypeTable, tt:TruckType) : ?() {
-        truckTypes := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getTruckTypeInfo`
-   ---------------------
-   */
-
-  getTruckTypeInfo(
-    id: TruckTypeId
-  ) : ?TruckTypeInfo {
-    switch (Map.find<TruckTypeId, TruckType>(truckTypes, keyOf(id), idIsEq)) {
-      case (null) null;      
-      case (?x) {
-             let i:TruckTypeInfo= shared {
-               id=x.id:TruckTypeId;
-               short_name=x.short_name:Text;
-               description=x.description:Text;
-               capacity=x.capacity:TruckCapacity;
-               isFridge=x.isFridge:Bool;
-               isFreezer=x.isFreezer:Bool;
-             };
-             ?i
-           };
-    }
-  };
-
-  /**
-   `Region`-oriented operations
-   ==============
-   */
-
-  /**
-   `addRegion`
-   ---------------------
-   
-   adds the region to the system; fails if the given information is
-   invalid in any way.
-  */
-
-  addRegion(
-    short_name:  Text,
-    description: Text,
-  ) : ?RegionId
-  {
-    let id = nextRegionId;
-    nextRegionId := id + 1;
-    regions :=
-    Map.insertFresh<RegionId, Region>(
-      regions,
-      keyOf(id),
-      idIsEq,
-      new { id=id:RegionId;
-            short_name=short_name:Text;
-            description=description:Text;
-      },
-    );
-    ?id
-  };
-
-
-  /**
-   `remRegion`
-   ---------------------
-   
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remRegion(
-    id: RegionId
-  ) : ?()
-  {
-    Map.removeThen<RegionId, Region, ?()>(
-      regions,
-      keyOf(id),
-      idIsEq,
-      func (t:RegionTable, r:Region) : ?() {
-        regions := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getRegionInfo`
-   ---------------------
-   */
-
-  getRegionInfo(
-    id: RegionId
-  ) : ?RegionInfo {
-    switch (Map.find<RegionId, Region>(regions, keyOf(id), idIsEq)) {
-      case (null) null;      
-      case (?x) {
-             let i:RegionInfo= shared {
-               id=x.id:RegionId;
-               short_name=x.short_name:Text;
-               description=x.description:Text;
-             };
-             ?i
-           };
-    }
-  };
-
-
-   /**
    `Produce`-oriented operations
-   ================
+   ==========================================
+
    */
 
-  /**
-   `addProduce`
-   ---------------------
-  
-   adds the produce to the system; fails if the given information is invalid in any way.
-  */
-
-  addProduce(
-    short_name:  Text,
-    description: Text,
-    grade: Grade,
-  ) : ?ProduceId
-  {
-    let id = nextProduceId;
-    nextProduceId := id + 1;
-    produce :=
-    Map.insertFresh<ProduceId, Produce>(
-      produce,
-      keyOf(id),
-      idIsEq,
-      new { id=id:ProduceId;
-            short_name=short_name:Text;
-            description=description:Text;
-            grade=grade:Grade;
-      },
-    );
-    ?id
-  };
-
-  /**
-   `remProduce`
-   ---------------------  
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remProduce(
-    id: ProduceId
-  ) : ?()
-  {
-    Map.removeThen<ProduceId, Produce, ?()>(
-      produce,
-      keyOf(id),
-      idIsEq,
-      func (t:ProduceTable, p:Produce) : ?() {
-        produce := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-
-  /**
-   `getProduceInfo`
-   ---------------------
-   */
-
-  getProduceInfo(
-    id: ProduceId
-  ) : ?ProduceInfo {
-    switch (Map.find<ProduceId, Produce>(produce, keyOf(id), idIsEq)) {
-      case (null) null;      
-      case (?x) {
-             let i:ProduceInfo= shared {
-               id=x.id:RegionId;
-               short_name=x.short_name:Text;
-               description=x.description:Text;
-               grade=x.grade:Grade;
-             };
-             ?i
-           };
-    }
-  };
 
   /**
    `produceMarketInfo`
@@ -473,71 +329,6 @@ class Model() = this {
    `Producer`-oriented operations
    ==========================================
 
-   */
-
-  /**
-   `addProducer`
-   ---------------------   
-   adds the producer to the system; fails if the given region is non-existent.
-  */
-
-  addProducer(
-    short_name:  Text,
-    description: Text,
-    rid: RegionId,
-  ) : ?ProducerId
-  {
-    // fail early if the region id is invalid
-    let region = switch (getRegion(rid)) {
-    case (null) { return null };
-    case (?r) r;
-    };
-    // pre: region id is well-defined.
-    let id = nextProducerId;
-    nextProducerId := id + 1;
-    producers :=
-    Map.insertFresh<ProducerId, Producer>(
-      producers,
-      keyOf(id),
-      idIsEq,
-      new { id=id:ProducerId;
-            short_name=short_name:Text;
-            description=description:Text;
-            region=region:Region;
-            inventory=null:InventoryTable;
-            reserved=null:ReservedInventoryTable;
-      },
-    );
-    ?id
-  };
-
-  /**
-   `remProducer`
-   ---------------------
-  
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remProducer(
-    id: ProducerId
-  ) : ?()
-  {
-    Map.removeThen<ProducerId, Producer, ?()>(
-      producers,
-      keyOf(id),
-      idIsEq,
-      func (t:ProducerTable, p:Producer) : ?() {
-        producers := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getProducerInfo`
-   ---------------------
-   To do
    */
 
 
@@ -563,74 +354,68 @@ class Model() = this {
     begin:Date,
     end:  Date,
     comments: Text,
-  ) : ?InventoryId {
-    let producer : ?Producer = getProducer(id);
-    let produce  : ?Produce  = getProduce(prod);
+  ) : ?InventoryId 
+  {
+    let oproducer : ?ProducerDoc = producerTable.getDoc(id);
+    let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
+    
     // check whether these ids are defined; fail fast if not defined
-    switch (producer, produce) {
-    case (?producer, ?produce) {
-           // create item; give it an id; catalog this id
-           let item: InventoryItem = new {
-             id= nextInventoryId;
-             produce= produce:Produce;
-             producer= prod:ProducerId;
-             quantity= quantity:Quantity;
-             start_date=begin:Date;
-             end_date=end:Date;
-             comments=comments:Text;
-           };
-           nextInventoryId += 1;
-           inventory :=
-           Map.insertFresh<InventoryId, InventoryItem>(
-             inventory,
-             keyOf(item.id),
-             idIsEq,
-             item
-           );
-
-           // Update the producer:
-           // xxx shorter syntax for this "record update" pattern?
-           let updatedProducer : Producer = new {
-             id = producer.id;
-             short_name = producer.short_name;
-             description = producer.description;
-             region = producer.region;
-             reserved = producer.reserved;
-             inventory =
-               Map.insertFresh<InventoryId, InventoryItem>(
-                 producer.inventory,
-                 keyOf(item.id),
-                 idIsEq,
-                 item
-               )
-           };
-
-           // Update producers table:
-           producers :=
-           Map.insertFresh<ProducerId, Producer>(
-             producers,
-             keyOf(id),
-             idIsEq,
-             updatedProducer
-           );
-
-           // Update inventoryByRegion table:
-           inventoryByRegion :=
-           Map.insertFresh2D<RegionId, ProducerId, InventoryTable>(
-             inventoryByRegion,
-             // key1: region id of the producer
-             keyOf(producer.region.id), idIsEq,
-             // key2: producer id */
-             keyOf(producer.id), idIsEq,
-             // value: producer's updated inventory table
-             updatedProducer.inventory,
-           );
-
-           // return the item's id
-           ?item.id
-         };
-    case (_, _) { return null };
-    }
+    let (producer, produce) = {
+      switch (oproducer, oproduce) {
+      case (?producer, ?produce) (producer, produce);
+      case _ { return null };
+      }};
+    
+    let (_, item) = {
+      switch (inventoryTable.addInfo(
+                func(inventoryId:InventoryId):InventoryInfo{
+        shared {
+          id= inventoryId;
+          produce= produce:ProduceId;
+          producer= prod:ProducerId;
+          quantity= quantity:Quantity;
+          start_date=begin:Date;
+          end_date=end:Date;
+          comments=comments:Text;
+        };
+      })) {
+      case null { return null };
+      case (?item) { item }
+      }
+    };
+    
+    let updatedProducer : ProducerDoc = new {
+      id = producer.id;
+      short_name = producer.short_name;
+      description = producer.description;
+      region = producer.region;
+      reserved = producer.reserved;
+      inventory =
+        Map.insertFresh<InventoryId, InventoryDoc>(
+          producer.inventory,
+          keyOf(item.id),
+          idIsEq,
+          item
+        )
+    };
+    
+    // Update producers table:
+    let _ = producerTable.updateDoc(id, updatedProducer);
+    
+    // Update inventoryByRegion table:
+    inventoryByRegion :=
+    Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
+      inventoryByRegion,
+      // key1: region id of the producer
+      keyOf(producer.region.id), idIsEq,
+      // key2: producer id */
+      keyOf(producer.id), idIsEq,
+      // value: producer's updated inventory table
+      updatedProducer.inventory,
+    );
+    
+    // return the item's id
+    ?item.id
   };
 
   /**
@@ -667,60 +452,6 @@ class Model() = this {
    =================
    */
 
-  /**
-   `addTransporter`
-   ---------------------
-  
-  */
-  addTransporter(
-    short_name:  Text,
-    description: Text,
-  ) : ?TransporterId
-  {
-    let id = nextTransporterId;
-    nextTransporterId := id + 1;
-    transporters :=
-    Map.insertFresh<TransporterId, Transporter>(
-      transporters,
-      keyOf(id),
-      idIsEq,
-      new { id=id:TransporterId;
-            short_name=short_name:Text;
-            description=description:Text;
-            route=null:RouteTable;
-            reserved=null:ReservedRouteTable;
-      },
-    );
-    ?id
-  };
-
-
-  /**
-   `remTransporter`
-   ----------------------------
-   
-  */
-
-  remTransporter(
-    id: TransporterId
-  ) : ?() {
-    Map.removeThen<TransporterId, Transporter, ?()>(
-      transporters,
-      keyOf(id),
-      idIsEq,
-      func (t:TransporterTable, tr:Transporter) : ?() {
-        transporters := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getTransporterInfo`
-   ---------------------
-   To do
-   */
 
   /**
    `transporterAddRoute`
@@ -742,39 +473,39 @@ class Model() = this {
   /**
    `transporterRemRoute`
    ---------------------------
-  */
-  transporterRemRoute(id:RouteId) : ?() {
-    // xxx
-    null
-  };
+   
 
-  /**
-   // `transporterAllRouteInfo`
-   // ---------------------------
+   **Implementation summary:**
+
+    - remove from the inventory in inventory table; use `Trie.removeThen`
+    - if successful, look up the producer ID; should not fail; `Trie.find`
+    - update the transporter, removing this inventory; use `Trie.{replace,remove}`
+    - finally, use route info to update the routesByRegion table,
+      removing this inventory item; use `Trie.remove2D`.   
    */
-  transporterAllRouteInfo(id:TransporterId) : ?[RouteInfo] {
+  transporterRemRoute(id:RouteId) : ?() {
+    // xxx-next
+    null
+  };
+
+  /**
+   `transporterAllRouteInfo`
+   ---------------------------
+   */
+  transporterAllRouteInfo(id:RouteId) : ?[RouteInfo] {
     // xxx
     null
   };
 
   /**
-   `transporterAllReservationInfo`
+   `transporterReservationInfo`
    ---------------------------
-  */
-  transporterAllReservationInfo(id:TransporterId) : ?[ReservationInfo] {
+   
+   */
+  transporterAllReservationInfo(id:TransporterId) : ?[ReservedRouteInfo] {
     // xxx
     null
   };
-
-  /**
-   `transporterAReservations`
-   ---------------------------
-  */
-  transporterReservations(id:TransporterId) : ?[ReservationId] {
-    // xxx
-    null
-  };
-
 
 
   /**
@@ -782,71 +513,6 @@ class Model() = this {
    ====================
    */
   
-  /**
-   `addRetailer`
-   ---------------------
-   
-   adds the producer to the system; fails if the given region is non-existent.
-   */
-
-  addRetailer(
-    short_name:  Text,
-    description: Text,
-    rid: RegionId,
-  ) : ?RetailerId
-  {
-    // fail early if the region id is invalid
-    let region = switch (getRegion(rid)) {
-    case (null) { return null };
-    case (?r) r;
-    };
-    // pre: region id is well-defined.
-    let id = nextRetailerId;
-    nextRetailerId := id + 1;
-    retailers :=
-    Map.insertFresh<RetailerId, Retailer>(
-      retailers,
-      keyOf(id),
-      idIsEq,
-      new { id=id:RetailerId;
-            short_name=short_name:Text;
-            description=description:Text;
-            region=region:Region;
-            reserved_routes=null:ReservedRouteTable;
-            reserved_items=null:ReservedInventoryTable;
-      },
-    );
-    ?id
-  };
-
-  /**
-   `remRetailer`
-   ---------------------
-  
-   returns `?()` on success, and `null` on failure.
-  */
-
-  remRetailer(
-    id: RetailerId
-  ) : ?()
-  {
-    Map.removeThen<RetailerId, Retailer, ?()>(
-      retailers,
-      keyOf(id),
-      idIsEq,
-      func (t:RetailerTable, r:Retailer) : ?() {
-        retailers := t;
-        ?()
-      },
-      func ():?() = null
-    )
-  };
-
-  /**
-   `getRetailerInfo`
-   ---------------------
-   To do
-   */
 
   /**
 
@@ -857,6 +523,19 @@ class Model() = this {
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
+    // xxx
+    null
+  };
+
+  /**
+
+   retailerAllReservationInfo
+   ---------------------------
+
+   TODO-Cursors (see above).
+
+  */
+  retailerAllReservationInfo(id:RetailerId) : ?[ReservedInventoryInfo] {
     // xxx
     null
   };
@@ -914,27 +593,6 @@ class Model() = this {
     end:Date
   ) : ?ReservationId
   {
-    // xxx
-    null
-  };
-
-  /**
-   retailerReservations
-   ---------------------------
-
-   TODO-Cursors (see above).
-
-  */
-  retailerReservations(id:RetailerId) : ?[ReservationId] {
-    // xxx
-    null
-  };
-
-   /**
-   reservationInfo
-   ---------------------------
-   */
-  reservationInfo(id:ReservationId) : ?ReservationInfo {
     // xxx
     null
   };

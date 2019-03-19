@@ -25,6 +25,26 @@ type information.
  Representation
  ================
  A table is a finite map (currently a [Trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)) mapping ids to documents.
+
+
+ notes on representation 
+ -------------------------
+
+ The ActorScript standard library implements functional association
+ lists (modules `List` and `AssocList`) and functional hash tries
+ (module `Trie`), whose representation uses those lists, for its
+ "buckets".
+
+ These map representations could change and expand in the future, so we
+ introduce the name `Map` here to abstract over the representation
+ choice between (for now) using association lists and tries.
+ 
+ Aside: Eventually, we'll likely have a more optimized trie that uses
+ small arrays in its leaf nodes.  The current representation is simple,
+ uses lots of pointers, and is likely not the optimal candidate for
+ efficient Wasm.  However, its asymptotic behavior is good, and it thus
+ provides a good approximation of the eventual design that we want.
+ 
  */
 type Table<Id, Doc> = Trie<Id, Doc>;
 let Table = Trie;
@@ -71,6 +91,18 @@ class DocTable<Id,Doc,Info>(
 */
 
   /** 
+   `copy`
+   ---------
+
+   See also [`Table.copy`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#copy)
+
+   */
+
+  copy() : Table<Id, Doc> {
+    Table.copy<Id, Doc>(table)
+  };
+
+  /** 
    `addDoc`
    ---------
 
@@ -78,12 +110,28 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  addDoc(doc:Id -> Doc) : Id {
+  addDoc(doc:Id -> Doc) : (Id, Doc) {
     let id = idNext;
     idNext := idIncr(idNext);
+    let d = doc(id);
     table := Table.insertFresh<Id, Doc>
-    (table, keyOf(id), idIsEq, doc(id));
-    id    
+    (table, keyOf(id), idIsEq, d);
+    (id, d)
+  };
+
+  /**
+   `updateDoc`
+   ---------
+
+   See also [`Table.replace`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+
+   */
+
+  updateDoc(id:Id, doc:Doc) : ?Doc {
+    let (updatedTable, oldDoc) = Table.replace<Id, Doc>
+    (table, keyOf(id), idIsEq, ?doc);
+    table := updatedTable;
+    oldDoc
   };
 
   /** 
@@ -94,16 +142,24 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  addInfo(info:Id -> Info) : ?Id {
+  addInfo(info:Id -> Info) : ?(Id, Doc) {
     let id = idNext;
-    switch (docOfInfo(info(id))) {
+    let doc = docOfInfo(info(id));
+    switch doc {
       case null { null };
       case (?doc) {
              idNext := idIncr(idNext);
              table := Table.insertFresh<Id, Doc>
              (table, keyOf(id), idIsEq, doc);
-             ?id
+             ?(id, doc)
            }
+    }
+  };
+  
+  addInfoGetId(info:Id -> Info) : ?Id {
+    switch (addInfo(info)) {
+      case null { null };
+      case (?(id, doc)) { ?id }
     }
   };
 
@@ -123,6 +179,29 @@ class DocTable<Id,Doc,Info>(
         ?d
       },
       func ():?Doc = null
+    )
+  };
+
+
+  remGetId(id:Id) : ?Id {
+    Table.removeThen<Id, Doc, ?Id>(
+      table, keyOf(id), idIsEq,
+      func (t:Table<Id, Doc>, d:Doc) : ?Id {
+        table := t;
+        ?id
+      },
+      func ():?Id = null
+    )
+  };
+
+  remGetUnit(id:Id) : ?() {
+    Table.removeThen<Id, Doc, ?()>(
+      table, keyOf(id), idIsEq,
+      func (t:Table<Id, Doc>, d:Doc) : ?() {
+        table := t;
+        ?()
+      },
+      func ():?() = null
     )
   };
 

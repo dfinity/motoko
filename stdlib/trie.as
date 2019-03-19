@@ -133,6 +133,15 @@ let Trie = new {
    */
   func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
+  /** 
+   `copy`
+   ---------
+   Purely-functional representation permits _O(1)_-time copy, via persistent sharing.
+
+   */
+
+  func copy<K, V>(t : Trie<K, V>) : Trie<K, V> = t;
+
   // helper function for constructing new paths of uniform length
   func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
     func rec(bitpos:Nat) : Trie<K,V> {
