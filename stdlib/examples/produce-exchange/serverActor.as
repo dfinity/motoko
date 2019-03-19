@@ -10,10 +10,10 @@ actor class Server() {
  PESS: Server Actor
  =======================================
 
- The Server actor defines an interface for messages sent
+ The `Server` actor defines an interface for messages sent
  by all participants, and the responses received in return.
 
- See also: (Non-PESS) **[Server model](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**
+ See also: the **[server `Model` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**.
 
 
  PESS: Registrar-based ingress messages
