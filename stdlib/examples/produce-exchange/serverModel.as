@@ -583,7 +583,6 @@ class Model() = this {
   
 
   /**
-
    `retailerQueryAll`
    ---------------------------
 
@@ -596,7 +595,6 @@ class Model() = this {
   };
 
   /**
-
    `retailerAllReservationInfo`
    ---------------------------
 
@@ -609,12 +607,12 @@ class Model() = this {
   };
 
   /**
-    `retailerQueryDates`
-    ---------------------------
+   `retailerQueryDates`
+   ---------------------------
     
-    Retailer queries available produce by delivery date range; returns
-    a list of inventory items that can be delivered to that retailer's
-    geography within that date.
+   Retailer queries available produce by delivery date range; returns
+   a list of inventory items that can be delivered to that retailer's
+   geography within that date.
    
    */
   retailerQueryDates(
