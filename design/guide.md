@@ -308,7 +308,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 *  `T` is `Null` and `U` is the an option type `? W`.
 
-*  `T` is `? V`, `U` is `? W` and `V <: U`.
+*  `T` is `? V`, `U` is `? W` and `V <: W`.
 
 *  `T` is a promise `async V`, `U` is a promise `async W`, 
     and `V <: W`.
@@ -857,21 +857,24 @@ The let declaration `<pat> = <exp>` has type `()` and declares the bindings in `
 * `<pat>` has type `T`.
 
 The `<pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by
-matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `()` and the binding of all identifiers in `<pat>` to their matching values in `v`. All bindings are immutable.
+matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `()` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+
+All bindings declared by a let (if any) are *immutable*.
 
 ## Var
 
-The var declaration `var <id> (: <typ>)? = <exp>` declares a mutable variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
+The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
 
 The declaration `var <id>` has type `()` provided:
-* '<exp>' has type `T`; and 
-* If the annotation `(:<typ>) ?` is present, then `T == <typ>`.
+* `<exp>` has type `T`; and 
+* If the annotation `(:<typ>)?` is present, then `T == <typ>`.
 
 Within the scope of the declaration, <id> has type `var T` (see Assignment).
 
 Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. Otherwise, the 
 `r` is some value `v` that determines the initial value of mutable variable `<id>`.
 `<id>` is bound to a fresh location that contains `v`.
+
 
 
 # Programs
