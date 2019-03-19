@@ -213,11 +213,14 @@ type RetailerDoc = {
   short_name : Text;
   description : Text;
   region : RegionDoc;
-  reserved : ReservedRouteInventoryMap;
+  reserved : ReservedInventoryRouteMap;
 };
 
 type RetailerTable = 
   DocTable<RetailerId, RetailerDoc, RetailerInfo>;
+
+type ReservedInventoryRouteMap = 
+  Map<ReservedInventoryId, (ReservedInventoryDoc, ReservedRouteDoc)>;
 
 /**
  `Transporter` documents
@@ -283,5 +286,3 @@ type ReservedRouteDoc = {
 type ReservedRouteTable = DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>;
 
 type ReservedRouteMap = Map<ReservedRouteId, ReservedRouteDoc>;
-
-type ReservedRouteInventoryMap = Map<ReservedRouteId, (ReservedInventoryDoc, ReservedRouteDoc)>;

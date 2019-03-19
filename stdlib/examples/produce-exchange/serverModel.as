@@ -719,7 +719,10 @@ secondary maps.
    TODO-Cursors (see above).
 
   */
-  retailerAllReservationInfo(id:RetailerId) : ?[ReservedInventoryInfo] {
+  retailerAllReservationInfo(id:RetailerId) : 
+    ?[(ReservedInventoryInfo,
+       ReservedRouteInfo)] 
+  {
     // xxx view
     null
   };

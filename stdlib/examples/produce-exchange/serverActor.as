@@ -629,7 +629,10 @@ actor class Server() {
    TODO-Cursors (see above).
 
    */
-  retailerReservations(id:RetailerId) : async ?[ReservedInventoryInfo] {
+  retailerReservations(id:RetailerId) : 
+    async ?[(ReservedInventoryInfo,
+             ReservedRouteInfo)]
+  {
     getModel().
       retailerAllReservationInfo(id)
   };
