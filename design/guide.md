@@ -676,6 +676,12 @@ The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
 
 The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating '<exp>'.
 
+#### Labeled loops
+
+If <exp> is a looping construct, `while (exp2) <exp1>`, `loop <exp1> (while (<exp2>))?` of `for (<pat> in <exp2> <exp1>` 
+the body, <exp1>, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
+
+<id_continue> is fresh identifer that can only be referenced by `continue <id>`.
 
 ### Break
 
@@ -691,9 +697,9 @@ If `r` is a value `v`, the evaluation abandons the current computation up to dyn
 
 ### Continue
 
-The expression `continue <id>` is equivalent to `break <id_continue>`, implicitly declared around looping constructs.
+The expression `continue <id>` is equivalent to `break <id_continue>`, where
+ <id_continue> is implicitly declared around the bodies of <id>-labelled looping constructs (See Section Labeled Loops).
 
-TBC
 
 ### Return
 
@@ -704,7 +710,19 @@ The expression `return <exp>` has type `None` provided:
   * `T` is the return type of the nearest enclosing function (with no intervening `async` expression), or
   * `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the dynamic async expression with the result of `exp`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
+
+TBR async traps?
+
+
+```
+  async <exp>                                    async expression
+  await <exp>                                    await future (only in async)
+  assert <exp>                                   assertion
+  <exp> : <typ>                                  type annotation
+  <dec>                                          declaration (scopes to block)
+```
+
 
 ## Patterns
 
