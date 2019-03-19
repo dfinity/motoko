@@ -390,10 +390,6 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   ( <exp> )                                      parentheses
-  
-<exp-field> ::=                                object expression fields
-  private? dec                                   field
-  private? <id> = <exp>                          short-hand
 ```
 
 ## Identifiers
@@ -656,18 +652,22 @@ The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 The `for`-expression is syntactic sugar for
 
 ```
-{ 
-  let x = exp1;
-  label l
-  loop {
-    switch (x.Next()) {
-       case (? pat) exp2;
-       case (null) break l;
+for ( <pat> in <exp1> ) <exp2> :=
+  { 
+    let x = exp1;
+    label l
+    loop {
+      switch (x.Next()) {
+        case (? pat) exp2;
+        case (null) break l;
+      };
     };
   };
-};
 ```
-In particular, the `for` loops will trap if evaluation of exp1 traps; as soon as some value of `x.Next()` `traps` or a soon as the value of `x.Next()` does not match pattern <pat>.
+where `x` is fresh identifier.
+
+In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.Next()` traps or the value of `x.Next()` does not match pattern `<pat>`.
+
 
 _TBR: do we want this semantics? We could, instead, skip values that don't match `<pat>`?_
 
@@ -762,24 +762,12 @@ Note: type annotations have no-runtime cost and cannot be used to perform the (c
 
 ### Parentheses
 
-The parenthesis expression `( <exp> )` has type `T` provided:
+The parenthesized expression `( <exp> )` has type `T` provided:
 * `<exp>` has type `T`.
 
 The result of evaluating `( <exp> : <typ> )` is the result of evaluating `<exp>`. 
 
 Note: type annotations have no-runtime cost and are only used to group expression and/or override precedence of language constructs.
-
-###
-
-
-```
-  async <exp>                                    async expression
-  await <exp>                                    await future (only in async)
-  assert <exp>                                   assertion
-  <exp> : <typ>                                  type annotation
-  <dec>                                          declaration (scopes to block)
-```
-
 
 # Patterns
 
@@ -851,7 +839,26 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
   type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
+
+<exp-field> ::=                                object expression fields
+  private? dec                                   field
+  private? <id> = <exp>                          short-hand
 ```
+## Expression Declaration
+
+The declaration `<exp>` has type `T` provided `<exp>` has type `T` and eclares no bindings.
+
+The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for `<exp>`'s side-effect).
+
+## Let
+
+The let declaration `<pat> = <exp>` has type `()` and declares the bindings in `<pat>` provided:
+* `<exp>` has type `T`.
+* `<pat>` has type `T`.
+
+The `<pat> = <exp>` evaluates `exp` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by
+matching the value `v` against `pat`. If matching fails, then the result is `trap`. Otherwise, the result is `()` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+
 
 # Programs
 ```
