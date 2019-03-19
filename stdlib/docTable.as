@@ -30,24 +30,29 @@ type information.
  notes on representation 
  -------------------------
 
- The ActorScript standard library implements functional association
- lists (modules `List` and `AssocList`) and functional hash tries
- (module `Trie`), whose representation uses those lists, for its
+ The ActorScript standard library provides several purely-functional finite map representations: 
+
+ - as association lists (via modules `List` and `AssocList`) 
+ - and  as hash tries (via (module `Trie`), whose representation uses those lists, for its
  "buckets".
 
  These map representations could change and expand in the future, so we
- introduce the name `Map` here to abstract over the representation
- choice between (for now) using association lists and tries.
+ introduce the name `Table` here to abstract over the representation
+ choice between (for now) using tries (and internally, association lists).
+ 
+ */
+type Table<Id, Doc> = Trie<Id, Doc>;
+let Table = Trie;
+
+/**
  
  Aside: Eventually, we'll likely have a more optimized trie that uses
  small arrays in its leaf nodes.  The current representation is simple,
  uses lots of pointers, and is likely not the optimal candidate for
  efficient Wasm.  However, its asymptotic behavior is good, and it thus
  provides a good approximation of the eventual design that we want.
- 
- */
-type Table<Id, Doc> = Trie<Id, Doc>;
-let Table = Trie;
+
+*/
 
 /**
  Client interface

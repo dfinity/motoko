@@ -141,30 +141,6 @@ let Trie = new {
    */
 
   func copy<K, V>(t : Trie<K, V>) : Trie<K, V> = t;
-
-  // helper function for constructing new paths of uniform length
-  func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
-    func rec(bitpos:Nat) : Trie<K,V> {
-      if ( bitpos < HASH_BITS ) {
-	      // create new bin node for this bit of the hash
-	      let path = rec(bitpos+1);
-	      let bit = getHashBit(k.hash, bitpos);
-	      if (not bit) {
-	        ?(new {left=path; right=null; keyvals=null})
-	      }
-	      else {
-	        ?(new {left=null; right=path; keyvals=null})
-	      }
-      } else {
-	      // create new leaf for (k,v) pair, if the value is non-null:
-        switch ov {
-          case null { ?(new {left=null; right=null; keyvals=null }) };
-          case (?v) { ?(new {left=null; right=null; keyvals=?((k,v),null) }) };
-        }
-      }
-    };
-    rec(bitpos)
-  };
   
   /**
    `replace`
@@ -1036,6 +1012,37 @@ let Trie = new {
     case (?((k,v),_)) { v };
     case null { /* ERROR */ getLeafVal<K,V>(t) };
     }
+  };
+
+
+  /**
+   More helpers
+   ==============================   
+   */
+  // @Omit:
+
+  // helper function for constructing new paths of uniform length
+  func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
+    func rec(bitpos:Nat) : Trie<K,V> {
+      if ( bitpos < HASH_BITS ) {
+	      // create new bin node for this bit of the hash
+	      let path = rec(bitpos+1);
+	      let bit = getHashBit(k.hash, bitpos);
+	      if (not bit) {
+	        ?(new {left=path; right=null; keyvals=null})
+	      }
+	      else {
+	        ?(new {left=null; right=path; keyvals=null})
+	      }
+      } else {
+	      // create new leaf for (k,v) pair, if the value is non-null:
+        switch ov {
+          case null { ?(new {left=null; right=null; keyvals=null }) };
+          case (?v) { ?(new {left=null; right=null; keyvals=?((k,v),null) }) };
+        }
+      }
+    };
+    rec(bitpos)
   };
 
 };
