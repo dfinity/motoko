@@ -10,17 +10,27 @@ let rec exp e = match e.it with
   | VarE x              -> "VarE"    $$ [id x]
   | LitE l              -> "LitE"    $$ [lit !l]
   | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; relop ro; exp e2]
+  | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; relop ro; exp e2]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, i, efs)    -> "ObjE"    $$ [obj_sort s; id i] @ List.map exp_field efs
+  | ObjE (s, efs)       -> "ObjE"    $$ [obj_sort s] @ List.map exp_field efs
   | DotE (e, x)         -> "DotE"    $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
+  | FuncE (x, s, tp, p, t, e') ->
+    "FuncE" $$ [
+      Atom (Type.string_of_typ e.note.note_typ);
+      Atom (sharing s.it);
+      Atom x] @
+      List.map typ_bind tp @ [
+      pat p;
+      typ t;
+      exp e'
+    ]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
-  | BlockE (ds)         -> "BlockE"  $$ List.map dec ds
+  | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
   | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
@@ -49,6 +59,7 @@ and pat p = match p.it with
   | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
   | OptP p        -> "OptP"       $$ [pat p]
   | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
+  | ParP p        -> "ParP"       $$ [pat p]
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
@@ -146,16 +157,6 @@ and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
-  | FuncD (s, x, tp, p, t, e) ->
-    "FuncD" $$ [
-      Atom (Type.string_of_typ d.note.note_typ);
-      Atom (sharing s.it);
-      id x] @
-      List.map typ_bind tp @ [
-      pat p;
-      typ t;
-      exp e
-    ]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
   | ClassD (x, tp, s, p, i', efs) ->

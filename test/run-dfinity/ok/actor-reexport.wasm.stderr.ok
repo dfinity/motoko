@@ -1,4 +1,19 @@
-(unknown location): internal error, Failure("pattern bindings not yet supported in objects")
-
-Last environment:
-
+non-closed actor: (ActorE
+  test2
+  (LetD (VarP exported_three) (ActorDotE (VarE test) exported_too))
+  (LetD
+    (TupP (VarP exported_four) (VarP exported_five))
+    (IfE
+      (LitE (BoolLit true))
+      (TupE
+        (ActorDotE (VarE test) exported_too)
+        (ActorDotE (VarE test) exported_too)
+      )
+      (TupE (VarE exported_three) (VarE exported_three))
+    )
+  )
+  (exported_three exported_three)
+  (exported_four exported_four)
+  (exported_five exported_five)
+  actor {exported_five : shared () -> (); exported_four : shared () -> (); exported_three : shared () -> ()}
+)

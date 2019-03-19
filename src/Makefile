@@ -21,10 +21,11 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  $(OPAM_PACKAGES:%=-pkg %) \
  -tags debug
 
-.PHONY: all quick clean test test-quick
+.PHONY: all parallel quick clean test test-parallel test-quick
 
 all: $(NAME) test
 
+parallel: $(NAME) test-parallel
 quick: $(NAME) test-quick
 
 $(NAME): $(MAIN).$(BUILD)
@@ -49,11 +50,15 @@ clean:
 	$(MAKE) -C ../test clean
 
 test: $(NAME)
+	$(MAKE) -C ../stdlib ASC=$(ASC) all
 	$(MAKE) -C ../test ASC=$(ASC) all
 	$(MAKE) -C ../samples ASC=$(ASC) all
 
 accept: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) accept
+
+test-parallel: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) parallel
 
 test-quick: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) quick

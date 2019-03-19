@@ -21,6 +21,10 @@ let id_bind rho i =
   let i' = fresh_id i in
   ({i with it = i'}, Renaming.add i.it i' rho)
 
+let arg_bind rho i =
+  let i' = fresh_id i in
+  ({i with it = i'}, Renaming.add i.it i' rho)
+
 let rec exp rho e  =
     {e with it = exp' rho e.it}
 
@@ -33,7 +37,9 @@ and exp' rho e  = match e with
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp rho e1, ro, exp rho e2)
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
-  | ActorE (i, efs, t)  -> ActorE (i, exp_fields rho efs, t)
+  | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
+                            let ds', rho'' = decs rho' ds
+                            in ActorE (i', ds', fields rho'' fs, t)
   | DotE (e, i)         -> DotE (exp rho e, i)
   | ActorDotE (e, i)    -> ActorDotE (exp rho e, i)
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
@@ -41,14 +47,11 @@ and exp' rho e  = match e with
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (cc, e1, ts, e2)
                         -> CallE  (cc, exp rho e1, ts, exp rho e2)
-  | BlockE ds           -> BlockE (decs rho ds)
+  | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
+                           in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
-  | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
-  | LoopE (e1, None)    -> LoopE (exp rho e1, None)
-  | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
-  | ForE (p, e1, e2)    -> let p',rho' = pat rho p in
-                           ForE (p', exp rho e1, exp rho' e2)
+  | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
   | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
@@ -60,9 +63,24 @@ and exp' rho e  = match e with
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
-  | NewObjE (s, is, t)  -> NewObjE (s, List.map (fun (l,i) -> (l,id rho i)) is, t)
+  | FuncE (x, s, tp, p, t, e) ->
+     let p', rho' = args rho p in
+     let e' = exp rho' e in
+     FuncE (x, s, tp, p', t, e')
+  | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
 
 and exps rho es  = List.map (exp rho) es
+
+and fields rho fs =
+  List.map (fun f -> { f with it = { f.it with var = id rho f.it.var } }) fs
+
+and args rho as_ =
+  match as_ with
+  | [] -> ([],rho)
+  | a::as_ ->
+     let (a', rho') = arg_bind rho a in
+     let (as_', rho'') = args rho' as_ in
+     (a'::as_', rho'')
 
 and pat rho p =
     let p',rho = pat' rho p.it in
@@ -99,37 +117,13 @@ and case' rho { pat = p; exp = e} =
   let e' = exp rho' e in
   {pat=p'; exp=e'}
 
-
 and cases rho cs = List.map (case rho) cs
-
-and exp_field rho (ef : exp_field) =
-  let (mk_ef, rho) = exp_field' rho ef.it in
-    ({ ef with it = mk_ef }, rho)
-
-and exp_field' rho {name; id; exp = e; mut; vis} =
-  let id', rho = id_bind rho id in
-  ((fun rho'-> { name; id = id'; exp = exp rho' e; mut; vis }),
-   rho)
-
-and exp_fields rho efs  =
-  let rec exp_fields_aux rho efs =
-    match efs with
-    | [] -> ([],rho)
-    | ef::efs ->
-       let (mk_ef, rho) = exp_field rho ef in
-       let (mk_efs, rho) = exp_fields_aux rho efs in
-       (mk_ef::mk_efs,rho) in
-  let mk_efs, rho = exp_fields_aux rho efs in
-  List.map (fun mk_ef -> {mk_ef with it = mk_ef.it rho}) mk_efs
 
 and dec rho d =
   let (mk_d, rho') = dec' rho d.it in
   ({d with it = mk_d}, rho')
 
 and dec' rho d = match d with
-  | ExpD e ->
-     (fun rho -> ExpD (exp rho e)),
-     rho
   | LetD (p, e) ->
      let p', rho = pat rho p in
      (fun rho' -> LetD (p',exp rho' e)),
@@ -137,13 +131,6 @@ and dec' rho d = match d with
   | VarD (i, e) ->
      let i', rho = id_bind rho i in
      (fun rho' -> VarD (i',exp rho' e)),
-     rho
-  | FuncD (s, i, tp, p, t, e) ->
-     let i', rho = id_bind rho i in
-     (fun rho' ->
-       let p', rho'' = pat rho' p in
-       let e' = exp rho'' e in
-       FuncD (s, i', tp, p', t, e')),
      rho
   | TypD c -> (* we don't rename type names *)
      (fun rho -> d),
@@ -159,5 +146,5 @@ and decs rho ds =
        (mk_d::mk_ds, rho'')
   in
   let mk_ds, rho' = decs_aux rho ds in
-  List.map (fun mk_d ->
-      { mk_d with it = mk_d.it rho' } ) mk_ds
+  let ds' = List.map (fun mk_d -> { mk_d with it = mk_d.it rho' } ) mk_ds in
+  (ds', rho')

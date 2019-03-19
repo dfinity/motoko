@@ -33,6 +33,13 @@ let id_of_exp x =
   | VarE x -> x
   | _ -> failwith "Impossible: id_of_exp"
 
+let arg_of_exp x =
+  match x.it with
+  | VarE i -> { i with note = x.note.note_typ }
+  | _ -> failwith "Impossible: arg_of_exp"
+
+let exp_of_arg a = idE {a with note = () } a.note
+
 (* Fresh id generation *)
 
 let id_stamp = ref 0
@@ -42,11 +49,11 @@ let fresh () =
   id_stamp := !id_stamp + 1;
   name
 
-let fresh_lab () =
+let fresh_id () =
   let name = fresh () in
   name @@ no_region
 
-let fresh_id typ =
+let fresh_var typ =
   let name = fresh () in
   idE (name @@ no_region) typ
 
@@ -95,23 +102,28 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
-let decE dec = { dec with it = BlockE [dec] }
+let dec_eff dec = match dec.it with
+  | TypD _ -> T.Triv
+  | LetD (_,e) | VarD (_,e) -> eff e
 
-let blockE decs =
-  let rec typ_decs decs =
-    match decs with
-    | [] -> T.unit
-    | [dec] -> typ dec
-    | _ :: decs -> typ_decs decs
-  in
-  let es = List.map eff decs in
-  let typ = typ_decs decs in
-  let e =  List.fold_left max_eff Type.Triv es in
-  { it = BlockE decs;
-    at = no_region;
-    note = {S.note_typ = typ;
-            S.note_eff = e }
-  }
+let is_useful_dec dec = match dec.it with
+  | LetD ({it = WildP;_}, {it = TupE [];_}) -> false
+  | LetD ({it = TupP [];_}, {it = TupE [];_}) -> false
+  | _ -> true
+
+let blockE decs exp =
+  let decs' = List.filter is_useful_dec decs in
+  match decs' with
+  | [] -> exp
+  | _ ->
+    let es = List.map dec_eff decs' in
+    let typ = typ exp in
+    let e =  List.fold_left max_eff (eff exp) es in
+    { it = BlockE (decs', exp);
+      at = no_region;
+      note = {S.note_typ = typ;
+              S.note_eff = e }
+    }
 
 let textE s =
   { it = LitE (S.TextLit s);
@@ -135,10 +147,13 @@ let boolE b =
              S.note_eff = T.Triv}
   }
 
-let callE exp1 ts exp2 t =
+let callE exp1 ts exp2 =
+  let ret_ty = match T.promote (typ exp1) with
+    | T.Func (_, _, tbs, _, ts2) -> T.open_ ts (T.seq ts2)
+    | _ -> assert false in
   { it = CallE (Value.call_conv_of_typ (typ exp1), exp1, ts, exp2);
     at = no_region;
-    note = { S.note_typ = t;
+    note = { S.note_typ = ret_ty;
              S.note_eff = max_eff (eff exp1) (eff exp2) }
   }
 
@@ -205,7 +220,15 @@ let retE exp =
              S.note_typ = Type.Non }
   }
 
+let immuteE e =
+  { e with
+    note = { S.note_eff = eff e;
+             S.note_typ = T.as_immut (typ e) }
+  }
+
+
 let assignE exp1 exp2 =
+  assert (T.is_mut (typ exp1));
   { it = AssignE (exp1, exp2);
     at = no_region;
     note = { S.note_eff = Effect.max_eff (eff exp1) (eff exp2);
@@ -219,14 +242,12 @@ let labelE l typ exp =
              S.note_typ = typ }
   }
 
-let loopE exp1 exp2Opt =
-  { it = LoopE (exp1, exp2Opt);
+(* Used to desugar for loops, while loops and loop-while loops. *)
+let loopE exp =
+  { it = LoopE exp;
     at = no_region;
-    note = { S.note_eff = Effect.max_eff (eff exp1)
-                            (match exp2Opt with
-                             | Some exp2 -> eff exp2
-                             | None -> Type.Triv);
-             S.note_typ = Type.Non }
+    note = { S.note_eff = eff exp ;
+             S.note_typ = T.Non }
   }
 
 let declare_idE x typ exp1 =
@@ -252,71 +273,88 @@ let newObjE sort ids typ =
 
 (* Declarations *)
 
-let letP pat exp =
-  { it = LetD (pat, exp);
+let letP pat exp = LetD (pat, exp) @@ no_region
+
+let letD x exp = letP (varP x) exp
+
+let varD x exp =
+  VarD (x, exp) @@ no_region
+
+let expD exp =
+  let pat = { it = WildP; at = exp.at; note = exp.note.note_typ } in
+  LetD (pat, exp) @@ exp.at
+
+(* Derived expressions *)
+
+let letE x exp1 exp2 = blockE [letD x exp1] exp2
+
+let thenE exp1 exp2 = blockE [expD exp1] exp2
+
+let ignoreE exp =
+  if typ exp = T.unit
+  then exp
+  else thenE exp (tupE [])
+
+
+(* Mono-morphic function expression *)
+let funcE name t x exp =
+  let arg_tys, retty = match t with
+    | T.Func(_, _, _, ts1, ts2) -> ts1, T.seq ts2
+    | _ -> assert false in
+  let cc = Value.call_conv_of_typ t in
+  let args, exp' =
+    if cc.Value.n_args = 1;
+    then
+      [ arg_of_exp x ], exp
+    else
+      let vs = List.map fresh_var arg_tys in
+      List.map arg_of_exp vs,
+      blockE [letD x (tupE vs)] exp
+  in
+  ({it = FuncE
+     ( name,
+       cc,
+       [],
+       args,
+       (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
+       retty,
+       exp'
+     );
     at = no_region;
-    note = { S.note_typ = T.unit; (* ! *)
-             S.note_eff = eff exp; }
-  }
+    note = { S.note_eff = T.Triv; S.note_typ = t }
+   })
 
-let letD x exp = { it = LetD (varP x, exp);
-                   at = no_region;
-                   note = { S.note_eff = eff exp;
-                            S.note_typ = T.unit; } (* ! *)
-                 }
-
-let varD x exp = { it = VarD (x, exp);
-                   at = no_region;
-                   note = { S.note_eff = eff exp;
-                            S.note_typ = T.unit; } (* ! *)
-                 }
-
-let expD exp =  { exp with it = ExpD exp }
-
-let is_expD dec = match dec.it with ExpD _ -> true | _ -> false
-
-
-(* let expressions (derived) *)
-
-let letE x exp1 exp2 = blockE [letD x exp1; expD exp2]
+let nary_funcE name t xs exp =
+  let retty = match t with
+    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | _ -> assert false in
+  let cc = Value.call_conv_of_typ t in
+  assert (cc.Value.n_args = List.length xs);
+  ({it = FuncE
+      ( name,
+        cc,
+        [],
+        List.map arg_of_exp xs,
+        retty,
+        exp
+      );
+    at = no_region;
+    note = { S.note_eff = T.Triv; S.note_typ = t }
+  })
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
-    let sharing, t1, t2 = match typ f with
-      | T.Func(sharing, _, _, ts1, ts2) -> sharing, T.seq ts1, T.seq ts2
-      | _ -> assert false in
-    let cc = Value.call_conv_of_typ (typ f) in
-    { it = FuncD (cc,
-                  (id_of_exp f),
-                  [],
-                  { it = VarP (id_of_exp x); at = no_region; note = t1 },
-                  (* TODO: Assert invariant: t2 has no free (unbound) DeBruijn indices -- Claudio *)
-                  t2,
-                  exp);
-      at = no_region;
-      note = f.note
-    }
+    letD f (funcE (id_of_exp f).it (typ f) x exp)
   | _ -> failwith "Impossible: funcD"
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs exp =
-  match f.it, typ f with
-  | VarE _,
-    T.Func(sharing,_,_,_,ts2) ->
-    let cc = Value.call_conv_of_typ (typ f) in
-    let t2 = T.seq ts2 in
-    { it = FuncD (cc,
-                  id_of_exp f,
-                  [],
-                  seqP (List.map varP xs),
-                  t2,
-                  exp);
-      at = no_region;
-      note = f.note
-    }
-  | _,_ -> failwith "Impossible: funcD"
+  match f.it with
+  | VarE _ ->
+    letD f (nary_funcE (id_of_exp f).it (typ f) xs exp)
+  | _ -> failwith "Impossible: funcD"
 
 
 (* Continuation types *)
@@ -326,7 +364,7 @@ let answerT = T.unit
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
-let fresh_cont typ = fresh_id (contT typ)
+let fresh_cont typ = fresh_var (contT typ)
 
 (* Sequence expressions *)
 
@@ -345,29 +383,20 @@ let as_seqE e =
 (* Lambda abstraction *)
 
 (* local lambda *)
-let  (-->) x exp =
-  match x.it with
-  | VarE _ ->
-    let f = idE ("$lambda" @@ no_region)
-              (T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)))
-    in
-    decE  (funcD f x exp)
-  | _ -> failwith "Impossible: -->"
+let (-->) x exp =
+  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)) in
+  funcE "$lambda" fun_ty x exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
-  let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Local, T.Returns, [],
-                     List.map typ xs, T.as_seq (typ exp))) in
-  decE (nary_funcD f xs exp)
+  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  nary_funcE "$lambda" fun_ty xs exp
 
 
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
-  let f = idE ("$lambda" @@ no_region)
-            (T.Func (T.Sharable, T.Returns, [],
-                     List.map typ xs, T.as_seq (typ exp))) in
-  decE (nary_funcD f xs exp)
+  let fun_ty = T.Func (T.Sharable, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  nary_funcE "$lambda" fun_ty xs exp
 
 
 (* Lambda application (monomorphic) *)
@@ -397,3 +426,65 @@ let prim_async typ =
 
 let prim_await typ =
   primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
+
+(* derived loop forms; each can be expressed as an unconditional loop *)
+
+let whileE exp1 exp2 =
+  (* while e1 e2
+     ~~> label l loop {
+           if e1 then { e2 } else { break l }
+         }
+  *)
+  let lab = fresh_id () in
+  labelE lab T.unit (
+      loopE (
+          ifE exp1
+            exp2
+            (breakE lab (tupE []))
+            T.unit
+        )
+    )
+
+let loopWhileE exp1 exp2 =
+  (* loop e1 while e2
+    ~~> label l loop {
+          let () = e1 ;
+          if e2 { } else { break l }
+        }
+   *)
+  let lab = fresh_id () in
+  labelE lab T.unit (
+      loopE (
+          thenE exp1
+            ( ifE exp2
+               (tupE [])
+               (breakE lab (tupE []))
+               T.unit
+            )
+        )
+    )
+
+let forE pat exp1 exp2 =
+  (* for p in e1 e2
+     ~~>
+     let nxt = e1.next ;
+     label l loop {
+       switch nxt () {
+         case null { break l };
+         case p    { e2 };
+       }
+     } *)
+  let lab = fresh_id () in
+  let ty1 = exp1.note.S.note_typ in
+  let _, tfs  = Type.as_obj_sub "next" ty1 in
+  let tnxt    = T.lookup_field "next" tfs in
+  let nxt = fresh_var tnxt in
+  letE nxt (dotE exp1 (nameN "next") tnxt) (
+    labelE lab Type.unit (
+      loopE (
+        switch_optE (callE nxt [] (tupE []))
+          (breakE lab (tupE []))
+          pat exp2 Type.unit
+      )
+    )
+  )

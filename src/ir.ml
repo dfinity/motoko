@@ -23,6 +23,9 @@ and pat' =
   | OptP of pat                                (* option *)
   | AltP of pat * pat                          (* disjunctive *)
 
+(* Like id, but with a type attached *)
+type arg = (string, Type.typ) Source.annotated_phrase
+
 (* Expressions *)
 
 type exp = exp' phrase
@@ -36,7 +39,6 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ActorE of id * exp_field list * Type.typ   (* actor *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -44,12 +46,10 @@ and exp' =
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
       Value.call_conv * exp * Type.typ list * exp
-  | BlockE of dec list                         (* block *)
+  | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
-  | WhileE of exp * exp                        (* while-do loop *)
-  | LoopE of exp * exp option                  (* do-while loop *)
-  | ForE of pat * exp * exp                    (* iteration *)
+  | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
@@ -58,11 +58,13 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
-  | NewObjE of                                 (* make an object, preserving mutable identity *)
-      Type.obj_sort * (name * id) list * Type.typ
+  | FuncE of                                   (* function *)
+      string * Value.call_conv * typ_bind list * arg list * Type.typ * exp
+  | ActorE of id * dec list * field list * Type.typ (* actor *)
+  | NewObjE of  Type.obj_sort * field list * Type.typ  (* make an object *)
 
-and exp_field = exp_field' Source.phrase
-and exp_field' = {name : name; id : id; exp : exp; mut : mut; vis : vis}
+and field = (field', Type.typ) Source.annotated_phrase
+and field' = {name : name; var : id} (* the var is by reference, not by value *)
 
 and name = name' Source.phrase
 and name' = Name of string
@@ -73,13 +75,10 @@ and case' = {pat : pat; exp : exp}
 
 (* Declarations *)
 
-and dec = dec' phrase
+and dec = dec' Source.phrase
 and dec' =
-  | ExpD of exp                                (* plain expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
-  | FuncD of                                   (* function *)
-      Value.call_conv * id * typ_bind list * pat * Type.typ * exp
   | TypD of Type.con                           (* type *)
 
 
@@ -96,9 +95,10 @@ should hold.
 type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
+  serialized : bool; (* Shared function arguments are serialized *)
 }
 
 
 (* Program *)
 
-type prog = dec list * flavor
+type prog = (dec list * exp) * flavor

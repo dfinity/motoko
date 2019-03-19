@@ -8,9 +8,10 @@
 #
 #    -a: Update the files in ok/
 #    -d: Compile with --dfinity, use dvm to run
+#    -s: Be silent in sunny-day execution
 #
 
-realpath() {
+function realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }
 
@@ -50,6 +51,8 @@ function normalize () {
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
+    sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -76,7 +79,7 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low}
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -98,16 +101,6 @@ do
       normalize $out/$base.run
       diff_files="$diff_files $base.run"
 
-      # Interpret with lowering
-      $ECHO -n " [run-low]"
-      $ASC $ASC_FLAGS -r -a -A $base.as > $out/$base.run-low 2>&1
-      normalize $out/$base.run-low
-      diff_files="$diff_files $base.run-low"
-
-      # Diff interpretations without/with lowering
-      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-      diff_files="$diff_files $base.diff-low"
-
       # Interpret IR
       $ECHO -n " [run-ir]"
       $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
@@ -117,6 +110,17 @@ do
       # Diff interpretations without/with lowering
       diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
       diff_files="$diff_files $base.diff-ir"
+
+      # Interpret IR with lowering
+      $ECHO -n " [run-low]"
+      $ASC $ASC_FLAGS -r -iR -a -A $base.as > $out/$base.run-low 2>&1
+      normalize $out/$base.run-low
+      diff_files="$diff_files $base.run-low"
+
+      # Diff interpretations without/with lowering
+      diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+      diff_files="$diff_files $base.diff-low"
+
     fi
 
     # Compile
@@ -129,6 +133,18 @@ do
     fi
     normalize $out/$base.wasm.stderr
     diff_files="$diff_files $base.wasm.stderr"
+
+    # Check filecheck
+    if [ "$SKIP_RUNNING" != yes ]
+    then
+      if grep -F -q CHECK $base.as
+      then
+        $ECHO -n " [FileCheck]"
+        wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+        cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
+        diff_files="$diff_files $base.filecheck"
+      fi
+    fi
 
     # Run compiled program
     if [ -e $out/$base.wasm ]

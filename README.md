@@ -13,21 +13,6 @@ To install the `asc` binary into your nix environment, use
 $ nix-env -i -f . -A native
 ```
 
-## Setup of `dev`
-
-Until we join the monorepo, we need a checkout the `dev` repository in
-`nix/dev`; see the `Jenkinsfile` the precise revision to use.
-
-For a fresh checkout, run
-```
-git clone --recursive git@github.com:dfinity-lab/dev nix/dev
-git -C nix/dev checkout 2bc6…see…Jenkinsfile…fecd
-git -C nix/dev submodule update --init --recursive
-```
-
-To update, just run the last two commands again.
-
-
 ## Development using Nix
 
 This is the command that should always pass on master is the following, which builds everything:
@@ -65,7 +50,7 @@ installing all required tools without nix is out of scope).
    ```
    opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
- * Install the `wasm` package. We use a newer version than is on opam, and a
+ * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
    fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
@@ -73,19 +58,13 @@ installing all required tools without nix is out of scope).
    cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
- * Install the `wasm` tool, using
+ * Install various command line tools used by, in particuar, the test suite:
    ```
    nix-env -i -f . -A wasm
-   ```
- * Install the `dvm` tool, using
-   ```
+   nix-env -i -f . -A filecheck
+   nix-env -i -f . -A wabt
    nix-env -i -f . -A dvm
    ```
-   or simply
-   ```
-   ./update-dvm.sh
-   ```
-   which also updates the `dev` checkout.
 
 
 ## Create a coverage report
@@ -250,7 +229,7 @@ and open the path printed on the last line of that command.
 * Conditionals and switches
   - `if b ...`
   - `if b ... else ...`
-  - `switch x case 1 ... case 2 ... case _ ...`
+  - `switch x { case 1 ...; case 2 ...; case _ ...}`
 
 * While loops and iterations
   - `while (p()) ...`

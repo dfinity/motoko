@@ -2,11 +2,13 @@
 
 if [ -z "$1" ]
 then
-  echo "Usage: $0 foo.wasm"
+  echo "Usage: $0 <name>.wasm"
   exit 1
 fi
 
 name="$(basename $1 .wasm)_0"
+DVM_TMP=$(mktemp -d)
+trap 'rm -rf $DVM_TMP' EXIT
 
 export LANG=C
 function dvm_ () {
@@ -20,6 +22,6 @@ function dvm_ () {
 
 }
 
-dvm_ -q reset
-dvm_ -q new $1
-dvm_ -q run $name start
+dvm_ -q --db $DVM_TMP reset
+dvm_ -q --db $DVM_TMP new $1
+dvm_ -q --db $DVM_TMP run $name start

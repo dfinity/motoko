@@ -61,8 +61,8 @@ struct
   let lognot i = inj (Rep.lognot (proj i))
   let logxor i j = inj (Rep.logxor (proj i) (proj j))
   let shift_left i j = Rep.shift_left i j
-  let shift_right = Rep.shift_right
-  let shift_right_logical = Rep.shift_right_logical
+  let shift_right i j = let res = Rep.shift_right i j in inj (proj res)
+  let shift_right_logical i j = let res = Rep.shift_right_logical i j in inj (proj res)
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
@@ -200,7 +200,7 @@ let call_conv_of_typ typ =
   match typ with
   | Type.Func(sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
-  | _ -> raise (Invalid_argument ("call_conv_of_typ"^T.string_of_typ typ))
+  | _ -> raise (Invalid_argument ("call_conv_of_typ " ^ T.string_of_typ typ))
 
 type func =
   (value -> value cont -> unit)
@@ -222,6 +222,7 @@ and value =
   | Func of call_conv * func
   | Async of async
   | Mut of value ref
+  | Serialized of value
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
@@ -258,6 +259,7 @@ let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
 
 let obj_of_array a =
   let get = local_func 1 1 @@ fun v k ->

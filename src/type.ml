@@ -34,6 +34,7 @@ and typ =
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
+  | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
@@ -123,6 +124,7 @@ let rec shift i n t =
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
+  | Serialized t -> Serialized (shift i n t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -157,6 +159,7 @@ let rec subst sigma t =
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
+  | Serialized t -> Serialized (subst sigma t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -196,6 +199,7 @@ let rec open' i ts t =
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
+  | Serialized t -> Serialized (open' i ts t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -253,6 +257,7 @@ let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
+let is_serialized = function Serialized _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -267,6 +272,7 @@ let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> 
 let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
+let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
@@ -334,6 +340,7 @@ let rec span = function
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
   | Mut t -> span t
+  | Serialized t -> None
   | Non -> Some 0
 
 
@@ -367,6 +374,7 @@ let rec avoid' cons = function
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
   | Mut t -> Mut (avoid' cons t)
+  | Serialized t -> Serialized (avoid' cons t)
 
 and avoid_bind cons {var; bound} =
   {var; bound = avoid' cons bound}
@@ -470,6 +478,8 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
+  | Serialized t1', Serialized t2' ->
+    eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
   | _, _ -> false
   end
 
@@ -652,6 +662,8 @@ and string_of_typ' vs t =
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
+  | Serialized t ->
+    sprintf "serialized %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
 and string_of_field vs {lab; typ} =
