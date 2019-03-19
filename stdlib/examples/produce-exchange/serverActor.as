@@ -35,10 +35,11 @@ actor class Server() {
    The registrar provides functions to add and to remove entities from
    the following (mostly-static) tables:
    
-   - **Resource information:** truck types, produce (types) and region information.
+   - **Static resource information:** truck types, produce types and region information.
    - **Participant information:** producers, retailers and transporters.
+   - **Dynamic resource information:** inventory, routes and reservations.
    
-   For each of the six entities listed above, we have an add (`Add`)
+   For each of the entities listed above, we have an add (`Add`)
    and remove (`Rem`) function below, prefixed by `registrar`-, and
    suffixed by one of the entities in the following list:
    
@@ -92,7 +93,6 @@ actor class Server() {
   /**
    `registrarRemTruckType`
    ---------------------
-   returns `?` on success, and `null` on failure.
    */
 
   registrarRemTruckType(

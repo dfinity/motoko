@@ -27,7 +27,9 @@ Representation
  Finite maps
  ------------
 
- See also [`Trie`]() module.
+ See also: modules for [`Trie`]() 
+ and [`DocTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md).
+ 
 */
 
 type Map<X, Y> = Trie<X, Y>;
@@ -36,8 +38,8 @@ let Map = Trie;
 
 /**
 
-Document tables
------------------
+[Document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+--------------------------
 
 Document tables abstract over the various finite map operations we
 commonly need for each kind of entity in the exchange model.

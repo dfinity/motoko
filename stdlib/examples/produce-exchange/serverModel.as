@@ -28,32 +28,41 @@ class Model() = this {
   /**
    Representation
    =================
-   We use several public-facing **tables.**
    
-   xxx
+   We use several public-facing **tables**, implemented as document tables.
    
+
+   CRUD operations via document tables
+   -------------------------------------
+
+   This server model provides document table objects to hold the
+   following kinds of entities in the exchange:
+   
+   - **Static resource information:** truck types, produce types and region information.
+   - **Participant information:** producers, retailers and transporters.
+   - **Dynamic resource information:** inventory, routes and reservations.
+   
+   For each of the entity kinds listed above, we have a corresponding
+   `DocTable` defined below that affords ordinary CRUD
+   (create-read-update-delete) operations.
+
+
+   Secondary indexing
+   ----------------------
+
    To do: We initialize these tables with callbacks so that add/remove
    operations also maintain secondary tables.
 
+   */
 
-   Basic operations via document tables
-   =============================================
-
-   The model provides functions to add and to remove entities from
-   the following (mostly-static) tables:
-   
-   - **Resource information:** truck types, produce (types) and region information.
-   - **Participant information:** producers, retailers and transporters.
-   
-   For each of the six entities listed above, we have an add (`Add`)
-   and remove (`Rem`) below by using one of the following document
-   tables.
-
+  /** 
+   `truckTypeTable`
+   -----------------
    */
   
   var truckTypeTable : TruckTypeTable = 
-    DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>
-  (
+    DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>(
+      //@Omit:
     0,
     func(x:TruckTypeId):TruckTypeId{x+1},
     func(x:TruckTypeId,y:TruckTypeId):Bool{x==y},
@@ -74,11 +83,17 @@ class Model() = this {
       isFridge=info.isFridge;
       isFreezer=info.isFreezer;
     }),
+    /** */
   );    
 
+  /** 
+   `regionTable`
+   -----------------
+   */
+
   var regionTable : RegionTable = 
-    DocTable<RegionId, RegionDoc, RegionInfo>
-  (
+    DocTable<RegionId, RegionDoc, RegionInfo>(
+      // @Omit:
     0,
     func(x:RegionId):RegionId{x+1},
     func(x:RegionId,y:RegionId):Bool{x==y},
@@ -93,11 +108,17 @@ class Model() = this {
       short_name=info.short_name; 
       description=info.description;
     }),
+    /** */
   );
 
+  /** 
+   `produceTable`
+   -----------------
+   */
+
   var produceTable : ProduceTable = 
-    DocTable<ProduceId, ProduceDoc, ProduceInfo>
-  (
+    DocTable<ProduceId, ProduceDoc, ProduceInfo>(
+    //@Omit:
     0,
     func(x:ProduceId):ProduceId{x+1},
     func(x:ProduceId,y:ProduceId):Bool{x==y},
@@ -114,8 +135,10 @@ class Model() = this {
       description=info.description;
       grade=info.grade;
     }),
+    /** */
   );
 
+  //@Omit:
 
   private emptyInventory() : InventoryTable = {
     /// xxx todo
@@ -127,9 +150,14 @@ class Model() = this {
     emptyReservedInventory()
   };
 
+  /** 
+   `producerTable`
+   -----------------
+   */
+
   var producerTable : ProducerTable = 
-    DocTable<ProducerId, ProducerDoc, ProducerInfo>
-  (
+    DocTable<ProducerId, ProducerDoc, ProducerInfo>(      
+      //@Omit:
     0,
     func(x:ProducerId):ProducerId{x+1},
     func(x:ProducerId,y:ProducerId):Bool{x==y},
@@ -158,8 +186,10 @@ class Model() = this {
                null
              };
       }
+  /** */
   );
 
+  //@Omit:
 
   private emptyRoutes() : RouteTable = {
     /// xxx todo
@@ -171,9 +201,15 @@ class Model() = this {
     emptyReservedRoutes()
   };
 
+  /** 
+   `transporterTable`
+   -----------------
+   */
+
   var transporterTable : TransporterTable = 
-    DocTable<TransporterId, TransporterDoc, TransporterInfo>
-  (
+    DocTable<TransporterId, TransporterDoc, TransporterInfo> (
+  //@Omit:
+
     0,
     func(x:TransporterId):TransporterId{x+1},
     func(x:TransporterId,y:TransporterId):Bool{x==y},
@@ -194,9 +230,14 @@ class Model() = this {
     }),
   );
 
+  /** 
+   `retailerTable`
+   -----------------
+   */
+
   var retailerTable : RetailerTable = 
-    DocTable<RetailerId, RetailerDoc, RetailerInfo>
-  (
+    DocTable<RetailerId, RetailerDoc, RetailerInfo>(
+  //@Omit:
     0,
     func(x:RetailerId):RetailerId{x+1},
     func(x:RetailerId,y:RetailerId):Bool{x==y},
@@ -225,13 +266,40 @@ class Model() = this {
                null
              };
       }
+  /** */
   );
 
-  var inventoryTable : InventoryTable = emptyInventory();
-  var reservedInventoryTable : ReservedInventoryTable = emptyReservedInventory();
+  /**
+   `inventoryTable`
+   ----------------
+   */
 
-  var routeTable : RouteTable = emptyRoutes();
-  var reservedRouteTable : ReservedRouteTable = emptyReservedRoutes();
+  var inventoryTable : InventoryTable = 
+    emptyInventory();
+
+  /**
+   `reservedInventoryTable`
+   ----------------
+   */
+
+  var reservedInventoryTable : ReservedInventoryTable = 
+    emptyReservedInventory();
+
+  /**
+   `routeTable`
+   ----------------
+   */
+
+  var routeTable : RouteTable = 
+    emptyRoutes();
+
+  /**
+   `reservedRouteTable`
+   ----------------
+   */
+
+  var reservedRouteTable : ReservedRouteTable = 
+    emptyReservedRoutes();
 
   /**
 
@@ -326,7 +394,7 @@ class Model() = this {
 
   /**
 
-   `Producer`-oriented operations
+   `Producer`-facing operations
    ==========================================
 
    */
@@ -448,7 +516,7 @@ class Model() = this {
 
 
    /**
-   `Transporter`-oriented operations
+   `Transporter`-facing operations
    =================
    */
 
@@ -509,14 +577,14 @@ class Model() = this {
 
 
   /**
-   `Retailer`-oriented operations
+   `Retailer`-facing operations
    ====================
    */
   
 
   /**
 
-   retailerQueryAll
+   `retailerQueryAll`
    ---------------------------
 
    TODO-Cursors (see above).
@@ -529,7 +597,7 @@ class Model() = this {
 
   /**
 
-   retailerAllReservationInfo
+   `retailerAllReservationInfo`
    ---------------------------
 
    TODO-Cursors (see above).
@@ -560,7 +628,7 @@ class Model() = this {
   };
 
   /**
-   retailerReserve
+   `retailerReserve`
    ---------------------------
   */
   retailerReserve(
@@ -573,7 +641,7 @@ class Model() = this {
   };
 
   /**
-   retailerReserveCheapest
+   `retailerReserveCheapest`
    ---------------------------
   
    Like `retailerReserve`, but chooses cheapest choice among all
