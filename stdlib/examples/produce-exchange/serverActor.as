@@ -120,7 +120,7 @@ actor class Server() {
   allTruckTypeInfo() : async [TruckTypeInfo] { 
     getModel().truckTypeTable.allInfo()
   };
-
+  
 
   /**
    `Region`
@@ -635,22 +635,6 @@ actor class Server() {
   };
 
   
-  //////////////////////////////////////////////////////////////
-  
-  /**
-   
-   PESS: general-use ingress messages:
-   ========================================================
-   
-   The following messages may originate from any entity; they access
-   published information in the tables maintained above.  
-   
-   xxx
-
-   To do
-
-   */
-
 
   /**
    
