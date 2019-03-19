@@ -2,7 +2,11 @@
 
  [PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
  --------------------
+*/
 
+actor class Server() {
+
+/**
  PESS: Server Actor
  =======================================
 
@@ -11,45 +15,41 @@
 
  See also: (Non-PESS) **[Server model](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**
 
+
+ PESS: Registrar-based ingress messages
+ ================================================
+
+ The registrar provides functions to add and to remove entities from
+ the following (mostly-static) tables:
+ 
+ - **Static resource information:** truck types, produce types and region information.
+ - **Participant information:** producers, retailers and transporters.
+ - **Dynamic resource information:** inventory, routes and reservations.
+ 
+ For each of the entities listed above, we have an add (`Add`)
+ and remove (`Rem`) function below, prefixed by `registrar`-, and
+ suffixed by one of the entities in the following list:
+ 
+ - `TruckType`,
+ - `Region`, 
+ - `Produce`, 
+ - `Producer`, 
+ - `Retailer`, or
+ - `Transporter`.
+   
+
+ `TruckType`
+ ==============
+ Messages about truck types.
  */
-actor class Server() {
-
-  /**
-
-   PESS: Registrar-based ingress messages
-   ================================================
-
-   The registrar provides functions to add and to remove entities from
-   the following (mostly-static) tables:
-   
-   - **Static resource information:** truck types, produce types and region information.
-   - **Participant information:** producers, retailers and transporters.
-   - **Dynamic resource information:** inventory, routes and reservations.
-   
-   For each of the entities listed above, we have an add (`Add`)
-   and remove (`Rem`) function below, prefixed by `registrar`-, and
-   suffixed by one of the entities in the following list:
-   
-   - `TruckType`,
-   - `Region`, 
-   - `Produce`, 
-   - `Producer`, 
-   - `Retailer`, or
-   - `Transporter`.
-   
-
-  `TruckType`
-  ==============
-   Messages about truck types.
-   */
-
+  
   
   /**
    `reigstrarAddTruckType`
    ------------------------
-
+   
    */
-
+  
   registrarAddTruckType(
     short_name:  Text,
     description: Text,
