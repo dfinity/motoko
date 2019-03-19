@@ -2145,6 +2145,15 @@ module Dfinity = struct
     else
       G.i Unreachable
 
+  let prim_printChar env =
+    if E.mode env = DfinityMode
+    then
+      G.i Drop ^^
+      Text.lit env "H" ^^
+      prim_print env
+    else
+      G.i Unreachable
+
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
@@ -3809,6 +3818,10 @@ and compile_exp (env : E.t) exp =
          SR.unit,
          compile_exp_vanilla env e ^^
          Dfinity.prim_printInt env
+       | "printChar" ->
+         SR.unit,
+         compile_exp_vanilla env e ^^
+         Dfinity.prim_printChar env
        | "print" ->
          SR.unit,
          compile_exp_vanilla env e ^^

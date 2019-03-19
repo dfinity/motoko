@@ -1,0 +1,9 @@
+via `print`:
+hello world!
+
+via iteration and `printChar`: #1
+hello world!
+
+via iteration and `printChar`: #2
+1:'h' 2:'e' 3:'l' 4:'l' 5:'o' 6:' ' 7:'w' 8:'o' 9:'r' 10:'l' 11:'d' 12:'!' 13:'
+' 
