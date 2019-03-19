@@ -377,7 +377,7 @@ We have the following questions:
     allocation, de-allocation and movement messages, as per discussion in
     the 2019.03.12 ActorScript Team meeting.
 
- 2. For now, wan we assume that the canister is maintained by the
+ 2. For now, can we assume that the canister is maintained by the
     central authority?
 
  3. "Conditional updates" -- important to Mack
