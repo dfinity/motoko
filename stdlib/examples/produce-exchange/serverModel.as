@@ -15,7 +15,7 @@ instead turn our attention to the _internal representation_ of the
 server actor's state, defined by the **[server model
 types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**,
 and the _outer behavior_ of this `Server` actor.  The latter behavior
-is part of the PESS definition, and the internals type definitions it
+is part of the PESS definition, and the internal type definitions that it
 uses are is not.
 
 */
