@@ -377,7 +377,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   switch <exp> { (case <pat> <exp>)+ }           switch
   while <exp> <exp>                              while loop
   loop <exp> (while <exp>)?                      loop
-  for ( <pat> in <exp1> ) <exp2>                 iteration
+  for ( <pat> in <exp> ) <exp>                   iteration
   label <id> (: <typ>)? <exp>                    label
   break <id> <exp>?                              break
   continue <id>                                  continue
@@ -386,6 +386,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
+  ( <exp> )                                      parentheses
   <dec>                                          declaration (scopes to block)
 
 <exp-field> ::=                                object expression fields
@@ -713,6 +714,60 @@ The expression `return <exp>` has type `None` provided:
 The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `exp`.
 
 TBR async traps?
+
+### Async
+
+The async expression `async <exp>` has type `async T` provided:
+* `<exp>` has type `T`;
+* `T <: Shared`.
+
+Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
+
+The implicit return type in `<exp>` is `T`. That is, the return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
+
+Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+
+### Await
+
+The `await` expression `await <exp>` has type `T` provided:
+* <exp> has type `async T`,
+* `T <: Shared`.
+* the `await` is explicitly enclosed by an `async`-expression or its nearest enclosing function is `shared`.
+
+`await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r1` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`. If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
+
+_WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It the programmer responsibility's to guard against non-synchronized state changes.
+
+### Assert
+
+The assert expression "assert <exp>" has type `()` provided `exp` has type `Bool`.
+
+`assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is
+* the value `()`, when `v` is `true`; or
+* `trap`, when `v` is `false`.
+
+### Type Annotation
+
+The type annotation expression `<exp> : <typ>` has type `T` provided:
+* `<typ>` is `T`, and 
+* `<exp>` has type `T`.
+
+Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constraint the inferred type, 'U' of `<exp>` to a less-informative super-type `T` provided `U <: T`.
+
+The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`. 
+
+Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+
+### Parentheses
+
+The parenthesis expression `( <exp> )` has type `T` provided:
+* `<exp>` has type `T`.
+
+The result of evaluating `( <exp> : <typ> )` is the result of evaluating `<exp>`. 
+
+Note: type annotations have no-runtime cost and are only used to group expression and/or override precedence of language constructs.
+
+###
 
 
 ```
