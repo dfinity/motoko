@@ -12,9 +12,11 @@ defines an interface for messages sent by all participants, and the responses re
 
 Here, we depart from defining PESS data types and messages, and
 instead turn our attention to the _internal representation_ of the
-server actor's state, defined by the **[server model types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**),
-and the _outer behavior of this `Server` actor_;
-the latter is part of the PESS definition, but the former is not.
+server actor's state, defined by the **[server model
+types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**),
+and the _outer behavior_ of this `Server` actor.  The latter behavior
+is part of the PESS definition, and the internals type definitions it
+uses are is not.
 
 */
 
