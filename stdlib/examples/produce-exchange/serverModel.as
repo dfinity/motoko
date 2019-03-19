@@ -6,14 +6,13 @@
 Server Model
 ===============================
 
-**[`Server` actor](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md)**
+**[`Server` actor class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md)**
 defines an interface for messages sent by all participants, and the responses received in return.
 
 
 Here, we depart from defining PESS data types and messages, and
 instead turn our attention to the _internal representation_ of the
-server actor's state, defined by the [server model
-types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**),
+server actor's state, defined by the **[server model types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**),
 and the _outer behavior of this `Server` actor_;
 the latter is part of the PESS definition, but the former is not.
 
