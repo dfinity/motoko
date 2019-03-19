@@ -199,7 +199,7 @@ Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in
 Type `None` is the *bottom* type, a subtype of all other types. 
 No value has type `None`. 
 
-As an empty type, `None` can be used to specify the (non-existant) return value of an infinite loop or trap.
+As an empty type, `None` can be used to specify the (nonexistent) return value of an infinite loop or trap.
 
 ## Shared type
 
