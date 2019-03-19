@@ -38,9 +38,6 @@ type Quantity = Nat;
 type PricePerUnit = Price; // needed to calculate prices
 type PriceTotal = Price;
 
-type WeightPerUnit = Weight; // needed to meet truck constraints
-
-type RegionId = Nat; // xxx variant type?
 
 /**
 //
@@ -50,17 +47,18 @@ type RegionId = Nat; // xxx variant type?
 // Internally, each type of Id serves as a "row key" for a table (or two).
 //
 */
-
+type RegionId      = Nat;
 type TruckTypeId   = Nat;
 type ProduceId     = Nat;
-type InventoryId   = Nat;
 
 type ProducerId    = Nat;
+type InventoryId   = Nat;
+type ReservedInventoryId = Nat;
 type RetailerId    = Nat;
 type TransporterId = Nat;
-
 type RouteId       = Nat;
-type ReservationId = Nat;
+type ReservedRouteId = Nat;
+
 
 /**
 PESS: Public info associated with Ids
@@ -96,11 +94,11 @@ type ProducerInfo = shared {
   description : Text;
   region : RegionId;
   inventory : [InventoryId];
-  reserved : [ReservationId]
+  reserved : [ReservedInventoryId]
 };
 
 type ReservedInventoryInfo = shared {
-  id : ReservationId;
+  id : ReservedInventoryId;
   retailer : RetailerId;
   item : InventoryId;
 };
@@ -146,11 +144,11 @@ type TransporterInfo = shared {
   short_name : Text;
   description : Text;
   routes : [RouteId];
-  reserved : [ReservationId]
+  reserved : [ReservedRouteId]
 };
 
 type ReservedRouteInfo = shared {
-  id : ReservationId;
+  id : ReservedRouteId;
   retailer : RetailerId;
   route : RouteId;
 };

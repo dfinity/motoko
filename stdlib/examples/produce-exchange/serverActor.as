@@ -485,7 +485,7 @@ actor class Server() {
    `producerReservations`
    ---------------------------
    */
-  producerReservations(id:ProducerId) : async ?[ReservationId] {
+  producerReservations(id:ProducerId) : async ?[ReservedInventoryId] {
     getModel()
       .producerReservations(id)
   };
@@ -591,7 +591,7 @@ actor class Server() {
   retailerReserve(
     id:RetailerId,
     inventory:InventoryId,
-    route:RouteId) : async ?ReservationId
+    route:RouteId) : async ?(ReservedInventoryId, ReservedRouteId)
   {
     getModel().
       retailerReserve(id, inventory, route)
@@ -616,7 +616,7 @@ actor class Server() {
     quant:Quantity,
     begin:Date,
     end:Date
-  ) : async ?ReservationId
+  ) : async ?(ReservedInventoryId, ReservedRouteId)
   {
     getModel().
       retailerReserveCheapest(id, produce, grade, quant, begin, end)

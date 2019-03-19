@@ -187,7 +187,7 @@ type InventoryMap =
 type ByRegionInventoryMap = Map<RegionId, Map<ProducerId, InventoryMap>>;
 
 type ReservedInventoryDoc= {
-  id : ReservationId;
+  id : ReservedInventoryId;
   retailer : RetailerId;
   item : InventoryDoc;
 };
@@ -198,10 +198,10 @@ type ReservedInventoryDoc= {
 */
 
 type ReservedInventoryTable = 
-  DocTable<ReservationId, ReservedInventoryDoc, ReservedInventoryInfo>;
+  DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>;
 
 type ReservedInventoryMap = 
-  Map<ReservationId, ReservedInventoryDoc>;
+  Map<ReservedInventoryId, ReservedInventoryDoc>;
 
 /**
  `Retailer` documents
@@ -213,8 +213,7 @@ type RetailerDoc = {
   short_name : Text;
   description : Text;
   region : RegionDoc;
-  reserved_routes : ReservedRouteMap;
-  reserved_items : ReservedInventoryMap;
+  reserved : ReservedRouteInventoryMap;
 };
 
 type RetailerTable = 
@@ -276,11 +275,13 @@ type ByRegionsRouteMap = Map<RegionId, Map<RegionId, RouteTable>>;
 */
 
 type ReservedRouteDoc = {
-  id : ReservationId;
+  id : ReservedRouteId;
   retailer : RetailerId;
   route : RouteDoc;
 };
 
-type ReservedRouteTable = DocTable<ReservationId, ReservedRouteDoc, ReservedRouteInfo>;
+type ReservedRouteTable = DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>;
 
-type ReservedRouteMap = Map<ReservationId, ReservedRouteDoc>;
+type ReservedRouteMap = Map<ReservedRouteId, ReservedRouteDoc>;
+
+type ReservedRouteInventoryMap = Map<ReservedRouteId, (ReservedInventoryDoc, ReservedRouteDoc)>;

@@ -25,35 +25,47 @@ terms of nested structures and finite maps.
 class Model() = this {
 
 
-  /**
-   Representation
-   =================
+/**
    
-   We use several public-facing **tables**, implemented as document tables.
+Representation
+=================
+   
+We use several public-facing **tables**, implemented as document tables.
    
 
-   CRUD operations via [document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
-   ----------------------------------------------------
+CRUD operations via [document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+----------------------------------------------------
 
-   This server model provides [document table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md) objects to hold the
-   following kinds of entities in the exchange:
-   
-   - **Static resource information:** truck types, produce types and region information.
-   - **Participant information:** producers, retailers and transporters.
-   - **Dynamic resource information:** inventory, routes and reservations.
-   
-   For each of the entity kinds listed above, we have a corresponding
-   `DocTable` defined below that affords ordinary CRUD
-   (create-read-update-delete) operations.
+This server model provides [document table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md) objects to hold the
+following kinds of entities in the exchange:
+
+- **Static resource information:** truck types, produce types and region information.
+- **Participant information:** producers, retailers and transporters.
+- **Dynamic resource information:** inventory, routes and reservations.
+
+For each of the entity kinds listed above, we have a corresponding
+`DocTable` defined below that affords ordinary CRUD
+(create-read-update-delete) operations.
 
 
-   Secondary indexing
-   ----------------------
+Secondary maps
+----------------------
 
-   To do: We initialize these tables with callbacks so that add/remove
-   operations also maintain secondary tables.
+See also [indexing by `RegionId`](#indexing-by-regionid).
 
-   */
+The secondary maps and intra-document maps enable faster query
+performance.
+
+When we update the primary tables, we update any associated
+secondary indices maps and intra-document maps as well, to keep them
+all in sync.
+
+**To do:** We initialize the primary tables with callbacks that
+refer to the secondary maps; the callbacks intercept add/remove
+operations to maintain consistency between the primary tables and the
+secondary maps.
+
+*/
 
   /** 
    `truckTypeTable`
@@ -138,17 +150,84 @@ class Model() = this {
     /** */
   );
 
-  //@Omit:
+  /**
+   `inventoryTable`
+   ---------------
+   */
 
-  private emptyInventory() : InventoryTable = {
-    /// xxx todo
-    emptyInventory()
-  };
+  private var inventoryTable : InventoryTable =
+    DocTable<InventoryId, InventoryDoc, InventoryInfo>(
+    //@Omit:
+    0,
+    func(x:InventoryId):InventoryId{x+1},
+    func(x:InventoryId,y:InventoryId):Bool{x==y},
+    idHash,
+    func(doc:InventoryDoc):InventoryInfo = shared {
+      id=doc.id; 
+      produce=doc.produce.id;
+      producer=doc.producer;
+      quantity=doc.quantity;
+      start_date=doc.start_date;
+      end_date=doc.end_date;
+      comments=doc.comments;      
+    },
+    func(info:InventoryInfo):?InventoryDoc = {
+      // validate the info's producer and produce ids
+      switch (producerTable.getDoc(info.producer),
+              produceTable.getDoc(info.produce)) {
+        case (?producerDoc, ?produceDoc) {
+               ?(new {
+                   id=info.id; 
+                   produce=produceDoc;
+                   producer=producerDoc.id;
+                   quantity=info.quantity;
+                   start_date=info.start_date;
+                   end_date=info.end_date;
+                   comments=info.comments;
+                 })
+             };
+        case _ {
+               null
+             }
+      }}
+  /** */
+  );
 
-  private emptyReservedInventory() : ReservedInventoryTable = {
-    /// xxx todo
-    emptyReservedInventory()
-  };
+  /**
+   `reservedInventoryTable`
+   ---------------------------
+   */
+
+  var reservedInventoryTable : ReservedInventoryTable = 
+    DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
+    //@Omit:
+    0,
+    func(x:ReservedInventoryId):ReservedInventoryId{x+1},
+    func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
+    idHash,
+    func(doc:ReservedInventoryDoc):ReservedInventoryInfo = shared {
+      id=doc.id; 
+      item=doc.item.id;
+      retailer=doc.retailer
+    },
+    func(info:ReservedInventoryInfo):?ReservedInventoryDoc = {
+      // validate the info's item id
+      switch (inventoryTable.getDoc(info.id),
+              retailerTable.getDoc(info.retailer)) {
+        case (?item, ?_) {
+               ?(new {
+                   id=info.id; 
+                   item=item:InventoryDoc;
+                   retailer=info.retailer;
+                 })
+             };
+        case _ {
+               null
+             }
+      }}
+  /** */
+    );
+
 
   /** 
    `producerTable`
@@ -178,8 +257,8 @@ class Model() = this {
                    short_name=info.short_name; 
                    description=info.description;
                    region=regionDoc;
-                   inventory=emptyInventory().getTable();
-                   reserved=emptyReservedInventory().getTable();
+                   inventory=inventoryTable.empty();
+                   reserved=reservedInventoryTable.empty();
                  }
                )};
         case (null) {
@@ -187,19 +266,7 @@ class Model() = this {
              };
       }
   /** */
-  );
-
-  //@Omit:
-
-  private emptyRoutes() : RouteTable = {
-    /// xxx todo
-    emptyRoutes()
-  };
-
-  private emptyReservedRoutes() : ReservedRouteTable = {
-    /// xxx todo
-    emptyReservedRoutes()
-  };
+    );
 
   /** 
    `transporterTable`
@@ -208,82 +275,66 @@ class Model() = this {
 
   var transporterTable : TransporterTable = 
     DocTable<TransporterId, TransporterDoc, TransporterInfo> (
-  //@Omit:
-
-    0,
-    func(x:TransporterId):TransporterId{x+1},
-    func(x:TransporterId,y:TransporterId):Bool{x==y},
-    idHash,
-    func(doc:TransporterDoc):TransporterInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
-      description=doc.description;
-      routes=[];
-      reserved=[];
-    },
-    func(info:TransporterInfo):?TransporterDoc = ?(new {
-      id=info.id; 
-      short_name=info.short_name; 
-      description=info.description;
-      routes=emptyRoutes().getTable();
-      reserved=emptyReservedRoutes().getTable();
-    }),
-  );
-
+      //@Omit:
+      
+      0,
+      func(x:TransporterId):TransporterId{x+1},
+      func(x:TransporterId,y:TransporterId):Bool{x==y},
+      idHash,
+      func(doc:TransporterDoc):TransporterInfo = shared {
+        id=doc.id; 
+        short_name=doc.short_name; 
+        description=doc.description;
+        routes=[];
+        reserved=[];
+      },
+      func(info:TransporterInfo):?TransporterDoc = 
+        ?(new {
+            id=info.id; 
+            short_name=info.short_name; 
+            description=info.description;
+            routes=routeTable.empty();
+            reserved=reservedRouteTable.empty();
+          })
+  /** */
+    );
+  
   /** 
    `retailerTable`
    -----------------
    */
-
+  
   var retailerTable : RetailerTable = 
     DocTable<RetailerId, RetailerDoc, RetailerInfo>(
-  //@Omit:
-    0,
-    func(x:RetailerId):RetailerId{x+1},
-    func(x:RetailerId,y:RetailerId):Bool{x==y},
-    idHash,
-    func(doc:RetailerDoc):RetailerInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
-      description=doc.description;
-      region=doc.region.id;
-      reserved_routes=[];
-      reserved_items=[];
-    },
-    func(info:RetailerInfo):?RetailerDoc = 
-      switch (regionTable.getDoc(info.region)) {
+      //@Omit:
+      0,
+      func(x:RetailerId):RetailerId{x+1},
+      func(x:RetailerId,y:RetailerId):Bool{x==y},
+      idHash,
+      func(doc:RetailerDoc):RetailerInfo = shared {
+        id=doc.id; 
+        short_name=doc.short_name; 
+        description=doc.description;
+        region=doc.region.id;
+        reserved_routes=[];
+        reserved_items=[];
+      },
+      func(info:RetailerInfo):?RetailerDoc {
+        switch (regionTable.getDoc(info.region)) 
+        {
         case (?regionDoc) {
                ?(new {
                    id=info.id; 
                    short_name=info.short_name; 
                    description=info.description;
                    region=regionDoc;
-                   reserved_routes=emptyReservedRoutes().getTable();
-                   reserved_items=emptyReservedInventory().getTable();
+                   reserved=null;
                  }
                )};
-        case (null) {
-               null
-             };
-      }
+        case (null) { null };
+        }}
   /** */
-  );
-
-  /**
-   `inventoryTable`
-   ----------------
-   */
-
-  var inventoryTable : InventoryTable = 
-    emptyInventory();
-
-  /**
-   `reservedInventoryTable`
-   ----------------
-   */
-
-  var reservedInventoryTable : ReservedInventoryTable = 
-    emptyReservedInventory();
+    );
 
   /**
    `routeTable`
@@ -291,7 +342,44 @@ class Model() = this {
    */
 
   var routeTable : RouteTable = 
-    emptyRoutes();
+    DocTable<RouteId, RouteDoc, RouteInfo> (
+      //@Omit:      
+      0,
+      func(x:RouteId):RouteId{x+1},
+      func(x:RouteId,y:RouteId):Bool{x==y},
+      idHash,
+      func(doc:RouteDoc):RouteInfo = shared {
+        id=doc.id; 
+        transporter=doc.transporter; 
+        truck_type=(truckTypeTable.getInfoOfDoc())(doc.truck_type);
+        start_region=doc.start_region.id;
+        end_region=doc.end_region.id;
+        start_date=doc.start_date;
+        end_date=doc.end_date;
+        cost=doc.cost;
+      },
+      func(info:RouteInfo):?RouteDoc {
+        switch (transporterTable.getDoc(info.transporter),
+                truckTypeTable.getDoc(info.truck_type.id),
+                regionTable.getDoc(info.start_region),
+                regionTable.getDoc(info.end_region)) 
+        {
+        case (?_, ?truckType, ?startRegion, ?endRegion) {
+                 ?(new {
+                     id=info.id; 
+                     transporter=info.transporter; 
+                     truck_type=truckType;
+                     start_region=startRegion;
+                     end_region=endRegion;
+                     start_date=info.start_date;
+                     end_date=info.end_date;
+                     cost=info.cost;
+                   })
+               };
+          case _ { null }
+        }}
+  /** */
+    );
 
   /**
    `reservedRouteTable`
@@ -299,15 +387,42 @@ class Model() = this {
    */
 
   var reservedRouteTable : ReservedRouteTable = 
-    emptyReservedRoutes();
+    DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>(
+    //@Omit:
+    0,
+    func(x:ReservedRouteId):ReservedRouteId{x+1},
+    func(x:ReservedRouteId,y:ReservedRouteId):Bool{x==y},
+    idHash,
+    func(doc:ReservedRouteDoc):ReservedRouteInfo = shared {
+      id=doc.id; 
+      route=doc.route.id;
+      retailer=doc.retailer
+    },
+    func(info:ReservedRouteInfo):?ReservedRouteDoc = {
+      // validate the info's item id
+      switch (routeTable.getDoc(info.id),
+              retailerTable.getDoc(info.retailer)) {
+        case (?route, ?_) {
+               ?(new {
+                   id=info.id; 
+                   route=route:RouteDoc;
+                   retailer=info.retailer;
+                 })
+             };
+        case _ {
+               null
+             }
+      }}
+  /** */
+    );
 
+    
   /**
 
-   Indexing for `RegionId`-based queries
+   Indexing by `RegionId`
    =====================================
 
    For efficient queries, need some extra indexing.
-
 
    Regions as keys in special global maps
    ---------------------------------------
@@ -512,7 +627,7 @@ class Model() = this {
    ---------------------------
    
    */
-  producerReservations(id:ProducerId) : ?[ReservationId] {
+  producerReservations(id:ProducerId) : ?[ReservedInventoryId] {
     // xxx view
     null
   };
@@ -635,7 +750,7 @@ class Model() = this {
   retailerReserve(
     id:RetailerId,
     inventory:InventoryId,
-    route:RouteId) : ?ReservationId
+    route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
   {
     // xxx add/rem
     null
@@ -660,7 +775,7 @@ class Model() = this {
     quant:Quantity,
     begin:Date,
     end:Date
-  ) : ?ReservationId
+  ) : ?(ReservedInventoryId, ReservedRouteId)
   {
     // xxx query+add/rem
     null

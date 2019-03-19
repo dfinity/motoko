@@ -97,6 +97,18 @@ class DocTable<Id,Doc,Info>(
 */
 
   /** 
+   `empty`
+   ---------
+
+   See also [`Table.empty`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#empty)
+
+   */
+
+  empty() : Table<Id, Doc> { 
+    Table.empty<Id, Doc>()
+  };
+
+  /** 
    `getTable`
    ---------
 
@@ -276,12 +288,13 @@ class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  keyOfId(x:Id):Key<Id>      = new { key = x ; hash = idHash(x) };
+  keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
   
-  getIdIsEq():(Id,Id)->Bool  = idIsEq;
-  getIdHash(): Id->Hash      = idHash;
-  getInfoOfDoc(): Doc->Info  = infoOfDoc;
-  getDocOfInfo(): Info->?Doc = docOfInfo;
+  getIdIsEq() :(Id,Id)->Bool  = idIsEq;
+  getIdHash() : Id->Hash      = idHash;
+
+  getInfoOfDoc() : Doc->Info  = infoOfDoc;
+  getDocOfInfo() : Info->?Doc = docOfInfo;
 
 
 /**
