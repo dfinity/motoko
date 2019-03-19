@@ -178,8 +178,8 @@ class Model() = this {
                    short_name=info.short_name; 
                    description=info.description;
                    region=regionDoc;
-                   inventory=emptyInventory().copy();
-                   reserved=emptyReservedInventory().copy();
+                   inventory=emptyInventory().getTable();
+                   reserved=emptyReservedInventory().getTable();
                  }
                )};
         case (null) {
@@ -225,8 +225,8 @@ class Model() = this {
       id=info.id; 
       short_name=info.short_name; 
       description=info.description;
-      routes=emptyRoutes().copy();
-      reserved=emptyReservedRoutes().copy();
+      routes=emptyRoutes().getTable();
+      reserved=emptyReservedRoutes().getTable();
     }),
   );
 
@@ -258,8 +258,8 @@ class Model() = this {
                    short_name=info.short_name; 
                    description=info.description;
                    region=regionDoc;
-                   reserved_routes=emptyReservedRoutes().copy();
-                   reserved_items=emptyReservedInventory().copy();
+                   reserved_routes=emptyReservedRoutes().getTable();
+                   reserved_items=emptyReservedInventory().getTable();
                  }
                )};
         case (null) {

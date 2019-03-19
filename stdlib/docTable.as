@@ -97,14 +97,14 @@ class DocTable<Id,Doc,Info>(
 */
 
   /** 
-   `copy`
+   `getTable`
    ---------
 
    See also [`Table.copy`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#copy)
 
    */
 
-  copy() : Table<Id, Doc> {
+  getTable() : Table<Id, Doc> {
     Table.copy<Id, Doc>(table)
   };
 
@@ -233,6 +233,15 @@ class DocTable<Id,Doc,Info>(
       case null null;
       case (?doc) { ?infoOfDoc(doc) };
     }
+  };
+
+  /** 
+   `count`
+   ---------
+   */
+
+  count() : Nat {
+    Table.count<Id, Doc>(table)
   };
 
   /** 

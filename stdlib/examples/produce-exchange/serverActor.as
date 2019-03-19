@@ -702,9 +702,8 @@ been processed
 
    */
   
-  devViewReservations() : async ?Nat {
-    // xxx
-    null
+  devViewReservations() : async Nat {
+    getModel().reservedInventoryTable.count()
   };
 
   /**
@@ -719,9 +718,8 @@ been processed
 
    */
 
-  devViewProducers() : async ?[ProducerInfo] {
-    // xxx
-    null
+  devViewProducers() : async [ProducerInfo] {
+    getModel().producerTable.allInfo()
   };
 
 
@@ -737,9 +735,8 @@ been processed
 
    */
 
-  devViewTransporters() : async ?[TransporterInfo] {
-    // xxx
-    null
+  devViewTransporters() : async [TransporterInfo] {
+    getModel().transporterTable.allInfo()
   };
 
   /**
@@ -754,9 +751,8 @@ been processed
 
    */
 
-  devViewRetailers() : async ?[RetailerInfo] {
-    // xxx
-    null
+  devViewRetailers() : async [RetailerInfo] {
+    getModel().retailerTable.allInfo()
   };
 
 

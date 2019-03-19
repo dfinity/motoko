@@ -715,6 +715,19 @@ let Trie = new {
       }};
     rec(t)
   };
+  
+  /**
+   `count`
+   --------
+   Count the number of entries in the trie.
+   */
+  func count<K,V>(t:Trie<K,V>):Nat{
+    foldUp<K,V,Nat>
+    (t,
+     func(n:Nat,m:Nat):Nat{n+m},
+     func(_:K,_:V):Nat{1},
+     0)
+  };
 
   /**
    `isEmpty`
