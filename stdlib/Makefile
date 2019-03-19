@@ -18,6 +18,7 @@ MODULES=\
 	ListTest \
 	AssocList \
 	Trie \
+	DocTable \
 	Set \
 	SetDb \
 	SetDbTest \
@@ -52,6 +53,7 @@ docMd: \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
 	$(DOCDIR)/trie.md \
+	$(DOCDIR)/docTable.md \
 	$(DOCDIR)/set.md \
 	$(DOCDIR)/setDb.md \
 	$(DOCDIR)/setDbTest.md \
@@ -70,6 +72,7 @@ docHtml: \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
 	$(DOCDIR)/trie.html \
+	$(DOCDIR)/docTable.html \
 	$(DOCDIR)/set.html \
 	$(DOCDIR)/setDb.html \
 	$(DOCDIR)/setDbTest.html \
@@ -132,6 +135,12 @@ $(OUTDIR)/Trie.out: list.as assocList.as trie.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
+$(OUTDIR)/DocTable.out: list.as assocList.as trie.as docTable.as | $(OUTDIR)
+	@echo $(MODULE_NAME) $(basename $(notdir $@))
+	@echo $(BEGIN)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	@echo $(DONE)
+
 $(OUTDIR)/Set.out: list.as assocList.as trie.as set.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
@@ -150,7 +159,7 @@ $(OUTDIR)/SetDbTest.out: list.as assocList.as trie.as set.as setDb.as setDbTest.
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ProduceExchange.out: list.as assocList.as trie.as \
+$(OUTDIR)/ProduceExchange.out: list.as assocList.as trie.as docTable.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
