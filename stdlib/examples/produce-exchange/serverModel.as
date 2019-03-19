@@ -448,8 +448,8 @@ class Model() = this {
           comments=comments:Text;
         };
       })) {
-      case (?item) { item }
-      case null { assert false ; return null };
+      case (?item) { item };
+      case (null) { assert false ; return null };
       }
     };
 

@@ -121,7 +121,7 @@ class DocTable<Id,Doc,Info>(
     idNext := idIncr(idNext);
     let d = doc(id);
     table := Table.insertFresh<Id, Doc>
-    (table, keyOf(id), idIsEq, d);
+    (table, keyOfId(id), idIsEq, d);
     (id, d)
   };
 
@@ -135,7 +135,7 @@ class DocTable<Id,Doc,Info>(
 
   updateDoc(id:Id, doc:Doc) : ?Doc {
     let (updatedTable, oldDoc) = Table.replace<Id, Doc>
-    (table, keyOf(id), idIsEq, ?doc);
+    (table, keyOfId(id), idIsEq, ?doc);
     table := updatedTable;
     oldDoc
   };
@@ -156,7 +156,7 @@ class DocTable<Id,Doc,Info>(
       case (?doc) {
              idNext := idIncr(idNext);
              table := Table.insertFresh<Id, Doc>
-             (table, keyOf(id), idIsEq, doc);
+             (table, keyOfId(id), idIsEq, doc);
              ?(id, doc)
            }
     }
@@ -179,7 +179,7 @@ class DocTable<Id,Doc,Info>(
 
   rem(id:Id) : ?Doc {
     Table.removeThen<Id, Doc, ?Doc>(
-      table, keyOf(id), idIsEq,
+      table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?Doc {
         table := t;
         ?d
@@ -191,7 +191,7 @@ class DocTable<Id,Doc,Info>(
 
   remGetId(id:Id) : ?Id {
     Table.removeThen<Id, Doc, ?Id>(
-      table, keyOf(id), idIsEq,
+      table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?Id {
         table := t;
         ?id
@@ -202,7 +202,7 @@ class DocTable<Id,Doc,Info>(
 
   remGetUnit(id:Id) : ?() {
     Table.removeThen<Id, Doc, ?()>(
-      table, keyOf(id), idIsEq,
+      table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?() {
         table := t;
         ?()
@@ -220,7 +220,7 @@ class DocTable<Id,Doc,Info>(
    */
   
   getDoc(id:Id) : ?Doc {
-    Table.find<Id, Doc>(table, keyOf(id), idIsEq)
+    Table.find<Id, Doc>(table, keyOfId(id), idIsEq)
   };
 
   /** 
@@ -270,6 +270,20 @@ class DocTable<Id,Doc,Info>(
     (table, func (id:Id, doc:Doc):[Info] = [infoOfDoc(doc)] )
   };
 
+
+/**
+ Public helpers
+ ===============
+ */
+
+  keyOfId(x:Id):Key<Id>      = new { key = x ; hash = idHash(x) };
+  
+  getIdIsEq():(Id,Id)->Bool  = idIsEq;
+  getIdHash(): Id->Hash      = idHash;
+  getInfoOfDoc(): Doc->Info  = infoOfDoc;
+  getDocOfInfo(): Info->?Doc = docOfInfo;
+
+
 /**
  Private state
  ===============
@@ -284,9 +298,6 @@ class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  private keyOf(x:Id):Key<Id> {
-    new { key = x ; hash = idHash(x) }
-  };
 
 /** The end */
 
