@@ -4,6 +4,7 @@
 TODO
 * use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
 * perhaps use notions of left-evaluation and evaluation to talk about variable deref in just on place?
+* perhaps just spell out left-to-right evaluation, trap propagating to avoid all the lurid detail in each expression
 -->
 
 ## Introduction
@@ -71,9 +72,9 @@ The key language features of ActorScript are:
 
 * A simple, class-based object system without inheritance.
 
-* The value of a reference can never implicitly be 'null',
-  preventing a large class of 'null'-reference failures.
-  Instead, an explicitly handled, possibly 'null', *option*`?<type>` type is provided.
+* The value of a reference can never implicitly be `null`,
+  preventing a large class of `null`-reference failures.
+  Instead, an explicitly handled, possibly `null`, *option type* `?<type>` is provided.
    
 * Classes can be actors (canisters).
 
@@ -153,7 +154,7 @@ The optional qualifier `actor` constrains the object's fields to be *shared* fun
 
 ### Array types
 
-`[ var? <typ> ]` specifies the type of arrays with elements of type '<typ>'.menhir --only-preprocess-uu parser.mly 
+`[ var? <typ> ]` specifies the type of arrays with elements of type `<typ>`. 
 
 Arrays are immutable unless specified with qualifier `var`. 
 
@@ -387,8 +388,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   ( <exp> )                                      parentheses
-  <dec>                                          declaration (scopes to block)
-
+  
 <exp-field> ::=                                object expression fields
   private? dec                                   field
   private? <id> = <exp>                          short-hand
@@ -426,7 +426,7 @@ Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provide
 
 The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
-The tuple projection '<exp> . <nat>' has type `Ti` provided <exp> has tuple type 
+The tuple projection `<exp> . <nat>` has type `Ti` provided <exp> has tuple type 
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 <= i <= n`.
 
 The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
@@ -476,7 +476,7 @@ The unary compound assigment `<exp1> <unop>= <exp2>` has type `()` provided:
 
 For unary operator `<unop>` in `+` (identity), `-` (negation) or  `^` (xor), the unary compound assignment
 `<unop>= <exp>`  evaluates <exp> to a result `r`. If `r` is 'trap' the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to 
-contain the value '<unop> v'.
+contain the value `<unop> v`.
 
 ### Binary Compound Assignment
 
@@ -498,7 +498,7 @@ each expression `<exp>` in the sequence `<exp,>*` has type T.
 
  The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions false`exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
 
-The array indexing expression '<exp1> [ <exp2> ]' has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
+The array indexing expression `<exp1> [ <exp2> ]` has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
 
 The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`. 
 
@@ -558,7 +558,7 @@ The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in se
 
 ### Not
 
-The not expression 'not <exp>' has type 'Bool' provided `<exp>` has type `Bool`.
+The not expression 'not <exp>' has type `Bool` provided `<exp>` has type `Bool`.
 
 If `<exp>` evaluates to `trap`, the expression returns `trap`.
 Otherwise, `<exp>` evaluates to a boolean value `v` and the expression returns `not v`, (the boolean negation of `v`).
@@ -589,7 +589,7 @@ The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
 
 The expression evaluates `<exp1>` to a result `r1`. 
 If `r1` is `trap`, the result is  `trap`. 
-Otherwise, 'r1' is the value `true` or `false`. 
+Otherwise, `r1` is the value `true` or `false`. 
 If `r1` is `true`, the result is the result of evaluating `<exp2>`. 
 Otherwise, `r1` is `false` and the result is `()` (if <exp3> is absent) or the result of `<exp3>` (if <exp3> is present).
 
@@ -606,8 +606,8 @@ has type `T` provided:
 
 The expression evaluates `<exp0>` to a result `r1`. 
 If `r1` is `trap`, the result is `trap`. 
-Otherwise, 'r1' is some value `v`. 
-Let 'case <pat> <exp>' be the first case in `(case <pat> <exp>)+` such that `<pat>` matches `v` with for some bindings of identifiers to values.
+Otherwise, `r1` is some value `v`. 
+Let `case <pat> <exp>` be the first case in `(case <pat> <exp>)+` such that `<pat>` matches `v` with for some bindings of identifiers to values.
 Then result of the `switch` is the result of evaluating `<exp>` unders those bindings.
 If no case has a pattern that matches `v`, the result of the switch is `trap`.
 
@@ -675,7 +675,7 @@ The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
 * (: <typ>)? is absent and `T` is unit; or (: <typ>)? is present and `T == <typ>`;
 * <exp> has type `T` in the static environment extended with `label l : T`.
 
-The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating '<exp>'.
+The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating `<exp>`.
 
 #### Labeled loops
 
@@ -752,7 +752,7 @@ The type annotation expression `<exp> : <typ>` has type `T` provided:
 * `<typ>` is `T`, and 
 * `<exp>` has type `T`.
 
-Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constraint the inferred type, 'U' of `<exp>` to a less-informative super-type `T` provided `U <: T`.
+Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constraint the inferred type, `U` of `<exp>` to a less-informative super-type `T` provided `U <: T`.
 
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`. 
 
@@ -836,7 +836,7 @@ The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 The result of matching `<pat1> or <pat2>` against a value is the result of
 matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails. 
 
-(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier ('<id>') patterns so a successful match always binds zero identifiers.)
+(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
 
 ## Declarations
 
