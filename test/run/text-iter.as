@@ -22,3 +22,18 @@ for (a in s.chars()) {
   print " ";
 };
 print "\n";
+
+let russian = "Приветствую, мир!\n";
+
+print "via iteration and `printChar` (Unicode): #3\n";
+x := 0;
+for (a in russian.chars()) {
+  x += 1;
+  printInt x;
+  print ":";
+  printChar '\'';
+  printChar a;
+  printChar '\'';
+  print " ";
+};
+print "\n";
