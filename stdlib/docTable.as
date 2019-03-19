@@ -26,6 +26,7 @@ type information.
  ================
  A table is a finite map (currently a [Trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)) mapping ids to documents.
 
+ See also: [private state](#private-state).
 
  notes on representation 
  -------------------------
