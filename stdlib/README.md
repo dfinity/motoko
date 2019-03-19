@@ -17,6 +17,13 @@ of the [produce exchange example](produce-exchange).
 
 See also, the [library modules by priority](#library-modules-by-priority).
 
+`docTable`
+----------
+
+A _document table_; this table abstracts over a set of _documents_,
+each with a distinct id assigned by this abstraction, and an
+associated shallow projection for server-to-client messages.
+
 `Map`
 -------
 
