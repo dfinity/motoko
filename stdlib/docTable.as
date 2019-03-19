@@ -1,3 +1,4 @@
+
 /**
 
 Document Table
@@ -18,17 +19,28 @@ client-to-server message with this _initial document information_.
 This table abstracts over the following choices, which it accepts as
 parameters:
 
- - `idFirst:Id,` --- the first id to use in the generation of distinct ids
- - `idIncr:Id->Id,` --- increment function for ids
- - `idIsEq:(Id,Id)->Bool,` --- equality function for ids
- - `idHash:Id->Hash,` --- hash function for ids
- - `infoOfDoc:Doc->Info,` --- project the document information from a document
- - `docOfInfo:Info->?Doc` --- seed and validate client-provided document information
+ - `idFirst,` -- the first id to use in the generation of distinct ids.
+ - `idIncr` -- increment function for ids.
+ - `idIsEq` -- equality function for ids.
+ - `idHash` -- hash function for ids.
+ - `infoOfDoc` -- project the document information from a document.
+ - `docOfInfo` -- seed and validate client-provided document information.
 
 */
 
+
+/**
+ Representation
+ ---------------
+ A table is a finite map (currently a trie) mapping ids to documents.
+ */
 type Table<K,V> = Trie<K,V>;
 let Table = Trie;
+
+/**
+ Interface and implementation
+ -----------------------------
+ */
 
 class DocTable<Id,Doc,Info>(
   idFirst:Id,
