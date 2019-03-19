@@ -434,6 +434,7 @@ class Model() = this {
       case _ { return null };
       }};
     
+    // get a unique id for the inventory item; add it to the global table
     let (_, item) = {
       switch (inventoryTable.addInfo(
                 func(inventoryId:InventoryId):InventoryInfo{
@@ -447,11 +448,14 @@ class Model() = this {
           comments=comments:Text;
         };
       })) {
-      case null { return null };
       case (?item) { item }
+      case null { assert false ; return null };
       }
     };
-    
+
+    // update the producer document to hold the new inventory item
+    //
+    // xxx more concise syntax for record updates would be nice:
     let updatedProducer : ProducerDoc = new {
       id = producer.id;
       short_name = producer.short_name;
@@ -466,11 +470,10 @@ class Model() = this {
           item
         )
     };
-    
-    // Update producers table:
+    // Update producer document table:
     let _ = producerTable.updateDoc(id, updatedProducer);
     
-    // Update inventoryByRegion table:
+    // Update inventoryByRegion mapping:
     inventoryByRegion :=
     Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
