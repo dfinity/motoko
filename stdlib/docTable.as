@@ -16,9 +16,13 @@ is sufficiently concise to transmit in a server-to-client message.
 Likewise, document information seeds a new document, e.g., in a
 client-to-server message with this _initial document information_.
 
-This table abstracts over the following choices, which it accepts as
-parameters:
 
+Client parameters
+===================
+
+The document table abstracts over the following client choices:
+
+ - types `Id`, `Doc` and `Info`.
  - `idFirst,` -- the first id to use in the generation of distinct ids.
  - `idIncr` -- increment function for ids.
  - `idIsEq` -- equality function for ids.
@@ -26,12 +30,14 @@ parameters:
  - `infoOfDoc` -- project the document information from a document.
  - `docOfInfo` -- seed and validate client-provided document information.
 
+ See the [interface](#interface-and-implementation) below for type information.
+
 */
 
 
 /**
  Representation
- ---------------
+ ================
  A table is a finite map (currently a trie) mapping ids to documents.
  */
 type Table<K,V> = Trie<K,V>;
@@ -39,7 +45,7 @@ let Table = Trie;
 
 /**
  Interface and implementation
- -----------------------------
+ ===============================
  */
 
 class DocTable<Id,Doc,Info>(
