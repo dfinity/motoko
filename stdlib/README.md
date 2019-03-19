@@ -13,7 +13,7 @@ Produce Exchange
 =================
 
 We focus on explaining the role of these collections from perspective
-of the [produce exchange example](produce-exchange).
+of the [produce exchange example](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange).
 
 See also, the [library modules by priority](#library-modules-by-priority).
 
