@@ -730,6 +730,30 @@ let Trie = new {
   };
 
   /**
+   `toArray`
+   --------
+   Gather the collection of key-value pairs into an array.
+
+   To do: make this more efficient, using a single array allocation.
+   */
+  func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->[W]):[W]{
+    func arrayAppend(x:[W],y:[W]):[W] {
+      Array_tabulate<W> (
+        x.len() + y.len(),
+        func (i:Nat) : W {
+          if (i >= y.len()) { y[i] }
+          else { x[i] }
+        }
+      )
+    };
+    foldUp<K,V,[W]>
+    (t,
+     arrayAppend,
+     func(k:K, v:V):[W]{f(k,v)},
+     [])
+  };
+
+  /**
    `isEmpty`
    -----------
    specialized foldUp operation.

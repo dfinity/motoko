@@ -250,9 +250,8 @@ class DocTable<Id,Doc,Info>(
    */
 
   allDoc() : [Doc] {
-    // todo need to implement an array-append operation, then use trie foldUp
-    // xxx    
-    []
+    Table.toArray<Id, Doc, Doc>
+    (table, func (id:Id, doc:Doc):[Doc] = [doc] )
   };
 
   /** 
@@ -261,9 +260,8 @@ class DocTable<Id,Doc,Info>(
    */
 
   allInfo() : [Info] {
-    // todo need to implement an array-append operation, then use trie foldUp
-    // xxx    
-    []
+    Table.toArray<Id, Doc, Info>
+    (table, func (id:Id, doc:Doc):[Info] = [infoOfDoc(doc)] )
   };
 
 /**
