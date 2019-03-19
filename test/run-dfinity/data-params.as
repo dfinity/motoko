@@ -48,9 +48,6 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  readCounter(f : shared Nat -> ()) : () {
-    f(c);
-  };
 };
 
 
@@ -70,7 +67,6 @@ a.increcord(shared {x = 17; y = 18; z = 19});
 a.printCounter();
 a.printLabeled("Foo1: ");
 a.printLabeledOpt(?"Foo2: ");
-// a.readCounter(func (n : Nat) = { printInt n; print("\n") });
 a.incn(10000000000000);
 
 
@@ -123,9 +119,6 @@ let w32 = actor {
     print l;
     printInt(word32ToInt(c));
     print("\n");
-  };
-  readCounter(f : shared Word32 -> ()) : () {
-    f(c);
   };
 };
 
@@ -198,9 +191,6 @@ let w16 = actor {
     print l;
     printInt(word16ToInt(c));
     print("\n");
-  };
-  readCounter(f : shared Word16 -> ()) : () {
-    f(c);
   };
 };
 
