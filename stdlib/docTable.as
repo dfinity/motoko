@@ -26,7 +26,7 @@ type information.
  ================
  A table is a finite map (currently a trie) mapping ids to documents.
  */
-type Table<K,V> = Trie<K,V>;
+type Table<Id, Doc> = Trie<Id, Doc>;
 let Table = Trie;
 
 /**
@@ -64,6 +64,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `addDoc`
    ---------
+
+   See also [`Table.insertFresh`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+
    */
 
   addDoc(doc:Id -> Doc) : Id {
@@ -77,6 +80,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `addInfo`
    ---------
+
+   See also [`Table.insertFresh`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+
    */
 
   addInfo(info:Id -> Info) : ?Id {
@@ -95,6 +101,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `rem`
    ---------
+
+   See also [`Table.removeThen`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#removeThen)
+
    */
 
   rem(id:Id) : ?Doc {
@@ -111,6 +120,9 @@ class DocTable<Id,Doc,Info>(
   /** 
    `getDoc`
    ---------
+
+   See also [`Table.find`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#find)
+
    */
   
   getDoc(id:Id) : ?Doc {
