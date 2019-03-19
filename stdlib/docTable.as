@@ -16,7 +16,7 @@ is sufficiently concise to transmit in a server-to-client message.
 Likewise, document information seeds a new document, e.g., in a
 client-to-server message with this _initial document information_.
 
-See the [interface](#interface-and-implementation) below for detailed
+See the [client interface](#client-interface) below for detailed
 type information.
 
 */
