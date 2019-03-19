@@ -256,11 +256,19 @@ class DocTable<Id,Doc,Info>(
     []
   };
 
-//@Omit:
+/**
+ Private state
+ ===============
+ */
 
   private var idNext:Id = idFirst;
   
   private var table : Table<Id,Doc> = null;
+
+/**
+ Helpers
+ ===============
+ */
 
   private keyOf(x:Id):Key<Id> {
     new { key = x ; hash = idHash(x) }
