@@ -52,9 +52,9 @@ let dump_prog flag prog =
       Wasm.Sexpr.print 80 (Arrange.prog prog)
     else ()
 
-let dump_ir flag prog =
+let dump_ir flag prog_ir =
     if !flag then
-      Wasm.Sexpr.print 80 (Arrange_ir.prog prog)
+      Wasm.Sexpr.print 80 (Arrange_ir.prog prog_ir)
     else ()
 
 let parse_with mode lexer parser name : parse_result =
@@ -117,10 +117,10 @@ let check_prog infer senv name prog
 
 let transform transform_name trans env prog name =
   phase transform_name name;
-  let prog' : Ir.prog = trans env prog in
-  dump_ir Flags.dump_lowering prog';
-  Check_ir.check_prog env transform_name prog';
-  prog'
+  let prog_ir' : Ir.prog = trans env prog in
+  dump_ir Flags.dump_lowering prog_ir';
+  Check_ir.check_prog env transform_name prog_ir';
+  prog_ir'
 
 let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
@@ -295,14 +295,14 @@ let compile_with check mode name : compile_result =
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
-    let prelude = Desugar.transform Typing.empty_scope prelude in
-    let prog = desugar initial_stat_env prog name in
-    let prog = await_lowering true initial_stat_env prog name in
-    let prog = async_lowering true initial_stat_env prog name in
-    let prog = serialization true initial_stat_env prog name in
-    let prog = tailcall_optimization true initial_stat_env prog name in
+    let prelude_ir = Desugar.transform Typing.empty_scope prelude in
+    let prog_ir = desugar initial_stat_env prog name in
+    let prog_ir = await_lowering true initial_stat_env prog_ir name in
+    let prog_ir = async_lowering true initial_stat_env prog_ir name in
+    let prog_ir = serialization true initial_stat_env prog_ir name in
+    let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
     phase "Compiling" name;
-    let module_ = Compile.compile mode name prelude [prog] in
+    let module_ = Compile.compile mode name prelude_ir [prog_ir] in
     Ok module_
 
 let compile_string mode s name =
