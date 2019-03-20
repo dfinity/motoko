@@ -115,28 +115,31 @@ let check_prog infer senv name prog
 
 (* IR transforms *)
 
-let transform_ir transform_name transform flag env prog name =
-  if flag then
-    begin
-      phase transform_name name;
-      let prog' : Ir.prog = transform env prog in
-      dump_ir Flags.dump_lowering prog';
-      Check_ir.check_prog env transform_name prog';
-      prog'
-    end
+let transform transform_name trans env prog name =
+  phase transform_name name;
+  let prog' : Ir.prog = trans env prog in
+  dump_ir Flags.dump_lowering prog';
+  Check_ir.check_prog env transform_name prog';
+  prog'
+
+let transform_if transform_name trans flag env prog name =
+  if flag then transform transform_name trans env prog name
   else prog
 
+let desugar =
+  transform "Desugaring" Desugar.transform
+
 let await_lowering =
-  transform_ir "Await Lowering" (fun _ -> Await.transform)
+  transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
-  transform_ir "Async Lowering" Async.transform
+  transform_if "Async Lowering" Async.transform
 
 let serialization =
-  transform_ir "Synthesizing serialization code" Serialization.transform
+  transform_if "Synthesizing serialization code" Serialization.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" (fun _ -> Tailcall.transform)
+  transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -167,8 +170,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
     let vo, scope =
       if !Flags.interpret_ir
       then
-        let prog_ir = Desugar.transform senv prog in
-        Check_ir.check_prog senv "desugaring" prog_ir;
+        let prog_ir = desugar senv prog name in
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         let prog_ir = serialization (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
@@ -294,8 +296,7 @@ let compile_with check mode name : compile_result =
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
     let prelude = Desugar.transform Typing.empty_scope prelude in
-    let prog = Desugar.transform initial_stat_env prog in
-    Check_ir.check_prog initial_stat_env "desugaring" prog;
+    let prog = desugar initial_stat_env prog name in
     let prog = await_lowering true initial_stat_env prog name in
     let prog = async_lowering true initial_stat_env prog name in
     let prog = serialization true initial_stat_env prog name in
