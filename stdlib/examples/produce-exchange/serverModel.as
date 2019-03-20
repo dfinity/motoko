@@ -24,12 +24,12 @@ class Model() = this {
 
 
 /**
-   
+
 Representation
 =================
-   
+
 We use several public-facing **tables**, implemented as document tables.
-   
+
 
 CRUD operations via [document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
 ----------------------------------------------------
@@ -65,12 +65,12 @@ secondary maps.
 
 */
 
-  /** 
+  /**
    `truckTypeTable`
    -----------------
    */
-  
-  var truckTypeTable : TruckTypeTable = 
+
+  var truckTypeTable : TruckTypeTable =
     DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>(
       //@Omit:
     0,
@@ -78,30 +78,30 @@ secondary maps.
     func(x:TruckTypeId,y:TruckTypeId):Bool{x==y},
     idHash,
     func(doc:TruckTypeDoc):TruckTypeInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
+      id=doc.id;
+      short_name=doc.short_name;
       description=doc.description;
       capacity=doc.capacity;
       isFridge=doc.isFridge;
       isFreezer=doc.isFreezer;
     },
     func(info:TruckTypeInfo):?TruckTypeDoc = ?(new {
-      id=info.id; 
-      short_name=info.short_name; 
+      id=info.id;
+      short_name=info.short_name;
       description=info.description;
       capacity=info.capacity;
       isFridge=info.isFridge;
       isFreezer=info.isFreezer;
     }),
     /** */
-  );    
+  );
 
-  /** 
+  /**
    `regionTable`
    -----------------
    */
 
-  var regionTable : RegionTable = 
+  var regionTable : RegionTable =
     DocTable<RegionId, RegionDoc, RegionInfo>(
       // @Omit:
     0,
@@ -109,24 +109,24 @@ secondary maps.
     func(x:RegionId,y:RegionId):Bool{x==y},
     idHash,
     func(doc:RegionDoc):RegionInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
+      id=doc.id;
+      short_name=doc.short_name;
       description=doc.description;
     },
     func(info:RegionInfo):?RegionDoc = ?(new {
-      id=info.id; 
-      short_name=info.short_name; 
+      id=info.id;
+      short_name=info.short_name;
       description=info.description;
     }),
     /** */
   );
 
-  /** 
+  /**
    `produceTable`
    -----------------
    */
 
-  var produceTable : ProduceTable = 
+  var produceTable : ProduceTable =
     DocTable<ProduceId, ProduceDoc, ProduceInfo>(
     //@Omit:
     0,
@@ -134,14 +134,14 @@ secondary maps.
     func(x:ProduceId,y:ProduceId):Bool{x==y},
     idHash,
     func(doc:ProduceDoc):ProduceInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
+      id=doc.id;
+      short_name=doc.short_name;
       description=doc.description;
       grade=doc.grade;
     },
     func(info:ProduceInfo):?ProduceDoc = ?(new {
-      id=info.id; 
-      short_name=info.short_name; 
+      id=info.id;
+      short_name=info.short_name;
       description=info.description;
       grade=info.grade;
     }),
@@ -161,13 +161,13 @@ secondary maps.
     func(x:InventoryId,y:InventoryId):Bool{x==y},
     idHash,
     func(doc:InventoryDoc):InventoryInfo = shared {
-      id=doc.id; 
+      id=doc.id;
       produce=doc.produce.id;
       producer=doc.producer;
       quantity=doc.quantity;
       start_date=doc.start_date;
       end_date=doc.end_date;
-      comments=doc.comments;      
+      comments=doc.comments;
     },
     func(info:InventoryInfo):?InventoryDoc = {
       // validate the info's producer and produce ids
@@ -175,7 +175,7 @@ secondary maps.
               produceTable.getDoc(info.produce)) {
         case (?producerDoc, ?produceDoc) {
                ?(new {
-                   id=info.id; 
+                   id=info.id;
                    produce=produceDoc;
                    producer=producerDoc.id;
                    quantity=info.quantity;
@@ -196,7 +196,7 @@ secondary maps.
    ---------------------------
    */
 
-  var reservedInventoryTable : ReservedInventoryTable = 
+  var reservedInventoryTable : ReservedInventoryTable =
     DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
     //@Omit:
     0,
@@ -204,7 +204,7 @@ secondary maps.
     func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
     idHash,
     func(doc:ReservedInventoryDoc):ReservedInventoryInfo = shared {
-      id=doc.id; 
+      id=doc.id;
       item=doc.item.id;
       retailer=doc.retailer
     },
@@ -214,7 +214,7 @@ secondary maps.
               retailerTable.getDoc(info.retailer)) {
         case (?item, ?_) {
                ?(new {
-                   id=info.id; 
+                   id=info.id;
                    item=item:InventoryDoc;
                    retailer=info.retailer;
                  })
@@ -227,32 +227,32 @@ secondary maps.
     );
 
 
-  /** 
+  /**
    `producerTable`
    -----------------
    */
 
-  var producerTable : ProducerTable = 
-    DocTable<ProducerId, ProducerDoc, ProducerInfo>(      
+  var producerTable : ProducerTable =
+    DocTable<ProducerId, ProducerDoc, ProducerInfo>(
       //@Omit:
     0,
     func(x:ProducerId):ProducerId{x+1},
     func(x:ProducerId,y:ProducerId):Bool{x==y},
     idHash,
     func(doc:ProducerDoc):ProducerInfo = shared {
-      id=doc.id; 
-      short_name=doc.short_name; 
+      id=doc.id;
+      short_name=doc.short_name;
       description=doc.description;
       region=doc.region.id;
       inventory=[];
       reserved=[];
     },
-    func(info:ProducerInfo):?ProducerDoc = 
+    func(info:ProducerInfo):?ProducerDoc =
       switch (regionTable.getDoc(info.region)) {
         case (?regionDoc) {
                ?(new {
-                   id=info.id; 
-                   short_name=info.short_name; 
+                   id=info.id;
+                   short_name=info.short_name;
                    description=info.description;
                    region=regionDoc;
                    inventory=inventoryTable.empty();
@@ -266,43 +266,43 @@ secondary maps.
   /** */
     );
 
-  /** 
+  /**
    `transporterTable`
    -----------------
    */
 
-  var transporterTable : TransporterTable = 
+  var transporterTable : TransporterTable =
     DocTable<TransporterId, TransporterDoc, TransporterInfo> (
       //@Omit:
-      
+
       0,
       func(x:TransporterId):TransporterId{x+1},
       func(x:TransporterId,y:TransporterId):Bool{x==y},
       idHash,
       func(doc:TransporterDoc):TransporterInfo = shared {
-        id=doc.id; 
-        short_name=doc.short_name; 
+        id=doc.id;
+        short_name=doc.short_name;
         description=doc.description;
         routes=[];
         reserved=[];
       },
-      func(info:TransporterInfo):?TransporterDoc = 
+      func(info:TransporterInfo):?TransporterDoc =
         ?(new {
-            id=info.id; 
-            short_name=info.short_name; 
+            id=info.id;
+            short_name=info.short_name;
             description=info.description;
             routes=routeTable.empty();
             reserved=reservedRouteTable.empty();
           })
   /** */
     );
-  
-  /** 
+
+  /**
    `retailerTable`
    -----------------
    */
-  
-  var retailerTable : RetailerTable = 
+
+  var retailerTable : RetailerTable =
     DocTable<RetailerId, RetailerDoc, RetailerInfo>(
       //@Omit:
       0,
@@ -310,20 +310,20 @@ secondary maps.
       func(x:RetailerId,y:RetailerId):Bool{x==y},
       idHash,
       func(doc:RetailerDoc):RetailerInfo = shared {
-        id=doc.id; 
-        short_name=doc.short_name; 
+        id=doc.id;
+        short_name=doc.short_name;
         description=doc.description;
         region=doc.region.id;
         reserved_routes=[];
         reserved_items=[];
       },
       func(info:RetailerInfo):?RetailerDoc {
-        switch (regionTable.getDoc(info.region)) 
+        switch (regionTable.getDoc(info.region))
         {
         case (?regionDoc) {
                ?(new {
-                   id=info.id; 
-                   short_name=info.short_name; 
+                   id=info.id;
+                   short_name=info.short_name;
                    description=info.description;
                    region=regionDoc;
                    reserved=null;
@@ -339,16 +339,16 @@ secondary maps.
    ----------------
    */
 
-  var routeTable : RouteTable = 
+  var routeTable : RouteTable =
     DocTable<RouteId, RouteDoc, RouteInfo> (
-      //@Omit:      
+      //@Omit:
       0,
       func(x:RouteId):RouteId{x+1},
       func(x:RouteId,y:RouteId):Bool{x==y},
       idHash,
       func(doc:RouteDoc):RouteInfo = shared {
-        id=doc.id; 
-        transporter=doc.transporter; 
+        id=doc.id;
+        transporter=doc.transporter;
         truck_type=(truckTypeTable.getInfoOfDoc())(doc.truck_type);
         start_region=doc.start_region.id;
         end_region=doc.end_region.id;
@@ -360,12 +360,12 @@ secondary maps.
         switch (transporterTable.getDoc(info.transporter),
                 truckTypeTable.getDoc(info.truck_type.id),
                 regionTable.getDoc(info.start_region),
-                regionTable.getDoc(info.end_region)) 
+                regionTable.getDoc(info.end_region))
         {
         case (?_, ?truckType, ?startRegion, ?endRegion) {
                  ?(new {
-                     id=info.id; 
-                     transporter=info.transporter; 
+                     id=info.id;
+                     transporter=info.transporter;
                      truck_type=truckType;
                      start_region=startRegion;
                      end_region=endRegion;
@@ -384,7 +384,7 @@ secondary maps.
    ----------------
    */
 
-  var reservedRouteTable : ReservedRouteTable = 
+  var reservedRouteTable : ReservedRouteTable =
     DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>(
     //@Omit:
     0,
@@ -392,7 +392,7 @@ secondary maps.
     func(x:ReservedRouteId,y:ReservedRouteId):Bool{x==y},
     idHash,
     func(doc:ReservedRouteDoc):ReservedRouteInfo = shared {
-      id=doc.id; 
+      id=doc.id;
       route=doc.route.id;
       retailer=doc.retailer
     },
@@ -402,7 +402,7 @@ secondary maps.
               retailerTable.getDoc(info.retailer)) {
         case (?route, ?_) {
                ?(new {
-                   id=info.id; 
+                   id=info.id;
                    route=route:RouteDoc;
                    retailer=info.retailer;
                  })
@@ -414,7 +414,7 @@ secondary maps.
   /** */
     );
 
-    
+
   /**
 
    Indexing by `RegionId`
@@ -445,14 +445,14 @@ secondary maps.
   /**
    Inventory by source region
    ----------------------------
-  
+
    the actor maintains a possibly-sparse 3D table mapping each
    sourceregion-producerid-inventoryid triple to zero or one
    inventory items.  The 1D coordinate sourceregion gives all of the
    inventory items, by producer id, for this source region.
-  
+
   */
-  
+
   private var inventoryByRegion : ByRegionInventoryMap = null;
 
 
@@ -521,10 +521,10 @@ secondary maps.
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
-    };    
+    };
     ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
       doc.inventory,
-      func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] = 
+      func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] =
         [inventoryTable.getInfoOfDoc()(doc)]
     )
   };
@@ -542,18 +542,18 @@ secondary maps.
     begin:Date,
     end:  Date,
     comments: Text,
-  ) : ?InventoryId 
+  ) : ?InventoryId
   {
     let oproducer : ?ProducerDoc = producerTable.getDoc(id);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
-    
+
     // check whether these ids are defined; fail fast if not defined
     let (producer, produce) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
       case _ { return null };
       }};
-    
+
     // get a unique id for the inventory item; add it to the global table
     let (_, item) = {
       switch (inventoryTable.addInfo(
@@ -592,7 +592,7 @@ secondary maps.
     };
     // Update producer document table:
     let _ = producerTable.updateDoc(id, updatedProducer);
-    
+
     // Update inventoryByRegion mapping:
     inventoryByRegion :=
     Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
@@ -604,7 +604,7 @@ secondary maps.
       // value: producer's updated inventory table
       updatedProducer.inventory,
     );
-    
+
     // return the item's id
     ?item.id
   };
@@ -612,7 +612,7 @@ secondary maps.
   /**
    `producerRemInventory`
    ---------------------------
-   
+
 
    **Implementation summary:**
 
@@ -620,7 +620,7 @@ secondary maps.
     - if successful, look up the producer ID; should not fail; `Trie.find`
     - update the producer, removing this inventory; use `Trie.{replace,remove}`
     - finally, use producer's region to update inventoryByRegion table,
-      removing this inventory item; use `Trie.remove2D`.   
+      removing this inventory item; use `Trie.remove2D`.
    */
   producerRemInventory(id:InventoryId) : ?() {
     // xxx rem
@@ -630,11 +630,23 @@ secondary maps.
   /**
    `producerReservations`
    ---------------------------
-   
+
    */
-  producerReservations(id:ProducerId) : ?[ReservedInventoryId] {
-    // xxx view
-    null
+  producerReservations(id:ProducerId) : ?[ReservedInventoryInfo] {
+    let doc = switch (producerTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+    ?Map.toArray<ReservedInventoryId,
+                 ReservedInventoryDoc,
+                 ReservedInventoryInfo>(
+      doc.reserved,
+      func (_:ReservedInventoryId,
+            doc:ReservedInventoryDoc):
+        [ReservedInventoryInfo]
+        =
+        [reservedInventoryTable.getInfoOfDoc()(doc)]
+    )
   };
 
 
@@ -664,7 +676,7 @@ secondary maps.
   /**
    `transporterRemRoute`
    ---------------------------
-   
+
 
    **Implementation summary:**
 
@@ -672,7 +684,7 @@ secondary maps.
     - if successful, look up the producer ID; should not fail; `Trie.find`
     - update the transporter, removing this inventory; use `Trie.{replace,remove}`
     - finally, use route info to update the routesByRegion table,
-      removing this inventory item; use `Trie.remove2D`.   
+      removing this inventory item; use `Trie.remove2D`.
    */
   transporterRemRoute(id:RouteId) : ?() {
     // xxx rem
@@ -684,18 +696,42 @@ secondary maps.
    ---------------------------
    */
   transporterAllRouteInfo(id:RouteId) : ?[RouteInfo] {
-    // xxx view
-    null
+    let doc = switch (transporterTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+    ?Map.toArray<RouteId,
+                 RouteDoc,
+                 RouteInfo>(
+      doc.routes,
+      func (_:RouteId,
+            doc:RouteDoc):
+        [RouteInfo]
+        =
+        [routeTable.getInfoOfDoc()(doc)]
+    )
   };
 
   /**
    `transporterReservationInfo`
    ---------------------------
-   
+
    */
   transporterAllReservationInfo(id:TransporterId) : ?[ReservedRouteInfo] {
-    // xxx view
-    null
+    let doc = switch (transporterTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+    ?Map.toArray<ReservedRouteId,
+                 ReservedRouteDoc,
+                 ReservedRouteInfo>(
+      doc.reserved,
+      func (_:ReservedRouteId,
+            doc:ReservedRouteDoc):
+        [ReservedRouteInfo]
+        =
+        [reservedRouteTable.getInfoOfDoc()(doc)]
+    )
   };
 
 
@@ -703,7 +739,7 @@ secondary maps.
    `Retailer`-facing operations
    ====================
    */
-  
+
 
   /**
    `retailerQueryAll`
@@ -724,22 +760,38 @@ secondary maps.
    TODO-Cursors (see above).
 
   */
-  retailerAllReservationInfo(id:RetailerId) : 
+  retailerAllReservationInfo(id:RetailerId) :
     ?[(ReservedInventoryInfo,
-       ReservedRouteInfo)] 
+       ReservedRouteInfo)]
   {
-    // xxx view
-    null
+    let doc = switch (retailerTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+    ?Map.toArray<ReservedInventoryId,
+                 (ReservedInventoryDoc,  ReservedRouteDoc),
+                 (ReservedInventoryInfo, ReservedRouteInfo)>(
+      doc.reserved,
+      func (_:ReservedInventoryId,
+            ((idoc:ReservedInventoryDoc),
+             (rdoc:ReservedRouteDoc)))
+            :
+            [(ReservedInventoryInfo,
+              ReservedRouteInfo)]
+        =
+        [(reservedInventoryTable.getInfoOfDoc()(idoc),
+          reservedRouteTable.getInfoOfDoc()(rdoc))]
+    )
   };
 
   /**
    `retailerQueryDates`
    ---------------------------
-    
+
    Retailer queries available produce by delivery date range; returns
    a list of inventory items that can be delivered to that retailer's
    geography within that date.
-   
+
    */
   retailerQueryDates(
     id:RetailerId,
@@ -767,14 +819,14 @@ secondary maps.
   /**
    `retailerReserveCheapest`
    ---------------------------
-  
+
    Like `retailerReserve`, but chooses cheapest choice among all
    feasible produce inventory items and routes, given a grade,
    quant, and delivery window.
-  
+
    ?? This may be an example of what Mack described to me as
    wanting, and being important -- a "conditional update"?
-  
+
   */
   retailerReserveCheapest(
     id:RetailerId,
@@ -794,7 +846,7 @@ secondary maps.
   /**
    Misc helpers
    ==================
-   */ 
+   */
 
   private unwrap<T>(ox:?T) : T {
     switch ox {

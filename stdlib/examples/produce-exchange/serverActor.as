@@ -21,35 +21,35 @@ actor class Server() {
 
  The registrar provides functions to add and to remove entities from
  the following (mostly-static) tables:
- 
+
  - **Static resource information:** truck types, produce types and region information.
  - **Participant information:** producers, retailers and transporters.
  - **Dynamic resource information:** inventory, routes and reservations.
- 
+
  For each of the entities listed above, we have an add (`Add`)
  and remove (`Rem`) function below, prefixed by `registrar`-, and
  suffixed by one of the entities in the following list:
- 
+
  - `TruckType`,
- - `Region`, 
- - `Produce`, 
- - `Producer`, 
+ - `Region`,
+ - `Produce`,
+ - `Producer`,
  - `Retailer`, or
  - `Transporter`.
-   
+
 
  `TruckType`
  ==============
  Messages about truck types.
  */
-  
-  
+
+
   /**
    `reigstrarAddTruckType`
    ------------------------
-   
+
    */
-  
+
   registrarAddTruckType(
     short_name:  Text,
     description: Text,
@@ -84,7 +84,7 @@ actor class Server() {
 
   registrarRemTruckType(
     id: TruckTypeId
-  ) : async ?() { 
+  ) : async ?() {
     getModel().truckTypeTable.remGetUnit(id)
   };
 
@@ -95,8 +95,8 @@ actor class Server() {
 
   getTruckTypeInfo(
     id: TruckTypeId
-  ) : async ?TruckTypeInfo { 
-    getModel().truckTypeTable.getInfo(id) 
+  ) : async ?TruckTypeInfo {
+    getModel().truckTypeTable.getInfo(id)
   };
 
   /**
@@ -104,10 +104,10 @@ actor class Server() {
    ---------------------
    */
 
-  allTruckTypeInfo() : async [TruckTypeInfo] { 
+  allTruckTypeInfo() : async [TruckTypeInfo] {
     getModel().truckTypeTable.allInfo()
   };
-  
+
 
   /**
    `Region`
@@ -126,20 +126,20 @@ actor class Server() {
   registrarAddRegion(
     short_name:  Text,
     description: Text,
-  ) : async ?RegionId { 
+  ) : async ?RegionId {
     getModel().regionTable.addInfoGetId(
       func (id:RegionId) : RegionInfo =
         shared {
           id = id:RegionId;
           short_name=short_name:Text;
-          description=description:Text 
+          description=description:Text
         })
   };
 
   /**
    `registrarRemRegion`
    ---------------------
-   
+
    returns `?()` on success, and `null` on failure.
    */
 
@@ -159,7 +159,7 @@ actor class Server() {
   ) : async ?RegionInfo {
     getModel().regionTable.getInfo(id)
   };
-  
+
 
   /**
    `allRegionInfo`
@@ -181,7 +181,7 @@ actor class Server() {
   /**
    `registrarAddProduce`
    ---------------------
-   
+
    adds the produce to the system; fails if the given information is invalid in any way.
    */
 
@@ -203,7 +203,7 @@ actor class Server() {
   /**
    `registrarRemProduce`
    ---------------------
-   
+
    returns `?()` on success, and `null` on failure.
    */
 
@@ -233,7 +233,7 @@ actor class Server() {
   allProduceInfo() : async [ProduceInfo] {
     getModel().produceTable.allInfo()
   };
- 
+
   /**
    `Producer`
    ===============
@@ -244,7 +244,7 @@ actor class Server() {
   /**
    `registrarAddProducer`
    ---------------------
-   
+
    adds the producer to the system; fails if the given region is non-existent.
    */
 
@@ -269,7 +269,7 @@ actor class Server() {
   /**
    `registrarRemProducer`
    ---------------------
-   
+
    returns `?()` on success, and `null` on failure.
    */
 
@@ -311,7 +311,7 @@ actor class Server() {
   /**
    `registrarAddRetailer`
    ---------------------
-   
+
    adds the producer to the system; fails if the given region is non-existent.
    */
 
@@ -334,7 +334,7 @@ actor class Server() {
   /**
    `registrarRemRetailer`
    ---------------------
-   
+
    returns `?()` on success, and `null` on failure.
    */
 
@@ -348,7 +348,7 @@ actor class Server() {
    `getRetailerInfo`
    ---------------------
    */
-  
+
   getRetailerInfo(
     id: RetailerId
   ) : async ?RetailerInfo {
@@ -359,7 +359,7 @@ actor class Server() {
    `allRetailerInfo`
    ---------------------
    */
-  
+
   allRetailerInfo() : async [RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
@@ -374,7 +374,7 @@ actor class Server() {
   /**
    `registrarAddTransporter`
    ---------------------
-   
+
    */
   registrarAddTransporter(
     short_name:  Text,
@@ -390,13 +390,13 @@ actor class Server() {
           reserved=[];
         }
       })
-      
+
   };
 
   /**
    `registrarRemTransporter`
    ---------------------
-   
+
    */
 
   registrarRemTransporter(
@@ -467,12 +467,12 @@ actor class Server() {
     getModel()
       .producerAllInventoryInfo(id)
   };
-  
+
   /**
    `producerReservations`
    ---------------------------
    */
-  producerReservations(id:ProducerId) : async ?[ReservedInventoryId] {
+  producerReservations(id:ProducerId) : async ?[ReservedInventoryInfo] {
     getModel()
       .producerReservations(id)
   };
@@ -555,11 +555,11 @@ actor class Server() {
   /**
    `retailerQueryDates`
    ---------------------------
-   
+
    Retailer queries available produce by delivery date range; returns
    a list of inventory items that can be delivered to that retailer's
    geography within that date.
-   
+
    */
   retailerQueryDates(
     id:RetailerId,
@@ -587,14 +587,14 @@ actor class Server() {
   /**
    `retailerReserveCheapest`
    ---------------------------
-   
+
    Like `retailerReserve`, but chooses cheapest choice among all
    feasible produce inventory items and routes, given a grade,
    quant, and delivery window.
-   
+
    ?? This may be an example of what Mack described to me as
    wanting, and being important -- a "conditional update"?
-   
+
    */
   retailerReserveCheapest(
     id:RetailerId,
@@ -616,7 +616,7 @@ actor class Server() {
    TODO-Cursors (see above).
 
    */
-  retailerReservations(id:RetailerId) : 
+  retailerReservations(id:RetailerId) :
     async ?[(ReservedInventoryInfo,
              ReservedRouteInfo)]
   {
@@ -624,13 +624,13 @@ actor class Server() {
       retailerAllReservationInfo(id)
   };
 
-  
+
 
   /**
-   
+
    PESS: Developer-based ingress messages:
    ========================================================
-   
+
    The following messages may originate from developers
 
    */
@@ -638,13 +638,13 @@ actor class Server() {
   /**
    `devViewGMV`
    -------------
-   
+
    MVP:
-   
+
    > Developer can see the GMV, the aggregate sum of how many sales have
-been processed 
+been processed
 */
-  
+
   devViewGMV() : async ?Nat {
     // xxx
     null
@@ -655,7 +655,7 @@ been processed
    ----------------
 
    MVP:
-   
+
    > Developer can see how many aggregate queries have been made by all retailers
 
    */
@@ -675,14 +675,14 @@ been processed
    > Developer can see how many aggregate sales orders have been made by all retailers
 
    */
-  
+
   devViewReservations() : async Nat {
     getModel().reservedInventoryTable.count()
   };
 
   /**
    `devViewProducers`
-   -------------------   
+   -------------------
 
    MVP:
 
@@ -699,8 +699,8 @@ been processed
 
   /**
    `devViewTransporters`
-   -------------------   
- 
+   -------------------
+
    MVP:
 
    > Developer can see how many transporters in the system and how many routes each has
@@ -715,8 +715,8 @@ been processed
 
   /**
    `devViewRetailers`
-   -------------------   
-   
+   -------------------
+
    MVP:
 
    > Developer can see how many retailers in the system and how many queries and how many sales orders
@@ -764,19 +764,19 @@ been processed
 
 /////////////////////////////////////////////////////////////////////////////
 
-/** 
+/**
  To do: PESS definition
  ================================================
- 
+
  More registrar ingress messages:
  --------------------------------
- 
+
  - Get a list of all ids for each entity class in the registry:
  ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
- 
+
  - For each id kind, provide a server message to get back the other registry info
  that the registrar stores in association with it (short_name, description, etc.).
- 
+
  - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
- 
+
  */
