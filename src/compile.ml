@@ -4278,7 +4278,7 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
       | [] -> G.nop
       (* If the last program ends with an actor, then consider this the current actor  *)
       | [((decls, {it = ActorE (i, ds, fs, _); _}), _flavor)] ->
-        let (env', code1) = compile_decs env ds in
+        let (env', code1) = compile_decs env decls in
         let code2 = main_actor env' i ds fs in
         code1 ^^ code2
       | ((prog, _flavor) :: progs) ->
