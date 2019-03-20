@@ -1001,7 +1001,7 @@ The result of the object declaration is the object `v == sort { <id0> = v1, ...,
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings. 
 
-_TBR do we actually propagate trapping of actor creation?
+_TBR do we actually propagate trapping of actor creation?_
 
 ## Function Declaration
 
@@ -1023,15 +1023,22 @@ The declaration `obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }`
 a type and function declaration:
 
 ```
-obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =?  { <exp-field>;* } :=
-  type <id> <typ-params> = obj_sort { <typ-field>;* };
-  func <id> <typ-params>? <pat> : <id> <typ-args>  =? obj_sort { <exp-field>;*}
+obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* } :=
+  type <id> <typ-params> = sort { <typ-field>;* };
+  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <exp-field>;*}
 ```
 
-where `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any) and `<typ-field>;*` is the set of non-private field types inferred
-from `<exp_field;*>`.
+where:
+* <sort> is `object` if `obj_sort?` is absent or `new` and `sort` == `obj_sort` otherwise.
+* `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and 
+* `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
+* `<id_this>?` is the optional `this` parameter of the object instance.
 
-## Programs
+_TBR can we delete `new'?_
+
+# Expression Fields
+
+# Programs
 
 
 
