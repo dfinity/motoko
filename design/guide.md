@@ -912,16 +912,16 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 # Declarations
 
 ```
-<dec> ::=                                                 declaration
-  <exp>                                                       expression
-  let <pat> = <exp>                                           immutable
-  var <id> (: <typ>)? = <exp>                                 mutable
-  (new|object|actor|shared) <id>? =? { <exp-field>;* }        object
-  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
-  type <id> <typ-params>? = <typ>                             type
-  actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
+<dec> ::=                                                       declaration
+  <exp>                                                           expression
+  let <pat> = <exp>                                               immutable
+  var <id> (: <typ>)? = <exp>                                     mutable
+  (new|object|actor|shared) <id>? =? { <exp-field>;* }            object
+  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
+  type <id> <typ-params>? = <typ>                                 type
+  obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` class
 
-<exp-field> ::=                                object expression fieldsvariable
+<exp-field> ::=                                object expression fields
   private? dec                                   field
   private? <id> = <exp>                          short-hand
 ```
@@ -979,11 +979,11 @@ Declaration `(new|object|actor|shared) <id>? =? { <exp-field>;* }` declares an o
 The qualifier `new|object|actor|shared` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields and the sharability of the object itself.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object. 
-Let `<dec>?` be the sequence of declarations in <exp_field>;*.
+Let `<dec>;*` be the sequence of declarations in <exp_field>;*.
 The object declaration has type `T` provided that:
 1. type `T` is well-formed for sort `sort`, and
 2. under the assumption that `<id> : T`, 
-   * the sequence of declarations `<decs>` has type `Any` and declares the disjoint    sets of private and non-private identifers, `Id_private` and `Id_public` respectively,
+   * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint sets of private and non-private identifers, `Id_private` and `Id_public` respectively,
      with types `T(id)` for `id` in `Id == Id_private union Id_public`.
    * `{ id0, ..., idn } == Id_public` 
    *  for all `i in 0 <= i <= n`, `[var0] Ti == T(idi)`.
@@ -994,10 +994,48 @@ In particular:
 * if the sort is `shared` then all non-private field must be non-`var` (immutable) and of a type that is sharable (`T(idi) <: Shared`). Shared objects can be sent as arguments to `shared` functions or returned as the result of a `shared` function (wrapped in a promise).
 
 Evaluation of `(new|object|actor|shared) <id>? =? { <exp-field>;* }` proceeds by
-evaluating the declaration in `<decs>`. If the evaluation of `<decs>` traps, so does the object declaration. 
-TBC
+evaluating the declaration in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. 
+Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. 
+let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`. 
+The result of the object declaration is the object `v == sort { <id0> = v1, ..., <idn> = vn}`.
 
-_TBR do we actually progate trapping of actor creation?
+If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings. 
+
+_TBR do we actually propagate trapping of actor creation?
+
+## Function Declaration
+
+The function declaration  `shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>` is syntactic sugar for
+a `let` declaration of a function expression. That is:
+
+```
+shared? func <id> <typ-params>? <pat> (: <typ>)? =? <exp> :=
+  let <id> = shared? func <id> <typ-params>? <pat> (: <typ>)? =? <exp>
+```
+
+where <pat> is <id> when `<id>?` is present and <pat> is `_` otherwise.
+
+Named function definitions are recursive.
+
+## Class declarations
+
+The declaration `obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` is sugar for pair of a 
+a type and function declaration:
+
+```
+obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =?  { <exp-field>;* } :=
+  type <id> <typ-params> = obj_sort { <typ-field>;* };
+  func <id> <typ-params>? <pat> : <id> <typ-args>  =? obj_sort { <exp-field>;*}
+```
+
+where `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any) and `<typ-field>;*` is the set of non-private field types inferred
+from `<exp_field;*>`.
+
+## Programs
+
+
+
+
 
 
 
