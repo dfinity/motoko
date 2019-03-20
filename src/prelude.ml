@@ -58,6 +58,7 @@ func word64ToInt(n : Word64) : Int = (prim "Word64->Int" : Word64 -> Int) n;
 
 func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
+func decodeUTF8(s : Text) : (Word32, Char) = (prim "decodeUTF8" : Text -> (Word32, Char)) s;
 
 // Exotic bitwise operations
 func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word8) -> Word8) (w, amount);
@@ -250,6 +251,7 @@ let prim = function
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "printChar" -> fun v k -> Printf.printf "%c%!" (Char.chr (as_char v)); k unit
+  | "decodeUTF8" -> fun v k -> k (Tup [Word32 0l; Char 49])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->
