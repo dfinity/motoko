@@ -147,7 +147,11 @@ See [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdl
 
 See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.
 
-These files use modules from [the standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/#produce-exchange).
+See [the standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/#produce-exchange)
+for collection abstractions,
+including 
+    the [`DocTable` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+and the [`Trie` type](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).
 
 
 **Server model implementation**
