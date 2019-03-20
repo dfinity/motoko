@@ -2412,7 +2412,11 @@ end (* HeapTraversal *)
 
 module Serialization = struct
   (*
-    The serialization strategy is as follows:
+    We have a specific serialization strategy for `Text`, `Word32` and
+    references for easier interop with the console and the nonce. This is a
+    stop-gap measure until we have nailed down IDL and Bidirectional Messaging.
+
+    The general serialization strategy is as follows:
     * We traverse the data to calculate the size needed for the data buffer and the
       reference buffer.
     * We remember the current heap pointer, and use the space after as scratch space.
@@ -2742,12 +2746,10 @@ module Serialization = struct
         let (set_x, get_x) = new_local env "x" in
         read_word ^^ set_len ^^
 
-        (* Refactor into Text.alloc *)
         get_len ^^ Text.alloc env ^^ set_x ^^
 
         get_data_buf ^^
-        get_x ^^
-        compile_add_const Int32.(add ptr_unskew (mul Heap.word_size Text.header_size)) ^^
+        get_x ^^ Text.payload_ptr_unskewed ^^
         get_len ^^
         Heap.memcpy env ^^
 
@@ -2770,121 +2772,157 @@ module Serialization = struct
     if E.mode env <> DfinityMode
     then Func.share_code1 env name ("x", I32Type) [I32Type] (fun env _ -> G.i Unreachable)
     else Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
-      let (set_data_size, get_data_size) = new_local env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+      match Type.normalize t with
+      | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
+      | Type.Prim Type.Word32 -> get_x ^^ BoxedSmallWord.unbox env
+      | Type.Obj (Type.Actor, _) -> get_x ^^ Dfinity.unbox_reference env
+      | _ ->
+        let (set_data_size, get_data_size) = new_local env "data_size" in
+        let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      (* Get object sizes *)
-      get_x ^^
-      buffer_size env t ^^
-      set_refs_size ^^
-      set_data_size ^^
+        (* Get object sizes *)
+        get_x ^^
+        buffer_size env t ^^
+        set_refs_size ^^
+        set_data_size ^^
 
-      let (set_data_start, get_data_start) = new_local env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+        let (set_data_start, get_data_start) = new_local env "data_start" in
+        let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-      Heap.get_heap_ptr ^^
-      set_data_start ^^
+        Heap.get_heap_ptr ^^
+        set_data_start ^^
 
-      Heap.get_heap_ptr ^^
-      get_data_size ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_refs_start ^^
+        Heap.get_heap_ptr ^^
+        get_data_size ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        set_refs_start ^^
 
-      (* Allocate space, if needed *)
-      get_refs_start ^^
-      get_refs_size ^^
-      compile_divU_const Heap.word_size ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Heap.grow_memory env ^^
+        (* Allocate space, if needed *)
+        get_refs_start ^^
+        get_refs_size ^^
+        compile_divU_const Heap.word_size ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        Heap.grow_memory env ^^
 
-      (* Serialize x into the buffer *)
-      get_x ^^
-      get_data_start ^^
-      get_refs_start ^^
-      compile_unboxed_const 1l ^^ (* Leave space for databuf *)
-      serialize_go env t ^^
+        (* Serialize x into the buffer *)
+        get_x ^^
+        get_data_start ^^
+        get_refs_start ^^
+        compile_unboxed_const 1l ^^ (* Leave space for databuf *)
+        serialize_go env t ^^
 
-      (* Sanity check: Did we fill exactly the buffer *)
-      get_refs_size ^^ compile_add_const 1l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+        (* Sanity check: Did we fill exactly the buffer *)
+        get_refs_size ^^ compile_add_const 1l ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
 
-      get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+        get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
 
-      (* Create databuf, and store at beginning of ref area *)
-      get_refs_start ^^
-      get_data_start ^^
-      get_data_size ^^
-      G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
-      store_unskewed_ptr  ^^
+        (* Create databuf, and store at beginning of ref area *)
+        get_refs_start ^^
+        get_data_start ^^
+        get_data_size ^^
+        G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
+        store_unskewed_ptr  ^^
 
-      (* Finally, create elembuf *)
-      get_refs_start ^^
-      get_refs_size ^^ compile_add_const 1l ^^
-      G.i (Call (nr (Dfinity.elem_externalize_i env)))
+        (* Finally, create elembuf *)
+        get_refs_start ^^
+        get_refs_size ^^ compile_add_const 1l ^^
+        G.i (Call (nr (Dfinity.elem_externalize_i env)))
     )
+
+  let deserialize_text env get_databuf =
+    let (set_data_size, get_data_size) = new_local env "data_size" in
+    let (set_x, get_x) = new_local env "x" in
+
+    get_databuf ^^
+    G.i (Call (nr (Dfinity.data_length_i env))) ^^
+    set_data_size ^^
+
+    get_data_size ^^
+    Text.alloc env ^^
+    set_x ^^
+
+    get_x ^^ Text.payload_ptr_unskewed ^^
+    get_data_size ^^
+    get_databuf ^^
+    compile_unboxed_const 0l ^^
+    G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
+
+    get_x
+
 
   let deserialize env t =
     let name = "@deserialize<" ^ typ_id t ^ ">" in
     Func.share_code1 env name ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
-      let (set_data_size, get_data_size) = new_local env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-      let (set_data_start, get_data_start) = new_local env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
-      let (set_databuf, get_databuf) = new_local env "databuf" in
+      match Type.normalize t with
+      | Type.Prim Type.Text -> deserialize_text env get_elembuf
+      | Type.Prim Type.Word32 -> get_elembuf ^^ BoxedSmallWord.box env
+      | Type.Obj (Type.Actor, _) -> get_elembuf ^^ Dfinity.box_reference env
+      | _ ->
+        let (set_data_size, get_data_size) = new_local env "data_size" in
+        let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+        let (set_data_start, get_data_start) = new_local env "data_start" in
+        let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+        let (set_databuf, get_databuf) = new_local env "databuf" in
 
-      (* Allocate space for the elem buffer *)
-      get_elembuf ^^
-      G.i (Call (nr (Dfinity.elem_length_i env))) ^^
-      set_refs_size ^^
+        (* Allocate space for the elem buffer *)
+        get_elembuf ^^
+        G.i (Call (nr (Dfinity.elem_length_i env))) ^^
+        set_refs_size ^^
 
-      get_refs_size ^^
-      Array.alloc env ^^
-      compile_add_const Array.header_size ^^
-      compile_add_const ptr_unskew ^^
-      set_refs_start ^^
+        get_refs_size ^^
+        Array.alloc env ^^
+        compile_add_const Array.header_size ^^
+        compile_add_const ptr_unskew ^^
+        set_refs_start ^^
 
-      (* Copy elembuf *)
-      get_refs_start ^^
-      get_refs_size ^^
-      get_elembuf ^^
-      compile_unboxed_const 0l ^^
-      G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
+        (* Copy elembuf *)
+        get_refs_start ^^
+        get_refs_size ^^
+        get_elembuf ^^
+        compile_unboxed_const 0l ^^
+        G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
 
-      (* Get databuf *)
-      get_refs_start ^^
-      load_unskewed_ptr ^^
-      set_databuf ^^
+        (* Get databuf *)
+        get_refs_start ^^
+        load_unskewed_ptr ^^
+        set_databuf ^^
 
-      (* Allocate space for the data buffer *)
-      get_databuf ^^
-      G.i (Call (nr (Dfinity.data_length_i env))) ^^
-      set_data_size ^^
+        (* Allocate space for the data buffer *)
+        get_databuf ^^
+        G.i (Call (nr (Dfinity.data_length_i env))) ^^
+        set_data_size ^^
 
-      get_data_size ^^
-      compile_add_const 3l ^^
-      compile_divU_const Heap.word_size ^^
-      Array.alloc env ^^
-      compile_add_const Array.header_size ^^
-      compile_add_const ptr_unskew ^^
-      set_data_start ^^
+        get_data_size ^^
+        compile_add_const 3l ^^
+        compile_divU_const Heap.word_size ^^
+        Array.alloc env ^^
+        compile_add_const Array.header_size ^^
+        compile_add_const ptr_unskew ^^
+        set_data_start ^^
 
-      (* Copy data *)
-      get_data_start ^^
-      get_data_size ^^
-      get_databuf ^^
-      compile_unboxed_const 0l ^^
-      G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
+        (* Copy data *)
+        get_data_start ^^
+        get_data_size ^^
+        get_databuf ^^
+        compile_unboxed_const 0l ^^
+        G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
 
-      (* Go! *)
-      get_data_start ^^
-      get_refs_start ^^
-      deserialize_go env t ^^
-      G.i Drop
+        (* Go! *)
+        get_data_start ^^
+        get_refs_start ^^
+        deserialize_go env t ^^
+        G.i Drop
     )
 
+    let dfinity_type t = match Type.normalize t with
+      | Type.Prim Type.Text -> CustomSections.DataBuf
+      | Type.Prim Type.Word32 -> CustomSections.I32
+      | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
+      | _ -> CustomSections.ElemBuf
 
 end (* Serialization *)
 
@@ -3367,9 +3405,12 @@ module FuncDec = struct
       let fi = E.add_fun env f name in
 
       if not is_local then
-          E.add_dfinity_type env (fi,
-            CustomSections.(I32 :: Lib.List.make cc.Value.n_args ElemBuf)
-          );
+        E.add_dfinity_type env (fi,
+          CustomSections.I32 ::
+          List.map (
+            fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
+          ) args
+        );
 
       let code =
         (* Allocate a heap object for the closure *)
@@ -4352,12 +4393,17 @@ and fill_actor_fields env fs =
 and export_actor_field env ((f : Ir.field), ptr) =
   let Name name = f.it.name.it in
   let (fi, fill) = E.reserve_fun env name in
-  let cc = Value.call_conv_of_typ f.note in
-  E.add_dfinity_type env (fi, Lib.List.make cc.Value.n_args CustomSections.ElemBuf);
+  let _, _, _, ts, _ = Type.as_func f.note in
+  E.add_dfinity_type env (fi,
+    List.map (
+      fun t -> Serialization.dfinity_type (Type.as_serialized t)
+    ) ts
+  );
   E.add_export env (nr {
     name = Dfinity.explode name;
     edesc = nr (FuncExport (nr fi))
   });
+  let cc = Value.call_conv_of_typ f.note in
   fill (FuncDec.compile_static_message env cc ptr);
 
 (* Local actor *)
