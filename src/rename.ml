@@ -6,12 +6,13 @@ module Renaming = Map.Make(String)
 
 (* One traversal for each syntactic category, named by that category *)
 
-let stamp = ref 0
+module Stamps = Map.Make(String)
+let stamps = ref Stamps.empty
 
 let fresh_id id =
-  let i' = Printf.sprintf "%s@%i" id.it (!stamp) in
-  stamp := !stamp+1;
-  i'
+  let n = Lib.Option.get (Stamps.find_opt id.it !stamps) 0 in
+  stamps := Stamps.add id.it (n + 1) !stamps;
+  Printf.sprintf "%s/%i" id.it n
 
 let id rho i =
   try {i with it = Renaming.find i.it rho}
