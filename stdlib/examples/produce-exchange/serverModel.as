@@ -544,7 +544,8 @@ secondary maps.
     comments: Text,
   ) : ?InventoryId
   {
-    /** validate these ids; fail fast if not defined
+    /** 
+     Validate these ids; fail fast if not defined:
      */
     let oproducer : ?ProducerDoc = producerTable.getDoc(id);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
@@ -554,7 +555,8 @@ secondary maps.
       case _ { return null };
       }};
 
-    /** create the inventory item document
+    /** 
+     Create the inventory item document:
      */
     let (_, item) = {
       switch (inventoryTable.addInfo(
@@ -574,7 +576,8 @@ secondary maps.
       }
     };
 
-    /** update the producer document to hold the new inventory document
+    /** 
+     Update the producer document to hold the new inventory document:
      */
     let updatedInventory = 
       Map.insertFresh<InventoryId, InventoryDoc>(
@@ -584,8 +587,9 @@ secondary maps.
         item
       );
 
-    /** Update the producer document
-     
+    /** 
+     Update the producer document
+
      xxx more concise syntax for record updates would be nice:
      */
     let _ = producerTable.updateDoc(
@@ -599,7 +603,8 @@ secondary maps.
         inventory = updatedInventory;
       });
 
-    /** Update inventoryByRegion mapping: 
+    /** 
+     Update inventoryByRegion mapping: 
      */
     inventoryByRegion :=
     Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
