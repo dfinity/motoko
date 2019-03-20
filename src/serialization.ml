@@ -33,11 +33,13 @@ module Transform() = struct
     primE "@deserialize" (T.Func (T.Local, T.Returns, [], [T.Serialized t], [t]))
     -*- e
 
-
   let serialize e =
     let t = e.note.note_typ in
     primE "@serialize" (T.Func (T.Local, T.Returns, [], [t], [T.Serialized t]))
     -*- e
+
+  let serialized_arg a =
+    { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
 
   let rec map_tuple n f e = match n, e.it with
     | 0, _ -> e
@@ -137,13 +139,12 @@ module Transform() = struct
         assert (typbinds = []);
         assert (T.is_unit typT);
         let args' = t_args args in
-        let raw_arg_vs = List.map (fun a -> fresh_var (T.Serialized a.note)) args' in
+        let raw_args = List.map serialized_arg args' in
         let body' =
           blockE [letP (tupP (List.map varP (List.map exp_of_arg args')))
-                       (tupE (List.map deserialize raw_arg_vs)) ]
+                       (tupE (List.map deserialize (List.map exp_of_arg raw_args))) ]
             (t_exp exp) in
-        let args' = List.map arg_of_exp raw_arg_vs in
-        FuncE (x, cc, [], args', T.unit, body')
+        FuncE (x, cc, [], raw_args, T.unit, body')
       end
     | PrimE _
       | LitE _ -> exp'

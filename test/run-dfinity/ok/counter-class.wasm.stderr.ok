@@ -18,12 +18,12 @@ non-closed actor: (ActorE
     (FuncE
       read
       (shared  1 -> 0)
-      (params $5)
+      (params $3/raw)
       ()
       (BlockE
         (LetD
           (TupP (VarP $3))
-          (TupE (CallE ( 1 -> 1) (PrimE @deserialize) (VarE $5)))
+          (TupE (CallE ( 1 -> 1) (PrimE @deserialize) (VarE $3/raw)))
         )
         (CallE
           ( 1 -> 0)
