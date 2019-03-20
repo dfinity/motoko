@@ -420,7 +420,7 @@ secondary maps.
    Indexing by `RegionId`
    =====================================
 
-   For efficient queries, need some extra indexing.
+   For efficient joins, we need some extra indexing.
 
    Regions as keys in special global maps
    ---------------------------------------
@@ -544,17 +544,18 @@ secondary maps.
     comments: Text,
   ) : ?InventoryId
   {
+    /** validate these ids; fail fast if not defined
+     */
     let oproducer : ?ProducerDoc = producerTable.getDoc(id);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
-
-    // check whether these ids are defined; fail fast if not defined
     let (producer, produce) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
       case _ { return null };
       }};
 
-    // get a unique id for the inventory item; add it to the global table
+    /** create the inventory item document
+     */
     let (_, item) = {
       switch (inventoryTable.addInfo(
                 func(inventoryId:InventoryId):InventoryInfo{
@@ -573,27 +574,33 @@ secondary maps.
       }
     };
 
-    // update the producer document to hold the new inventory item
-    //
-    // xxx more concise syntax for record updates would be nice:
-    let updatedProducer : ProducerDoc = new {
-      id = producer.id;
-      short_name = producer.short_name;
-      description = producer.description;
-      region = producer.region;
-      reserved = producer.reserved;
-      inventory =
-        Map.insertFresh<InventoryId, InventoryDoc>(
-          producer.inventory,
-          keyOf(item.id),
-          idIsEq,
-          item
-        )
-    };
-    // Update producer document table:
-    let _ = producerTable.updateDoc(id, updatedProducer);
+    /** update the producer document to hold the new inventory document
+     */
+    let updatedInventory = 
+      Map.insertFresh<InventoryId, InventoryDoc>(
+        producer.inventory,
+        keyOf(item.id),
+        idIsEq,
+        item
+      );
 
-    // Update inventoryByRegion mapping:
+    /** Update the producer document
+     
+     xxx more concise syntax for record updates would be nice:
+     */
+    let _ = producerTable.updateDoc(
+      id, 
+      new {
+        id = producer.id;
+        short_name = producer.short_name;
+        description = producer.description;
+        region = producer.region;
+        reserved = producer.reserved;
+        inventory = updatedInventory;
+      });
+
+    /** Update inventoryByRegion mapping: 
+     */
     inventoryByRegion :=
     Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
@@ -601,11 +608,10 @@ secondary maps.
       keyOf(producer.region.id), idIsEq,
       // key2: producer id */
       keyOf(producer.id), idIsEq,
-      // value: producer's updated inventory table
-      updatedProducer.inventory,
+      // value: updated inventory table
+      updatedInventory,
     );
 
-    // return the item's id
     ?item.id
   };
 
@@ -792,6 +798,14 @@ secondary maps.
    a list of inventory items that can be delivered to that retailer's
    geography within that date.
 
+   ```
+   let jt = (filterByDate (begin, end)
+              (joinTables 
+                (routesByDstSrcRegions (retailer region))
+                 inventoryByRegion
+              );
+   ```
+
    */
   retailerQueryDates(
     id:RetailerId,
@@ -800,6 +814,7 @@ secondary maps.
   ) : ?[InventoryInfo]
   {
     // xxx join+filter
+    
     null
   };
 

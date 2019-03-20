@@ -434,7 +434,9 @@ actor class Server() {
 
   /**
    `producerAddInventory`
-   ---------------------------
+   ------------------------------------------
+
+   See also [Model.producerAddInventory](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
    */
   producerAddInventory(
     id:   ProducerId,
