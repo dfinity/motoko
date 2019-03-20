@@ -51,9 +51,9 @@ module Transform() = struct
     | _, _ ->
       let ts = T.as_tup e.note.note_typ in
       assert (List.length ts = n);
-      let vs = List.map fresh_var ts in
-        blockE [letP (seqP (List.map varP vs)) e]
-          (tupE (List.map f vs))
+      let vs = fresh_vars "tup" ts in
+      blockE [letP (seqP (List.map varP vs)) e]
+        (tupE (List.map f vs))
 
   let rec t_typ (t:T.typ) =
     match t with

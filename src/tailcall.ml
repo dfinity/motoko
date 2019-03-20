@@ -83,7 +83,7 @@ and assignEs vars exp : dec list =
   | _, TupE es when List.length es = List.length vars ->
        List.map expD (List.map2 assignE vars es)
   | _, _ ->
-    let tup = fresh_var (typ exp) in
+    let tup = fresh_var "tup" (typ exp) in
     letD tup exp ::
     List.mapi (fun i v -> expD (assignE v (projE v i))) vars
 
@@ -186,8 +186,8 @@ and dec' env d =
           ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, as_, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
-      let temps = List.map (fun a -> fresh_var (Mut a.note)) as_ in
-      let label = fresh_id () in
+      let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in
+      let label = fresh_id "tailcall" () in
       let tail_called = ref false in
       let env2 = { tail_pos = true;
                    info = Some { func = id;
@@ -201,7 +201,8 @@ and dec' env d =
       let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
       if !tail_called then
         let ids = match typ funexp with
-          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_var (open_ cs t)) dom
+          | Func( _, _, _, dom, _) ->
+            fresh_vars "id" (List.map (fun t -> open_ cs t) dom)
           | _ -> assert false
         in
         let l_typ = Type.unit in
