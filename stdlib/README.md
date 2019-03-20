@@ -17,48 +17,29 @@ of the [produce exchange example](https://github.com/dfinity-lab/actorscript/tre
 
 See also, the [library modules by priority](#library-modules-by-priority).
 
-[`docTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+[`DocTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
 ----------
 
-A _document table_; this table abstracts over a set of _documents_,
-each with a distinct id (assigned by this abstraction), and an
-associated _shallow projection_ (each document's _information_) for
-server-to-client messages.
+A _document table_; this table abstracts over a **mutable set of _documents**,
+each assigned a unique id by the table.
 
-`Map`
--------
+The table is a mutable mapping, augmented with:
 
-Finite maps.
+- a mechanism to generate distinct ids and assign them to new documents, and
+- an associated shallow projection, from each document to its
+associated shallower _information_ type, for use in server-to-client
+messages.
 
 See also 
+    [`Index`](#index),
+    [`Map`](#map),
     [`Trie`](#trie) 
-    [`AssocList`](#assoclist), 
-and [`DocTable`](#doctable).
-
+and [`AssocList`](#assoclist).
 
 [`Trie`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)
 ----------
 
 Represent a finite map with a _canonical binary tree_, based on hashing each key.
-
-`Trie2D`
-----------
-
-A Trie2D is a trie that maps each key to a _secondary trie_, representing a _second dimension_.
-
-A Trie2D represents a 2D mapping, but in a kind of _curried form_,
-that permits efficient, eagerly-applied partial application of the
-first dimension's keys.
-
-To do
-
-`TrieCursor`
----------------
-
-Provide navigational controls for a trie, e.g., holding query results.
-
-To do
-
 
 [`AssocList`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md)
 ------------
@@ -69,6 +50,82 @@ Represent a finite map with an _association list_ a list of key-value pairs.
 -----------
 
 Linked lists.
+
+-------------------------------------------------------------------------------------
+
+To do
+=========
+
+`Trie2D`
+----------
+
+A Trie2D is a trie that maps each key to a _secondary trie_, representing a _second dimension_.
+
+A Trie2D represents a 2D mapping, but in a kind of _curried form_,
+that permits efficient, eagerly-applied partial application of the
+first dimension's keys.
+
+To do --- separate from existing `Trie` module
+
+
+`Index`
+----------
+
+An _index_ abstracts over a **mutable finite map**_ with fixed key and
+value types, perhaps implemented by a purely-functional data
+structure.
+
+To do --- create as a simplified form of existing `DocTable` class
+
+See also 
+    [`DocTable`](#doctable),
+    [`Map`](#index),
+    [`Trie`](#trie)
+and [`AssocList`](#assoclist).
+
+`Map`
+-------
+
+An abstraction for functional finite maps with fixed key and value
+types.
+
+
+To do --- create as a simplified form of existing `DocTable` class
+
+See also 
+    [`Trie`](#trie) 
+    [`AssocList`](#assoclist), 
+    [`Index`](#index), 
+and [`DocTable`](#doctable).
+
+
+`Hash`
+-----------
+
+To do
+
+Convert iterable bit strings into compact hashes.
+
+Convert each compact hash into its canonical iterable bit string (but
+not reversing the hash, of course!).
+
+
+`Array`
+-----------
+
+To do
+
+Concatenate arrays; query outputs are arrays of records, represented
+either directly, or with a cursor.
+
+
+`TrieCursor`
+---------------
+
+Provide navigational controls for a trie, e.g., holding query results.
+
+To do
+
 
 `Bits`
 ---------
@@ -89,24 +146,6 @@ To do
 - If, how and when will the compiler/language just support this stuff "for free"?
 - versus, how much should we write as ActorScript-based abstractions?
 
-
-`Array`
------------
-
-To do
-
-Concatenate arrays; query outputs are arrays of ids, represented
-either directly, or with a cursor.
-
-`Hash`
------------
-
-To do
-
-Convert iterable bit strings into compact hashes.
-
-Convert each compact hash into its canonical iterable bit string (but
-not reversing the hash, of course!).
 
 ---------------------------------------------------------------
 
