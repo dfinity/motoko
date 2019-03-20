@@ -463,6 +463,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
+  dec                                            declaration
   ( <exp> )                                      parentheses
 ```
 
@@ -834,6 +835,12 @@ The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
+### Declaration Expression
+
+The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
+
+Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
+
 ### Parentheses
 
 The parenthesized expression `( <exp> )` has type `T` provided:
@@ -914,13 +921,13 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
 
-<exp-field> ::=                                object expression fields
+<exp-field> ::=                                object expression fieldsvariable
   private? dec                                   field
   private? <id> = <exp>                          short-hand
 ```
 ## Expression Declaration
 
-The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.
+The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.`Ubuntu Mono`
 
 The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for `<exp>`'s side-effect).
 
@@ -962,10 +969,42 @@ The declaration `type C < X0<:T0>, ..., Xn <: Tn > = U` is well-formed provided:
     * constraints `T0`, ..., `Tn` are well-formed.
     * definition `U` is well-formed.
 
-In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-formed type `C <U0, ..., Un>` is equivalent to its expansion 
-`U [ U0/X0, ..., Ub/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.  
+In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-formed type `C < U0, ..., Un>` is equivalent to its expansion 
+`U [ U0/X0, ..., Un/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.  
 
 ## Object Declaration
+
+Declaration `(new|object|actor|shared) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+
+The qualifier `new|object|actor|shared` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields and the sharability of the object itself.
+
+Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object. 
+Let `<dec>?` be the sequence of declarations in <exp_field>;*.
+The object declaration has type `T` provided that:
+1. type `T` is well-formed for sort `sort`, and
+2. under the assumption that `<id> : T`, 
+   * the sequence of declarations `<decs>` has type `Any` and declares the disjoint    sets of private and non-private identifers, `Id_private` and `Id_public` respectively,
+     with types `T(id)` for `id` in `Id == Id_private union Id_public`.
+   * `{ id0, ..., idn } == Id_public` 
+   *  for all `i in 0 <= i <= n`, `[var0] Ti == T(idi)`.
+
+Note that requirement 1. imposes further constraints on the fields type of `T`.
+In particular:
+* if the sort is `actor` then all non-private fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
+* if the sort is `shared` then all non-private field must be non-`var` (immutable) and of a type that is sharable (`T(idi) <: Shared`). Shared objects can be sent as arguments to `shared` functions or returned as the result of a `shared` function (wrapped in a promise).
+
+Evaluation of `(new|object|actor|shared) <id>? =? { <exp-field>;* }` proceeds by
+evaluating the declaration in `<decs>`. If the evaluation of `<decs>` traps, so does the object declaration. 
+TBC
+
+_TBR do we actually progate trapping of actor creation?
+
+
+
+
+
+
+
 
 
 
