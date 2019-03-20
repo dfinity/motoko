@@ -20,10 +20,10 @@ See also, the [library modules by priority](#library-modules-by-priority).
 [`DocTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
 ----------
 
-A _document table_; this table abstracts over a **mutable set of _documents**,
-each assigned a unique id by the table.
+A _document table_ abstracts over a **mutable collection of _documents_**,
+each _assigned a unique id_ when added to the table.
 
-The table is a mutable mapping, augmented with:
+The table is essentially a mutable mapping, augmented with:
 
 - a mechanism to generate distinct ids and assign them to new documents, and
 - an associated shallow projection, from each document to its
