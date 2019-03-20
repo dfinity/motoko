@@ -1515,7 +1515,7 @@ uint32_t to_cp(const char chr[4])
        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
        set_c ^^
        _len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
-       get_res
+       get_res ^^ compile_unboxed_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
 end (* UnboxedSmallWord *)
 
