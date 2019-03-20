@@ -270,7 +270,7 @@ Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in
 Type `None` is the *bottom* type, a subtype of all other types. 
 No value has type `None`. 
 
-As an empty type, `None` can be used to specify the (nonexistent) return value of an infinite loop or trap.
+As an empty type, `None` can be used to specify the (non-existant) return value of an infinite loop or trap.
 
 ## Shared type
 
@@ -366,7 +366,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * `T` equals `None`.
 
-*  `T` is a type parameter `X` declared with constraint 'U'.
+*  `T` is a type parameter `X` declared with constraint `U`.
+
+*  `T`is `Nat` and `U` is `Int`.
 
 *  `T` is a tuple `(T0, ..., Tn)`, `U` is a tuple `(U0, ..., Un)`, 
     and for each `0 <= i <= n`, `Ti <: Ui`.
@@ -923,12 +925,12 @@ The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically
 
 ## Let
 
-The let declaration `<pat> = <exp>` has type `()` and declares the bindings in `<pat>` provided:
+The let declaration `<pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 * `<exp>` has type `T`.
 * `<pat>` has type `T`.
 
 The `<pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by
-matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `()` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
 
 All bindings declared by a let (if any) are *immutable*.
 
@@ -942,11 +944,16 @@ The declaration `var <id>` has type `()` provided:
 
 Within the scope of the declaration, <id> has type `var T` (see Assignment).
 
-Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. Otherwise, the 
+Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. Otherwise, the
 `r` is some value `v` that determines the initial value of mutable variable `<id>`.
+The result of the declaration is `()` and
 `<id>` is bound to a fresh location that contains `v`.
 
+## Type
 
+The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
+
+The declaration 'type C < X0<:T0>, ..., Xn <: Tn > = U' defines ...
 
 # Programs
 ```
