@@ -351,8 +351,9 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 * if `T` is `async U` then `U <: Shared`, and
 * if `T` is `shared < ... > V -> W` then `...` is empty, `U <: Shared` and
   `W == ()` or `W == async W`, and
-* if `T` is `C<T0, ..., TN>` where `type C<X0 <: U0, Xn <: Un>  = ...` then
-   `Ti <: Ui[T0/X0,...,Tn/Xn]`, for each `0 <= i <= n`. 
+* if `T` is `C<T0, ..., TN>` where:
+   * a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
+   * `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 <= i <= n`. 
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
 * if `T` is `shared { ... }` then all fields in `...` are immutable and have a type that subtypes `Shared`.
 
@@ -919,11 +920,13 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 ```
 ## Expression Declaration
 
-The declaration `<exp>` has type `T` provided `<exp>` has type `T` and eclares no bindings.
+The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.
 
 The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for `<exp>`'s side-effect).
 
-## Let
+TBR
+
+## Let Declaration
 
 The let declaration `<pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 * `<exp>` has type `T`.
@@ -934,7 +937,7 @@ matching the value `v` against `<pat>`. If matching fails, then the result is `t
 
 All bindings declared by a let (if any) are *immutable*.
 
-## Var
+## Var Declaration
 
 The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
 
@@ -949,11 +952,23 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 The result of the declaration is `()` and
 `<id>` is bound to a fresh location that contains `v`.
 
-## Type
+## Type Declaration
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
-The declaration 'type C < X0<:T0>, ..., Xn <: Tn > = U' defines ...
+The declaration `type C < X0<:T0>, ..., Xn <: Tn > = U` is well-formed provided:
+* type parameters `X0`, ..., `Xn` are distinct, and
+* assuming the constraints `X0 <: T0`, ..., `Xn <: Tn`:
+    * constraints `T0`, ..., `Tn` are well-formed.
+    * definition `U` is well-formed.
+
+In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-formed type `C <U0, ..., Un>` is equivalent to its expansion 
+`U [ U0/X0, ..., Ub/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.  
+
+## Object Declaration
+
+
+
 
 # Programs
 ```

@@ -1,6 +1,6 @@
 > 1. Why would I want an `actor class` versus just a `class`?
 
-An actor is instantiated as a separate wasm instance, with isolated state. Classes can capture free state, actors class should not (but currently can because the typechecker is too liberal).
+An actor is instantiated as a separate wasm instance, with isolated state. Classes can capture (mutable) free variables state, actors class should not (but currently can because the typechecker is too liberal).
 
 > 2. Where am I permitted to place `async` blocks?
 
@@ -12,11 +12,11 @@ Shared means transmittable without losing identity, essentially. So scalars, imm
 
 > 4. Where would I want to define a `class` versus an `object`? (explain that distinction, if possible)
 
-A class is a family of objects of the same type. There used to be support for checked down-casting (instance of) on classes but we got rid of that, so really a class is just a type def plus constructor function (that's actually what it desugars to as well.
+A class is a family of objects of the same type. There used to be support for checked down-casting (instance of) on classes but we got rid of that, so really a class is just a type def plus constructor function (that's actually what it desugars to as well).
 
 > 5. Where would I want to define an `object` versus a `record` (explain that distinction, if possible)
 
-I guess an object would typically encapsulate state, fields would be private by default (eventhough they aren't currently). Records would be immutable with fields public by default. But I don't think we actually have records per se, except for shared objects (which are mean to stateless).
+I guess an object would typically encapsulate state, and fields would be private by default (eventhough they aren't currently). Records would have fields public by default. In the end, an object really is just a record of values and any state encapsulation is by virtue of the object having fields that are functions that close over state in their environments. The distinction between shared objects and non-shared ones is that we don't an  object that has a mutable field, and thus isn't sharable, to become sharable just by virtue of forgetting that field through subtyping. That was the intention anyway.
 
 > 6. What types permit mutation and how is that expressed; what restrictions come with using mutable memory?
 
