@@ -237,3 +237,5 @@ func f2(x : A2<Bool>) : B2<Bool> = x;
 func g1(x : A1<Bool>) : C1<Bool> = x;
 func g2(x : A2<Bool>) : C2<Bool> = x;
 };
+
+()
