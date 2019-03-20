@@ -574,7 +574,7 @@ secondary maps.
       }
     };
 
-    /**- Update the producer document to hold the new inventory document: */
+    /**- Update the producer's inventory collection to hold the new inventory document: */
     let updatedInventory = 
       Map.insertFresh<InventoryId, InventoryDoc>(
         producer.inventory,
@@ -583,7 +583,7 @@ secondary maps.
         item
       );
 
-    /**- Update the producer document; more concise syntax for record updates would be nice: */
+    /**- Update the producer document; xxx more concise syntax for functional record updates would be nice: */
     let _ = producerTable.updateDoc(
       id, 
       new {
