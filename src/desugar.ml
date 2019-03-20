@@ -224,6 +224,7 @@ and pat' = function
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
+  | S.AnnotP (p, _) -> to_arg p
   | S.VarP i ->
     { i with note = p.note },
     (fun e -> e)
