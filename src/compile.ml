@@ -4276,6 +4276,11 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
+      (* If the last program ends with an actor, then consider this the current actor  *)
+      | [((decls, {it = ActorE (i, ds, fs, _); _}), _flavor)] ->
+        let (env', code1) = compile_decs env ds in
+        let code2 = main_actor env' i ds fs in
+        code1 ^^ code2
       | ((prog, _flavor) :: progs) ->
         let (env1, code1) = compile_prog env prog in
         let code2 = go env1 progs in
@@ -4315,6 +4320,7 @@ and export_actor_field env ((f : Ir.field), ptr) =
   });
   fill (FuncDec.compile_static_message env cc ptr);
 
+(* Local actor *)
 and actor_lit outer_env this ds fs at =
   if E.mode outer_env <> DfinityMode then G.i Unreachable else
 
@@ -4355,6 +4361,26 @@ and actor_lit outer_env this ds fs at =
     (* Create actorref *)
     G.i (Call (nr (Dfinity.module_new_i outer_env))) ^^
     G.i (Call (nr (Dfinity.actor_new_i outer_env)))
+
+(* Main actor: Just return the initialization code, and export functions as needed *)
+and main_actor env this ds fs =
+  if E.mode env <> DfinityMode then G.i Unreachable else
+
+  (* Allocate static positions for exported functions *)
+  let located_ids = allocate_actor_fields env fs in
+
+  List.iter (export_actor_field env) located_ids;
+
+  (* Add this pointer *)
+  let env2 = E.add_local_deferred_vanilla env this.it Dfinity.get_self_reference in
+
+  (* Compile the declarations *)
+  let (env3, decls_code) = compile_decs env2 ds in
+
+  (* fill the static export references *)
+  let fill_code = fill_actor_fields env3 located_ids in
+
+  decls_code ^^ fill_code
 
 and actor_fake_object_idx env name =
     Dfinity.compile_databuf_of_bytes env (name.it) ^^

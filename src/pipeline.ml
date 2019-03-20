@@ -153,10 +153,10 @@ let infer_prog_unit senv prog =
     (Typing.check_prog senv prog)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
-let check_file senv n = check_with parse_file infer_prog_unit senv n
+let check_file senv n = check_with parse_file Typing.infer_prog senv n
 let check_files senv = function
   | [n] -> check_file senv n
-  | ns -> check_with (fun _n -> parse_files ns) infer_prog_unit senv "all"
+  | ns -> check_with (fun _n -> parse_files ns) Typing.infer_prog senv "all"
 
 
 (* Interpretation *)
