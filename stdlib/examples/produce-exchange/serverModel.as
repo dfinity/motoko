@@ -544,9 +544,9 @@ secondary maps.
     comments: Text,
   ) : ?InventoryId
   {
-    /** 
-     Validate these ids; fail fast if not defined:
-     */
+    /** The model adds inventory and maintains secondary indicies as follows: */
+
+    /**- Validate these ids; fail fast if not defined: */
     let oproducer : ?ProducerDoc = producerTable.getDoc(id);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
     let (producer, produce) = {
@@ -555,9 +555,7 @@ secondary maps.
       case _ { return null };
       }};
 
-    /** 
-     Create the inventory item document:
-     */
+    /**- Create the inventory item document: */
     let (_, item) = {
       switch (inventoryTable.addInfo(
                 func(inventoryId:InventoryId):InventoryInfo{
@@ -576,9 +574,7 @@ secondary maps.
       }
     };
 
-    /** 
-     Update the producer document to hold the new inventory document:
-     */
+    /**- Update the producer document to hold the new inventory document: */
     let updatedInventory = 
       Map.insertFresh<InventoryId, InventoryDoc>(
         producer.inventory,
@@ -587,11 +583,7 @@ secondary maps.
         item
       );
 
-    /** 
-     Update the producer document
-
-     xxx more concise syntax for record updates would be nice:
-     */
+    /**- Update the producer document; more concise syntax for record updates would be nice: */
     let _ = producerTable.updateDoc(
       id, 
       new {
@@ -603,9 +595,7 @@ secondary maps.
         inventory = updatedInventory;
       });
 
-    /** 
-     Update inventoryByRegion mapping: 
-     */
+    /**- Update inventoryByRegion mapping: */
     inventoryByRegion :=
     Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,

@@ -121,7 +121,22 @@ with open(sys.argv[1], "r") as ins:
         # For now, assume 0 or 1 mode switches per line; later, handle breaking those on the same line up
 
         # Start Markdown comment
-        if re.match(r'/\*\*', line.lstrip()):
+        if re.match(r'/\*\*([^\*])+\*/', line.lstrip()):
+            p = re.compile(r'(/\*\*)([^\*/]*)(\*/)')
+            groups = p.match(line.lstrip()).groups()
+            if len(groups) == 3:
+                savedMode = mode
+                savedOpen = modeOpen
+                savedClose = modeClose            
+                switchModeTo(Markdown, "", "")
+                modeLines.append(groups[1])
+                switchModeTo(savedMode, savedOpen, savedClose)
+            else:
+                # ignore the comment; no content
+                assert True
+            
+        # Start Markdown comment
+        elif re.match(r'/\*\*', line.lstrip()):
             switchModeTo(Markdown, "", "")
 
         # Start ordinary comment
