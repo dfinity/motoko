@@ -134,6 +134,76 @@ Type expressions are used to specify the types of arguments, bound on type param
   Shared                                        sharable types
   ( type )                                      parenthesized type
 ```
+
+## Ground types
+
+For `<id>` taking the form `Bool`, `Text`, `Char`, `Int`, `Nat` or `Word`*n*
+(with *n* in 8, 16, 32, 64), the built-in ground types are
+constituted. These come with a variety of built-in operations.
+
+### The boolean type
+
+`Bool` is inhabited by `true` and `false` and is typically eliminated
+by an `if` expression.
+
+Comparison TODO.
+
+### The type of text
+
+For representing prose the built-in type `Text` is available. Its
+operations include conactenation and interation over its constituent
+characters. The `textLength` function returns the number of characters
+the text contains.
+
+Comparison TODO.
+
+### The type of characters
+
+A `Char` represents a code point in the Unicode character
+set. Characters can be converted to `Word32` and `Word32`s in the
+range *0 .. 0x1FFFFF* can be converted to `Char`. With `singletonText`
+a character can be converted into a text of length 1.
+
+Comparison TODO.
+
+### Arithmetic types
+
+The types `Int` and `Nat` are signed integral and natural numbers of
+arbitrary precision with
+the arithmetic operations of addition `(+)`, subtraction `(-)` (which
+may trap for `Nat`), multiplication `(*)`, division `(/)`, modulus `(%)` and
+exponentiation `(**)`. All arithmetic operations have type `t -> t ->
+t` for `t` being `Int` or `Nat`. Additionally, since every inhabitant
+of `Nat` is also an inhaitant of `Int`, the subtype relation `Nat <:
+Int` holds.
+
+Comparison TODO.
+
+### Word types
+
+The types `Word8`, `Word16`, `Word32` and `Word64` represent
+fixed-width bit patterns of length *n* (8, 16, 32 and 64). Semanically word
+types are also arithmetic types implementing numeric wrap-around
+(modulo *2^n*).
+Additionally bitwise operations are available, logical *and* `(&)`,
+*or* `(|)` and *exclusive-or* `(^)`. Further, words can be rotated
+left `(<<>)`, right `(<>>)`, and shifted left `(<<)`, right `(>>)`,
+as well as right with two's-complement sign preserved `shrs`.
+All shift and rotate amounts are considered modulo the word's length
+*n*.
+
+Conversions to `Int` and `Nat`, named `word`*n*`ToInt` and
+`word`*n*`ToNat`, are exact and expose the word's bit-pattern as
+two's complement values respectively natural numbers. Reverse
+conversions, named `intToWord`*n* and `natToWord`*n* are potentially
+lossy, but the round-trip property holds modulo *2^n*. The former
+choose the two's-complement representation for negative integers.
+
+Word types are not in subtype relationship with each other or with
+other arithmetic types, and their literals need type annotation, e.g. 
+`(-42 : Word16)`. For negative literals the two's-complement
+representation is applied.
+
 ## Constructed types
 
  `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. Int) or user defined, to zero or more type *arguments*. 
