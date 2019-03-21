@@ -22,15 +22,12 @@ let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
-let ascii_decoder _ s i = Char.code s.[!i] (* we don't want this one! *)
-
 let utf8_decoder l lexbuf s i =
-  let fst = ascii_decoder lexbuf s i in
-  let rec count_non_ascii j = if j >= l
-                                 || ascii_decoder lexbuf s (ref j) <= 0o177
+  let ascii_at j = Char.code s.[j] <= 0o177 in
+  let rec count_non_ascii j = if j >= l || ascii_at j
                               then 0
                               else 1 + count_non_ascii (j + 1)
-  in if fst <= 0o177 then fst
+  in if ascii_at !i then Char.code s.[!i]
      else match Utf8.decode (String.sub s !i (1 + count_non_ascii (!i + 1))) with
           | code::_ -> if code > 0o177777 then incr i;
                        if code > 0o3777 then incr i;
