@@ -2458,6 +2458,40 @@ module Serialization = struct
   let typ_id : Type.typ -> string = Type.string_of_typ
 
 
+
+  (* Checks whether the serialization of a given type could contain references *)
+  module TS = Set.Make (struct type t = Type.typ let compare = compare end)
+  let has_no_references : Type.typ -> bool = fun t ->
+    let open Type in
+    let seen = ref TS.empty in (* break the cycles *)
+    let rec go t =
+      TS.mem t !seen ||
+      begin
+        seen := TS.add t !seen;
+        match t with
+        | Var _ -> assert false
+        | (Prim _ | Any | Non | Shared | Pre) -> true
+        | Con (c, ts) ->
+          begin match Con.kind c with
+          | Abs _ -> assert false
+          | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+          end
+        | Array t -> go t
+        | Tup ts -> List.for_all go ts
+        | Func (Sharable, c, tbs, ts1, ts2) -> false
+        | Func (s, c, tbs, ts1, ts2) ->
+          let ts = open_binds tbs in
+          List.for_all go (List.map (open_ ts) ts1) &&
+          List.for_all go (List.map (open_ ts) ts2)
+        | Opt t -> go t
+        | Async t -> go t
+        | Obj (Actor, fs) -> false
+        | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+        | Mut t -> go t
+        | Serialized t -> go t
+      end
+    in go t
+
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
@@ -2830,10 +2864,20 @@ module Serialization = struct
         G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
         store_unskewed_ptr  ^^
 
-        (* Finally, create elembuf *)
-        get_refs_start ^^
-        get_refs_size ^^ compile_add_const 1l ^^
-        G.i (Call (nr (Dfinity.elem_externalize_i env)))
+        if has_no_references t
+        then
+          (* Sanity check: Really no references *)
+          get_refs_size ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+          (* If there are no references, just return the databuf *)
+          get_refs_start ^^
+          load_unskewed_ptr
+        else
+          (* Finally, create elembuf *)
+          get_refs_start ^^
+          get_refs_size ^^ compile_add_const 1l ^^
+          G.i (Call (nr (Dfinity.elem_externalize_i env)))
     )
 
   let deserialize_text env get_databuf =
@@ -2871,28 +2915,36 @@ module Serialization = struct
         let (set_refs_start, get_refs_start) = new_local env "refs_start" in
         let (set_databuf, get_databuf) = new_local env "databuf" in
 
-        (* Allocate space for the elem buffer *)
-        get_elembuf ^^
-        G.i (Call (nr (Dfinity.elem_length_i env))) ^^
-        set_refs_size ^^
+        begin
+        if has_no_references t
+        then
+          (* We have no elembuf wrapper, so the argument is the databuf *)
+          compile_unboxed_const 0l ^^ set_refs_start ^^
+          get_elembuf ^^ set_databuf
+        else
+          (* Allocate space for the elem buffer *)
+          get_elembuf ^^
+          G.i (Call (nr (Dfinity.elem_length_i env))) ^^
+          set_refs_size ^^
 
-        get_refs_size ^^
-        Array.alloc env ^^
-        compile_add_const Array.header_size ^^
-        compile_add_const ptr_unskew ^^
-        set_refs_start ^^
+          get_refs_size ^^
+          Array.alloc env ^^
+          compile_add_const Array.header_size ^^
+          compile_add_const ptr_unskew ^^
+          set_refs_start ^^
 
-        (* Copy elembuf *)
-        get_refs_start ^^
-        get_refs_size ^^
-        get_elembuf ^^
-        compile_unboxed_const 0l ^^
-        G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
+          (* Copy elembuf *)
+          get_refs_start ^^
+          get_refs_size ^^
+          get_elembuf ^^
+          compile_unboxed_const 0l ^^
+          G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
 
-        (* Get databuf *)
-        get_refs_start ^^
-        load_unskewed_ptr ^^
-        set_databuf ^^
+          (* Get databuf *)
+          get_refs_start ^^
+          load_unskewed_ptr ^^
+          set_databuf
+        end ^^
 
         (* Allocate space for the data buffer *)
         get_databuf ^^
@@ -2925,6 +2977,7 @@ module Serialization = struct
       | Type.Prim Type.Text -> CustomSections.DataBuf
       | Type.Prim Type.Word32 -> CustomSections.I32
       | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
+      | t' when has_no_references t' -> CustomSections.DataBuf
       | _ -> CustomSections.ElemBuf
 
 end (* Serialization *)
