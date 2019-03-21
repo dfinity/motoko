@@ -1393,65 +1393,18 @@ module UnboxedSmallWord = struct
        G.i (Binary (Wasm.Values.I32 I32Op.And))
 
 
+  (* Three utilities for dealing with utf-8 encoded bytes *)
+  let compile_byte_load get_ptr offset =
+    get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
 
-(*
+  let compile_6bit_mask =
+    compile_unboxed_const 0b00111111l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And))
 
+  let compile_left_shift bits =
+    compile_unboxed_const bits ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
-typedef struct {
-	char mask;    /* char data will be bitwise AND with this */
-	char lead;    /* start bytes of current char in utf-8 encoded character */
-	uint32_t beg; /* beginning of codepoint range */
-	uint32_t end; /* end of codepoint range */
-	int bits_stored; /* the number of bits from the codepoint that fits in char */
-}utf_t;
- 
-utf_t * utf[] = {
-	/*             mask        lead        beg      end       bits */
-	[0] = &(utf_t){0b00111111, 0b10000000, 0,       0,        6    },
-	[1] = &(utf_t){0b01111111, 0b00000000, 0000,    0177,     7    },
-	[2] = &(utf_t){0b00011111, 0b11000000, 0200,    03777,    5    },
-	[3] = &(utf_t){0b00001111, 0b11100000, 04000,   0177777,  4    },
-	[4] = &(utf_t){0b00000111, 0b11110000, 0200000, 04177777, 3    },
-	      &(utf_t){0},
-};
-
-int utf8_len(const char ch)
-{
-	int len = 0;
-	for(utf_t **u = utf; *u; ++u) {
-		if((ch & ~( *u)->mask) == ( *u)->lead) {
-			break;
-		}
-		++len;
-	}
-	if(len > 4) { /* Malformed leading byte */
-		exit(1);
-	}
-	return len;
-}
- 
-
-uint32_t to_cp(const char chr[4])
-{
-	int bytes = utf8_len( *chr);
-	int shift = utf[0]->bits_stored * (bytes - 1);
-	uint32_t codep = ( *chr++ & utf[bytes]->mask) << shift;
- 
-	for(int i = 1; i < bytes; ++i, ++chr) {
-		shift -= utf[0]->bits_stored;
-		codep |= ((char)*chr & utf[0]->mask) << shift;
-	}
- 
-	return codep;
-}
- 
-*)
-
-
-
-
-
-     
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
   let len_UTF8_frag mask lead get_c set_res =
@@ -1459,63 +1412,57 @@ uint32_t to_cp(const char chr[4])
     get_c ^^ compile_unboxed_const (Int32.lognot mask) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
     compile_unboxed_const lead ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
-  let _len_UTF8 get_c get_ptr set_res get_res =
-    len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^
-    G.if_ (ValBlockType (Some I32Type))
-      (G.i Unreachable)
-      (len_UTF8_frag 0b01111111l 0b00000000l get_c set_res ^^
+  let len_UTF8 get_c get_ptr set_res get_res =
+    let load_follower offset = compile_byte_load get_ptr offset ^^ compile_6bit_mask
+    in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^
        G.if_ (ValBlockType (Some I32Type))
-         compile_unboxed_one
-         (len_UTF8_frag 0b00011111l 0b11000000l get_c set_res ^^
+         (G.i Unreachable)
+         (len_UTF8_frag 0b01111111l 0b00000000l get_c set_res ^^
           G.if_ (ValBlockType (Some I32Type))
-            (get_res ^^
-             compile_unboxed_const 6l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-             get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 1l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-             compile_unboxed_const 0b00111111l ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ set_res ^^
-             compile_unboxed_const 2l)
-            (len_UTF8_frag 0b00001111l 0b11100000l get_c set_res ^^
+            compile_unboxed_one
+            (len_UTF8_frag 0b00011111l 0b11000000l get_c set_res ^^
              G.if_ (ValBlockType (Some I32Type))
                (get_res ^^
-                compile_unboxed_const 12l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 1l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-                compile_unboxed_const 0b00111111l ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                compile_unboxed_const 6l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 2l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-                compile_unboxed_const 0b00111111l ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ set_res ^^
-                compile_unboxed_const 3l)
-               (len_UTF8_frag 0b00000111l 0b11110000l get_c set_res ^^
+                compile_left_shift 6l ^^
+                load_follower 1l ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                set_res ^^
+                compile_unboxed_const 2l)
+               (len_UTF8_frag 0b00001111l 0b11100000l get_c set_res ^^
                 G.if_ (ValBlockType (Some I32Type))
                   (get_res ^^
-                   compile_unboxed_const 18l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                   get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 1l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-                   compile_unboxed_const 0b00111111l ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                   compile_unboxed_const 12l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                   get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 2l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-                   compile_unboxed_const 0b00111111l ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                   compile_unboxed_const 6l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-                   get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset = 2l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-                   compile_unboxed_const 0b00111111l ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^ set_res ^^
-                   compile_unboxed_const 4l)
-                  (G.i Unreachable)
+                   compile_left_shift 12l ^^
+                   load_follower 1l ^^
+                   compile_left_shift 6l ^^
+                   load_follower 2l ^^
+                   G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                   G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                   set_res ^^
+                   compile_unboxed_const 3l)
+                  (len_UTF8_frag 0b00000111l 0b11110000l get_c set_res ^^
+                   G.if_ (ValBlockType (Some I32Type))
+                     (get_res ^^
+                      compile_left_shift 18l ^^
+                      load_follower 1l ^^
+                      compile_left_shift 12l ^^
+                      load_follower 2l ^^
+                      compile_left_shift 6l ^^
+                      load_follower 3l ^^
+                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                      set_res ^^
+                      compile_unboxed_const 4l)
+                     (G.i Unreachable)
       ))))
 
   let char_length_of_UTF8 env get_ptr =
     let (set_c, get_c) = new_local env "c" in
     let (set_res, get_res) = new_local env "res"
-    in get_ptr ^^
-       G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+    in compile_byte_load get_ptr 0l ^^
        set_c ^^
-       _len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
-       get_res ^^ compile_unboxed_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+       len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
+       get_res ^^ compile_left_shift 8l
 
 end (* UnboxedSmallWord *)
 

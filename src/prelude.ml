@@ -262,7 +262,19 @@ let prim = function
                                | c when c <= 0o177 -> Printf.printf "%c%!" (Char.chr c)
                                | code -> Printf.printf "%s%!" (Wasm.Utf8.encode [code]));
                               k unit
-  | "decodeUTF8" -> fun v k -> k (Tup [Word32 0l; Char 49])
+  | "decodeUTF8" -> fun v k ->
+                    let s = as_text v in
+                    let take_and_mask bits offset = Int32.(logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset]))) in
+                    let classify_utf8_leader =
+                      Int32.(function
+                          | ch when logand ch (lognot 0b01111111l) = 0b00000000l -> [take_and_mask 7]
+                          | ch when logand ch (lognot 0b00011111l) = 0b11000000l -> [take_and_mask 5; take_and_mask 6]
+                          | ch when logand ch (lognot 0b00001111l) = 0b11100000l -> [take_and_mask 4; take_and_mask 6; take_and_mask 6]
+                          | ch when logand ch (lognot 0b00000111l) = 0b11110000l -> [take_and_mask 3; take_and_mask 6; take_and_mask 6; take_and_mask 6]
+                          | _ -> failwith "decodeUTF8") in
+                    let nobbles = List.mapi (fun i f -> f i) (classify_utf8_leader (Int32.of_int (Char.code s.[0]))) in
+                    let code = List.fold_left Int32.(fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles
+                    in k (Tup [Word32 (Int32.of_int (List.length nobbles)); Char (Int32.to_int code)])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->

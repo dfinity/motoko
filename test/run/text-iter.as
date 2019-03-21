@@ -37,3 +37,18 @@ for (a in russian.chars()) {
   print " ";
 };
 print "\n";
+
+{
+    let (len, c) = decodeUTF8 russian;
+    print russian; print "\n";
+    printInt (word32ToInt len); print "\n";
+    printChar c; print "\n";
+};
+
+{
+    let emojis = "🙈🎸😋";
+    let (len, c) = decodeUTF8 emojis;
+    assert ((len == (4 : Word32)) and (c == '\u{1f648}'));
+    printInt (word32ToInt len); print "\n";
+    printChar c; print "\n";
+};
