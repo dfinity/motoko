@@ -1,3 +1,53 @@
 deserialize: T/77
-serialize: T/77
-buffer_size: T/77
+prelude:103.1-128.2: internal error, File "compile.ml", line 2476, characters 21-27: Assertion failed
+
+Last environment:
+@new_async = func
+Array_init = func
+Array_tabulate = func
+abs = func
+btstWord16 = func
+btstWord32 = func
+btstWord64 = func
+btstWord8 = func
+charToWord32 = func
+clzWord16 = func
+clzWord32 = func
+clzWord64 = func
+clzWord8 = func
+ctzWord16 = func
+ctzWord32 = func
+ctzWord64 = func
+ctzWord8 = func
+hashInt = func
+ignore = func
+intToWord16 = func
+intToWord32 = func
+intToWord64 = func
+intToWord8 = func
+natToWord16 = func
+natToWord32 = func
+natToWord64 = func
+natToWord8 = func
+popcntWord16 = func
+popcntWord32 = func
+popcntWord64 = func
+popcntWord8 = func
+print = func
+printInt = func
+range = func
+revrange = func
+shrsWord16 = func
+shrsWord32 = func
+shrsWord64 = func
+shrsWord8 = func
+word16ToInt = func
+word16ToNat = func
+word32ToChar = func
+word32ToInt = func
+word32ToNat = func
+word64ToInt = func
+word64ToNat = func
+word8ToInt = func
+word8ToNat = func
+
