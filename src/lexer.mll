@@ -33,7 +33,7 @@ let utf8_decoder l lexbuf s i =
   let leading = classify_utf8_leader lexbuf (Int32.of_int (Char.code s.[!i]))
   in if leading = 0 then Char.code s.[!i]
      else match Utf8.decode (String.sub s !i (1 + leading)) with
-          | code::_ -> i := !i + leading; code
+          | [code] -> i := !i + leading; code
           | _ -> error lexbuf "can not interpret unicode character"
 
 let unicode lexbuf s i decoder =
@@ -60,7 +60,7 @@ let unicode lexbuf s i decoder =
 
 let char lexbuf s = unicode lexbuf s (ref 1) (fun _ _ _ ->
                         match Utf8.decode s with
-                        | [39; code; 39] -> code
+                        | [39; code; 39] -> code (* surrounded by apostrophes *)
                         | _ -> error lexbuf "can not interpret unicode character")
 
 let text lexbuf s =
