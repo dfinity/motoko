@@ -2235,7 +2235,7 @@ module Dfinity = struct
     if E.mode env = DfinityMode
     then
       G.i Drop ^^
-      Text.lit env "H" ^^
+      Text.lit env "H" ^^ (* TODO(Gabor) *)
       prim_print env
     else
       G.i Unreachable
@@ -4003,7 +4003,7 @@ and compile_exp (env : E.t) exp =
          Dfinity.prim_print env
        | "decodeUTF8" ->
          SR.UnboxedTuple 2,
-         compile_exp_vanilla env e ^^ G.i Drop ^^ Text.lit env "Приветствую, мир!\n" ^^
+         compile_exp_vanilla env e ^^
          Text.prim_decodeUTF8 env
        | _ ->
         (* Now try the binary prims, expecting a manifest tuple argument *)
