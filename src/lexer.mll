@@ -22,18 +22,19 @@ let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
+let classify_utf8_leader lexbuf = Int32.(function
+  | ch when equal (logand ch (lognot 0b01111111l)) 0b00000000l -> 0
+  | ch when equal (logand ch (lognot 0b00011111l)) 0b11000000l -> 1
+  | ch when equal (logand ch (lognot 0b00001111l)) 0b11100000l -> 2
+  | ch when equal (logand ch (lognot 0b00000111l)) 0b11110000l -> 3
+  | ch -> error lexbuf (Printf.sprintf "invalid utf-8 character: 0x%x" (Int32.to_int ch)))
+
 let utf8_decoder l lexbuf s i =
-  let ascii_at j = Char.code s.[j] <= 0o177 in
-  let rec count_non_ascii j = if j >= l || ascii_at j
-                              then 0
-                              else 1 + count_non_ascii (j + 1)
-  in if ascii_at !i then Char.code s.[!i]
-     else match Utf8.decode (String.sub s !i (1 + count_non_ascii (!i + 1))) with
-          | code::_ -> if code > 0o177777 then incr i;
-                       if code > 0o3777 then incr i;
-                       if code > 0o177 then incr i;
-                       code
-          | _ -> error lexbuf "could not interpret unicode character"
+  let leading = classify_utf8_leader lexbuf (Int32.of_int (Char.code s.[!i]))
+  in if leading == 0 then Char.code s.[!i]
+     else match Utf8.decode (String.sub s !i (1 + leading)) with
+          | code::_ -> i := !i + leading; code
+          | _ -> error lexbuf "can not interpret unicode character"
 
 let unicode lexbuf s i decoder =
   let u =
@@ -60,7 +61,7 @@ let unicode lexbuf s i decoder =
 let char lexbuf s = unicode lexbuf s (ref 1) (fun _ _ _ ->
                         match Utf8.decode s with
                         | [39; code; 39] -> code
-                        | _ -> error lexbuf "could not interpret unicode character")
+                        | _ -> error lexbuf "can not interpret unicode character")
 
 let text lexbuf s =
   let l = String.length s in
