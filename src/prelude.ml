@@ -250,7 +250,11 @@ let prim = function
 
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
-  | "printChar" -> fun v k -> Printf.printf "%c%!" (Char.chr (as_char v)); k unit
+  | "printChar" -> fun v k -> (match as_char v with
+                               | c when c <= 0o177 -> Printf.printf "%c%!" (Char.chr c)
+                               | code -> Printf.printf "%s%!"
+                               | (Wasm.Utf8.encode [code]));
+                              k unit
   | "decodeUTF8" -> fun v k -> k (Tup [Word32 0l; Char 49])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
