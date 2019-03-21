@@ -2412,6 +2412,9 @@ end (* HeapTraversal *)
 
 module Serialization = struct
   (*
+    Also see (and update) `design/TmpWireFormat.md`, which documents the format
+    in a “user-facing” way.
+
     We have a specific serialization strategy for `Text`, `Word32` and
     references for easier interop with the console and the nonce. This is a
     stop-gap measure until we have nailed down IDL and Bidirectional Messaging.
