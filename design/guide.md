@@ -445,6 +445,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   <exp> <binop>= <exp>                           binary update
   [ var? <exp>,* ]                               array
   <exp> [ <exp> ]                                array indexing
+  shared? func <func_exp>                        function expression
   <exp> <typ-args>? <exp>                        function call
   { <dec>;* }                                    block
   not <exp>                                      negation
@@ -465,6 +466,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   ( <exp> )                                      parentheses
+
+<func-exp> ::=                                 function expression
+  <typ-params>? <pat> (: <typ>)? =? <exp>        function body
 ```
 
 ## Identifiers
@@ -618,7 +622,7 @@ value (a.k.a. closure), denoted `shared? func <typ-params>? <pat> = <exp>`, that
 ## Blocks
 
 The block expression `{ <dec>;* }` has type `T` provided the last declaration in the sequence `<dec>;*` has type `T`.
-All identifiers declared in block must be distinct type identifiers or distincfalset value identifiers and are in scope in the definition of all other declarations in the block.
+All identifiers declared in block must be distinct type identifiers or distinct value identifiers and are in scope in the definition of all other declarations in the block.
 
 The bindings of identifiers declared in { dec;* } are local to the block. 
 The type `T` must be well-formed in the enclosing environment of the block. In particular, any local, recursive types that cannot be expanded to types well-formed the enclosing environment must not appear in `T`.
@@ -843,8 +847,7 @@ Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the r
 
 ### Parentheses
 
-The parenthesized expression `( <exp> )` has type `T` provided:
-* `<exp>` has type `T`.
+The parenthesized expression `( <exp> )` has type `T` provided `<exp>` has type `T`.
 
 The result of evaluating `( <exp> : <typ> )` is the result of evaluating `<exp>`. 
 
@@ -979,14 +982,14 @@ Declaration `(new|object|actor|shared) <id>? =? { <exp-field>;* }` declares an o
 The qualifier `new|object|actor|shared` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields and the sharability of the object itself.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object. 
-Let `<dec>;*` be the sequence of declarations in <exp_field>;*.
+Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
 The object declaration has type `T` provided that:
 1. type `T` is well-formed for sort `sort`, and
 2. under the assumption that `<id> : T`, 
    * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint sets of private and non-private identifers, `Id_private` and `Id_public` respectively,
      with types `T(id)` for `id` in `Id == Id_private union Id_public`.
    * `{ id0, ..., idn } == Id_public` 
-   *  for all `i in 0 <= i <= n`, `[var0] Ti == T(idi)`.
+   *  for all `i in 0 <= i <= n`, `[vari] Ti == T(idi)`.
 
 Note that requirement 1. imposes further constraints on the fields type of `T`.
 In particular:
@@ -994,7 +997,7 @@ In particular:
 * if the sort is `shared` then all non-private field must be non-`var` (immutable) and of a type that is sharable (`T(idi) <: Shared`). Shared objects can be sent as arguments to `shared` functions or returned as the result of a `shared` function (wrapped in a promise).
 
 Evaluation of `(new|object|actor|shared) <id>? =? { <exp-field>;* }` proceeds by
-evaluating the declaration in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. 
+evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. 
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. 
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`. 
 The result of the object declaration is the object `v == sort { <id0> = v1, ..., <idn> = vn}`.
@@ -1009,53 +1012,102 @@ The function declaration  `shared? func <id>? <typ-params>? <pat> (: <typ>)? =? 
 a `let` declaration of a function expression. That is:
 
 ```
+<func_exp> ::= <typ-params>? <pat> (: <typ>)? =? <exp>
 shared? func <id> <typ-params>? <pat> (: <typ>)? =? <exp> :=
   let <id> = shared? func <id> <typ-params>? <pat> (: <typ>)? =? <exp>
 ```
 
-where <pat> is <id> when `<id>?` is present and <pat> is `_` otherwise.
+where `<pat>` is `<id>` when `<id>?` is present and `<pat>` is `_` otherwise.
 
 Named function definitions are recursive.
 
 ## Class declarations
 
-The declaration `obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` is sugar for pair of a 
+The declaration `obj_sort? class <id> <typ-params>? <pat> =? <id_this>? { <exp-field>;* }` is sugar for pair of a 
 a type and function declaration:
 
 ```
 obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* } :=
   type <id> <typ-params> = sort { <typ-field>;* };
-  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <exp-field>;*}
+  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <exp-field>;* }
 ```
 
 where:
-* <sort> is `object` if `obj_sort?` is absent or `new` and `sort` == `obj_sort` otherwise.
+* `<sort>` is `object` if `obj_sort?` is absent or `new` and `sort == obj_sort` otherwise.
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and 
 * `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
 _TBR can we delete `new'?_
 
-# Expression Fields
+## Expression Fields
+
+```
+<exp-field> ::=                                object expression fields
+  private? dec                                   field
+  private? <id> = <exp>                          short-hand
+  private? shared? <id>? <func_exp>              short-hand
+```
+
+Expression fields declare the fields of actors and objects. 
+
+The expression field `private? dec` is just a declaration, prefixed by an optional visibility qualifier 'private?'.
+
+Any identifier bound by a non-`private` declaration appears in the type of enclosing object and is accessible via the dot notation.
+
+An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
+
+The declaration `private? <id> = <exp>` is syntactic sugar for a let declaration:
+
+```
+private? <id> = <exp> =
+  private let <id> = <exp>
+```
+
+The field expression `private? <id> = <exp>` is syntactic sugar for a let declaration:
+
+```
+private? <id> = <exp> ::=
+  private? let <id> = <exp>
+```
+
+The field expression `private? shared? <id>? <func_exp>` is syntactic sugar for a function declaration:
+
+```
+  private? private? shared? <id>? <func_exp> ::=
+  private? let <id> = shared? <func_exp>
+```
+# Sequence of Declarations
+
+A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T` 
+provided
+* `<dec>;*` is empty and `T == ()`; or
+* `<dec>;*` is non-empty and:
+    * all value identifiers bound by `<dec>;*` are distinct, and
+    * all type identifiers bound by `<dec>;*` are distinct, and
+    * under the assumption that each value identifier `<id>` in `decs;*` has type `var_id? Tid`,  
+      and the type definitions in `decs;*`.
+      * each declaration in `<dec>;*` is well-typed;
+      * each value identifier `<id>` in bindings produced by `<dec>;*` has type `var_id? Tid`.  
+      * the last declaration in `<dec>;*` has type `T`.
+
+Declarations in `<dec>;*` are evaluated sequentially. The first declaration that traps cause the entire sequence to trap.
+Otherwise, the result of the declaration is the value of the last declaration in `<dec>;*`; the set of value bindings defined by decs is 
+the union of the bindings introduced by each declaration in `<dec>;*`.
+
+It is a compile-time error if any declaration in `<dec>;*`, might require the value of an identifier declared in `<dec>;*` 
+before that identifier's definition has been evaluated. Such *use-before-define* errors are detected by a simple, conservative static analysis 
+not described here.
 
 # Programs
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Programs
 ```
 <prog> ::= <dec>;*
 
 ```
+
+A program `<prog>` is sequence of declarations `<dec>;*` that ends with an optional actor declaration that determines the main actor, if any, of the program.
+
+All type and value declarations within `<prog>` are mutually-recursive.
+
+
