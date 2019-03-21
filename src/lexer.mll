@@ -23,15 +23,15 @@ let error_nest start lexbuf msg =
   error lexbuf msg
 
 let classify_utf8_leader lexbuf = Int32.(function
-  | ch when equal (logand ch (lognot 0b01111111l)) 0b00000000l -> 0
-  | ch when equal (logand ch (lognot 0b00011111l)) 0b11000000l -> 1
-  | ch when equal (logand ch (lognot 0b00001111l)) 0b11100000l -> 2
-  | ch when equal (logand ch (lognot 0b00000111l)) 0b11110000l -> 3
+  | ch when logand ch (lognot 0b01111111l) = 0b00000000l -> 0
+  | ch when logand ch (lognot 0b00011111l) = 0b11000000l -> 1
+  | ch when logand ch (lognot 0b00001111l) = 0b11100000l -> 2
+  | ch when logand ch (lognot 0b00000111l) = 0b11110000l -> 3
   | ch -> error lexbuf (Printf.sprintf "invalid utf-8 character: 0x%x" (Int32.to_int ch)))
 
 let utf8_decoder l lexbuf s i =
   let leading = classify_utf8_leader lexbuf (Int32.of_int (Char.code s.[!i]))
-  in if leading == 0 then Char.code s.[!i]
+  in if leading = 0 then Char.code s.[!i]
      else match Utf8.decode (String.sub s !i (1 + leading)) with
           | code::_ -> i := !i + leading; code
           | _ -> error lexbuf "can not interpret unicode character"
