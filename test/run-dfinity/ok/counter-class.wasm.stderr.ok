@@ -18,31 +18,38 @@ non-closed actor: (ActorE
     (FuncE
       read
       (shared  1 -> 0)
-      (params $70)
+      (params $k/0/raw)
       ()
       (BlockE
         (LetD
-          (TupP (VarP $68))
-          (TupE (CallE ( 1 -> 1) (PrimE @deserialize) (VarE $70)))
+          (TupP (VarP $k/0))
+          (TupE
+            (CallE
+              ( 1 -> 1)
+              (PrimE @deserialize)
+              shared (serialized Int) -> ()
+              (VarE $k/0/raw)
+            )
+          )
         )
         (CallE
           ( 1 -> 0)
           (FuncE
             $lambda
             ( 1 -> 0)
-            (params $67)
+            (params $cont/0)
             ()
-            (CallE ( 1 -> 0) (VarE $67) (VarE c))
+            (CallE ( 1 -> 0) (VarE $cont/0) (VarE c))
           )
           (FuncE
             $lambda
             ( 1 -> 0)
-            (params $69)
+            (params $y/0)
             ()
             (CallE
               (shared  1 -> 0)
-              (VarE $68)
-              (CallE ( 1 -> 1) (PrimE @serialize) (VarE $69))
+              (VarE $k/0)
+              (CallE ( 1 -> 1) (PrimE @serialize) Int (VarE $y/0))
             )
           )
         )

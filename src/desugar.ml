@@ -137,7 +137,7 @@ and block force_unit ds =
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (extra @ List.map dec ds, idE x e.note.S.note_typ)
   | false, S.LetD (p', e') ->
-    let x = fresh_var (e'.note.S.note_typ) in
+    let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
@@ -224,15 +224,16 @@ and pat' = function
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
+  | S.AnnotP (p, _) -> to_arg p
   | S.VarP i ->
     { i with note = p.note },
     (fun e -> e)
   | S.WildP ->
-    let v = fresh_var p.note in
+    let v = fresh_var "param" p.note in
     arg_of_exp v,
     (fun e -> e)
   |  _ ->
-    let v = fresh_var p.note in
+    let v = fresh_var "param" p.note in
     arg_of_exp v,
     (fun e -> blockE [letP (pat p) v] e)
 
@@ -249,7 +250,7 @@ and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   let args, wrap =
     match n, p.it with
     | _, S.WildP ->
-      let vs = List.map fresh_var tys in
+      let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
       (fun e -> e)
     | 1, _ ->
@@ -264,7 +265,7 @@ and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
         (a::args, fun e -> wrap1 (wrap e))
       ) ps ([], (fun e -> e))
     | _, _ ->
-      let vs = List.map fresh_var tys in
+      let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
       (fun e -> blockE [letP (pat p) (tupE vs)] e)
   in

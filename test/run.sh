@@ -125,12 +125,7 @@ do
 
     # Compile
     $ECHO -n " [wasm]"
-    if [ $DFINITY = 'yes' ]
-    then
-      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as <(echo 'print("Top-level code done.\n")') -o $out/$base.wasm 2> $out/$base.wasm.stderr
-    else
-      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
-    fi
+    $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
     normalize $out/$base.wasm.stderr
     diff_files="$diff_files $base.wasm.stderr"
 
@@ -154,7 +149,7 @@ do
         if [ $DFINITY = 'yes' ]
         then
           $ECHO -n " [dvm]"
-          $DVM_WRAPPER $out/$base.wasm > $out/$base.dvm-run 2>&1
+          $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
           normalize $out/$base.dvm-run
           diff_files="$diff_files $base.dvm-run"
         else

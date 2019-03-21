@@ -2,7 +2,7 @@
 
 if [ -z "$1" ]
 then
-  echo "Usage: $0 <name>.wasm"
+  echo "Usage: $0 <name>.wasm [call-script]"
   exit 1
 fi
 
@@ -25,3 +25,13 @@ function dvm_ () {
 dvm_ -q --db $DVM_TMP reset
 dvm_ -q --db $DVM_TMP new $1
 dvm_ -q --db $DVM_TMP run $name start
+
+if [ -n "$2" ]
+then
+  grep '^//CALL ' $2 | cut -c7- |
+  while read call
+  do
+    echo "DVM: Calling method $call"
+    dvm_ -q --db $DVM_TMP run $name $call
+  done
+fi

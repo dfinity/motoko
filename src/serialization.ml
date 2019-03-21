@@ -27,17 +27,28 @@ module Transform() = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  (* The type of a serialized argument *)
+  (* The primitive serialization functions *)
+  let deserialize_prim =
+    let open Type in
+    let var : var = "A" in
+    primE "@deserialize"
+      (Func (Local, Returns, [{var; bound = Shared}], [Serialized (Var (var, 0))], [(Var (var, 0))]))
+  let serialize_prim =
+    let open Type in
+    let var : var = "A" in
+    primE "@serialize"
+      (Func (Local, Returns, [{var; bound = Shared}], [Var (var, 0)], [Serialized (Var (var, 0))]))
+
   let deserialize e =
     let t = T.as_serialized e.note.note_typ in
-    primE "@deserialize" (T.Func (T.Local, T.Returns, [], [T.Serialized t], [t]))
-    -*- e
-
+    callE deserialize_prim [t] e
 
   let serialize e =
     let t = e.note.note_typ in
-    primE "@serialize" (T.Func (T.Local, T.Returns, [], [t], [T.Serialized t]))
-    -*- e
+    callE serialize_prim [t] e
+
+  let serialized_arg a =
+    { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
 
   let rec map_tuple n f e = match n, e.it with
     | 0, _ -> e
@@ -49,9 +60,9 @@ module Transform() = struct
     | _, _ ->
       let ts = T.as_tup e.note.note_typ in
       assert (List.length ts = n);
-      let vs = List.map fresh_var ts in
-        blockE [letP (seqP (List.map varP vs)) e]
-          (tupE (List.map f vs))
+      let vs = fresh_vars "tup" ts in
+      blockE [letP (seqP (List.map varP vs)) e]
+        (tupE (List.map f vs))
 
   let rec t_typ (t:T.typ) =
     match t with
@@ -68,9 +79,8 @@ module Transform() = struct
     | T.Tup ts -> T.Tup (List.map t_typ ts)
     | T.Func (T.Sharable, c, tbs, t1, t2) ->
       assert (c = T.Returns);
-      assert (tbs = []); (* We do not support parametric messages *)
       assert (t2 = []); (* A returning sharable function has no return values *)
-      T.Func (T.Sharable, T.Returns, [], List.map (fun t -> T.Serialized (t_typ t)) t1, [])
+      T.Func (T.Sharable, T.Returns, tbs, List.map (fun t -> T.Serialized (t_typ t)) t1, [])
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
@@ -119,7 +129,6 @@ module Transform() = struct
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
       | T.Sharable ->
-        assert (typs = []);
         assert (T.is_unit exp.note.note_typ);
         if cc.Value.n_args = 1
         then
@@ -134,16 +143,14 @@ module Transform() = struct
       | T.Local ->
         FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
       | T.Sharable ->
-        assert (typbinds = []);
         assert (T.is_unit typT);
         let args' = t_args args in
-        let raw_arg_vs = List.map (fun a -> fresh_var (T.Serialized a.note)) args' in
+        let raw_args = List.map serialized_arg args' in
         let body' =
           blockE [letP (tupP (List.map varP (List.map exp_of_arg args')))
-                       (tupE (List.map deserialize raw_arg_vs)) ]
+                       (tupE (List.map deserialize (List.map exp_of_arg raw_args))) ]
             (t_exp exp) in
-        let args' = List.map arg_of_exp raw_arg_vs in
-        FuncE (x, cc, [], args', T.unit, body')
+        FuncE (x, cc, [], raw_args, T.unit, body')
       end
     | PrimE _
       | LitE _ -> exp'

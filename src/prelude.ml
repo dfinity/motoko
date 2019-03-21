@@ -35,6 +35,10 @@ func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
 func printChar(x : Char) { (prim "printChar" : Char -> ()) x };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
+// Hashing
+func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
+
+
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
@@ -140,6 +144,10 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
+  | "Int~hash" -> fun v k ->
+                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
+                  let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
+                  in k (Word32 (Word32.of_int_u (Int64.to_int j)))
   | "Nat->Word8" -> fun v k ->
                     let i = Big_int.int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_u i))
@@ -252,8 +260,7 @@ let prim = function
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "printChar" -> fun v k -> (match as_char v with
                                | c when c <= 0o177 -> Printf.printf "%c%!" (Char.chr c)
-                               | code -> Printf.printf "%s%!"
-                               | (Wasm.Utf8.encode [code]));
+                               | code -> Printf.printf "%s%!" (Wasm.Utf8.encode [code]));
                               k unit
   | "decodeUTF8" -> fun v k -> k (Tup [Word32 0l; Char 49])
   | "@serialize" -> fun v k -> k (Serialized v)
