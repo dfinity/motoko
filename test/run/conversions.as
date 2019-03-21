@@ -143,6 +143,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
 
 assert(charToWord32 '\u{00}' == (0 : Word32));
 assert(charToWord32 '*' == (42 : Word32));
+assert(charToWord32 'П' == (1055 : Word32));
 assert(charToWord32 '\u{ffff}' == (65535 : Word32)); // 2**16 - 1
 assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
 
