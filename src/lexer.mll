@@ -22,9 +22,19 @@ let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
-let unicode lexbuf s i =
+let ascii_decoder _ s i = Char.code s.[!i] (* we don't want this one! *)
+let utf8_decoder lexbuf s i = let fst = ascii_decoder lexbuf s i
+                              in if fst <= 0o177 then fst
+                                 else match Utf8.decode (String.sub (s ^ "junk") !i 4) with
+                                      | code::_ -> if code > 0o177777 then incr i;
+                                                   if code > 0o3777 then incr i;
+                                                   if code > 0o177 then incr i;
+                                                   code
+                                      | _ -> error lexbuf "could not interpret unicode character"
+
+let unicode lexbuf s i decoder =
   let u =
-    if s.[!i] <> '\\' then Char.code s.[!i] else
+    if s.[!i] <> '\\' then decoder lexbuf s i else
     match (incr i; s.[!i]) with
     | 'n' -> Char.code '\n'
     | 'r' -> Char.code '\r'
@@ -44,14 +54,17 @@ let unicode lexbuf s i =
       int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i])
   in incr i; u
 
-let char lexbuf s =
-  unicode lexbuf s (ref 1)
+let char lexbuf s = unicode lexbuf s (ref 1) (fun _ _ _ ->
+                        match Utf8.decode s with
+                        | [39; code; 39] -> code
+                        | _ -> error lexbuf "could not interpret unicode character")
 
 let text lexbuf s =
-  let b = Buffer.create (String.length s) in
+  let l = String.length s in
+  let b = Buffer.create l in
   let i = ref 1 in
-  while !i < String.length s - 1 do
-    let bs = Utf8.encode [unicode lexbuf s i] in
+  while !i < l - 1 do
+    let bs = Utf8.encode [unicode lexbuf s i utf8_decoder] in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
