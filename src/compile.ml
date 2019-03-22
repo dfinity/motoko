@@ -431,12 +431,13 @@ let new_local64 env name =
 
 (* Some common code macros *)
 
-(* expects a number on the stack. Iterates from zero t below that number *)
+(* Iterates while cond is true. *)
 let compile_while cond body =
     G.loop_ (ValBlockType None) (
       cond ^^ G.if_ (ValBlockType None) (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
+(* Expects a number on the stack. Iterates from zero to below that number. *)
 let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
     let (set_i, get_i) = new_local env "i" in
