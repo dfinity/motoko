@@ -448,27 +448,30 @@ Exit criteria for this Canister
 - Hand-scripted, automated tests on small numbers of entities.
 
 - Automatically generate some test data to variable sizes, including
-  each of the following: regions, retailers, transporters, producers,
-  inventory, routes.  Produce and truck types will still be
-  hand-coded.
+  **hundreds or thousands** each of the following: regions, retailers,
+  transporters, producers, inventory, routes.  Produce and truck types
+  will still be hand-coded.
 
-- Run automated tests that populate the sytem, then simulate the
-  retailers making random queries and reservations.
+- Run automated tests that populate the sytem (with 100s or 1000s of
+  entities of each type), then simulate the retailers making random
+  queries and reservations over this random exchange data.
   
 - Record machine-readable logs of these simulations, e.g., for
-  regression tests and future visualization.
-
+  future data analysis, demo visualizations, and regression tests.
 
 **Operational metrics** 
 
 - We can run this Canister on a single Wasm VM, within a single
   DFINITY node, running on its own.
 
+- No hard number requirements yet
 
 **Performance metrics** 
 
 - We can gather performance metrics about the Wasm VM, whatever they
-  may be. Any initial numbers are okay here; the point is to have the
+  may be. 
+  
+- No hard number requirements yet; any initial numbers are okay here; the point is to have the
   ability to gather numbers, not perform at a certain operational
   level (yet).
 
