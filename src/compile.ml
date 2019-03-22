@@ -1394,7 +1394,7 @@ module UnboxedSmallWord = struct
 
 
   (* Three utilities for dealing with utf-8 encoded bytes *)
-  let compile_byte_load get_ptr offset =
+  let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
 
   let compile_6bit_mask =
