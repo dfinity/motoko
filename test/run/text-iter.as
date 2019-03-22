@@ -24,10 +24,27 @@ for (a in s.chars()) {
 print "\n";
 
 let russian = "Приветствую, мир!\n";
+assert(russian.len() == 18);
 
 print "via iteration and `printChar` (Unicode): #3\n";
 x := 0;
 for (a in russian.chars()) {
+  x += 1;
+  printInt x;
+  print ":";
+  printChar '\'';
+  printChar a;
+  printChar '\'';
+  print " ";
+};
+print "\n";
+
+let emojis = "🙈🎸😋";
+assert(emojis.len() == 3);
+
+print "via iteration and `printChar` (Unicode): #4\n";
+x := 0;
+for (a in emojis.chars()) {
   x += 1;
   printInt x;
   print ":";
@@ -46,7 +63,6 @@ print "\n";
 };
 
 {
-    let emojis = "🙈🎸😋";
     let (len, c) = decodeUTF8 emojis;
     assert ((len == (4 : Word32)) and (c == '\u{1f648}'));
     printInt (word32ToInt len); print "\n";

@@ -1666,6 +1666,8 @@ module Text = struct
      ┌─────┬─────────┬──────────────────┐
      │ tag │ n_bytes │ bytes (padded) … │
      └─────┴─────────┴──────────────────┘
+
+     Note: The bytes are UTF-8 encoded code points from Unicode.
   *)
 
   let header_size = Int32.add Tagged.header_size 1l
@@ -1782,6 +1784,32 @@ module Text = struct
         in get_string ^^ payload_ptr_unskewed ^^ set_ptr ^^
            UnboxedSmallWord.char_length_of_UTF8 env get_ptr
       )
+
+  let common_funcs env =
+    let get_text_object = Closure.get ^^ Closure.load_data 0l in
+    begin
+      E.define_built_in env "text_chars"
+        (fun () -> Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
+           G.i Unreachable
+        ));
+      E.define_built_in env "text_len"
+        (fun () -> Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
+           get_text_object ^^
+           Heap.load_field len_field ^^
+           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+           BoxedInt.box env1
+        ));
+    end
+
+  let fake_object_idx_option env built_in_name =
+    let (set_i, get_i) = new_local env "text" in
+    set_i ^^
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
+
+  let fake_object_idx env = function
+      | "chars" -> Some (fake_object_idx_option env "text_chars")
+      | "len" -> Some (fake_object_idx_option env "text_len")
+      | _ -> None
 
 end (* String *)
 
@@ -3858,16 +3886,20 @@ and compile_exp (env : E.t) exp =
   | DotE (e, ({it = Name n;_} as name)) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-    begin match Array.fake_object_idx env n with
-    | None -> Object.load_idx env e.note.note_typ name
-    | Some array_code ->
+    begin match Array.fake_object_idx env n, Text.fake_object_idx env n with
+    | None, None -> Object.load_idx env e.note.note_typ name
+    | array_opt, text_opt ->
       let (set_o, get_o) = new_local env "o" in
+      let selective tag = function
+        | Some code -> [ tag, get_o ^^ code ]
+        | None -> [] in
       set_o ^^
       get_o ^^
-      Tagged.branch env (ValBlockType (Some I32Type)) (
-        [ Tagged.Object, get_o ^^ Object.load_idx env e.note.note_typ name
-        ; Tagged.Array, get_o ^^ array_code ]
-       )
+      Tagged.branch env (ValBlockType (Some I32Type))
+        (List.concat [
+             [ Tagged.Object, get_o ^^ Object.load_idx env e.note.note_typ name ]
+             ; selective Tagged.Array array_opt
+             ; selective Tagged.Text text_opt ])
     end
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
@@ -4514,6 +4546,7 @@ and actor_lit outer_env this ds fs at =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
+    Text.common_funcs env;
     Array.common_funcs env;
 
     (* Allocate static positions for exported functions *)
@@ -4650,6 +4683,7 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
   let env = E.mk_global mode prelude ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Text.common_funcs env;
   Array.common_funcs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in

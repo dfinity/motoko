@@ -10,6 +10,8 @@ via iteration and `printChar`: #2
 via iteration and `printChar` (Unicode): #3
 1:'П' 2:'р' 3:'и' 4:'в' 5:'е' 6:'т' 7:'с' 8:'т' 9:'в' 10:'у' 11:'ю' 12:',' 13:' ' 14:'м' 15:'и' 16:'р' 17:'!' 18:'
 ' 
+via iteration and `printChar` (Unicode): #4
+1:'🙈' 2:'🎸' 3:'😋' 
 Приветствую, мир!
 
 2

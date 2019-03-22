@@ -104,6 +104,7 @@ let array_obj t =
 let text_obj =
   let immut =
     [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
     ] in
   Obj (Object Local, List.sort compare_field immut)
 
