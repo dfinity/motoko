@@ -1787,12 +1787,11 @@ module Text = struct
       )
 
   let common_funcs env0 =
-    let get_text_object = Closure.get ^^ Closure.load_data 0l in
     let mk_next_fun mk_code : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
             let (set_i, get_i) = new_local env "n" in
             let (set_char, get_char) = new_local env "char" in
             (* Get pointer to counter from closure *)
-            get_text_object ^^
+            Closure.get ^^ Closure.load_data 0l ^^
             (* Get current counter (boxed) *)
             Var.load ^^
 
@@ -1810,9 +1809,9 @@ module Text = struct
               (* Else *)
               ( (* Return stuff *)
                 Opt.inject env (
-                  get_text_object ^^
+                  Closure.get ^^ Closure.load_data 0l ^^
                   get_i ^^
-                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_i set_i set_char get_char ^^
+                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_i set_char get_char ^^
                   G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
                   (* Store increased counter *)
                   BoxedSmallWord.box env ^^
@@ -1820,6 +1819,8 @@ module Text = struct
                   get_char ^^ UnboxedSmallWord.compile_left_shift 8l)
               )
        ) in
+
+    let get_text_object = Closure.get ^^ Closure.load_data 0l in
     let mk_iterator next_funid = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
             (* next function *)
             let (set_ni, get_ni) = new_local env "next" in
@@ -1835,7 +1836,7 @@ module Text = struct
 
     begin
       E.define_built_in env0 "text_chars_next"
-        (fun () -> mk_next_fun (fun env get_text get_i set_i set_char get_char ->
+        (fun () -> mk_next_fun (fun env get_text get_i set_char get_char ->
            let (set_c, get_c) = new_local env "c" in
            let (set_ptr, get_ptr) = new_local env "ptr"
            in get_text ^^ payload_ptr_unskewed ^^ get_i ^^
@@ -1953,7 +1954,7 @@ module Array = struct
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
-            get_array_object ^^
+            Closure.get ^^ Closure.load_data 0l ^^
             (* Get current counter (boxed) *)
             Var.load ^^
             set_boxed_i ^^
@@ -1972,7 +1973,7 @@ module Array = struct
               (* Then *)
               Opt.null
               (* Else *)
-              ( get_array_object ^^
+              ( Closure.get ^^ Closure.load_data 0l ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_add_const 1l ^^
