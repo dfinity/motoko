@@ -431,12 +431,13 @@ let new_local64 env name =
 
 (* Some common code macros *)
 
-(* expects a number on the stack. Iterates from zero t below that number *)
+(* Iterates while cond is true *)
 let compile_while cond body =
     G.loop_ (ValBlockType None) (
       cond ^^ G.if_ (ValBlockType None) (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
+(* expects a number on the stack. Iterates from zero t below that number *)
 let from_0_to_n env mk_body =
     let (set_n, get_n) = new_local env "n" in
     let (set_i, get_i) = new_local env "i" in
@@ -1785,26 +1786,46 @@ module Text = struct
            UnboxedSmallWord.char_length_of_UTF8 env get_ptr
       )
 
-  let common_funcs env =
+  let common_funcs env0 =
     let get_text_object = Closure.get ^^ Closure.load_data 0l in
     begin
-      E.define_built_in env "text_chars"
-        (fun () -> Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
+      E.define_built_in env0 "text_chars"
+        (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
            G.i Unreachable
         ));
-      E.define_built_in env "text_len"
-        (fun () -> Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
-           get_text_object ^^
-           Heap.load_field len_field ^^
-           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-           BoxedInt.box env1
+      E.define_built_in env0 "text_len"
+        (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+           let (set_max, get_max) = new_local env "max" in
+           let (set_i, get_i) = new_local env "i" in
+           let (set_ptr, get_ptr) = new_local env "ptr" in
+           let (set_c, get_c) = new_local env "c" in
+           let (set_num, get_num) = new_local env "num" in
+           let (set_char, get_char) = new_local env "char" in
+           let (set_len, get_len) = new_local env "len"
+           in compile_unboxed_zero ^^ set_i ^^
+              compile_unboxed_zero ^^ set_len ^^
+              get_text_object ^^ Heap.load_field len_field ^^ set_max ^^ (*get_max ^^*)
+              get_text_object ^^ payload_ptr_unskewed ^^ set_ptr ^^ (* is this GC safe? *)
+              compile_while
+                (get_i ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+                begin
+                  UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
+                  UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
+                  set_num ^^
+                  get_num ^^ get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_i ^^
+                  get_num ^^ get_ptr ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+                  get_len ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_len
+                end ^^
+              get_len ^^
+              G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+              BoxedInt.box env
         ));
     end
 
   let fake_object_idx_option env built_in_name =
-    let (set_i, get_i) = new_local env "text" in
-    set_i ^^
-    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
+    let (set_text, get_text) = new_local env "text" in
+    set_text ^^
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_text ]
 
   let fake_object_idx env = function
       | "chars" -> Some (fake_object_idx_option env "text_chars")
@@ -1881,7 +1902,7 @@ module Array = struct
             let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
             let (set_i, get_i) = new_local env1 "n" in
             (* Get pointer to counter from closure *)
-            Closure.get ^^ Closure.load_data 0l ^^
+            get_array_object ^^
             (* Get current counter (boxed) *)
             Var.load ^^
             set_boxed_i ^^
@@ -1901,7 +1922,7 @@ module Array = struct
               Opt.null
               (* Else *)
               ( (* Get point to counter from closure *)
-                Closure.get ^^ Closure.load_data 0l ^^
+                get_array_object ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_add_const 1l ^^

@@ -38,6 +38,7 @@ for (a in russian.chars()) {
   print " ";
 };
 print "\n";
+assert(x == 18);
 
 let emojis = "🙈🎸😋";
 assert(emojis.len() == 3);
@@ -54,6 +55,7 @@ for (a in emojis.chars()) {
   print " ";
 };
 print "\n";
+assert(x == 3);
 
 {
     let (len, c) = decodeUTF8 russian;
