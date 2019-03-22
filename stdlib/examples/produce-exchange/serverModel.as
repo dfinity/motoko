@@ -153,7 +153,7 @@ secondary maps.
    ---------------
    */
 
-  private var inventoryTable : InventoryTable =
+  var inventoryTable : InventoryTable =
     DocTable<InventoryId, InventoryDoc, InventoryInfo>(
     //@Omit:
     0,

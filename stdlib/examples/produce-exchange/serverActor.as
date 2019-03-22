@@ -237,7 +237,7 @@ actor class Server() {
   /**
    `Producer`
    ===============
-   Messages about prodcuers.
+   Messages about producers.
 
    */
 
@@ -481,6 +481,13 @@ actor class Server() {
 
 
   /**
+   Inventory and produce information
+   ======================================
+   Messages about produce and inventory
+
+   */
+
+  /**
    `produceMarketInfo`
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
@@ -488,6 +495,17 @@ actor class Server() {
   produceMarketInfo(id:ProduceId, reg:?RegionId) : async ?[ProduceMarketInfo] {
     getModel()
       .produceMarketInfo(id, reg)
+  };
+
+
+  /**
+   `getInventoryInfo`
+   ---------------------------
+   The last sales price for produce within a given geographic area; null region id means "all areas."
+   */
+  getInventoryInfo(id:InventoryId) : async ?InventoryInfo {
+    getModel()
+      .inventoryTable.getInfo(id)
   };
 
 
