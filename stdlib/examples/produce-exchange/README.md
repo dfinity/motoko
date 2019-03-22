@@ -426,7 +426,7 @@ Exit criteria for this Canister
 --------------------------------
 
 
-**Dates** 
+**Dates and people** 
 
 - [MVP features](#produce-exchange-canister-mvp-requirements) done on or before March 26 ActorScript team meeting
 
