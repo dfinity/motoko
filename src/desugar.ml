@@ -238,12 +238,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
-  let p = match p0.it, p0.note with
-    | S.ParP p1, _ -> p1
-    | S.TupP [p1], Type.Tup [n] -> { p0 with it = p1.it; note = n }
-    | _ -> p0 in
-
+and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   let n = cc.Value.n_args in
   let tys = if n = 1 then [p.note] else T.as_seq p.note in
 
