@@ -1787,9 +1787,11 @@ module Text = struct
       )
 
   let common_funcs env0 =
-    let mk_next_fun mk_code : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-            let (set_i, get_i) = new_local env "n" in
+    let next_fun () : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            let (set_n, get_n) = new_local env "n" in
             let (set_char, get_char) = new_local env "char" in
+            let (set_c, get_c) = new_local env "utf8" in
+            let (set_ptr, get_ptr) = new_local env "ptr" in
             (* Get pointer to counter from closure *)
             Closure.get ^^ Closure.load_data 0l ^^
             (* Get current counter (boxed) *)
@@ -1797,9 +1799,9 @@ module Text = struct
 
             (* Get current counter (unboxed) *)
             BoxedSmallWord.unbox env ^^
-            set_i ^^
+            set_n ^^
 
-            get_i ^^
+            get_n ^^
             (* Get length *)
             Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
             G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
@@ -1807,17 +1809,21 @@ module Text = struct
               (* Then *)
               Opt.null
               (* Else *)
-              ( (* Return stuff *)
+              begin (* Return stuff *)
                 Opt.inject env (
                   Closure.get ^^ Closure.load_data 0l ^^
-                  get_i ^^
-                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_i set_char get_char ^^
+                  get_n ^^
+                  get_n ^^
+                  Closure.get ^^ Closure.load_data 1l ^^ payload_ptr_unskewed ^^
+                    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+                  UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
+                  UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
                   G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                  (* Store increased counter *)
+                  (* Store advanced counter *)
                   BoxedSmallWord.box env ^^
                   Var.store ^^
                   get_char ^^ UnboxedSmallWord.compile_left_shift 8l)
-              )
+              end
        ) in
 
     let get_text_object = Closure.get ^^ Closure.load_data 0l in
@@ -1831,48 +1837,35 @@ module Text = struct
             set_ni ^^
 
             Object.lit_raw env
-              [ nr_ (Name "next"), fun _ -> get_ni ]
-       ) in
+              [ nr_ (Name "next"), fun _ -> get_ni ])
+    in E.define_built_in env0 "text_chars_next" next_fun;
+       E.define_built_in env0 "text_chars"
+         (fun () -> mk_iterator (E.built_in env0 "text_chars_next"));
 
-    begin
-      E.define_built_in env0 "text_chars_next"
-        (fun () -> mk_next_fun (fun env get_text get_i set_char get_char ->
-           let (set_c, get_c) = new_local env "c" in
-           let (set_ptr, get_ptr) = new_local env "ptr"
-           in get_text ^^ payload_ptr_unskewed ^^ get_i ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-              UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-              UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char
-      ));
-      E.define_built_in env0 "text_chars"
-        (fun () -> mk_iterator (E.built_in env0 "text_chars_next"));
-
-      E.define_built_in env0 "text_len"
-        (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-           let (set_max, get_max) = new_local env "max" in
-           let (set_i, get_i) = new_local env "i" in
-           let (set_c, get_c) = new_local env "c" in
-           let (set_char, get_char) = new_local env "char" in
-           let (set_ptr, get_ptr) = new_local env "ptr" in
-           let (set_len, get_len) = new_local env "len"
-           in compile_unboxed_zero ^^ set_i ^^
-              compile_unboxed_zero ^^ set_len ^^
-              get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
-              compile_while
-                (get_i ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
-                begin
-                  get_text_object ^^ payload_ptr_unskewed ^^ get_i ^^
-                    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                  UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-                  UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
-                  get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_i ^^
-                  get_len ^^ compile_add_const 1l ^^ set_len
-                end ^^
-              get_len ^^
-              G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-              BoxedInt.box env
-        ));
-    end
+       E.define_built_in env0 "text_len"
+         (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            let (set_max, get_max) = new_local env "max" in
+            let (set_n, get_n) = new_local env "n" in
+            let (set_c, get_c) = new_local env "utf8" in
+            let (set_char, get_char) = new_local env "char" in
+            let (set_ptr, get_ptr) = new_local env "ptr" in
+            let (set_len, get_len) = new_local env "len"
+            in compile_unboxed_zero ^^ set_n ^^
+               compile_unboxed_zero ^^ set_len ^^
+               get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
+               compile_while
+                 (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+                 begin
+                   get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
+                     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+                   UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
+                   UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
+                   get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
+                   get_len ^^ compile_add_const 1l ^^ set_len
+                 end ^^
+               get_len ^^
+               G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+               BoxedInt.box env))
 
   let fake_object_idx_option env built_in_name =
     let (set_text, get_text) = new_local env "text" in
@@ -2023,9 +2016,9 @@ module Array = struct
       ] @ element_instructions)
 
   let fake_object_idx_option env built_in_name =
-    let (set_i, get_i) = new_local env "array" in
-    set_i ^^
-    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
+    let (set_array, get_array) = new_local env "array" in
+    set_array ^^
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_array ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
