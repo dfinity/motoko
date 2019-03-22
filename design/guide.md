@@ -1057,26 +1057,20 @@ Any identifier bound by a non-`private` declaration appears in the type of enclo
 
 An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
 
-The declaration `private? <id> = <exp>` is syntactic sugar for a let declaration:
-
-```
-private? <id> = <exp> =
-  private let <id> = <exp>
-```
-
-The field expression `private? <id> = <exp>` is syntactic sugar for a let declaration:
+The field expression `private? <id> = <exp>` is syntactic sugar for a `let` declaration:
 
 ```
 private? <id> = <exp> ::=
   private? let <id> = <exp>
 ```
 
-The field expression `private? shared? <id>? <func_exp>` is syntactic sugar for a function declaration:
+The field expression `private? shared? <id>? <func_exp>` is syntactic sugar for a `let`-declared function:
 
 ```
   private? private? shared? <id>? <func_exp> ::=
   private? let <id> = shared? <func_exp>
 ```
+
 # Sequence of Declarations
 
 A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T` 
@@ -1086,18 +1080,18 @@ provided
     * all value identifiers bound by `<dec>;*` are distinct, and
     * all type identifiers bound by `<dec>;*` are distinct, and
     * under the assumption that each value identifier `<id>` in `decs;*` has type `var_id? Tid`,  
-      and the type definitions in `decs;*`.
+      and assuming the type definitions in `decs;*`.
       * each declaration in `<dec>;*` is well-typed;
       * each value identifier `<id>` in bindings produced by `<dec>;*` has type `var_id? Tid`.  
       * the last declaration in `<dec>;*` has type `T`.
 
-Declarations in `<dec>;*` are evaluated sequentially. The first declaration that traps cause the entire sequence to trap.
-Otherwise, the result of the declaration is the value of the last declaration in `<dec>;*`; the set of value bindings defined by decs is 
+Declarations in `<dec>;*` are evaluated sequentially. The first declaration that traps causes the entire sequence to trap.
+Otherwise, the result of the declaration is the value of the last declaration in `<dec>;*`. In addition, the set of value bindings defined by  `<dec>;*` is 
 the union of the bindings introduced by each declaration in `<dec>;*`.
 
-It is a compile-time error if any declaration in `<dec>;*`, might require the value of an identifier declared in `<dec>;*` 
-before that identifier's definition has been evaluated. Such *use-before-define* errors are detected by a simple, conservative static analysis 
-not described here.
+It is a compile-time error if any declaration in `<dec>;*` might require the value of an identifier declared in `<dec>;*` 
+before that identifier's declaration has been evaluated. Such *use-before-define* errors are detected by a simple, 
+conservative static analysis not described here.
 
 # Programs
 
@@ -1106,7 +1100,7 @@ not described here.
 
 ```
 
-A program `<prog>` is sequence of declarations `<dec>;*` that ends with an optional actor declaration that determines the main actor, if any, of the program.
+A program `<prog>` is sequence of declarations `<dec>;*` that ends with an optional actor declaration. The actor declaration determines the main actor, if any, of the program.
 
 All type and value declarations within `<prog>` are mutually-recursive.
 
