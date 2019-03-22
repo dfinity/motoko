@@ -118,8 +118,6 @@ Comments are any sequence of characters delimited by `/*` and  `*/`, or all char
 
 All comments are treated as whitespace.
 
-
-
 ## Keywords
 
 The following keywords are reserved and may not be used as identifiers:
@@ -141,7 +139,6 @@ Digit  ::= 0..9
 ```
 
 ## Integers
-
 
 
 ## Operators
@@ -240,7 +237,7 @@ representation is applied.
 
 ## Constructed types
 
- `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. Int) or user defined, to zero or more type *arguments*. 
+ `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. `Int`) or user defined, to zero or more type *arguments*. 
  The type arguments must satisfy the bounds, if any, expected by the type constructor's type parameters (see below).
 
 ## Object types
