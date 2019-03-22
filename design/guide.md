@@ -102,14 +102,47 @@ Productions marked * probably deferred to later versions.
 
 # Lexical conventions
 
+
+
+## Whitespace
+
+Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace. Whitespace is ignored
+but used to separate adjacent keywords, identifiers and operators.
+
+
+## Comments
+
+Comments are any sequence of characters delimited by `/*` and  `*/`, or all characters following `//` until the end of the same line.
+
+`/*` delimited comments may be nested `*/` and can span multiple lines.
+
+All comments are treated as whitespace.
+
+
+
 ## Keywords
-TBC
+
+The following keywords are reserved and may not be used as identifiers:
+
+```
+actor and async assert await break case class continue else
+false for func if in new not null object or label let loop
+private return shared switch true type var while
+```
 
 ## Identifiers
-TBC
 
-## Literals
-TBC
+Identifiers are alpha-numeric, start with a letter and may contain underscores:
+
+```
+<id>   ::= Letter (Letter | Digit | _)*
+Letter ::= A..Z | a..z
+Digit  ::= 0..9
+```
+
+## Integers
+
+
 
 ## Operators
 TBC
