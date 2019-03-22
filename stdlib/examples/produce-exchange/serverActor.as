@@ -501,7 +501,7 @@ actor class Server() {
   /**
    `getInventoryInfo`
    ---------------------------
-   The last sales price for produce within a given geographic area; null region id means "all areas."
+   Get the information associated with inventory, based on its id.
    */
   getInventoryInfo(id:InventoryId) : async ?InventoryInfo {
     getModel()
