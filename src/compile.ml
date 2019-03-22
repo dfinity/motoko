@@ -1413,7 +1413,7 @@ module UnboxedSmallWord = struct
     compile_unboxed_const lead ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
   let len_UTF8 get_c get_ptr set_res get_res =
-    let load_follower offset = compile_byte_load get_ptr offset ^^ compile_6bit_mask
+    let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
     in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^
        G.if_ (ValBlockType (Some I32Type))
          (G.i Unreachable)
@@ -1459,7 +1459,7 @@ module UnboxedSmallWord = struct
   let char_length_of_UTF8 env get_ptr =
     let (set_c, get_c) = new_local env "c" in
     let (set_res, get_res) = new_local env "res"
-    in compile_byte_load get_ptr 0l ^^
+    in compile_load_byte get_ptr 0l ^^
        set_c ^^
        len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
        get_res ^^ compile_left_shift 8l
