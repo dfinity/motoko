@@ -1788,33 +1788,84 @@ module Text = struct
 
   let common_funcs env0 =
     let get_text_object = Closure.get ^^ Closure.load_data 0l in
+    let mk_next_fun mk_code : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            let (set_i, get_i) = new_local env "n" in
+            let (set_char, get_char) = new_local env "char" in
+            (* Get pointer to counter from closure *)
+            get_text_object ^^
+            (* Get current counter (boxed) *)
+            Var.load ^^
+
+            (* Get current counter (unboxed) *)
+            BoxedSmallWord.unbox env ^^
+            set_i ^^
+
+            get_i ^^
+            (* Get length *)
+            Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (* Then *)
+              Opt.null
+              (* Else *)
+              ( (* Return stuff *)
+                Opt.inject env (
+                  get_text_object ^^
+                  get_i ^^
+                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_i set_i set_char get_char ^^
+                  G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+                  (* Store increased counter *)
+                  BoxedSmallWord.box env ^^
+                  Var.store ^^
+                  get_char ^^ UnboxedSmallWord.compile_left_shift 8l)
+              )
+       ) in
+    let mk_iterator next_funid = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            (* next function *)
+            let (set_ni, get_ni) = new_local env "next" in
+            Closure.fixed_closure env next_funid
+              [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+              ; get_text_object
+              ] ^^
+            set_ni ^^
+
+            Object.lit_raw env
+              [ nr_ (Name "next"), fun _ -> get_ni ]
+       ) in
+
     begin
+      E.define_built_in env0 "text_chars_next"
+        (fun () -> mk_next_fun (fun env get_text get_i set_i set_char get_char ->
+           let (set_c, get_c) = new_local env "c" in
+           let (set_ptr, get_ptr) = new_local env "ptr"
+           in get_text ^^ payload_ptr_unskewed ^^ get_i ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+              UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
+              UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char
+      ));
       E.define_built_in env0 "text_chars"
-        (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-           G.i Unreachable
-        ));
+        (fun () -> mk_iterator (E.built_in env0 "text_chars_next"));
+
       E.define_built_in env0 "text_len"
         (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
            let (set_max, get_max) = new_local env "max" in
            let (set_i, get_i) = new_local env "i" in
-           let (set_ptr, get_ptr) = new_local env "ptr" in
            let (set_c, get_c) = new_local env "c" in
-           let (set_num, get_num) = new_local env "num" in
            let (set_char, get_char) = new_local env "char" in
+           let (set_ptr, get_ptr) = new_local env "ptr" in
            let (set_len, get_len) = new_local env "len"
            in compile_unboxed_zero ^^ set_i ^^
               compile_unboxed_zero ^^ set_len ^^
-              get_text_object ^^ Heap.load_field len_field ^^ set_max ^^ (*get_max ^^*)
-              get_text_object ^^ payload_ptr_unskewed ^^ set_ptr ^^ (* is this GC safe? *)
+              get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
               compile_while
                 (get_i ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
                 begin
+                  get_text_object ^^ payload_ptr_unskewed ^^ get_i ^^
+                    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
                   UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
                   UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
-                  set_num ^^
-                  get_num ^^ get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_i ^^
-                  get_num ^^ get_ptr ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                  get_len ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_len
+                  get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_i ^^
+                  get_len ^^ compile_add_const 1l ^^ set_len
                 end ^^
               get_len ^^
               G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -1921,8 +1972,7 @@ module Array = struct
               (* Then *)
               Opt.null
               (* Else *)
-              ( (* Get point to counter from closure *)
-                get_array_object ^^
+              ( get_array_object ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_add_const 1l ^^
