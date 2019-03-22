@@ -114,6 +114,14 @@ type Trie<K,V> = ?Node<K,V>;
 type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
 
 /**
+ Three-dimensional trie
+ ---------------------
+ A 3D trie is just a trie that maps dimension-1 keys to another
+ layer of 2D tries, each keyed on the dimension-2 and dimension-3 keys.
+*/
+type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K1, K2, V> >;
+
+/**
  Module interface
  ===================
 
@@ -246,6 +254,25 @@ let Trie = new {
     };
     let (updated_outer, _) = { insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner) };
     updated_outer;
+  };
+
+  /**
+   `insertFresh3D`
+   ---------------
+   insert the given key's value in the trie; return the new trie;
+   assert that no prior value is associated with the key
+   */
+  func insertFresh3D<K1,K2,K3,V>
+    (t : Trie3D<K1,K2,K3,V>,
+     k1:Key<K1>, k1_eq:(K1,K1)->Bool,
+     k2:Key<K2>, k2_eq:(K2,K2)->Bool,
+     k3:Key<K3>, k3_eq:(K3,K3)->Bool,
+     v:V
+    )
+    : Trie3D<K1,K2,K3,V>
+  {
+    // xxx
+    null
   };
 
   /** 

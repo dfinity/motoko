@@ -428,7 +428,7 @@ secondary maps.
    - routes (across all transporters) keyed by source region
    - routes (across all transporters) keyed by destination region
 
-   Routes by region-region pair
+   Routes by region
    ----------------------------
 
    the actor maintains a possibly-sparse 3D table mapping each
@@ -443,7 +443,7 @@ secondary maps.
   private var routesByDstSrcRegions : ByRegionsRouteMap = null;
 
   /**
-   Inventory by source region
+   Inventory by region
    ----------------------------
 
    the actor maintains a possibly-sparse 3D table mapping each
@@ -662,16 +662,73 @@ secondary maps.
    ---------------------------
   */
   transporterAddRoute(
-    trans:  TransporterId,
-    rstart: RegionId,
-    rend:   RegionId,
-    start:  Date,
-    end:    Date,
-    cost:   Price,
-    ttid:   TruckTypeId
+    id:              TransporterId,
+    start_region_id: RegionId,
+    end_region_id:   RegionId,
+    start_date:      Date,
+    end_date:        Date,
+    cost:            Price,
+    trucktype_id:    TruckTypeId
   ) : ?RouteId {
-    // xxx add
-    null
+    /** The model adds inventory and maintains secondary indicies as follows: */
+
+    /**- Validate these ids; fail fast if not defined: */
+    let otransporter : ?TransporterDoc = transporterTable.getDoc(id);
+    let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
+    let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
+    let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
+    let (transporter, start_region, end_region, truck_type) = {
+      switch (otransporter, orstart, orend, otrucktype) {
+      case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
+      case _ { return null };
+      }};
+
+    /**- Create the route item document: */
+    let (_, route) = routeTable.addDoc(
+      func(routeId:RouteId):RouteDoc{
+        new {
+          id= routeId;
+          transporter=id:TransporterId;
+          truck_type=truck_type:TruckTypeDoc;
+          start_date=start_date:Date;
+          end_date=end_date:Date;
+          start_region=start_region:RegionDoc;
+          end_region=end_region:RegionDoc;
+          cost=cost:Price;
+        };
+      });
+    
+    /**- Update the **transporter's routes collection** to hold the new route document: */
+    let updatedRoutes = 
+      Map.insertFresh<RouteId, RouteDoc>(
+        transporter.routes,
+        keyOf(route.id),
+        idIsEq,
+        route
+      );
+
+    /**- Update the transporter document; xxx more concise syntax for functional record updates would be nice: */
+    let _ = transporterTable.updateDoc(
+      transporter.id, 
+      new {
+        id = transporter.id;
+        short_name = transporter.short_name;
+        description = transporter.description;
+        reserved = transporter.reserved;
+        routes = updatedRoutes;
+      });
+
+    /**- Update the [`routesByDstSrcRegions` mapping](#routes-by-region) using the route's regions and id */
+    routesByDstSrcRegions :=
+    Map.insertFresh3D<RegionId, RegionId, RouteId, RouteDoc>(
+      routesByDstSrcRegions,
+      keyOf(end_region.id), idIsEq,
+      keyOf(start_region.id), idIsEq,
+      keyOf(route.id), idIsEq,
+      route
+    );
+
+    ?route.id
   };
 
   /**
@@ -794,11 +851,11 @@ secondary maps.
    geography within that date.
 
    ```
-   let jt = (filterByDate (begin, end)
-              (joinTables 
-                (routesByDstSrcRegions (retailer region))
-                 inventoryByRegion
-              );
+   let jt = (joinTablesConditionally
+               (routesByDstSrcRegionTable (retailer region))
+               inventoryByRegionTable
+               filterByDateConstraints
+            );
    ```
 
    */

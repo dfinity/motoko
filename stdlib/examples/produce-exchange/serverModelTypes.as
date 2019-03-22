@@ -270,7 +270,7 @@ type RouteMap =
 */
 
 // A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
-type ByRegionsRouteMap = Map<RegionId, Map<RegionId, RouteTable>>;
+type ByRegionsRouteMap = Map<RegionId, Map<RegionId, RouteMap>>;
 
 /**
  Reserved inventory indexing

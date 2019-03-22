@@ -336,6 +336,9 @@ See [**`devViewRetailers`**](https://github.com/dfinity-lab/actorscript/blob/std
 Define "Done"
 ================================
 
+See also: [Exit criteria](#exit-criteria)
+----------------------------------------
+
 Merge to `master` requirements:
 --------------------------------
 
@@ -360,6 +363,135 @@ locally, as locally-running ActorScript.
 those of the *Canister component* in Milestone 2.0 of the [MVP
 Requirements Spec, 1.ii
 above](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).
+
+
+---------------------------------------------------------------------------------
+
+Exit Criteria
+=====================
+
+Background definitions
+---------------
+
+Mack (via email correspondance):
+
+**Exit criteria**:
+
+>  What objective tests will tell us that we have successfully built
+>  the right thing? as a part of the functional specification - can be
+>  implicit as you get good at it, better to start out explicit with a
+>  separate list at first.
+
+Exit criteria and process:
+
+> Before transitioning from functional specification to design,
+> clearly document assumptions (max 1000 concurrent users, prices
+> never exceed X, alpha not needed before Aug1, do not have to handle
+> [most important - non-goals] ) and dependencies.  Review these and
+> get broad buy-in before starting design in earnest.
+
+
+
+
+["Exit criteria" on wikipedia](https://en.wikipedia.org/wiki/Exit_criteria):
+
+> understanding goals clearly; using language (and data) carefully
+> when talking about (or measuring) methods for getting things done;
+> and taking a scientific approach towards evaluating and improving
+> the methods that are used.
+
+> set of test specifications are created to test this new product to
+> ensure that it meets minimum acceptable operational
+> specifications. This test specification will state the minimum
+> criteria necessary for the testing process to be considered complete
+> and the product is ready for release IE: Exit the testing phase of
+> the program
+
+[Rice Consultng Services](https://www.riceconsulting.com/public_pdf/Ins%20and%20Outs%20of%20Entry%20and%20Exit%20Criteria%20-%20ASTQB%20Webinar%20v2.pdf)
+
+Using DEFECT METRICS AS ENTRY AND EXIT CRITERIA:
+- _NUMBER OF DEFECTS OUTSTANDING BY STATUS_
+- _PERCENTAGE OF TESTS THAT EVENTUALLY PASS_
+- _NUMBER OF TESTS THAT CONTINUE TO FAIL_
+
+Exit criteria examples
+--------------------------
+
+Concrete examples at DFINITY:
+
+ - [M1 Exit Criteria](https://dfinity.atlassian.net/wiki/spaces/M1/pages/491712/Basenet+M1+Release+Exit+Criteria)
+
+
+Exit criteria for this Canister
+--------------------------------
+
+
+**Dates** 
+
+- [MVP features](#produce-exchange-canister-mvp-requirements) done on or before March 26 ActorScript team meeting
+
+- Full exit criteria met asap, before ActorScript and/or SDK launch (?)
+
+
+
+**Feature-based metrics** 
+
+- Performs all features defined by MVP design doc, in the sense that
+  every use case has one or more server messages that facilitate the
+  use case.
+  
+- Front-end interacts with this Canister via DFINITY; see operational
+  metrics below for more.
+
+**Test-based metrics** 
+
+- Hand-scripted, automated tests on small numbers of entities.
+
+- Automatically generate some test data to variable sizes, including
+  each of the following: regions, retailers, transporters, producers,
+  inventory, routes.  Produce and truck types will still be
+  hand-coded.
+
+- Run automated tests that populate the sytem, then simulate the
+  retailers making random queries and reservations.
+  
+- Record machine-readable logs of these simulations, e.g., for
+  regression tests and future visualization.
+
+
+**Operational metrics** 
+
+- We can run this Canister on a single Wasm VM, within a single
+  DFINITY node, running on its own.
+
+
+**Performance metrics** 
+
+- We can gather performance metrics about the Wasm VM, whatever they
+  may be. Any initial numbers are okay here; the point is to have the
+  ability to gather numbers, not perform at a certain operational
+  level (yet).
+
+
+**Extras 1: Maybe not included**
+
+- Standard library used by exchange is fully documented
+
+- Standard library used by exchange has unit tests of its own
+
+
+**Extras 2: definitely not included**
+
+- Standard library collections used by exchange have high-performance representations
+
+- Grow automated test system into a random test-simulation
+  system. Perform simple goal-directed simulations; e.g., run a
+  markplace simualtion in time, wherein entities interact through the
+  exchange, in simple goal-directed ways (e.g., every retailer tries
+  to buy all the produce that they can, but get each kind of produce
+  at the cheapest costs; the producers and transporters use
+  marketplace information or other constraints to choose prices,
+  routes and inventory).
 
 
 ----------------------------------------------------------------------------
