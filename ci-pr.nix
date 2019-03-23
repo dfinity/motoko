@@ -1,1 +1,1 @@
-args@{...}: import ./ci.nix (args)
+import ./ci.nix
