@@ -489,31 +489,25 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, cc, typ_binds, args, ret_ty, exp) ->
+  | FuncE (x, cc, typ_binds, args, ret_tys, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
-    check_typ env' ret_ty;
-    check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
+    List.iter (check_typ env') ret_tys;
+    check ((cc.Value.sort = T.Sharable && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    if (cc.Value.sort = T.Sharable) then check_concrete env exp.at ret_ty;
+    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
+      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at (typ exp) ret_ty;
+    check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    let ts2 = if cc.Value.n_res = 1
-              then [ret_ty]
-              else T.as_seq ret_ty in
-    if (cc.Value.sort = T.Sharable) then begin
-      List.iter (check_concrete env exp.at) ts1;
-      List.iter (check_concrete env exp.at) ts2;
-    end;
+    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
       ( cc.Value.sort, cc.Value.control
-      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
+      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
   | ActorE (id, ds, fs, t0) ->
