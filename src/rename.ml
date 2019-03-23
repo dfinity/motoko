@@ -64,10 +64,10 @@ and exp' rho e  = match e with
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
-  | FuncE (x, s, tp, p, t, e) ->
+  | FuncE (x, s, tp, p, ts, e) ->
      let p', rho' = args rho p in
      let e' = exp rho' e in
-     FuncE (x, s, tp, p', t, e')
+     FuncE (x, s, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
 
 and exps rho es  = List.map (exp rho) es

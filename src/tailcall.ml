@@ -128,11 +128,11 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
-  | FuncE (x, cc, tbs, as_, typT, exp0) ->
+  | FuncE (x, cc, tbs, as_, ret_tys, exp0) ->
     let env1 = { tail_pos = true; info = None} in
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
-    FuncE (x, cc, tbs, as_, typT, exp0')
+    FuncE (x, cc, tbs, as_, ret_tys, exp0')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
