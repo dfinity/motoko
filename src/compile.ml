@@ -2424,7 +2424,7 @@ module Serialization = struct
     * We traverse the data to calculate the size needed for the data buffer and the
       reference buffer.
     * We remember the current heap pointer, and use the space after as scratch space.
-    * The scratch space is separated into two region:
+    * The scratch space is separated into two regions:
       One for references, and one for raw data.
     * We traverse the data, in a type-driven way, and copy it to the scratch space.
       We thread through pointers to the current free space of the two scratch spaces.
