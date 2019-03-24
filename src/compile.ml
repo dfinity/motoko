@@ -410,6 +410,7 @@ let compile_add_const = compile_op_const I32Op.Add
 let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
+let compile_shrU_const = compile_op_const I32Op.ShrU
 
 (* Locals *)
 
@@ -2327,11 +2328,82 @@ module Dfinity = struct
   let prim_printChar env =
     if E.mode env = DfinityMode
     then
-      G.i Drop ^^
-      Text.lit env "H" ^^ (* TODO(Gabor) *)
-      prim_print env
+      let (set_c, get_c) = new_local env "c" in
+      let (set_utf8, get_utf8) = new_local env "utf8" in
+      Text.lit env "X" ^^ set_utf8 ^^
+      compile_shrU_const 8l ^^
+      set_c ^^ (* unboxed code point *)
+      get_c ^^
+      compile_unboxed_const 0x80l ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      G.if_ (ValBlockType None)
+        begin
+          get_utf8 ^^ Text.payload_ptr_unskewed ^^
+          get_c ^^
+          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+        end
+        begin
+          get_c ^^
+          compile_unboxed_const 0x800l ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+          G.if_ (ValBlockType None)
+            begin
+              get_utf8 ^^ Text.payload_ptr_unskewed ^^
+              get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+              G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
+              get_utf8 ^^ Text.payload_ptr_unskewed ^^
+              get_c ^^ compile_shrU_const 6l ^^ compile_op_const I32Op.Or 0b11000000l ^^
+              G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+              (* bump length *)
+              get_utf8 ^^ compile_unboxed_const 2l ^^ Heap.store_field Text.len_field
+            end
+            begin
+              get_c ^^
+              compile_unboxed_const 0x10000l ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+              G.if_ (ValBlockType None)
+              begin
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ compile_shrU_const 12l ^^ compile_op_const I32Op.Or 0b1110000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                (* bump length *)
+                get_utf8 ^^ compile_unboxed_const 3l ^^ Heap.store_field Text.len_field
+              end
+              begin
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 3l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ compile_shrU_const 12l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                get_c ^^ compile_shrU_const 18l ^^ compile_op_const I32Op.Or 0b1111000l ^^
+                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
+
+                (* bump length *)
+                get_utf8 ^^ compile_unboxed_const 4l ^^ Heap.store_field Text.len_field
+              end
+            end
+        end ^^
+      get_utf8 ^^ prim_print env
     else
       G.i Unreachable
+
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
