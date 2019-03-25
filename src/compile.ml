@@ -411,6 +411,7 @@ let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
+let compile_shl_const = compile_op_const I32Op.Shl
 let compile_bitor_const = compile_op_const I32Op.Or
 
 (* Locals *)
@@ -1395,18 +1396,17 @@ module UnboxedSmallWord = struct
        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
        G.i (Binary (Wasm.Values.I32 I32Op.And))
 
+  (* Code points occupy 21 bits, no alloc needed in vanilla SR. *)
+  let unbox_codepoint = compile_shrU_const 8l
+  let box_codepoint = compile_shl_const 8l
 
-  (* Three utilities for dealing with utf-8 encoded bytes *)
+  (* Three utilities for dealing with utf-8 encoded bytes. *)
   let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
 
   let compile_6bit_mask =
     compile_unboxed_const 0b00111111l ^^
     G.i (Binary (Wasm.Values.I32 I32Op.And))
-
-  let compile_left_shift bits =
-    compile_unboxed_const bits ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
 
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
@@ -1417,7 +1417,7 @@ module UnboxedSmallWord = struct
 
   let len_UTF8 get_c get_ptr set_res get_res =
     let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
-    in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^
+    in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^ (* TODO(Gabor): use comparisons *)
        G.if_ (ValBlockType (Some I32Type))
          (G.i Unreachable)
          (len_UTF8_frag 0b01111111l 0b00000000l get_c set_res ^^
@@ -1426,7 +1426,7 @@ module UnboxedSmallWord = struct
             (len_UTF8_frag 0b00011111l 0b11000000l get_c set_res ^^
              G.if_ (ValBlockType (Some I32Type))
                (get_res ^^
-                compile_left_shift 6l ^^
+                compile_shl_const 6l ^^
                 load_follower 1l ^^
                 G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
                 set_res ^^
@@ -1434,9 +1434,9 @@ module UnboxedSmallWord = struct
                (len_UTF8_frag 0b00001111l 0b11100000l get_c set_res ^^
                 G.if_ (ValBlockType (Some I32Type))
                   (get_res ^^
-                   compile_left_shift 12l ^^
+                   compile_shl_const 12l ^^
                    load_follower 1l ^^
-                   compile_left_shift 6l ^^
+                   compile_shl_const 6l ^^
                    load_follower 2l ^^
                    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
                    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -1445,11 +1445,11 @@ module UnboxedSmallWord = struct
                   (len_UTF8_frag 0b00000111l 0b11110000l get_c set_res ^^
                    G.if_ (ValBlockType (Some I32Type))
                      (get_res ^^
-                      compile_left_shift 18l ^^
+                      compile_shl_const 18l ^^
                       load_follower 1l ^^
-                      compile_left_shift 12l ^^
+                      compile_shl_const 12l ^^
                       load_follower 2l ^^
-                      compile_left_shift 6l ^^
+                      compile_shl_const 6l ^^
                       load_follower 3l ^^
                       G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
                       G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -1465,7 +1465,7 @@ module UnboxedSmallWord = struct
     in compile_load_byte get_ptr 0l ^^
        set_c ^^
        len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
-       get_res ^^ compile_left_shift 8l
+       get_res ^^ box_codepoint
 
 end (* UnboxedSmallWord *)
 
@@ -1824,7 +1824,7 @@ module Text = struct
                   (* Store advanced counter *)
                   BoxedSmallWord.box env ^^
                   Var.store ^^
-                  get_char ^^ UnboxedSmallWord.compile_left_shift 8l)
+                  get_char ^^ UnboxedSmallWord.box_codepoint)
               end
        ) in
 
@@ -2332,8 +2332,8 @@ module Dfinity = struct
       let (set_c, get_c) = new_local env "c" in
       let (set_utf8, get_utf8) = new_local env "utf8" in
       Text.lit env "X" ^^ set_utf8 ^^
-      compile_shrU_const 8l ^^
-      set_c ^^ (* unboxed code point *)
+      UnboxedSmallWord.unbox_codepoint ^^
+      set_c ^^
       get_c ^^
       compile_unboxed_const 0x80l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
@@ -4091,8 +4091,7 @@ and compile_exp (env : E.t) exp =
        | "Char->Word32" ->
          SR.UnboxedWord32,
          compile_exp_vanilla env e ^^
-         compile_unboxed_const 8l ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+         UnboxedSmallWord.unbox_codepoint
 
        | "Word8->Nat" ->
          SR.UnboxedInt64,
@@ -4128,8 +4127,7 @@ and compile_exp (env : E.t) exp =
        | "Word32->Char" ->
          SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         compile_unboxed_const 8l ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+         UnboxedSmallWord.box_codepoint
 
        | "Int~hash" ->
          SR.UnboxedWord32,
