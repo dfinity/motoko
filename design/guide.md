@@ -101,8 +101,6 @@ Productions marked * probably deferred to later versions.
 
 # Lexical conventions
 
-
-
 ## Whitespace
 
 Space, newline, horizontal tab, carriage return, line feed and form feed (TBR) are considered as whitespace. Whitespace is ignored
@@ -147,16 +145,63 @@ Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
 Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
 
 ```
-digit = ['0'-'9']
-hexdigit = ['0'-'9''a'-'f''A'-'F']
+digit ::= ['0'-'9']
+hexdigit ::= ['0'-'9''a'-'f''A'-'F']
 num ::= digit ('_'? digit)*
 hexnum ::= hexdigit ('_'? hexdigit)*
-nat = num | "0x" hexnum
+nat ::= num | "0x" hexnum
 ```
 
 Negative integers may be constructed by applying a prefix negation `-` operation.
 
+## Characters
+
+A character is a single quote (`'`) delimited:
+* unicode character in UTF-8,
+* `\`-escaped  newline, carriage return, tab, single or double quotation mark
+* `\`-prefixed ASCII character (TBR),
+* or  `\u{` hexnum `}` enclosed valid, escaped unicode character in hexadecimal (TBR).
+
+```
+ascii ::= ['\x00'-'\x7f']
+ascii_no_nl ::= ['\x00'-'\x09''\x0b'-'\x7f']
+utf8cont ::= ['\x80'-'\xbf']
+utf8enc ::=
+    ['\xc2'-'\xdf'] utf8cont
+  | ['\xe0'] ['\xa0'-'\xbf'] utf8cont
+  | ['\xed'] ['\x80'-'\x9f'] utf8cont
+  | ['\xe1'-'\xec''\xee'-'\xef'] utf8cont utf8cont
+  | ['\xf0'] ['\x90'-'\xbf'] utf8cont utf8cont
+  | ['\xf4'] ['\x80'-'\x8f'] utf8cont utf8cont
+  | ['\xf1'-'\xf3'] utf8cont utf8cont utf8cont
+utf8 ::= ascii | utf8enc
+utf8_no_nl ::= ascii_no_nl | utf8enc
+
+escape ::= ['n''r''t''\\''\'''\"']
+
+character ::=
+  | [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
+  | utf8enc
+  | '\\'escape
+  | '\\'hexdigit hexdigit 
+  | "\\u{" hexnum '}'
+
+char := '\'' character '\''
+```
+
+
+## Strings
+
+
 ## Operators
+
+### Unary Operators
+
+|      |          |
+|------|----------|
+| `_`  |  numeric negation |    
+| `+`  |  numeric identify |
+| `^`  |  logical negation |
 
 ### Relational Operators
 
@@ -169,7 +214,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 |  `<=` | less than or equal | 
 |  `>=` | greater than or equal |
 
-### Numeric Operators
+### Numeric Binary Operators
 
 |      |          |
 |------|----------|
@@ -206,7 +251,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 |  `**=` | in place exponentiation | 
 |  `&=` | in place logical and | 
 |  `|=` | in place logical or | 
-|  `^=` | in place logical exclusive or | 
+|  `^=` | in place exclusive or | 
 |  `<<=` | in place shift left | 
 |  `>>=` | in place shift right | 
 |  `<<>=` |  in place rotate left | 
@@ -215,12 +260,12 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 
 ## Operator and Keyword Precedence
 
-The following tabel defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity. 
+The following table defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity. 
 
 Precedence | Associativity | Token |
 |---|------------|--------|
 LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
-|| none | `else` `while` 
+|| none | `else`, `while` 
 || right | `:= `, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
 || left | `:`
 || left | `or`
@@ -235,10 +280,9 @@ LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 HIGHEST | left | `**`
 
 
-
 # Types
 
-Type expressions are used to specify the types of arguments, bound on type parameters,definitions of type constructors, and in type annotations.
+Type expressions are used to specify the types of arguments, constraints (a.k.a bounds) on type parameters, definitions of type constructors, and the types of subexpressions in type annotations.
 
 ```
 <typ> ::=                                     type expressions
@@ -294,10 +338,8 @@ The types `Int` and `Nat` are signed integral and natural numbers of
 arbitrary precision with
 the arithmetic operations of addition `(+)`, subtraction `(-)` (which
 may trap for `Nat`), multiplication `(*)`, division `(/)`, modulus `(%)` and
-exponentiation `(**)`. All arithmetic operations have type `t -> t ->
-t` for `t` being `Int` or `Nat`. Additionally, since every inhabitant
-of `Nat` is also an inhabitant of `Int`, the subtype relation `Nat <:
-Int` holds.
+exponentiation `(**)`. All arithmetic operations have type `t -> t -> t` for `t` being `Int` or `Nat`. Additionally, since every inhabitant
+of `Nat` is also an inhabitant of `Int`, the subtype relation `Nat <: Int` holds.
 
 Comparison TODO.
 
@@ -929,7 +971,10 @@ The async expression `async <exp>` has type `async T` provided:
 
 Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
 
-The implicit return type in `<exp>` is `T`. That is, the return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
+The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals | 
+|  `!=` | not equals | 
+|  `<=` | less than or equal | 
+|  `>=` | greater than or equal |return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
