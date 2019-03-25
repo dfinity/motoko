@@ -5,11 +5,14 @@
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.filterSource (path: type:
+let sourceByRegex = src: regexes: builtins.path
+  { name = "actorscript";
+    path = src;
+    filter = path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
       let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null
-      || match relPath != null)) src; in
+      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
+  }; in
 
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
