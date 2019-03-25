@@ -51,15 +51,15 @@ actor class Server() {
    */
 
   registrarAddTruckType(
-    short_name:  Text,
-    description: Text,
-    capacity : Weight,
-    isFridge : Bool,
-    isFreezer : Bool,
+    short_name_:  Text,
+    description_: Text,
+    capacity_ : Weight,
+    isFridge_ : Bool,
+    isFreezer_ : Bool,
   ) : async ?TruckTypeId {
     getModel()
       .truckTypeTable.addInfoGetId(
-        func (id:TruckTypeId) : TruckTypeInfo =
+        func (id_:TruckTypeId) : TruckTypeInfo =
 
         // xxx: AS should have more concise syntax for this pattern, below:
         // two problems I see, that are separate:
@@ -68,12 +68,13 @@ actor class Server() {
         //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
         //    and, the type of each of these `variables` is known, as well.
 
-        shared { id=id:TruckTypeId;
-                 short_name=short_name:Text;
-                 description=description:Text;
-                 capacity=capacity:Weight;
-                 isFridge=isFridge:Bool;
-                 isFreezer=isFreezer:Bool;
+        shared { 
+          id=id_ :TruckTypeId;
+          short_name=short_name_:Text;
+          description=description_:Text;
+          capacity=capacity_:Weight;
+          isFridge=isFridge_:Bool;
+          isFreezer=isFreezer_:Bool;
         })
   };
 
@@ -124,15 +125,15 @@ actor class Server() {
    */
 
   registrarAddRegion(
-    short_name:  Text,
-    description: Text,
+    short_name_:  Text,
+    description_: Text,
   ) : async ?RegionId {
     getModel().regionTable.addInfoGetId(
-      func (id:RegionId) : RegionInfo =
+      func (id_:RegionId) : RegionInfo =
         shared {
-          id = id:RegionId;
-          short_name=short_name:Text;
-          description=description:Text
+          id = id_:RegionId;
+          short_name=short_name_:Text;
+          description=description_:Text
         })
   };
 
@@ -186,17 +187,17 @@ actor class Server() {
    */
 
   registrarAddProduce(
-    short_name:  Text,
-    description: Text,
-    grade: Grade,
+    short_name_:  Text,
+    description_: Text,
+    grade_: Grade,
   ) : async ?ProduceId {
     getModel().produceTable.addInfoGetId(
-      func (id:ProduceId) : ProduceInfo =
+      func (id_:ProduceId) : ProduceInfo =
         shared {
-          id = id:ProduceId;
-          short_name=short_name:Text;
-          description=description:Text;
-          grade=grade:Grade
+          id = id_:ProduceId;
+          short_name=short_name_:Text;
+          description=description_:Text;
+          grade=grade_:Grade
         })
   };
 
@@ -249,17 +250,17 @@ actor class Server() {
    */
 
   registrarAddProducer(
-    short_name:  Text,
-    description: Text,
-    region: RegionId,
+    short_name_:  Text,
+    description_: Text,
+    region_: RegionId,
   ) : async ?ProducerId {
     getModel().producerTable.addInfoGetId(
-      func(id:ProducerId):ProducerInfo {
+      func(id_:ProducerId):ProducerInfo {
         shared {
-          id=id:ProducerId;
-          short_name=short_name:Text;
-          description=description:Text;
-          region=region:RegionId;
+          id=id_:ProducerId;
+          short_name=short_name_:Text;
+          description=description_:Text;
+          region=region_:RegionId;
           inventory=[];
           reserved=[];
         }
@@ -316,17 +317,17 @@ actor class Server() {
    */
 
   registrarAddRetailer(
-    short_name:  Text,
-    description: Text,
-    region: RegionId,
+    short_name_:  Text,
+    description_: Text,
+    region_: RegionId,
   ) : async ?RetailerId {
     getModel().retailerTable.addInfoGetId(
-      func(id:RetailerId):RetailerInfo {
+      func(id_:RetailerId):RetailerInfo {
         shared {
-          id=id:RetailerId;
-          short_name=short_name:Text;
-          description=description:Text;
-          region=region:RegionId
+          id=id_:RetailerId;
+          short_name=short_name_:Text;
+          description=description_:Text;
+          region=region_:RegionId
         }
       })
   };
@@ -377,15 +378,15 @@ actor class Server() {
 
    */
   registrarAddTransporter(
-    short_name:  Text,
-    description: Text,
+    short_name_:  Text,
+    description_: Text,
   ) : async ?TransporterId {
     getModel().transporterTable.addInfoGetId(
-      func(id:TransporterId):TransporterInfo {
+      func(id_:TransporterId):TransporterInfo {
         shared {
-          id=id:TransporterId;
-          short_name=short_name:Text;
-          description=description:Text;
+          id=id_:TransporterId;
+          short_name=short_name_:Text;
+          description=description_:Text;
           routes=[];
           reserved=[];
         }

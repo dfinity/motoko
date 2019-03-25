@@ -22,6 +22,26 @@ uses are is not.
 
 class Model() = this {
 
+  /**
+   Misc helpers
+   ==================
+   */
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
+
+  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+
+  private idHash(x:Nat):Hash { null /* xxx */ };
+
+  private keyOf(x:Nat):Key<Nat> {
+    new { key = x ; hash = idHash(x) }
+  };
+
 
 /**
 
@@ -72,7 +92,6 @@ secondary maps.
 
   var truckTypeTable : TruckTypeTable =
     DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>(
-      //@Omit:
     0,
     func(x:TruckTypeId):TruckTypeId{x+1},
     func(x:TruckTypeId,y:TruckTypeId):Bool{x==y},
@@ -93,7 +112,6 @@ secondary maps.
       isFridge=info.isFridge;
       isFreezer=info.isFreezer;
     }),
-    /** */
   );
 
   /**
@@ -103,7 +121,6 @@ secondary maps.
 
   var regionTable : RegionTable =
     DocTable<RegionId, RegionDoc, RegionInfo>(
-      // @Omit:
     0,
     func(x:RegionId):RegionId{x+1},
     func(x:RegionId,y:RegionId):Bool{x==y},
@@ -118,7 +135,6 @@ secondary maps.
       short_name=info.short_name;
       description=info.description;
     }),
-    /** */
   );
 
   /**
@@ -128,7 +144,6 @@ secondary maps.
 
   var produceTable : ProduceTable =
     DocTable<ProduceId, ProduceDoc, ProduceInfo>(
-    //@Omit:
     0,
     func(x:ProduceId):ProduceId{x+1},
     func(x:ProduceId,y:ProduceId):Bool{x==y},
@@ -145,7 +160,6 @@ secondary maps.
       description=info.description;
       grade=info.grade;
     }),
-    /** */
   );
 
   /**
@@ -155,7 +169,6 @@ secondary maps.
 
   var inventoryTable : InventoryTable =
     DocTable<InventoryId, InventoryDoc, InventoryInfo>(
-    //@Omit:
     0,
     func(x:InventoryId):InventoryId{x+1},
     func(x:InventoryId,y:InventoryId):Bool{x==y},
@@ -165,6 +178,7 @@ secondary maps.
       produce=doc.produce.id;
       producer=doc.producer;
       quantity=doc.quantity;
+      ppu=doc.ppu;
       start_date=doc.start_date;
       end_date=doc.end_date;
       comments=doc.comments;
@@ -179,6 +193,7 @@ secondary maps.
                    produce=produceDoc;
                    producer=producerDoc.id;
                    quantity=info.quantity;
+                   ppu=info.ppu;
                    start_date=info.start_date;
                    end_date=info.end_date;
                    comments=info.comments;
@@ -188,8 +203,7 @@ secondary maps.
                null
              }
       }}
-  /** */
-  );
+    );
 
   /**
    `reservedInventoryTable`
@@ -198,7 +212,6 @@ secondary maps.
 
   var reservedInventoryTable : ReservedInventoryTable =
     DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
-    //@Omit:
     0,
     func(x:ReservedInventoryId):ReservedInventoryId{x+1},
     func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
@@ -223,7 +236,6 @@ secondary maps.
                null
              }
       }}
-  /** */
     );
 
 
@@ -234,7 +246,6 @@ secondary maps.
 
   var producerTable : ProducerTable =
     DocTable<ProducerId, ProducerDoc, ProducerInfo>(
-      //@Omit:
     0,
     func(x:ProducerId):ProducerId{x+1},
     func(x:ProducerId,y:ProducerId):Bool{x==y},
@@ -263,7 +274,6 @@ secondary maps.
                null
              };
       }
-  /** */
     );
 
   /**
@@ -273,8 +283,6 @@ secondary maps.
 
   var transporterTable : TransporterTable =
     DocTable<TransporterId, TransporterDoc, TransporterInfo> (
-      //@Omit:
-
       0,
       func(x:TransporterId):TransporterId{x+1},
       func(x:TransporterId,y:TransporterId):Bool{x==y},
@@ -294,7 +302,6 @@ secondary maps.
             routes=routeTable.empty();
             reserved=reservedRouteTable.empty();
           })
-  /** */
     );
 
   /**
@@ -304,7 +311,6 @@ secondary maps.
 
   var retailerTable : RetailerTable =
     DocTable<RetailerId, RetailerDoc, RetailerInfo>(
-      //@Omit:
       0,
       func(x:RetailerId):RetailerId{x+1},
       func(x:RetailerId,y:RetailerId):Bool{x==y},
@@ -331,7 +337,6 @@ secondary maps.
                )};
         case (null) { null };
         }}
-  /** */
     );
 
   /**
@@ -341,7 +346,6 @@ secondary maps.
 
   var routeTable : RouteTable =
     DocTable<RouteId, RouteDoc, RouteInfo> (
-      //@Omit:
       0,
       func(x:RouteId):RouteId{x+1},
       func(x:RouteId,y:RouteId):Bool{x==y},
@@ -376,7 +380,6 @@ secondary maps.
                };
           case _ { null }
         }}
-  /** */
     );
 
   /**
@@ -386,7 +389,6 @@ secondary maps.
 
   var reservedRouteTable : ReservedRouteTable =
     DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>(
-    //@Omit:
     0,
     func(x:ReservedRouteId):ReservedRouteId{x+1},
     func(x:ReservedRouteId,y:ReservedRouteId):Bool{x==y},
@@ -411,7 +413,6 @@ secondary maps.
                null
              }
       }}
-  /** */
     );
 
 
@@ -535,20 +536,20 @@ secondary maps.
 
   */
   producerAddInventory(
-    id:   ProducerId,
-    prod: ProduceId,
-    quant:Quantity,
-    ppu:  PricePerUnit,
-    begin:Date,
-    end:  Date,
-    comments: Text,
+    id_        : ProducerId,
+    produce_   : ProduceId,
+    quantity_  : Quantity,
+    ppu_       : Price,
+    start_date_: Date,
+    end_date_  : Date,
+    comments_  : Text,
   ) : ?InventoryId
   {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let oproducer : ?ProducerDoc = producerTable.getDoc(id);
-    let oproduce  : ?ProduceDoc  = produceTable.getDoc(prod);
+    let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
+    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_);
     let (producer, produce) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
@@ -560,13 +561,14 @@ secondary maps.
       switch (inventoryTable.addInfo(
                 func(inventoryId:InventoryId):InventoryInfo{
         shared {
-          id= inventoryId;
-          produce= produce:ProduceId;
-          producer= prod:ProducerId;
-          quantity= quantity:Quantity;
-          start_date=begin:Date;
-          end_date=end:Date;
-          comments=comments:Text;
+          id        = id_       :InventoryId;
+          produce   = produce_  :ProduceId;
+          producer  = produce_  :ProducerId;
+          quantity  = quantity_ :Quantity;
+          ppu       = ppu_      :Price;
+          start_date=start_date_:Date;
+          end_date  =end_date_  :Date;
+          comments  =comments_  :Text;
         };
       })) {
       case (?item) { item };
@@ -585,7 +587,7 @@ secondary maps.
 
     /**- Update the producer document; xxx more concise syntax for functional record updates would be nice: */
     let _ = producerTable.updateDoc(
-      id, 
+      producer.id,
       new {
         id = producer.id;
         short_name = producer.short_name;
@@ -662,22 +664,22 @@ secondary maps.
    ---------------------------
   */
   transporterAddRoute(
-    id:              TransporterId,
+    id_:             TransporterId,
     start_region_id: RegionId,
     end_region_id:   RegionId,
-    start_date:      Date,
-    end_date:        Date,
-    cost:            Price,
+    start_date_:     Date,
+    end_date_:       Date,
+    cost_:           Price,
     trucktype_id:    TruckTypeId
   ) : ?RouteId {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let otransporter : ?TransporterDoc = transporterTable.getDoc(id);
+    let otransporter : ?TransporterDoc = transporterTable.getDoc(id_);
     let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
     let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
     let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
-    let (transporter, start_region, end_region, truck_type) = {
+    let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
       case _ { return null };
@@ -688,13 +690,13 @@ secondary maps.
       func(routeId:RouteId):RouteDoc{
         new {
           id= routeId;
-          transporter=id:TransporterId;
-          truck_type=truck_type:TruckTypeDoc;
-          start_date=start_date:Date;
-          end_date=end_date:Date;
-          start_region=start_region:RegionDoc;
-          end_region=end_region:RegionDoc;
-          cost=cost:Price;
+          transporter=id_;
+          truck_type=truck_type_;
+          start_date=start_date_;
+          end_date=end_date_;
+          start_region=start_region_;
+          end_region=end_region_;
+          cost=cost_;
         };
       });
     
@@ -722,8 +724,8 @@ secondary maps.
     routesByDstSrcRegions :=
     Map.insertFresh3D<RegionId, RegionId, RouteId, RouteDoc>(
       routesByDstSrcRegions,
-      keyOf(end_region.id), idIsEq,
-      keyOf(start_region.id), idIsEq,
+      keyOf(end_region_.id), idIsEq,
+      keyOf(start_region_.id), idIsEq,
       keyOf(route.id), idIsEq,
       route
     );
@@ -910,24 +912,5 @@ secondary maps.
 
 
 
-  /**
-   Misc helpers
-   ==================
-   */
-
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
-  private idIsEq(x:Nat,y:Nat):Bool { x == y };
-
-  private idHash(x:Nat):Hash { null /* xxx */ };
-
-  private keyOf(x:Nat):Key<Nat> {
-    new { key = x ; hash = idHash(x) }
-  };
 
 };

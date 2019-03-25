@@ -108,6 +108,7 @@ type InventoryInfo = shared {
   produce : ProduceId;
   producer : ProducerId;
   quantity : Quantity;
+  ppu : Price;
   start_date : Date;
   end_date : Date;
   comments : Text;

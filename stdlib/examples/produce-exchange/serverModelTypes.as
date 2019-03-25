@@ -167,7 +167,7 @@ type InventoryDoc = {
   id : InventoryId;
   produce : ProduceDoc;
   producer : ProducerId;
-  // ... more ..
+  ppu : Price;
   quantity : Quantity;
   start_date : Date;
   end_date : Date;
