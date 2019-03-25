@@ -32,8 +32,8 @@ let real-dvm =
     then
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
-        rev = "0ce1f507cb3bb4fa8bba9223082a382fc9191f67";
-        ref = "master";
+        ref = "joachim/more-logging";
+        rev = "70d3b158611c96fe5e82b66d4a62c9d02bcd5345";
       }; in
       # Pass devel = true until the dev test suite runs on MacOS again
       (import dev { devel = true; }).dvm
@@ -121,11 +121,13 @@ rec {
       asc --version
       make -C stdlib ASC=asc all
       make -C samples ASC=asc all
-      make -C test VERBOSE=1 ASC=asc quick
     '' +
-      (if test-dvm then ''
-      make --load-average -j8 -C test/run-dfinity VERBOSE=1 ASC=asc quick
-      '' else "");
+      (if test-dvm
+      then ''
+      make -C test ASC=asc parallel
+      '' else ''
+      make -C test ASC=asc quick
+      '');
 
     installPhase = ''
       mkdir -p $out
