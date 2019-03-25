@@ -1,5 +1,5 @@
 deserialize: T/77
-prelude:103.1-128.2: internal error, File "compile.ml", line 2476, characters 21-27: Assertion failed
+prelude:103.1-128.2: internal error, File "compile.ml", line 2477, characters 21-27: Assertion failed
 
 Last environment:
 @new_async = func
