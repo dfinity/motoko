@@ -565,7 +565,7 @@ secondary maps.
         shared {
           id        = iid       :InventoryId;
           produce   = produce_  :ProduceId;
-          producer  = produce_  :ProducerId;
+          producer  = producer_ :ProducerId;
           quantity  = quantity_ :Quantity;
           ppu       = ppu_      :Price;
           start_date=start_date_:Date;
