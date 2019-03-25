@@ -1454,10 +1454,12 @@ module UnboxedSmallWord = struct
                      (G.i Unreachable)
       ))))
 
-  (* Given the payload pointer of Text, return the unboxed pair of
-   * - UTF-8 encoding's byte length
-   * - assembled code point
-   * of the frontmost encoded character in the text *)
+  (* The get_ptr argument moves a pointer to the payload of a Text onto the stack.
+     Then char_length_of_UTF8 decodes the first character of the string and puts
+
+     - the length (in bytes) of the UTF-8 encoding of the first character and
+     - its assembled code point (boxed)
+     onto the stack. *)
   let char_length_of_UTF8 env get_ptr =
     let (set_c, get_c) = new_local env "c" in
     let (set_res, get_res) = new_local env "res"
