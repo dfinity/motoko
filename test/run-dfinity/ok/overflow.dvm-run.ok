@@ -1,4 +1,5 @@
 W, hypervisor: calling func$104 failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$110 failed with trap message: Uncaught RuntimeError: unreachable
 This is reachable.
 This is reachable.
 This is reachable.
