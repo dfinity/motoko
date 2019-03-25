@@ -1403,6 +1403,10 @@ module UnboxedSmallWord = struct
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
 
+  (* Examine the byte pointed to by get_ptr, and if needed, following
+   * bytes, building an unboxed Unicode code point in location
+   * get_res, and finally returning the number of bytes consumed on
+   * the stack. *)
   let len_UTF8_head env get_ptr set_res get_res =
     let (set_c, get_c) = new_local env "utf-8" in
     let under thres =
