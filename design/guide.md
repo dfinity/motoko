@@ -389,7 +389,7 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 
 ## Subtyping
 
-Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true.
+Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true:
 
 * `T` equals `U` (reflexivity).
 
