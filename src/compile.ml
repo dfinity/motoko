@@ -1415,7 +1415,7 @@ module UnboxedSmallWord = struct
     get_c ^^ compile_unboxed_const (Int32.lognot mask) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
     compile_unboxed_const lead ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
-  let len_UTF8 get_c get_ptr set_res get_res =
+  let len_UTF8_head get_c get_ptr set_res get_res =
     let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
     in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^ (* TODO(Gabor): use comparisons *)
        G.if_ (ValBlockType (Some I32Type))
