@@ -2372,7 +2372,7 @@ module Dfinity = struct
                 G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 12l ^^ compile_op_const I32Op.Or 0b1110000l ^^
+                get_c ^^ compile_shrU_const 12l ^^ compile_op_const I32Op.Or 0b11100000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 (* bump length *)
@@ -2392,7 +2392,7 @@ module Dfinity = struct
                 G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 18l ^^ compile_op_const I32Op.Or 0b1111000l ^^
+                get_c ^^ compile_shrU_const 18l ^^ compile_op_const I32Op.Or 0b11110000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 (* bump length *)
