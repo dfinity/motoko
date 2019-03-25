@@ -16,18 +16,18 @@ Dfinity platform.
 
 ## Why a new language?
 
-Dfinity has chosen WebAssembly as its low-level virtual machine. 
+Dfinity has chosen WebAssembly as its low-level virtual machine.
 
 The currently
 available compilers targeting WebAssembly are for languages that are
 either too unsafe (C, C++) or too complex (Rust) for mainstream
-programmers. 
+programmers.
 
 To promote correctness and reduce complexity, Dfinity is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
 
 ### Interoperability
 
-ActorScript is just one of hopefully many languages able to run on the Dfinity platform. 
+ActorScript is just one of hopefully many languages able to run on the Dfinity platform.
 
 Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, Dfinity will provide an *Interface Definition Language* to support typed, cross-language communication.
 
@@ -58,8 +58,7 @@ The key language features of ActorScript are:
 
 * Automatic memory management (by precise garbage collection).
 
-* Strong, static typing with parametric polymorphism, subtype polymorphism and 
-  structural typing.
+* Strong, static typing with parametric polymorphism, subtype polymorphism and structural typing.
 
 * Unbounded and bounded numeric types with explicit conversions
   between them. Bounded numeric types are overflow-checked.
@@ -77,7 +76,7 @@ The key language features of ActorScript are:
 * The value of a reference can never implicitly be `null`,
   preventing a large class of `null`-reference failures.
   Instead, an explicitly handled, possibly `null`, *option type* `?<type>` is provided.
-   
+
 * Classes can be actors (canisters).
 
 * An Actor based concurrency model:
@@ -106,15 +105,19 @@ Productions marked * probably deferred to later versions.
 
 ## Whitespace
 
-Space, newline, horizontal tab, carriage return, line feed and form feed are considered as whitespace. Whitespace is ignored
+Space, newline, horizontal tab, carriage return, line feed and form feed (TBR) are considered as whitespace. Whitespace is ignored
 but used to separate adjacent keywords, identifiers and operators.
 
 
+In the definiton of some lexemes, we use the symbol `␣` to denote a single whitespace character.
+
 ## Comments
 
-Comments are any sequence of characters delimited by `/*` and  `*/`, or all characters following `//` until the end of the same line.
+Single line comments are all characters following `//` until the end of the same line.
 
-`/*` delimited comments may be nested `*/` and can span multiple lines.
+Single or multi-line comments are any sequence of characters delimited by `/*` and  `*/`. 
+
+Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
 All comments are treated as whitespace.
 
@@ -140,12 +143,81 @@ Digit  ::= 0..9
 
 ## Integers
 
+Integers are written as decimal or hexadecimal, `Ox`-prefixed natural numbers.
+Subsequent digits may be prefixed a single, semantically irrelevant, underscore.
+
+```
+digit = ['0'-'9']
+hexdigit = ['0'-'9''a'-'f''A'-'F']
+num ::= digit ('_'? digit)*
+hexnum ::= hexdigit ('_'? hexdigit)*
+nat = num | "0x" hexnum
+```
+
+Negative integers may be constructed by applying a prefix negation `-` operation.
 
 ## Operators
+
+### Relational Operators
+
+|      |          |
+|------|----------|
+| `␣<␣`  |  less than *(must be enclosed in whitespace)* |    
+| `␣>␣`  |  greater than *(must be enclosed in whitespace)* |
+|  `==` | equals | 
+|  `!=` | not equals | 
+|  `<=` | less than or equal | 
+|  `>=` | greater than or equal |
+
+### Numeric Operators
+
+|      |          |
+|------|----------|
+|  `+` | addition | 
+|  `-` | subtraction | 
+|  `*` | multliplication | 
+|  `/` | division | 
+|  `%` | modulo | 
+|  `**` | exponentiation | 
+|  `&` | logical and | 
+|  `|` | logical or | 
+|  `^` | exclusive or | 
+|  `<<` | shift left | 
+|  `␣>>` | shift right *(must be preceeded by whitespace)* |
+|  `<<>` | rotate left | 
+|  `<>>` | rotate right |
+
+### String Operators
+
+|      |          |
+|------|----------|
+|  `#` | concatenation |
+
+### Assigment Operators
+
+|      |          |
+|------|----------|
+|  `:=` | assignment (in place update) | 
+|  `+=` | in place add | 
+|  `-=` | in place subtract | 
+|  `*=` | in place multiply | 
+|  `/=` | in place divide | 
+|  `%=` | in place modulo | 
+|  `**=` | in place exponentiation | 
+|  `&=` | in place logical and | 
+|  `|=` | in place logical or | 
+|  `^=` | in place logical exclusive or | 
+|  `<<=` | in place shift left | 
+|  `>>=` | in place shift right | 
+|  `<<>=` |  in place rotate left | 
+|  `<>>=` |  in place rotate right | 
+|  `#=` | in place concatenation |
+
+## Precedence
+
 TBC
 
 # Types
-
 
 Type expressions are used to specify the types of arguments, bound on type parameters,definitions of type constructors, and in type annotations.
 
@@ -790,10 +862,14 @@ The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluati
 
 ### Labeled loops
 
-If <exp> is a looping construct, `while (exp2) <exp1>`, `loop <exp1> (while (<exp2>))?` of `for (<pat> in <exp2> <exp1>` 
-the body, <exp1>, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
+If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
+* `while (exp2) <exp1>`,
+* `loop <exp1> (while (<exp2>))?`, or
+* `for (<pat> in <exp2> <exp1>`
 
-<id_continue> is fresh identifer that can only be referenced by `continue <id>`.
+the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
+
+`<id_continue>` is fresh identifer that can only be referenced by `continue <id>`.
 
 ## Break
 
@@ -960,7 +1036,7 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 ```
 ## Expression Declaration
 
-The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.`Ubuntu Mono`
+The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.
 
 The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for `<exp>`'s side-effect).
 

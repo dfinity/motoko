@@ -14,7 +14,7 @@ index.html: ../design/guide.md pandoc.css  inline-code.css
 	  --css inline-code.css \
 	  --write=html5 \
 	  -V lang=en-US \
-	  $< -o $@
+	  $< -f gfm -o $@
 
 TEX_OPTIONS=\
   --pdf-engine xelatex \
@@ -43,4 +43,4 @@ actorscript-guide.pdf: ../design/guide.md
 	  --number-sections \
 	  --section-divs \
 	  $(TEX_OPTIONS) \
-	  $< -o $@
+	  $< -f gfm -o $@
