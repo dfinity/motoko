@@ -4149,15 +4149,15 @@ and compile_exp (env : E.t) exp =
        | "ctz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
        | "ctz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
+       | "Char->Text" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         Text.prim_showChar env
+
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
          Dfinity.prim_printInt env
-       | "printChar" ->
-         SR.unit,
-         compile_exp_vanilla env e ^^
-         Text.prim_showChar env ^^
-         Dfinity.prim_print env
        | "print" ->
          SR.unit,
          compile_exp_vanilla env e ^^

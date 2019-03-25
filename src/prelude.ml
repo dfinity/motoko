@@ -31,8 +31,10 @@ class revrange(x : Nat, y : Nat) {
   next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
+func showChar(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
+
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
-func printChar(x : Char) { (prim "printChar" : Char -> ()) x };
+func printChar(x : Char) { print (showChar x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
 // Hashing
@@ -256,12 +258,12 @@ let prim = function
                       | Word64 y -> Word64 (Word64.and_ y (Word64.shl 1L  (as_word64 a)))
                       | _ -> failwith "btst")
 
+  | "Char->Text" -> fun v k -> let str = match as_char v with
+                                          | c when c <= 0o177 -> String.make 1 (Char.chr c)
+                                          | code -> Wasm.Utf8.encode [code]
+                               in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
-  | "printChar" -> fun v k -> (match as_char v with
-                               | c when c <= 0o177 -> Printf.printf "%c%!" (Char.chr c)
-                               | code -> Printf.printf "%s%!" (Wasm.Utf8.encode [code]));
-                              k unit
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let take_and_mask bits offset = Int32.(logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset]))) in
