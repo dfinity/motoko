@@ -42,6 +42,13 @@ class Model() = this {
     new { key = x ; hash = idHash(x) }
   };
 
+  /**
+   Misc counters
+   ==================
+   */
+
+  var joinCount = 0;
+
 
 /**
 
@@ -340,6 +347,7 @@ secondary maps.
     );
 
   var retailerQueryCount : Nat = 0;
+  var retailerJoinCount : Nat = 0;
 
   /**
    `routeTable`
@@ -539,7 +547,7 @@ secondary maps.
   */
   producerAddInventory(
     id_        : ProducerId,
-    produce_   : ProduceId,
+    produce_id : ProduceId,
     quantity_  : Quantity,
     ppu_       : Price,
     start_date_: Date,
@@ -551,8 +559,8 @@ secondary maps.
 
     /**- Validate these ids; fail fast if not defined: */
     let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
-    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_);
-    let (producer, produce) = {
+    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
+    let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
       case _ { return null };
@@ -564,8 +572,8 @@ secondary maps.
                 func(iid:InventoryId):InventoryInfo{
         shared {
           id        = iid       :InventoryId;
-          produce   = produce_  :ProduceId;
-          producer  = producer_ :ProducerId;
+          produce   = produce_id:ProduceId;
+          producer  = id_       :ProducerId;
           quantity  = quantity_ :Quantity;
           ppu       = ppu_      :Price;
           start_date=start_date_:Date;
@@ -581,7 +589,7 @@ secondary maps.
     /**- Update the producer's inventory collection to hold the new inventory document: */
     let updatedInventory = 
       Map.insertFresh<InventoryId, InventoryDoc>(
-        producer.inventory,
+        producer_.inventory,
         keyOf(item.id),
         idIsEq,
         item
@@ -589,13 +597,13 @@ secondary maps.
 
     /**- Update the producer document; xxx more concise syntax for functional record updates would be nice: */
     let _ = producerTable.updateDoc(
-      producer.id,
+      producer_.id,
       new {
-        id = producer.id;
-        short_name = producer.short_name;
-        description = producer.description;
-        region = producer.region;
-        reserved = producer.reserved;
+        id = producer_.id;
+        short_name = producer_.short_name;
+        description = producer_.description;
+        region = producer_.region;
+        reserved = producer_.reserved;
         inventory = updatedInventory;
       });
 
@@ -604,9 +612,9 @@ secondary maps.
     Map.insert2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
       // key1: region id of the producer
-      keyOf(producer.region.id), idIsEq,
+      keyOf(producer_.region.id), idIsEq,
       // key2: producer id */
-      keyOf(producer.id), idIsEq,
+      keyOf(producer_.id), idIsEq,
       // value: updated inventory table
       updatedInventory,
     );
@@ -812,6 +820,7 @@ secondary maps.
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
+    retailerJoinCount += 0;
 
     // xxx join
     null

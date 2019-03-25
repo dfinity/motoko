@@ -13,7 +13,10 @@ actor class Server() {
  The `Server` actor defines an interface for messages sent
  by all participants, and the responses received in return.
 
- See also: the **[server `Model` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**.
+ See also:
+
+ - [client-server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
+ - the **[server `Model` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**.
 
 
  PESS: Registrar-based ingress messages
@@ -153,6 +156,9 @@ actor class Server() {
   /**
    `getRegionInfo`
    ---------------------
+
+   See also: [server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
+
    */
 
   getRegionInfo(
@@ -165,6 +171,9 @@ actor class Server() {
   /**
    `allRegionInfo`
    ---------------------
+
+   See also: [server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
+
    */
 
   allRegionInfo() : async [RegionInfo] {
@@ -674,7 +683,9 @@ actor class Server() {
       transporter_count        = m.transporterTable.count();
       route_count              = m.routeTable.count();
       reserved_route_count     = m.reservedRouteTable.count();
+
       retailer_query_count     = m.retailerQueryCount;
+      retailer_join_count      = m.retailerJoinCount;
     }
   };
 

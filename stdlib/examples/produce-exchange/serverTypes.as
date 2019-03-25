@@ -1,21 +1,22 @@
 /**
 
- [PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
- --------------------
+[PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
+--------------------
 
- Server Types
- ==================
+Server Types
+==================
 
- This file defines structures that appear the server actor's messaging
- interface.  They are part of the formal PESS definition.
+This file defines structures that appear the server actor's messaging
+interface.  They are part of the formal PESS definition.
 
 */
 
 
 /**
-// PESS: Basic types for PESS
-// -----------------------------
-// These types standardize representations for many common PESS notions
+Basic types
+---------------------
+These types standardize representations for many common PESS notions
+
 */
 
 // import Date
@@ -40,12 +41,13 @@ type PriceTotal = Price;
 
 
 /**
-//
-// PESS: Unique Ids
-// -----------------
-// Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
-// Internally, each type of Id serves as a "row key" for a table (or two).
-//
+Unique Ids
+-----------------
+
+Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
+
+Internally, each type of Id serves as a "row key" for a table (or two).
+
 */
 type RegionId      = Nat;
 type TruckTypeId   = Nat;
@@ -61,10 +63,14 @@ type ReservedRouteId = Nat;
 
 
 /**
-PESS: Public info associated with Ids
--------------------------------------
+Public info associated with Ids
+=====================================
 */
 
+/**
+`TruckTypeInfo`
+-----------------
+*/
 type TruckTypeInfo = shared {
   id : TruckTypeId;
   short_name : Text;
@@ -75,11 +81,20 @@ type TruckTypeInfo = shared {
   isFreezer : Bool;
 };
 
+/**
+`RegionInfo`
+-----------------
+*/
 type RegionInfo = shared {
   id : RegionId;
   short_name : Text;
   description : Text;
 };
+
+/**
+`ProduceInfo`
+-----------------
+*/
 
 type ProduceInfo = shared {
   id : ProduceId;
@@ -87,6 +102,11 @@ type ProduceInfo = shared {
   description : Text;
   grade : Grade;
 };
+
+/**
+`ProducerInfo`
+-----------------
+*/
 
 type ProducerInfo = shared {
   id : ProducerId;
@@ -97,11 +117,21 @@ type ProducerInfo = shared {
   reserved : [ReservedInventoryId]
 };
 
+/**
+`ReservedInventoryInfo`
+-----------------------------
+*/
+
 type ReservedInventoryInfo = shared {
   id : ReservedInventoryId;
   retailer : RetailerId;
   item : InventoryId;
 };
+
+/**
+`InventoryInfo`
+-----------------
+*/
 
 type InventoryInfo = shared {
   id : InventoryId;
@@ -113,6 +143,11 @@ type InventoryInfo = shared {
   end_date : Date;
   comments : Text;
 };
+
+/**
+`ProduceMarketInfo`
+-----------------
+*/
 
 // for now, this is the same as a ReservationInfo
 type ProduceMarketInfo = shared {
@@ -131,12 +166,22 @@ type ProduceMarketInfo = shared {
   trans_cost:  PriceTotal;
 };
 
+/**
+`RetailerInfo`
+-----------------
+*/
+
 type RetailerInfo = shared {
   id : RetailerId;
   short_name : Text;
   description : Text;
   region : RegionId;
 };
+
+/**
+`TransporterInfo`
+-----------------
+*/
 
 type TransporterInfo = shared {
   id : TransporterId;
@@ -148,11 +193,21 @@ type TransporterInfo = shared {
   reserved : [ReservedRouteId]
 };
 
+/**
+`ReservedRouteInfo`
+-----------------
+*/
+
 type ReservedRouteInfo = shared {
   id : ReservedRouteId;
   retailer : RetailerId;
   route : RouteId;
 };
+
+/**
+`RouteInfo`
+-----------------
+*/
 
 type RouteInfo = shared {
   id : RouteId;
@@ -166,17 +221,8 @@ type RouteInfo = shared {
 };
 
 /**
-//
-// PESS: Query parameters and results
-// ----------------------------------
-// Externally, these types define the input and output structures for PESS queries.
-// Internally, producing instances of the result structures will require
-// performing joins based on internal tables, and the information from the input structures.
-
-// Note: We are using "reserve", "reserved" and "reservation" in place of "order"
-// below, since "order" and "ordering" have too many meanings in a
-// broader CS/programming/query context.
-
+`ReservationInfo`
+-----------------
 */
 
 type ReservationInfo = shared {
@@ -195,20 +241,6 @@ type ReservationInfo = shared {
   trans_cost:  PriceTotal;
 };
 
-// xxx same as a reservation structure; represents a possible reservation to make
-type QueryAllResult = ReservationInfo;
-
-/**
-
-xxx how to represent huge result messages?
-
-2019.03.12 *** TODO-Cursors: Introduce the idea of "cursors", with
-allocation, de-allocation and movement messages, as per discussion in
-the 2019.03.12 ActorScript Team meeting.
-
-*/
-
-type QueryAllResults = [QueryAllResult];
 
 /**
 
@@ -230,4 +262,35 @@ type ProduceExchangeCounts = shared {
   reserved_route_count : Nat;
   retailer_count : Nat;
   retailer_query_count : Nat;
-}
+  retailer_join_count : Nat;
+};
+
+
+/**
+//
+// PESS: Query parameters and results
+// ----------------------------------
+// Externally, these types define the input and output structures for PESS queries.
+// Internally, producing instances of the result structures will require
+// performing joins based on internal tables, and the information from the input structures.
+
+// Note: We are using "reserve", "reserved" and "reservation" in place of "order"
+// below, since "order" and "ordering" have too many meanings in a
+// broader CS/programming/query context.
+
+*/
+
+// xxx same as a reservation structure; represents a possible reservation to make
+type QueryAllResult = ReservationInfo;
+
+/**
+
+xxx how to represent huge result messages?
+
+2019.03.12 *** TODO-Cursors: Introduce the idea of "cursors", with
+allocation, de-allocation and movement messages, as per discussion in
+the 2019.03.12 ActorScript Team meeting.
+
+*/
+
+type QueryAllResults = [QueryAllResult];

@@ -224,6 +224,7 @@ actor class Test() = this {
       let rre_qa = await s.retailerQueryAll(unwrap<RetailerId>(rre));
 
       printEntityCount("Retailer query", (await s.getCounts()).retailer_query_count);
+      printEntityCount("Retailer join", (await s.getCounts()).retailer_join_count);
 
     })
   };
