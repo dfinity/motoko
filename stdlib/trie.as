@@ -119,7 +119,7 @@ type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
  A 3D trie is just a trie that maps dimension-1 keys to another
  layer of 2D tries, each keyed on the dimension-2 and dimension-3 keys.
 */
-type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K1, K2, V> >;
+type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
 /**
  Module interface
@@ -269,8 +269,25 @@ let Trie = new {
     )
     : Trie3D<K1,K2,K3,V>
   {
-    // xxx
-    null
+    let inner1 = find<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq);
+    let (updated_inner1, _) = switch inner1 {
+    case (null)   { 
+           insert<K2,Trie<K3,V>>(
+             null, k2, k2_eq,
+             (insert<K3,V>(null, k3, k3_eq, v)).0
+           )           
+         };
+    case (?inner1) { 
+           let inner2 = find<K2,Trie<K3,V>>(inner1, k2, k2_eq);
+           let (updated_inner2, _) = switch inner2 {
+           case (null) { insert<K3,V>(null, k3, k3_eq, v) };
+           case (?inner2) { insert<K3,V>(inner2, k3, k3_eq, v) };
+           };
+           insert<K2,Trie<K3,V>>( inner1, k2, k2_eq, updated_inner2 )
+         };
+    };
+    let (updated_outer, _) = { insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner1) };
+    updated_outer;
   };
 
   /** 
@@ -300,6 +317,19 @@ let Trie = new {
       case (?v) { success(t2, v) };
     }
   };
+
+  /** 
+   `disjointUnionInner`
+   --------------
+
+   */
+  func disjointUnionInner<K1,K2,V>(t : Trie2D<K1,K2,V>, k2_eq:(K2,K2)->Bool)
+    : Trie<K2,V>
+  {
+    // xxx
+    null
+  };
+  
 
   /** 
    `remove2D`
@@ -639,6 +669,24 @@ let Trie = new {
 	         }
       }};
     rec(tl, tr)
+  };
+
+
+  /** 
+   `prod`
+   ---------
+
+   _Catesian product_ operation over two tries; the given operation
+   `op` conditionally creates output elements in the resulting trie.  The
+   keyed structure of the trie is not relevant for this operation.
+
+   */
+  func prod<K1,V1,K2,V2,K3,V3>(tl:Trie<K1,V1>, tr:Trie<K2,V2>, op:(K1,V1,K2,V2) -> ?(K3,V3))
+    : Trie<K3,V3>
+  {
+    print "to do next (Trie.prod)\n";
+    // xxx
+    null
   };
 
   /** 

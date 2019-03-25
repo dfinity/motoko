@@ -180,11 +180,19 @@ type InventoryTable =
 type InventoryMap = 
   Map<InventoryId, InventoryDoc>;
 
+type ByProducerInventoryMap = 
+  Map<ProducerId, Map<InventoryId, InventoryDoc>>;
+
 /**
  By-region inventory indexing
  -----------------------------
 */
-type ByRegionInventoryMap = Map<RegionId, Map<ProducerId, InventoryMap>>;
+type ByRegionInventoryMap = Map<RegionId, ByProducerInventoryMap>;
+
+/**
+ `ReservedInventory` documents
+ ==================================
+*/
 
 type ReservedInventoryDoc= {
   id : ReservedInventoryId;
@@ -269,8 +277,12 @@ type RouteMap =
  -----------------------------
 */
 
+// A possibly-sparse 2D table mapping each region-routeid pair to zero or one routes.
+type ByRegionRouteMap = Map<RegionId, RouteMap>;
+
 // A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
-type ByRegionsRouteMap = Map<RegionId, Map<RegionId, RouteMap>>;
+type ByRegionPairRouteMap = Map<RegionId, ByRegionRouteMap>;
+
 
 /**
  Reserved inventory indexing

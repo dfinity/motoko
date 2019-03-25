@@ -36,10 +36,18 @@ class Model() = this {
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
+  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
+
   private idHash(x:Nat):Hash { null /* xxx */ };
+
+  private idPairHash(x:(Nat,Nat)):Hash { null /* xxx */ };
 
   private keyOf(x:Nat):Key<Nat> {
     new { key = x ; hash = idHash(x) }
+  };
+
+  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
+    new { key = (x,y) ; hash = idPairHash(x,y) }
   };
 
   /**
@@ -451,7 +459,7 @@ secondary maps.
 
    */
 
-  private var routesByDstSrcRegions : ByRegionsRouteMap = null;
+  private var routesByDstSrcRegions : ByRegionPairRouteMap = null;
 
   /**
    Inventory by region
@@ -611,11 +619,8 @@ secondary maps.
     inventoryByRegion :=
     Map.insert2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
-      // key1: region id of the producer
       keyOf(producer_.region.id), idIsEq,
-      // key2: producer id */
       keyOf(producer_.id), idIsEq,
-      // value: updated inventory table
       updatedInventory,
     );
 
@@ -710,7 +715,7 @@ secondary maps.
         };
       });
     
-    /**- Update the **transporter's routes collection** to hold the new route document: */
+    /**- Update the transporter's routes collection to hold the new route document: */
     let updatedRoutes = 
       Map.insertFresh<RouteId, RouteDoc>(
         transporter.routes,
@@ -814,15 +819,92 @@ secondary maps.
   /**
    `retailerQueryAll`
    ---------------------------
+   
+   List all available inventory items and routes for a given retailer.
 
-   TODO-Cursors (see above).
+   See also:
+   - [Trie.conj](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#conj)
+   - [Trie.disjointUnionInner](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#disjointUnionInner)
+   - [Trie.prod](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#prod)
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
-    retailerJoinCount += 0;
 
-    // xxx join
+    /** - find retailer's region: */
+    let retailer =
+      switch (retailerTable.getDoc(id)) { 
+      case (null) { return null };
+      case (?x) { x }};     
+
+    print "\nRetailer ";
+    printInt id;
+    print " sends `retailerQueryAll`\n";
+    print "------------------------------------\n";
+    
+    /** - find routes whose the destination region is the retailer's region: */
+    let retailerRoutes =
+      switch (Trie.find<RegionId, ByRegionRouteMap>(
+                routesByDstSrcRegions, 
+                keyOf(retailer.region.id),
+                idIsEq
+              )) {
+      case (null) { return null };
+      case (?x) { x }};
+
+    print "- retailer in region ";
+    printInt (retailer.region.id);
+    print "; accessible via routes from ";
+    printInt (Trie.count<RouteId, RouteMap>(retailerRoutes));
+    print " production regions.\n";
+
+    /** - Build a set of query results as follows: */
+    let t = {
+      retailerJoinCount += 1;
+      Trie.conj<RegionId,
+                RouteMap,
+                ByProducerInventoryMap,
+                Trie<(RouteId, InventoryId),
+                     (RouteDoc, InventoryDoc)>> 
+    (
+      retailerRoutes,
+      inventoryByRegion,
+      idIsEq,
+      /** - for each production region, consider all routes and inventory: */
+      func (routes:RouteMap, 
+            inventory:ByProducerInventoryMap) :
+        Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>
+    {
+      /** - forget producer keys; consider all inventory: */
+      let i : InventoryMap = 
+        Trie.disjointUnionInner<ProducerId, InventoryId, InventoryDoc>
+      (inventory, idIsEq);
+
+      retailerJoinCount += 1;
+      let p = Trie.prod<RouteId, RouteDoc,
+                        InventoryId, InventoryDoc,
+                        (RouteId, InventoryId), 
+                        (RouteDoc, InventoryDoc)>(
+        routes, i,
+        /** - consider the timing constraints of each possible route-item pairing: */
+        func (route_id:RouteId,    route:RouteDoc, 
+              item_id:InventoryId, item:InventoryDoc) :
+          ?((RouteId, InventoryId), 
+            (RouteDoc, InventoryDoc)) {
+            print "xxx ";
+            // - check route window inside of inventory window, e.g., 
+            //   by 1 day before and 3 days after on each side:
+            //
+            // - window start: check that the route begins after the inventory window begins
+            //
+            // - window end: check that the route ends before the inventory window ends
+            null
+          }
+      );
+      p
+    }
+    )};
+        
     null
   };
 

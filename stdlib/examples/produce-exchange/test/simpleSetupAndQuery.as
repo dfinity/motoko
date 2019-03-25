@@ -17,7 +17,7 @@ func unwrap<T>(ox:?T) : T {
 };
 
 func printEntityCount(entname:Text, count:Nat) {
-  print (entname # " count: ");
+  print ("- " # entname # " count: ");
   printInt count;
   print "\n";
 };
@@ -27,6 +27,8 @@ actor class Test() = this {
     ignore(async
     {
       let s = Server();
+
+      print "\nPopulate exchange\n====================================\n";
 
       // populate with truck types
       let tta = await s.registrarAddTruckType("tta", "", 10, false, false);
@@ -140,15 +142,15 @@ actor class Test() = this {
       let rta_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(tra),
         unwrap<RegionId>(rega),
-        unwrap<RegionId>(regc),
+        unwrap<RegionId>(rege),
         0, 20, 100,
         unwrap<TruckTypeId>(ttc)
       );
 
       let rtb_a_c_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trb),
-        unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
+        unwrap<RegionId>(rege),
         0, 20, 40,
         unwrap<TruckTypeId>(tta)
       );
@@ -170,14 +172,14 @@ actor class Test() = this {
       let rtc_b_c_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(regb),
-        unwrap<RegionId>(regc),
+        unwrap<RegionId>(regb),
         0, 20, 40,
         unwrap<TruckTypeId>(tta)
       );
       let rtc_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(regc),
-        unwrap<RegionId>(rege),
+        unwrap<RegionId>(regb),
         0, 20, 70,
         unwrap<TruckTypeId>(tta)
       );
@@ -192,14 +194,14 @@ actor class Test() = this {
       let rtd_b_c_ttb = await s.transporterAddRoute(
         unwrap<TransporterId>(trd),
         unwrap<RegionId>(regb),
-        unwrap<RegionId>(regc),
+        unwrap<RegionId>(regd),
         0, 20, 50,
         unwrap<TruckTypeId>(ttb)
       );
       let rtd_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trd),
         unwrap<RegionId>(regc),
-        unwrap<RegionId>(rege),
+        unwrap<RegionId>(regd),
         0, 20, 70,
         unwrap<TruckTypeId>(tta)
       );
@@ -207,7 +209,7 @@ actor class Test() = this {
       let rte_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(tre),
         unwrap<RegionId>(rega),
-        unwrap<RegionId>(regc),
+        unwrap<RegionId>(regd),
         0, 20, 97,
         unwrap<TruckTypeId>(ttc)
       );
@@ -216,6 +218,8 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
+      print "\nRetailer queries\n====================================\n";      
+
       // do some queries
       let rra_qa = await s.retailerQueryAll(unwrap<RetailerId>(rra));
       let rrb_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrb));
@@ -223,8 +227,10 @@ actor class Test() = this {
       let rrd_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrd));
       let rre_qa = await s.retailerQueryAll(unwrap<RetailerId>(rre));
 
+      print "\nCounts\n----------------\n";
       printEntityCount("Retailer query", (await s.getCounts()).retailer_query_count);
       printEntityCount("Retailer join", (await s.getCounts()).retailer_join_count);
+
 
     })
   };
