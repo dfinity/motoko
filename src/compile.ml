@@ -412,6 +412,7 @@ let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shl_const = compile_op_const I32Op.Shl
+let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = compile_op_const I32Op.Or
 
 (* Locals *)
@@ -823,8 +824,7 @@ module BitTagged = struct
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
       get_x ^^
-      compile_unboxed_const 0x2l ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+      compile_bitand_const 0x2l ^^
       (* Check bit *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     ) ^^
@@ -1335,8 +1335,7 @@ module UnboxedSmallWord = struct
   (* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
   let clamp_shift_amount = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (bitwidth_mask_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And))
+    | ty -> compile_bitand_const (bitwidth_mask_of_type ty)
 
   let shiftWordNtoI32 b =
     compile_unboxed_const b ^^
@@ -1359,14 +1358,12 @@ module UnboxedSmallWord = struct
   (* Makes sure that the word representation invariant is restored. *)
   let sanitize_word_result = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (mask_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And))
+    | ty -> compile_bitand_const (mask_of_type ty)
 
   (* Sets the number (according to the type's word invariant) of LSBs. *)
   let compile_word_padding = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (padding_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Or))
+    | ty -> compile_bitor_const (padding_of_type ty)
 
   (* Kernel for counting leading zeros, according to the word invariant. *)
   let clz_kernel ty =
@@ -1404,15 +1401,13 @@ module UnboxedSmallWord = struct
   let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
 
-  let compile_6bit_mask =
-    compile_unboxed_const 0b00111111l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And))
+  let compile_6bit_mask = compile_bitand_const 0b00111111l
 
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
   let len_UTF8_frag mask lead get_c set_res =
-    get_c ^^ compile_unboxed_const mask ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^ set_res ^^
-    get_c ^^ compile_unboxed_const (Int32.lognot mask) ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+    get_c ^^ compile_bitand_const mask ^^ set_res ^^
+    get_c ^^ compile_bitand_const (Int32.lognot mask) ^^
     compile_unboxed_const lead ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
   let len_UTF8_head get_c get_ptr set_res get_res =
@@ -1459,12 +1454,17 @@ module UnboxedSmallWord = struct
                      (G.i Unreachable)
       ))))
 
+  (* Given the payload pointer of Text, return the unboxed pair of
+   * - UTF-8 encoding's byte length
+   * - assembled code point
+   * of the frontmost encoded character in the text *)
   let char_length_of_UTF8 env get_ptr =
     let (set_c, get_c) = new_local env "c" in
     let (set_res, get_res) = new_local env "res"
     in compile_load_byte get_ptr 0l ^^
        set_c ^^
-       len_UTF8_head get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
+       len_UTF8_head get_c get_ptr set_res get_res ^^
+       BoxedSmallWord.box env ^^
        get_res ^^ box_codepoint
 
 end (* UnboxedSmallWord *)
