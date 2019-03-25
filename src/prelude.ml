@@ -31,10 +31,10 @@ class revrange(x : Nat, y : Nat) {
   next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
-func showChar(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
+func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
 
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
-func printChar(x : Char) { print (showChar x) };
+func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
 // Hashing
