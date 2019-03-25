@@ -1709,8 +1709,24 @@ module Text = struct
       get_x
    )
 
-   let payload_ptr_unskewed =
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size))
+  (* len is given in bytes *)
+  (* Does not initialize the payload! *)
+  let allocFixedLen env len =
+    let (set_x, get_x) = new_local env "x" in
+    let words = Int32.(div (add 3l (mul len 4l)) 4l) in
+
+    (* Allocate *)
+    compile_unboxed_const (Int32.add header_size words) ^^
+    Heap.dyn_alloc_words env ^^
+    set_x ^^
+
+    (* Write header *)
+    get_x ^^ Tagged.store Tagged.Text ^^
+    get_x ^^ compile_unboxed_const len ^^ Heap.store_field len_field ^^
+    get_x
+
+  let payload_ptr_unskewed =
+    compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size))
 
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
@@ -2331,7 +2347,6 @@ module Dfinity = struct
     then
       let (set_c, get_c) = new_local env "c" in
       let (set_utf8, get_utf8) = new_local env "utf8" in
-      Text.lit env "X" ^^ set_utf8 ^^
       UnboxedSmallWord.unbox_codepoint ^^
       set_c ^^
       get_c ^^
@@ -2339,7 +2354,7 @@ module Dfinity = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ (ValBlockType None)
         begin
-          get_utf8 ^^ Text.payload_ptr_unskewed ^^
+          Text.allocFixedLen env 1l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
           get_c ^^
           G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
         end
@@ -2349,14 +2364,12 @@ module Dfinity = struct
           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
           G.if_ (ValBlockType None)
             begin
-              get_utf8 ^^ Text.payload_ptr_unskewed ^^
+              Text.allocFixedLen env 2l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
               get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
               G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
               get_utf8 ^^ Text.payload_ptr_unskewed ^^
               get_c ^^ compile_shrU_const 6l ^^ compile_bitor_const 0b11000000l ^^
-              G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
-              (* bump length *)
-              get_utf8 ^^ compile_unboxed_const 2l ^^ Heap.store_field Text.len_field
+              G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
             end
             begin
               get_c ^^
@@ -2364,7 +2377,7 @@ module Dfinity = struct
               G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
               G.if_ (ValBlockType None)
               begin
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                Text.allocFixedLen env 3l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
                 get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
 
@@ -2374,13 +2387,10 @@ module Dfinity = struct
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
                 get_c ^^ compile_shrU_const 12l ^^ compile_bitor_const 0b11100000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                (* bump length *)
-                get_utf8 ^^ compile_unboxed_const 3l ^^ Heap.store_field Text.len_field
+                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
               end
               begin
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
+                Text.allocFixedLen env 4l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
                 get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 3l; sz = Some Wasm.Memory.Pack8}) ^^
 
@@ -2394,10 +2404,7 @@ module Dfinity = struct
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
                 get_c ^^ compile_shrU_const 18l ^^ compile_bitor_const 0b11110000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                (* bump length *)
-                get_utf8 ^^ compile_unboxed_const 4l ^^ Heap.store_field Text.len_field
+                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
               end
             end
         end ^^
