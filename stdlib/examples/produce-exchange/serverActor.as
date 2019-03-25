@@ -157,7 +157,7 @@ actor class Server() {
    `getRegionInfo`
    ---------------------
 
-   See also: [server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
+   See also: [server type `RegionInfo`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#regioninfo).
 
    */
 
@@ -172,7 +172,7 @@ actor class Server() {
    `allRegionInfo`
    ---------------------
 
-   See also: [server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
+   See also: [server type `RegionInfo`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#regioninfo).
 
    */
 
