@@ -1394,7 +1394,7 @@ module UnboxedSmallWord = struct
   let unbox_codepoint = compile_shrU_const 8l
   let box_codepoint = compile_shl_const 8l
 
-  (* Three utilities for dealing with utf-8 encoded bytes. *)
+  (* Two utilities for dealing with utf-8 encoded bytes. *)
   let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
 
@@ -1403,12 +1403,14 @@ module UnboxedSmallWord = struct
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
 
-  let len_UTF8_head get_c get_ptr set_res get_res =
+  let len_UTF8_head env get_ptr set_res get_res =
+    let (set_c, get_c) = new_local env "utf-8" in
     let under thres =
       get_c ^^ set_res ^^
       get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
     let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
-    in under 0x80l ^^
+    in compile_load_byte get_ptr 0l ^^ set_c ^^
+       under 0x80l ^^
        G.if_ (ValBlockType (Some I32Type))
          compile_unboxed_one
          (under 0xe0l ^^
@@ -1450,11 +1452,8 @@ module UnboxedSmallWord = struct
      - its assembled code point (boxed)
      onto the stack. *)
   let char_length_of_UTF8 env get_ptr =
-    let (set_c, get_c) = new_local env "c" in
     let (set_res, get_res) = new_local env "res"
-    in compile_load_byte get_ptr 0l ^^
-       set_c ^^
-       len_UTF8_head get_c get_ptr set_res get_res ^^
+    in len_UTF8_head env get_ptr set_res get_res ^^
        BoxedSmallWord.box env ^^
        get_res ^^ box_codepoint
 
@@ -1800,7 +1799,6 @@ module Text = struct
     let next_fun () : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
             let (set_n, get_n) = new_local env "n" in
             let (set_char, get_char) = new_local env "char" in
-            let (set_c, get_c) = new_local env "utf8" in
             let (set_ptr, get_ptr) = new_local env "ptr" in
             (* Get pointer to counter from closure *)
             Closure.get ^^ Closure.load_data 0l ^^
@@ -1826,8 +1824,7 @@ module Text = struct
                   get_n ^^
                   Closure.get ^^ Closure.load_data 1l ^^ payload_ptr_unskewed ^^
                     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                  UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-                  UnboxedSmallWord.len_UTF8_head get_c get_ptr set_char get_char ^^
+                  UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
                   G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
                   (* Store advanced counter *)
                   BoxedSmallWord.box env ^^
@@ -1856,7 +1853,6 @@ module Text = struct
          (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
             let (set_max, get_max) = new_local env "max" in
             let (set_n, get_n) = new_local env "n" in
-            let (set_c, get_c) = new_local env "utf8" in
             let (set_char, get_char) = new_local env "char" in
             let (set_ptr, get_ptr) = new_local env "ptr" in
             let (set_len, get_len) = new_local env "len"
@@ -1868,8 +1864,7 @@ module Text = struct
                  begin
                    get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
                      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                   UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-                   UnboxedSmallWord.len_UTF8_head get_c get_ptr set_char get_char ^^
+                   UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
                    get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
                    get_len ^^ compile_add_const 1l ^^ set_len
                  end ^^
