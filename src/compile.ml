@@ -411,6 +411,7 @@ let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
+let compile_bitor_const = compile_op_const I32Op.Or
 
 (* Locals *)
 
@@ -2349,10 +2350,10 @@ module Dfinity = struct
           G.if_ (ValBlockType None)
             begin
               get_utf8 ^^ Text.payload_ptr_unskewed ^^
-              get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+              get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
               G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
               get_utf8 ^^ Text.payload_ptr_unskewed ^^
-              get_c ^^ compile_shrU_const 6l ^^ compile_op_const I32Op.Or 0b11000000l ^^
+              get_c ^^ compile_shrU_const 6l ^^ compile_bitor_const 0b11000000l ^^
               G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
               (* bump length *)
               get_utf8 ^^ compile_unboxed_const 2l ^^ Heap.store_field Text.len_field
@@ -2364,15 +2365,15 @@ module Dfinity = struct
               G.if_ (ValBlockType None)
               begin
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 12l ^^ compile_op_const I32Op.Or 0b11100000l ^^
+                get_c ^^ compile_shrU_const 12l ^^ compile_bitor_const 0b11100000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 (* bump length *)
@@ -2380,19 +2381,19 @@ module Dfinity = struct
               end
               begin
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or  0b10000000l ^^
+                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 3l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 12l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_op_const I32Op.Or 0b10000000l ^^
+                get_c ^^ compile_shrU_const 12l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 18l ^^ compile_op_const I32Op.Or 0b11110000l ^^
+                get_c ^^ compile_shrU_const 18l ^^ compile_bitor_const 0b11110000l ^^
                 G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
 
                 (* bump length *)
