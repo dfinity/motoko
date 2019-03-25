@@ -213,9 +213,28 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 |  `<>>=` |  in place rotate right | 
 |  `#=` | in place concatenation |
 
-## Precedence
+## Operator and Keyword Precedence
 
-TBC
+The following tabel defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity. 
+
+Precedence | Associativity | Token |
+|---|------------|--------|
+LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
+|| none | `else` `while` 
+|| right | `:= `, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
+|| left | `:`
+|| left | `or`
+|| left | `and`
+|| none | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=` 
+|| left | `+`, `-`, `#`
+|| left | `*`, `/`, `%`
+|| left | `|`
+|| left | `&`
+|| left | `^`
+|| none | `<<`, `>>`, `<<>`, `<>>`
+HIGHEST | left | `**`
+
+
 
 # Types
 
