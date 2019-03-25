@@ -1713,7 +1713,7 @@ module Text = struct
   (* Does not initialize the payload! *)
   let allocFixedLen env len =
     let (set_x, get_x) = new_local env "x" in
-    let words = Int32.(div (add 3l (mul len 4l)) 4l) in
+    let words = Int32.(div (add 3l len)  Heap.word_size) in
 
     (* Allocate *)
     compile_unboxed_const (Int32.add header_size words) ^^
@@ -2347,29 +2347,34 @@ module Dfinity = struct
     then
       let (set_c, get_c) = new_local env "c" in
       let (set_utf8, get_utf8) = new_local env "utf8" in
+      let left_shift = function
+        | 0l -> G.nop | n -> compile_shrU_const n in
+      let bitpattern = function
+        | 0l -> G.nop | n -> compile_bitor_const n in
+      let storeLeader bitpat shift =
+        get_c ^^ left_shift shift ^^ bitpattern bitpat ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) in
+      let storeFollower offset shift =
+        get_c ^^ left_shift shift ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
+        G.i (Store {ty = I32Type; align = 0; offset; sz = Some Wasm.Memory.Pack8}) in
+      let allocPayload n code = Text.allocFixedLen env n ^^ set_utf8 ^^
+                                get_utf8 ^^ Text.payload_ptr_unskewed ^^ code in
+      let withPayload code = get_utf8 ^^ Text.payload_ptr_unskewed ^^ code in
       UnboxedSmallWord.unbox_codepoint ^^
       set_c ^^
       get_c ^^
       compile_unboxed_const 0x80l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if_ (ValBlockType None)
-        begin
-          Text.allocFixedLen env 1l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
-          get_c ^^
-          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
-        end
+        (allocPayload 1l (storeLeader 0b00000000l 0l))
         begin
           get_c ^^
           compile_unboxed_const 0x800l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
           G.if_ (ValBlockType None)
             begin
-              Text.allocFixedLen env 2l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
-              get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-              G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
-              get_utf8 ^^ Text.payload_ptr_unskewed ^^
-              get_c ^^ compile_shrU_const 6l ^^ compile_bitor_const 0b11000000l ^^
-              G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+              allocPayload 2l (storeFollower 1l 0l) ^^
+              withPayload (storeLeader 0b11000000l 6l)
             end
             begin
               get_c ^^
@@ -2377,34 +2382,15 @@ module Dfinity = struct
               G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
               G.if_ (ValBlockType None)
               begin
-                Text.allocFixedLen env 3l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 12l ^^ compile_bitor_const 0b11100000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+                allocPayload 3l (storeFollower 2l 0l) ^^
+                withPayload (storeFollower 1l 6l) ^^
+                withPayload (storeLeader 0b11100000l 12l)
               end
               begin
-                Text.allocFixedLen env 4l ^^ set_utf8 ^^ get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 3l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 6l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 2l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 12l ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 1l; sz = Some Wasm.Memory.Pack8}) ^^
-
-                get_utf8 ^^ Text.payload_ptr_unskewed ^^
-                get_c ^^ compile_shrU_const 18l ^^ compile_bitor_const 0b11110000l ^^
-                G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
+                allocPayload 4l (storeFollower 3l 0l) ^^
+                withPayload (storeFollower 2l 6l) ^^
+                withPayload (storeFollower 1l 12l) ^^
+                withPayload (storeLeader 0b11110000l 18l)
               end
             end
         end ^^
