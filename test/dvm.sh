@@ -7,7 +7,7 @@ then
 fi
 
 name="$(basename $1 .wasm)_0"
-DVM_TMP=$(mktemp -d)
+DVM_TMP=$(mktemp --directory --tmpdir dvm-XXXXXX)
 trap 'rm -rf $DVM_TMP' EXIT
 
 export LANG=C

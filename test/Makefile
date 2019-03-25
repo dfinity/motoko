@@ -3,7 +3,7 @@ all:
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity
 
-MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN)
+MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
 quick:
 	$(MAKE_PAR) -C fail quick
