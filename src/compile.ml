@@ -1909,23 +1909,22 @@ module Text = struct
       G.i (Store {ty = I32Type; align = 0;
                   offset = Int32.add offset unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
-    let allocPayload n code = allocFixedLen env n ^^ set_utf8 ^^ get_utf8 ^^ code in
-    let withPayload code = get_utf8 ^^ code in
+    let allocPayload n = allocFixedLen env n ^^ set_utf8 ^^ get_utf8 in
     UnboxedSmallWord.unbox_codepoint ^^
     set_c ^^
     get_c ^^
     compile_unboxed_const 0x80l ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
     G.if_ (ValBlockType None)
-      (allocPayload 1l (storeLeader 0b00000000l 0l))
+      (allocPayload 1l ^^ storeLeader 0b00000000l 0l)
       begin
         get_c ^^
         compile_unboxed_const 0x800l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
         G.if_ (ValBlockType None)
           begin
-            allocPayload 2l (storeFollower 1l 0l) ^^
-            withPayload (storeLeader 0b11000000l 6l)
+            allocPayload 2l ^^ storeFollower 1l 0l ^^
+            get_utf8 ^^ storeLeader 0b11000000l 6l
           end
           begin
             get_c ^^
@@ -1933,15 +1932,15 @@ module Text = struct
             G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
             G.if_ (ValBlockType None)
             begin
-              allocPayload 3l (storeFollower 2l 0l) ^^
-              withPayload (storeFollower 1l 6l) ^^
-              withPayload (storeLeader 0b11100000l 12l)
+              allocPayload 3l ^^ storeFollower 2l 0l ^^
+              get_utf8 ^^ storeFollower 1l 6l ^^
+              get_utf8 ^^ storeLeader 0b11100000l 12l
             end
             begin
-              allocPayload 4l (storeFollower 3l 0l) ^^
-              withPayload (storeFollower 2l 6l) ^^
-              withPayload (storeFollower 1l 12l) ^^
-              withPayload (storeLeader 0b11110000l 18l)
+              allocPayload 4l ^^ storeFollower 3l 0l ^^
+              get_utf8 ^^ storeFollower 2l 6l ^^
+              get_utf8 ^^ storeFollower 1l 12l ^^
+              get_utf8 ^^ storeLeader 0b11110000l 18l
             end
           end
       end ^^
