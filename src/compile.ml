@@ -1713,7 +1713,7 @@ module Text = struct
   (* Does not initialize the payload! *)
   let allocFixedLen env len =
     let (set_x, get_x) = new_local env "x" in
-    let words = Int32.(div (add 3l len)  Heap.word_size) in
+    let words = Int32.(div (add 3l len) Heap.word_size) in
 
     (* Allocate *)
     compile_unboxed_const (Int32.add header_size words) ^^
@@ -1725,8 +1725,9 @@ module Text = struct
     get_x ^^ compile_unboxed_const len ^^ Heap.store_field len_field ^^
     get_x
 
+  let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed =
-    compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size))
+    compile_add_const unskewed_payload_offset
 
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
@@ -2342,9 +2343,7 @@ module Dfinity = struct
     else
       G.i Unreachable
 
-  let prim_printChar env =
-    if E.mode env = DfinityMode
-    then
+  let prim_showChar env =
       let (set_c, get_c) = new_local env "c" in
       let (set_utf8, get_utf8) = new_local env "utf8" in
       let left_shift = function
@@ -2353,13 +2352,17 @@ module Dfinity = struct
         | 0l -> G.nop | n -> compile_bitor_const n in
       let storeLeader bitpat shift =
         get_c ^^ left_shift shift ^^ bitpattern bitpat ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) in
+        G.i (Store {ty = I32Type; align = 0;
+                    offset = Text.unskewed_payload_offset;
+                    sz = Some Wasm.Memory.Pack8}) in
       let storeFollower offset shift =
         get_c ^^ left_shift shift ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-        G.i (Store {ty = I32Type; align = 0; offset; sz = Some Wasm.Memory.Pack8}) in
+        G.i (Store {ty = I32Type; align = 0;
+                    offset = Int32.add offset Text.unskewed_payload_offset;
+                    sz = Some Wasm.Memory.Pack8}) in
       let allocPayload n code = Text.allocFixedLen env n ^^ set_utf8 ^^
-                                get_utf8 ^^ Text.payload_ptr_unskewed ^^ code in
-      let withPayload code = get_utf8 ^^ Text.payload_ptr_unskewed ^^ code in
+                                get_utf8 ^^ code in
+      let withPayload code = get_utf8 ^^ code in
       UnboxedSmallWord.unbox_codepoint ^^
       set_c ^^
       get_c ^^
@@ -2394,10 +2397,7 @@ module Dfinity = struct
               end
             end
         end ^^
-      get_utf8 ^^ prim_print env
-    else
-      G.i Unreachable
-
+      get_utf8
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -4157,7 +4157,8 @@ and compile_exp (env : E.t) exp =
        | "printChar" ->
          SR.unit,
          compile_exp_vanilla env e ^^
-         Dfinity.prim_printChar env
+         Dfinity.prim_showChar env ^^
+         Dfinity.prim_print env
        | "print" ->
          SR.unit,
          compile_exp_vanilla env e ^^
