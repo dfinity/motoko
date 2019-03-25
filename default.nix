@@ -35,8 +35,7 @@ let real-dvm =
         ref = "joachim/more-logging";
         rev = "70d3b158611c96fe5e82b66d4a62c9d02bcd5345";
       }; in
-      # Pass devel = true until the dev test suite runs on MacOS again
-      (import dev { devel = true; }).dvm
+      (import dev {}).dvm
     else null
   else dvm; in
 
