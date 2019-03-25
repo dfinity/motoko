@@ -236,33 +236,31 @@ let Trie = new {
   };
 
   /**
-   `insertFresh2D`
+   `insert2D`
    ---------------
-   insert the given key's value in the trie; return the new trie;
-   assert that no prior value is associated with the key
+   insert the given key's value in the 2D trie; return the new 2D trie.
    */
-  func insertFresh2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
+  func insert2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
                               k1:Key<K1>, k1_eq:(K1,K1)->Bool,
                               k2:Key<K2>, k2_eq:(K2,K2)->Bool,
                               v:V)
     : Trie2D<K1,K2,V>
   {
     let inner = find<K1,Trie<K2,V>>(t, k1, k1_eq);
-    let updated_inner = switch inner {
-    case (null)   { insertFresh<K2,V>(null, k2, k2_eq, v) };
-    case (?inner) { insertFresh<K2,V>(inner, k2, k2_eq, v) };
+    let (updated_inner, _) = switch inner {
+    case (null)   { insert<K2,V>(null, k2, k2_eq, v) };
+    case (?inner) { insert<K2,V>(inner, k2, k2_eq, v) };
     };
     let (updated_outer, _) = { insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner) };
     updated_outer;
   };
 
   /**
-   `insertFresh3D`
+   `insert3D`
    ---------------
    insert the given key's value in the trie; return the new trie;
-   assert that no prior value is associated with the key
    */
-  func insertFresh3D<K1,K2,K3,V>
+  func insert3D<K1,K2,K3,V>
     (t : Trie3D<K1,K2,K3,V>,
      k1:Key<K1>, k1_eq:(K1,K1)->Bool,
      k2:Key<K2>, k2_eq:(K2,K2)->Bool,

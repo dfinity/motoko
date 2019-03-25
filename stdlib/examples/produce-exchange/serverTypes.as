@@ -128,7 +128,7 @@ type ProduceMarketInfo = shared {
   date_begin:  Date;
   date_end:    Date;
   prod_cost:   PriceTotal;
-  trans_cost:  PriceTotal;  
+  trans_cost:  PriceTotal;
 };
 
 type RetailerInfo = shared {
@@ -209,3 +209,25 @@ the 2019.03.12 ActorScript Team meeting.
 */
 
 type QueryAllResults = [QueryAllResult];
+
+/**
+
+ Produce Exchange counts
+ =========================
+
+ Developer-level, counter-based information about the exchange, including counts of each kind of entity.
+
+*/
+type ProduceExchangeCounts = shared {
+  truck_type_count : Nat;
+  region_count : Nat;
+  produce_count : Nat;
+  inventory_count : Nat;
+  reserved_inventory_count : Nat;
+  producer_count : Nat;
+  transporter_count : Nat;
+  route_count : Nat;
+  reserved_route_count : Nat;
+  retailer_count : Nat;
+  retailer_query_count : Nat;
+}

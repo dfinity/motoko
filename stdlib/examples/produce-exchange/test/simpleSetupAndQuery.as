@@ -16,6 +16,12 @@ func unwrap<T>(ox:?T) : T {
   }
 };
 
+func printEntityCount(entname:Text, count:Nat) {
+  print (entname # " count: ");
+  printInt count;
+  print "\n";
+};
+
 actor class Test() = this {
   go() {
     ignore(async
@@ -29,12 +35,16 @@ actor class Test() = this {
       let ttd = await s.registrarAddTruckType("ttd", "", 30, true, false);
       let tte = await s.registrarAddTruckType("tte", "", 50, false, true);
 
+      printEntityCount("Truck type", (await s.getCounts()).truck_type_count);
+
       // populate with regions
       let rega = await s.registrarAddRegion("rega", "");
       let regb = await s.registrarAddRegion("regb", "");
       let regc = await s.registrarAddRegion("regc", "");
       let regd = await s.registrarAddRegion("regd", "");
       let rege = await s.registrarAddRegion("rege", "");
+
+      printEntityCount("Region", (await s.getCounts()).region_count);
 
       // populate with produce
       let pea = await s.registrarAddProduce("avocado1", "avocado", 1);
@@ -43,6 +53,17 @@ actor class Test() = this {
       let ped = await s.registrarAddProduce("avocado4", "avocado avocado avocado avocado", 4);
       let pee = await s.registrarAddProduce("avocado5", "avocado avocado avocado avocado avocado", 5);
 
+      printEntityCount("Produce", (await s.getCounts()).produce_count);
+
+      // populate with producers
+      let pra = await s.registrarAddProducer("pra", "", unwrap<RegionId>(rega) );
+      let prb = await s.registrarAddProducer("prb", "", unwrap<RegionId>(rega) );
+      let prc = await s.registrarAddProducer("prc", "", unwrap<RegionId>(regb) );
+      let prd = await s.registrarAddProducer("prd", "", unwrap<RegionId>(rega) );
+      let pre = await s.registrarAddProducer("pre", "", unwrap<RegionId>(regb) );
+
+      printEntityCount("Producer", (await s.getCounts()).producer_count);
+
       // populate with transporters
       let tra = await s.registrarAddTransporter("tra", "" );
       let trb = await s.registrarAddTransporter("trb", "" );
@@ -50,12 +71,7 @@ actor class Test() = this {
       let trd = await s.registrarAddTransporter("trd", "" );
       let tre = await s.registrarAddTransporter("tre", "" );
 
-      // populate with producers
-      let pra = await s.registrarAddRetailer("pra", "", unwrap<RegionId>(rega) );
-      let prb = await s.registrarAddRetailer("prb", "", unwrap<RegionId>(rega) );
-      let prc = await s.registrarAddRetailer("prc", "", unwrap<RegionId>(regb) );
-      let prd = await s.registrarAddRetailer("prd", "", unwrap<RegionId>(rega) );
-      let pre = await s.registrarAddRetailer("pre", "", unwrap<RegionId>(regb) );
+      printEntityCount("Transporter", (await s.getCounts()).transporter_count);
 
       // populate with retailers
       let rra = await s.registrarAddRetailer("rra", "", unwrap<RegionId>(regc) );
@@ -63,6 +79,8 @@ actor class Test() = this {
       let rrc = await s.registrarAddRetailer("rrc", "", unwrap<RegionId>(rege) );
       let rrd = await s.registrarAddRetailer("rrd", "", unwrap<RegionId>(regc) );
       let rre = await s.registrarAddRetailer("rre", "", unwrap<RegionId>(rege) );
+
+      printEntityCount("Retailer", (await s.getCounts()).retailer_count);
 
       // populate with inventory
       let praia = await s.producerAddInventory(
@@ -101,6 +119,8 @@ actor class Test() = this {
         unwrap<ProducerId>(prb),
         unwrap<ProduceId>(pec), 300, 6, 2, 12, ""
       );
+
+      printEntityCount("Inventory", (await s.getCounts()).inventory_count);
 
       // populate with routes
       let rta_a_c_tta = await s.transporterAddRoute(
@@ -192,7 +212,9 @@ actor class Test() = this {
         unwrap<TruckTypeId>(ttc)
       );
 
-      // ----------------------------------------------------------------------------
+      printEntityCount("Route", (await s.getCounts()).route_count);
+
+      //////////////////////////////////////////////////////////////////
 
       // do some queries
       let rra_qa = await s.retailerQueryAll(unwrap<RetailerId>(rra));
@@ -201,7 +223,8 @@ actor class Test() = this {
       let rrd_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrd));
       let rre_qa = await s.retailerQueryAll(unwrap<RetailerId>(rre));
 
-      // xxx find a way to display these query results, by printing them out here
+      printEntityCount("Retailer query", (await s.getCounts()).retailer_query_count);
+
     })
   };
 };

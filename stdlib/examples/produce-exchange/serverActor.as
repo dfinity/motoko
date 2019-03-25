@@ -68,7 +68,7 @@ actor class Server() {
         //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
         //    and, the type of each of these `variables` is known, as well.
 
-        shared { 
+        shared {
           id=id_ :TruckTypeId;
           short_name=short_name_:Text;
           description=description_:Text;
@@ -657,6 +657,28 @@ actor class Server() {
    */
 
   /**
+   `getCounts`
+   ----------
+   */
+
+  getCounts() : async ProduceExchangeCounts {
+    let m = getModel();
+    shared {
+      truck_type_count         = m.truckTypeTable.count();
+      region_count             = m.regionTable.count();
+      produce_count            = m.produceTable.count();
+      inventory_count          = m.inventoryTable.count();
+      reserved_inventory_count = m.reservedInventoryTable.count();
+      producer_count           = m.producerTable.count();
+      retailer_count           = m.retailerTable.count();
+      transporter_count        = m.transporterTable.count();
+      route_count              = m.routeTable.count();
+      reserved_route_count     = m.reservedRouteTable.count();
+      retailer_query_count     = m.retailerQueryCount;
+    }
+  };
+
+  /**
    `devViewGMV`
    -------------
 
@@ -682,8 +704,7 @@ been processed
    */
 
   devViewQueries() : async ?Nat {
-    // xxx
-    null
+    ?getModel().retailerQueryCount;
   };
 
 

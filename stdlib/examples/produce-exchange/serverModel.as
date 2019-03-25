@@ -339,6 +339,8 @@ secondary maps.
         }}
     );
 
+  var retailerQueryCount : Nat = 0;
+
   /**
    `routeTable`
    ----------------
@@ -559,9 +561,9 @@ secondary maps.
     /**- Create the inventory item document: */
     let (_, item) = {
       switch (inventoryTable.addInfo(
-                func(inventoryId:InventoryId):InventoryInfo{
+                func(iid:InventoryId):InventoryInfo{
         shared {
-          id        = id_       :InventoryId;
+          id        = iid       :InventoryId;
           produce   = produce_  :ProduceId;
           producer  = produce_  :ProducerId;
           quantity  = quantity_ :Quantity;
@@ -599,7 +601,7 @@ secondary maps.
 
     /**- Update inventoryByRegion mapping: */
     inventoryByRegion :=
-    Map.insertFresh2D<RegionId, ProducerId, InventoryMap>(
+    Map.insert2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
       // key1: region id of the producer
       keyOf(producer.region.id), idIsEq,
@@ -722,7 +724,7 @@ secondary maps.
 
     /**- Update the [`routesByDstSrcRegions` mapping](#routes-by-region) using the route's regions and id */
     routesByDstSrcRegions :=
-    Map.insertFresh3D<RegionId, RegionId, RouteId, RouteDoc>(
+    Map.insert3D<RegionId, RegionId, RouteId, RouteDoc>(
       routesByDstSrcRegions,
       keyOf(end_region_.id), idIsEq,
       keyOf(start_region_.id), idIsEq,
@@ -809,6 +811,8 @@ secondary maps.
 
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
+    retailerQueryCount += 1;
+
     // xxx join
     null
   };
@@ -867,6 +871,8 @@ secondary maps.
     end:Date
   ) : ?[InventoryInfo]
   {
+    retailerQueryCount += 1;
+
     // xxx join+filter
     
     null
