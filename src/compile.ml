@@ -1896,6 +1896,61 @@ module Text = struct
       | "len" -> Some (fake_object_idx_option env "text_len")
       | _ -> None
 
+  let prim_showChar env =
+    let (set_c, get_c) = new_local env "c" in
+    let (set_utf8, get_utf8) = new_local env "utf8" in
+    let left_shift = function
+      | 0l -> G.nop | n -> compile_shrU_const n in
+    let bitpattern = function
+      | 0l -> G.nop | n -> compile_bitor_const n in
+    let storeLeader bitpat shift =
+      get_c ^^ left_shift shift ^^ bitpattern bitpat ^^
+      G.i (Store {ty = I32Type; align = 0;
+                  offset = unskewed_payload_offset;
+                  sz = Some Wasm.Memory.Pack8}) in
+    let storeFollower offset shift =
+      get_c ^^ left_shift shift ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
+      G.i (Store {ty = I32Type; align = 0;
+                  offset = Int32.add offset unskewed_payload_offset;
+                  sz = Some Wasm.Memory.Pack8}) in
+    let allocPayload n code = allocFixedLen env n ^^ set_utf8 ^^ get_utf8 ^^ code in
+    let withPayload code = get_utf8 ^^ code in
+    UnboxedSmallWord.unbox_codepoint ^^
+    set_c ^^
+    get_c ^^
+    compile_unboxed_const 0x80l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.if_ (ValBlockType None)
+      (allocPayload 1l (storeLeader 0b00000000l 0l))
+      begin
+        get_c ^^
+        compile_unboxed_const 0x800l ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+        G.if_ (ValBlockType None)
+          begin
+            allocPayload 2l (storeFollower 1l 0l) ^^
+            withPayload (storeLeader 0b11000000l 6l)
+          end
+          begin
+            get_c ^^
+            compile_unboxed_const 0x10000l ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+            G.if_ (ValBlockType None)
+            begin
+              allocPayload 3l (storeFollower 2l 0l) ^^
+              withPayload (storeFollower 1l 6l) ^^
+              withPayload (storeLeader 0b11100000l 12l)
+            end
+            begin
+              allocPayload 4l (storeFollower 3l 0l) ^^
+              withPayload (storeFollower 2l 6l) ^^
+              withPayload (storeFollower 1l 12l) ^^
+              withPayload (storeLeader 0b11110000l 18l)
+            end
+          end
+      end ^^
+    get_utf8
+
 end (* String *)
 
 module Array = struct
@@ -2342,62 +2397,6 @@ module Dfinity = struct
       G.i (Call (nr (test_print_i env)))
     else
       G.i Unreachable
-
-  let prim_showChar env =
-      let (set_c, get_c) = new_local env "c" in
-      let (set_utf8, get_utf8) = new_local env "utf8" in
-      let left_shift = function
-        | 0l -> G.nop | n -> compile_shrU_const n in
-      let bitpattern = function
-        | 0l -> G.nop | n -> compile_bitor_const n in
-      let storeLeader bitpat shift =
-        get_c ^^ left_shift shift ^^ bitpattern bitpat ^^
-        G.i (Store {ty = I32Type; align = 0;
-                    offset = Text.unskewed_payload_offset;
-                    sz = Some Wasm.Memory.Pack8}) in
-      let storeFollower offset shift =
-        get_c ^^ left_shift shift ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
-        G.i (Store {ty = I32Type; align = 0;
-                    offset = Int32.add offset Text.unskewed_payload_offset;
-                    sz = Some Wasm.Memory.Pack8}) in
-      let allocPayload n code = Text.allocFixedLen env n ^^ set_utf8 ^^
-                                get_utf8 ^^ code in
-      let withPayload code = get_utf8 ^^ code in
-      UnboxedSmallWord.unbox_codepoint ^^
-      set_c ^^
-      get_c ^^
-      compile_unboxed_const 0x80l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      G.if_ (ValBlockType None)
-        (allocPayload 1l (storeLeader 0b00000000l 0l))
-        begin
-          get_c ^^
-          compile_unboxed_const 0x800l ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-          G.if_ (ValBlockType None)
-            begin
-              allocPayload 2l (storeFollower 1l 0l) ^^
-              withPayload (storeLeader 0b11000000l 6l)
-            end
-            begin
-              get_c ^^
-              compile_unboxed_const 0x10000l ^^
-              G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-              G.if_ (ValBlockType None)
-              begin
-                allocPayload 3l (storeFollower 2l 0l) ^^
-                withPayload (storeFollower 1l 6l) ^^
-                withPayload (storeLeader 0b11100000l 12l)
-              end
-              begin
-                allocPayload 4l (storeFollower 3l 0l) ^^
-                withPayload (storeFollower 2l 6l) ^^
-                withPayload (storeFollower 1l 12l) ^^
-                withPayload (storeLeader 0b11110000l 18l)
-              end
-            end
-        end ^^
-      get_utf8
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -4157,7 +4156,7 @@ and compile_exp (env : E.t) exp =
        | "printChar" ->
          SR.unit,
          compile_exp_vanilla env e ^^
-         Dfinity.prim_showChar env ^^
+         Text.prim_showChar env ^^
          Dfinity.prim_print env
        | "print" ->
          SR.unit,
