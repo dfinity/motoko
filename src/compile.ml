@@ -410,10 +410,13 @@ let compile_add_const = compile_op_const I32Op.Add
 let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
-let compile_shrU_const = compile_op_const I32Op.ShrU
-let compile_shl_const = compile_op_const I32Op.Shl
+let compile_shrU_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.ShrU n
+let compile_shl_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.Shl n
 let compile_bitand_const = compile_op_const I32Op.And
-let compile_bitor_const = compile_op_const I32Op.Or
+let compile_bitor_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.Or n
 
 (* Locals *)
 
@@ -832,8 +835,7 @@ module BitTagged = struct
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
-    compile_unboxed_const scalar_shift ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+    compile_shrU_const scalar_shift ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   let tag =
@@ -843,8 +845,7 @@ module BitTagged = struct
 
   (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
   let untag_i32 env =
-    compile_unboxed_const scalar_shift ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+    compile_shrU_const scalar_shift
 
   let tag_i32 =
     compile_unboxed_const scalar_shift ^^
@@ -1337,10 +1338,6 @@ module UnboxedSmallWord = struct
     | Type.Word32 -> G.nop
     | ty -> compile_bitand_const (bitwidth_mask_of_type ty)
 
-  let shiftWordNtoI32 b =
-    compile_unboxed_const b ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
-
   let shift_leftWordNtoI32 b =
     compile_unboxed_const b ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Shl))
@@ -1348,7 +1345,7 @@ module UnboxedSmallWord = struct
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
     | Type.Word32 -> G.nop
-    | ty -> shiftWordNtoI32 (shift_of_type ty)
+    | ty -> compile_shrU_const (shift_of_type ty)
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
@@ -1504,7 +1501,7 @@ module Prim = struct
   let prim_word32toNat =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let prim_shiftWordNtoUnsigned b =
-    UnboxedSmallWord.shiftWordNtoI32 b ^^
+    compile_shrU_const b ^^
     prim_word32toNat
   let prim_word32toInt =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -1901,17 +1898,14 @@ module Text = struct
   let prim_showChar env =
     let (set_c, get_c) = new_local env "c" in
     let (set_utf8, get_utf8) = new_local env "utf8" in
-    let left_shift = function
-      | 0l -> G.nop | n -> compile_shrU_const n in
-    let bitpattern = function
-      | 0l -> G.nop | n -> compile_bitor_const n in
     let storeLeader bitpat shift =
-      get_c ^^ left_shift shift ^^ bitpattern bitpat ^^
+      get_c ^^ compile_shrU_const shift ^^ compile_bitor_const bitpat ^^
       G.i (Store {ty = I32Type; align = 0;
                   offset = unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
     let storeFollower offset shift =
-      get_c ^^ left_shift shift ^^ UnboxedSmallWord.compile_6bit_mask ^^ compile_bitor_const 0b10000000l ^^
+      get_c ^^ compile_shrU_const shift ^^ UnboxedSmallWord.compile_6bit_mask ^^
+        compile_bitor_const 0b10000000l ^^
       G.i (Store {ty = I32Type; align = 0;
                   offset = Int32.add offset unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
@@ -3871,8 +3865,7 @@ let rec compile_binop env t op =
          let (set_res, get_res) = new_local env "res" in
          let mul = snd (compile_binop env t MulOp) in
          let square_recurse_with_shifted sanitize =
-           get_n ^^ get_exp ^^ compile_unboxed_const 1l ^^
-           G.i (Binary (I32 I32Op.ShrU)) ^^ sanitize ^^
+           get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
          in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
             G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
@@ -3933,7 +3926,7 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp -> UnboxedSmallWord.(
      Func.share_code2 env (name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let beside_adjust = compile_unboxed_const (Int32.sub 32l (shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
+      let beside_adjust = compile_shrU_const (Int32.sub 32l (shift_of_type ty)) in
       get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
       get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
       sanitize_word_result ty))
