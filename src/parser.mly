@@ -146,10 +146,6 @@ seplist(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
-seplist1(X, SEP) :
-  | (* empty *) { [] }
-  | x=X SEP xs=seplist(X, SEP) { x::xs }
-
 
 (* Basics *)
 
@@ -201,10 +197,8 @@ typ_obj :
     { tfs }
 
 typ_nullary :
-  | LPAR t=typ RPAR
-    { ParT(t) @! at $loc }
-  | LPAR ts=seplist1(typ_item, COMMA) RPAR
-    { TupT(ts) @! at $sloc }
+  | LPAR ts=seplist(typ_item, COMMA) RPAR
+    { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
   | x=id tso=typ_args?
     { VarT(x, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
@@ -337,10 +331,8 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | LPAR e=exp RPAR
-    { e }
-  | LPAR es=seplist1(exp, COMMA) RPAR
-    { TupE(es) @? at $sloc }
+  | LPAR es=seplist(exp, COMMA) RPAR
+    { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
@@ -482,10 +474,8 @@ pat_nullary :
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
-  | LPAR p=pat RPAR
-    { ParP(p) @! p.at }
-  | LPAR ps=seplist1(pat_bin, COMMA) RPAR
-    { TupP(ps) @! at $sloc }
+  | LPAR ps=seplist(pat_bin, COMMA) RPAR
+    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_un :
   | p=pat_nullary
