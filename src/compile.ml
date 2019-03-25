@@ -1464,7 +1464,7 @@ module UnboxedSmallWord = struct
     let (set_res, get_res) = new_local env "res"
     in compile_load_byte get_ptr 0l ^^
        set_c ^^
-       len_UTF8 get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
+       len_UTF8_head get_c get_ptr set_res get_res ^^ BoxedSmallWord.box env ^^
        get_res ^^ box_codepoint
 
 end (* UnboxedSmallWord *)
@@ -1819,7 +1819,7 @@ module Text = struct
                   Closure.get ^^ Closure.load_data 1l ^^ payload_ptr_unskewed ^^
                     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
                   UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-                  UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
+                  UnboxedSmallWord.len_UTF8_head get_c get_ptr set_char get_char ^^
                   G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
                   (* Store advanced counter *)
                   BoxedSmallWord.box env ^^
@@ -1861,7 +1861,7 @@ module Text = struct
                    get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
                      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
                    UnboxedSmallWord.compile_load_byte get_ptr 0l ^^ set_c ^^
-                   UnboxedSmallWord.len_UTF8 get_c get_ptr set_char get_char ^^
+                   UnboxedSmallWord.len_UTF8_head get_c get_ptr set_char get_char ^^
                    get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
                    get_len ^^ compile_add_const 1l ^^ set_len
                  end ^^
