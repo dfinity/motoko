@@ -1402,54 +1402,46 @@ module UnboxedSmallWord = struct
 
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
-  let len_UTF8_frag mask lead get_c set_res =
-    get_c ^^ compile_bitand_const mask ^^ set_res ^^
-    get_c ^^ compile_bitand_const (Int32.lognot mask) ^^
-    compile_unboxed_const lead ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
   let len_UTF8_head get_c get_ptr set_res get_res =
+    let under thres =
+      get_c ^^ set_res ^^
+      get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
     let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
-    in len_UTF8_frag 0b00111111l 0b10000000l get_c set_res ^^ (* TODO(Gabor): use comparisons *)
+    in under 0x80l ^^
        G.if_ (ValBlockType (Some I32Type))
-         (G.i Unreachable)
-         (len_UTF8_frag 0b01111111l 0b00000000l get_c set_res ^^
+         compile_unboxed_one
+         (under 0xe0l ^^
           G.if_ (ValBlockType (Some I32Type))
-            compile_unboxed_one
-            (len_UTF8_frag 0b00011111l 0b11000000l get_c set_res ^^
+            (get_res ^^ compile_bitand_const 0b00011111l ^^
+             compile_shl_const 6l ^^
+             load_follower 1l ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             set_res ^^
+             compile_unboxed_const 2l)
+            (under 0xf0l ^^
              G.if_ (ValBlockType (Some I32Type))
-               (get_res ^^
-                compile_shl_const 6l ^^
+               (get_res ^^ compile_bitand_const 0b00001111l ^^
+                compile_shl_const 12l ^^
                 load_follower 1l ^^
+                compile_shl_const 6l ^^
+                load_follower 2l ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
                 G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
                 set_res ^^
-                compile_unboxed_const 2l)
-               (len_UTF8_frag 0b00001111l 0b11100000l get_c set_res ^^
-                G.if_ (ValBlockType (Some I32Type))
-                  (get_res ^^
-                   compile_shl_const 12l ^^
-                   load_follower 1l ^^
-                   compile_shl_const 6l ^^
-                   load_follower 2l ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                   G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                   set_res ^^
-                   compile_unboxed_const 3l)
-                  (len_UTF8_frag 0b00000111l 0b11110000l get_c set_res ^^
-                   G.if_ (ValBlockType (Some I32Type))
-                     (get_res ^^
-                      compile_shl_const 18l ^^
-                      load_follower 1l ^^
-                      compile_shl_const 12l ^^
-                      load_follower 2l ^^
-                      compile_shl_const 6l ^^
-                      load_follower 3l ^^
-                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                      set_res ^^
-                      compile_unboxed_const 4l)
-                     (G.i Unreachable)
-      ))))
+                compile_unboxed_const 3l)
+               (get_res ^^ compile_bitand_const 0b00000111l ^^
+                compile_shl_const 18l ^^
+                load_follower 1l ^^
+                compile_shl_const 12l ^^
+                load_follower 2l ^^
+                compile_shl_const 6l ^^
+                load_follower 3l ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                set_res ^^
+                compile_unboxed_const 4l)))
 
   (* The get_ptr argument moves a pointer to the payload of a Text onto the stack.
      Then char_length_of_UTF8 decodes the first character of the string and puts
