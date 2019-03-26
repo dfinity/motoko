@@ -157,4 +157,11 @@ assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
     roundtrip 100000;
     roundtrip 1000000;
     roundtrip 0x10FFFF;  // largest code point
-}
+};
+
+
+// Char <--> Text
+
+assert(charToText 'П' == "П");
+func snd((a : Word32, b : Char)) : Char = b;
+assert(snd (decodeUTF8 "П") =='П');
