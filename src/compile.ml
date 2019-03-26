@@ -1411,21 +1411,23 @@ module UnboxedSmallWord = struct
    * building an unboxed Unicode code point in location get_res,
    * and finally returning the number of bytes consumed on the stack.
    *)
-  let len_UTF8_head env set_res get_res =
+  let len_UTF8_head env set_res =
     let (set_ptr, get_ptr) = new_local env "ptr" in
     let (set_c, get_c) = new_local env "utf-8" in
+    let (set_byte, get_byte) = new_local env "byte" in
     let under thres =
-      get_c ^^ set_res ^^
+      get_c ^^ set_byte ^^
       get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
     let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask in
     set_ptr ^^
     compile_load_byte get_ptr 0l ^^ set_c ^^
     under 0x80l ^^
     G.if_ (ValBlockType (Some I32Type))
-      compile_unboxed_one
+      ( get_byte ^^ set_res ^^
+        compile_unboxed_one)
       (under 0xe0l ^^
        G.if_ (ValBlockType (Some I32Type))
-         (get_res ^^ compile_bitand_const 0b00011111l ^^
+         (get_byte ^^ compile_bitand_const 0b00011111l ^^
           compile_shl_const 6l ^^
           load_follower 1l ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -1433,7 +1435,7 @@ module UnboxedSmallWord = struct
           compile_unboxed_const 2l)
          (under 0xf0l ^^
           G.if_ (ValBlockType (Some I32Type))
-            (get_res ^^ compile_bitand_const 0b00001111l ^^
+            (get_byte ^^ compile_bitand_const 0b00001111l ^^
              compile_shl_const 12l ^^
              load_follower 1l ^^
              compile_shl_const 6l ^^
@@ -1442,7 +1444,7 @@ module UnboxedSmallWord = struct
              G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
              set_res ^^
              compile_unboxed_const 3l)
-            (get_res ^^ compile_bitand_const 0b00000111l ^^
+            (get_byte ^^ compile_bitand_const 0b00000111l ^^
              compile_shl_const 18l ^^
              load_follower 1l ^^
              compile_shl_const 12l ^^
@@ -1462,7 +1464,7 @@ module UnboxedSmallWord = struct
      onto the stack. *)
   let char_length_of_UTF8 env =
     let (set_res, get_res) = new_local env "res" in
-    len_UTF8_head env set_res get_res ^^
+    len_UTF8_head env set_res ^^
     BoxedSmallWord.box env ^^
     get_res ^^ box_codepoint
 
@@ -1874,7 +1876,7 @@ module Text = struct
           let (set_char, get_char) = new_local env "char" in
           get_x ^^ payload_ptr_unskewed ^^
           get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
+          UnboxedSmallWord.len_UTF8_head env set_char ^^
           get_char ^^ UnboxedSmallWord.box_codepoint
       )
 
@@ -1894,7 +1896,7 @@ module Text = struct
           begin
             get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
+            UnboxedSmallWord.len_UTF8_head env set_char ^^
             get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
             get_len ^^ compile_add_const 1l ^^ set_len
           end ^^
