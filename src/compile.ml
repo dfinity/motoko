@@ -1671,18 +1671,21 @@ module Iterators = struct
 
   (*
   Parameters:
-   name: base name for this built-in function (needs to be unique)
-   mk_stop get_x: counter value at which to stop (unboxed)
-   mk_next env get_i get_x: pushes onto the stack:
-    * how much to increase the counter (unboxed)
-    * the thing to return, Vanilla stackrep.
-   get_x: The thing to put in the closure, and pass to mk_next
-  Returns the function id of the iterator function
+    name: base name for this built-in function (needs to be unique)
+    mk_stop get_x: counter value at which to stop (unboxed)
+    mk_next env get_i get_x: pushes onto the stack:
+     * how much to increase the counter (unboxed)
+     * the thing to return, Vanilla stackrep.
+    get_x: The thing to put in the closure, and pass to mk_next
+
+  Return code that takes the object (array or text) on the stack and puts a
+  closure onto it.
   *)
-  let define env0 name mk_stop mk_next =
-    E.define_built_in env0 name (fun () ->
-      E.define_built_in env0 (name ^ "_next") (fun () ->
-        Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+  let define env name mk_stop mk_next =
+    Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
+      (* Register functions as needed *)
+      E.define_built_in env (name ^ "_next") (fun () ->
+        Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
           let (set_n, get_n) = new_local env "n" in
           let (set_x, get_x) = new_local env "x" in
           let (set_ret, get_ret) = new_local env "ret" in
@@ -1717,24 +1720,26 @@ module Iterators = struct
             end
         )
       );
+      let next_funid = E.built_in env (name ^ "_next") in
 
-      let next_funid = E.built_in env0 (name ^ "_next") in
+      E.define_built_in env (name ^ "_iter") (fun () ->
+        Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
+          (* closure for the function *)
+          let (set_ni, get_ni) = new_local env "next" in
+          Closure.fixed_closure env next_funid
+            [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+            ;  Closure.get ^^ Closure.load_data 0l
+            ] ^^
+          set_ni ^^
 
-      Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-        (* closure for the function *)
-        let (set_ni, get_ni) = new_local env "next" in
-        Closure.fixed_closure env next_funid
-          [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
-          ;  Closure.get ^^ Closure.load_data 0l
-          ] ^^
-        set_ni ^^
+          Object.lit_raw env
+            [ nr_ (Name "next"), fun _ -> get_ni ]
+        )
+      );
 
-        Object.lit_raw env
-          [ nr_ (Name "next"), fun _ -> get_ni ]
-      )
+      (* Now build the closure *)
+      Closure.fixed_closure env (E.built_in env (name ^ "_iter")) [ get_x ]
     )
-
-
 
 end (* Iterators *)
 
@@ -1863,8 +1868,8 @@ module Text = struct
         UnboxedSmallWord.char_length_of_UTF8 env
       )
 
-  let common_funcs env0 =
-    Iterators.define env0 "text_chars"
+  let text_chars env =
+    Iterators.define env "text_chars"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
           let (set_char, get_char) = new_local env "char" in
@@ -1872,29 +1877,34 @@ module Text = struct
           get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
           get_char ^^ UnboxedSmallWord.box_codepoint
-      );
-    E.define_built_in env0 "text_len"
-      (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-         let get_text_object = Closure.get ^^ Closure.load_data 0l in
-         let (set_max, get_max) = new_local env "max" in
-         let (set_n, get_n) = new_local env "n" in
-         let (set_char, get_char) = new_local env "char" in
-         let (set_len, get_len) = new_local env "len"
-         in compile_unboxed_zero ^^ set_n ^^
-            compile_unboxed_zero ^^ set_len ^^
-            get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
-            compile_while
-              (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
-              begin
-                get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
-                  G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
-                get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
-                get_len ^^ compile_add_const 1l ^^ set_len
-              end ^^
-            get_len ^^
-            G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            BoxedInt.box env))
+      )
+
+
+  let common_funcs env0 =
+    E.define_built_in env0 "text_len" (fun () ->
+      Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+        let get_text_object = Closure.get ^^ Closure.load_data 0l in
+        let (set_max, get_max) = new_local env "max" in
+        let (set_n, get_n) = new_local env "n" in
+        let (set_char, get_char) = new_local env "char" in
+        let (set_len, get_len) = new_local env "len" in
+        compile_unboxed_zero ^^ set_n ^^
+        compile_unboxed_zero ^^ set_len ^^
+        get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
+        compile_while
+          (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+          begin
+            get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+            UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
+            get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
+            get_len ^^ compile_add_const 1l ^^ set_len
+          end ^^
+        get_len ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        BoxedInt.box env
+      )
+    )
 
   let fake_object_idx_option env built_in_name =
     let (set_text, get_text) = new_local env "text" in
@@ -1902,7 +1912,7 @@ module Text = struct
     Closure.fixed_closure env (E.built_in env built_in_name) [ get_text ]
 
   let fake_object_idx env = function
-      | "chars" -> Some (fake_object_idx_option env "text_chars")
+      | "chars" -> Some (text_chars env)
       | "len" -> Some (fake_object_idx_option env "text_len")
       | _ -> None
 
@@ -2021,22 +2031,7 @@ module Array = struct
             Heap.load_field len_field ^^
             G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             BoxedInt.box env1
-      ));
-
-    Iterators.define env "array_keys"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
-      (fun env get_i get_x ->
-        compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BoxedInt.box32 env (* Return the boxed index *)
-      );
-
-    Iterators.define env "array_vals"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
-      (fun env get_i get_x ->
-        compile_unboxed_const 1l ^^ (* advance by one *)
-        get_x ^^ get_i ^^ idx env ^^ load_ptr (* Return the element *)
-      )
-
+      ))
 
   (* Compile an array literal. *)
   let lit env element_instructions =
@@ -2049,12 +2044,28 @@ module Array = struct
     set_array ^^
     Closure.fixed_closure env (E.built_in env built_in_name) [ get_array ]
 
+  let keys_iter env =
+    Iterators.define env "array_keys"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+        compile_unboxed_const 1l ^^ (* advance by one *)
+        get_i ^^ BoxedInt.box32 env (* Return the boxed index *)
+      )
+
+  let vals_iter env =
+    Iterators.define env "array_vals"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+        compile_unboxed_const 1l ^^ (* advance by one *)
+        get_x ^^ get_i ^^ idx env ^^ load_ptr (* Return the element *)
+      )
+
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
       | "set" -> Some (fake_object_idx_option env "array_set")
       | "len" -> Some (fake_object_idx_option env "array_len")
-      | "keys" -> Some (fake_object_idx_option env "array_keys")
-      | "vals" -> Some (fake_object_idx_option env "array_vals")
+      | "keys" -> Some (keys_iter env)
+      | "vals" -> Some (vals_iter env)
       | _ -> None
 
   (* Does not initialize the fields! *)
