@@ -1703,22 +1703,6 @@ module Text = struct
       get_x
    )
 
-  (* len is given in bytes *)
-  (* Does not initialize the payload! *)
-  let allocFixedLen env len =
-    let (set_x, get_x) = new_local env "x" in
-    let words = Int32.(div (add 3l len) Heap.word_size) in
-
-    (* Allocate *)
-    compile_unboxed_const (Int32.add header_size words) ^^
-    Heap.dyn_alloc_words env ^^
-    set_x ^^
-
-    (* Write header *)
-    get_x ^^ Tagged.store Tagged.Text ^^
-    get_x ^^ compile_unboxed_const len ^^ Heap.store_field len_field ^^
-    get_x
-
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed =
     compile_add_const unskewed_payload_offset
@@ -1900,7 +1884,7 @@ module Text = struct
       G.i (Store {ty = I32Type; align = 0;
                   offset = Int32.add offset unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
-    let allocPayload n = allocFixedLen env n ^^ set_utf8 ^^ get_utf8 in
+    let allocPayload n = compile_unboxed_const n ^^ alloc env ^^ set_utf8 ^^ get_utf8 in
     UnboxedSmallWord.unbox_codepoint ^^
     set_c ^^
     get_c ^^
