@@ -142,7 +142,7 @@ A simple but useful language for writing Dfinity actors.
 
 * Identifiers
   - `x`, `foo_bar`
-  - `List`, `Map` 
+  - `List`, `Map`
 
 * Literals for primitive types
   - `13`, `0xf4`, `-20`, `1_000_000`
@@ -389,24 +389,22 @@ See [here](design/Implementation.md)
 
 # Produce Exchange: Define MVP
 
-- [Full MVP def on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
-- [MVP summary on Github](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
+[**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+
+[**MVP on ActorScript Canister**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
 
 **Summary:**
-
-- Define **users** for MVP:
-  - Developers,
-  - Transporters, retailers and producers.
-- Define **features and use cases** for MVP:
+- defines **users**: Developers, transporters, retailers and producers.
+- defines **features** and **use cases**:
   - Resource information can be published and updated
   - Queries require database logic, including joins
-- Define non-goals, and out-of-scope goals.
+- defines non-goals, and out-of-scope goals.
 
 -----------------
 
 # Produce Exchange: Exit criteria
 
-- [Full details](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+[**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
 **Summary:**
 
@@ -418,13 +416,25 @@ See [here](design/Implementation.md)
 
 -----------------
 
+# [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+
+- **Server types**: Data types for client-server messages
+- **Server actor**: Interface for client-server messages
+- **Server model types**: Data types used internally
+- **Server model implementation**: Implements the actor
+
+
+-----------------
+
 # [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
 
 Why?
 
-- Gather reusable components (e.g., collections)
+- Gather reusable components,
 
-- Develop best-practices for developing canisters in ActorScript
+- E.g., the collections for **server model types** component.
+
+- Codify best practices for developing canisters in ActorScript.
 
 How?
 
@@ -444,7 +454,3 @@ We focus on abstractions for implementing the database for the produce exchange:
 - [Hash trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
 
 - [Association list](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
-
-
-
-
