@@ -4001,20 +4001,17 @@ and compile_exp (env : E.t) exp =
   | DotE (e, ({it = Name n;_} as name)) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-    begin match Array.fake_object_idx env n, Text.fake_object_idx env n with
-    | None, None -> Object.load_idx env e.note.note_typ name
-    | array_opt, text_opt ->
+    begin
+      let obj = Object.load_idx env e.note.note_typ name in
       let (set_o, get_o) = new_local env "o" in
       let selective tag = function
-        | Some code -> [ tag, get_o ^^ code ]
-        | None -> [] in
-      set_o ^^
-      get_o ^^
-      Tagged.branch env (ValBlockType (Some I32Type))
-        (List.concat [
-             [ Tagged.Object, get_o ^^ Object.load_idx env e.note.note_typ name ]
-             ; selective Tagged.Array array_opt
-             ; selective Tagged.Text text_opt ])
+        | None -> [] | Some code -> [ tag, get_o ^^ code ]
+      in match selective Tagged.Array (Array.fake_object_idx env n)
+              @ selective Tagged.Text (Text.fake_object_idx env n) with
+         | [] -> obj
+         | l -> set_o ^^ get_o ^^
+                Tagged.branch env (ValBlockType (Some I32Type))
+                  ((Tagged.Object, get_o ^^ obj) :: l)
     end
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
