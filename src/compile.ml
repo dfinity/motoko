@@ -1403,63 +1403,65 @@ module UnboxedSmallWord = struct
   (* consume from get_c and build result (get/set_res), inspired by
    * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
 
-  (* Examine the byte pointed to by get_ptr, and if needed, following
-   * bytes, building an unboxed Unicode code point in location
-   * get_res, and finally returning the number of bytes consumed on
-   * the stack. *)
-  let len_UTF8_head env get_ptr set_res get_res =
+  (* Examines the byte pointed to the address on the stack
+   * and following bytes,
+   * building an unboxed Unicode code point in location get_res,
+   * and finally returning the number of bytes consumed on the stack.
+   *)
+  let len_UTF8_head env set_res get_res =
+    let (set_ptr, get_ptr) = new_local env "ptr" in
     let (set_c, get_c) = new_local env "utf-8" in
     let under thres =
       get_c ^^ set_res ^^
       get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
-    let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
-    in compile_load_byte get_ptr 0l ^^ set_c ^^
-       under 0x80l ^^
+    let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask in
+    set_ptr ^^
+    compile_load_byte get_ptr 0l ^^ set_c ^^
+    under 0x80l ^^
+    G.if_ (ValBlockType (Some I32Type))
+      compile_unboxed_one
+      (under 0xe0l ^^
        G.if_ (ValBlockType (Some I32Type))
-         compile_unboxed_one
-         (under 0xe0l ^^
+         (get_res ^^ compile_bitand_const 0b00011111l ^^
+          compile_shl_const 6l ^^
+          load_follower 1l ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+          set_res ^^
+          compile_unboxed_const 2l)
+         (under 0xf0l ^^
           G.if_ (ValBlockType (Some I32Type))
-            (get_res ^^ compile_bitand_const 0b00011111l ^^
-             compile_shl_const 6l ^^
+            (get_res ^^ compile_bitand_const 0b00001111l ^^
+             compile_shl_const 12l ^^
              load_follower 1l ^^
+             compile_shl_const 6l ^^
+             load_follower 2l ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
              G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
              set_res ^^
-             compile_unboxed_const 2l)
-            (under 0xf0l ^^
-             G.if_ (ValBlockType (Some I32Type))
-               (get_res ^^ compile_bitand_const 0b00001111l ^^
-                compile_shl_const 12l ^^
-                load_follower 1l ^^
-                compile_shl_const 6l ^^
-                load_follower 2l ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                set_res ^^
-                compile_unboxed_const 3l)
-               (get_res ^^ compile_bitand_const 0b00000111l ^^
-                compile_shl_const 18l ^^
-                load_follower 1l ^^
-                compile_shl_const 12l ^^
-                load_follower 2l ^^
-                compile_shl_const 6l ^^
-                load_follower 3l ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-                set_res ^^
-                compile_unboxed_const 4l)))
+             compile_unboxed_const 3l)
+            (get_res ^^ compile_bitand_const 0b00000111l ^^
+             compile_shl_const 18l ^^
+             load_follower 1l ^^
+             compile_shl_const 12l ^^
+             load_follower 2l ^^
+             compile_shl_const 6l ^^
+             load_follower 3l ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             set_res ^^
+             compile_unboxed_const 4l)))
 
-  (* The get_ptr argument moves a pointer to the payload of a Text onto the stack.
+  (* The top of the stack is a pointer to the payload of a Text.
      Then char_length_of_UTF8 decodes the first character of the string and puts
-
      - the length (in bytes) of the UTF-8 encoding of the first character and
      - its assembled code point (boxed)
      onto the stack. *)
-  let char_length_of_UTF8 env get_ptr =
-    let (set_res, get_res) = new_local env "res"
-    in len_UTF8_head env get_ptr set_res get_res ^^
-       BoxedSmallWord.box env ^^
-       get_res ^^ box_codepoint
+  let char_length_of_UTF8 env =
+    let (set_res, get_res) = new_local env "res" in
+    len_UTF8_head env set_res get_res ^^
+    BoxedSmallWord.box env ^^
+    get_res ^^ box_codepoint
 
 end (* UnboxedSmallWord *)
 
@@ -1657,6 +1659,82 @@ module Object = struct
 
 end (* Object *)
 
+
+module Iterators = struct
+  (*
+    We have to synthesize iterators for various functions in Text and Array.
+    This is the common code for that.
+  *)
+
+  (*
+  Parameters:
+   name: base name for this built-in function (needs to be unique)
+   mk_stop get_x: counter value at which to stop (unboxed)
+   mk_next env get_i get_x: pushes onto the stack:
+    * how much to increase the counter (unboxed)
+    * the thing to return, Vanilla stackrep.
+   get_x: The thing to put in the closure, and pass to mk_next
+  Returns the function id of the iterator function
+  *)
+  let define env0 name mk_stop mk_next =
+    E.define_built_in env0 name (fun () ->
+      E.define_built_in env0 (name ^ "_next") (fun () ->
+        Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+          let (set_n, get_n) = new_local env "n" in
+          let (set_x, get_x) = new_local env "x" in
+          let (set_ret, get_ret) = new_local env "ret" in
+
+          (* Get pointer to counter from closure *)
+          Closure.get ^^ Closure.load_data 0l ^^
+          Var.load ^^ BoxedSmallWord.unbox env ^^ set_n ^^
+
+          (* Get pointer to object in closure *)
+          Closure.get ^^ Closure.load_data 1l ^^ set_x ^^
+
+          get_n ^^
+          (* Get counter end *)
+          mk_stop env get_x ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+          G.if_ (ValBlockType (Some I32Type))
+            (* Then *)
+            Opt.null
+            (* Else *)
+            begin (* Return stuff *)
+              Opt.inject env (
+                (* Put address of conter on the stack, for the store *)
+                Closure.get ^^ Closure.load_data 0l ^^
+                (* Get value and increase *)
+                mk_next env get_n get_x ^^
+                set_ret ^^ (* put return value aside *)
+                (* Advance counter *)
+                get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+                BoxedSmallWord.box env ^^ Var.store ^^
+                (* Return new value *)
+                get_ret)
+            end
+        )
+      );
+
+      let next_funid = E.built_in env0 (name ^ "_next") in
+
+      Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+        (* closure for the function *)
+        let (set_ni, get_ni) = new_local env "next" in
+        Closure.fixed_closure env next_funid
+          [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+          ;  Closure.get ^^ Closure.load_data 0l
+          ] ^^
+        set_ni ^^
+
+        Object.lit_raw env
+          [ nr_ (Name "next"), fun _ -> get_ni ]
+      )
+    )
+
+
+
+end (* Iterators *)
+
 module Text = struct
   (* The layout of a text object is
 
@@ -1778,87 +1856,42 @@ module Text = struct
   let prim_decodeUTF8 env =
     Func.share_code1 env "decodeUTF8" ("string", I32Type) [I32Type;
                                                            I32Type] (fun env get_string ->
-        let (set_ptr, get_ptr) = new_local env "ptr"
-        in get_string ^^ payload_ptr_unskewed ^^ set_ptr ^^
-           UnboxedSmallWord.char_length_of_UTF8 env get_ptr
+        get_string ^^ payload_ptr_unskewed ^^
+        UnboxedSmallWord.char_length_of_UTF8 env
       )
 
   let common_funcs env0 =
-    let next_fun () : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-            let (set_n, get_n) = new_local env "n" in
-            let (set_char, get_char) = new_local env "char" in
-            let (set_ptr, get_ptr) = new_local env "ptr" in
-            (* Get pointer to counter from closure *)
-            Closure.get ^^ Closure.load_data 0l ^^
-            (* Get current counter (boxed) *)
-            Var.load ^^
-
-            (* Get current counter (unboxed) *)
-            BoxedSmallWord.unbox env ^^
-            set_n ^^
-
-            get_n ^^
-            (* Get length *)
-            Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
-            G.if_ (ValBlockType (Some I32Type))
-              (* Then *)
-              Opt.null
-              (* Else *)
-              begin (* Return stuff *)
-                Opt.inject env (
-                  Closure.get ^^ Closure.load_data 0l ^^
-                  get_n ^^
-                  get_n ^^
-                  Closure.get ^^ Closure.load_data 1l ^^ payload_ptr_unskewed ^^
-                    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                  UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
+    Iterators.define env0 "text_chars"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+          let (set_char, get_char) = new_local env "char" in
+          get_x ^^ payload_ptr_unskewed ^^
+          get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
+          get_char ^^ UnboxedSmallWord.box_codepoint
+      );
+    E.define_built_in env0 "text_len"
+      (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+         let get_text_object = Closure.get ^^ Closure.load_data 0l in
+         let (set_max, get_max) = new_local env "max" in
+         let (set_n, get_n) = new_local env "n" in
+         let (set_char, get_char) = new_local env "char" in
+         let (set_len, get_len) = new_local env "len"
+         in compile_unboxed_zero ^^ set_n ^^
+            compile_unboxed_zero ^^ set_len ^^
+            get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
+            compile_while
+              (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+              begin
+                get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
                   G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                  (* Store advanced counter *)
-                  BoxedSmallWord.box env ^^
-                  Var.store ^^
-                  get_char ^^ UnboxedSmallWord.box_codepoint)
-              end
-       ) in
-
-    let get_text_object = Closure.get ^^ Closure.load_data 0l in
-    let mk_iterator next_funid = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-            (* next function *)
-            let (set_ni, get_ni) = new_local env "next" in
-            Closure.fixed_closure env next_funid
-              [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
-              ; get_text_object
-              ] ^^
-            set_ni ^^
-
-            Object.lit_raw env
-              [ nr_ (Name "next"), fun _ -> get_ni ])
-    in E.define_built_in env0 "text_chars_next" next_fun;
-       E.define_built_in env0 "text_chars"
-         (fun () -> mk_iterator (E.built_in env0 "text_chars_next"));
-
-       E.define_built_in env0 "text_len"
-         (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
-            let (set_max, get_max) = new_local env "max" in
-            let (set_n, get_n) = new_local env "n" in
-            let (set_char, get_char) = new_local env "char" in
-            let (set_ptr, get_ptr) = new_local env "ptr" in
-            let (set_len, get_len) = new_local env "len"
-            in compile_unboxed_zero ^^ set_n ^^
-               compile_unboxed_zero ^^ set_len ^^
-               get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
-               compile_while
-                 (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
-                 begin
-                   get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
-                     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
-                   UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
-                   get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
-                   get_len ^^ compile_add_const 1l ^^ set_len
-                 end ^^
-               get_len ^^
-               G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-               BoxedInt.box env))
+                UnboxedSmallWord.len_UTF8_head env set_char get_char ^^
+                get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
+                get_len ^^ compile_add_const 1l ^^ set_len
+              end ^^
+            get_len ^^
+            G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+            BoxedInt.box env))
 
   let fake_object_idx_option env built_in_name =
     let (set_text, get_text) = new_local env "text" in
@@ -1921,7 +1954,7 @@ module Text = struct
       end ^^
     get_utf8
 
-end (* String *)
+end (* Text *)
 
 module Array = struct
   (* Object layout:
