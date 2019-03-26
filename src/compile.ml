@@ -925,22 +925,27 @@ module Tagged = struct
 
   (* like branch but the tag is known statically *)
   let _branchKnown env retty = function
-    | [_, code] -> code
-    | cases -> branch env retty cases
+    | [] -> failwith "branchKnown"
+    | [_, code] -> G.i Drop ^^ code
+    | ((_,code)::cases) -> branch_default env retty code cases
 
   (* like branch but also pushes the scrutinee on the stack for the
    * branch's consumption *)
-  let branchWith env retty = function
-    | [] -> branch env retty []
+  let _branchWith env retty = function
+    | [] -> G.i Unreachable
     | cases ->
        let (set_o, get_o) = new_local env "o" in
        let prep (t, code) = (t, get_o ^^ code)
        in set_o ^^ get_o ^^ branch env retty (List.map prep cases)
 
-  (* like branch but the tag is known statically *)
+  (* like branchWith but the tag is known statically *)
   let branchWithKnown env retty = function
+    | [] -> failwith "branchWithKnown"
     | [_, code] -> code
-    | cases -> branchWith env retty cases
+    | ((_,code)::cases) ->
+       let (set_o, get_o) = new_local env "o" in
+       let prep (t, code) = (t, get_o ^^ code)
+       in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
 
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
