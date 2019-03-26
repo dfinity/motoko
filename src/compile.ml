@@ -1878,10 +1878,9 @@ module Text = struct
           get_char ^^ UnboxedSmallWord.box_codepoint
       )
 
-
-  let common_funcs env0 =
-    E.define_built_in env0 "text_len" (fun () ->
-      Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+  let partial_len env =
+    Func.share_code1 env "text_len_partial" ("x", I32Type) [I32Type] (fun env get_x ->
+      let funid = E.add_fun env "text_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
         let get_text_object = Closure.get ^^ Closure.load_data 0l in
         let (set_max, get_max) = new_local env "max" in
         let (set_n, get_n) = new_local env "n" in
@@ -1902,17 +1901,13 @@ module Text = struct
         get_len ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         BoxedInt.box env
-      )
+      )) in
+      Closure.fixed_closure env funid [ get_x ]
     )
-
-  let fake_object_idx_option env built_in_name =
-    let (set_text, get_text) = new_local env "text" in
-    set_text ^^
-    Closure.fixed_closure env (E.built_in env built_in_name) [ get_text ]
 
   let fake_object_idx env = function
       | "chars" -> Some (text_chars env)
-      | "len" -> Some (fake_object_idx_option env "text_len")
+      | "len" -> Some (partial_len env)
       | _ -> None
 
   let prim_showChar env =
@@ -4689,7 +4684,6 @@ and actor_lit outer_env this ds fs at =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
-    Text.common_funcs env;
 
     (* Allocate static positions for exported functions *)
     let located_ids = allocate_actor_fields env fs in
@@ -4825,7 +4819,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
   let env = E.mk_global mode prelude ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
-  Text.common_funcs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
