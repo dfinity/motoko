@@ -923,6 +923,25 @@ module Tagged = struct
   let branch env retty (cases : (tag * G.t) list) : G.t =
     branch_default env retty (G.i Unreachable) cases
 
+  (* like branch but the tag is known statically *)
+  let _branchKnown env retty = function
+    | [_, code] -> code
+    | cases -> branch env retty cases
+
+  (* like branch but also pushes the scrutinee on the stack for the
+   * branch's consumption *)
+  let branchWith env retty = function
+    | [] -> branch env retty []
+    | cases ->
+       let (set_o, get_o) = new_local env "o" in
+       let prep (t, code) = (t, get_o ^^ code)
+       in set_o ^^ get_o ^^ branch env retty (List.map prep cases)
+
+  (* like branch but the tag is known statically *)
+  let branchWithKnown env retty = function
+    | [_, code] -> code
+    | cases -> branchWith env retty cases
+
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
@@ -4039,16 +4058,12 @@ and compile_exp (env : E.t) exp =
     SR.Vanilla,
     compile_exp_vanilla env e ^^
     begin
-      let obj = Object.load_idx env e.note.note_typ name in
-      let (set_o, get_o) = new_local env "o" in
       let selective tag = function
-        | None -> [] | Some code -> [ tag, get_o ^^ code ]
-      in match selective Tagged.Array (Array.fake_object_idx env n)
-              @ selective Tagged.Text (Text.fake_object_idx env n) with
-         | [] -> obj
-         | l -> set_o ^^ get_o ^^
-                Tagged.branch env (ValBlockType (Some I32Type))
-                  ((Tagged.Object, get_o ^^ obj) :: l)
+        | None -> [] | Some code -> [ tag, code ]
+      in Tagged.branchWithKnown env (ValBlockType (Some I32Type))
+           (List.concat [ [Tagged.Object, Object.load_idx env e.note.note_typ name]
+                        ; selective Tagged.Array (Array.fake_object_idx env n)
+                        ; selective Tagged.Text (Text.fake_object_idx env n)])
     end
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
