@@ -1,5 +1,5 @@
 deserialize: T/77
-prelude:103.1-128.2: internal error, File "compile.ml", line 2477, characters 21-27: Assertion failed
+prelude:107.1-132.2: internal error, File "compile.ml", line 2693, characters 21-27: Assertion failed
 
 Last environment:
 @new_async = func
@@ -10,6 +10,7 @@ btstWord16 = func
 btstWord32 = func
 btstWord64 = func
 btstWord8 = func
+charToText = func
 charToWord32 = func
 clzWord16 = func
 clzWord32 = func
@@ -19,6 +20,7 @@ ctzWord16 = func
 ctzWord32 = func
 ctzWord64 = func
 ctzWord8 = func
+decodeUTF8 = func
 hashInt = func
 ignore = func
 intToWord16 = func
@@ -34,6 +36,7 @@ popcntWord32 = func
 popcntWord64 = func
 popcntWord8 = func
 print = func
+printChar = func
 printInt = func
 range = func
 revrange = func

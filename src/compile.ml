@@ -410,6 +410,13 @@ let compile_add_const = compile_op_const I32Op.Add
 let _compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
+let compile_shrU_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.ShrU n
+let compile_shl_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.Shl n
+let compile_bitand_const = compile_op_const I32Op.And
+let compile_bitor_const = function
+  | 0l -> G.nop | n -> compile_op_const I32Op.Or n
 
 (* Locals *)
 
@@ -820,8 +827,7 @@ module BitTagged = struct
     Func.share_code1 env "is_unboxed" ("x", I32Type) [I32Type] (fun env get_x ->
       (* Get bit *)
       get_x ^^
-      compile_unboxed_const 0x2l ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+      compile_bitand_const 0x2l ^^
       (* Check bit *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz))
     ) ^^
@@ -829,8 +835,7 @@ module BitTagged = struct
 
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
-    compile_unboxed_const scalar_shift ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+    compile_shrU_const scalar_shift ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   let tag =
@@ -840,8 +845,7 @@ module BitTagged = struct
 
   (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
   let untag_i32 env =
-    compile_unboxed_const scalar_shift ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+    compile_shrU_const scalar_shift
 
   let tag_i32 =
     compile_unboxed_const scalar_shift ^^
@@ -1332,12 +1336,7 @@ module UnboxedSmallWord = struct
   (* Makes sure that we only shift/rotate the maximum number of bits available in the word. *)
   let clamp_shift_amount = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (bitwidth_mask_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And))
-
-  let shiftWordNtoI32 b =
-    compile_unboxed_const b ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+    | ty -> compile_bitand_const (bitwidth_mask_of_type ty)
 
   let shift_leftWordNtoI32 b =
     compile_unboxed_const b ^^
@@ -1346,7 +1345,7 @@ module UnboxedSmallWord = struct
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
     | Type.Word32 -> G.nop
-    | ty -> shiftWordNtoI32 (shift_of_type ty)
+    | ty -> compile_shrU_const (shift_of_type ty)
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
@@ -1356,14 +1355,12 @@ module UnboxedSmallWord = struct
   (* Makes sure that the word representation invariant is restored. *)
   let sanitize_word_result = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (mask_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And))
+    | ty -> compile_bitand_const (mask_of_type ty)
 
   (* Sets the number (according to the type's word invariant) of LSBs. *)
   let compile_word_padding = function
     | Type.Word32 -> G.nop
-    | ty -> compile_unboxed_const (padding_of_type ty) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Or))
+    | ty -> compile_bitor_const (padding_of_type ty)
 
   (* Kernel for counting leading zeros, according to the word invariant. *)
   let clz_kernel ty =
@@ -1392,6 +1389,77 @@ module UnboxedSmallWord = struct
        compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
        G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+  (* Code points occupy 21 bits, no alloc needed in vanilla SR. *)
+  let unbox_codepoint = compile_shrU_const 8l
+  let box_codepoint = compile_shl_const 8l
+
+  (* Two utilities for dealing with utf-8 encoded bytes. *)
+  let compile_load_byte get_ptr offset =
+    get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
+
+  let compile_6bit_mask = compile_bitand_const 0b00111111l
+
+  (* consume from get_c and build result (get/set_res), inspired by
+   * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
+
+  (* Examine the byte pointed to by get_ptr, and if needed, following
+   * bytes, building an unboxed Unicode code point in location
+   * get_res, and finally returning the number of bytes consumed on
+   * the stack. *)
+  let len_UTF8_head env get_ptr set_res get_res =
+    let (set_c, get_c) = new_local env "utf-8" in
+    let under thres =
+      get_c ^^ set_res ^^
+      get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
+    let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask
+    in compile_load_byte get_ptr 0l ^^ set_c ^^
+       under 0x80l ^^
+       G.if_ (ValBlockType (Some I32Type))
+         compile_unboxed_one
+         (under 0xe0l ^^
+          G.if_ (ValBlockType (Some I32Type))
+            (get_res ^^ compile_bitand_const 0b00011111l ^^
+             compile_shl_const 6l ^^
+             load_follower 1l ^^
+             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             set_res ^^
+             compile_unboxed_const 2l)
+            (under 0xf0l ^^
+             G.if_ (ValBlockType (Some I32Type))
+               (get_res ^^ compile_bitand_const 0b00001111l ^^
+                compile_shl_const 12l ^^
+                load_follower 1l ^^
+                compile_shl_const 6l ^^
+                load_follower 2l ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                set_res ^^
+                compile_unboxed_const 3l)
+               (get_res ^^ compile_bitand_const 0b00000111l ^^
+                compile_shl_const 18l ^^
+                load_follower 1l ^^
+                compile_shl_const 12l ^^
+                load_follower 2l ^^
+                compile_shl_const 6l ^^
+                load_follower 3l ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+                set_res ^^
+                compile_unboxed_const 4l)))
+
+  (* The get_ptr argument moves a pointer to the payload of a Text onto the stack.
+     Then char_length_of_UTF8 decodes the first character of the string and puts
+
+     - the length (in bytes) of the UTF-8 encoding of the first character and
+     - its assembled code point (boxed)
+     onto the stack. *)
+  let char_length_of_UTF8 env get_ptr =
+    let (set_res, get_res) = new_local env "res"
+    in len_UTF8_head env get_ptr set_res get_res ^^
+       BoxedSmallWord.box env ^^
+       get_res ^^ box_codepoint
 
 end (* UnboxedSmallWord *)
 
@@ -1428,7 +1496,7 @@ module Prim = struct
   let prim_word32toNat =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let prim_shiftWordNtoUnsigned b =
-    UnboxedSmallWord.shiftWordNtoI32 b ^^
+    compile_shrU_const b ^^
     prim_word32toNat
   let prim_word32toInt =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -1595,6 +1663,8 @@ module Text = struct
      ┌─────┬─────────┬──────────────────┐
      │ tag │ n_bytes │ bytes (padded) … │
      └─────┴─────────┴──────────────────┘
+
+     Note: The bytes are UTF-8 encoded code points from Unicode.
   *)
 
   let header_size = Int32.add Tagged.header_size 1l
@@ -1633,8 +1703,9 @@ module Text = struct
       get_x
    )
 
-   let payload_ptr_unskewed =
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size header_size))
+  let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
+  let payload_ptr_unskewed =
+    compile_add_const unskewed_payload_offset
 
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
@@ -1703,6 +1774,152 @@ module Text = struct
       ) ^^
       Bool.lit true
   )
+
+  let prim_decodeUTF8 env =
+    Func.share_code1 env "decodeUTF8" ("string", I32Type) [I32Type;
+                                                           I32Type] (fun env get_string ->
+        let (set_ptr, get_ptr) = new_local env "ptr"
+        in get_string ^^ payload_ptr_unskewed ^^ set_ptr ^^
+           UnboxedSmallWord.char_length_of_UTF8 env get_ptr
+      )
+
+  let common_funcs env0 =
+    let next_fun () : E.func_with_names = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            let (set_n, get_n) = new_local env "n" in
+            let (set_char, get_char) = new_local env "char" in
+            let (set_ptr, get_ptr) = new_local env "ptr" in
+            (* Get pointer to counter from closure *)
+            Closure.get ^^ Closure.load_data 0l ^^
+            (* Get current counter (boxed) *)
+            Var.load ^^
+
+            (* Get current counter (unboxed) *)
+            BoxedSmallWord.unbox env ^^
+            set_n ^^
+
+            get_n ^^
+            (* Get length *)
+            Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (* Then *)
+              Opt.null
+              (* Else *)
+              begin (* Return stuff *)
+                Opt.inject env (
+                  Closure.get ^^ Closure.load_data 0l ^^
+                  get_n ^^
+                  get_n ^^
+                  Closure.get ^^ Closure.load_data 1l ^^ payload_ptr_unskewed ^^
+                    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+                  UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
+                  G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+                  (* Store advanced counter *)
+                  BoxedSmallWord.box env ^^
+                  Var.store ^^
+                  get_char ^^ UnboxedSmallWord.box_codepoint)
+              end
+       ) in
+
+    let get_text_object = Closure.get ^^ Closure.load_data 0l in
+    let mk_iterator next_funid = Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            (* next function *)
+            let (set_ni, get_ni) = new_local env "next" in
+            Closure.fixed_closure env next_funid
+              [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+              ; get_text_object
+              ] ^^
+            set_ni ^^
+
+            Object.lit_raw env
+              [ nr_ (Name "next"), fun _ -> get_ni ])
+    in E.define_built_in env0 "text_chars_next" next_fun;
+       E.define_built_in env0 "text_chars"
+         (fun () -> mk_iterator (E.built_in env0 "text_chars_next"));
+
+       E.define_built_in env0 "text_len"
+         (fun () -> Func.of_body env0 ["clos", I32Type] [I32Type] (fun env ->
+            let (set_max, get_max) = new_local env "max" in
+            let (set_n, get_n) = new_local env "n" in
+            let (set_char, get_char) = new_local env "char" in
+            let (set_ptr, get_ptr) = new_local env "ptr" in
+            let (set_len, get_len) = new_local env "len"
+            in compile_unboxed_zero ^^ set_n ^^
+               compile_unboxed_zero ^^ set_len ^^
+               get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
+               compile_while
+                 (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+                 begin
+                   get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
+                     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ptr ^^
+                   UnboxedSmallWord.len_UTF8_head env get_ptr set_char get_char ^^
+                   get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
+                   get_len ^^ compile_add_const 1l ^^ set_len
+                 end ^^
+               get_len ^^
+               G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+               BoxedInt.box env))
+
+  let fake_object_idx_option env built_in_name =
+    let (set_text, get_text) = new_local env "text" in
+    set_text ^^
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_text ]
+
+  let fake_object_idx env = function
+      | "chars" -> Some (fake_object_idx_option env "text_chars")
+      | "len" -> Some (fake_object_idx_option env "text_len")
+      | _ -> None
+
+  let prim_showChar env =
+    let (set_c, get_c) = new_local env "c" in
+    let (set_utf8, get_utf8) = new_local env "utf8" in
+    let storeLeader bitpat shift =
+      get_c ^^ compile_shrU_const shift ^^ compile_bitor_const bitpat ^^
+      G.i (Store {ty = I32Type; align = 0;
+                  offset = unskewed_payload_offset;
+                  sz = Some Wasm.Memory.Pack8}) in
+    let storeFollower offset shift =
+      get_c ^^ compile_shrU_const shift ^^ UnboxedSmallWord.compile_6bit_mask ^^
+        compile_bitor_const 0b10000000l ^^
+      G.i (Store {ty = I32Type; align = 0;
+                  offset = Int32.add offset unskewed_payload_offset;
+                  sz = Some Wasm.Memory.Pack8}) in
+    let allocPayload n = compile_unboxed_const n ^^ alloc env ^^ set_utf8 ^^ get_utf8 in
+    UnboxedSmallWord.unbox_codepoint ^^
+    set_c ^^
+    get_c ^^
+    compile_unboxed_const 0x80l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.if_ (ValBlockType None)
+      (allocPayload 1l ^^ storeLeader 0b00000000l 0l)
+      begin
+        get_c ^^
+        compile_unboxed_const 0x800l ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+        G.if_ (ValBlockType None)
+          begin
+            allocPayload 2l ^^ storeFollower 1l 0l ^^
+            get_utf8 ^^ storeLeader 0b11000000l 6l
+          end
+          begin
+            get_c ^^
+            compile_unboxed_const 0x10000l ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+            G.if_ (ValBlockType None)
+            begin
+              allocPayload 3l ^^ storeFollower 2l 0l ^^
+              get_utf8 ^^ storeFollower 1l 6l ^^
+              get_utf8 ^^ storeLeader 0b11100000l 12l
+            end
+            begin
+              allocPayload 4l ^^ storeFollower 3l 0l ^^
+              get_utf8 ^^ storeFollower 2l 6l ^^
+              get_utf8 ^^ storeFollower 1l 12l ^^
+              get_utf8 ^^ storeLeader 0b11110000l 18l
+            end
+          end
+      end ^^
+    get_utf8
 
 end (* String *)
 
@@ -1793,8 +2010,7 @@ module Array = struct
               (* Then *)
               Opt.null
               (* Else *)
-              ( (* Get point to counter from closure *)
-                Closure.get ^^ Closure.load_data 0l ^^
+              ( Closure.get ^^ Closure.load_data 0l ^^
                 (* Store increased counter *)
                 get_i ^^
                 compile_add_const 1l ^^
@@ -1844,9 +2060,9 @@ module Array = struct
       ] @ element_instructions)
 
   let fake_object_idx_option env built_in_name =
-    let (set_i, get_i) = new_local env "array" in
-    set_i ^^
-    Closure.fixed_closure env (E.built_in env built_in_name) [ get_i ]
+    let (set_array, get_array) = new_local env "array" in
+    set_array ^^
+    Closure.fixed_closure env (E.built_in env built_in_name) [ get_array ]
 
   let fake_object_idx env = function
       | "get" -> Some (fake_object_idx_option env "array_get")
@@ -3676,8 +3892,7 @@ let rec compile_binop env t op =
          let (set_res, get_res) = new_local env "res" in
          let mul = snd (compile_binop env t MulOp) in
          let square_recurse_with_shifted sanitize =
-           get_n ^^ get_exp ^^ compile_unboxed_const 1l ^^
-           G.i (Binary (I32 I32Op.ShrU)) ^^ sanitize ^^
+           get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
          in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
             G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
@@ -3738,7 +3953,7 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 as ty),    RotLOp -> UnboxedSmallWord.(
      Func.share_code2 env (name_of_type ty "rotl") (("n", I32Type), ("by", I32Type)) [I32Type]
        Wasm.Values.(fun env get_n get_by ->
-      let beside_adjust = compile_unboxed_const (Int32.sub 32l (shift_of_type ty)) ^^ G.i (Binary (I32 I32Op.ShrU)) in
+      let beside_adjust = compile_shrU_const (Int32.sub 32l (shift_of_type ty)) in
       get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
       get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
       sanitize_word_result ty))
@@ -3823,16 +4038,17 @@ and compile_exp (env : E.t) exp =
   | DotE (e, ({it = Name n;_} as name)) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-    begin match Array.fake_object_idx env n with
-    | None -> Object.load_idx env e.note.note_typ name
-    | Some array_code ->
+    begin
+      let obj = Object.load_idx env e.note.note_typ name in
       let (set_o, get_o) = new_local env "o" in
-      set_o ^^
-      get_o ^^
-      Tagged.branch env (ValBlockType (Some I32Type)) (
-        [ Tagged.Object, get_o ^^ Object.load_idx env e.note.note_typ name
-        ; Tagged.Array, get_o ^^ array_code ]
-       )
+      let selective tag = function
+        | None -> [] | Some code -> [ tag, get_o ^^ code ]
+      in match selective Tagged.Array (Array.fake_object_idx env n)
+              @ selective Tagged.Text (Text.fake_object_idx env n) with
+         | [] -> obj
+         | l -> set_o ^^ get_o ^^
+                Tagged.branch env (ValBlockType (Some I32Type))
+                  ((Tagged.Object, get_o ^^ obj) :: l)
     end
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
@@ -3886,8 +4102,7 @@ and compile_exp (env : E.t) exp =
        | "Char->Word32" ->
          SR.UnboxedWord32,
          compile_exp_vanilla env e ^^
-         compile_unboxed_const 8l ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.ShrU))
+         UnboxedSmallWord.unbox_codepoint
 
        | "Word8->Nat" ->
          SR.UnboxedInt64,
@@ -3923,8 +4138,7 @@ and compile_exp (env : E.t) exp =
        | "Word32->Char" ->
          SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         compile_unboxed_const 8l ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+         UnboxedSmallWord.box_codepoint
 
        | "Int~hash" ->
          SR.UnboxedWord32,
@@ -3954,6 +4168,11 @@ and compile_exp (env : E.t) exp =
        | "ctz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
        | "ctz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
+       | "Char->Text" ->
+         SR.Vanilla,
+         compile_exp_vanilla env e ^^
+         Text.prim_showChar env
+
        | "printInt" ->
          SR.unit,
          compile_exp_vanilla env e ^^
@@ -3962,6 +4181,10 @@ and compile_exp (env : E.t) exp =
          SR.unit,
          compile_exp_vanilla env e ^^
          Dfinity.prim_print env
+       | "decodeUTF8" ->
+         SR.UnboxedTuple 2,
+         compile_exp_vanilla env e ^^
+         Text.prim_decodeUTF8 env
        | _ ->
         (* Now try the binary prims, expecting a manifest tuple argument *)
         begin match e.it with
@@ -4471,6 +4694,7 @@ and actor_lit outer_env this ds fs at =
     let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
+    Text.common_funcs env;
     Array.common_funcs env;
 
     (* Allocate static positions for exported functions *)
@@ -4607,6 +4831,7 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
   let env = E.mk_global mode prelude ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Text.common_funcs env;
   Array.common_funcs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
