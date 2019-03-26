@@ -5,11 +5,14 @@
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.filterSource (path: type:
+let sourceByRegex = src: regexes: builtins.path
+  { name = "actorscript";
+    path = src;
+    filter = path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
       let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null
-      || match relPath != null)) src; in
+      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
+  }; in
 
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -32,11 +35,10 @@ let real-dvm =
     then
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
-        rev = "0ce1f507cb3bb4fa8bba9223082a382fc9191f67";
-        ref = "master";
+        ref = "joachim/more-logging";
+        rev = "70d3b158611c96fe5e82b66d4a62c9d02bcd5345";
       }; in
-      # Pass devel = true until the dev test suite runs on MacOS again
-      (import dev { devel = true; }).dvm
+      (import dev {}).dvm
     else null
   else dvm; in
 
@@ -121,11 +123,13 @@ rec {
       asc --version
       make -C stdlib ASC=asc all
       make -C samples ASC=asc all
-      make -C test VERBOSE=1 ASC=asc quick
     '' +
-      (if test-dvm then ''
-      make --load-average -j8 -C test/run-dfinity VERBOSE=1 ASC=asc quick
-      '' else "");
+      (if test-dvm
+      then ''
+      make -C test ASC=asc parallel
+      '' else ''
+      make -C test ASC=asc quick
+      '');
 
     installPhase = ''
       mkdir -p $out

@@ -1,1 +1,2 @@
-W, hypervisor: call failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$98 failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$104 failed with trap message: Uncaught RuntimeError: unreachable
