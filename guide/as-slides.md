@@ -10,29 +10,31 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-# Motivation and Goals
+## Motivation / Goals
 
-* High-level language for programming Dfinity applications
-* Simple ("K.I.S.S.") design and familiar syntax for average programmers
-* Good and convenient support for actor model
-* Good fit for underlying Wasm and Dfinity execution model
-* Anticipate future extensions to Wasm where possible
-
----
-
-# Key Design Points
-
-* Simple class-based OO language, objects as closures
-* Classes can be actors
-* Async construct for direct-style programming of asynchronous messaging
-* Nominally and structurally typed with simple generics and subtyping
-* Overflow-checked number types, explicit conversions
-* JavaScript/TypeScript-style syntax but without the JavaScript madness
-* Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
+* High-level language for Dfinity dapps
+* Simple K.I.S.S. design / familiar syntax
+* Incorporating ~~actor~~ *canister* model
+* Good fit for Wasm / Dfinity execution 
+* Forward looking (anticipating Wasm v.*X*)
 
 ---
 
-# Left for Future Version
+### Key Design Points
+
+* simple class-based language, objects as closures
+* Classes can define actors
+* Async construct for sequential programming of asynchronous messaging
+* Structural typing
+* Simple generics and subtyping
+* Unbounded or checked arithmetic, explicit conversions
+* JavaScript/TypeScript-style syntax but (really) typed & sane
+
+Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
+
+---
+
+## Left for Future Version
 
 * Gas-related features?
 * Infinite-precision integers
@@ -48,25 +50,25 @@ A simple but useful language for writing Dfinity actors.
 ---
 
 
-# Overview
+## Overview
 
 ---
 
-# Types
+## Types
 
 ---
 
-# Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
+## Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
 
 *`Int`, `Nat` (trap on overflow)
 * `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
 * `Char`, `Text`
 * `Bool`, `Null`
-* (Future: `Float`)
+* (Future: determised `Float`)
 
 ---
 
-# Function types:
+## Function types:
 
 * first-class, multiple return values, can be generic
 
@@ -77,7 +79,8 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-#  Object types: structural record types, JS-like, fields can be mutable, can be marked as actor
+##  Object types: structural record types, JS-like, fields can be mutable, can be marked as actor
+
 * `{x : T; var y : U; z : V}`
 * `actor {f : T -> (); g : U -> async T}`
 
@@ -85,14 +88,14 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-#  Array types
+##  Array types
 
 * `[T]` (immutable, sharable)
 * `[var T]` (mutable, local)
 
 ---
 
-# Tuple types
+## Tuple types
 
 * heterogeneous aggregates of fixed size
 * immutable fields
@@ -101,44 +104,47 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-* Option types:
+## Option types
 
-* explict nullable types (~~default null~~)
+* explicit nullable types 
 * ML/Haskell-style option/maybe type
   - `? T`
 
-* other types do not include null by default!
+* other types _*do not include*_ null by default!
 
 ---
 
-* Async types: like futures/promises
-  - `async T`
 
-* Like types: structural expansions of nominal types
-  - `like T`
+## Async types
+
+* new type `async T`
+* asychronous future (a.k.a. *promises*)
+* a handle to future result of type `T`. 
+* expression `await <promise>` suspends computation until result.
 
 ---
 
-# Type System
+## Type System
 
 * Structural equi-recursive subtyping
 
-* Generics over all types, uniform representation
+* Generics over all types 
+  * uniform representation, not specialization
 
 ---
 
-# Sharability
+## Sharability
 
-*def.* *sharable* \~ stateless, transmittable
+*sharable* \~ stateless, serializable
 
-* AS distinguishes between sharable and non-sharable types
+* AS distinguishes sharable and non-sharable types
   - an object type is non-sharable if it has a mutable field or one of non-sharable type
   - an array is non-sharable if it is mutable or has non-sharable element type
   - a function is non-sharable if has a non-async result or a parameter or result of non-sharable type or closes over non-sharable locals (how indicate the latter in type?)
   - all other types are sharable
   - all public actor functions must be sharable
 
-# Expressions and Statements
+## Expressions and Statements
 
 * Identifiers
   - `x`, `foo_bar`
@@ -152,14 +158,14 @@ A simple but useful language for writing Dfinity actors.
   - `true`, `false`
   - `null`
 
-* Unary and binary arithmetic and logical operators
+* Unary & binary,  arithmetic & logical operators
   - `- x`, `not b` ...
   - `a + b` ...
   - `a & b` ...
 
 ---
 
-# Object, actor, and array literals, field/element access and update
+## Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
   - `actor {f() {}; private var x = 4; g() : async Int {return y}}`
 
@@ -172,10 +178,9 @@ A simple but useful language for writing Dfinity actors.
   - `o.x`
   - `a[i]`
   - `tuple.0`
-
 ---
 
-# Function calls, short-cut return
+## Function calls, short-cut return
 
 * `f(x, y)`
 * `f<T, U>(x, y)`
@@ -183,43 +188,45 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-# Blocks with local scope
+## Blocks with local scope
 
 * `{let x = h(); f(x); g(x)}`
 
-* Conditionals and switches
+## Conditionals and switches
   - `if b ...`
   - `if b ... else ...`
   - `switch x { case 1 ...; case 2 ...; case _ ...}`
 
-* While loops and iterations
+##  While, loops and iteration
   - `while (p()) ...`
   - `loop ...`
-  - `loop ... while (p())`a
+  - `loop ... while (p())`
   - `for x in f() ...`
 
-* Labels, nested break and continue
+## Labels, nested break and continue
   - `do l ...`
   - `break l`
   - `continue l`
 
-* Async and await
+## Async and await
   - `async {... await f() ...}`
 
-* Type annotation
+## Type annotation
   - `e : T`
 
-* ~~Instance check~~
+## ~~Instance check~~
   - ~~`x is T`~~
 
-* Assertions
+## Assertions
   - `assert (x > 0)`
-
-* Every statement is an expression
 
 ---
 
-# Declarations
+## Every statement is an expression
+
+---
+
+## Declarations
 
 * Immutable and mutable variables, with destructuring
   - `let x = f()`
@@ -230,7 +237,7 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-# (first-class) Functions (lambdas)
+## (first-class) Functions (lambdas)
 
 - `func f() ...`
 - `func g(x : T, y : U) ...`
@@ -239,27 +246,95 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-* (Recursive) Type aliases
-  - `type X = T`
-  - `type X<A, B> = U`
+## (Recursive) Type aliases
+
+ - abbreviations:
+  ```
+  type Post = shared Text -> ();
+  ```
+ 
+ - generic/recursion:
+   ```
+   type List<T> = ?{head : T; var tail : List<T>};
+   ```
+ 
+ - mutual recursion:
+   ```
+   type Exp = ... Stmt ... ;
+   type Stmt = ... Exp ...;
+   ```
+---
+
+
+## Classes
+
+Classes as records of members, with private state.
+
+```
+ class Counter(x : Int) { 
+	private state : Int = x;
+    inc() { x += 1; };
+	get():Int { x; };
+  }
+```
+Instantiation as function call:
+
+``` 
+let c = Counter(666);
+c.inc();
+let 667 = c.get();
+```
+## Generic Classes
+
+```
+class Dict< K, V > (ord: (K,K)-> Int ) { 
+  add(k: K, v: V) { ... };
+  find( k: K) : ? V { ... };
+};
+```
+
+```
+let d = Dict<Int,Text> (func(i:Int, j:Int ) = i - j);
+d.Add(1,"Alice");
+let ? name = d.Find(1);
+```
+
+## Actor Declarations
+
+
+```
+actor Server { 
+ private shared func post():(){...};
+ subscribe(c : Client): async Post { post; };
+};
+```
+
+```
+ let post = await Server.subscribe(this);
+ post("hello");
+ post("world");
+```
+
+## Actor Classes
+
+```
+actor class Client() { 
+  start(S : Server) {};
+  message(m : Text) { ...};
+};
+```
+
+```
+let Alice = Client(); // construction as function call
+Alice.start(Server); // async send as function call
+```
+
+
+## Sample App
 
 ---
 
-* Classes, can be annotated as actor, instantiation as function call
-  - `class C(x : T, y : U) {...}`
-  - `class D<A, B>(x : T) {...}`
-  - `actor class A() {...}`
-  - `C(4, 5)`
-
----
-
-* Every declaration is a statement (and thereby an expression)
-
-# Sample App
-
----
-
-# Implementing *Chat*
+## Implementing *Chat*
 
 * baby example
 * one server actor
@@ -267,11 +342,11 @@ A simple but useful language for writing Dfinity actors.
 
 ---
 
-# The server
+## The server
 
 
 ```
-type List<T> = ?{head : T; var tail : List<T>};
+
 
 actor class Server() = {
 
@@ -303,7 +378,7 @@ actor class Server() = {
 ---
 
 
-# Example: The client class
+## Example: The client class
 
 ```
 actor class Client() = this {
@@ -343,11 +418,11 @@ charlie.go("charlie", server);
 
 ---
 
-# Syntax
+## Syntax
 
 See [here](design/Syntax.md).
 
-# Semantics
+## Semantics
 
 * call-by-value (like Java,C,JS,ML unlike Haskell,Nix)
 * declarations are locally mutually recursive, provided no *use-before-define.*
@@ -355,12 +430,18 @@ See [here](design/Syntax.md).
 * subtyping as subsumption, not coercion.
 * no dynamic casts
 
-# Implementation(s)
+## Implementation(s)
 
 * implemented in Ocaml (to leverage `wasm` reference implementation)
-* interpreter (OCaml)
+* clean reference interpreter (OCaml)
 * compiler (wasm)
+  * multipass with typed IR in each pass.
+  * uniform representation, unboxed arithmetic
+  * two-space gc (for now), gc between messages
+  * relies on typing for performance
 * polymorphism by erasure
-* subtyping is free (the identity)
+* subtyping is the identity (i.e. free)
+
+## Documentation
 
 See [here](design/Implementation.md)

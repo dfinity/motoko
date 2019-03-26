@@ -44,3 +44,6 @@ actorscript-guide.pdf: ../design/guide.md
 	  --section-divs \
 	  $(TEX_OPTIONS) \
 	  $< -f gfm -o $@
+
+as-slides.html : as-slides.md
+	pandoc -t revealjs -s -o as-slides.html as-slides.md -V revealjs-url=https://revealjs.com
