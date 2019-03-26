@@ -1449,17 +1449,6 @@ module UnboxedSmallWord = struct
              set_res ^^
              compile_unboxed_const 4l)))
 
-  (* The top of the stack is a pointer to the payload of a Text.
-     Then char_length_of_UTF8 decodes the first character of the string and puts
-     - the length (in bytes) of the UTF-8 encoding of the first character and
-     - its assembled code point (boxed)
-     onto the stack. *)
-  let char_length_of_UTF8 env =
-    let (set_res, get_res) = new_local env "res" in
-    len_UTF8_head env set_res ^^
-    BoxedSmallWord.box env ^^
-    get_res ^^ box_codepoint
-
 end (* UnboxedSmallWord *)
 
 (* Primitive functions *)
@@ -1855,10 +1844,13 @@ module Text = struct
   )
 
   let prim_decodeUTF8 env =
-    Func.share_code1 env "decodeUTF8" ("string", I32Type) [I32Type;
-                                                           I32Type] (fun env get_string ->
+    Func.share_code1 env "decodeUTF8" ("string", I32Type)
+      [I32Type; I32Type] (fun env get_string ->
+        let (set_res, get_res) = new_local env "res" in
         get_string ^^ payload_ptr_unskewed ^^
-        UnboxedSmallWord.char_length_of_UTF8 env
+        UnboxedSmallWord.len_UTF8_head env set_res ^^
+        BoxedSmallWord.box env ^^
+        get_res ^^ UnboxedSmallWord.box_codepoint
       )
 
   let text_chars env =
@@ -1878,7 +1870,6 @@ module Text = struct
         let get_text_object = Closure.get ^^ Closure.load_data 0l in
         let (set_max, get_max) = new_local env "max" in
         let (set_n, get_n) = new_local env "n" in
-        let (set_char, get_char) = new_local env "char" in
         let (set_len, get_len) = new_local env "len" in
         compile_unboxed_zero ^^ set_n ^^
         compile_unboxed_zero ^^ set_len ^^
@@ -1888,7 +1879,7 @@ module Text = struct
           begin
             get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            UnboxedSmallWord.len_UTF8_head env set_char ^^
+            UnboxedSmallWord.len_UTF8_head env (G.i Drop) ^^
             get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
             get_len ^^ compile_add_const 1l ^^ set_len
           end ^^
