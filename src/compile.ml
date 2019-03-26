@@ -1415,9 +1415,10 @@ module UnboxedSmallWord = struct
     let (set_ptr, get_ptr) = new_local env "ptr" in
     let (set_c, get_c) = new_local env "utf-8" in
     let (set_byte, get_byte) = new_local env "byte" in
-    let under thres =
+    let if_under thres mk_then mk_else =
       get_c ^^ set_byte ^^
-      get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
+      get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      G.if_ (ValBlockType (Some I32Type)) mk_then mk_else in
     let or_follower offset =
       compile_shl_const 6l ^^
       compile_load_byte get_ptr offset ^^
@@ -1425,18 +1426,16 @@ module UnboxedSmallWord = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Or)) in
     set_ptr ^^
     compile_load_byte get_ptr 0l ^^ set_c ^^
-    under 0x80l ^^
-    G.if_ (ValBlockType (Some I32Type))
-      ( get_byte ^^ set_res ^^
-        compile_unboxed_one)
-      (under 0xe0l ^^
-       G.if_ (ValBlockType (Some I32Type))
+    if_under 0x80l
+      ( get_byte ^^
+        set_res ^^
+        compile_unboxed_const 1l)
+      (if_under 0xe0l
          (get_byte ^^ compile_bitand_const 0b00011111l ^^
           or_follower 1l ^^
           set_res ^^
           compile_unboxed_const 2l)
-         (under 0xf0l ^^
-          G.if_ (ValBlockType (Some I32Type))
+         (if_under 0xf0l
             (get_byte ^^ compile_bitand_const 0b00001111l ^^
              or_follower 1l ^^
              or_follower 2l ^^
