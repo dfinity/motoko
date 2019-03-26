@@ -1261,7 +1261,10 @@ module BoxedInt = struct
         ( get_n ^^ Heap.load_field64 payload_field)
     )
 
-  let lit env n = compile_const_64 n ^^ box env
+  let box32 env =
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ box env
+
+  let _lit env n = compile_const_64 n ^^ box env
 
 end (* BoxedInt *)
 
@@ -2020,71 +2023,20 @@ module Array = struct
             BoxedInt.box env1
       ));
 
-    let mk_next_fun mk_code : E.func_with_names = Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
-            let (set_boxed_i, get_boxed_i) = new_local env1 "boxed_n" in
-            let (set_i, get_i) = new_local env1 "n" in
-            (* Get pointer to counter from closure *)
-            Closure.get ^^ Closure.load_data 0l ^^
-            (* Get current counter (boxed) *)
-            Var.load ^^
-            set_boxed_i ^^
+    Iterators.define env "array_keys"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+        compile_unboxed_const 1l ^^ (* advance by one *)
+        get_i ^^ BoxedInt.box32 env (* Return the boxed index *)
+      );
 
-            (* Get current counter (unboxed) *)
-            get_boxed_i ^^
-            BoxedInt.unbox env1 ^^
-            G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-            set_i ^^
+    Iterators.define env "array_vals"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+        compile_unboxed_const 1l ^^ (* advance by one *)
+        get_x ^^ get_i ^^ idx env ^^ load_ptr (* Return the element *)
+      )
 
-            get_i ^^
-            (* Get length *)
-            Closure.get ^^ Closure.load_data 1l ^^ Heap.load_field len_field ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-            G.if_ (ValBlockType (Some I32Type))
-              (* Then *)
-              Opt.null
-              (* Else *)
-              ( Closure.get ^^ Closure.load_data 0l ^^
-                (* Store increased counter *)
-                get_i ^^
-                compile_add_const 1l ^^
-                G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-                BoxedInt.box env1 ^^
-                Var.store ^^
-                (* Return stuff *)
-                Opt.inject env1 (
-                  mk_code env (Closure.get ^^ Closure.load_data 1l) get_boxed_i get_i
-                )
-              )
-       ) in
-    let mk_iterator next_funid = Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
-            (* next function *)
-            let (set_ni, get_ni) = new_local env1 "next" in
-            Closure.fixed_closure env1 next_funid
-              [ Tagged.obj env1 Tagged.MutBox [ BoxedInt.lit env1 0L ]
-              ; get_array_object
-              ] ^^
-            set_ni ^^
-
-            Object.lit_raw env1
-              [ nr_ (Name "next"), fun _ -> get_ni ]
-       ) in
-
-    E.define_built_in env "array_keys_next"
-      (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
-              get_boxed_i
-       ));
-    E.define_built_in env "array_keys"
-      (fun () -> mk_iterator (E.built_in env "array_keys_next"));
-
-    E.define_built_in env "array_vals_next"
-      (fun () -> mk_next_fun (fun env1 get_array get_boxed_i get_i ->
-              get_array ^^
-              get_i ^^
-              idx env1 ^^
-              load_ptr
-      ));
-    E.define_built_in env "array_vals"
-      (fun () -> mk_iterator (E.built_in env "array_vals_next"))
 
   (* Compile an array literal. *)
   let lit env element_instructions =
