@@ -190,8 +190,13 @@ char := '\'' character '\''
 ```
 
 
-## Strings
+## Text
 
+A text literal is `"`-delimited sequence of characters:
+
+```
+text ::= '"' character* '"'
+```
 
 ## Operators
 
@@ -916,8 +921,8 @@ _TBR: do we want this semantics? We could, instead, skip values that don't match
 ## Label
 
 The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
-* (: <typ>)? is absent and `T` is unit; or (: <typ>)? is present and `T == <typ>`;
-* <exp> has type `T` in the static environment extended with `label l : T`.
+* `(: <typ>)?` is absent and `T` is unit; or `(: <typ>)?` is present and `T == <typ>`;
+* `<exp>` has type `T` in the static environment extended with `label l : T`.
 
 The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating `<exp>`.
 
@@ -930,7 +935,8 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
 the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
 
-`<id_continue>` is fresh identifer that can only be referenced by `continue <id>`.
+`<id_continue>` is fresh identifer that can only be referenced by `continue <id>`
+(through its implicit expansion to `break <id_continue>`).
 
 ## Break
 
@@ -952,7 +958,7 @@ The expression `continue <id>` is equivalent to `break <id_continue>`, where
 
 ## Return
 
-`return`; is equivalent to `return ();`
+The expression `return` is equivalent to `return ()`.
 
 The expression `return <exp>` has type `None` provided:
 * `<exp>` has type `T` and
@@ -991,7 +997,7 @@ _WARNING:_ between suspension and resumption of a computation, the state of the 
 
 ### Assert
 
-The assert expression "assert <exp>" has type `()` provided `exp` has type `Bool`.
+The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
 
 `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is
 * the value `()`, when `v` is `true`; or
@@ -1003,7 +1009,7 @@ The type annotation expression `<exp> : <typ>` has type `T` provided:
 * `<typ>` is `T`, and 
 * `<exp>` has type `T`.
 
-Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constraint the inferred type, `U` of `<exp>` to a less-informative super-type `T` provided `U <: T`.
+Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constrain the inferred type, `U` of `<exp>` to a less-informative super-type `T` provided `U <: T`.
 
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`. 
 
@@ -1270,7 +1276,7 @@ conservative static analysis not described here.
 
 ```
 
-A program `<prog>` is sequence of declarations `<dec>;*` that ends with an optional actor declaration. The actor declaration determines the main actor, if any, of the program.
+A program `<prog>` is a sequence of declarations `<dec>;*` that ends with an optional actor declaration. The actor declaration determines the main actor, if any, of the program.
 
 All type and value declarations within `<prog>` are mutually-recursive.
 
