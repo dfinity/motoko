@@ -920,29 +920,24 @@ module Tagged = struct
     set_tag ^^
     go cases
 
-  let branch env retty (cases : (tag * G.t) list) : G.t =
-    branch_default env retty (G.i Unreachable) cases
-
-  (* like branch but the tag is known statically *)
-  let _branchKnown env retty = function
-    | [] -> failwith "branchKnown"
+  (* like branch_default but the tag is known statically *)
+  let branch env retty = function
+    | [] -> failwith "branch"
     | [_, code] -> G.i Drop ^^ code
-    | ((_,code)::cases) -> branch_default env retty code cases
+    | (_,code)::cases -> branch_default env retty code cases
 
-  (* like branch but also pushes the scrutinee on the stack for the
+  (* like branch_default but also pushes the scrutinee on the stack for the
    * branch's consumption *)
-  let _branchWith env retty = function
-    | [] -> G.i Unreachable
-    | cases ->
-       let (set_o, get_o) = new_local env "o" in
-       let prep (t, code) = (t, get_o ^^ code)
-       in set_o ^^ get_o ^^ branch env retty (List.map prep cases)
+  let _branch_default_with env retty def cases =
+    let (set_o, get_o) = new_local env "o" in
+    let prep (t, code) = (t, get_o ^^ code)
+    in set_o ^^ get_o ^^ branch_default env retty def (List.map prep cases)
 
-  (* like branchWith but the tag is known statically *)
-  let branchWithKnown env retty = function
-    | [] -> failwith "branchWithKnown"
+  (* like branch_default_with but the tag is known statically *)
+  let branch_with env retty = function
+    | [] -> failwith "branch_with"
     | [_, code] -> code
-    | ((_,code)::cases) ->
+    | (_,code)::cases ->
        let (set_o, get_o) = new_local env "o" in
        let prep (t, code) = (t, get_o ^^ code)
        in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
@@ -4065,7 +4060,7 @@ and compile_exp (env : E.t) exp =
     begin
       let selective tag = function
         | None -> [] | Some code -> [ tag, code ]
-      in Tagged.branchWithKnown env (ValBlockType (Some I32Type))
+      in Tagged.branch_with env (ValBlockType (Some I32Type))
            (List.concat [ [Tagged.Object, Object.load_idx env e.note.note_typ name]
                         ; selective Tagged.Array (Array.fake_object_idx env n)
                         ; selective Tagged.Text (Text.fake_object_idx env n)])
