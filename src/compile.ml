@@ -1408,7 +1408,7 @@ module UnboxedSmallWord = struct
 
   (* Examines the byte pointed to the address on the stack
    * and following bytes,
-   * building an unboxed Unicode code point in location get_res,
+   * building an unboxed Unicode code point, and passing it to set_res.
    * and finally returning the number of bytes consumed on the stack.
    *)
   let len_UTF8_head env set_res =
