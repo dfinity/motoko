@@ -2000,48 +2000,48 @@ module Array = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
-  let common_funcs env =
-    let get_array_object = Closure.get ^^ Closure.load_data 0l in
-    let get_first_arg = G.i (LocalGet (nr 1l)) in
-    let get_second_arg = G.i (LocalGet (nr 2l)) in
+  let partial_get env =
+    Func.share_code1 env "array_get_partial" ("x", I32Type) [I32Type] (fun env get_x ->
+      let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
+        let get_idx = G.i (LocalGet (nr 1l)) in
+        Closure.get ^^ Closure.load_data 0l ^^
+        get_idx ^^ BoxedInt.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        idx env ^^
+        load_ptr
+      )) in
+      Closure.fixed_closure env funid [ get_x ]
+    )
 
-    E.define_built_in env "array_get"
-      (fun () -> Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
-            get_array_object ^^
-            get_first_arg ^^ (* the index *)
-            BoxedInt.unbox env1 ^^
-            G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-            idx env ^^
-            load_ptr
-       ));
-    E.define_built_in env "array_set"
-      (fun () -> Func.of_body env ["clos", I32Type; "idx", I32Type; "val", I32Type] [] (fun env1 ->
-            get_array_object ^^
-            get_first_arg ^^ (* the index *)
-            BoxedInt.unbox env1 ^^
-            G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-            idx env ^^
-            get_second_arg ^^ (* the value *)
-            store_ptr
-       ));
-    E.define_built_in env "array_len"
-      (fun () -> Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
-            get_array_object ^^
-            Heap.load_field len_field ^^
-            G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            BoxedInt.box env1
-      ))
+  let partial_set env =
+    Func.share_code1 env "array_set_partial" ("x", I32Type) [I32Type] (fun env get_x ->
+      let funid = E.add_fun env "array_set" (Func.of_body env ["clos", I32Type; "idx", I32Type; "val", I32Type] [] (fun env1 ->
+        let get_idx = G.i (LocalGet (nr 1l)) in
+        let get_val = G.i (LocalGet (nr 2l)) in
+        Closure.get ^^ Closure.load_data 0l ^^
+        get_idx ^^ BoxedInt.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        idx env ^^
+        get_val ^^
+        store_ptr
+      )) in
+      Closure.fixed_closure env funid [ get_x ]
+    )
+
+  let partial_len env =
+    Func.share_code1 env "array_len_partial" ("x", I32Type) [I32Type] (fun env get_x ->
+      let funid = E.add_fun env "array_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
+        Closure.get ^^ Closure.load_data 0l ^^
+        Heap.load_field len_field ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        BoxedInt.box env1
+      )) in
+      Closure.fixed_closure env funid [ get_x ]
+    )
 
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tagged.obj env Tagged.Array
      ([ compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
       ] @ element_instructions)
-
-  let fake_object_idx_option env built_in_name =
-    let (set_array, get_array) = new_local env "array" in
-    set_array ^^
-    Closure.fixed_closure env (E.built_in env built_in_name) [ get_array ]
 
   let keys_iter env =
     Iterators.create env "array_keys"
@@ -2060,9 +2060,9 @@ module Array = struct
       )
 
   let fake_object_idx env = function
-      | "get" -> Some (fake_object_idx_option env "array_get")
-      | "set" -> Some (fake_object_idx_option env "array_set")
-      | "len" -> Some (fake_object_idx_option env "array_len")
+      | "get" -> Some (partial_get env)
+      | "set" -> Some (partial_set env)
+      | "len" -> Some (partial_len env)
       | "keys" -> Some (keys_iter env)
       | "vals" -> Some (vals_iter env)
       | _ -> None
@@ -4690,7 +4690,6 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     Text.common_funcs env;
-    Array.common_funcs env;
 
     (* Allocate static positions for exported functions *)
     let located_ids = allocate_actor_fields env fs in
@@ -4827,7 +4826,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   Text.common_funcs env;
-  Array.common_funcs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
