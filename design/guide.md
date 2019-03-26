@@ -44,7 +44,7 @@ ActorScript provides:
 
 * A simple ("K.I.S.S.") design and familiar syntax for average programmers
 
-* Good and convenient support for the actor model embodied in Dfinity conisters
+* Good and convenient support for the actor model embodied in Dfinity canisters
 
 * A good fit for underlying Wasm and Dfinity execution model
 
@@ -88,11 +88,11 @@ The key language features of ActorScript are:
   * An actor's messages are processed in sequence, so state modifications are
      always data-race free.
 
-* Message passing is asynchronous (to hide network lacency).
+* Message passing is asynchronous (to hide network latency).
 
 * A familiar `async`/`await` constructs enables sequential programming with asynchronous messaging.
 
-Like most programming lanuages, ActorScript borrows features from others and
+Like most programming languages, ActorScript borrows features from others and
 draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
 
 # ActorScript Syntax (Sketch)
@@ -107,13 +107,13 @@ Space, newline, horizontal tab, carriage return, line feed and form feed (TBR) a
 but used to separate adjacent keywords, identifiers and operators.
 
 
-In the definiton of some lexemes, we use the symbol `␣` to denote a single whitespace character.
+In the definition of some lexemes, we use the symbol `␣` to denote a single whitespace character.
 
 ## Comments
 
 Single line comments are all characters following `//` until the end of the same line.
 
-Single or multi-line comments are any sequence of characters delimited by `/*` and  `*/`. 
+Single or multi-line comments are any sequence of characters delimited by `/*` and  `*/`.
 
 Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
@@ -183,7 +183,7 @@ character ::=
   | [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
   | '\\'escape
-  | '\\'hexdigit hexdigit 
+  | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
 
 char := '\'' character '\''
@@ -204,7 +204,7 @@ text ::= '"' character* '"'
 
 |      |          |
 |------|----------|
-| `_`  |  numeric negation |    
+| `_`  |  numeric negation |
 | `+`  |  numeric identify |
 | `^`  |  logical negation |
 
@@ -212,29 +212,29 @@ text ::= '"' character* '"'
 
 |      |          |
 |------|----------|
-| `␣<␣`  |  less than *(must be enclosed in whitespace)* |    
+| `␣<␣`  |  less than *(must be enclosed in whitespace)* |
 | `␣>␣`  |  greater than *(must be enclosed in whitespace)* |
-|  `==` | equals | 
-|  `!=` | not equals | 
-|  `<=` | less than or equal | 
+|  `==` | equals |
+|  `!=` | not equals |
+|  `<=` | less than or equal |
 |  `>=` | greater than or equal |
 
 ### Numeric Binary Operators
 
 |      |          |
 |------|----------|
-|  `+` | addition | 
-|  `-` | subtraction | 
-|  `*` | multliplication | 
-|  `/` | division | 
-|  `%` | modulo | 
-|  `**` | exponentiation | 
-|  `&` | logical and | 
-|  `|` | logical or | 
-|  `^` | exclusive or | 
-|  `<<` | shift left | 
-|  `␣>>` | shift right *(must be preceeded by whitespace)* |
-|  `<<>` | rotate left | 
+|  `+` | addition |
+|  `-` | subtraction |
+|  `*` | multiplication |
+|  `/` | division |
+|  `%` | modulo |
+|  `**` | exponentiation |
+|  `&` | logical and |
+|  `|` | logical or |
+|  `^` | exclusive or |
+|  `<<` | shift left |
+|  `␣>>` | shift right *(must be preceded by whitespace)* |
+|  `<<>` | rotate left |
 |  `<>>` | rotate right |
 
 ### String Operators
@@ -243,39 +243,39 @@ text ::= '"' character* '"'
 |------|----------|
 |  `#` | concatenation |
 
-### Assigment Operators
+### Assignment Operators
 
 |      |          |
 |------|----------|
-|  `:=` | assignment (in place update) | 
-|  `+=` | in place add | 
-|  `-=` | in place subtract | 
-|  `*=` | in place multiply | 
-|  `/=` | in place divide | 
-|  `%=` | in place modulo | 
-|  `**=` | in place exponentiation | 
-|  `&=` | in place logical and | 
-|  `|=` | in place logical or | 
-|  `^=` | in place exclusive or | 
-|  `<<=` | in place shift left | 
-|  `>>=` | in place shift right | 
-|  `<<>=` |  in place rotate left | 
-|  `<>>=` |  in place rotate right | 
+|  `:=` | assignment (in place update) |
+|  `+=` | in place add |
+|  `-=` | in place subtract |
+|  `*=` | in place multiply |
+|  `/=` | in place divide |
+|  `%=` | in place modulo |
+|  `**=` | in place exponentiation |
+|  `&=` | in place logical and |
+|  `|=` | in place logical or |
+|  `^=` | in place exclusive or |
+|  `<<=` | in place shift left |
+|  `>>=` | in place shift right |
+|  `<<>=` |  in place rotate left |
+|  `<>>=` |  in place rotate right |
 |  `#=` | in place concatenation |
 
 ## Operator and Keyword Precedence
 
-The following table defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity. 
+The following table defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
 Precedence | Associativity | Token |
 |---|------------|--------|
 LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
-|| none | `else`, `while` 
+|| none | `else`, `while`
 || right | `:= `, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
 || left | `:`
 || left | `or`
 || left | `and`
-|| none | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=` 
+|| none | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`
 || left | `+`, `-`, `#`
 || left | `*`, `/`, `%`
 || left | `|`
@@ -287,7 +287,7 @@ HIGHEST | left | `**`
 
 # Types
 
-Type expressions are used to specify the types of arguments, constraints (a.k.a bounds) on type parameters, definitions of type constructors, and the types of subexpressions in type annotations.
+Type expressions are used to specify the types of arguments, constraints (a.k.a bounds) on type parameters, definitions of type constructors, and the types of sub-expressions in type annotations.
 
 ```
 <typ> ::=                                     type expressions
@@ -351,7 +351,7 @@ Comparison TODO.
 ### Word types
 
 The types `Word8`, `Word16`, `Word32` and `Word64` represent
-fixed-width bit patterns of length *n* (8, 16, 32 and 64). Semanically word
+fixed-width bit patterns of length *n* (8, 16, 32 and 64). Semantically, word
 types are also arithmetic types implementing numeric wrap-around
 (modulo *2^n*).
 Additionally bitwise operations are available, logical *and* `(&)`,
@@ -369,24 +369,24 @@ round-trip property holds modulo *2^n*. The former choose the
 two's-complement representation for negative integers.
 
 Word types are not in subtype relationship with each other or with
-other arithmetic types, and their literals need type annotation, e.g. 
+other arithmetic types, and their literals need type annotation, e.g.
 `(-42 : Word16)`. For negative literals the two's-complement
 representation is applied.
 
 ## Constructed types
 
- `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. `Int`) or user defined, to zero or more type *arguments*. 
+ `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. `Int`) or user defined, to zero or more type *arguments*.
  The type arguments must satisfy the bounds, if any, expected by the type constructor's type parameters (see below).
 
 ## Object types
 
-`(shared|actor)? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*. 
+`(shared|actor)? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
 
 Within an object type, the names of fields must be distinct.
 
 Object types that differ only in the ordering of the fields are equivalent.
 
-The optional qualifier `shared` constrains the object's field to have *sharable* type. 
+The optional qualifier `shared` constrains the object's field to have *sharable* type.
 
 Messages (see below) always requires arguments of *sharable* (think *serializable*) type.
 
@@ -395,13 +395,13 @@ The optional qualifier `actor` constrains the object's fields to be *shared* fun
 
 ## Array types
 
-`[ var? <typ> ]` specifies the type of arrays with elements of type `<typ>`. 
+`[ var? <typ> ]` specifies the type of arrays with elements of type `<typ>`.
 
-Arrays are immutable unless specified with qualifier `var`. 
+Arrays are immutable unless specified with qualifier `var`.
 
 ## Null type
 
-The `Null` type has a single value, the literal `null`. `Null` is a subtype of the option `? T`, for any type `T`. 
+The `Null` type has a single value, the literal `null`. `Null` is a subtype of the option `? T`, for any type `T`.
 
 ## Option types
 
@@ -419,7 +419,7 @@ The optional `shared` qualifier specifies whether the function value is shared, 
 
 ## Async types
 
-`async <typ>` specifes a promise producing a value of a type `<typ>`. 
+`async <typ>` specifies a promise producing a value of a type `<typ>`.
 
 Promise types typically appear as the result type of a `shared` function that produces an `await`-able value.
 
@@ -427,7 +427,7 @@ Promise types typically appear as the result type of a `shared` function that pr
 
 `( ((<id> :)? <typ>),* )` specifies the type of a tuple with zero or more ordered components.
 
-The optional identifer `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
+The optional identifier `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
 
 ## Any type
 
@@ -435,17 +435,17 @@ Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in
 
 ## None type
 
-Type `None` is the *bottom* type, a subtype of all other types. 
-No value has type `None`. 
+Type `None` is the *bottom* type, a subtype of all other types.
+No value has type `None`.
 
-As an empty type, `None` can be used to specify the (non-existant) return value of an infinite loop or trap.
+As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
 
 ## Shared type
 
 Type `Shared`  is the super-type of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
 
 
-## Parenthesized type
+## Parenthesised type
 
 A function that takes an immediate, syntactic tuple of length *n >= 0* as its domain or range is a function that takes (respectively returns) *n* values.
 
@@ -470,30 +470,30 @@ A type field specifies the name and types of fields of an object.
 
 ### Sugar
 
-When enclosed by an `actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of `shared` function type 
+When enclosed by an `actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of `shared` function type
 `shared <typ-params>? <typ1> -> <typ2>`.
 
-When enlosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of ordinary function type `<typ-params>? <typ1> -> <typ2>`.
+When enclosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>` is syntactic sugar for an immutable field name `<id>` of ordinary function type `<typ-params>? <typ1> -> <typ2>`.
 
 
 ## Type parameters
 
 ```
 <typ-params> ::=                              type parameters
-  < typ-param,* >                         
+  < typ-param,* >
 <typ-param>
   <id> <: <typ>                               constrained type parameter
   <id>                                        unconstrained type parameter
 ```
 
-A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters. 
+A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
 
-`<id> <: <typ>` declares a type parameter with constraint `<typ>`. 
+`<id> <: <typ>` declares a type parameter with constraint `<typ>`.
 Any instantiation of `<id>` must subtype `<typ>` (at that same instantiation).
 
 Syntactic sugar `<id>` declares a type parameter with implicit, trivial constraint `Any`.
 
-The names of type parameters in a vector must be distinct. 
+The names of type parameters in a vector must be distinct.
 
 All type parameters declared in a vector are in scope within its bounds.
 
@@ -504,24 +504,24 @@ All type parameters declared in a vector are in scope within its bounds.
   < <typ>,* >
 ```
 
-Type constructors and functions may take type arguments. 
+Type constructors and functions may take type arguments.
 
 The number of type arguments must agree with the number of declared type parameters of the function.
 
-Given a vector of type arguments instantiating a vector of type parameters, 
-each type argument must satisfy the instantiated bounds of the corresponding 
+Given a vector of type arguments instantiating a vector of type parameters,
+each type argument must satisfy the instantiated bounds of the corresponding
 type parameter.
 
 
-## Wellformed types
+## Well-formed types
 
-A type `T` is well-formed only if (recursively) its constituent types are well-formed,and: 
+A type `T` is well-formed only if (recursively) its constituent types are well-formed,and:
 * if `T` is `async U` then `U <: Shared`, and
 * if `T` is `shared < ... > V -> W` then `...` is empty, `U <: Shared` and
   `W == ()` or `W == async W`, and
 * if `T` is `C<T0, ..., TN>` where:
    * a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
-   * `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 <= i <= n`. 
+   * `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 <= i <= n`.
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
 * if `T` is `shared { ... }` then all fields in `...` are immutable and have a type that subtypes `Shared`.
 
@@ -531,7 +531,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * `T` equals `U` (reflexivity).
 
-* `U` equals `Any`. 
+* `U` equals `Any`.
 
 * `T` equals `None`.
 
@@ -539,37 +539,37 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 *  `T`is `Nat` and `U` is `Int`.
 
-*  `T` is a tuple `(T0, ..., Tn)`, `U` is a tuple `(U0, ..., Un)`, 
+*  `T` is a tuple `(T0, ..., Tn)`, `U` is a tuple `(U0, ..., Un)`,
     and for each `0 <= i <= n`, `Ti <: Ui`.
 
-*  `T` is an immutable array type `[ V ]`, `U` is an immutable array type  `[ W ]` 
+*  `T` is an immutable array type `[ V ]`, `U` is an immutable array type  `[ W ]`
     and `V <: W`.
 
-*  `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]` 
+*  `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]`
     and `V == W`.
 
 *  `T` is `Null` and `U` is the an option type `? W`.
 
 *  `T` is `? V`, `U` is `? W` and `V <: W`.
 
-*  `T` is a promise `async V`, `U` is a promise `async W`, 
+*  `T` is a promise `async V`, `U` is a promise `async W`,
     and `V <: W`.
 
-*  `T` is an object type `sort0 { fts0 }`, 
+*  `T` is an object type `sort0 { fts0 }`,
    `U` is an object type `sort1 { fts1 }` and
    * `sort1` == `sort2`, and, for all fields,
-   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and 
+   * if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and
    * if mutable field `var id : V` is in `fts0` then  `var id : W` is in `fts1` and `V == W`.
 
    (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
 
-*  `T` is a function type `shared? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, 
+*  `T` is a function type `shared? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`,
    `U` is a function type `shared? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
    * `T` and `U` are either both `shared` or both non-`shared`,
    *  for all `i`, `Vi <: Wi`,
    * `U1 <: T1` and
    * `T2 <: U2`.
-  
+
     (That is, function type `T` is a subtype of function type `U` if they have same sort, they have the same type parameters, every bound in `U` super-types the same parameter bound in `T`, the domain of `U` suptypes the domain of `T` (contra-variance) and the range of `T` subtypes the range of `U`).
 
 * `T` (respectively `U`) is a constructed type `C<V0,...VN>` that is equal, by definition of type constructor `C`,  to `W`, and `W <: U` (respectively `U <: W`).
@@ -585,7 +585,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   * an immutable array type `[V]` with `V <: Shared`, or
   * the type `Null`, or
   * an option type `? V` with `V <: Shared`, or
-  * a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti <: Shared`. 
+  * a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti <: Shared`.
 
 # Literals
 
@@ -627,7 +627,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   label <id> (: <typ>)? <exp>                    label
   break <id> <exp>?                              break
   continue <id>                                  continue
-  return <exp>?                                  return 
+  return <exp>?                                  return
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
   assert <exp>                                   assertion
@@ -660,10 +660,10 @@ The binary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a res
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns 
+Otherwise, `r1`  and `r2` are values `v1` and `v2` and the expression returns
 the result of `v1 <binop> v2`.
 
-## Tuples 
+## Tuples
 
 
 Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
@@ -671,7 +671,7 @@ Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provide
 
 The tuple expression `(<exp1>, ..., <expn>)` evaluates the expressions `exp1` ... `expn` in order, trapping as soon as some expression <expi> traps. If no evaluation traps and `exp1`, ..., `<expn>` evaluate to values `v1`,...,`vn` then the tuple expression returns the tuple value `(v1, ... , vn)`.
 
-The tuple projection `<exp> . <nat>` has type `Ti` provided <exp> has tuple type 
+The tuple projection `<exp> . <nat>` has type `Ti` provided <exp> has tuple type
 `(T1, ..., Ti, ..., Tn)`, `<nat>` == `i` and `1 <= i <= n`.
 
 The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`, then  the result is `trap`. Otherwise, `r` must be a tuple  `(v1,...,vi,...,vn)` and the result of the projection is the value `vi`.
@@ -685,23 +685,23 @@ The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `nu
 ## Object projection (Member access)
 
 
-The object projection `<exp> . <id>` has type `var? T` provided <exp> has object type 
-`sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`. 
+The object projection `<exp> . <id>` has type `var? T` provided <exp> has object type
+`sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an o 
+The object projection `<exp> . <id>` evaluates `exp` to a result `r`. If `r` is `trap`,then the result is `trap`. Otherwise, `r` must be an o
 bject value  ` { <id1> = v1,..., id = v, ..., <idn> = vn }` and the result of the projection is the value `v` of field `id`.
 
 
 If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
 * if the projection occurs as the target an assignment statement;
-  `v` is the mutable location of the field `<id>`. 
-* otherwise, 
+  `v` is the mutable location of the field `<id>`.
+* otherwise,
   `v` (of type `T`) is the value currently stored in mutable field `<id>`.
 
 
 ## Assignment
 
-The assigment `<exp1> := <exp2>` has type `()` provided:
+The assignment `<exp1> := <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`.
 
@@ -713,14 +713,14 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 
 ## Unary Compound Assignment
 
-The unary compound assigment `<exp1> <unop>= <exp2>` has type `()` provided:
+The unary compound assignment `<exp1> <unop>= <exp2>` has type `()` provided:
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
 * <unop> is one of `+` (identity), `-` (negation) or  `^` (xor),
 * <unop> is defined for type `(T,T) -> T`.
 
 For unary operator `<unop>` in `+` (identity), `-` (negation) or  `^` (xor), the unary compound assignment
-`<unop>= <exp>`  evaluates <exp> to a result `r`. If `r` is 'trap' the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to 
+`<unop>= <exp>`  evaluates <exp> to a result `r`. If `r` is 'trap' the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to
 contain the value `<unop> v`.
 
 ## Binary Compound Assignment
@@ -736,7 +736,7 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple `()`.
 
-## Arrays 
+## Arrays
 
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
 each expression `<exp>` in the sequence `<exp,>*` has type T.
@@ -745,7 +745,7 @@ each expression `<exp>` in the sequence `<exp,>*` has type T.
 
 The array indexing expression `<exp1> [ <exp2> ]` has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
 
-The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`. 
+The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
@@ -757,9 +757,9 @@ If `var` is absent from `var? T` then the value `v` is the constant value `vi`.
 
 Otherwise,
 * if the projection occurs as the target an assignment statement
-  then `v` is the `i`-th location in the array;
-* otherwise, 
-  `v` is `vi`, the value currently stored in the `i`-th location of the array.
+  then `v` is the `i`th location in the array;
+* otherwise,
+  `v` is `vi`, the value currently stored in the `i`th location of the array.
 
 ## Function Calls
 
@@ -770,7 +770,7 @@ The function call expression `<exp1> <T0,...,Tn>? <exp2>` has type `T` provided
 * the argument `<exp2>` has type `[T0/X0, ..., Tn/Xn]U1`, and
 * `T == [T0/X0, ..., Tn/Xn]U2`.
 
-The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`. 
+The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
@@ -778,9 +778,9 @@ Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat 
 
 ## Functions
 
-The function expression `shared? func < X0 <: T1, ..., Xn <: Tn > <pat> (: T2)? =?  <exp>` has type `shared? < X0 <: T0, ..., Xn <: Tn > T1-> T2` if, under the 
+The function expression `shared? func < X0 <: T1, ..., Xn <: Tn > <pat> (: T2)? =?  <exp>` has type `shared? < X0 <: T0, ..., Xn <: Tn > T1-> T2` if, under the
 assumption that `X0 <: T1, ..., Xn <: Tn`:
-* all the types in `T1, ..., Tn` and `T` are well-formed and well-constrained. 
+* all the types in `T1, ..., Tn` and `T` are well-formed and well-constrained.
 * pattern `pat` has type `T1`;
 * expression `<exp>` has type return type `T2` under the assumption that `pat` has type `T1`.
 
@@ -792,10 +792,10 @@ value (a.k.a. closure), denoted `shared? func <typ-params>? <pat> = <exp>`, that
 The block expression `{ <dec>;* }` has type `T` provided the last declaration in the sequence `<dec>;*` has type `T`.
 All identifiers declared in block must be distinct type identifiers or distinct value identifiers and are in scope in the definition of all other declarations in the block.
 
-The bindings of identifiers declared in { dec;* } are local to the block. 
+The bindings of identifiers declared in `{ dec;* }` are local to the block.
 The type `T` must be well-formed in the enclosing environment of the block. In particular, any local, recursive types that cannot be expanded to types well-formed the enclosing environment must not appear in `T`.
 
-The type system ensures that a value identifer cannot be evaluated before its declaration has been evaluated, precluding run-time errors at the cost of rejection some well-behaved programs.
+The type system ensures that a value identifier cannot be evaluated before its declaration has been evaluated, precluding run-time errors at the cost of rejection some well-behaved programs.
 
 Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see Annotated patterns) to satisfy the type checker.
 
@@ -806,13 +806,13 @@ The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in se
 The not expression 'not <exp>' has type `Bool` provided `<exp>` has type `Bool`.
 
 If `<exp>` evaluates to `trap`, the expression returns `trap`.
-Otherwise, `<exp>` evaluates to a boolean value `v` and the expression returns `not v`, (the boolean negation of `v`).
+Otherwise, `<exp>` evaluates to a Boolean value `v` and the expression returns `not v`, (the Boolean negation of `v`).
 
 ## And
 
 The and expression `<exp1> and <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
 
-The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
 If `v == false` the expression returns the value `false` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating <exp2>.
 
@@ -820,11 +820,11 @@ Otherwise, the expression returns the result of evaluating <exp2>.
 
 The or expression `<exp1> or <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
 
-The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a boolean value `v`. 
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
 If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating <exp2>.
 
-## If 
+## If
 
 The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
 * `<exp1>` has type `Bool`
@@ -832,28 +832,28 @@ The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
 * `<exp3>` is absent and `() <: T`, or
 * `<exp3>` is present and has type `T`.
 
-The expression evaluates `<exp1>` to a result `r1`. 
-If `r1` is `trap`, the result is  `trap`. 
-Otherwise, `r1` is the value `true` or `false`. 
-If `r1` is `true`, the result is the result of evaluating `<exp2>`. 
+The expression evaluates `<exp1>` to a result `r1`.
+If `r1` is `trap`, the result is  `trap`.
+Otherwise, `r1` is the value `true` or `false`.
+If `r1` is `true`, the result is the result of evaluating `<exp2>`.
 Otherwise, `r1` is `false` and the result is `()` (if <exp3> is absent) or the result of `<exp3>` (if <exp3> is present).
 
 ## Switch
 
-The switch exression 
-  `switch <exp0> { (case <pat> <exp>)+ }`  
+The switch expression
+  `switch <exp0> { (case <pat> <exp>)+ }`
 has type `T` provided:
 * `exp0` has type `U`; and
 * for each case `case <pat> <exp>` in the sequence `(case <pat> <exp>)+` :
-  * pattern `<pat>` has type `U`; and, 
-  * expression `<exp>` has type `T` 
+  * pattern `<pat>` has type `U`; and,
+  * expression `<exp>` has type `T`
     (in an environment extended with `<pat>`'s bindings).
 
-The expression evaluates `<exp0>` to a result `r1`. 
-If `r1` is `trap`, the result is `trap`. 
-Otherwise, `r1` is some value `v`. 
+The expression evaluates `<exp0>` to a result `r1`.
+If `r1` is `trap`, the result is `trap`.
+Otherwise, `r1` is some value `v`.
 Let `case <pat> <exp>` be the first case in `(case <pat> <exp>)+` such that `<pat>` matches `v` with for some bindings of identifiers to values.
-Then result of the `switch` is the result of evaluating `<exp>` unders those bindings.
+Then result of the `switch` is the result of evaluating `<exp>` under those bindings.
 If no case has a pattern that matches `v`, the result of the switch is `trap`.
 
 ## While
@@ -862,19 +862,19 @@ The expression `while <exp1> <exp2>` has type `()` provided:
 * `<exp1>` has type `Bool`, and
 * `<exp2>` has type `()`.
 
-The expression evaluates `<exp1>` to a result `r1`. 
-If `r1` is `trap`, the result is `trap`. 
-Otherwise, `r1` is the value `true` or `false`. 
-If `r1` is `true`, the result is the result of re-evaluating `while <exp1> <exp2>`. 
+The expression evaluates `<exp1>` to a result `r1`.
+If `r1` is `trap`, the result is `trap`.
+Otherwise, `r1` is the value `true` or `false`.
+If `r1` is `true`, the result is the result of re-evaluating `while <exp1> <exp2>`.
 Otherwise, the result is `()`.
 
 ## Loop
 
 The expression `loop <exp>` has type `None` provided `<exp>` has type `()`.
 
-The expression evaluates `<exp>` to a result `r1`. 
-If `r1` is `trap`, the result is `trap`. 
-Otherwise, the result is the result of (re-)evaluating `loop <exp1>`. 
+The expression evaluates `<exp>` to a result `r1`.
+If `r1` is `trap`, the result is `trap`.
+Otherwise, the result is the result of (re-)evaluating `loop <exp1>`.
 
 ## Loop While
 
@@ -882,25 +882,25 @@ The expression `loop <exp1> while <exp2>` has type `()` provided:
 * `<exp1>` has type `()`, and
 * `<exp2>` has type `Bool`.
 
-The expression evaluates `<exp1>` to a result `r1`. 
-If `r1` is `trap`, the result is `trap`. 
+The expression evaluates `<exp1>` to a result `r1`.
+If `r1` is `trap`, the result is `trap`.
 Otherwise, evaluation continues with `<exp2>`, producing result `r2`.
 If `r2` is `trap` the result is `trap`.
-Otherwise, if `r2` is `true`, the result is the result of re-evaluating `loop <exp1> while <exp2>`. 
+Otherwise, if `r2` is `true`, the result is the result of re-evaluating `loop <exp1> while <exp2>`.
 Otherwise, `r2` is false and the result is `()`.
 
 ## For
 
 The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 * `<exp1>` has type `(object|shared) { Next : () -> ?T; }`;
-* pattern `<pat>` has type `U`; and, 
+* pattern `<pat>` has type `U`; and,
 * expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
 
 The `for`-expression is syntactic sugar for
 
 ```
 for ( <pat> in <exp1> ) <exp2> :=
-  { 
+  {
     let x = exp1;
     label l
     loop {
@@ -935,7 +935,7 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
 the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
 
-`<id_continue>` is fresh identifer that can only be referenced by `continue <id>`
+`<id_continue>` is fresh identifier that can only be referenced by `continue <id>`
 (through its implicit expansion to `break <id_continue>`).
 
 ## Break
@@ -946,7 +946,7 @@ The expression `break <id> <exp>` has type `Any` provided:
 * The label <id> is declared with type `label l : T`.
 * `<exp>` has type `T`.
 
-The evaluation of `break <id> <exp>` evaluates exp to some result `r`. 
+The evaluation of `break <id> <exp>` evaluates exp to some result `r`.
 If `r` is `trap`, the result is `trap`.
 If `r` is a value `v`, the evaluation abandons the current computation up to dynamically enclosing declaration `label <id> ...` using the value `v` as the result of that labelled expression.
 
@@ -977,9 +977,9 @@ The async expression `async <exp>` has type `async T` provided:
 
 Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
 
-The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals | 
-|  `!=` | not equals | 
-|  `<=` | less than or equal | 
+The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals |
+|  `!=` | not equals |
+|  `<=` | less than or equal |
 |  `>=` | greater than or equal |return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
@@ -1006,12 +1006,12 @@ The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool
 ### Type Annotation
 
 The type annotation expression `<exp> : <typ>` has type `T` provided:
-* `<typ>` is `T`, and 
+* `<typ>` is `T`, and
 * `<exp>` has type `T`.
 
 Type annotation may be used to aid the type-checker when it cannot otherwise determine the type of `<exp>` or when one want to constrain the inferred type, `U` of `<exp>` to a less-informative super-type `T` provided `U <: T`.
 
-The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`. 
+The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
@@ -1025,7 +1025,7 @@ Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the r
 
 The parenthesized expression `( <exp> )` has type `T` provided `<exp>` has type `T`.
 
-The result of evaluating `( <exp> : <typ> )` is the result of evaluating `<exp>`. 
+The result of evaluating `( <exp> : <typ> )` is the result of evaluating `<exp>`.
 
 Note: type annotations have no-runtime cost and are only used to group expression and/or override precedence of language constructs.
 
@@ -1045,13 +1045,13 @@ Note: type annotations have no-runtime cost and are only used to group expressio
 
 Matching a pattern against a value may *succeed*, binding the corresponding identifiers in the pattern to their matching values, or *fail*. Thus the result of a match is either a a successful mapping of identifiers to values, or failure.
 
-The consequences of pattern match failure depends on the context of the pattern. 
+The consequences of pattern match failure depends on the context of the pattern.
 * In a function application or `let`-binding, failure to match the formal argument pattern or `let`-pattern causes a *trap*.
 * In a `case` branch of a `switch` expression, failure to match that case's pattern continues with an attempt to match the next case of the switch, trapping only when no such case remains.
 
 ## Wildcard pattern
 
-The wildcard pattern `_`  matches a single value without binding its contents to an identifier. 
+The wildcard pattern `_`  matches a single value without binding its contents to an identifier.
 
 
 ## Identifier pattern
@@ -1060,7 +1060,7 @@ The identifier pattern `<id>` matches a single value and binds it to the identif
 
 ## Literal pattern
 
-The literal pattern `<unop>? <lit>` matches a single value against the constant value of literal `<lit>` and fails if they are not (structurally) equal values. 
+The literal pattern `<unop>? <lit>` matches a single value against the constant value of literal `<lit>` and fails if they are not (structurally) equal values.
 
 For integer literals only, the optional `<unop>` determines the sign of the value to match.
 
@@ -1073,7 +1073,7 @@ The annotated pattern `<pat> : <typ>` matches value of `v` type `<typ>` against 
 
 ## Option pattern
 
-The option `? <pat>` matches a value of option type `? <typ>`. 
+The option `? <pat>` matches a value of option type `? <typ>`.
 
 The match *fails* if the value is `null`. If the value is `? v`, for some value `v`, then the result of matching `? <pat>` is the result of matching `v` against <pat>.
 
@@ -1081,10 +1081,10 @@ Conversely, the `null` literal pattern may be used to test whether a value of op
 
 ## Or pattern
 
-The or pattern `<pat1> or <pat2>` is a disjunctive pattern. 
+The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 
 The result of matching `<pat1> or <pat2>` against a value is the result of
-matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails. 
+matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
 (Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
 
@@ -1128,7 +1128,7 @@ All bindings declared by a let (if any) are *immutable*.
 The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable's value can be updated by assignment.
 
 The declaration `var <id>` has type `()` provided:
-* `<exp>` has type `T`; and 
+* `<exp>` has type `T`; and
 * If the annotation `(:<typ>)?` is present, then `T == <typ>`.
 
 Within the scope of the declaration, <id> has type `var T` (see Assignment).
@@ -1148,8 +1148,8 @@ The declaration `type C < X0<:T0>, ..., Xn <: Tn > = U` is well-formed provided:
     * constraints `T0`, ..., `Tn` are well-formed.
     * definition `U` is well-formed.
 
-In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-formed type `C < U0, ..., Un>` is equivalent to its expansion 
-`U [ U0/X0, ..., Un/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.  
+In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-formed type `C < U0, ..., Un>` is equivalent to its expansion
+`U [ U0/X0, ..., Un/Xn ]`.  Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
 
 ## Object Declaration
 
@@ -1157,14 +1157,14 @@ Declaration `(new|object|actor|shared) <id>? =? { <exp-field>;* }` declares an o
 
 The qualifier `new|object|actor|shared` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields and the sharability of the object itself.
 
-Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object. 
+Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
 The object declaration has type `T` provided that:
 1. type `T` is well-formed for sort `sort`, and
-2. under the assumption that `<id> : T`, 
-   * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint sets of private and non-private identifers, `Id_private` and `Id_public` respectively,
+2. under the assumption that `<id> : T`,
+   * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint sets of private and non-private identifiers, `Id_private` and `Id_public` respectively,
      with types `T(id)` for `id` in `Id == Id_private union Id_public`.
-   * `{ id0, ..., idn } == Id_public` 
+   * `{ id0, ..., idn } == Id_public`
    *  for all `i in 0 <= i <= n`, `[vari] Ti == T(idi)`.
 
 Note that requirement 1. imposes further constraints on the fields type of `T`.
@@ -1173,12 +1173,12 @@ In particular:
 * if the sort is `shared` then all non-private field must be non-`var` (immutable) and of a type that is sharable (`T(idi) <: Shared`). Shared objects can be sent as arguments to `shared` functions or returned as the result of a `shared` function (wrapped in a promise).
 
 Evaluation of `(new|object|actor|shared) <id>? =? { <exp-field>;* }` proceeds by
-evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. 
-Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. 
-let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`. 
+evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
+Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
+let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
 The result of the object declaration is the object `v == sort { <id0> = v1, ..., <idn> = vn}`.
 
-If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings. 
+If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
 _TBR do we actually propagate trapping of actor creation?_
 
@@ -1199,7 +1199,7 @@ Named function definitions are recursive.
 
 ## Class declarations
 
-The declaration `obj_sort? class <id> <typ-params>? <pat> =? <id_this>? { <exp-field>;* }` is sugar for pair of a 
+The declaration `obj_sort? class <id> <typ-params>? <pat> =? <id_this>? { <exp-field>;* }` is sugar for pair of a
 a type and function declaration:
 
 ```
@@ -1210,7 +1210,7 @@ obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;
 
 where:
 * `<sort>` is `object` if `obj_sort?` is absent or `new` and `sort == obj_sort` otherwise.
-* `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and 
+* `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
@@ -1225,7 +1225,7 @@ _TBR can we delete `new'?_
   private? shared? <id>? <func_exp>              short-hand
 ```
 
-Expression fields declare the fields of actors and objects. 
+Expression fields declare the fields of actors and objects.
 
 The expression field `private? dec` is just a declaration, prefixed by an optional visibility qualifier 'private?'.
 
@@ -1249,24 +1249,24 @@ The field expression `private? shared? <id>? <func_exp>` is syntactic sugar for 
 
 # Sequence of Declarations
 
-A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T` 
+A sequence of declarations `<dec>;*` occurring in a block, a program or the `exp-field;*` sequence of an object declaration has type `T`
 provided
 * `<dec>;*` is empty and `T == ()`; or
 * `<dec>;*` is non-empty and:
     * all value identifiers bound by `<dec>;*` are distinct, and
     * all type identifiers bound by `<dec>;*` are distinct, and
-    * under the assumption that each value identifier `<id>` in `decs;*` has type `var_id? Tid`,  
+    * under the assumption that each value identifier `<id>` in `decs;*` has type `var_id? Tid`,
       and assuming the type definitions in `decs;*`.
       * each declaration in `<dec>;*` is well-typed;
-      * each value identifier `<id>` in bindings produced by `<dec>;*` has type `var_id? Tid`.  
+      * each value identifier `<id>` in bindings produced by `<dec>;*` has type `var_id? Tid`.
       * the last declaration in `<dec>;*` has type `T`.
 
 Declarations in `<dec>;*` are evaluated sequentially. The first declaration that traps causes the entire sequence to trap.
-Otherwise, the result of the declaration is the value of the last declaration in `<dec>;*`. In addition, the set of value bindings defined by  `<dec>;*` is 
+Otherwise, the result of the declaration is the value of the last declaration in `<dec>;*`. In addition, the set of value bindings defined by  `<dec>;*` is
 the union of the bindings introduced by each declaration in `<dec>;*`.
 
-It is a compile-time error if any declaration in `<dec>;*` might require the value of an identifier declared in `<dec>;*` 
-before that identifier's declaration has been evaluated. Such *use-before-define* errors are detected by a simple, 
+It is a compile-time error if any declaration in `<dec>;*` might require the value of an identifier declared in `<dec>;*`
+before that identifier's declaration has been evaluated. Such *use-before-define* errors are detected by a simple,
 conservative static analysis not described here.
 
 # Programs
@@ -1279,5 +1279,3 @@ conservative static analysis not described here.
 A program `<prog>` is a sequence of declarations `<dec>;*` that ends with an optional actor declaration. The actor declaration determines the main actor, if any, of the program.
 
 All type and value declarations within `<prog>` are mutually-recursive.
-
-
