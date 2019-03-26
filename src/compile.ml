@@ -310,7 +310,7 @@ module E = struct
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
 
-  let add_fun (env : t) (f, local_names) name =
+  let add_fun (env : t) name (f, local_names) =
     let (fi, fill) = reserve_fun env name in
     fill (f, local_names);
     fi
@@ -1681,10 +1681,10 @@ module Iterators = struct
   Return code that takes the object (array or text) on the stack and puts a
   closure onto it.
   *)
-  let define env name mk_stop mk_next =
+  let create env name mk_stop mk_next =
     Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
       (* Register functions as needed *)
-      E.define_built_in env (name ^ "_next") (fun () ->
+      let next_funid = E.add_fun env (name ^ "_next") (
         Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
           let (set_n, get_n) = new_local env "n" in
           let (set_x, get_x) = new_local env "x" in
@@ -1719,10 +1719,9 @@ module Iterators = struct
                 get_ret)
             end
         )
-      );
-      let next_funid = E.built_in env (name ^ "_next") in
+      ) in
 
-      E.define_built_in env (name ^ "_iter") (fun () ->
+      let iter_funid = E.add_fun env (name ^ "_iter") (
         Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
           (* closure for the function *)
           let (set_ni, get_ni) = new_local env "next" in
@@ -1735,10 +1734,10 @@ module Iterators = struct
           Object.lit_raw env
             [ nr_ (Name "next"), fun _ -> get_ni ]
         )
-      );
+      ) in
 
       (* Now build the closure *)
-      Closure.fixed_closure env (E.built_in env (name ^ "_iter")) [ get_x ]
+      Closure.fixed_closure env iter_funid [ get_x ]
     )
 
 end (* Iterators *)
@@ -1869,7 +1868,7 @@ module Text = struct
       )
 
   let text_chars env =
-    Iterators.define env "text_chars"
+    Iterators.create env "text_chars"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
           let (set_char, get_char) = new_local env "char" in
@@ -2045,19 +2044,19 @@ module Array = struct
     Closure.fixed_closure env (E.built_in env built_in_name) [ get_array ]
 
   let keys_iter env =
-    Iterators.define env "array_keys"
+    Iterators.create env "array_keys"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BoxedInt.box32 env (* Return the boxed index *)
+        get_i ^^ BoxedInt.box32 env (* return the boxed index *)
       )
 
   let vals_iter env =
-    Iterators.define env "array_vals"
+    Iterators.create env "array_vals"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_x ^^ get_i ^^ idx env ^^ load_ptr (* Return the element *)
+        get_x ^^ get_i ^^ idx env ^^ load_ptr (* return the element *)
       )
 
   let fake_object_idx env = function
@@ -2385,7 +2384,7 @@ module Dfinity = struct
       (* Save memory *)
       G.i (Call (nr (E.built_in env "save_mem")))
       ) in
-    let fi = E.add_fun env empty_f "start_stub" in
+    let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
       name = explode "start";
       edesc = nr (FuncExport (nr fi))
@@ -3671,7 +3670,7 @@ module FuncDec = struct
         then compile_local_function env cc restore_env args mk_body at
         else compile_message env cc restore_env args mk_body at in
 
-      let fi = E.add_fun env f name in
+      let fi = E.add_fun env name f in
 
       if not is_local then
         E.add_dfinity_type env (fi,
@@ -4712,7 +4711,7 @@ and actor_lit outer_env this ds fs at =
       let fill_code = fill_actor_fields env6 located_ids in
 
       prelude_code ^^ decls_code ^^ fill_code) in
-    let start_fi = E.add_fun env start_fun "start" in
+    let start_fi = E.add_fun env "start" start_fun in
 
     OrthogonalPersistence.register env start_fi;
 
@@ -4831,7 +4830,7 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
   Array.common_funcs env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
-  let start_fi = E.add_fun env start_fun "start" in
+  let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o =
     if E.mode env = DfinityMode
     then begin
