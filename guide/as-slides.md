@@ -148,7 +148,7 @@ Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
 
 * Identifiers
   - `x`, `foo_bar`
-  - `List`, `Map` 
+  - `List`, `Map`
 
 * Literals for primitive types
   - `13`, `0xf4`, `-20`, `1_000_000`
@@ -385,7 +385,7 @@ actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
   private var name : Text = "";
   private var server : ?Server  = null;
-
+o
   go(n : Text, s : Server) {
     name := n;
     server := ?s;
@@ -445,3 +445,93 @@ See [here](design/Syntax.md).
 ## Documentation
 
 See [here](design/Implementation.md)
+
+
+
+
+
+
+-----------------
+
+# Produce Exchange
+
+- Example DFINITY Dapp, as a marketplace application
+  - Participants include: Producers, transporters and retailers
+  - Resources: Money, truck routes, produce items
+  - Other entities: Produce and truck types, regions, reservations
+
+- As a communication tool:
+  - Substance: Demonstrate an example Dapp in ActorScript
+  - Process: Document our internal development process
+
+- [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange).
+
+-----------------
+
+# Produce Exchange: Define MVP
+
+[**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+
+[**MVP on ActorScript Canister**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
+
+**Summary:**
+- defines **users**: Developers, transporters, retailers and producers.
+- defines **features** and **use cases**:
+  - Resource information can be published and updated
+  - Queries require database logic, including joins
+- defines non-goals, and out-of-scope goals.
+
+-----------------
+
+# Produce Exchange: Exit criteria
+
+[**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+
+**Summary:**
+
+ - People: SDK + ActorScript teams.
+ - Feature-based criteria: Same as MVP.
+ - Test-based criteria: Automated tests.
+ - Operational criteria: Run on DFINITY node.
+ - Performance criteria: Run at certain scales / rates.
+
+-----------------
+
+# [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+
+- **Server types**: Data types for client-server messages
+- **Server actor**: Interface for client-server messages
+- **Server model types**: Data types used internally
+- **Server model implementation**: Implements the actor
+
+
+-----------------
+
+# [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
+
+Why?
+
+- Gather reusable components,
+
+- E.g., the collections for **server model types** component.
+
+- Codify best practices for developing canisters in ActorScript.
+
+How?
+
+- ActorScript supports some namespace management, and multiple input files.
+
+- We generate [documentation](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library) from the ActorScript source code and certain comment blocks it contains.
+
+
+-----------------
+
+# [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange)
+
+We focus on abstractions for implementing the database for the produce exchange:
+
+- [Document Table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
+
+- [Hash trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
+
+- [Association list](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
