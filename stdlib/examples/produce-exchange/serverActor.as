@@ -452,6 +452,7 @@ actor class Server() {
     id:   ProducerId,
     prod: ProduceId,
     quant:Quantity,
+    weight:Weight,
     ppu:  PricePerUnit,
     begin:Date,
     end:  Date,
@@ -459,7 +460,7 @@ actor class Server() {
   ) : async ?InventoryId {
     getModel().
       producerAddInventory(
-        id, prod, quant, ppu, begin, end, comments)
+        id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**
@@ -685,6 +686,7 @@ actor class Server() {
       reserved_route_count     = m.reservedRouteTable.count();
 
       retailer_query_count     = m.retailerQueryCount;
+      retailer_query_cost      = m.retailerQueryCost;
       retailer_join_count      = m.retailerJoinCount;
     }
   };

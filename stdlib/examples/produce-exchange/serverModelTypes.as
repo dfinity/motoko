@@ -169,6 +169,7 @@ type InventoryDoc = {
   producer : ProducerId;
   ppu : Price;
   quantity : Quantity;
+  weight : Weight;
   start_date : Date;
   end_date : Date;
   comments : Text;
@@ -229,6 +230,9 @@ type RetailerTable =
 
 type ReservedInventoryRouteMap = 
   Map<ReservedInventoryId, (ReservedInventoryDoc, ReservedRouteDoc)>;
+
+type ByProduceByRegionInventoryReservationMap = 
+  Map<ProduceId, Map<RegionId, Map<ReservedInventoryId, ReservedInventoryDoc>>>;
 
 /**
  `Transporter` documents

@@ -317,18 +317,6 @@ let Trie = new {
       case (?v) { success(t2, v) };
     }
   };
-
-  /** 
-   `disjointUnionInner`
-   --------------
-
-   */
-  func disjointUnionInner<K1,K2,V>(t : Trie2D<K1,K2,V>, k2_eq:(K2,K2)->Bool)
-    : Trie<K2,V>
-  {
-    // xxx
-    null
-  };
   
 
   /** 
@@ -504,6 +492,26 @@ let Trie = new {
     rec(tl, tr)
   };
 
+
+  /** 
+   `mergeDisjoint2D`
+   --------------
+
+   Like [`mergeDisjoint`](#mergedisjoint), except instead of merging a
+   pair, it merges the collection of dimension-2 sub-trees of a 2D
+   trie.
+
+   */
+  func mergeDisjoint2D<K1,K2,V>(t : Trie2D<K1,K2,V>, k1_eq:(K1,K1)->Bool, k2_eq:(K2,K2)->Bool)
+    : Trie<K2,V>
+  {
+    foldUp<K1,Trie<K2,V>, Trie<K2,V>>
+    ( t, 
+      func (t1:Trie<K2,V>, t2:Trie<K2,V>):Trie<K2,V> {  mergeDisjoint<K2,V>(t1, t2, k2_eq) },
+      func (_:K1, t:Trie<K2,V>): Trie<K2,V> { t },
+      null )
+  };
+
   /**
    `diff`
    ------
@@ -673,18 +681,24 @@ let Trie = new {
 
 
   /** 
+
    `prod`
    ---------
 
-   _Catesian product_ operation over two tries; the given operation
-   `op` conditionally creates output elements in the resulting trie.  The
-   keyed structure of the trie is not relevant for this operation.
+   Conditional _catesian product_ operation over two tries; the given
+   operation `op` _conditionally_ creates output elements in the
+   resulting trie.
+
+   The keyed structure of the input tries are not relevant for this
+   operation: all pairs are considered, regardless of keys matching or
+   not.  Moreover, the resulting trie may use keys that are unrelated to
+   these input keys.
 
    */
   func prod<K1,V1,K2,V2,K3,V3>(tl:Trie<K1,V1>, tr:Trie<K2,V2>, op:(K1,V1,K2,V2) -> ?(K3,V3))
     : Trie<K3,V3>
   {
-    print "to do next (Trie.prod)\n";
+    print "to do: Trie.prod\n";
     // xxx
     null
   };

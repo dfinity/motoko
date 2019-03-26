@@ -27,6 +27,9 @@ class Model() = this {
    ==================
    */
 
+  private debug (t:Text)   { print t };
+  private debugInt (i:Int) { printInt i };
+
   private unwrap<T>(ox:?T) : T {
     switch ox {
     case (null) { assert false ; unwrap<T>(ox) };
@@ -193,6 +196,7 @@ secondary maps.
       produce=doc.produce.id;
       producer=doc.producer;
       quantity=doc.quantity;
+      weight=doc.weight;
       ppu=doc.ppu;
       start_date=doc.start_date;
       end_date=doc.end_date;
@@ -208,6 +212,7 @@ secondary maps.
                    produce=produceDoc;
                    producer=producerDoc.id;
                    quantity=info.quantity;
+                   weight=info.weight;
                    ppu=info.ppu;
                    start_date=info.start_date;
                    end_date=info.end_date;
@@ -355,6 +360,7 @@ secondary maps.
     );
 
   var retailerQueryCount : Nat = 0;
+  var retailerQueryCost : Nat = 0;
   var retailerJoinCount : Nat = 0;
 
   /**
@@ -474,6 +480,36 @@ secondary maps.
 
   private var inventoryByRegion : ByRegionInventoryMap = null;
 
+  /** 
+   
+   Reserved inventory by produce and region
+   --------------------------------------------
+   
+   The `produceMarketInfo` query asks the server for market info:
+
+   > the last sales price for produce within a given geographic area
+
+   To answer this query more efficiently under a system with many
+reservations across region and produce kind, the following mapping
+maintains a 3D table of reservations organized by
+region-produce-reservationid coordinates.
+
+   There need only be one reservationid for any given region produce
+pair: without affecting the ability to answer the query above, we can
+drop reservations for a given region-produce that are older than newer
+reservations for the same sub-space.
+
+  Alternatively, we need not drop these older records, and
+instead, we could do a weighted average of the entire reservation
+history to answer market info queries more accurately; or, to save
+space, we could eventually maintain a running average, rather than
+merely forget the older prices.  Doing either of these is more complex
+than the MVP goals, however.
+
+   */
+  private var reservationsByProduceByRegion
+    : ByProduceByRegionInventoryReservationMap = null;
+
 
   /**
 
@@ -519,8 +555,11 @@ secondary maps.
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(id:ProduceId, reg:?RegionId) : ?[ProduceMarketInfo] {
-    // xxx aggregate
+  produceMarketInfo(produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
+    // switch (Map.find<ProduceId,Map<RegionId,Map<ReservedInventoryId>>>(
+    //           reservationsByProduceByRegion,
+    //           produce_id, idIsEq)) {
+    //   case null { return null };
     null
   };
 
@@ -557,6 +596,7 @@ secondary maps.
     id_        : ProducerId,
     produce_id : ProduceId,
     quantity_  : Quantity,
+    weight_    : Weight,
     ppu_       : Price,
     start_date_: Date,
     end_date_  : Date,
@@ -583,6 +623,7 @@ secondary maps.
           produce   = produce_id:ProduceId;
           producer  = id_       :ProducerId;
           quantity  = quantity_ :Quantity;
+          weight    = weight_   :Weight;
           ppu       = ppu_      :Price;
           start_date=start_date_:Date;
           end_date  =end_date_  :Date;
@@ -815,6 +856,32 @@ secondary maps.
    ====================
    */
 
+  
+  /**
+  `makeReservationInfo`
+  ----------------------
+  Prepare reservation information for a server client 
+  based on the given inventory and route documents.
+  */  
+  makeReservationInfo(item:InventoryDoc, route:RouteDoc) : ReservationInfo {
+    shared {
+      produce  =item.produce.id :ProduceId;
+      producer =item.producer   :ProducerId;
+      quant    =item.quantity   :Quantity;
+      ppu      =item.ppu        :Price;
+      weight   =item.weight     :Weight;
+      prod_cost=item.quantity * item.ppu:Price;
+      
+      transporter = route.transporter :TransporterId;
+      truck_type  = route.truck_type.id :TruckTypeId;
+
+      region_begin = route.start_region.id:RegionId;
+      region_end   = route.end_region.id  :RegionId;
+      date_begin   = route.start_date  :Date;
+      date_end     = route.end_date    :Date;
+      trans_cost   = route.cost:  Price;
+    }
+  };
 
   /**
    `retailerQueryAll`
@@ -823,26 +890,28 @@ secondary maps.
    List all available inventory items and routes for a given retailer.
 
    See also:
+   - [`makeReservationInfo`](#makereservationinfo)
+   
+   For `Trie`-based DB operations:
    - [Trie.conj](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#conj)
-   - [Trie.disjointUnionInner](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#disjointUnionInner)
+   - [Trie.mergeDisjoint2D](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#mergeDisjoint2D)
    - [Trie.prod](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#prod)
-
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
 
-    /** - find retailer's region: */
+    debug "\nRetailer ";
+    debugInt id;
+    debug " sends `retailerQueryAll`\n";
+    debug "------------------------------------\n";
+
+    /** - Find the retailer's document: */
     let retailer =
       switch (retailerTable.getDoc(id)) { 
       case (null) { return null };
       case (?x) { x }};     
-
-    print "\nRetailer ";
-    printInt id;
-    print " sends `retailerQueryAll`\n";
-    print "------------------------------------\n";
     
-    /** - find routes whose the destination region is the retailer's region: */
+    /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
       switch (Trie.find<RegionId, ByRegionRouteMap>(
                 routesByDstSrcRegions, 
@@ -852,13 +921,13 @@ secondary maps.
       case (null) { return null };
       case (?x) { x }};
 
-    print "- retailer in region ";
-    printInt (retailer.region.id);
-    print "; accessible via routes from ";
-    printInt (Trie.count<RouteId, RouteMap>(retailerRoutes));
-    print " production regions.\n";
+    debug "- retailer in region ";
+    debugInt (retailer.region.id);
+    debug "; accessible via routes from ";
+    debugInt(Trie.count<RegionId, RouteMap>(retailerRoutes));
+    debug " production regions.\n";
 
-    /** - Build a set of query results as follows: */
+    /** - Join: For each production region, consider all routes and inventory: */
     let t = {
       retailerJoinCount += 1;
       Trie.conj<RegionId,
@@ -870,41 +939,49 @@ secondary maps.
       retailerRoutes,
       inventoryByRegion,
       idIsEq,
-      /** - for each production region, consider all routes and inventory: */
       func (routes:RouteMap, 
             inventory:ByProducerInventoryMap) :
         Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>
     {
-      /** - forget producer keys; consider all inventory: */
-      let i : InventoryMap = 
-        Trie.disjointUnionInner<ProducerId, InventoryId, InventoryDoc>
-      (inventory, idIsEq);
-
-      retailerJoinCount += 1;
+      retailerQueryCost += 1;
+      /** - Cross-product: consider every route-item pairing: */
       let p = Trie.prod<RouteId, RouteDoc,
                         InventoryId, InventoryDoc,
                         (RouteId, InventoryId), 
                         (RouteDoc, InventoryDoc)>(
-        routes, i,
-        /** - consider the timing constraints of each possible route-item pairing: */
+        routes, 
+        /** - (To perform cross product, first convert the 2D inventory map into a 1D inventory map:) */
+        Trie.mergeDisjoint2D<ProducerId, InventoryId, InventoryDoc>(
+          inventory, idIsEq, idIsEq),        
+        /** - Consider the timing constraints of the route-item pairing: */
         func (route_id:RouteId,    route:RouteDoc, 
               item_id:InventoryId, item:InventoryDoc) :
           ?((RouteId, InventoryId), 
             (RouteDoc, InventoryDoc)) {
-            print "xxx ";
+            retailerQueryCost += 1;
+            debug "xxx ";
             // - check route window inside of inventory window, e.g., 
             //   by 1 day before and 3 days after on each side:
             //
             // - window start: check that the route begins after the inventory window begins
             //
             // - window end: check that the route ends before the inventory window ends
-            null
+            if true {
+              ?((route_id, item_id), 
+                // todo: add hash of these things here
+                (route, item))
+            }
+            else {
+              null
+            }
           }
       );
       p
     }
     )};
         
+    /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
+    /// to do
     null
   };
 

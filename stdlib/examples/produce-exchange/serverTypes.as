@@ -138,6 +138,7 @@ type InventoryInfo = shared {
   produce : ProduceId;
   producer : ProducerId;
   quantity : Quantity;
+  weight : Weight;
   ppu : Price;
   start_date : Date;
   end_date : Date;
@@ -262,6 +263,7 @@ type ProduceExchangeCounts = shared {
   reserved_route_count : Nat;
   retailer_count : Nat;
   retailer_query_count : Nat;
+  retailer_query_cost : Nat;
   retailer_join_count : Nat;
 };
 

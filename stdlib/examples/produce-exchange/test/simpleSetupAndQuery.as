@@ -22,13 +22,19 @@ func printEntityCount(entname:Text, count:Nat) {
   print "\n";
 };
 
+func printLabeledCost(lab:Text, cost:Nat) {
+  print ("- " # lab # " cost: ");
+  printInt cost;
+  print "\n";
+};
+
 actor class Test() = this {
   go() {
     ignore(async
     {
       let s = Server();
 
-      print "\nPopulate exchange\n====================================\n";
+      print "\nExchange setup\n====================================\n";
 
       // populate with truck types
       let tta = await s.registrarAddTruckType("tta", "", 10, false, false);
@@ -87,39 +93,39 @@ actor class Test() = this {
       // populate with inventory
       let praia = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pea), 100, 10, 0, 10, ""
+        unwrap<ProduceId>(pea), 100, 100, 10, 0, 10, ""
       );
       let paib = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(peb), 200, 10, 1, 11, ""
+        unwrap<ProduceId>(peb), 200, 200, 10, 1, 11, ""
       );
       let praic = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pec), 300, 10, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 10, 2, 12, ""
       );
       let prbia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 10, 4, 7, ""
+        unwrap<ProduceId>(peb), 200, 200, 10, 4, 7, ""
       );
       let prbib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 9, 2, 15, ""
+        unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 15, ""
       );
       let prbic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 10, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 10, 2, 12, ""
       );
       let prcia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 9, 4, 7, ""
+        unwrap<ProduceId>(peb), 200, 200, 9, 4, 7, ""
       );
       let prdib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 7, 2, 15, ""
+        unwrap<ProduceId>(peb), 1500, 1500, 7, 2, 15, ""
       );
       let prdic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 6, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 6, 2, 12, ""
       );
 
       printEntityCount("Inventory", (await s.getCounts()).inventory_count);
@@ -227,9 +233,11 @@ actor class Test() = this {
       let rrd_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrd));
       let rre_qa = await s.retailerQueryAll(unwrap<RetailerId>(rre));
 
-      print "\nCounts\n----------------\n";
-      printEntityCount("Retailer query", (await s.getCounts()).retailer_query_count);
-      printEntityCount("Retailer join", (await s.getCounts()).retailer_join_count);
+      print "\nQuery counts\n----------------\n";
+      let counts = await s.getCounts();
+      printEntityCount("Retailer query", counts.retailer_query_count);
+      printLabeledCost("Retailer query", counts.retailer_query_cost);
+      printEntityCount("Retailer join", counts.retailer_join_count);
 
 
     })
