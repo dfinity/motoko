@@ -1418,7 +1418,11 @@ module UnboxedSmallWord = struct
     let under thres =
       get_c ^^ set_byte ^^
       get_c ^^ compile_unboxed_const thres ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) in
-    let load_follower offset = compile_load_byte get_ptr offset ^^ compile_6bit_mask in
+    let or_follower offset =
+      compile_shl_const 6l ^^
+      compile_load_byte get_ptr offset ^^
+      compile_6bit_mask ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Or)) in
     set_ptr ^^
     compile_load_byte get_ptr 0l ^^ set_c ^^
     under 0x80l ^^
@@ -1428,32 +1432,20 @@ module UnboxedSmallWord = struct
       (under 0xe0l ^^
        G.if_ (ValBlockType (Some I32Type))
          (get_byte ^^ compile_bitand_const 0b00011111l ^^
-          compile_shl_const 6l ^^
-          load_follower 1l ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+          or_follower 1l ^^
           set_res ^^
           compile_unboxed_const 2l)
          (under 0xf0l ^^
           G.if_ (ValBlockType (Some I32Type))
             (get_byte ^^ compile_bitand_const 0b00001111l ^^
-             compile_shl_const 12l ^^
-             load_follower 1l ^^
-             compile_shl_const 6l ^^
-             load_follower 2l ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             or_follower 1l ^^
+             or_follower 2l ^^
              set_res ^^
              compile_unboxed_const 3l)
             (get_byte ^^ compile_bitand_const 0b00000111l ^^
-             compile_shl_const 18l ^^
-             load_follower 1l ^^
-             compile_shl_const 12l ^^
-             load_follower 2l ^^
-             compile_shl_const 6l ^^
-             load_follower 3l ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-             G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+             or_follower 1l ^^
+             or_follower 2l^^
+             or_follower 3l ^^
              set_res ^^
              compile_unboxed_const 4l)))
 
