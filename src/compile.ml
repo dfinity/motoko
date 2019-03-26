@@ -1403,13 +1403,11 @@ module UnboxedSmallWord = struct
 
   let compile_6bit_mask = compile_bitand_const 0b00111111l
 
-  (* consume from get_c and build result (get/set_res), inspired by
-   * https://rosettacode.org/wiki/UTF-8_encode_and_decode#C *)
-
   (* Examines the byte pointed to the address on the stack
    * and following bytes,
    * building an unboxed Unicode code point, and passing it to set_res.
    * and finally returning the number of bytes consumed on the stack.
+   * Insipred by https://rosettacode.org/wiki/UTF-8_encode_and_decode#C
    *)
   let len_UTF8_head env set_res =
     let (set_ptr, get_ptr) = new_local env "ptr" in
