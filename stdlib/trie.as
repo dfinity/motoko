@@ -1143,9 +1143,14 @@ let Trie = new {
    More helpers
    ==============================   
    */
-  // @Omit:
 
-  // helper function for constructing new paths of uniform length
+
+  /**
+   `buildNewPath`
+   ---------------
+   helper function for constructing new paths of uniform length
+   */
+
   func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
     func rec(bitpos:Nat) : Trie<K,V> {
       if ( bitpos < HASH_BITS ) {
