@@ -1,3 +1,5 @@
+% "ActorScript"
+
 ### Motivation / Goals
 
 A simple but useful language for writing Dfinity actors.
