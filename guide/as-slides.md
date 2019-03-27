@@ -49,7 +49,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ### Function types
 
 * first-class
-* multiple arguments and returns,
+* multiple arguments and returns
 * possibly generic
 
   - `T -> U`
