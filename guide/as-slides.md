@@ -38,7 +38,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 * call-by-value  
   (like Java, C, JS, ML; unlike Haskell, Nix)
-* declarations are locally mutually recursive, provided no *use-before-define.*
+* declarations are locally mutually recursive
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
 * no dynamic casts
