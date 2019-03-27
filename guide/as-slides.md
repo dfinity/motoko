@@ -663,7 +663,7 @@ charlie.go("charlie", server);
 * IDL design/compiler (in ~~dispute~~ progress).
 * Upgrade story
 * Library mechanism/true separate compilation
-* ML-like variant types (for trees)
+* ML-like variant types (e.g. for trees)
 * Better GC (eventually).
 * Move to bi-directional messaging (blocked on hypervisor)
 
@@ -691,6 +691,7 @@ charlie.go("charlie", server);
 [**MVP on ActorScript Canister**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
 
 **Summary:**
+
 - defines **users**: Developers, transporters, retailers and producers.
 - defines **features** and **use cases**:
   - Resource information can be published and updated
