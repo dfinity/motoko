@@ -645,7 +645,8 @@ charlie.go("charlie", server);
 
 ### Semantics
 
-* call-by-value (like Java, C, JS, ML unlike Haskell, Nix)
+* call-by-value  
+  (like Java, C, JS, ML; unlike Haskell, Nix)
 * declarations are locally mutually recursive, provided no *use-before-define.*
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
@@ -656,9 +657,10 @@ charlie.go("charlie", server);
 ### Language prelude
 
 * connects internal primitives with surface syntax (types, operations)
-* conversions `intToWord32`
-* side-effecting operations `printInt` (tie into execution environment)
-* utilities `hashInt`, `clzWord32`
+* conversions like `intToWord32`
+* side-effecting operations `printInt`
+  (tie into execution environment)
+* utilities like `hashInt`, `clzWord32`
 
 ---
 
@@ -680,8 +682,9 @@ charlie.go("charlie", server);
 
 * great team!
 * interpreter/compiler up and running via `dvm`.
-* compiles multiple files by concatenation, enough for `Produce Exchange`.
-* documentation (See [draft](actorscript-guide.pdf), 30 pages)
+* compiles multiple files by concatenation  
+  (good enough for the Produce Exchange)
+* documentation (see [draft](actorscript-guide.pdf), 30 pages)
 * had to backpedal for static canisters from dynamic actors
 
 ---
@@ -694,7 +697,8 @@ charlie.go("charlie", server);
 * Library mechanism/true separate compilation
 * ML-like variant types (e.g. for trees)
 * Better GC (eventually).
-* Move to bidirectional messaging (blocked on hypervisor)
+* Move to bidirectional messaging  
+  (blocked on proposal and hypervisor support)
 
 -----------------
 
