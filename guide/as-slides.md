@@ -14,8 +14,6 @@ for writing DFINITY actors.
 * Good fit for Wasm / Dfinity execution 
 * Forward looking (anticipating Wasm v.*X*)
 
----
-
 ### Key Design Points
 
 * Class-based OO, functional & imperative
@@ -32,8 +30,6 @@ for writing DFINITY actors.
 
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
----
-
 ### Semantics
 
 * call-by-value  
@@ -42,8 +38,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
 * no dynamic casts
-
----
 
 ### Implementation(s)
 
@@ -56,8 +50,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   * relies on typing for performance
 * polymorphism by erasure
 * subtyping is always the identity (thus free)
-
----
 
 ### Status
 
@@ -83,7 +75,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 ### Types
 
----
 
 ### Primitive types
 
@@ -92,8 +83,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * `Char`, `Text` (unicode)
 * `Bool`, `Null`
 * (Future: deterministic `Float`, `Double`)
-
----
 
 ### Function types
 
@@ -108,8 +97,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
   - `(x : T, y : U) -> V`
   - `<A, B>(x : T, y : U) -> (V, W)`
 
----
-
 ###  Object types
 
 structural record types, JS-like, fields can be mutable
@@ -119,8 +106,6 @@ structural record types, JS-like, fields can be mutable
 * `shared {x : Int; color: Color}`
 
 shared (think serializable) objects have immutable fields of sharable types.
-
----
 
 ### Actor types
 
@@ -138,15 +123,11 @@ The fields of an actor are functions with
 * return type `()` (think void) or
 * return type `async T` (a promise)
 
----
-
 ###  Array types
 
 * `[T]` (immutable, sharable)
 
 * `[var T]` (mutable, local)
-
----
 
 ### Tuple types
 
@@ -155,8 +136,6 @@ The fields of an actor are functions with
 * heterogeneous aggregates of fixed size
 * immutable fields
 
-
----
 
 ### Option types
 
@@ -172,8 +151,6 @@ The fields of an actor are functions with
 
 * (no other type contains `null`)
 
----
-
 
 ### Async types
 
@@ -185,8 +162,6 @@ The fields of an actor are functions with
 * introduced by expression `async e`.
 
 * expression `await e` suspends computation pending `e`'s result.
-
----
 
 ### Type System
 
@@ -201,8 +176,6 @@ The fields of an actor are functions with
 
 * bidirectional type checking  
   (not ML-style inference)
-
----
 
 ### Sharability
 
@@ -224,8 +197,6 @@ AS distinguishes sharable types:
  -->
 
 
----
-
 ### Expressions and Statements
 
 * Identifiers: `x`, `foo_bar`, `List`, `Map`
@@ -240,8 +211,6 @@ AS distinguishes sharable types:
 
 * Unary & binary, arithmetic & logical operators
   - `- x`, `not b`, `a + b`, `a & b` ...
-
----
 
 ### (Shared) Objects
 
@@ -261,8 +230,6 @@ AS distinguishes sharable types:
   }
   ```
 
----
-
 ### Actors
 
 Actors are restricted objects:
@@ -279,8 +246,6 @@ actor {
 }
 ```
 
-
----
 
 ### field access and update
 
@@ -310,8 +275,6 @@ actor {
 (`shared` functions are asynchronous with serializable arguments/returns.)
 -->
 
----
-
 ### Tuples
 
 Tuples are anonymous aggregates of fixed length
@@ -328,8 +291,6 @@ Tuples are anonymous aggregates of fixed length
   }
 ```
 
----
-
 ### Arrays
 
 
@@ -339,8 +300,6 @@ Tuples are anonymous aggregates of fixed length
 * `a[i]`, `a[i] += 1`
 
 'nuff said
-
----
 
 ### Function calls, short-cut return
 
@@ -369,15 +328,11 @@ Tuples are anonymous aggregates of fixed length
 
 
 
----
-
 ### Blocks with local scope
 
 `{ let tmp = x; x := y; y := tmp;  }`
 
 * mutually recursive type and value bindings.
-
----
 
 ### Conditionals and switches
 
@@ -388,16 +343,12 @@ Tuples are anonymous aggregates of fixed length
   sequential pattern matching,  
   traps on if no case matches
 
----
-
 ###  While, loops and iteration
 
   - `while (p()) ...`
   - `loop ...`
   - `loop ... while (p())`
   - `for (x in f()) ...`
-
----
 
 ### Labels, break and continue
 
@@ -407,8 +358,6 @@ Tuples are anonymous aggregates of fixed length
   - `continue l`
 
 labels ensure control flow is structured (no gotos)
-
----
 
 ### Async
 
@@ -425,8 +374,6 @@ labels ensure control flow is structured (no gotos)
 * The promise is *fulfilled* when `e` completes (asynchronously)
 
 
----
-
 ### Await
 
 * You cannot synchronously "block" on a promise.
@@ -434,8 +381,6 @@ labels ensure control flow is structured (no gotos)
 * Instead, `async` expressions have super-powers ...
 
   ... they (and only they) can `await` promises!
-
----
 
 ### Await (cont.)
 
@@ -456,8 +401,6 @@ labels ensure control flow is structured (no gotos)
 
 * (implemented by (selective) cps conversion)
 
----
-
 ### Type annotation
 
  `e : T`
@@ -466,15 +409,11 @@ labels ensure control flow is structured (no gotos)
 * verified and exploited by the type-checker
 * switches direction from (partial) type inference to (complete) type checking
 
----
-
 ### ~~Instance check~~
 
 ~~`x is T`~~
 
 (verboten)
-
----
 
 ### Assertions
 
@@ -482,8 +421,6 @@ labels ensure control flow is structured (no gotos)
 
 * `()` on success, or
 * `trap` on failure
-
----
 
 ### Declarations
 
@@ -497,8 +434,6 @@ labels ensure control flow is structured (no gotos)
   `let (x, y, z) = origin` (can't fail)  
   `let 5 = fib(3)` (will trap)  
   `let ? v = dict.find(key)` (could trap)
-
----
 
 ### Functions
 
@@ -515,8 +450,6 @@ labels ensure control flow is structured (no gotos)
   shared func broadcast(t : Text) {}
   shared func subscribe() : async Post { broadcast }
 ```
----
-
 ### Type Definitions
 
 * Abbreviations:
@@ -536,8 +469,6 @@ labels ensure control flow is structured (no gotos)
   type Stmt = ... Exp ...;
   ```
 
----
-
 
 ### Classes
 
@@ -556,8 +487,6 @@ let c = Counter(666);
 c.inc();
 let 667 = c.get();
 ```
----
-
 ### Generic Classes
 
 ```
@@ -572,8 +501,6 @@ let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
 d.add(1,"Alice");
 let ? name = d.find(1);
 ```
----
-
 ### Actor Declarations
 
 ```
@@ -588,8 +515,6 @@ let post = await Server.subscribe(this);
 post("hello");
 post("world");
 ```
-
----
 
 ### Actor Classes
 
@@ -616,15 +541,12 @@ Alice.start(Server); // async send as function call
 
 # Sample App
 
----
 
 ### Implementing *Chat*
 
 * type example
 * one server actor
 * multiple clients, each an instance of (actor) class Client.
-
----
 
 ### Chat Server
 
@@ -655,8 +577,6 @@ actor class Server() = {
 };
 ```
 
----
-
 
 ### Example: The client class
 
@@ -684,8 +604,6 @@ actor class Client() = this {
   };
 };
 ```
----
-
 ### Example: test
 
 ```
@@ -703,18 +621,17 @@ charlie.go("charlie", server);
 
 ### Produce Exchange
 
-- Example DFINITY Dapp, as a marketplace application
-  - Participants include: Producers, transporters and retailers
-  - Resources: Money, truck routes, produce items
+- Example DFINITY app: a marketplace application
+  - Participants include:  
+    Producers, transporters and retailers
+  - Resources: Money, truck routes, produce
   - Other entities: Produce and truck types, regions, reservations
 
-- As a communication tool:
-  - Substance: Demonstrate an example Dapp in ActorScript
-  - Process: Document our internal development process
+- As a communication tool:  
+  Substance: Demonstrate example ActorScript app  
+  Process: Document internal development process
 
-- [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange).
-
------------------
+- [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
 
 ### Produce Exchange: Define MVP
 
@@ -724,13 +641,12 @@ charlie.go("charlie", server);
 
 **Summary:**
 
-- defines **users**: Developers, transporters, retailers and producers.
+- defines **users**:  
+  Developers, transporters, retailers and producers.
 - defines **features** and **use cases**:
-  - Resource information can be published and updated
+  - Resource data can be published and updated
   - Queries require database logic, including joins
 - defines non-goals, and out-of-scope goals.
-
------------------
 
 ### Produce Exchange: Exit criteria
 
@@ -744,38 +660,29 @@ charlie.go("charlie", server);
  - Operational criteria: Run on DFINITY node.
  - Performance criteria: Run at certain scales / rates.
 
------------------
-
 ### [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
 
-- **Server types**: Data types for client-server messages
+- **Server types**: Types for client-server messages
 - **Server actor**: Interface for client-server messages
 - **Server model types**: Data types used internally
 - **Server model implementation**: Implements the actor
 
 
------------------
-
 ### [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
 
 Why?
 
-- Gather reusable components,
-
-- E.g., the collections for **server model types** component.
-
-- Codify best practices for developing canisters in ActorScript.
+- Gather reusable components,  
+  (e.g., collections for **server model types**)
+- Codify best ActorScript practices
 
 How?
 
 - ActorScript supports some namespace management, and multiple input files.
+- [Documentation](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library) generated from the source code
 
-- We generate [documentation](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library) from the ActorScript source code and certain comment blocks it contains.
 
-
------------------
-
-### [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange) 
+### [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange)
 
 We focus on abstractions for implementing the database for the produce exchange:
 
@@ -784,4 +691,5 @@ We focus on abstractions for implementing the database for the produce exchange:
 - [Hash trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
 
 - [Association list](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
- 
+
+# (not yet) The End
