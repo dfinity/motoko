@@ -104,7 +104,7 @@ Like object types, but marked as `actor`.
   * `null`, or
   * `? t`, any `t`.
 
-(no other types contain `null`)
+(no other type contains `null`)
 
 ---
 
@@ -140,7 +140,7 @@ AS distinguishes sharable from non-sharable types, roughly:
  
 *sharable* \~ stateless, serializable
 
-*non-sharable* \~ statefull, non-serializable
+*non-sharable* \~ stateful, non-serializable
   
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
