@@ -1,3 +1,5 @@
+% "ActorScript"
+
 ### Motivation / Goals
 
 A simple but useful language for writing DFINITY actors.
@@ -6,7 +8,7 @@ A simple but useful language for writing DFINITY actors.
 * Simple design (K.I.S.S.)
 * Familiar syntax
 * Incorporating ~~actor~~ *canister* model
-* Good fit for Wasm / DFINITY execution 
+* Good fit for Wasm / DFINITY execution
 * Forward looking (anticipating Wasm v.*X*)
 
 ---

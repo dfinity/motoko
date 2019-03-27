@@ -1,4 +1,4 @@
-all: index.html actorscript-guide.pdf
+all: index.html actorscript-guide.pdf as-slides.html
 
 SHELL=bash
 
