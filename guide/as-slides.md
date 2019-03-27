@@ -70,6 +70,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * Better GC (eventually).
 * Move to bidirectional messaging  
   (blocked on proposal and hypervisor support)
+* Change the name?
 
 # The language
 
