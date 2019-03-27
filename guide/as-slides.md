@@ -1,5 +1,3 @@
-% "ActorScript"
-
 ### Motivation / Goals
 
 A simple but useful language for writing Dfinity actors.
@@ -186,11 +184,11 @@ shared { x = 0; y = 0; color = Colors.Red }
 ```
 
 * full `object`s can be mutable, stateful (but not sharable)
-```
+``` swift
 object { 
   private var c = 0;
-  inc(){c += 1};
-  get():Int {c}
+  inc() {c += 1};
+  get() : Int {c}
 }
 ```
 
@@ -200,14 +198,14 @@ object {
 
 * Actors are restricted objects:
   * state must be isolated
-  * public  methods implicitly `shared`
+  * public methods implicitly `shared`
   * (thus) interface asynchronous
 
 ```
 actor { 
   private var c = 0;
-  inc(){c += 1}; 
-  get():async Int {c}
+  inc() {c += 1}; 
+  get() : async Int {c}
 }
 ```
 
@@ -236,7 +234,7 @@ actor {
 
 * All actor state must be private and local (no access to enclosing state).
 
-* Every public actor field must be  a 'shared' function, returning
+* Every public actor field must be a 'shared' function, returning
   * an awaitable promise of type `async T` (async request)
   * or nothing `()` (fire & forget)
 
@@ -246,17 +244,17 @@ actor {
 
 ### Tuples
 
- 
+Tuples are anonymous aggregates of fixed length
 ```
-  type Point3D = (Int,Int,Int)
-  let origin = (0,0,0);
-  let (x,y,z) = origin;
+  type Point3D = (Int, Int, Int);
+  let origin = (0, 0, 0);
+  let (x, y, z) = origin;
 
-  func isOrigin(p:Point3D): Bool
-  { switch p with {
-      case (0,0,0) true; // pattern match
-	  case _ false;
-	}
+  func isOrigin(p : Point3D) : Bool
+  { switch p {
+      case (0, 0, 0) true; // pattern match
+      case _ false;
+    }
   }
 ```
 
@@ -357,7 +355,7 @@ let prod(ints : [int]):Int {
 
 * Instead, `async` expressions have super-powers ...
 
-  ... they (and only they) can  `await` promises!
+  ... they (and only they) can `await` promises!
 
 ---
 
@@ -372,10 +370,10 @@ E.g.:
 ```
    async {
       loop {
-	    let post = await Server.subscribe(...);
-		post("hello");
-		s.unsubscribe();
-	  };
+             let post = await Server.subscribe(...);
+             post("hello");
+             s.unsubscribe();
+      };
    };
 ```
 (async and await are compiled by (selective) cps conversion).
@@ -438,13 +436,13 @@ E.g.:
 
 ```
   // vanilla functions
-  func fib(n : Int):Int {...}
-  func fun_sort<A>(as : [A], cmp:(A,A)->Int) : [A] { ... }
-  func imp_sort<A>(as : [var A], cmp:(A,A)->Int) { ... }
+  func fib(n : Int) : Int {...}
+  func fun_sort<A>(as : [A], cmp : (A,A)->Int) : [A] { ... }
+  func imp_sort<A>(as : [var A], cmp : (A,A)->Int) { ... }
 
   // shared functions (messaging)
   shared func broadcast(t : Text) {}
-  shared func subscribe() : async Post { broadcast; }
+  shared func subscribe() : async Post { broadcast }
 ```
 ---
 
@@ -475,9 +473,9 @@ E.g.:
 Classes as functions returning objects:
 ```
  class Counter(init : Int) {
-	private var state : Int = init;
+    private var state : Int = init;
     inc() { state += 1; };
-	get() : Int { state; };
+    get() : Int { state; };
   }
 ```
 
@@ -625,7 +623,7 @@ charlie.go("charlie", server);
 
 ### Semantics
 
-* call-by-value (like Java,C,JS,ML unlike Haskell,Nix)
+* call-by-value (like Java, C, JS, ML unlike Haskell, Nix)
 * declarations are locally mutually recursive, provided no *use-before-define.*
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
@@ -653,7 +651,7 @@ charlie.go("charlie", server);
 * interpreter/compiler up and running via `dvm`.
 * compiles multiple files by concatenation, enough for `Produce Exchange`.
 * documentation (See [draft](actorscript-guide.pdf), 30 pages)
-* had to back-peddle for static canisters from dynamic actors
+* had to back-paddle for static canisters from dynamic actors
 
 ---
 
