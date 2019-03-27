@@ -1279,3 +1279,143 @@ conservative static analysis not described here.
 A program `<prog>` is a sequence of declarations `<dec>;*` that ends with an optional actor declaration. The actor declaration determines the main actor, if any, of the program.
 
 All type and value declarations within `<prog>` are mutually-recursive.
+
+
+# The ActorScript prelude
+
+The *prelude* defines a variety of built-in data types and operations
+on them, making these available to user programs by default.
+
+By passing the `--no-standard-prelude` command line option, the
+loading of the prelude is suppressed.
+
+## Types defined in the prelude
+
+This section lists the types that are available when the prelude is
+loaded.
+
+type Any = prim "Any";
+type None = prim "None";
+type Shared = prim "Shared";
+type Null = prim "Null";
+type Bool = prim "Bool";
+type Nat = prim "Nat";
+type Int = prim "Int";
+type Word8 = prim "Word8";
+type Word16 = prim "Word16";
+type Word32 = prim "Word32";
+type Word64 = prim "Word64";
+type Float = prim "Float";
+type Char = prim "Char";
+type Text = prim "Text";
+
+type Iter<T_> = {next : () -> ?T_};
+
+type Cont<T <: Shared> = T -> () ;
+type Async<T <: Shared> = Cont<T> -> ();
+
+
+## Operations
+
+* `abs : Int -> Nat`
+
+### Obtaining side-effects
+
+`ignore : Any -> ()`
+
+printInt(x : Int) { (prim "printInt" : Int -> ()) x };
+func printChar(x : Char) { print (charToText x) };
+func print(x : Text)
+
+
+### Datatype conversions
+
+* `charToText : Char -> Text`
+* `natToWord8 : Nat -> Word8`
+* `word8ToNat : Word8 -> Nat`
+* `intToWord8 : Int -> Word8`
+* `word8ToInt : Word8 -> Int`
+
+* `natToWord16 : Nat -> Word16`
+* `word16ToNat : Word16 -> Nat`
+* `intToWord16 : Int -> Word16`
+* `word16ToInt : Word16 -> Int`
+
+* `natToWord32 : Nat -> Word32`
+* `word32ToNat : Word32 -> Nat`
+* `intToWord32 : Int -> Word32`
+* `word32ToInt : Word32 -> Int`
+
+* `natToWord64 : Nat -> Word64`
+* `word64ToNat : Word64 -> Nat`
+* `intToWord64 : Int -> Word64`
+* `word64ToInt : Word64 -> Int`
+
+* `charToWord32 : Char -> Word32`
+* `word32ToChar : Word32 -> Char`
+
+### Miscellaneous bitwise operations
+
+WebAssembly supports a range of bitwise operations,
+which are made available through functions defined in the prelude.
+
+#### Count leading zeros
+
+The expression `clzWord`*n* `w` count and return the number of
+contiguous MSB zero bits in `w`:
+* `clzWord8 : Word8 -> Word8`
+* `clzWord16 : Word16 -> Word16`
+* `clzWord32(w : Word32 -> Word32`
+* `clzWord64(w : Word64 -> Word64`
+
+#### Count trailing zeros
+
+Similarly the expression `ctzWord`*n* `w` counts and returns the number of
+contiguous LSB zero bits in `w`:
+* `ctzWord8(w : Word8 -> Word8`
+* `ctzWord16(w : Word16 -> Word16`
+* `ctzWord32(w : Word32 -> Word32`
+* `ctzWord64(w : Word64 -> Word64`
+
+
+#### Shift right, signed
+
+* `shrsWord8 : (Word8, Word8) -> Word8`
+* `shrsWord16(w : (Word16, amount : Word16 -> Word16`
+* `shrsWord32(w : (Word32, amount : Word32 -> Word32`
+* `shrsWord64(w : (Word64, amount : Word64 -> Word64`
+
+
+#### Count set bits
+
+* `popcntWord8(w : Word8 -> Word8`
+* `popcntWord16(w : Word16 -> Word16`
+* `popcntWord32(w : Word32 -> Word32`
+* `popcntWord64(w : Word64 -> Word64`
+
+#### Test bit of word
+
+* `btstWord8(w : Word8, amount : Word8 -> Bool`
+* `btstWord16(w : Word16, amount : Word16 -> Bool`
+* `btstWord32(w : Word32, amount : Word32 -> Bool`
+* `btstWord64(w : Word64, amount : Word64 -> Bool`
+
+
+* `decodeUTF8 : Text -> (Word32, Char)`
+
+func Array_init<T>(len : Nat,  x : T) : [var T] {
+  (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
+};
+
+func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
+
+
+## Classes
+
+class range(x : Nat, y : Nat) {
+  next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+};
+
+class revrange(x : Nat, y : Nat) {
+  next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
+};
