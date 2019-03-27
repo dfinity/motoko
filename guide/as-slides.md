@@ -5,11 +5,11 @@
 A simple but useful language  
 for writing DFINITY actors.
 
-* High-level language for DFINITY dapps
+* High-level language for Dfinity dapps
 * Simple design (K.I.S.S.)
 * Familiar syntax
 * Incorporating ~~actor~~ *canister* model
-* Good fit for Wasm / DFINITY execution
+* Good fit for Wasm / Dfinity execution 
 * Forward looking (anticipating Wasm v.*X*)
 
 ---
@@ -636,6 +636,13 @@ charlie.go("charlie", server);
 * no dynamic casts
 
 ---
+
+### Language prelude
+
+* connects internal primitives with surface syntax (types, operations)
+* conversions `intToWord32`
+* side-effecting operations `printInt` (tie into execution environment)
+* utilities `hashInt`, `clzWord32`
 
 ### Implementation(s)
 
