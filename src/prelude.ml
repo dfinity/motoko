@@ -109,7 +109,7 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
   let empty = func k (t:T) = ();
   var result : ?T = null;
   var ks : T -> () = empty;
-  func fullfill(t:T):() {
+  func fulfill(t:T):() {
     switch(result) {
       case null {
         result := ?t;
@@ -129,7 +129,7 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
       case (?t) (k(t));
     };
   };
-  (enqueue,fullfill)
+  (enqueue,fulfill)
 };
 |}
 
