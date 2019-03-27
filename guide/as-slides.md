@@ -1,12 +1,12 @@
 ### Motivation / Goals
 
-A simple but useful language for writing Dfinity actors.
+A simple but useful language for writing DFINITY actors.
 
-* High-level language for Dfinity dapps
+* High-level language for DFINITY dapps
 * Simple design (K.I.S.S.)
 * Familiar syntax
 * Incorporating ~~actor~~ *canister* model
-* Good fit for Wasm / Dfinity execution 
+* Good fit for Wasm / DFINITY execution 
 * Forward looking (anticipating Wasm v.*X*)
 
 ---
