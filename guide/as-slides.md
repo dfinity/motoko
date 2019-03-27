@@ -1,14 +1,6 @@
-# ActorScript
+### Motivation / Goals
 
 A simple but useful language for writing Dfinity actors.
-
----
-
-# Introduction
-
----
-
-## Motivation / Goals
 
 * High-level language for Dfinity dapps
 * Simple design (K.I.S.S.)
@@ -34,31 +26,11 @@ Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
 
 ---
 
-## Left for Future Version
-
-* Gas-related features?
-* Infinite-precision integers
-* Richer destructuring and pattern matching
-* Exception handling
-* Tail calls
-* Mixin composition for inheritance
-* Fancier types (generic bounds, top type?, union types?, co/contra-variance?)
-* Linear types?
-* Atoms?
-* String interpolation?
+### Types
 
 ---
 
-
-## Overview
-
----
-
-## Types
-
----
-
-## Primitive types
+### Primitive types
 
 * `Int`, `Nat` (trap on overflow)
 * `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
@@ -68,7 +40,7 @@ Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
 
 ---
 
-## Function types
+### Function types
 
 * first-class
 * multiple arguments and returns,
@@ -81,31 +53,31 @@ Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
 
 ---
 
-##  Object types
+###  Object types
 
 structural record types, JS-like, fields can be mutable
 
-* `{x : T; var y : U; z : V}`
+*  `{var x : T; var y : U; color : Color}`
 
 * `shared {x : int; y:int; color: Color}`
 
-(shared (think serialiable) object must have immutable field of sharable types.)
+(shared (think serialiable) object must have immutable fields of sharable types.)
 
 ---
 
-## Actor types
+### Actor types
 
 Like object types, but marked as `actor`.
 
 * `actor {f : T -> (); g : U -> async T}`
 
-* The fields of an actor are all of function type with a return type 
-* `()` (think void) 
-* `async T` (think promise)
+* The fields of an actor are functions with:
+* return type `()` (think void) ; OR
+* return type `async T` (a promise)
 
 ---
 
-##  Array types
+###  Array types
 
 * `[T]` (immutable, sharable)
 
@@ -113,7 +85,7 @@ Like object types, but marked as `actor`.
 
 ---
 
-## Tuple types
+### Tuple types
 
 * heterogeneous aggregates of fixed size
 * immutable fields
@@ -122,28 +94,33 @@ Like object types, but marked as `actor`.
 
 ---
 
-## Option types
+### Option types
 
 * explicit nullable types
 
-* ML/Haskell-style option/maybe type
-  - `? T`
+* ML-style option type `? T`
 
-* other types _*do not*_ null by default!
+* values:
+  * `null`, or
+  * `? t`, any `t`.
+
+(no other types contain `null`)
 
 ---
 
 
-## Async types
+### Async types
 
 * new type `async T`
-* asychronous future (a.k.a. *promises*)
-* a handle to future result of type `T`. 
-* expression `await <promise>` suspends computation until result.
+* asychronous future (a.k.a. *promises*):
+  * a handle to a future value of type `T`.
+
+* introduced by expression `async e`.
+* expression `await e` suspends computation pending `e`'s result.
 
 ---
 
-## Type System
+### Type System
 
 * Structural, equi-recursive subtyping (definitions are equations).
 
@@ -157,7 +134,7 @@ Like object types, but marked as `actor`.
 
 ---
 
-## Sharability
+### Sharability
 
 AS distinguishes sharable from non-sharable types, roughly:
  
@@ -178,7 +155,7 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Expressions and Statements
+### Expressions and Statements
 
 * Identifiers
   - `x`, `foo_bar`
@@ -199,42 +176,75 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Records, Objects and actors
+### (Shared) Objects
 
 * `shared` (think serializable) objects have immutable fields of sharable type:
-  * `shared { x = 0; y = 0; color = Colors.Red; }'
+```
+shared { x = 0; y = 0; color = Colors.Red }
+```
 
 * full `object`s can be mutable, stateful (but not sharable)
-  * `object {private var cnt = 0; inc() = cnt += 1; get():Int { cnt; } }`
-
-* actors are restricted objects:
-  * `actor {private var cnt = 0; inc() = cnt += 1; get():async Int { cnt; } }`
-
----
-
-## field access and update
-  - `point.color`; `point.x += 1`; `point.move(dx,dy)`
-  - `client.Message(text)`; `await server.subscribe()`
+```
+object { 
+  private var c = 0;
+  inc(){c += 1};
+  get():Int {c}
+}
+```
 
 ---
 
-## Actor typing
+### Actors
+
+* Actors are restricted objects:
+  * state must be isolated
+  * public  methods implicitly `shared`
+  * (thus) interface asynchronous
+
+```
+actor { 
+  private var c = 0;
+  inc(){c += 1}; 
+  get():async Int {c}
+}
+```
+
+
+---
+
+### field access and update
+
+* object access/update:
+
+  * `point.color`
+  * `point.x += 1`
+  * `point.move(dx,dy)`
+
+* actor access/communication:
+
+  *  `client.send(text)`
+  *  `await server.subscribe(client)`
+
+---
+
+<!--
+### Actor typing
 
 * Actors are restricted objects, always sharable (by reference).
 
 * All actor state must be private and local (no access to enclosing state).
 
-* Every public actor field must be:
-     * a sharable function returning
-	 * an awaitable promise of type `async T`;
-	 * or nothing `()`;
+* Every public actor field must be  a 'shared' function, returning
+  * an awaitable promise of type `async T` (async request)
+  * or nothing `()` (fire & forget)
 
-(sharable functions are asynchronous with serializable arguments/returns.)
-
+(`shared` functions are asynchronous with serializable arguments/returns.)
+-->
 ---
 
-## Tuples
+### Tuples
 
+ 
 ```
   type Point3D = (Int,Int,Int)
   let origin = (0,0,0);
@@ -247,9 +257,10 @@ AS distinguishes sharable from non-sharable types, roughly:
 	}
   }
 ```
+
 ---
 
-## Arrays
+### Arrays
 
 
 
@@ -261,15 +272,27 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Function calls, short-cut return
+### Function calls, short-cut return
 
-* `f(x, y)`
-* `f<T, U>(x, y)`
-* `return f()`
+* `compare(x, y)`
+* `let ints = fun_sort<Int>(as, func(a: Int,b : Int){ return a - b;})
+
+Early exit via `return`:
+
+```
+let prod(ints : [int]):Int {
+    let p = 1;
+    for (i in ints.vals) {
+	  if (i == 0) return 0 // early return
+	  else p *= i
+    };
+	p;
+   }
+```
 
 ---
 
-## Blocks with local scope
+### Blocks with local scope
 
 *  `{ let tmp = x; x := y; y := tmp;  }`
 
@@ -277,7 +300,7 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Conditionals and switches
+### Conditionals and switches
 
 - `if b ...`
 - `if b ... else ...`
@@ -287,16 +310,16 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-##  While, loops and iteration
+###  While, loops and iteration
 
   - `while (p()) ...`
   - `loop ...`
   - `loop ... while (p())`
-  - `for x in f() ...`
+  - `for (x in f()) ...`
 
 ---
 
-## Labels, break and continue
+### Labels, break and continue
 
   - `label l exp`
   - `do l ...`
@@ -307,33 +330,42 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Async 
+### Async
 
-`async <exp>`
+`async e`
 
-* spawns an asynchronous computation of `<exp>`
-  * by sending a message to the enclosing actor
+* spawns an asynchronous computation of argument `e`
 
-* the async expression immediately returns 
-  * (before `<exp>` has finished)
+  (by sending a message to the enclosing actor)
 
-* tts value is a *pending* promise (type `async T`).
+* the async expression immediately returns control
 
-* The promise is *fulfilled* when `<exp>` completes (asynchronously).
+  (before `e` has finished)
+
+* its value is a *pending* promise (type `async T`).
+
+* The promise is *fulfilled* when `e` completes (asynchronously).
 
 
 ---
 
-## Await
+### Await
 
-* You can't "block" on a promise, but...
+* You can't synchrously "block" on a promise.
 
-* async blocks have super-powers:
-  * they can  `await` promises
+* Instead, `async` expressions have super-powers ...
 
-* `await <exp>`:
-   * evaluates `<exp>` to a promise
-   * suspends the caller of `await` until the promise has a value.
+  ... they (and only they) can  `await` promises!
+
+---
+
+### Await (cont.)
+
+* `await e`:
+   * evaluates `e` to a promise
+   * then suspends the caller of `await` until/unless the promise has a value.
+
+E.g.:
 
 ```
    async {
@@ -348,65 +380,85 @@ AS distinguishes sharable from non-sharable types, roughly:
 
 ---
 
-## Type annotation
+### Type annotation
 
-- `e : T`
+ `e : T`
 
-(not a cast, just a static constraint, verified and exploited by the type-checker)
+* not a run-time cast, just a compile-time constraint
+* verified and exploited by the type-checker
+
+(switches direction from (partial) type inference to (complete) type checking.)
 
 ---
 
-## ~~Instance check~~
+### ~~Instance check~~
   - ~~`x is T`~~
 
----
-
-## Assertions
-  - `assert (x > 0)`
+(verboten)
 
 ---
 
-## Declarations
+### Assertions
 
-* Immutable and mutable variables, with pattern matching
-  - `let x = f()`
-  - `let x : T = f()`
-  - `var y : T`
-  - `var z = 0`
-  - `let (x, y, z) = origin // always succeeds` 
-  - `let ? v = dict.find(key) // may trap on null`
+* `assert (x > 0)`
+
+* `()` on success, or
+* `trap` on failure
 
 ---
 
-## Functions 
+### Declarations
 
-non-shared (synchronous)
+* Immutable and mutable variables
 
-- `func f() ...`
-- `func g(x : T, y : U) ...`
-- `func h(x : T, y : U) : V ...`
-- `func p<A, B>(x : T, y : U) : V ...`
+  `let x = f()`  (immutable)
 
-shared (asynchronous)
+  `let x : T = f()`
 
-- `shared func broadcast(t : Text) {}`
-- `shared func subscribe() : async Post { broadcast; }`
+  `var z  = 0` (mutable)
+
+  `var z : Int = 0`
+
+* ... with pattern matching:
+
+  `let (x, y, z) = origin` (can't fail)
+
+  `let 5 = fib(3)` (will trap)
+
+  `let ? v = dict.find(key)` (could trap)
 
 ---
 
-## Type Definitions
+### Functions
+
+* non-shared, synchronous, generic, pure or impure
+* shared (asynchronous)
+
+```
+  // vanilla functions
+  func fib(n : Int):Int {...}
+  func fun_sort<A>(as : [A], cmp:(A,A)->Int) : [A] { ... }
+  func imp_sort<A>(as : [var A], cmp:(A,A)->Int) { ... }
+
+  // shared functions (messaging)
+  shared func broadcast(t : Text) {}
+  shared func subscribe() : async Post { broadcast; }
+```
+---
+
+### Type Definitions
 
 * Abbreviations:
   ```
   type Post = shared Text -> ();
   ```
-* generic/recursion:
+* Generic and/or recursive:
 
   ```
   type List<T> = ?{head : T; var tail : List<T>};
   ```
 
-* mutual recursion:
+* Mutual recursion too:
 
   ```
   type Exp = ... Stmt ... ;
@@ -416,10 +468,9 @@ shared (asynchronous)
 ---
 
 
-## Classes
+### Classes
 
-Classes as functions returning object:
-
+Classes as functions returning objects:
 ```
  class Counter(init : Int) {
 	private var state : Int = init;
@@ -427,8 +478,8 @@ Classes as functions returning object:
 	get() : Int { state; };
   }
 ```
-Class instantiation as function call:
 
+Class instantiation as function call (no `new`):
 ```
 let c = Counter(666);
 c.inc();
@@ -436,7 +487,7 @@ let 667 = c.get();
 ```
 ---
 
-## Generic Classes
+### Generic Classes
 
 ```
 class Dict< K, V > (cmp : (K,K)-> Int ) {
@@ -452,7 +503,7 @@ let ? name = d.Find(1);
 ```
 ---
 
-## Actor Declarations
+### Actor Declarations
 
 ```
 actor Server {
@@ -469,7 +520,7 @@ actor Server {
 
 ---
 
-## Actor Classes
+### Actor Classes
 
 ```
 actor class Client() {
@@ -487,7 +538,7 @@ Alice.start(Server); // async send as function call
 
 ---
 
-## Implementing *Chat*
+### Implementing *Chat*
 
 * type example
 * one server actor
@@ -495,8 +546,7 @@ Alice.start(Server); // async send as function call
 
 ---
 
-## The server
-
+### Chat Server
 
 ```
 actor class Server() = {
@@ -514,7 +564,9 @@ actor class Server() = {
       };
     };
   };
+```
 
+```
   subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
@@ -526,11 +578,11 @@ actor class Server() = {
 ---
 
 
-## Example: The client class
+### Example: The client class
 
 ```
 actor class Client() = this {
-  // TODO: these should be constructor params once we can compile them
+
   private var name : Text = "";
   private var server : ?Server  = null;
 
@@ -544,6 +596,9 @@ actor class Client() = this {
     });
   };
 
+```
+
+```
   send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
@@ -551,7 +606,7 @@ actor class Client() = this {
 ```
 ---
 
-## Example: test
+### Example: test
 
 ```
 let server = Server();
@@ -566,7 +621,7 @@ charlie.go("charlie", server);
 
 ---
 
-## Semantics
+### Semantics
 
 * call-by-value (like Java,C,JS,ML unlike Haskell,Nix)
 * declarations are locally mutually recursive, provided no *use-before-define.*
@@ -576,29 +631,43 @@ charlie.go("charlie", server);
 
 ---
 
-## Implementation(s)
+### Implementation(s)
 
-* implemented in Ocaml (to leverage `wasm` reference implementation)
-* clean reference interpreter (OCaml)
-* compiler (wasm)
+* implemented in OCaml (leverages `wasm` libary)
+* simple reference interpreter
+* less simple compiler (wasm)
   * multipass with typed IR in each pass.
   * uniform representation, unboxed arithmetic
   * two-space gc (for now), gc between messages
   * relies on typing for performance
 * polymorphism by erasure
-* subtyping is the identity (i.e. free)
+* subtyping is always the identity (thus free)
 
-## Documentation
+---
 
-See [here](../design/guide.md)
+### Status
 
+* great team!
+* interpreter/compiler up and running via `dvm`.
+* compiles multiple files by concatenation, enough for `Produce Exchange`.
+* documentation (See [draft](actorscript-guide.pdf), 30 pages)
+* had to back-peddle for static canisters from dynamic actors
 
+---
 
+### Backlog:
 
+* (Full) Standard library (e.g. unicode api)
+* IDL design/compiler (in ~~dispute~~ progress).
+* Upgrade story
+* Library mechanism/true separate compilation
+* ML-like variant types (for trees)
+* Better GC (eventually).
+* Move to bi-directional messaging (blocked on hypervisor)
 
 -----------------
 
-# Produce Exchange
+### Produce Exchange
 
 - Example DFINITY Dapp, as a marketplace application
   - Participants include: Producers, transporters and retailers
@@ -613,7 +682,7 @@ See [here](../design/guide.md)
 
 -----------------
 
-# Produce Exchange: Define MVP
+### Produce Exchange: Define MVP
 
 [**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
@@ -628,7 +697,7 @@ See [here](../design/guide.md)
 
 -----------------
 
-# Produce Exchange: Exit criteria
+### Produce Exchange: Exit criteria
 
 [**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
@@ -642,7 +711,7 @@ See [here](../design/guide.md)
 
 -----------------
 
-# [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+### [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
 
 - **Server types**: Data types for client-server messages
 - **Server actor**: Interface for client-server messages
@@ -652,7 +721,7 @@ See [here](../design/guide.md)
 
 -----------------
 
-# [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
+### [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
 
 Why?
 
@@ -671,7 +740,7 @@ How?
 
 -----------------
 
-# [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange) 
+### [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange) 
 
 We focus on abstractions for implementing the database for the produce exchange:
 
