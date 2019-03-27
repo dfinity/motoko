@@ -651,7 +651,7 @@ charlie.go("charlie", server);
 * interpreter/compiler up and running via `dvm`.
 * compiles multiple files by concatenation, enough for `Produce Exchange`.
 * documentation (See [draft](actorscript-guide.pdf), 30 pages)
-* had to back-paddle for static canisters from dynamic actors
+* had to backpedal for static canisters from dynamic actors
 
 ---
 
@@ -663,7 +663,7 @@ charlie.go("charlie", server);
 * Library mechanism/true separate compilation
 * ML-like variant types (e.g. for trees)
 * Better GC (eventually).
-* Move to bi-directional messaging (blocked on hypervisor)
+* Move to bidirectional messaging (blocked on hypervisor)
 
 -----------------
 
