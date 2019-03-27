@@ -61,7 +61,7 @@ structural record types, JS-like, fields can be mutable
 
 * `shared {x : int; y:int; color: Color}`
 
-(shared (think serialiable) object must have immutable fields of sharable types.)
+(shared (think serialisable) object must have immutable fields of sharable types.)
 
 ---
 
