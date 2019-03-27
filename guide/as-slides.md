@@ -1,5 +1,7 @@
 % "ActorScript"
 
+# Overview
+
 ### Motivation and Goals
 
 A simple but useful language  
@@ -31,6 +33,53 @@ for writing DFINITY actors.
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 ---
+
+### Semantics
+
+* call-by-value  
+  (like Java, C, JS, ML; unlike Haskell, Nix)
+* declarations are locally mutually recursive, provided no *use-before-define.*
+* parametric, bounded polymorphism
+* subtyping as subsumption, not coercion.
+* no dynamic casts
+
+---
+
+### Implementation(s)
+
+* implemented in OCaml (leverages `wasm` libary)
+* simple reference interpreter
+* less simple compiler to WebAssembly
+  * multipass with typed IR in each pass.
+  * uniform representation, unboxed arithmetic
+  * two-space gc (for now), gc between messages
+  * relies on typing for performance
+* polymorphism by erasure
+* subtyping is always the identity (thus free)
+
+---
+
+### Status
+
+* great team!
+* interpreter/compiler up and running via `dvm`.
+* compiles multiple files by concatenation  
+  (good enough for the Produce Exchange)
+* documentation (see [draft](actorscript-guide.pdf), 30 pages)
+* had to backpedal for static canisters from dynamic actors
+
+### Backlog
+
+* (Full) Standard library (e.g. Unicode API)
+* IDL design/compiler (in ~~dispute~~ progress).
+* Upgrade story
+* Library mechanism/true separate compilation
+* ML-like variant types (e.g. for trees)
+* Better GC (eventually).
+* Move to bidirectional messaging  
+  (blocked on proposal and hypervisor support)
+
+# The language
 
 ### Types
 
@@ -556,6 +605,15 @@ let Alice = Client(); // construction as function call
 Alice.start(Server); // async send as function call
 ```
 
+### Language prelude
+
+* connects internal primitives with surface syntax (types, operations)
+* conversions like `intToWord32`
+* side-effecting operations `printInt`
+  (tie into execution environment)
+* utilities like `hashInt`, `clzWord32`
+
+
 # Sample App
 
 ---
@@ -641,66 +699,7 @@ alice.go("alice", server);
 charlie.go("charlie", server);
 ```
 
----
-
-### Semantics
-
-* call-by-value  
-  (like Java, C, JS, ML; unlike Haskell, Nix)
-* declarations are locally mutually recursive, provided no *use-before-define.*
-* parametric, bounded polymorphism
-* subtyping as subsumption, not coercion.
-* no dynamic casts
-
----
-
-### Language prelude
-
-* connects internal primitives with surface syntax (types, operations)
-* conversions like `intToWord32`
-* side-effecting operations `printInt`
-  (tie into execution environment)
-* utilities like `hashInt`, `clzWord32`
-
----
-
-### Implementation(s)
-
-* implemented in OCaml (leverages `wasm` libary)
-* simple reference interpreter
-* less simple compiler to WebAssembly
-  * multipass with typed IR in each pass.
-  * uniform representation, unboxed arithmetic
-  * two-space gc (for now), gc between messages
-  * relies on typing for performance
-* polymorphism by erasure
-* subtyping is always the identity (thus free)
-
----
-
-### Status
-
-* great team!
-* interpreter/compiler up and running via `dvm`.
-* compiles multiple files by concatenation  
-  (good enough for the Produce Exchange)
-* documentation (see [draft](actorscript-guide.pdf), 30 pages)
-* had to backpedal for static canisters from dynamic actors
-
----
-
-### Backlog:
-
-* (Full) Standard library (e.g. unicode api)
-* IDL design/compiler (in ~~dispute~~ progress).
-* Upgrade story
-* Library mechanism/true separate compilation
-* ML-like variant types (e.g. for trees)
-* Better GC (eventually).
-* Move to bidirectional messaging  
-  (blocked on proposal and hypervisor support)
-
------------------
+# Produce Exchange
 
 ### Produce Exchange
 
