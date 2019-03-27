@@ -49,7 +49,9 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 ### Function types
 
 * first-class
+
 * multiple arguments and returns
+
 * possibly generic
 
   - `T -> U`
@@ -63,22 +65,28 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 structural record types, JS-like, fields can be mutable
 
-*  `{var x : T; var y : U; color : Color}`
+* `{var x : Int; color : Color}`
 
-* `shared {x : int; y:int; color: Color}`
+* `shared {x : Int; color: Color}`
 
-(shared (think serializable) object must have immutable fields of sharable types.)
+shared (think serializable) objects have immutable fields of sharable types.
 
 ---
 
 ### Actor types
 
-Like object types, but marked as `actor`.
+Like object types, but marked as `actor`:
 
-* `actor {f : T -> (); g : U -> async T}`
+```
+actor {
+  f : Text -> ();
+  g : Int -> async Int
+}
+```
 
-* The fields of an actor are functions with:
-* return type `()` (think void) ; OR
+The fields of an actor are functions with
+
+* return type `()` (think void) or
 * return type `async T` (a promise)
 
 ---
@@ -93,56 +101,63 @@ Like object types, but marked as `actor`.
 
 ### Tuple types
 
+`(Bool, Float, Text)`
+
 * heterogeneous aggregates of fixed size
 * immutable fields
 
-* `(Bool, Float, Text)`
 
 ---
 
 ### Option types
 
+`?T`
+
 * explicit nullable types
 
-* ML-style option type `? T`
-
 * values:
-  * `null`, or
-  * `? t`, any `t`.
+  * `null`  
+    or
+  * `? x`  
+    for a `x : T`.
 
-(no other type contains `null`)
+* (no other type contains `null`)
 
 ---
 
 
 ### Async types
 
-* new type `async T`
-* asychronous future (a.k.a. *promises*):
-  * a handle to a future value of type `T`.
+`async T`
+
+* asychronous future (a.k.a. *promises*):  
+  a handle to a future value of type `T`.
 
 * introduced by expression `async e`.
+
 * expression `await e` suspends computation pending `e`'s result.
 
 ---
 
 ### Type System
 
-* Structural, equi-recursive subtyping (definitions are equations).
+* Structural, equi-recursive subtyping  
+  (definitions are equations).
 
-* Generics over all types; 
+* Generics over all types
 
 * Constraints on type parameters (as in Java/C#)
 
 * uniform representation, not specialization
 
-* bidirectional type checking (not ML-style inference)
+* bidirectional type checking  
+  (not ML-style inference)
 
 ---
 
 ### Sharability
 
-AS distinguishes sharable from non-sharable types, roughly:
+AS distinguishes sharable types:
  
 *sharable* \~ stateless, serializable
 
@@ -151,13 +166,14 @@ AS distinguishes sharable from non-sharable types, roughly:
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
   - any `shared` object type is sharable
-  - any `actor` object type is sharable
-  - `[T]` is sharable if `T` is shareable.
-  - `? T` is sharable if `T` is shareable,
-  - all other types (including non-shared objects, functions) are non-sharable
+  - any `actor` type is sharable
+  - `[T]` and `?T`  are sharable if `T` is shareable.
+  - all other types are non-sharable
+ <!--
   - any parameter `T <: Shared` is sharable.
-
 (subtyping respects `sharability`)
+ -->
+
 
 ---
 
