@@ -637,7 +637,7 @@ charlie.go("charlie", server);
 
 * implemented in OCaml (leverages `wasm` libary)
 * simple reference interpreter
-* less simple compiler (wasm)
+* less simple compiler to WebAssembly
   * multipass with typed IR in each pass.
   * uniform representation, unboxed arithmetic
   * two-space gc (for now), gc between messages
