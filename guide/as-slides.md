@@ -660,6 +660,8 @@ charlie.go("charlie", server);
 * side-effecting operations `printInt` (tie into execution environment)
 * utilities `hashInt`, `clzWord32`
 
+---
+
 ### Implementation(s)
 
 * implemented in OCaml (leverages `wasm` libary)
