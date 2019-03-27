@@ -61,7 +61,7 @@ structural record types, JS-like, fields can be mutable
 
 * `shared {x : int; y:int; color: Color}`
 
-(shared (think serialisable) object must have immutable fields of sharable types.)
+(shared (think serializable) object must have immutable fields of sharable types.)
 
 ---
 
@@ -130,7 +130,7 @@ Like object types, but marked as `actor`.
 
 * uniform representation, not specialization
 
-* bi-directional type checking (not ML-style inference)
+* bidirectional type checking (not ML-style inference)
 
 ---
 
