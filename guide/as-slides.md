@@ -179,49 +179,48 @@ AS distinguishes sharable types:
 
 ### Expressions and Statements
 
-* Identifiers
-  - `x`, `foo_bar`
-  - `List`, `Map`
+* Identifiers: `x`, `foo_bar`, `List`, `Map`
 
 * Literals for primitive types
   - `13`, `0xf4`, `-20`, `1_000_000`
   - `3.14`, `-0.3e+15`
-  - `'x'`, `'\u{6a}'`
-  - `"boo"`, `"foo \u{62}ar"`
+  - `'x'`, `'\u{6a}'`, `'☃'`,
+  - `"boo"`, `"foo \u{62}ar ☃"`
   - `true`, `false`
   - `null`
 
-* Unary & binary,  arithmetic & logical operators
-  - `- x`, `not b` ...
-  - `a + b` ...
-  - `a & b` ...
+* Unary & binary, arithmetic & logical operators
+  - `- x`, `not b`, `a + b`, `a & b` ...
 
 ---
 
 ### (Shared) Objects
 
 * `shared` (think serializable) objects have immutable fields of sharable type:
-```
-shared { x = 0; y = 0; color = Colors.Red }
-```
 
-* full `object`s can be mutable, stateful (but not sharable)
-``` swift
-object { 
-  private var c = 0;
-  inc() {c += 1};
-  get() : Int {c}
-}
-```
+  ```
+  shared { x = 0; color = Colors.Red }
+  ```
+
+* full `object`s can be mutable, stateful  
+  (but not sharable)
+  ``` swift
+  object {
+    private var c = 0;
+    inc() {c += 1};
+    get() : Int {c}
+  }
+  ```
 
 ---
 
 ### Actors
 
-* Actors are restricted objects:
-  * state must be isolated
-  * public methods implicitly `shared`
-  * (thus) interface asynchronous
+Actors are restricted objects:
+
+* state must be isolated
+* public methods implicitly `shared`
+* interface asynchronous
 
 ```
 actor { 
@@ -247,7 +246,6 @@ actor {
   *  `client.send(text)`
   *  `await server.subscribe(client)`
 
----
 
 <!--
 ### Actor typing
@@ -262,6 +260,7 @@ actor {
 
 (`shared` functions are asynchronous with serializable arguments/returns.)
 -->
+
 ---
 
 ### Tuples
@@ -272,8 +271,8 @@ Tuples are anonymous aggregates of fixed length
   let origin = (0, 0, 0);
   let (x, y, z) = origin;
 
-  func isOrigin(p : Point3D) : Bool
-  { switch p {
+  func isOrigin(p : Point3D) : Bool {
+    switch p {
       case (0, 0, 0) true; // pattern match
       case _ false;
     }
@@ -296,29 +295,38 @@ Tuples are anonymous aggregates of fixed length
 
 ### Function calls, short-cut return
 
-* `compare(x, y)`
-* `let ints = fun_sort<Int>(as, func(a: Int,b : Int){ return a - b;})
+* Arguments as tuples:
 
-Early exit via `return`:
+  ```
+  compare(x, y)
+  ```
+* Anonymous functions:
 
-```
-let prod(ints : [int]):Int {
+  ```
+  let bs = fun_sort<Int>(as, func(a:Int, b:Int) { a - b });
+  ```
+
+* We can return early from a function with `return`:
+  ```
+  let prod(ints : [Int]) : Int {
     let p = 1;
     for (i in ints.vals) {
-	  if (i == 0) return 0 // early return
-	  else p *= i
+      if (i == 0) return 0;
+      p *= i
     };
-	p;
-   }
-```
+    p;
+  }
+  ```
+
+
 
 ---
 
 ### Blocks with local scope
 
-*  `{ let tmp = x; x := y; y := tmp;  }`
+`{ let tmp = x; x := y; y := tmp;  }`
 
-* may contain mutually recursive type and value bindings.
+* mutually recursive type and value bindings.
 
 ---
 
@@ -326,9 +334,10 @@ let prod(ints : [int]):Int {
 
 - `if b ...`
 - `if b ... else ...`
-- `switch x { case 1 ...; case 2 ...; case _ ...}`
+- `switch x { case 1 ...; case 2 ...; case _ ...}`  
 
-- (case use sequential pattern matching; trap on failure to match any case)
+  sequential pattern matching,  
+  traps on if no case matches
 
 ---
 
@@ -348,7 +357,7 @@ let prod(ints : [int]):Int {
   - `break l`
   - `continue l`
 
-(labels ensure control flow is structured (no gotos))
+labels ensure control flow is structured (no gotos)
 
 ---
 
@@ -356,24 +365,22 @@ let prod(ints : [int]):Int {
 
 `async e`
 
-* spawns an asynchronous computation of argument `e`
-
+* spawns an asynchronous computation of `e`  
   (by sending a message to the enclosing actor)
 
-* the async expression immediately returns control
-
+* the async expression immediately returns control  
   (before `e` has finished)
 
-* its value is a *pending* promise (type `async T`).
+* its value is a *pending* promise (`async T`)
 
-* The promise is *fulfilled* when `e` completes (asynchronously).
+* The promise is *fulfilled* when `e` completes (asynchronously)
 
 
 ---
 
 ### Await
 
-* You can't synchrously "block" on a promise.
+* You cannot synchronously "block" on a promise.
 
 * Instead, `async` expressions have super-powers ...
 
@@ -383,22 +390,22 @@ let prod(ints : [int]):Int {
 
 ### Await (cont.)
 
-* `await e`:
-   * evaluates `e` to a promise
-   * then suspends the caller of `await` until/unless the promise has a value.
+`await e`
 
-E.g.:
+* evaluates `e` to a promise
+* then suspends the caller of `await` until/unless the promise has a value.
 
-```
-   async {
-      loop {
-             let post = await Server.subscribe(...);
-             post("hello");
-             s.unsubscribe();
+   ```
+      async {
+         loop {
+            let post = await Server.subscribe(...);
+            post("hello");
+            s.unsubscribe();
+         };
       };
-   };
-```
-(async and await are compiled by (selective) cps conversion).
+   ```
+
+* (implemented by (selective) cps conversion)
 
 ---
 
@@ -408,13 +415,13 @@ E.g.:
 
 * not a run-time cast, just a compile-time constraint
 * verified and exploited by the type-checker
-
-(switches direction from (partial) type inference to (complete) type checking.)
+* switches direction from (partial) type inference to (complete) type checking
 
 ---
 
 ### ~~Instance check~~
-  - ~~`x is T`~~
+
+~~`x is T`~~
 
 (verboten)
 
@@ -422,7 +429,7 @@ E.g.:
 
 ### Assertions
 
-* `assert (x > 0)`
+`assert (x > 0)`
 
 * `()` on success, or
 * `trap` on failure
@@ -431,22 +438,15 @@ E.g.:
 
 ### Declarations
 
-* Immutable and mutable variables
-
-  `let x = f()`  (immutable)
-
-  `let x : T = f()`
-
-  `var z  = 0` (mutable)
-
+* Immutable and mutable variables  
+  `let x = f()`  (immutable)  
+  `let x : T = f()`  
+  `var z  = 0` (mutable)  
   `var z : Int = 0`
 
-* ... with pattern matching:
-
-  `let (x, y, z) = origin` (can't fail)
-
-  `let 5 = fib(3)` (will trap)
-
+* ... with pattern matching:  
+  `let (x, y, z) = origin` (can't fail)  
+  `let 5 = fib(3)` (will trap)  
   `let ? v = dict.find(key)` (could trap)
 
 ---
@@ -474,7 +474,7 @@ E.g.:
   ```
   type Post = shared Text -> ();
   ```
-* Generic and/or recursive:
+* Generic and/or recursive type definitions:
 
   ```
   type List<T> = ?{head : T; var tail : List<T>};
@@ -535,9 +535,9 @@ actor Server {
 ```
 
 ```
- let post = await Server.subscribe(this);
- post("hello");
- post("world");
+let post = await Server.subscribe(this);
+post("hello");
+post("world");
 ```
 
 ---
