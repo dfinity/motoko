@@ -67,7 +67,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * Upgrade story
 * Library mechanism/true separate compilation
 * ML-like variant types (e.g. for trees)
-* Better GC (eventually).
+* Better memory manager and garbage collector
 * Move to bidirectional messaging  
   (blocked on proposal and hypervisor support)
 * Change the name?
