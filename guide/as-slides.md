@@ -55,10 +55,9 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 * great team!
 * interpreter/compiler up and running via `dvm`.
-* compiles multiple files by concatenation  
+* compiles multiple files by concatenation
   (good enough for the Produce Exchange)
 * documentation (see [draft](actorscript-guide.pdf), 30 pages)
-* had to backpedal for static canisters from dynamic actors
 
 ### Backlog
 
@@ -68,7 +67,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * Library mechanism/true separate compilation
 * ML-like variant types (e.g. for trees)
 * Better memory manager and garbage collector
-* Move to bidirectional messaging  
+* Move to bidirectional messaging
   (blocked on proposal and hypervisor support)
 * Change the name?
 
@@ -226,8 +225,8 @@ AS distinguishes sharable types:
   ``` swift
   object {
     private var c = 0;
-    inc() {c += 1};
-    get() : Int {c}
+    inc() { c += 1 };
+    get() : Int { c }
   }
   ```
 
@@ -242,8 +241,8 @@ Actors are restricted objects:
 ```
 actor { 
   private var c = 0;
-  inc() {c += 1}; 
-  get() : async Int {c}
+  inc() { c += 1 }; 
+  get() : async Int { c }
 }
 ```
 
@@ -278,15 +277,15 @@ actor {
 
 ### Tuples
 
-Tuples are anonymous aggregates of fixed length
+Tuples are fixed length, heterogenous aggregates (*products*)
 ```
-  type Point3D = (Int, Int, Int);
-  let origin = (0, 0, 0);
-  let (x, y, z) = origin;
+  type Point3D = (Int, Int, Int, Color);
+  let origin = (0, 0, 0, Color.Red);
+  let (x, y, z, _) = origin;
 
   func isOrigin(p : Point3D) : Bool {
     switch p {
-      case (0, 0, 0) true; // pattern match
+      case (0, 0, 0, _) true; // pattern match
       case _ false;
     }
   }
@@ -342,7 +341,7 @@ Tuples are anonymous aggregates of fixed length
 - `switch x { case 1 ...; case 2 ...; case _ ...}`  
 
   sequential pattern matching,  
-  traps on if no case matches
+  traps if no case matches
 
 ###  While, loops and iteration
 
