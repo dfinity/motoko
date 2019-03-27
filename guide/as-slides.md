@@ -1,8 +1,9 @@
 % "ActorScript"
 
-### Motivation / Goals
+### Motivation and Goals
 
-A simple but useful language for writing DFINITY actors.
+A simple but useful language  
+for writing DFINITY actors.
 
 * High-level language for DFINITY dapps
 * Simple design (K.I.S.S.)
@@ -17,14 +18,17 @@ A simple but useful language for writing DFINITY actors.
 
 * Class-based OO, functional & imperative
 * Objects as records of members
+<!--
 * Classes can define actors (records of remote asynchronous functions)
+-->
 * Async construct for sequential programming of asynchronous messaging
 * Structural typing
 * Simple generics and subtyping
-* safe arithmetic (unbounded and checked), explicit conversions
-* JavaScript/TypeScript-style syntax but (really) typed & sane
+* safe arithmetic (unbounded and checked),  
+  explicit conversions
+* JavaScript-style syntax but (really) typed & sane
 
-Inspirations from Java(Script), C#, Swift, Pony, ML, Haskell
+Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 ---
 
