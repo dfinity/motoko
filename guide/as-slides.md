@@ -499,9 +499,9 @@ class Dict< K, V > (cmp : (K,K)-> Int ) {
 ```
 
 ```
-let d = Dict<Int,Text> (func (i:Int, j:Int ) = i - j);
-d.Add(1,"Alice");
-let ? name = d.Find(1);
+let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
+d.add(1,"Alice");
+let ? name = d.find(1);
 ```
 ---
 
