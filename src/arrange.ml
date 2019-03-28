@@ -141,7 +141,7 @@ and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
 and typ_constr (tc : typ_constr)
-  = tc.it.id.it $$ [typ tc.it.ctyp(*; mut tf.it.mut*)]
+  = tc.it.cid.it $$ [typ tc.it.ctyp(*; mut tf.it.mut*)]
 
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]

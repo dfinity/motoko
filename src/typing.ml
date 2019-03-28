@@ -113,14 +113,17 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let check_ids env ids = ignore
+let check_ids env vrnt ids = ignore
+ begin
+  let home, member = if vrnt then "variant", "constructor" else "object", "field" in
   (List.fold_left
     (fun dom id ->
       if List.mem id.it dom
-      then error env id.at "duplicate field name %s in object type" id.it
+      then error env id.at "duplicate %s name %s in %s type" member id.it home
       else id.it::dom
     ) [] ids
   )
+ end
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -189,10 +192,13 @@ and check_typ' env typ : T.typ =
         (T.string_of_typ_expand t');
     T.Async t
   | ObjT (sort, fields) ->
-    check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
+    check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
-  | VrnT (sort, constrs) -> failwith "VrnT"
+  | VrnT (sort, constrs) ->
+     check_ids env true (List.map (fun constr -> constr.it.cid) constrs);
+    let cs = List.map (check_typ_constructor env sort.it) constrs in
+    T.Vrn (sort.it, List.sort T.compare_field cs)
   | ParT typ ->
     check_typ env typ
 
@@ -206,6 +212,18 @@ and check_typ_field env s typ_field : T.field =
     error env typ.at "shared object or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand t);
   T.{lab = id.it; typ = t}
+
+and check_typ_constructor env s typ_constructor : T.field =
+  let {cid; ctyp} = typ_constructor.it in
+  (* TODO(gabor)
+  let t = infer_mut mut (check_typ env typ) in
+  if s = T.Actor && not (T.is_func (T.promote t)) then
+    error env typ.at "actor field %s has non-function type\n  %s"
+      id.it (T.string_of_typ_expand t);
+  if s <> T.Object T.Local && not (T.sub t T.Shared) then
+    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
+      id.it (T.string_of_typ_expand t);*)
+  T.{lab = cid.it; typ = (check_typ env ctyp)}
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in

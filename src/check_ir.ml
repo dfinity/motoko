@@ -188,6 +188,17 @@ let rec check_typ env typ : unit =
     check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
+  | T.Vrn (sort, constrs) -> (* TODO(gabor) *)
+    let rec sorted constrs =
+      match constrs with
+      | []
+      | [_] -> true
+      | f1::((f2::_) as constrs') ->
+        T.compare_field f1 f2  < 0 && sorted constrs'
+    in
+    check_ids env (List.map (fun (field : T.field) -> field.T.lab) constrs);
+    List.iter (check_typ_constructor env sort) constrs;
+    check env no_region (sorted constrs) "variant type's constructors are not sorted"
   | T.Mut typ ->
     check_typ env typ
   | T.Serialized typ ->
@@ -205,6 +216,17 @@ and check_typ_field env s typ_field : unit =
   check env no_region
      (s = T.Object T.Local || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
+
+and check_typ_constructor env s typ_constr : unit =
+  let T.{lab; typ} = typ_constr in
+  check_typ env typ;
+  (* TODO(gabor)
+  check env no_region
+     (s <> T.Actor || T.is_func (T.promote typ))
+    "actor field has non-function type";
+  check env no_region
+     (s = T.Object T.Local || T.sub typ T.Shared)
+    "shared object or actor field has non-shared type" *)
 
 
 and check_typ_binds env typ_binds : T.con list * con_env =

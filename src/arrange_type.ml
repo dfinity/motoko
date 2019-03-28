@@ -18,6 +18,8 @@ let obj_sort s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
 
+let vrn_sort (Type.Variant sh) = Atom ("Variant " ^ sharing sh)
+
 let prim p = match p with
   | Null -> Atom "Null"
   | Bool -> Atom "Bool"
@@ -38,6 +40,7 @@ let rec typ (t:Type.typ) = match t with
   | Con (c,ts)             -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
   | Obj (s, ts)            -> "Obj" $$ [obj_sort s] @ List.map typ_field ts
+  | Vrn (s, cs)            -> "Vrn" $$ [vrn_sort s] @ List.map typ_field cs
   | Array t                -> "Array" $$ [typ t]
   | Opt t                  -> "Opt" $$ [typ t]
   | Tup ts                 -> "Tup" $$ List.map typ ts

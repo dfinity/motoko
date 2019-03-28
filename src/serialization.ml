@@ -85,6 +85,7 @@ module Transform() = struct
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
+    | T.Vrn (s, cs) -> T.Vrn (s, List.map t_field cs)
     | T.Mut t -> T.Mut (t_typ t)
 
     | T.Serialized t -> assert false (* This transformation should only run once *)

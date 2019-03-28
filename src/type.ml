@@ -28,6 +28,7 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
+  | Vrn of vrn_sort * constructor list        (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
@@ -42,6 +43,7 @@ and typ =
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
+and constructor = field
 
 and con = kind Con.t
 and kind =
@@ -124,6 +126,7 @@ let rec shift i n t =
   | Opt t -> Opt (shift i n t)
   | Async t -> Async (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
+  | Vrn (s, fs) -> Vrn (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
   | Serialized t -> Serialized (shift i n t)
@@ -159,6 +162,7 @@ let rec subst sigma t =
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
+  | Vrn (s, cs) -> Vrn (s, List.map (subst_field sigma) cs)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
   | Serialized t -> Serialized (subst sigma t)
@@ -199,6 +203,7 @@ let rec open' i ts t =
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
+  | Vrn (s, cs) -> Vrn (s, List.map (open_field i ts) cs)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
   | Serialized t -> Serialized (open' i ts t)
@@ -340,6 +345,7 @@ let rec span = function
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
+  | Vrn (_, cs) -> Some (List.length cs)
   | Opt _ -> Some 2
   | Mut t -> span t
   | Serialized t -> None
@@ -375,6 +381,7 @@ let rec avoid' cons = function
   | Opt t -> Opt (avoid' cons t)
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
+  | Vrn (s, cs) -> Vrn (s, List.map (avoid_field cons) cs)
   | Mut t -> Mut (avoid' cons t)
   | Serialized t -> Serialized (avoid' cons t)
 
@@ -420,6 +427,7 @@ let is_concrete t =
       | Opt t -> go t
       | Async t -> go t
       | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+      | Vrn (s, cs) -> List.for_all (fun f -> go f.typ) cs
       | Mut t -> go t
       | Serialized t -> go t
     end

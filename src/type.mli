@@ -28,6 +28,7 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
+  | Vrn of vrn_sort * constructor list        (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
@@ -42,6 +43,7 @@ and typ =
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
+and constructor = field
 
 and con = kind Con.t
 and kind =

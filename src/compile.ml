@@ -2722,7 +2722,8 @@ module Serialization = struct
         | Opt t -> go t
         | Async t -> go t
         | Obj (Actor, fs) -> false
-        | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+        | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
+        | Vrn (_, cs) -> List.for_all (fun f -> go f.typ) cs
         | Mut t -> go t
         | Serialized t -> go t
       end

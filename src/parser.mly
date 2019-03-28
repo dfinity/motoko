@@ -259,7 +259,7 @@ typ_field :
 
 typ_constr :
   | CATOP x=id COLON t=typ
-    { {id = x; ctyp = t} @@ at $sloc }
+    { {cid = x; ctyp = t} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ

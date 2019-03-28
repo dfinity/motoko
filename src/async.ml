@@ -160,6 +160,7 @@ module Transform() = struct
     | Opt t -> Opt (t_typ t)
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
+    | Vrn (s, cs) -> Vrn (s, List.map t_field cs) (*TODO*)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
     | Serialized t -> Serialized (t_typ t)
