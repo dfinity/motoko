@@ -106,7 +106,6 @@ let SetDb = new {
     // also: test that merge agrees with disj:
     let r1 = Set.union<Nat>(s1, s2, natEq);
     let r2 = Trie.disj<Nat,(),(),()>(s1, s2, natEq, func (_:?(),_:?()):(())=());
-    //xxx
     assert(Trie.equalStructure<Nat,()>(r1, r2, natEq, Set.unitEq));
     print ";\n";
     setDbPrint(r1);

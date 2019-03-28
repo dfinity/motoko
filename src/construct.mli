@@ -1,4 +1,4 @@
-open Ir   
+open Ir
 open Type
 
 (* A miscellany of helpers to construct typed terms from typed terms *)
@@ -23,11 +23,14 @@ val nextN : name
 
 (* Identifiers *)
 
-val fresh_id : unit -> id
-val fresh_var : typ -> var
+val fresh_id : string -> unit -> id
+val fresh_var : string -> typ -> var
+val fresh_vars : string -> typ list -> var list
 
 val idE : id -> typ -> exp
-val id_of_exp : exp -> id
+val id_of_exp : var -> id
+val arg_of_exp : var -> arg
+val exp_of_arg : arg -> var
 
 (* Patterns *)
 
@@ -49,7 +52,7 @@ val ignoreE : exp -> exp
 val unitE : exp
 val boolE : bool -> exp
 
-val callE : exp -> typ list -> exp -> typ -> exp
+val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> name -> typ -> exp
@@ -60,7 +63,10 @@ val retE: exp -> exp
 val immuteE: exp -> exp
 val assignE : exp -> exp -> exp
 val labelE : id -> typ -> exp -> exp
-val loopE : exp -> exp option -> exp
+val loopE : exp -> exp
+val forE : pat -> exp -> exp -> exp
+val loopWhileE : exp -> exp -> exp
+val whileE : exp -> exp -> exp
 
 val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp

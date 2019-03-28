@@ -34,6 +34,7 @@ and typ =
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
+  | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
@@ -69,6 +70,7 @@ val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
+val is_serialized : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -81,6 +83,7 @@ val as_func : typ -> sharing * control * bind list * typ list * typ list
 val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
+val as_serialized : typ -> typ
 
 val as_prim_sub : prim -> typ -> unit
 val as_obj_sub : string -> typ -> obj_sort * field list
@@ -89,7 +92,7 @@ val as_opt_sub : typ -> typ
 val as_tup_sub : int -> typ -> typ list
 val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
-val as_func_sub : int -> typ -> bind list * typ * typ
+val as_func_sub : sharing -> int -> typ -> sharing * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
@@ -117,6 +120,7 @@ val promote : typ -> typ
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
+val is_concrete : typ -> bool
 
 (* Equivalence and Subtyping *)
 

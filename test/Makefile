@@ -3,10 +3,14 @@ all:
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity
 
+MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
+
 quick:
-	$(MAKE) --no-print-directory --load-average -j -C fail quick
-	$(MAKE) --no-print-directory --load-average -j -C run quick
-	$(MAKE) --no-print-directory --load-average -j -C run-dfinity _out/chatpp.done
+	$(MAKE_PAR) -C fail quick
+	$(MAKE_PAR) -C run quick
+
+parallel: quick
+	$(MAKE_PAR) -C run-dfinity quick
 
 coverage:
 	rm -rf _coverage

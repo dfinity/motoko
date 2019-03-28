@@ -70,6 +70,12 @@ let type_error at text : Diag.message = Diag.{ sev = Diag.Error; at; cat = "IR t
 let error env at fmt =
     Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
+let check env at p fmt =
+  if p
+  then Printf.ikfprintf (fun () -> ()) () fmt
+  else error env at fmt
+
+
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 
@@ -98,24 +104,28 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let check_ids env ids = ignore
-  (List.fold_left
-    (fun dom id ->
-      if List.mem id dom
-      then error env no_region "duplicate field name %s in object type" id
-      else id::dom
+let check_ids env ids = ignore (
+    List.fold_left (fun dom id ->
+      check env no_region (not (List.mem id dom))
+        "duplicate field name %s in object type" id;
+      id::dom
     ) [] ids
   )
 
-let check env at p =
-  if p then ignore
-  else error env at
-
 let check_sub env at t1 t2 =
-  if T.sub t1 t2
-  then ()
-  else error env at "subtype violation:\n  %s\n  %s\n"
+  check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
+
+let check_shared env at t =
+  if env.flavor.Ir.serialized
+  then check env at (T.is_serialized t)
+    "message argument is not serialized:\n  %s" (T.string_of_typ_expand t)
+  else check env at (T.sub t T.Shared)
+    "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
+
+let check_concrete env at t =
+  check env at (T.is_concrete t)
+    "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
 let rec check_typ env typ : unit =
   match typ with
@@ -124,8 +134,7 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
-    if not (T.ConSet.mem c env.cons) then
-       error env no_region "free type constructor %s" (Con.name c);
+    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
@@ -154,8 +163,7 @@ let rec check_typ env typ : unit =
           (T.string_of_typ_expand t2)
     end;
     if sort = T.Sharable then begin
-      let t1 = T.seq ts1 in
-      check_sub env' no_region t1 T.Shared;
+      List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
       | [] -> ()
       | [T.Async t2] ->
@@ -168,7 +176,7 @@ let rec check_typ env typ : unit =
   | T.Async typ ->
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
     let t' = T.promote typ in
-    check_sub env no_region t' T.Shared
+    check_shared env no_region t'
   | T.Obj (sort, fields) ->
     let rec sorted fields =
       match fields with
@@ -182,6 +190,11 @@ let rec check_typ env typ : unit =
     check env no_region (sorted fields) "object type's fields are not sorted"
   | T.Mut typ ->
     check_typ env typ
+  | T.Serialized typ ->
+    check env no_region env.flavor.Ir.serialized
+      "Serialized in non-serialized flavor";
+    check_typ env typ;
+    check_sub env no_region typ T.Shared
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -363,16 +376,22 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     (* TODO: check call_conv (assuming there's something to check) *)
     let t1 = T.promote (typ exp1) in
-    let tbs, t2, t3 =
-      try T.as_func_sub (List.length insts) t1 with
+    let _, tbs, t2, t3 =
+      try T.as_func_sub call_conv.Value.sort (List.length insts) t1 with
       |  Invalid_argument _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    typ exp2 <: T.open_ insts t2;
-    T.open_ insts t3 <: t;
+    let t_arg = T.open_ insts t2 in
+    let t_ret = T.open_ insts t3 in
+    if (call_conv.Value.sort = T.Sharable) then begin
+      check_concrete env exp.at t_arg;
+      check_concrete env exp.at t_ret;
+    end;
+    typ exp2 <: t_arg;
+    t_ret <: t;
   | BlockE (ds, exp1) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
@@ -394,42 +413,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases;
-  | WhileE (exp1, exp2) ->
-    check_exp env exp1;
-    typ exp1 <: T.bool;
-    check_exp env exp2;
-    typ exp2 <: T.unit;
-    T.unit <: t;
-  | LoopE (exp1, expo) ->
+  | LoopE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.unit;
-    begin match expo with
-    | Some exp2 ->
-      check_exp env exp2;
-      typ exp2 <: T.bool;
-      T.unit <: t;
-    | _ ->
-      T.Non <: t; (* vacuously true *)
-    end;
-  | ForE (pat, exp1, exp2) ->
-    begin
-      check_exp env exp1;
-      let t1 = T.promote (typ exp1) in
-      try
-        let _, tfs = T.as_obj_sub "next" t1 in
-        let t0 = T.lookup_field "next" tfs in
-        let t1, t2 = T.as_mono_func_sub t0 in
-        T.unit <: t1;
-        let t2' = T.as_opt_sub t2 in
-        let ve = check_pat_exhaustive env pat in
-        pat.note <: t2';
-        check_exp (adjoin_vals env ve) exp2;
-        typ exp2 <: T.unit;
-        T.unit <: t
-      with Invalid_argument _ ->
-        error env exp1.at "expected iterable type, but expression has type\n  %s"
-          (T.string_of_typ_expand t1)
-    end;
+    T.Non <: t (* vacuously true *)
   | LabelE (id, t0, exp1) ->
     assert (t0 <> T.Pre);
     check_typ env t0;
@@ -502,26 +489,28 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, cc, typ_binds, pat, ret_ty, exp) ->
+  | FuncE (x, cc, typ_binds, args, ret_ty, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
-    let ve = check_pat_exhaustive env' pat in
+    let ve = check_args env' args in
     check_typ env' ret_ty;
     check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
+    if (cc.Value.sort = T.Sharable) then check_concrete env exp.at ret_ty;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) ret_ty;
     (* Now construct the function type and compare with the annotation *)
-    let arg_ty = pat.note in
-    let ts1 = if cc.Value.n_args = 1
-              then [arg_ty]
-              else T.as_seq arg_ty in
+    let ts1 = List.map (fun a -> a.note) args in
     let ts2 = if cc.Value.n_res = 1
               then [ret_ty]
               else T.as_seq ret_ty in
+    if (cc.Value.sort = T.Sharable) then begin
+      List.iter (check_concrete env exp.at) ts1;
+      List.iter (check_concrete env exp.at) ts2;
+    end;
     let fun_ty = T.Func
       ( cc.Value.sort, cc.Value.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
@@ -552,8 +541,19 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
   check_sub env pat.at pat.note t_pat;
   check_exp (adjoin_vals env ve) exp;
-  if not (T.sub (typ exp)  t) then
-    error env exp.at "bad case"
+  check env pat.at (T.sub (typ exp) t) "bad case"
+
+(* Arguments *)
+
+and check_args env args =
+  let rec go ve = function
+    | [] -> ve
+    | a::as_ ->
+      check env a.at (not (T.Env.mem a.it ve))
+        "duplicate binding for %s in argument list" a.it;
+      check_typ env a.note;
+      go (T.Env.add a.it a.note ve) as_
+  in go T.Env.empty args
 
 (* Patterns *)
 
@@ -564,8 +564,8 @@ and gather_pat env ve0 pat : val_env =
     | LitP _ ->
       ve
     | VarP id ->
-      if T.Env.mem id.it ve0 then
-        error env pat.at "duplicate binding for %s in block" id.it;
+      check env id.at (not (T.Env.mem id.it ve0))
+        "duplicate binding for %s in block" id.it;
       T.Env.add id.it pat.note ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats

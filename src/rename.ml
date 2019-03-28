@@ -6,18 +6,23 @@ module Renaming = Map.Make(String)
 
 (* One traversal for each syntactic category, named by that category *)
 
-let stamp = ref 0
+module Stamps = Map.Make(String)
+let stamps = ref Stamps.empty
 
 let fresh_id id =
-  let i' = Printf.sprintf "%s@%i" id.it (!stamp) in
-  stamp := !stamp+1;
-  i'
+  let n = Lib.Option.get (Stamps.find_opt id.it !stamps) 0 in
+  stamps := Stamps.add id.it (n + 1) !stamps;
+  Printf.sprintf "%s/%i" id.it n
 
 let id rho i =
   try {i with it = Renaming.find i.it rho}
   with Not_found -> i
 
 let id_bind rho i =
+  let i' = fresh_id i in
+  ({i with it = i'}, Renaming.add i.it i' rho)
+
+let arg_bind rho i =
   let i' = fresh_id i in
   ({i with it = i'}, Renaming.add i.it i' rho)
 
@@ -47,11 +52,7 @@ and exp' rho e  = match e with
                            in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
-  | WhileE (e1, e2)     -> WhileE (exp rho e1, exp rho e2)
-  | LoopE (e1, None)    -> LoopE (exp rho e1, None)
-  | LoopE (e1, Some e2) -> LoopE (exp rho e1, Some (exp rho e2))
-  | ForE (p, e1, e2)    -> let p',rho' = pat rho p in
-                           ForE (p', exp rho e1, exp rho' e2)
+  | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
   | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
@@ -64,7 +65,7 @@ and exp' rho e  = match e with
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
   | FuncE (x, s, tp, p, t, e) ->
-     let p', rho' = pat rho p in
+     let p', rho' = args rho p in
      let e' = exp rho' e in
      FuncE (x, s, tp, p', t, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
@@ -73,6 +74,14 @@ and exps rho es  = List.map (exp rho) es
 
 and fields rho fs =
   List.map (fun f -> { f with it = { f.it with var = id rho f.it.var } }) fs
+
+and args rho as_ =
+  match as_ with
+  | [] -> ([],rho)
+  | a::as_ ->
+     let (a', rho') = arg_bind rho a in
+     let (as_', rho'') = args rho' as_ in
+     (a'::as_', rho'')
 
 and pat rho p =
     let p',rho = pat' rho p.it in

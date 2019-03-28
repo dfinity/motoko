@@ -2,9 +2,13 @@
 
 TO-TEST = $(patsubst %.as,_out/%.done,$(wildcard *.as))
 
+.PHONY: quick
+
 quick: $(TO-TEST)
 
+_out:
+	@ mkdir -p $@
+
 # run single test, e.g. make _out/AST-56.done
-_out/%.done: %.as $(ASC) ../run.sh
-	@ mkdir -p _out
+_out/%.done: %.as $(wildcard ../../src/asc) ../run.sh  | _out
 	@ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)

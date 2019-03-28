@@ -22,8 +22,15 @@ let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
 
-let unicode lexbuf s i =
+
+let utf8 s i =
+  let len = if s.[!i] < '\xe0' then 1 else if s.[!i] < '\xf0' then 2 else 3 in
+  i := !i + len;
+  List.hd (Utf8.decode (String.sub s (!i - len) (1 + len)))
+
+let codepoint lexbuf s i =
   let u =
+    if s.[!i] >= '\x80' then utf8 s i else
     if s.[!i] <> '\\' then Char.code s.[!i] else
     match (incr i; s.[!i]) with
     | 'n' -> Char.code '\n'
@@ -45,13 +52,13 @@ let unicode lexbuf s i =
   in incr i; u
 
 let char lexbuf s =
-  unicode lexbuf s (ref 1)
+  codepoint lexbuf s (ref 1)
 
 let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let bs = Utf8.encode [unicode lexbuf s i] in
+    let bs = Utf8.encode [codepoint lexbuf s i] in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
