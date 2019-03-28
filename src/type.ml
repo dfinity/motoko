@@ -256,6 +256,7 @@ let rec promote = function
 
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
+let is_vrn = function Vrn _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
 let is_tup = function Tup _ -> true | _ -> false
@@ -270,6 +271,7 @@ let invalid s = raise (Invalid_argument ("Type." ^ s))
 
 let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
 let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
+let as_vrn = function Vrn (s, tcs) -> s, tcs | _ -> invalid "as_vrn"
 let as_array = function Array t -> t | _ -> invalid "as_array"
 let as_opt = function Opt t -> t | _ -> invalid "as_opt"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
@@ -494,6 +496,9 @@ let rec rel_typ rel eq t1 t2 =
     rel_fields rel eq tfs1 tfs2
   | Obj (s, _), Shared when rel != eq ->
     s <> Object Local
+  | Vrn (s1, tcs1), Vrn (s2, tcs2) ->
+    s1 = s2 &&
+    rel_fields rel eq tcs1 tcs2
   | Array t1', Array t2' ->
     rel_typ rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
@@ -667,7 +672,9 @@ let rec string_of_typ_nullary vs = function
   | Array t ->
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs "") fs))
+  | Vrn (Variant Local, fs) ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs "#") fs))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -714,8 +721,8 @@ and string_of_typ' vs t =
     sprintf "serialized %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
-and string_of_field vs {lab; typ} =
-  sprintf "%s : %s" lab (string_of_typ' vs typ)
+and string_of_field vs mark {lab; typ} =
+  sprintf "%s%s : %s" mark lab (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs

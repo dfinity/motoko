@@ -65,6 +65,7 @@ val prim : string -> prim
 
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_vrn : typ -> bool
 val is_array : typ -> bool
 val is_opt : typ -> bool
 val is_tup : typ -> bool
@@ -77,6 +78,7 @@ val is_serialized : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
+val as_vrn : typ -> vrn_sort * constructor list
 val as_array : typ -> typ
 val as_opt : typ -> typ
 val as_tup : typ -> typ list
