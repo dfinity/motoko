@@ -15,6 +15,7 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
+type vrn_sort = Type.vrn_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
@@ -24,6 +25,7 @@ and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
   | ObjT of obj_sort * typ_field list              (* object *)
+  | VrnT of vrn_sort * typ_constr list             (* variant *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | TupT of typ list                               (* tuple *)
@@ -37,6 +39,9 @@ and typ' =
 
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
+
+and typ_constr = typ_constr' Source.phrase
+and typ_constr' = {id : id; ctyp : typ}
 
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}

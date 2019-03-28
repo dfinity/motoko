@@ -192,6 +192,7 @@ and check_typ' env typ : T.typ =
     check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
+  | VrnT (sort, constrs) -> failwith "VrnT"
   | ParT typ ->
     check_typ env typ
 

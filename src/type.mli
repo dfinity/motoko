@@ -6,6 +6,7 @@ type var = string
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
+type vrn_sort = Variant of sharing
 type eff = Triv | Await
 
 type prim =

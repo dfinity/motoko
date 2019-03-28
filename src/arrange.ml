@@ -123,6 +123,10 @@ and obj_sort' s = match s with
 
 and obj_sort s = obj_sort' s.it
 
+and vrn_sort' (Type.Variant sh) = Atom ("Variant " ^ sharing sh)
+
+and vrn_sort s = vrn_sort' s.it
+
 and mut m = match m.it with
   | Const -> Atom "Const"
   | Var   -> Atom "Var"
@@ -133,6 +137,9 @@ and vis v = match v.it with
 
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
+
+and typ_constr (tc : typ_constr)
+  = tc.it.id.it $$ [typ tc.it.ctyp(*; mut tf.it.mut*)]
 
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
@@ -146,6 +153,7 @@ and typ t = match t.it with
   | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]
   | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | VrnT (s, ts)        -> "VrnT" $$ [vrn_sort s] @ List.map typ_constr ts
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | TupT ts             -> "TupT" $$ List.map typ ts

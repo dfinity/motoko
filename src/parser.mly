@@ -196,6 +196,10 @@ typ_obj :
   | LCURLY tfs=seplist(typ_field, semicolon) RCURLY
     { tfs }
 
+typ_variant :
+  | LCURLY tc=typ_constr semicolon tcs=seplist(typ_constr, semicolon) RCURLY
+    { tc :: tcs }
+
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
@@ -205,6 +209,8 @@ typ_nullary :
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
+  | tvs=typ_variant
+    { VrnT(Type.Variant Type.Local @@ at $sloc, tvs) @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -250,6 +256,10 @@ typ_field :
     { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
+
+typ_constr :
+  | CATOP x=id COLON t=typ
+    { {id = x; ctyp = t} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
