@@ -2,8 +2,8 @@ type Tree<A> = {#leaf : A; #branch : (Tree<A>, Tree<A>)};
 
 func size<A>(t : Tree<A>) : Nat {
   switch t {
-  case (#leaf _) 0;
-  case (#tree(t1, t2)) { 1 + size(t1) + size(t2) };
+  case (#leaf _) 1;
+  case (#branch(t1, t2)) { 1 + size(t1) + size(t2) };
   }
 };
 
