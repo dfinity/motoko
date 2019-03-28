@@ -1,7 +1,7 @@
 %{
 
 open Syntax
-open Source 
+open Source
 
 (* Position handling *)
 
@@ -93,11 +93,11 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN 
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
-%token AND OR NOT 
+%token AND OR NOT
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
@@ -252,7 +252,7 @@ typ_args :
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
+  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
     { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
@@ -363,7 +363,7 @@ exp_post :
 
 exp_un :
   | e=exp_post
-    { e } 
+    { e }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -372,6 +372,12 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
+  | CATOP i=id e=exp_un
+    {
+      let dec = VarD(i, e) @? span i.at e.at in
+      let vis = Public @@ no_region in
+
+      VrnE ({dec; vis} @@ span (at $sloc) e.at) @? at $sloc }
 
 exp_bin :
   | e=exp_un
@@ -406,7 +412,7 @@ exp_pre :
 
 exp_nondec :
   | e=exp_pre
-    { e } 
+    { e }
   | LABEL x=id rt=return_typ_nullary? e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
       let t = Lib.Option.get rt (TupT [] @! at $sloc) in
