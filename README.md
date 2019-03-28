@@ -67,16 +67,42 @@ installing all required tools without nix is out of scope).
 
 ## Create a coverage report
 
-Run
+Three ways of obtaining the coverage report:
 
-    BISECT_COVERAGE=YES make -C src asc
-    make -C test coverage
+ * Run
+   ```
+   BISECT_COVERAGE=YES make -C src asc
+   make -C test coverage
+   ```
+   and open `test/coverage/index.html` in the browser.
 
-and open `test/coverage/index.html` in the browser, or run
-
+ * Alternatively, you can run
+   ```
    nix-build -A coverage-report
+   ```
+   and open the path printed on the last line of that command.
+ * On the VPN, simply go to
+   <https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript/coverage-report/latest/download/1/coverage/index.html>
+   for the report for the latest version on `master`.
 
-and open the path printed on the last line of that command.
+## Profile the compiler
+
+1. Build with profiling
+   ```
+   make -C src clean
+   make BUILD=p.native -C src asc
+   ```
+2. Run `asc` as normal, e.g.
+   ```
+   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ```
+   this should dump a `gmon.out` file in the current directory.
+3. Create the report, e.g. using
+   ```
+   gprof --graph src/asc
+   ```
+   (Note that you have to _run_ this in the directory with `gmon.out`, but
+   _pass_ it the path to the binary.)
 
 
 ## Introduction
