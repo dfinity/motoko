@@ -920,15 +920,18 @@ than the MVP goals, however.
     };
     /** - window start: check that the route begins after the inventory window begins */    
     if (item.start_date > route.start_date) {
-      debugOff "nope: item start after route start\n"
+      debugOff "nope: item start after route start\n";
+      return false
     };
     /** - window end: check that the route ends before the inventory window ends */
     if (route.end_date > item.end_date) {
-      debugOff "nope: route ends after item ends\n"
+      debugOff "nope: route ends after item ends\n";
+      return false
     };
     /** - check that truck can carry the given produce */
     if (not isCompatibleTruckType(route.truck_type, item.produce)) {
-      debugOff "nope: truck is not compatible\n"
+      debugOff "nope: truck is not compatible\n";
+      return false
     };
     /** - all checks pass: */    
     true
