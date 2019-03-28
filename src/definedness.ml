@@ -100,6 +100,8 @@ let rec exp msgs e : f = match e.it with
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
+  | VrnE ef             ->
+     close (exp_fields msgs [ef]) (* FIXME(Gabor) *)
   | ObjE (s, efs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
@@ -135,7 +137,8 @@ and pat msgs p : fd = match p.it with
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
-  | OptP p        -> pat msgs p
+  | OptP p
+  | VrnP (_, p)   -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps

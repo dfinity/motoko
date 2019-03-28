@@ -494,6 +494,8 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
+  | CATOP i=id p=pat_un
+    { VrnP(i, p) @! at $sloc }
 
 pat_bin :
   | p=pat_un

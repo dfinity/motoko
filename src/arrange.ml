@@ -15,6 +15,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, efs)       -> "ObjE"    $$ [obj_sort s] @ List.map exp_field efs
+  | VrnE ef             -> "VrnE"    $$ [exp_field ef]
   | DotE (e, x)         -> "DotE"    $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
@@ -57,6 +58,7 @@ and pat p = match p.it with
   | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
   | LitP l        -> "LitP"       $$ [lit !l]
   | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
+  | VrnP (i, p)   -> "VrnP"       $$ [id i; pat p]
   | OptP p        -> "OptP"       $$ [pat p]
   | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
   | ParP p        -> "ParP"       $$ [pat p]

@@ -266,6 +266,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
     interpret_obj env sort fields k
+  | VrnE field ->
+    interpret_obj env {at=no_region; it=Type.(Object Local); note=()} [field] k
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
@@ -437,6 +439,7 @@ and declare_pat pat : val_env =
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | OptP pat1
+  | VrnP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
@@ -469,6 +472,7 @@ and define_pat env pat v =
     | _ -> assert false
     )
   | AnnotP (pat1, _)
+  | VrnP (_, pat1)
   | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
@@ -504,6 +508,11 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | VrnP (i, pat) ->
+     let o = V.as_obj v
+     in (match V.Env.keys o with
+         | [k] when i.it = k -> match_pat pat v (*TODO:Extract*)
+         | _ -> None)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1

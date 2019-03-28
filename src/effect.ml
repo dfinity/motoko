@@ -64,6 +64,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     List.fold_left max_eff Type.Triv es
   | ObjE (_, efs) ->
     effect_field_exps efs
+  | VrnE ef -> effect_field_exps [ef]
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in

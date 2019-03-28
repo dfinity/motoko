@@ -218,7 +218,7 @@ and value =
   | Tup of value list
   | Opt of value
   | Array of value array
-  | Obj of value Env.t
+  | Obj of value Env.t (* exactly one key for variants *)
   | Func of call_conv * func
   | Async of async
   | Mut of value ref

@@ -416,6 +416,7 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it fields exp.at
+  | VrnE field -> failwith "VrnE"
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -781,6 +782,7 @@ and infer_pat' env pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
+  | VrnP (i, pat1) -> failwith "VrnP"
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
@@ -908,6 +910,7 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
+  | VrnP (_, pat1)
   | AltP (pat1, _)
   | OptP pat1
   | AnnotP (pat1, _)
@@ -1137,7 +1140,7 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+  | VrnP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then

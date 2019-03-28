@@ -73,7 +73,7 @@ let rec match_pat ctxt desc pat t sets =
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
-	| OptP pat1 ->
+  | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
     | Val Value.Null ->
@@ -87,6 +87,7 @@ let rec match_pat ctxt desc pat t sets =
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
+  | VrnP (_, pat1) -> failwith "VrnP"
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
