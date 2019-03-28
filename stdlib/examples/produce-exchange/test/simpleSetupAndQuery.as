@@ -93,39 +93,39 @@ actor class Test() = this {
       // populate with inventory
       let praia = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pea), 100, 100, 10, 0, 10, ""
+        unwrap<ProduceId>(pea), 100, 100, 10, 0, 110, ""
       );
       let paib = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(peb), 200, 200, 10, 1, 11, ""
+        unwrap<ProduceId>(peb), 200, 200, 10, 1, 111, ""
       );
       let praic = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pec), 300, 300, 10, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
       );
       let prbia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 200, 10, 4, 7, ""
+        unwrap<ProduceId>(peb), 200, 200, 10, 4, 117, ""
       );
       let prbib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 15, ""
+        unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 115, ""
       );
       let prbic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 300, 10, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
       );
       let prcia = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 200, 9, 4, 7, ""
+        unwrap<ProduceId>(peb), 200, 200, 9, 4, 711, ""
       );
       let prdib = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 1500, 7, 2, 15, ""
+        unwrap<ProduceId>(peb), 1500, 1500, 7, 2, 115, ""
       );
       let prdic = await s.producerAddInventory(
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(pec), 300, 300, 6, 2, 12, ""
+        unwrap<ProduceId>(pec), 300, 300, 6, 2, 112, ""
       );
 
       printEntityCount("Inventory", (await s.getCounts()).inventory_count);
@@ -164,14 +164,14 @@ actor class Test() = this {
         unwrap<TransporterId>(trb),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regc),
-        0, 20, 70,
+        0, 40, 70,
         unwrap<TruckTypeId>(ttb)
       );
       let rtb_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(trb),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
-        0, 20, 97,
+        20, 40, 97,
         unwrap<TruckTypeId>(ttc)
       );
 
@@ -179,21 +179,21 @@ actor class Test() = this {
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regb),
-        0, 20, 40,
+        20, 40, 40,
         unwrap<TruckTypeId>(tta)
       );
       let rtc_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regb),
-        0, 20, 70,
+        20, 40, 70,
         unwrap<TruckTypeId>(tta)
       );
       let rtc_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
-        0, 20, 97,
+        20, 40, 97,
         unwrap<TruckTypeId>(ttc)
       );
 
@@ -201,14 +201,14 @@ actor class Test() = this {
         unwrap<TransporterId>(trd),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regd),
-        0, 20, 50,
+        20, 40, 50,
         unwrap<TruckTypeId>(ttb)
       );
       let rtd_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trd),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regd),
-        0, 20, 70,
+        20, 40, 70,
         unwrap<TruckTypeId>(tta)
       );
 
@@ -216,7 +216,7 @@ actor class Test() = this {
         unwrap<TransporterId>(tre),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regd),
-        0, 20, 97,
+        20, 40, 97,
         unwrap<TruckTypeId>(ttc)
       );
 
@@ -235,9 +235,10 @@ actor class Test() = this {
 
       print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
+      
+      printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
-      printEntityCount("Retailer join", counts.retailer_join_count);
 
 
     })

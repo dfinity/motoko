@@ -387,6 +387,12 @@ let Trie = new {
    in common keys. note: the `disj` operation generalizes this `merge`
    operation in various ways, and does not (in general) loose
    information; this operation is a simpler, special case.
+   
+   See also:
+
+   - [`disj`](#disj)
+   - [`conj`](#conj)
+
    */
   func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
@@ -559,14 +565,24 @@ let Trie = new {
   /**
    `disj`
    --------
+
    This operation generalizes the notion of "set union" to finite maps.
+
    Produces a "disjunctive image" of the two tries, where the values of
    matching keys are combined with the given binary operator.
-  
+
    For unmatched key-value pairs, the operator is still applied to
    create the value in the image.  To accomodate these various
    situations, the operator accepts optional values, but is never
    applied to (null, null).
+
+   Implements the database idea of an ["outer join"](https://stackoverflow.com/questions/38549/what-is-the-difference-between-inner-join-and-outer-join).
+
+   See also:
+
+   - [`conj`](#conj)
+   - [`merge`](#merge)
+
    */
   func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 			               k_eq:(K,K)->Bool, vbin:(?V,?W)->X)
@@ -637,6 +653,13 @@ let Trie = new {
    finite maps.  Produces a "conjuctive image" of the two tries, where
    the values of matching keys are combined with the given binary
    operator, and unmatched key-value pairs are not present in the output.
+
+   Implements the database idea of an ["inner join"](https://stackoverflow.com/questions/38549/what-is-the-difference-between-inner-join-and-outer-join).
+
+   See also:
+
+   - [`disj`](#disj)
+   - [`merge`](#merge)
    */
   func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
@@ -695,12 +718,35 @@ let Trie = new {
    these input keys.
 
    */
-  func prod<K1,V1,K2,V2,K3,V3>(tl:Trie<K1,V1>, tr:Trie<K2,V2>, op:(K1,V1,K2,V2) -> ?(K3,V3))
+  func prod<K1,V1,K2,V2,K3,V3>(
+    tl    :Trie<K1,V1>, 
+    tr    :Trie<K2,V2>, 
+    op    :(K1,V1,K2,V2) -> ?(Key<K3>,V3),
+    k3_eq :(K3,K3) -> Bool
+  )
     : Trie<K3,V3>
   {
-    print "to do: Trie.prod\n";
-    // xxx
-    null
+    /** -binary case: merge disjoint results: */
+    func merge (a:Trie<K3,V3>, b:Trie<K3,V3>) : Trie<K3,V3> = 
+      mergeDisjoint<K3,V3>(a, b, k3_eq);
+
+    /** -`foldUp` "squared"; something like "`foldUp^2((tl, tr), merge, (insert null <?< op))`", but real: */
+    foldUp<K1, V1, Trie<K3, V3>>( 
+      tl, merge, 
+      func (k1:K1, v1:V1) : Trie<K3,V3> {
+        foldUp<K2, V2, Trie<K3, V3>>(
+          tr, merge,
+          func (k2:K2, v2:V2) : Trie<K3, V3> {
+            switch (op(k1, v1, k2, v2)) {
+              case null null;
+              case (?(k3, v3)) { (insert<K3, V3>(null, k3, k3_eq, v3)).0 };
+            }
+          },
+          null
+        )
+      },
+      null
+    )
   };
 
   /** 
@@ -828,7 +874,7 @@ let Trie = new {
       Array_tabulate<W> (
         x.len() + y.len(),
         func (i:Nat) : W {
-          if (i >= y.len()) { y[i] }
+          if (i >= x.len()) { y[i - x.len()] }
           else { x[i] }
         }
       )
