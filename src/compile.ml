@@ -1657,7 +1657,7 @@ module Iterators = struct
     get_x: The thing to put in the closure, and pass to mk_next
 
   Return code that takes the object (array or text) on the stack and puts a
-  closure onto it.
+  closure onto the stack.
   *)
   let create env name mk_stop mk_next =
     Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
