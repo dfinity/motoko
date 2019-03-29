@@ -166,8 +166,8 @@ module Transform() = struct
       TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
-    | VrnE (i, e) ->
-      assert false
+    | VrnE (i, exp1) ->
+      VrnE (i, t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->

@@ -295,7 +295,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
-  | VrnE (i, exp1) -> assert false
+  | VrnE (i, exp1) ->
+    interpret_exp env exp1 (fun v1 -> k (V.Obj (V.Env.from_list [i.it, v1])))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | DotE (exp1, {it = Name n; _})
@@ -536,7 +537,11 @@ and match_pat pat v : val_env option =
     | V.Null -> None
     | _ -> assert false
     )
-  | VrnP (i, pat1) -> assert false
+  | VrnP (i, pat1) ->
+    let constr, v1 = V.as_vrn v
+    in if i.it = constr
+       then match_pat pat1 v1
+       else None
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v
