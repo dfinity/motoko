@@ -509,10 +509,10 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | VrnP (i, pat1) ->
-     let o = V.as_obj v
-     in (match V.Env.bindings o with
-         | [k, v1] when i.it = k -> match_pat pat1 v1
-         | _ -> None)
+     let k, v1 = V.as_vrn v
+     in if i.it = k
+        then match_pat pat1 !(V.as_mut v1)
+        else None
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
