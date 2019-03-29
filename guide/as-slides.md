@@ -4,7 +4,7 @@
 
 ### Motivation and Goals
 
-A simple but useful language  
+A simple but useful language
 for writing DFINITY actors.
 
 * High-level language for DFINITY dapps
@@ -24,7 +24,7 @@ for writing DFINITY actors.
 * Async construct for sequential programming of asynchronous messaging
 * Structural typing
 * Simple generics and subtyping
-* Safe arithmetic (unbounded and checked),  
+* Safe arithmetic (unbounded and checked),
   explicit conversions
 * Non-nullable types by default
 * JavaScript like syntax but (really) typed & sane
@@ -33,7 +33,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 ### Semantics
 
-* call-by-value  
+* call-by-value
   (like Java, C, JS, ML; unlike Haskell, Nix)
 * declarations are locally mutually recursive
 * parametric, bounded polymorphism
@@ -149,9 +149,9 @@ The fields of an actor are functions with
 * explicit nullable types
 
 * values:
-  * `null`  
+  * `null`
     or
-  * `? x`  
+  * `? x`
     for a `x : T`.
 
 * (no other type contains `null`)
@@ -161,7 +161,7 @@ The fields of an actor are functions with
 
 `async T`
 
-* asychronous future (a.k.a. *promises*):  
+* asychronous future (a.k.a. *promises*):
   a handle to a future value of type `T`.
 
 * introduced by expression `async e`.
@@ -170,7 +170,7 @@ The fields of an actor are functions with
 
 ### Type System
 
-* Structural, equi-recursive subtyping  
+* Structural, equi-recursive subtyping
   (definitions are equations).
 
 * Generics over all types
@@ -179,17 +179,17 @@ The fields of an actor are functions with
 
 * uniform representation, not specialization
 
-* bidirectional type checking  
+* bidirectional type checking
   (not ML-style inference)
 
 ### Sharability
 
 AS distinguishes sharable types:
- 
+
 *sharable* \~ stateless, serializable
 
 *non-sharable* \~ stateful, non-serializable
-  
+
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
   - any `shared` object type is sharable
@@ -225,7 +225,7 @@ AS distinguishes sharable types:
   shared { x = 0; color = Colors.Red }
   ```
 
-* full `object`s can be mutable, stateful  
+* full `object`s can be mutable, stateful
   (but not sharable)
   ``` swift
   object {
@@ -244,9 +244,9 @@ Actors are restricted objects:
 * interface asynchronous
 
 ```
-actor { 
+actor {
   private var c = 0;
-  inc() { c += 1 }; 
+  inc() { c += 1 };
   get() : async Int { c }
 }
 ```
@@ -343,9 +343,9 @@ Tuples are fixed length, heterogenous aggregates (*products*)
 
 - `if b ...`
 - `if b ... else ...`
-- `switch x { case 1 ...; case 2 ...; case _ ...}`  
+- `switch x { case 1 ...; case 2 ...; case _ ...}`
 
-  sequential pattern matching,  
+  sequential pattern matching,
   traps if no case matches
 
 ###  While, loops and iteration
@@ -368,10 +368,10 @@ labels ensure control flow is structured (no gotos)
 
 `async e`
 
-* spawns an asynchronous computation of `e`  
+* spawns an asynchronous computation of `e`
   (by sending a message to the enclosing actor)
 
-* the async expression immediately returns control  
+* the async expression immediately returns control
   (before `e` has finished)
 
 * its value is a *pending* promise (`async T`)
@@ -429,15 +429,15 @@ labels ensure control flow is structured (no gotos)
 
 ### Declarations
 
-* Immutable and mutable variables  
-  `let x = f()`  (immutable)  
-  `let x : T = f()`  
-  `var z  = 0` (mutable)  
+* Immutable and mutable variables
+  `let x = f()`  (immutable)
+  `let x : T = f()`
+  `var z  = 0` (mutable)
   `var z : Int = 0`
 
-* ... with pattern matching:  
-  `let (x, y, z) = origin` (can't fail)  
-  `let 5 = fib(3)` (will trap)  
+* ... with pattern matching:
+  `let (x, y, z) = origin` (can't fail)
+  `let 5 = fib(3)` (will trap)
   `let ? v = dict.find(key)` (could trap)
 
 ### Functions
@@ -510,8 +510,11 @@ let ? name = d.find(1);
 
 ```
 actor Server =  {
- private shared func post():(){...};
- subscribe(c : Client): async Post { post; };
+ private shared func broadcast():(){...};
+ subscribe(c : Client): async Post {
+   ...
+   return broadcast;
+ };
 };
 ```
 
@@ -525,14 +528,14 @@ post("world");
 
 ```
 actor class Client() = this {
-  start(S : Server) {};
+  start(n : Text, s : Server) {};
   message(m : Text) { ...};
 };
 ```
 
 ```
-let Alice = Client(); // construction as function call
-Alice.start(Server); // async send as function call
+let alice = Client(); // construction as function call
+alice.start("Alice", Server); // async send as function call
 ```
 
 ### Language prelude
@@ -556,15 +559,17 @@ Alice.start(Server); // async send as function call
 ### Chat Server
 
 ```
+type Server = actor { subscribe : Client -> async Post; };
+
 actor Server = {
-  type Post = shared Text -> ();
   private var clients : List<Client> = null;
+
   private shared broadcast(message : Text) {
     var next = clients;
     loop {
       switch next {
-        case null  { return; } ;
-        case (?l)  {
+        case null return;
+        case (?l) {
           l.head.send(message);
           next := l.tail;
         };
@@ -572,7 +577,6 @@ actor Server = {
     };
   };
 ```
-
 ```
   subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
@@ -587,26 +591,21 @@ actor Server = {
 <!--
  * should we remove the name and server fields? They aren't used, I believe, but somewhat illustrative.
 * The fields would be  needed for unsubscribing etc, unless we return an unsubscribe capability...
- * Also, subscribe could just take send, not a whole client. 
+ * Also, subscribe could just take send, not a whole client.
 
 -->
 ```
 actor class Client() = this {
-
-  private var server : ?Server  = null;
-
-  go(n : Text, s : Server) {
+  private var name : Text = "";
+  go(n : Text , s : Server) {
     name := n;
-    server := ?s;
-    ignore(async {
-      let post = await s.subscribe(this);
-      post("hello from " # name);
-      post("goodbye from " # name);
-    });
+    let _ = async {
+       let post = await s.subscribe(this);
+       post("hello from " # name);
+       post("goodbye from " # name);
+    }
   };
-
 ```
-
 ```
   send(msg : Text) {
     print(name # " received " # msg # "\n");
@@ -616,14 +615,13 @@ actor class Client() = this {
 ### Example: test
 
 ```
-let server = Server();
 let bob = Client();
 let alice = Client();
 let charlie = Client();
 
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+bob.go("Bob", Server);
+alice.go("Alice", Server);
+charlie.go("Charlie", Server);
 ```
 
 # Produce Exchange
@@ -631,13 +629,13 @@ charlie.go("charlie", server);
 ### Produce Exchange
 
 - Example DFINITY app: a marketplace application
-  - Participants include:  
+  - Participants include:
     Producers, transporters and retailers
   - Resources: Money, truck routes, produce
   - Other entities: Produce and truck types, regions, reservations
 
-- As a communication tool:  
-  Substance: Demonstrate example ActorScript app  
+- As a communication tool:
+  Substance: Demonstrate example ActorScript app
   Process: Document internal development process
 
 - [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
@@ -650,7 +648,7 @@ charlie.go("charlie", server);
 
 **Summary:**
 
-- defines **users**:  
+- defines **users**:
   Developers, transporters, retailers and producers.
 - defines **features** and **use cases**:
   - Resource data can be published and updated
@@ -681,7 +679,7 @@ charlie.go("charlie", server);
 
 Why?
 
-- Gather reusable components,  
+- Gather reusable components,
   (e.g., collections for **server model types**)
 - Codify best ActorScript practices
 
