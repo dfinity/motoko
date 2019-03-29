@@ -498,7 +498,7 @@ let rec rel_typ rel eq t1 t2 =
     s <> Object Local
   | Vrn (s1, tcs1), Vrn (s2, tcs2) ->
     s1 = s2 &&
-    rel_fields rel eq tcs1 tcs2
+    rel_constructors rel eq tcs2 tcs1 (* TODO(gabor) poor man's inversion, rewrite to tcs1 tcs2 *)
   | Array t1', Array t2' ->
     rel_typ rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
@@ -537,7 +537,7 @@ let rec rel_typ rel eq t1 t2 =
   end
 
 and rel_fields rel eq tfs1 tfs2 =
-  (* Assume that tf1 and tf2 are sorted. *)
+  (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
     true
@@ -550,6 +550,24 @@ and rel_fields rel eq tfs1 tfs2 =
       rel_fields rel eq tfs1' tfs2'
     | -1 when rel != eq ->
       rel_fields rel eq tfs1' tfs2
+    | _ -> false
+    )
+  | _, _ -> false
+
+and rel_constructors rel eq tcs1 tcs2 =
+  (* Assume that tcs1 and tcs2 are sorted. *)
+  match tcs1, tcs2 with
+  | [], [] ->
+    true
+  | _, [] when rel != eq ->
+    true
+  | tf1::tcs1', tf2::tcs2' ->
+    (match compare_field tf1 tf2 with
+    | 0 ->
+      rel_typ rel eq tf2.typ tf1.typ &&
+      rel_constructors rel eq tcs1' tcs2'
+    | -1 when rel != eq ->
+      rel_constructors rel eq tcs1' tcs2
     | _ -> false
     )
   | _, _ -> false
@@ -568,7 +586,7 @@ and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
-and sub  t1 t2 : bool =
+and sub t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
