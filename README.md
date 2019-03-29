@@ -1,7 +1,5 @@
 # ActorScript
 
-[![Build Status](https://jenkins.london.dfinity.build/job/actorscript-multibranch/job/master/badge/icon)](https://jenkins.london.dfinity.build/job/actorscript-multibranch/job/master/)
-
 A simple language for writing Dfinity actors.
 
 

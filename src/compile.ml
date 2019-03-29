@@ -920,8 +920,27 @@ module Tagged = struct
     set_tag ^^
     go cases
 
-  let branch env retty (cases : (tag * G.t) list) : G.t =
-    branch_default env retty (G.i Unreachable) cases
+  (* like branch_default but the tag is known statically *)
+  let branch env retty = function
+    | [] -> failwith "branch"
+    | [_, code] -> G.i Drop ^^ code
+    | (_, code) :: cases -> branch_default env retty code cases
+
+  (* like branch_default but also pushes the scrutinee on the stack for the
+   * branch's consumption *)
+  let _branch_default_with env retty def cases =
+    let (set_o, get_o) = new_local env "o" in
+    let prep (t, code) = (t, get_o ^^ code)
+    in set_o ^^ get_o ^^ branch_default env retty def (List.map prep cases)
+
+  (* like branch_default_with but the tag is known statically *)
+  let branch_with env retty = function
+    | [] -> failwith "branch_with"
+    | [_, code] -> code
+    | (_, code) :: cases ->
+       let (set_o, get_o) = new_local env "o" in
+       let prep (t, code) = (t, get_o ^^ code)
+       in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
 
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
@@ -4008,18 +4027,12 @@ and compile_exp (env : E.t) exp =
   | DotE (e, ({it = Name n;_} as name)) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-    begin
-      let obj = Object.load_idx env e.note.note_typ name in
-      let (set_o, get_o) = new_local env "o" in
       let selective tag = function
-        | None -> [] | Some code -> [ tag, get_o ^^ code ]
-      in match selective Tagged.Array (Array.fake_object_idx env n)
-              @ selective Tagged.Text (Text.fake_object_idx env n) with
-         | [] -> obj
-         | l -> set_o ^^ get_o ^^
-                Tagged.branch env (ValBlockType (Some I32Type))
-                  ((Tagged.Object, get_o ^^ obj) :: l)
-    end
+        | None -> [] | Some code -> [ tag, code ]
+      in Tagged.branch_with env (ValBlockType (Some I32Type))
+           (List.concat [ [Tagged.Object, Object.load_idx env e.note.note_typ name]
+                        ; selective Tagged.Array (Array.fake_object_idx env n)
+                        ; selective Tagged.Text (Text.fake_object_idx env n)])
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else

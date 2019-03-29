@@ -1,1 +1,1 @@
-shared func call4<B <: Shared>(f : shared () -> async B) : async B = f();
+shared func call4(f : shared () -> async Int) : async Int = f();
