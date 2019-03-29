@@ -1,3 +1,5 @@
+3
+1
 Object: {leaf : var Text}
 Variant: {#leaf : Text}
 Object: {leaf : var Nat}

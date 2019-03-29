@@ -333,6 +333,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | OptE exp1 ->
     check_exp env exp1;
     T.Opt (typ exp1) <: t;
+  | VrnE (i, exp1) ->
+    check_exp env exp1;
+    T.(Vrn (Variant Local, [{lab=i.it; typ=typ exp1}])) <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -593,7 +596,8 @@ and gather_pat env ve0 pat : val_env =
       List.fold_left go ve pats
     | AltP (pat1, pat2) ->
       ve
-    | OptP pat1 ->
+    | OptP pat1
+    | VrnP (_, pat1) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -621,6 +625,10 @@ and check_pat env pat : val_env =
   | OptP pat1 ->
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
+    ve
+  | VrnP (i, pat1) ->
+    let ve = check_pat env pat1 in
+    T.(Vrn (Variant Local, [{lab=i.it; typ=pat1.note}])) <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in

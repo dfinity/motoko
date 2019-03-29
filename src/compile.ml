@@ -4301,6 +4301,9 @@ and compile_exp (env : E.t) exp =
   | OptE e ->
     SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
+  | VrnE (i, e) ->
+    SR.Vanilla,
+    todo "variant exp" (Arrange_ir.exp exp) (G.i Unreachable)
   | TupE es ->
     SR.UnboxedTuple (List.length es),
     G.concat_map (compile_exp_vanilla env) es
@@ -4484,6 +4487,8 @@ and fill_pat env pat : patternCode =
             with_fail fail_code code1
           )
       )
+  | VrnP (i, p) ->
+      CanFail(fun _ -> todo "variant pat" (Arrange_ir.pat pat) (G.i Unreachable))
   | LitP l ->
       CanFail (fun fail_code ->
         compile_lit_pat env l ^^

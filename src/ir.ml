@@ -21,6 +21,7 @@ and pat' =
   | LitP of lit                                (* literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
+  | VrnP of id * pat                           (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 (* Like id, but with a type attached *)
@@ -39,6 +40,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
+  | VrnE of id * exp                           (* variant injection *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -61,7 +63,7 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Value.call_conv * typ_bind list * arg list * Type.typ * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
-  | NewObjE of  Type.obj_sort * field list * Type.typ  (* make an object *)
+  | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : name; var : id} (* the var is by reference, not by value *)
