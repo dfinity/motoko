@@ -87,7 +87,16 @@ let rec match_pat ctxt desc pat t sets =
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
-  | VrnP (_, pat1) -> failwith "match_pat VrnP"
+  | VrnP (id, pat1) ->
+     Value.(
+       match desc with
+       | Val v when is_vrn v ->
+          let c, v' = as_vrn v
+          in if id.it = c
+             then match_pat ctxt desc pat1 t sets
+             else fail ctxt desc sets
+       | Any -> assert false
+       | _ -> assert false)
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
@@ -178,7 +187,9 @@ let warn at fmt =
       Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
-let check_cases cases t : bool =
+let check_cases cases = function (*t : bool*)
+                           | Type.Vrn _ -> true
+                           | t ->
   let sets = make_sets () in
   let exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
@@ -190,5 +201,7 @@ let check_cases cases t : bool =
 
 let (@?) it at = {it; at; note = empty_typ_note}
 
-let check_pat pat t : bool =
+let check_pat pat = function (*t : bool*)
+                           | Type.Vrn _ -> true
+                           | t ->
   check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t

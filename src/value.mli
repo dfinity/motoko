@@ -127,10 +127,15 @@ val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> value Env.t
+val as_vrn : value -> string * value
 val as_func : value -> call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
 val as_serialized : value -> value
+
+(* Predicates *)
+
+val is_vrn : value -> bool
 
 
 (* Ordering *)
