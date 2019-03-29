@@ -392,6 +392,7 @@ let Trie = new {
 
    - [`disj`](#disj)
    - [`conj`](#conj)
+   - [`prod`](#prod)
 
    */
   func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
@@ -582,6 +583,7 @@ let Trie = new {
 
    - [`conj`](#conj)
    - [`merge`](#merge)
+   - [`prod`](#prod)
 
    */
   func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
@@ -660,6 +662,8 @@ let Trie = new {
 
    - [`disj`](#disj)
    - [`merge`](#merge)
+   - [`prod`](#prod)
+
    */
   func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
@@ -708,7 +712,7 @@ let Trie = new {
    `prod`
    ---------
 
-   Conditional _catesian product_ operation over two tries; the given
+   Conditional _catesian product_, where the given
    operation `op` _conditionally_ creates output elements in the
    resulting trie.
 
@@ -716,6 +720,12 @@ let Trie = new {
    operation: all pairs are considered, regardless of keys matching or
    not.  Moreover, the resulting trie may use keys that are unrelated to
    these input keys.
+
+   See also:
+
+   - [`disj`](#disj)
+   - [`conj`](#conj)
+   - [`merge`](#merge)
 
    */
   func prod<K1,V1,K2,V2,K3,V3>(
@@ -726,11 +736,11 @@ let Trie = new {
   )
     : Trie<K3,V3>
   {
-    /** -binary case: merge disjoint results: */
+    /**- binary case: merge disjoint results: */
     func merge (a:Trie<K3,V3>, b:Trie<K3,V3>) : Trie<K3,V3> = 
       mergeDisjoint<K3,V3>(a, b, k3_eq);
 
-    /** -`foldUp` "squared"; something like "`foldUp^2((tl, tr), merge, (insert null <?< op))`", but real: */
+    /**- `foldUp` "squared"; something like "`foldUp^2((tl, tr), merge, (insert null <?< op))`", but real: */
     foldUp<K1, V1, Trie<K3, V3>>( 
       tl, merge, 
       func (k1:K1, v1:V1) : Trie<K3,V3> {

@@ -911,13 +911,6 @@ than the MVP goals, however.
   */    
 
   isFeasibleReservation(retailer:RetailerDoc, item:InventoryDoc, route:RouteDoc) : Bool {
-    if false {
-      debugOff "{item=";
-      debugIntOff (item.id);
-      debugOff "; route=";
-      debugIntOff (route.id);
-      debugOff "} ";
-    };
     /** - window start: check that the route begins after the inventory window begins */    
     if (item.start_date > route.start_date) {
       debugOff "nope: item start after route start\n";
