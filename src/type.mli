@@ -92,7 +92,7 @@ val as_opt_sub : typ -> typ
 val as_tup_sub : int -> typ -> typ list
 val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
-val as_func_sub : int -> typ -> bind list * typ * typ
+val as_func_sub : sharing -> int -> typ -> sharing * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
@@ -120,6 +120,7 @@ val promote : typ -> typ
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
+val is_concrete : typ -> bool
 
 (* Equivalence and Subtyping *)
 

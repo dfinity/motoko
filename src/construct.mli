@@ -23,8 +23,9 @@ val nextN : name
 
 (* Identifiers *)
 
-val fresh_id : unit -> id
-val fresh_var : typ -> var
+val fresh_id : string -> unit -> id
+val fresh_var : string -> typ -> var
+val fresh_vars : string -> typ list -> var list
 
 val idE : id -> typ -> exp
 val id_of_exp : var -> id

@@ -31,8 +31,15 @@ class revrange(x : Nat, y : Nat) {
   next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
+func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
+
 func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
+func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
+
+// Hashing
+func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
+
 
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
@@ -57,6 +64,7 @@ func word64ToInt(n : Word64) : Int = (prim "Word64->Int" : Word64 -> Int) n;
 
 func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
+func decodeUTF8(s : Text) : (Word32, Char) = (prim "decodeUTF8" : Text -> (Word32, Char)) s;
 
 // Exotic bitwise operations
 func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word8) -> Word8) (w, amount);
@@ -138,6 +146,10 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
+  | "Int~hash" -> fun v k ->
+                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
+                  let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
+                  in k (Word32 (Word32.of_int_u (Int64.to_int j)))
   | "Nat->Word8" -> fun v k ->
                     let i = Big_int.int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_u i))
@@ -246,8 +258,25 @@ let prim = function
                       | Word64 y -> Word64 (Word64.and_ y (Word64.shl 1L  (as_word64 a)))
                       | _ -> failwith "btst")
 
+  | "Char->Text" -> fun v k -> let str = match as_char v with
+                                          | c when c <= 0o177 -> String.make 1 (Char.chr c)
+                                          | code -> Wasm.Utf8.encode [code]
+                               in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
+  | "decodeUTF8" -> fun v k ->
+                    let s = as_text v in
+                    let take_and_mask bits offset = Int32.(logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset]))) in
+                    let classify_utf8_leader =
+                      Int32.(function
+                          | ch when logand ch (lognot 0b01111111l) = 0b00000000l -> [take_and_mask 7]
+                          | ch when logand ch (lognot 0b00011111l) = 0b11000000l -> [take_and_mask 5; take_and_mask 6]
+                          | ch when logand ch (lognot 0b00001111l) = 0b11100000l -> [take_and_mask 4; take_and_mask 6; take_and_mask 6]
+                          | ch when logand ch (lognot 0b00000111l) = 0b11110000l -> [take_and_mask 3; take_and_mask 6; take_and_mask 6; take_and_mask 6]
+                          | _ -> failwith "decodeUTF8") in
+                    let nobbles = List.mapi (fun i f -> f i) (classify_utf8_leader (Int32.of_int (Char.code s.[0]))) in
+                    let code = List.fold_left Int32.(fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles
+                    in k (Tup [Word32 (Int32.of_int (List.length nobbles)); Char (Int32.to_int code)])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->

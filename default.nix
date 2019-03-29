@@ -5,11 +5,14 @@
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.filterSource (path: type:
+let sourceByRegex = src: regexes: builtins.path
+  { name = "actorscript";
+    path = src;
+    filter = path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
       let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null
-      || match relPath != null)) src; in
+      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
+  }; in
 
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -32,11 +35,10 @@ let real-dvm =
     then
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
-        rev = "1ab8900eafb3a588372a9d71294df75b504539eb";
         ref = "master";
+        rev = "2837f4eaca887143bd08bc9341a7209f6dec42bc";
       }; in
-      # Pass devel = true until the dev test suite runs on MacOS again
-      (import dev { devel = true; }).dvm
+      (import dev {}).dvm
     else null
   else dvm; in
 
@@ -93,9 +95,10 @@ rec {
       "test/"
       "test/.*Makefile.*"
       "test/quick.mk"
-      "test/(run.*|fail)/"
-      "test/(run.*|fail)/.*.as"
-      "test/(run.*|fail)/ok/.*"
+      "test/(fail|run|run-dfinity)/"
+      "test/(fail|run|run-dfinity)/.*.as"
+      "test/(fail|run|run-dfinity)/ok/"
+      "test/(fail|run|run-dfinity)/ok/.*.ok"
       "test/.*.sh"
       "samples/"
       "samples/.*"
@@ -121,11 +124,13 @@ rec {
       asc --version
       make -C stdlib ASC=asc all
       make -C samples ASC=asc all
-      make -C test VERBOSE=1 ASC=asc quick
     '' +
-      (if test-dvm then ''
-      make --load-average -j8 -C test/run-dfinity VERBOSE=1 ASC=asc quick
-      '' else "");
+      (if test-dvm
+      then ''
+      make -C test ASC=asc parallel
+      '' else ''
+      make -C test ASC=asc quick
+      '');
 
     installPhase = ''
       mkdir -p $out
@@ -150,9 +155,10 @@ rec {
       "test/"
       "test/.*Makefile.*"
       "test/quick.mk"
-      "test/(run.*|fail)/"
-      "test/(run.*|fail)/.*.as"
-      "test/(run.*|fail)/ok/.*"
+      "test/(fail|run|run-dfinity)/"
+      "test/(fail|run|run-dfinity)/.*.as"
+      "test/(fail|run|run-dfinity)/ok/"
+      "test/(fail|run|run-dfinity)/ok/.*.ok"
       "test/.*.sh"
       "samples/"
       "samples/.*"

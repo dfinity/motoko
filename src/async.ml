@@ -43,12 +43,12 @@ module Transform() = struct
 
   let replyT as_seq typ = T.Func(T.Sharable, T.Returns, [], as_seq typ, [])
 
-  let fullfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
+  let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
   let t_async as_seq t =
     T.Func (T.Local, T.Returns, [], [T.Func(T.Local, T.Returns, [],as_seq t,[])], [])
 
-  let new_async_ret as_seq t = [t_async as_seq t;fullfillT as_seq t]
+  let new_async_ret as_seq t = [t_async as_seq t;fulfillT as_seq t]
 
   let new_asyncT =
     T.Func (
@@ -64,17 +64,17 @@ module Transform() = struct
 
   let new_async t1 =
     let call_new_async = callE new_asyncE [t1] (tupE []) in
-    let async = fresh_var (typ (projE call_new_async 0)) in
-    let fullfill = fresh_var (typ (projE call_new_async 1)) in
-    (async,fullfill),call_new_async
+    let async = fresh_var "async" (typ (projE call_new_async 0)) in
+    let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
+    (async,fulfill),call_new_async
 
   let new_nary_async_reply t1 =
-    let (unary_async,unary_fullfill),call_new_async = new_async t1 in
-    let v' = fresh_var t1 in
+    let (unary_async,unary_fulfill),call_new_async = new_async t1 in
+    let v' = fresh_var "v" t1 in
     let ts1 = T.as_seq t1 in
     (* construct the n-ary async value, coercing the continuation, if necessary *)
     let nary_async =
-      let k' = fresh_var (contT t1) in
+      let k' = fresh_var "k" (contT t1) in
       match ts1 with
       | [t] ->
         unary_async
@@ -82,28 +82,28 @@ module Transform() = struct
         let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
         k' --> (unary_async -*- ([v'] -->* (k' -*- seq_of_v')))
     in
-    (* construct the n-ary reply message that sends a sequence of value to fullfill the async *)
+    (* construct the n-ary reply message that sends a sequence of value to fulfill the async *)
     let nary_reply =
       let vs,seq_of_vs =
         match ts1 with
         | [t] ->
-          let v = fresh_var t in
+          let v = fresh_var "rep" t in
           [v],v
         | ts ->
-          let vs = List.map fresh_var ts in
+          let vs = fresh_vars "rep" ts in
           vs, tupE vs
       in
-      vs -@>* (unary_fullfill -*-  seq_of_vs)
+      vs -@>* (unary_fulfill -*-  seq_of_vs)
     in
-    let async,reply = fresh_var (typ nary_async), fresh_var (typ nary_reply) in
-    (async,reply),blockE [letP (tupP [varP unary_async; varP unary_fullfill])  call_new_async]
+    let async,reply = fresh_var "async" (typ nary_async), fresh_var "fulfill" (typ nary_reply) in
+    (async,reply),blockE [letP (tupP [varP unary_async; varP unary_fulfill])  call_new_async]
                          (tupE [nary_async; nary_reply])
 
 
   let letEta e scope =
     match e.it with
     | VarE _ -> scope e (* pure, so reduce *)
-    | _  -> let f = fresh_var (typ e) in
+    | _  -> let f = fresh_var "x" (typ e) in
             letD f e :: (scope f) (* maybe impure; sequence *)
 
   let isAwaitableFunc exp =
@@ -123,11 +123,11 @@ module Transform() = struct
     | [] ->
       (expD e)::d_of_vs []
     | [t] ->
-      let x = fresh_var t in
+      let x = fresh_var "x" t in
       let p = varP x in
       (letP p e)::d_of_vs [x]
     | ts ->
-      let xs = List.map fresh_var ts in
+      let xs = fresh_vars "x" ts in
       let p = tupP (List.map varP xs) in
       (letP p e)::d_of_vs (xs)
 
@@ -246,10 +246,10 @@ module Transform() = struct
                []) -> (* TBR, why isn't this []? *)
           (t_typ (T.seq ts1),t_typ contT)
         | t -> assert false in
-      let k = fresh_var contT in
-      let v1 = fresh_var t1 in
-      let post = fresh_var (T.Func(T.Sharable,T.Returns,[],[],[])) in
-      let u = fresh_var T.unit in
+      let k = fresh_var "k" contT in
+      let v1 = fresh_var "v" t1 in
+      let post = fresh_var "post" (T.Func(T.Sharable,T.Returns,[],[],[])) in
+      let u = fresh_var "u" T.unit in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
                funcD k v1 (nary_reply -*- v1);
@@ -312,21 +312,20 @@ module Transform() = struct
       begin
         match s with
         | T.Local  ->
-          FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+          FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
         | T.Sharable ->
           begin
             match typ exp with
             | T.Tup [] ->
-              FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+              FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
               let cc' = Value.message_cc (cc.Value.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
-              let typ' = T.Tup []  in
-              let k = fresh_var reply_typ in
+              let k = fresh_var "k" reply_typ in
               let args' = t_args args @ [ arg_of_exp k ] in
               let typbinds' = t_typ_binds typbinds in
-              let y = fresh_var res_typ in
+              let y = fresh_var "y" res_typ in
               let exp' =
                 match exp.it with
                 | CallE(_, async,_,cps) ->
@@ -337,7 +336,7 @@ module Transform() = struct
                   end
                 | _ -> assert false
               in
-              FuncE (x, cc', typbinds', args', typ', exp')
+              FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end
       end

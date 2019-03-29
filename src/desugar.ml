@@ -57,7 +57,7 @@ and exp' at note = function
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
     let args, wrap = to_args cc p in
-    I.FuncE (name, cc, typ_binds tbs, args, ty.note, wrap (exp e))
+    I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -137,7 +137,7 @@ and block force_unit ds =
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (extra @ List.map dec ds, idE x e.note.S.note_typ)
   | false, S.LetD (p', e') ->
-    let x = fresh_var (e'.note.S.note_typ) in
+    let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
@@ -192,7 +192,7 @@ and dec' at n d = match d with
     let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
     let args, wrap = to_args cc p in
     let fn = {
-      it = I.FuncE (id.it, cc, typ_binds tbs, args, obj_typ, wrap
+      it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
@@ -224,32 +224,28 @@ and pat' = function
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
+  | S.AnnotP (p, _) -> to_arg p
   | S.VarP i ->
     { i with note = p.note },
     (fun e -> e)
   | S.WildP ->
-    let v = fresh_var p.note in
+    let v = fresh_var "param" p.note in
     arg_of_exp v,
     (fun e -> e)
   |  _ ->
-    let v = fresh_var p.note in
+    let v = fresh_var "param" p.note in
     arg_of_exp v,
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
-  let p = match p0.it, p0.note with
-    | S.ParP p1, _ -> p1
-    | S.TupP [p1], Type.Tup [n] -> { p0 with it = p1.it; note = n }
-    | _ -> p0 in
-
+and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   let n = cc.Value.n_args in
   let tys = if n = 1 then [p.note] else T.as_seq p.note in
 
   let args, wrap =
     match n, p.it with
     | _, S.WildP ->
-      let vs = List.map fresh_var tys in
+      let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
       (fun e -> e)
     | 1, _ ->
@@ -264,7 +260,7 @@ and to_args cc p0 : (Ir.arg list * (Ir.exp -> Ir.exp)) =
         (a::args, fun e -> wrap1 (wrap e))
       ) ps ([], (fun e -> e))
     | _, _ ->
-      let vs = List.map fresh_var tys in
+      let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
       (fun e -> blockE [letP (pat p) (tupE vs)] e)
   in

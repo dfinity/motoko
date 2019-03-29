@@ -42,20 +42,24 @@ let exp_of_arg a = idE {a with note = () } a.note
 
 (* Fresh id generation *)
 
-let id_stamp = ref 0
+module Stamps = Map.Make(String)
+let id_stamps = ref Stamps.empty
 
-let fresh () =
-  let name = Printf.sprintf "$%i" (!id_stamp) in
-  id_stamp := !id_stamp + 1;
-  name
+let fresh name_base () =
+  let n = Lib.Option.get (Stamps.find_opt name_base !id_stamps) 0 in
+  id_stamps := Stamps.add name_base (n + 1) !id_stamps;
+  Printf.sprintf "$%s/%i" name_base n
 
-let fresh_id () =
-  let name = fresh () in
+let fresh_id name_base () =
+  let name = fresh name_base () in
   name @@ no_region
 
-let fresh_var typ =
-  let name = fresh () in
+let fresh_var name_base typ =
+  let name = fresh name_base () in
   idE (name @@ no_region) typ
+
+let fresh_vars name_base ts =
+  List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
 
 
 (* Patterns *)
@@ -299,7 +303,7 @@ let ignoreE exp =
 (* Mono-morphic function expression *)
 let funcE name t x exp =
   let arg_tys, retty = match t with
-    | T.Func(_, _, _, ts1, ts2) -> ts1, T.seq ts2
+    | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   let args, exp' =
@@ -307,7 +311,7 @@ let funcE name t x exp =
     then
       [ arg_of_exp x ], exp
     else
-      let vs = List.map fresh_var arg_tys in
+      let vs = fresh_vars "param" arg_tys in
       List.map arg_of_exp vs,
       blockE [letD x (tupE vs)] exp
   in
@@ -326,7 +330,7 @@ let funcE name t x exp =
 
 let nary_funcE name t xs exp =
   let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | T.Func(_, _, _, _, ts2) -> ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   assert (cc.Value.n_args = List.length xs);
@@ -364,7 +368,7 @@ let answerT = T.unit
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
-let fresh_cont typ = fresh_var (contT typ)
+let fresh_cont typ = fresh_var "cont" (contT typ)
 
 (* Sequence expressions *)
 
@@ -435,7 +439,7 @@ let whileE exp1 exp2 =
            if e1 then { e2 } else { break l }
          }
   *)
-  let lab = fresh_id () in
+  let lab = fresh_id "done" () in
   labelE lab T.unit (
       loopE (
           ifE exp1
@@ -452,7 +456,7 @@ let loopWhileE exp1 exp2 =
           if e2 { } else { break l }
         }
    *)
-  let lab = fresh_id () in
+  let lab = fresh_id "done" () in
   labelE lab T.unit (
       loopE (
           thenE exp1
@@ -474,11 +478,11 @@ let forE pat exp1 exp2 =
          case p    { e2 };
        }
      } *)
-  let lab = fresh_id () in
+  let lab = fresh_id "done" () in
   let ty1 = exp1.note.S.note_typ in
   let _, tfs  = Type.as_obj_sub "next" ty1 in
   let tnxt    = T.lookup_field "next" tfs in
-  let nxt = fresh_var tnxt in
+  let nxt = fresh_var "nxt" tnxt in
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab Type.unit (
       loopE (

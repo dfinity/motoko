@@ -224,3 +224,5 @@ func f2(x : A2<Nat, Bool>) : A2<Nat, Bool> = x : B2<Bool, Nat>;
 func g1(x : A1<Nat, Bool>) : A1<Nat, Bool> = x : C1<Nat, Bool>;
 func g2(x : A2<Nat, Bool>) : A2<Nat, Bool> = x : C2<Bool, Nat>;
 };
+
+()
