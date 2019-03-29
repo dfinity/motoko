@@ -508,10 +508,10 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
-  | VrnP (i, pat) ->
+  | VrnP (i, pat1) ->
      let o = V.as_obj v
-     in (match V.Env.keys o with
-         | [k] when i.it = k -> match_pat pat v (*TODO:Extract*)
+     in (match V.Env.bindings o with
+         | [k, v1] when i.it = k -> match_pat pat1 v1
          | _ -> None)
   | OptP pat1 ->
     (match v with
