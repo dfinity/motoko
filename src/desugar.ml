@@ -44,7 +44,15 @@ and exp' at note = function
   | S.ObjE (s, es) ->
     obj at s None es note.S.note_typ
   | S.VrnE e ->
-    obj at {at=no_region; it=Type.(Object Local); note=()} None [e] note.S.note_typ
+     begin
+       match e with
+       | {it={S.dec={it=S.VarD (id, e); _}; _}; _} ->
+          let constrTag = { it=I.LitE (S.TextLit id.it)
+                          ; at=id.at
+                          ; note=T.{S.note_typ=Prim Text; S.note_eff=Triv}}
+          in I.TupE [constrTag; exp e]
+       | _ -> assert false
+     end
   | S.DotE (e, x) ->
     let n = {x with it = I.Name x.it} in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
@@ -220,7 +228,7 @@ and pat' = function
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
-  | S.VrnP (i, p) -> (*I.ObjP (pat p)*)failwith "VrnP"
+  | S.VrnP (i, p) -> I.TupP [{it=I.LitP (S.TextLit i.it); at=i.at; note=T.(Prim Text)}; pat p]
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
