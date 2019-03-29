@@ -1,17 +1,3 @@
-Object: {leaf : var Text}
-Variant: {#leaf : Text}
-Object: {leaf : var Nat}
-Variant: {#leaf : Nat}
-Object: {leaf : var Int}
-Variant: {#leaf : Int}
-Object: {leaf : var Nat}
-Variant: {#leaf : Nat}
-Object: {leaf : var Int}
-Variant: {#leaf : Int}
-Object: {branch : var ({#leaf : Nat}, {#leaf : Int})}
-Variant: {#branch : ({#leaf : Nat}, {#leaf : Int})}
-Object: {leaf : var Text}
-Variant: {#leaf : Text}
 prelude:107.1-132.2: internal error, File "serialization.ml", line 170, characters 6-12: Assertion failed
 
 Last environment:

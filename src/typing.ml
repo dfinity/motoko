@@ -436,12 +436,9 @@ and infer_exp'' env exp : T.typ =
     infer_obj env' sort.it fields exp.at
   | VrnE field ->
      (match infer_obj env T.(Object Local) [field] exp.at with
-      | (T.Obj(s, ([constr] as cs))) as as_obj ->
-         Printf.eprintf "Object: %s\n" (T.string_of_typ as_obj);
-         let vrn = T.(Vrn (Variant Local, List.map (fun c -> {c with T.typ=as_immut c.T.typ}) cs))
-         in Printf.eprintf"Variant: %s\n" (T.string_of_typ vrn);
-            vrn
-      | other -> failwith "VrnE")
+      | T.Obj(_, ([constr] as cs)) ->
+         T.(Vrn (Variant Local, cs))
+      | other -> assert false)
 
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in

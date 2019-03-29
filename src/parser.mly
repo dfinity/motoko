@@ -374,7 +374,7 @@ exp_un :
     { NotE e @? at $sloc }
   | CATOP i=id e=exp_un
     {
-      let dec = VarD(i, e) @? span i.at e.at in
+      let dec = LetD(VarP i @! i.at, e) @? span i.at e.at in
       let vis = Public @@ no_region in
 
       VrnE ({dec; vis} @@ span (at $sloc) e.at) @? at $sloc }

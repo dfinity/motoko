@@ -45,9 +45,8 @@ and exp' at note = function
     obj at s None es note.S.note_typ
   | S.VrnE e ->
      begin
-       match e with
-       | {it={S.dec={it=S.VarD (id, e); _}; _}; _} ->
-          I.VrnE (id, exp e)
+       match e.it.S.dec.it with
+       | S.(LetD ({it = VarP id; _}, e)) -> I.VrnE (id, exp e)
        | _ -> assert false
      end
   | S.DotE (e, x) ->
