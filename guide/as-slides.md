@@ -559,8 +559,6 @@ alice.start("Alice", Server); // async send as function call
 ### Chat Server
 
 ```
-type Server = actor { subscribe : Client -> async Post; };
-
 actor Server = {
   private var clients : List<Client> = null;
 
@@ -569,10 +567,7 @@ actor Server = {
     loop {
       switch next {
         case null return;
-        case (?l) {
-          l.head.send(message);
-          next := l.tail;
-        };
+        case (?l) { l.head.send(message); next := l.tail; };
       };
     };
   };
@@ -595,9 +590,11 @@ actor Server = {
 
 -->
 ```
+type Server = actor { subscribe : Client -> async Post; };
+
 actor class Client() = this {
   private var name : Text = "";
-  go(n : Text , s : Server) {
+  start(n : Text , s : Server) {
     name := n;
     let _ = async {
        let post = await s.subscribe(this);
@@ -614,15 +611,41 @@ actor class Client() = this {
 ```
 ### Example: test
 
+test
+
 ```
 let bob = Client();
 let alice = Client();
 let charlie = Client();
 
-bob.go("Bob", Server);
-alice.go("Alice", Server);
-charlie.go("Charlie", Server);
+bob.start("Bob", Server);
+alice.start("Alice", Server);
+charlie.start("Charlie", Server);
 ```
+output
+
+```
+[nix-shell:~/actorscript/guide]$ ../src/asc -r chat.as
+charlie received hello from bob
+alice received hello from bob
+bob received hello from bob
+charlie received goodbye from bob
+alice received goodbye from bob
+bob received goodbye from bob
+charlie received hello from alice
+alice received hello from alice
+bob received hello from alice
+charlie received goodbye from alice
+alice received goodbye from alice
+bob received goodbye from alice
+charlie received hello from charlie
+alice received hello from charlie
+bob received hello from charlie
+charlie received goodbye from charlie
+alice received goodbye from charlie
+bob received goodbye from charlie
+```
+
 
 # Produce Exchange
 
