@@ -1407,7 +1407,7 @@ module UnboxedSmallWord = struct
    * and following bytes,
    * building an unboxed Unicode code point, and passing it to set_res.
    * and finally returning the number of bytes consumed on the stack.
-   * Insipred by https://rosettacode.org/wiki/UTF-8_encode_and_decode#C
+   * Inspired by https://rosettacode.org/wiki/UTF-8_encode_and_decode#C
    *)
   let len_UTF8_head env set_res =
     let (set_ptr, get_ptr) = new_local env "ptr" in
