@@ -156,7 +156,7 @@ and exp' =
   | AnnotE of exp * typ                        (* type annotation *)
 (*
   | ThrowE of exp list                         (* throw exception *)
-  | TryE of exp * case list                    (* catch eexception *)
+  | TryE of exp * case list                    (* catch exception *)
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
