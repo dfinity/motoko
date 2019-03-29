@@ -303,7 +303,7 @@ let ignoreE exp =
 (* Mono-morphic function expression *)
 let funcE name t x exp =
   let arg_tys, retty = match t with
-    | T.Func(_, _, _, ts1, ts2) -> ts1, T.seq ts2
+    | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   let args, exp' =
@@ -330,7 +330,7 @@ let funcE name t x exp =
 
 let nary_funcE name t xs exp =
   let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | T.Func(_, _, _, _, ts2) -> ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   assert (cc.Value.n_args = List.length xs);

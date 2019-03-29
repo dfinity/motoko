@@ -165,7 +165,9 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Sharable then begin
+    if sort.it = T.Sharable then
+    if not env.pre then
+    begin
       let t1 = T.seq ts1 in
       if not (T.sub t1 T.Shared) then
         error env typ1.at "shared function has non-shared parameter type\n  %s"
@@ -186,10 +188,9 @@ and check_typ' env typ : T.typ =
     T.Opt (check_typ env typ)
   | AsyncT typ ->
     let t = check_typ env typ in
-    let t' = T.promote t in
-    if t' <> T.Pre && not (T.sub t' T.Shared) then
+    if not env.pre && not (T.sub t T.Shared) then
       error env typ.at "async type has non-shared parameter type\n  %s"
-        (T.string_of_typ_expand t');
+        (T.string_of_typ_expand t);
     T.Async t
   | ObjT (sort, fields) ->
     check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);

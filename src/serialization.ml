@@ -139,19 +139,19 @@ module Transform() = struct
           let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) in
           CallE (cc, t_exp exp1, [], exp2')
       end
-    | FuncE (x, cc, typbinds, args, typT, exp) ->
+    | FuncE (x, cc, typbinds, args, ret_tys, exp) ->
       begin match cc.Value.sort with
       | T.Local ->
-        FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+        FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
       | T.Sharable ->
-        assert (T.is_unit typT);
+        assert (ret_tys = []);
         let args' = t_args args in
         let raw_args = List.map serialized_arg args' in
         let body' =
           blockE [letP (tupP (List.map varP (List.map exp_of_arg args')))
                        (tupE (List.map deserialize (List.map exp_of_arg raw_args))) ]
             (t_exp exp) in
-        FuncE (x, cc, [], raw_args, T.unit, body')
+        FuncE (x, cc, [], raw_args, [], body')
       end
     | PrimE _
       | LitE _ -> exp'

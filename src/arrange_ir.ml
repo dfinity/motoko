@@ -37,8 +37,8 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
-  | FuncE (x, cc, tp, as_, t, e) ->
-    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ t; exp e]
+  | FuncE (x, cc, tp, as_, ts, e) ->
+    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
 

@@ -63,7 +63,7 @@ and exp' at note = function
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
     let args, wrap = to_args cc p in
-    I.FuncE (name, cc, typ_binds tbs, args, ty.note, wrap (exp e))
+    I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
     let inst = List.map (fun t -> t.Source.note) inst in
@@ -198,7 +198,7 @@ and dec' at n d = match d with
     let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
     let args, wrap = to_args cc p in
     let fn = {
-      it = I.FuncE (id.it, cc, typ_binds tbs, args, obj_typ, wrap
+      it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });

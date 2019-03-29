@@ -315,17 +315,16 @@ module Transform() = struct
       begin
         match s with
         | T.Local  ->
-          FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+          FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
         | T.Sharable ->
           begin
             match typ exp with
             | T.Tup [] ->
-              FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+              FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
               let cc' = Value.message_cc (cc.Value.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
-              let typ' = T.Tup []  in
               let k = fresh_var "k" reply_typ in
               let args' = t_args args @ [ arg_of_exp k ] in
               let typbinds' = t_typ_binds typbinds in
@@ -340,7 +339,7 @@ module Transform() = struct
                   end
                 | _ -> assert false
               in
-              FuncE (x, cc', typbinds', args', typ', exp')
+              FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end
       end
