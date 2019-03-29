@@ -2,7 +2,13 @@ type List<T> = ?{head : T; var tail : List<T>};
 
 type Post = shared Text -> ();
 
-actor class Server() = {
+type Server =
+  actor { subscribe : shared (actor { go : shared (Text, Server) -> ();
+                                     send : shared (Text) -> ()
+				   })
+                      -> async Post; };
+
+actor Server = {
   private var clients : List<Client> = null;
 
   private shared broadcast(message : Text) {
@@ -25,32 +31,26 @@ actor class Server() = {
   };
 };
 
-
 actor class Client() = this {
-  // TODO: these should be constructor params once we can compile them
   private var name : Text = "";
-  private var server : ?Server  = null;
-
-  go(n : Text, s : Server) {
+  go(n : Text , s : Server) {
     name := n;
-    server := ?s;
-    ignore(async {
-      let post = await s.subscribe(this);
-      post("hello from " # name);
-      post("goodbye from " # name);
-    });
+    let _ = async {
+       let post = await s.subscribe(this);
+       post("hello from " # name);
+       post("goodbye from " # name);
+    }
   };
-
   send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };
 
 
-let server = Server();
 let bob = Client();
 let alice = Client();
 let charlie = Client();
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+
+bob.go("bob", Server);
+alice.go("alice", Server);
+charlie.go("charlie", Server);

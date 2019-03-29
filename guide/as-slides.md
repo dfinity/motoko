@@ -16,7 +16,7 @@ for writing DFINITY actors.
 
 ### Key Design Points
 
-* Class-based OO, functional & imperative
+* Object-oriented, functional & imperative
 * Objects as records of members
 <!--
 * Classes can define actors (records of remote asynchronous functions)
@@ -24,9 +24,10 @@ for writing DFINITY actors.
 * Async construct for sequential programming of asynchronous messaging
 * Structural typing
 * Simple generics and subtyping
-* safe arithmetic (unbounded and checked),  
+* Safe arithmetic (unbounded and checked),  
   explicit conversions
-* JavaScript-style syntax but (really) typed & sane
+* Non-nullable types by default
+* JavaScript like syntax but (really) typed & sane
 
 Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
@@ -38,6 +39,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * parametric, bounded polymorphism
 * subtyping as subsumption, not coercion.
 * no dynamic casts
+* no inheritance (may consider mixin composition in future)
 
 ### Implementation(s)
 
@@ -65,7 +67,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * IDL design/compiler (in ~~dispute~~ progress).
 * Upgrade story
 * Library mechanism/true separate compilation
-* ML-like variant types (e.g. for trees)
+* Discriminated unions (e.g. for trees)
 * Better memory manager and garbage collector
 * Move to bidirectional messaging
   (blocked on proposal and hypervisor support)
@@ -92,10 +94,13 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 * possibly generic
 
+* no overloading!
+
   - `T -> U`
   - `(T, U) -> (V, W)`
   - `(x : T, y : U) -> V`
   - `<A, B>(x : T, y : U) -> (V, W)`
+
 
 ###  Object types
 
@@ -504,7 +509,7 @@ let ? name = d.find(1);
 ### Actor Declarations
 
 ```
-actor Server {
+actor Server =  {
  private shared func post():(){...};
  subscribe(c : Client): async Post { post; };
 };
@@ -519,7 +524,7 @@ post("world");
 ### Actor Classes
 
 ```
-actor class Client() {
+actor class Client() = this {
   start(S : Server) {};
   message(m : Text) { ...};
 };
@@ -551,15 +556,15 @@ Alice.start(Server); // async send as function call
 ### Chat Server
 
 ```
-actor class Server() = {
+actor Server = {
   type Post = shared Text -> ();
   private var clients : List<Client> = null;
   private shared broadcast(message : Text) {
     var next = clients;
     loop {
       switch next {
-        case null return;
-        case (?l) {
+        case null  { return; } ;
+        case (?l)  {
           l.head.send(message);
           next := l.tail;
         };
@@ -579,11 +584,15 @@ actor class Server() = {
 
 
 ### Example: The client class
+<!--
+ * should we remove the name and server fields? They aren't used, I believe, but somewhat illustrative.
+* The fields would be  needed for unsubscribing etc, unless we return an unsubscribe capability...
+ * Also, subscribe could just take send, not a whole client. 
 
+-->
 ```
 actor class Client() = this {
 
-  private var name : Text = "";
   private var server : ?Server  = null;
 
   go(n : Text, s : Server) {
