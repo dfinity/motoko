@@ -173,29 +173,36 @@ The fields of an actor are functions with
 * Structural, equi-recursive subtyping
   (definitions are equations).
 
-* Generics over all types
+* Type parameters can range of over all types
+  (not just reference types)
 
 * Constraints on type parameters (as in Java/C#)
 
-* uniform representation, not specialization
-
-* bidirectional type checking
-  (not ML-style inference)
+* Bidirectional type checking
 
 ### Sharability
 
 AS distinguishes sharable types:
 
-*sharable* \~ stateless, serializable
-
-*non-sharable* \~ stateful, non-serializable
+*sharable* \~ serializable
 
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
   - any `shared` object type is sharable
   - any `actor` type is sharable
-  - `[T]` and `?T`  are sharable if `T` is shareable.
+  - `[T]` and `?T`  are sharable if `T` is sharable.
+  - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.
   - all other types are non-sharable
+
+
+### ... Sharability
+
+ * `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
+* `shared` object must have sharable fields
+* actor fields must re `shared` functions
+
+(actors \& shared functions serialized by *reference*, other types serialzed by *value*)
+
  <!--
   - any parameter `T <: Shared` is sharable.
 (subtyping respects `sharability`)
@@ -358,8 +365,7 @@ Tuples are fixed length, heterogenous aggregates (*products*)
 ### Labels, break and continue
 
   - `label l exp`
-  - `do l ...`
-  - `break l`
+  - `break l` (more generally, `break l exp`)
   - `continue l`
 
 labels ensure control flow is structured (no gotos)
@@ -529,7 +535,7 @@ post("world");
 ```
 actor class Client() = this {
   start(n : Text, s : Server) {};
-  message(m : Text) { ...};
+  send(m : Text) { ... };
 };
 ```
 
