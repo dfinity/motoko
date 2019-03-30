@@ -12,3 +12,14 @@ let tt2 = #leaf ""; // infers type {#leaf : Text} which is a subtype of Tree<Tex
 
 printInt(size<Int>(tt1)); print "\n";
 printInt(size<Text>(tt2)); print "\n";
+
+
+// subtyping
+
+type Super = {#c : Int; #b : Char; #a : Nat};
+type Sub = {#c : Nat; #a : Nat};
+
+let ts1 : Sub = #c 25;
+func ts2(v : Super) { ignore v };
+
+let ts3 = ts2 ts1;
