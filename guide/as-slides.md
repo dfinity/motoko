@@ -173,12 +173,12 @@ The fields of an actor are functions with
 * Structural, equi-recursive subtyping
   (definitions are equations).
 
-* Type parameters can range of over all types
-  (not just reference types)
+* A type parameter can range over any type (like C#)
+  (not just reference types as in Java)
 
-* Constraints on type parameters (as in Java/C#)
+* Optional constraints on type parameters (as in Java/C#)
 
-* Bidirectional type checking
+* Bidirectional type checking (like C#/Scala, but simpler)
 
 ### Sharability
 
@@ -259,7 +259,7 @@ actor {
 ```
 
 
-### field access and update
+### Field access and update
 
 * object access/update:
 
@@ -410,8 +410,6 @@ labels ensure control flow is structured (no gotos)
       };
    ```
 
-* (implemented by (selective) cps conversion)
-
 ### Type annotation
 
  `e : T`
@@ -443,8 +441,8 @@ labels ensure control flow is structured (no gotos)
 
 * ... with pattern matching:
   `let (x, y, z) = origin` (can't fail)
-  `let 5 = fib(3)` (will trap)
-  `let ? v = dict.find(key)` (could trap)
+  `let 5 = fib(3)` (could trap, compiler warning)
+  `let ? v = dict.find(key)` (could trap, compiler warning)
 
 ### Functions
 
@@ -572,7 +570,7 @@ actor Server = {
     var next = clients;
     loop {
       switch next {
-        case null return;
+        case null { return; }
         case (?l) { l.head.send(message); next := l.tail; };
       };
     };
