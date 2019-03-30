@@ -61,7 +61,7 @@ and exp' rho e  = match e with
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
   | OptE e              -> OptE (exp rho e)
-  | VrnE (i, e)         -> VrnE (i, exp rho e)
+  | VariantE (i, e)     -> VariantE (i, exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)

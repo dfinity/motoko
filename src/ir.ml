@@ -40,7 +40,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | VrnE of id * exp                           (* variant injection *)
+  | VariantE of id * exp                       (* variant injection *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)

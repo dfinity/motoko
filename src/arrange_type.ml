@@ -18,8 +18,6 @@ let obj_sort s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
 
-let vrn_sort (Type.Variant sh) = Atom ("Variant " ^ sharing sh)
-
 let prim p = match p with
   | Null -> Atom "Null"
   | Bool -> Atom "Bool"
@@ -40,9 +38,9 @@ let rec typ (t:Type.typ) = match t with
   | Con (c,ts)             -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
   | Obj (s, ts)            -> "Obj" $$ [obj_sort s] @ List.map typ_field ts
-  | Vrn (s, cs)            -> "Vrn" $$ [vrn_sort s] @ List.map typ_field cs
   | Array t                -> "Array" $$ [typ t]
   | Opt t                  -> "Opt" $$ [typ t]
+  | Vrn cts                -> "Vrn" $$ List.map typ_summand cts
   | Tup ts                 -> "Tup" $$ List.map typ ts
   | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (sharing s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]
@@ -59,3 +57,5 @@ and typ_bind (tb : Type.bind) =
 and typ_field (tf : Type.field) =
   tf.lab $$ [typ tf.typ]
 
+and typ_summand (c, t) =
+  c $$ [typ t]

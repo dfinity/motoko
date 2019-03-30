@@ -197,8 +197,8 @@ typ_obj :
     { tfs }
 
 typ_variant :
-  | LCURLY tc=typ_constr semicolon tcs=seplist(typ_constr, semicolon) RCURLY
-    { tc :: tcs }
+  | LCURLY ct=typ_constr semicolon cts=seplist(typ_constr, semicolon) RCURLY
+    { ct :: cts } (* TODO(gabor) this needed for avoiding ambiguity with typ_obj *)
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
@@ -209,8 +209,8 @@ typ_nullary :
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
-  | tvs=typ_variant
-    { VrnT(Type.Variant Type.Local @@ at $sloc, tvs) @! at $sloc }
+  | cts=typ_variant
+    { VrnT cts @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -258,8 +258,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_constr :
-  | CATOP x=id COLON t=typ
-    { {cid = x; ctyp = t} @@ at $sloc }
+  | CATOP c=id COLON t=typ
+    { (c, t) }
 
 typ_bind :
   | x=id SUB t=typ
@@ -373,11 +373,7 @@ exp_un :
   | NOT e=exp_un
     { NotE e @? at $sloc }
   | CATOP i=id e=exp_un
-    {
-      let dec = LetD(VarP i @! i.at, e) @? span i.at e.at in
-      let vis = Public @@ no_region in
-
-      VrnE ({dec; vis} @@ span (at $sloc) e.at) @? at $sloc }
+    { VariantE (i, e) @? at $sloc }
 
 exp_bin :
   | e=exp_un

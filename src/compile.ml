@@ -2693,7 +2693,7 @@ module Serialization = struct
         | Async t -> go t
         | Obj (Actor, fs) -> false
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
-        | Vrn (_, cs) -> List.for_all (fun f -> go f.typ) cs
+        | Vrn cts -> List.for_all (fun (_, t) -> go t) cts
         | Mut t -> go t
         | Serialized t -> go t
       end
@@ -4271,7 +4271,7 @@ and compile_exp (env : E.t) exp =
   | OptE e ->
     SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
-  | VrnE (i, e) ->
+  | VariantE (i, e) ->
     SR.Vanilla,
     todo "variant exp" (Arrange_ir.exp exp) (G.i Unreachable)
   | TupE es ->

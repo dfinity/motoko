@@ -1,10 +1,11 @@
 variant pat: (VrnP branch (TupP (VarP t1) (VarP t2)))
 variant pat: (VrnP leaf WildP)
-variant exp: (VrnE
+variant exp: (VariantE
   branch
   (TupE
-    (VrnE leaf (LitE (NatLit 1)))
-    (VrnE leaf (UnE Int NegOp (LitE (NatLit 1))))
+    (VariantE leaf (LitE (NatLit 1)))
+    (VariantE leaf (UnE Int NegOp (LitE (NatLit 1))))
   )
 )
-variant exp: (VrnE leaf (LitE (TextLit )))
+variant exp: (VariantE leaf (LitE (TextLit )))
+variant exp: (VariantE c (LitE (NatLit 25)))

@@ -186,6 +186,10 @@ and check_typ' env typ : T.typ =
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
+  | VrnT cts ->
+    check_ids env true (List.map fst cts);
+    let cs = List.map (check_typ_constructor env) cts in
+    T.Vrn (List.sort T.compare_summand cs)
   | AsyncT typ ->
     let t = check_typ env typ in
     if not env.pre && not (T.sub t T.Shared) then
@@ -196,10 +200,6 @@ and check_typ' env typ : T.typ =
     check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
-  | VrnT (sort, constrs) ->
-    check_ids env true (List.map (fun constr -> constr.it.cid) constrs);
-    let cs = List.map (check_typ_constructor env sort.it) constrs in
-    T.Vrn (sort.it, List.sort T.compare_field cs)
   | ParT typ ->
     check_typ env typ
 
@@ -214,17 +214,9 @@ and check_typ_field env s typ_field : T.field =
       id.it (T.string_of_typ_expand t);
   T.{lab = id.it; typ = t}
 
-and check_typ_constructor env s typ_constructor : T.field =
-  let {cid; ctyp} = typ_constructor.it in
-  (* TODO(gabor)
-  let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (T.is_func (T.promote t)) then
-    error env typ.at "actor field %s has non-function type\n  %s"
-      id.it (T.string_of_typ_expand t);
-  if s <> T.Object T.Local && not (T.sub t T.Shared) then
-    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
-      id.it (T.string_of_typ_expand t);*)
-  T.{lab = cid.it; typ = (check_typ env ctyp)}
+and check_typ_constructor env ct =
+  let (c, t) = ct
+  in (c.it, check_typ env t)
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -435,12 +427,8 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it fields exp.at
-  | VrnE field ->
-     (match infer_obj env T.(Object Local) [field] exp.at with
-      | T.Obj(_, ([constr] as cs)) ->
-         T.(Vrn (Variant Local, cs))
-      | other -> assert false)
-
+  | VariantE (c, exp1) ->
+    T.Vrn [(c.it, infer_exp env exp1)]
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -806,9 +794,9 @@ and infer_pat' env pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
-  | VrnP (i, pat1) -> T.(
+  | VrnP (i, pat1) ->
     let typ, ve = infer_pat env pat1 in
-    Vrn (Variant Local, [{lab=i.it; typ}]), ve)
+    T.Vrn [(i.it, typ)], ve
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
@@ -883,17 +871,13 @@ and check_pat' env t pat : val_env =
     )
   | VrnP (i, pat1) ->
     T.(try
-         match as_vrn t with
-         | _, tcs ->
-            begin
-              match List.find_opt (fun {lab; _} -> i.it = lab) tcs with
-              | Some {typ; _} -> check_pat env typ pat1
+         match List.find_opt (fun (c, _) -> i.it = c) (as_vrn t) with
+              | Some (_, typ) -> check_pat env typ pat1
               | None -> error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
                           i.it (T.string_of_typ_expand t)
-            end
-    with Invalid_argument _ ->
-      error env pat.at "variant pattern cannot consume expected type\n  %s"
-        (T.string_of_typ_expand t)
+       with Invalid_argument _ ->
+         error env pat.at "variant pattern cannot consume expected type\n  %s"
+           (T.string_of_typ_expand t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in

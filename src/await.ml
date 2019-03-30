@@ -71,8 +71,8 @@ and t_exp' context exp' =
     TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
     OptE (t_exp context exp1)
-  | VrnE (id, exp1) ->
-    VrnE (id, t_exp context exp1)
+  | VariantE (id, exp1) ->
+    VariantE (id, t_exp context exp1)
   | ProjE (exp1, n) ->
     ProjE (t_exp context exp1, n)
   | DotE (exp1, id) ->
@@ -245,8 +245,8 @@ and c_exp' context exp k =
     nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->
     unary context k (fun v1 -> e (OptE v1)) exp1
-  | VrnE (i, exp1) ->
-    unary context k (fun v1 -> e (VrnE (i, v1))) exp1
+  | VariantE (i, exp1) ->
+    unary context k (fun v1 -> e (VariantE (i, v1))) exp1
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ActorE _ ->

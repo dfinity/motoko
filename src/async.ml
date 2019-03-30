@@ -158,9 +158,9 @@ module Transform() = struct
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
       end
     | Opt t -> Opt (t_typ t)
+    | Vrn cts -> Vrn (map_constr_typ t_typ cts)
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
-    | Vrn (s, cs) -> Vrn (s, List.map t_field cs) (*TODO*)
     | Mut t -> Mut (t_typ t)
     | Shared -> Shared
     | Serialized t -> Serialized (t_typ t)
@@ -221,8 +221,8 @@ module Transform() = struct
       TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
-    | VrnE (i, exp1) ->
-      VrnE (i, t_exp exp1)
+    | VariantE (i, exp1) ->
+      VariantE (i, t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->

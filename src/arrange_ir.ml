@@ -33,7 +33,7 @@ let rec exp e = match e.it with
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | OptE e              -> "OptE"    $$ [exp e]
-  | VrnE (i, e)         -> "VrnE"    $$ [id i; exp e]
+  | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]

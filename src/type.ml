@@ -6,7 +6,6 @@ type var = string
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
-type vrn_sort = Variant of sharing
 type eff = Triv | Await
 
 type prim =
@@ -28,9 +27,9 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
-  | Vrn of vrn_sort * constructor list        (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
+  | Vrn of (lab * typ) list                   (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
@@ -43,13 +42,14 @@ and typ =
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
-and constructor = field
 
 and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Helper for variant constructors *)
+let map_constr_typ f = List.map (fun (c, t) -> c, f t)
 
 (* Constructors *)
 
@@ -86,6 +86,7 @@ let prim = function
 let seq = function [t] -> t | ts -> Tup ts
 
 let compare_field {lab = l1; _} {lab = l2; _} = compare l1 l2
+let compare_summand (c1, _) (c2, _) = compare c1 c2
 
 let iter_obj t =
   Obj (Object Local,
@@ -124,9 +125,9 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
+  | Vrn cts -> Vrn (map_constr_typ (shift i n) cts)
   | Async t -> Async (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
-  | Vrn (s, fs) -> Vrn (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
   | Serialized t -> Serialized (shift i n t)
@@ -162,7 +163,7 @@ let rec subst sigma t =
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
-  | Vrn (s, cs) -> Vrn (s, List.map (subst_field sigma) cs)
+  | Vrn cts -> Vrn (map_constr_typ (subst sigma) cts)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
   | Serialized t -> Serialized (subst sigma t)
@@ -203,7 +204,7 @@ let rec open' i ts t =
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
-  | Vrn (s, cs) -> Vrn (s, List.map (open_field i ts) cs)
+  | Vrn cts -> Vrn (map_constr_typ (open' i ts) cts)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
   | Serialized t -> Serialized (open' i ts t)
@@ -271,7 +272,7 @@ let invalid s = raise (Invalid_argument ("Type." ^ s))
 
 let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
 let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
-let as_vrn = function Vrn (s, tcs) -> s, tcs | _ -> invalid "as_vrn"
+let as_vrn = function Vrn cts -> cts | _ -> invalid "as_vrn"
 let as_array = function Array t -> t | _ -> invalid "as_array"
 let as_opt = function Opt t -> t | _ -> invalid "as_opt"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
@@ -347,7 +348,7 @@ let rec span = function
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
-  | Vrn (_, cs) -> Some (List.length cs)
+  | Vrn cts -> Some (List.length cts)
   | Opt _ -> Some 2
   | Mut t -> span t
   | Serialized t -> None
@@ -381,9 +382,9 @@ let rec avoid' cons = function
           List.map (avoid_bind cons) tbs,
           List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
   | Opt t -> Opt (avoid' cons t)
+  | Vrn cts -> Vrn (map_constr_typ (avoid' cons) cts)
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
-  | Vrn (s, cs) -> Vrn (s, List.map (avoid_field cons) cs)
   | Mut t -> Mut (avoid' cons t)
   | Serialized t -> Serialized (avoid' cons t)
 
@@ -427,9 +428,9 @@ let is_concrete t =
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
       | Opt t -> go t
+      | Vrn cts -> List.for_all (fun (_, t) -> go t) cts
       | Async t -> go t
       | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
-      | Vrn (s, cs) -> List.for_all (fun f -> go f.typ) cs
       | Mut t -> go t
       | Serialized t -> go t
     end
@@ -496,9 +497,6 @@ let rec rel_typ rel eq t1 t2 =
     rel_fields rel eq tfs1 tfs2
   | Obj (s, _), Shared when rel != eq ->
     s <> Object Local
-  | Vrn (s1, tcs1), Vrn (s2, tcs2) ->
-    s1 = s2 &&
-    rel_constructors rel eq tcs2 tcs1 (* TODO(gabor) poor man's inversion, rewrite to tcs1 tcs2 *)
   | Array t1', Array t2' ->
     rel_typ rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
@@ -509,6 +507,8 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Opt t1', Shared ->
     rel_typ rel eq t1' Shared
+  | Vrn cts1, Vrn cts2 ->
+    rel_summands rel eq cts1 cts2
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
@@ -554,20 +554,20 @@ and rel_fields rel eq tfs1 tfs2 =
     )
   | _, _ -> false
 
-and rel_constructors rel eq tcs1 tcs2 =
+and rel_summands rel eq tcs1 tcs2 =
   (* Assume that tcs1 and tcs2 are sorted. *)
   match tcs1, tcs2 with
   | [], [] ->
     true
-  | _, [] when rel != eq ->
+  | [], _ when rel != eq ->
     true
-  | tf1::tcs1', tf2::tcs2' ->
-    (match compare_field tf1 tf2 with
+  | (c1, t1)::tcs1', (c2, t2)::tcs2' ->
+    (match compare c1 c2 with
     | 0 ->
-      rel_typ rel eq tf2.typ tf1.typ &&
-      rel_constructors rel eq tcs1' tcs2'
-    | -1 when rel != eq ->
-      rel_constructors rel eq tcs1' tcs2
+      rel_typ rel eq t1 t2 &&
+      rel_summands rel eq tcs1' tcs2'
+    | 1 when rel != eq ->
+      rel_summands rel eq tcs1 tcs2'
     | _ -> false
     )
   | _, _ -> false
@@ -690,9 +690,9 @@ let rec string_of_typ_nullary vs = function
   | Array t ->
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs "") fs))
-  | Vrn (Variant Local, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs "#") fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Vrn cts ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_summand vs) cts))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -739,8 +739,11 @@ and string_of_typ' vs t =
     sprintf "serialized %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
-and string_of_field vs mark {lab; typ} =
-  sprintf "%s%s : %s" mark lab (string_of_typ' vs typ)
+and string_of_field vs {lab; typ} =
+  sprintf "%s : %s" lab (string_of_typ' vs typ)
+
+and string_of_summand vs (c, typ) =
+  sprintf "#%s : %s" c (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs

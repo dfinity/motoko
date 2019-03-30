@@ -178,27 +178,23 @@ let rec check_typ env typ : unit =
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
-    let rec sorted fields =
-      match fields with
-      | []
-      | [_] -> true
+    let rec sorted = function
+      | [] | [_] -> true
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
     in
     check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
-  | T.Vrn (sort, constrs) -> (* TODO(gabor) *)
-    let rec sorted constrs =
-      match constrs with
-      | []
-      | [_] -> true
-      | f1::((f2::_) as constrs') ->
-        T.compare_field f1 f2  < 0 && sorted constrs'
+  | T.Vrn cts ->
+    let rec sorted = function
+      | [] | [_] -> true
+      | (c1, _)::(((c2, _)::_) as summands') ->
+        compare c1 c2  < 0 && sorted summands'
     in
-    check_ids env (List.map (fun (field : T.field) -> field.T.lab) constrs);
-    List.iter (check_typ_constructor env sort) constrs;
-    check env no_region (sorted constrs) "variant type's constructors are not sorted"
+    check_ids env (List.map fst cts);
+    List.iter (check_typ_summand env) cts;
+    check env no_region (sorted cts) "variant type's constructors are not sorted"
   | T.Mut typ ->
     check_typ env typ
   | T.Serialized typ ->
@@ -217,17 +213,8 @@ and check_typ_field env s typ_field : unit =
      (s = T.Object T.Local || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
 
-and check_typ_constructor env s typ_constr : unit =
-  let T.{lab; typ} = typ_constr in
-  check_typ env typ;
-  (* TODO(gabor)
-  check env no_region
-     (s <> T.Actor || T.is_func (T.promote typ))
-    "actor field has non-function type";
-  check env no_region
-     (s = T.Object T.Local || T.sub typ T.Shared)
-    "shared object or actor field has non-shared type" *)
-
+and check_typ_summand env (c, typ) : unit =
+  check_typ env typ
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -333,9 +320,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | OptE exp1 ->
     check_exp env exp1;
     T.Opt (typ exp1) <: t;
-  | VrnE (i, exp1) ->
+  | VariantE (i, exp1) ->
     check_exp env exp1;
-    T.(Vrn (Variant Local, [{lab=i.it; typ=typ exp1}])) <: t;
+    T.Vrn [(i.it, typ exp1)] <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -622,7 +609,7 @@ and check_pat env pat : val_env =
     ve
   | VrnP (i, pat1) ->
     let ve = check_pat env pat1 in
-    T.(Vrn (Variant Local, [{lab=i.it; typ=pat1.note}])) <: t;
+    T.Vrn [(i.it, pat1.note)] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in

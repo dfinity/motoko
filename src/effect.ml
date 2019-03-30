@@ -33,6 +33,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | UnE (_, _, exp1)
   | ProjE (exp1, _)
   | OptE exp1
+  | VariantE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1
@@ -64,7 +65,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     List.fold_left max_eff Type.Triv es
   | ObjE (_, efs) ->
     effect_field_exps efs
-  | VrnE ef -> effect_field_exps [ef]
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
@@ -125,7 +125,7 @@ module Ir =
       | UnE (_, _, exp1)
       | ProjE (exp1, _)
       | OptE exp1
-      | VrnE (_, exp1)
+      | VariantE (_, exp1)
       | DotE (exp1, _)
       | ActorDotE (exp1, _)
       | AssertE exp1

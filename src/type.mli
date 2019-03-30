@@ -6,7 +6,6 @@ type var = string
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
 type obj_sort = Object of sharing | Actor
-type vrn_sort = Variant of sharing
 type eff = Triv | Await
 
 type prim =
@@ -28,9 +27,9 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
-  | Vrn of vrn_sort * constructor list        (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
+  | Vrn of (lab * typ) list                   (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
@@ -43,7 +42,6 @@ and typ =
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
-and constructor = field
 
 and con = kind Con.t
 and kind =
@@ -78,7 +76,7 @@ val is_serialized : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
-val as_vrn : typ -> vrn_sort * constructor list
+val as_vrn : typ -> (lab * typ) list
 val as_array : typ -> typ
 val as_opt : typ -> typ
 val as_tup : typ -> typ list
@@ -106,6 +104,9 @@ val as_seq : typ -> typ list
 
 val lookup_field : string -> field list -> typ
 val compare_field : field -> field -> int
+
+val map_constr_typ : (typ -> typ) -> (lab * typ) list -> (lab * typ) list
+val compare_summand : (lab * typ) -> (lab * typ) -> int
 
 val span : typ -> int option
 

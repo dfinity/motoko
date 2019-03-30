@@ -125,7 +125,7 @@ and exp' env e  : exp' = match e.it with
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
   | OptE e              -> OptE (exp env e)
-  | VrnE (i, e)         -> VrnE (i, exp env e)
+  | VariantE (i, e)     -> VariantE (i, exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)

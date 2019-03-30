@@ -295,7 +295,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
-  | VrnE (i, exp1) ->
+  | VariantE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Obj (V.Env.from_list [i.it, v1])))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))

@@ -43,12 +43,7 @@ and exp' at note = function
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
     obj at s None es note.S.note_typ
-  | S.VrnE e ->
-     begin
-       match e.it.S.dec.it with
-       | S.(LetD ({it = VarP id; _}, e)) -> I.VrnE (id, exp e)
-       | _ -> assert false
-     end
+  | S.VariantE (c, e) -> I.VariantE (c, exp e)
   | S.DotE (e, x) ->
     let n = {x with it = I.Name x.it} in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
