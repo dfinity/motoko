@@ -5,6 +5,7 @@ open Wasm.Sexpr
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
+and tag i = Atom ("#" ^ i.it)
 
 let rec exp e = match e.it with
   | VarE x              -> "VarE"    $$ [id x]
@@ -58,7 +59,7 @@ and pat p = match p.it with
   | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
   | LitP l        -> "LitP"       $$ [lit !l]
   | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
-  | VrnP (i, p)   -> "VrnP"       $$ [id i; pat p]
+  | VrnP (i, p)   -> "VrnP"       $$ [tag i; pat p]
   | OptP p        -> "OptP"       $$ [pat p]
   | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
   | ParP p        -> "ParP"       $$ [pat p]
