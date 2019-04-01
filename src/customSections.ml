@@ -1,6 +1,6 @@
 (* Some data type to represent custom sectoins *)
 
-type type_ = I32 | DataBuf | ElemBuf | ActorRef
+type type_ = I32 | DataBuf | ElemBuf | ActorRef | FuncRef
 
 (* Some Code copied from encodeMap.ml *)
 type stream =
@@ -81,6 +81,7 @@ let encode
       | DataBuf  -> vu32 0x6cl
       | ElemBuf  -> vu32 0x6bl
       | ActorRef -> vu32 0x6fl
+      | FuncRef  -> vu32 0x6dl
   in
 
   section 0 (fun _ ->

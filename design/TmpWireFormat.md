@@ -36,6 +36,10 @@ A message entry point with an argument of type `Text` is represented as a `datab
 Note that there is no terminating `\0`, and the length is implicit as the
 length of the `databuf`.
 
+Specialized argument format: `actor {…}` and `shared … -> …`
+------------------------------------------------------------
+
+A message entry point with an argument of actor type or of shared function type is represented as an `actorref` resp. `funcref.`
 
 General argument format (without references)
 --------------------------------------------

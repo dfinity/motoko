@@ -3020,6 +3020,7 @@ module Serialization = struct
       | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
       | Type.Prim Type.Word32 -> get_x ^^ BoxedSmallWord.unbox env
       | Type.Obj (Type.Actor, _) -> get_x ^^ Dfinity.unbox_reference env
+      | Type.Func (Type.Sharable, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -3115,6 +3116,7 @@ module Serialization = struct
       | Type.Prim Type.Text -> deserialize_text env get_elembuf
       | Type.Prim Type.Word32 -> get_elembuf ^^ BoxedSmallWord.box env
       | Type.Obj (Type.Actor, _) -> get_elembuf ^^ Dfinity.box_reference env
+      | Type.Func (Type.Sharable, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -3184,6 +3186,7 @@ module Serialization = struct
       | Type.Prim Type.Text -> CustomSections.DataBuf
       | Type.Prim Type.Word32 -> CustomSections.I32
       | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
+      | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
       | t' when has_no_references t' -> CustomSections.DataBuf
       | _ -> CustomSections.ElemBuf
 
