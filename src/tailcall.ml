@@ -43,7 +43,7 @@ TODO: optimize for multiple arguments using multiple temps (not a tuple).
 
 type func_info = { func: S.id;
                    typ_binds: typ_bind list;
-                   temp: var;
+                   temps: var list;
                    label: S.id;
                    tail_called: bool ref;
                  }
@@ -77,6 +77,16 @@ let rec tailexp env e =
 and exp env e  : exp =
   {e with it = exp' {env with tail_pos = false}  e}
 
+and assignEs vars exp : dec list =
+  match vars, exp.it with
+  | [v], _ -> [ expD (assignE v exp) ]
+  | _, TupE es when List.length es = List.length vars ->
+       List.map expD (List.map2 assignE vars es)
+  | _, _ ->
+    let tup = fresh_var "tup" (typ exp) in
+    letD tup exp ::
+    List.mapi (fun i v -> expD (assignE v (projE v i))) vars
+
 and exp' env e  : exp' = match e.it with
   | VarE _
     | LitE _
@@ -95,21 +105,17 @@ and exp' env e  : exp' = match e.it with
     begin
       match e1.it, env with
       | VarE f1, { tail_pos = true;
-                   info = Some { func; typ_binds; temp; label; tail_called } }
+                   info = Some { func; typ_binds; temps; label; tail_called } }
            when f1.it = func.it && are_generic_insts typ_binds insts  ->
         tail_called := true;
-        (blockE [expD (assignE temp (exp env e2))]
+        (blockE (assignEs temps (exp env e2))
                  (breakE label (tupE []))).it
       | _,_-> CallE(cc, exp env e1, insts, exp env e2)
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
-  | WhileE (e1, e2)     -> WhileE (exp env e1, exp env e2)
-  | LoopE (e1, None)    -> LoopE (exp env e1, None)
-  | LoopE (e1, Some e2) -> LoopE (exp env e1, Some (exp env e2))
-  | ForE (p, e1, e2)    -> let env1 = pat env p in
-                           ForE (p, exp env e1, exp env1 e2)
+  | LoopE e1            -> LoopE (exp env e1)
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
   | BreakE (i, e)       -> BreakE(i,exp env e)
@@ -122,14 +128,18 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
-  | FuncE (x, cc, tbs, p, typT, exp0) ->
-    let env1 = pat {tail_pos = true; info = None} p in
-    let exp0' = tailexp env1 exp0 in
-    FuncE (x, cc, tbs, p, typT, exp0')
-  | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: decent into ds *)
+  | FuncE (x, cc, tbs, as_, typT, exp0) ->
+    let env1 = { tail_pos = true; info = None} in
+    let env2 = args env1 as_ in
+    let exp0' = tailexp env2 exp0 in
+    FuncE (x, cc, tbs, as_, typT, exp0')
+  | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
 and exps env es  = List.map (exp env) es
+
+and args env as_ =
+  List.fold_left (fun env a -> bind env a None) env as_
 
 and pat env p =
   let env = pat' env p.it in
@@ -171,39 +181,43 @@ and dec env d =
 and dec' env d =
   match d.it with
   (* A local let bound function, this is what we are looking for *)
+  (* TODO: Do we need to detect more? A tuple of functions? *)
   | LetD (({it = VarP id;_} as id_pat),
-          ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, p, typT, exp0);_} as funexp)) ->
+          ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, as_, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
-      let temp = fresh_var (Mut p.note) in
-      let l = fresh_id () in
+      let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in
+      let label = fresh_id "tailcall" () in
       let tail_called = ref false in
       let env2 = { tail_pos = true;
                    info = Some { func = id;
                                  typ_binds = tbs;
-                                 temp = temp;
-                                 label = l;
-                                 tail_called = tail_called } }
+                                 temps;
+                                 label;
+                                 tail_called } }
       in
-      let env3 = pat env2 p  in (* shadow id if necessary *)
+      let env3 = args env2 as_ in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
       let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
       if !tail_called then
         let ids = match typ funexp with
-          | Func( _, _, _, dom, _) -> List.map (fun t -> fresh_var (open_ cs t)) dom
+          | Func( _, _, _, dom, _) ->
+            fresh_vars "id" (List.map (fun t -> open_ cs t) dom)
           | _ -> assert false
         in
-        let args = seqP (List.map varP ids) in
         let l_typ = Type.unit in
         let body =
-          blockE [varD (id_of_exp temp) (seqE ids)]
-            (loopE
-              (labelE l l_typ
-                 (blockE [letP p (immuteE temp)] (retE exp0'))) None)
+          blockE (List.map2 (fun t i -> varD (id_of_exp t) i) temps ids) (
+            loopE (
+              labelE label l_typ (blockE
+                (List.map2 (fun a t -> letD (exp_of_arg a) (immuteE t)) as_ temps)
+                (retE exp0'))
+            )
+          )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, args, typT, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, List.map arg_of_exp ids, typT, body)})
       else
-        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, p, typT, exp0')})
+        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, as_, typT, exp0')})
     end,
     env
   | LetD (p, e) ->

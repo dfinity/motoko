@@ -4,7 +4,7 @@
  --------------------
 */
 
-actor class Server() {
+actor {
 
 /**
  PESS: Server Actor

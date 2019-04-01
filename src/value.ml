@@ -61,8 +61,8 @@ struct
   let lognot i = inj (Rep.lognot (proj i))
   let logxor i j = inj (Rep.logxor (proj i) (proj j))
   let shift_left i j = Rep.shift_left i j
-  let shift_right = Rep.shift_right
-  let shift_right_logical = Rep.shift_right_logical
+  let shift_right i j = let res = Rep.shift_right i j in inj (proj res)
+  let shift_right_logical i j = let res = Rep.shift_right_logical i j in inj (proj res)
   let of_int i = inj (Rep.of_int i)
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
@@ -222,6 +222,7 @@ and value =
   | Func of call_conv * func
   | Async of async
   | Mut of value ref
+  | Serialized of value
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
@@ -258,6 +259,7 @@ let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
+let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
 
 let obj_of_array a =
   let get = local_func 1 1 @@ fun v k ->
@@ -296,7 +298,21 @@ let obj_of_array a =
 
   Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
 
-let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | _ -> invalid "as_obj"
+let obj_of_text t =
+  let chars = local_func 0 1 @@ fun v k ->
+    as_unit v;
+    let i = ref 0 in
+    let s = Wasm.Utf8.decode t in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = List.length s then k' Null else
+          let v = Opt (Char (List.nth s !i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next)) in
+  let len = local_func 0 1 @@ fun v k ->
+    as_unit v; k (Int (Nat.of_int (List.length (Wasm.Utf8.decode t)))) in
+
+  Env.from_list ["chars", chars; "len", len]
+
+let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | Text t -> obj_of_text t | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"

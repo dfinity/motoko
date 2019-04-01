@@ -1,0 +1,14 @@
+abstract-msgs.as:2.31-2.40: type error, shared function parameter contains abstract type
+  A/1
+abstract-msgs.as:3.36-3.38: type error, shared function has non-async result type
+  ?A/3
+abstract-msgs.as:5.20-5.29: type error, shared function parameter contains abstract type
+  A/5
+abstract-msgs.as:6.25-6.33: type error, shared function result contains abstract type
+  ?A/5
+abstract-msgs.as:10.58-10.59: type error, shared function argument contains abstract type
+  A/7
+abstract-msgs.as:11.82-11.84: type error, shared function call result contains abstract type
+  async A/9
+abstract-msgs.as:29.44-29.53: type error, shared function parameter contains abstract type
+  X/1<A/19> = shared A/19 -> ()

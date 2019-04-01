@@ -34,6 +34,7 @@ and typ =
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
+  | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
@@ -100,6 +101,12 @@ let array_obj t =
   | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
   | t -> Obj (Object Local, List.sort compare_field (immut t))
 
+let text_obj =
+  let immut =
+    [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+    ] in
+  Obj (Object Local, List.sort compare_field immut)
 
 (* Shifting *)
 
@@ -118,6 +125,7 @@ let rec shift i n t =
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
+  | Serialized t -> Serialized (shift i n t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -152,6 +160,7 @@ let rec subst sigma t =
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
+  | Serialized t -> Serialized (subst sigma t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -191,6 +200,7 @@ let rec open' i ts t =
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
+  | Serialized t -> Serialized (open' i ts t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -248,6 +258,7 @@ let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
+let is_serialized = function Serialized _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -262,6 +273,7 @@ let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> 
 let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
+let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
@@ -272,6 +284,7 @@ let as_prim_sub p t = match promote t with
 let rec as_obj_sub lab t = match promote t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub lab (array_obj t)
+  | Prim Text -> as_obj_sub lab text_obj
   | Non -> Object Sharable, [{lab; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub t = match promote t with
@@ -293,9 +306,9 @@ let as_pair_sub t = match promote t with
   | Tup [t1; t2] -> t1, t2
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
-let as_func_sub n t = match promote t with
-  | Func (_, _, tbs, ts1, ts2) -> tbs, seq ts1,  seq ts2
-  | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
+let as_func_sub default_s default_arity t = match promote t with
+  | Func (s, _, tbs, ts1, ts2) -> s, tbs, seq ts1,  seq ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -328,6 +341,7 @@ let rec span = function
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
   | Mut t -> span t
+  | Serialized t -> None
   | Non -> Some 0
 
 
@@ -361,6 +375,7 @@ let rec avoid' cons = function
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
   | Mut t -> Mut (avoid' cons t)
+  | Serialized t -> Serialized (avoid' cons t)
 
 and avoid_bind cons {var; bound} =
   {var; bound = avoid' cons bound}
@@ -371,6 +386,44 @@ and avoid_field cons {lab; typ} =
 let avoid cons t =
   if cons = ConSet.empty then t else
   avoid' cons t
+
+(* Checking for concrete types *)
+
+module TS = Set.Make (struct type t = typ let compare = compare end)
+
+(*
+This check is a stop-gap measure until we have an IDL strategy that
+allows polymorphic types, see #250. It is not what we desire for ActorScript.
+*)
+
+let is_concrete t =
+  let seen = ref TS.empty in (* break the cycles *)
+  let rec go t =
+    TS.mem t !seen ||
+    begin
+      seen := TS.add t !seen;
+      match t with
+      | Var _ -> assert false
+      | (Prim _ | Any | Non | Shared | Pre) -> true
+      | Con (c, ts) ->
+        begin match Con.kind c with
+        | Abs _ -> false
+        | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+        end
+      | Array t -> go t
+      | Tup ts -> List.for_all go ts
+      | Func (s, c, tbs, ts1, ts2) ->
+        let ts = open_binds tbs in
+        List.for_all go (List.map (open_ ts) ts1) &&
+        List.for_all go (List.map (open_ ts) ts2)
+      | Opt t -> go t
+      | Async t -> go t
+      | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+      | Mut t -> go t
+      | Serialized t -> go t
+    end
+  in go t
+
 
 
 (* Equivalence & Subtyping *)
@@ -464,6 +517,8 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
+  | Serialized t1', Serialized t2' ->
+    eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
   | _, _ -> false
   end
 
@@ -646,6 +701,8 @@ and string_of_typ' vs t =
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
+  | Serialized t ->
+    sprintf "serialized %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
 and string_of_field vs {lab; typ} =

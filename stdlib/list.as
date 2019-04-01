@@ -276,13 +276,7 @@ let List = new {
       switch (l1, l2) {
 	    case (null, _) { true };
 	    case (_, null) { false };
-	    case (?(h1,t1), ?(h2,t2)) {
-	           if (lte(h1,h2)) {
-		           rec(t1, t2)
-	           } else {
-		           false
-	           }
-	         };
+	    case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)
@@ -296,13 +290,7 @@ let List = new {
 	    case (null, null) { true };
 	    case (null, _)    { false };
 	    case (_,    null) { false };
-	    case (?(h1,t1), ?(h2,t2)) {
-	           if (eq(h1,h2)) {
-		           rec(t1, t2)
-	           } else {
-		           false
-	           }
-	         };
+	    case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)

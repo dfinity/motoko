@@ -52,9 +52,9 @@ let dump_prog flag prog =
       Wasm.Sexpr.print 80 (Arrange.prog prog)
     else ()
 
-let dump_ir flag prog =
+let dump_ir flag prog_ir =
     if !flag then
-      Wasm.Sexpr.print 80 (Arrange_ir.prog prog)
+      Wasm.Sexpr.print 80 (Arrange_ir.prog prog_ir)
     else ()
 
 let parse_with mode lexer parser name : parse_result =
@@ -115,25 +115,31 @@ let check_prog infer senv name prog
 
 (* IR transforms *)
 
-let transform_ir transform_name transform flag env prog name =
-  if flag then
-    begin
-      phase transform_name name;
-      let prog' : Ir.prog = transform env prog in
-      dump_ir Flags.dump_lowering prog';
-      Check_ir.check_prog env transform_name prog';
-      prog'
-    end
+let transform transform_name trans env prog name =
+  phase transform_name name;
+  let prog_ir' : Ir.prog = trans env prog in
+  dump_ir Flags.dump_lowering prog_ir';
+  Check_ir.check_prog env transform_name prog_ir';
+  prog_ir'
+
+let transform_if transform_name trans flag env prog name =
+  if flag then transform transform_name trans env prog name
   else prog
 
+let desugar =
+  transform "Desugaring" Desugar.transform
+
 let await_lowering =
-  transform_ir "Await Lowering" (fun _ -> Await.transform)
+  transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
-  transform_ir "Async Lowering" Async.transform
+  transform_if "Async Lowering" Async.transform
+
+let serialization =
+  transform_if "Synthesizing serialization code" Serialization.transform
 
 let tailcall_optimization =
-  transform_ir "Tailcall optimization" (fun _ -> Tailcall.transform)
+  transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let check_with parse infer senv name : check_result =
   match parse name with
@@ -147,10 +153,10 @@ let infer_prog_unit senv prog =
     (Typing.check_prog senv prog)
 
 let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
-let check_file senv n = check_with parse_file infer_prog_unit senv n
+let check_file senv n = check_with parse_file Typing.infer_prog senv n
 let check_files senv = function
   | [n] -> check_file senv n
-  | ns -> check_with (fun _n -> parse_files ns) infer_prog_unit senv "all"
+  | ns -> check_with (fun _n -> parse_files ns) Typing.infer_prog senv "all"
 
 
 (* Interpretation *)
@@ -164,10 +170,10 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
     let vo, scope =
       if !Flags.interpret_ir
       then
-        let prog_ir = Desugar.transform senv prog in
-        Check_ir.check_prog senv "desugaring" prog_ir;
+        let prog_ir = desugar senv prog name in
         let prog_ir = await_lowering (!Flags.await_lowering) senv prog_ir name in
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
+        let prog_ir = serialization (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         let prog_ir = tailcall_optimization true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
@@ -289,14 +295,14 @@ let compile_with check mode name : compile_result =
   | Error msgs -> Error msgs
   | Ok ((prog, _t, scope), msgs) ->
     Diag.print_messages msgs;
-    let prelude = Desugar.transform Typing.empty_scope prelude in
-    let prog = Desugar.transform initial_stat_env prog in
-    Check_ir.check_prog initial_stat_env "desugaring" prog;
-    let prog = await_lowering true initial_stat_env prog name in
-    let prog = async_lowering true initial_stat_env prog name in
-    let prog = tailcall_optimization true initial_stat_env prog name in
+    let prelude_ir = Desugar.transform Typing.empty_scope prelude in
+    let prog_ir = desugar initial_stat_env prog name in
+    let prog_ir = await_lowering true initial_stat_env prog_ir name in
+    let prog_ir = async_lowering true initial_stat_env prog_ir name in
+    let prog_ir = serialization true initial_stat_env prog_ir name in
+    let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
     phase "Compiling" name;
-    let module_ = Compile.compile mode name prelude [prog] in
+    let module_ = Compile.compile mode name prelude_ir [prog_ir] in
     Ok module_
 
 let compile_string mode s name =

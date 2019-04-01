@@ -25,10 +25,7 @@ let rec exp e = match e.it with
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
-  | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
-  | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
-  | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
-  | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
+  | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
@@ -39,13 +36,18 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
-  | FuncE (x, cc, tp, p, t, e) ->
-    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ [pat p; typ t; exp e]
+  | FuncE (x, cc, tp, as_, t, e) ->
+    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ t; exp e]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
 
 and fields fs = List.fold_left (fun flds f -> (name f.it.name $$ [ id f.it.var ]):: flds) [] fs
 
+and args = function
+ | [] -> []
+ | as_ -> ["params" $$ List.map arg as_]
+
+and arg a = Atom a.it
 
 and pat p = match p.it with
   | WildP         -> Atom "WildP"

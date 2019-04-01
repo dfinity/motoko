@@ -121,6 +121,7 @@ let _ : async (Int,)  = async {
 */
 
 
+/* Disabled: No generic messages are supported
 func Generic<T <: Shared>(t:Text, x:T,eq:(T,T)->Bool)  {
 
 shared func fu_u(x:T) : async T {
@@ -143,3 +144,4 @@ Generic<()>("<()>\n", (), func eq(i:(),j:()) : Bool = true);
 Generic<(Int,Bool)>("<(Int,Bool)>\n", (1,true),
 	            func eq((i,b):(Int,Bool),
 		            (j,c):(Int,Bool)) : Bool = i == j and b == c);
+*/

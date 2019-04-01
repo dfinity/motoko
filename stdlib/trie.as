@@ -410,12 +410,12 @@ let Trie = new {
 	                  makeBin<K,V>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tr
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tr
 	                };
@@ -541,12 +541,12 @@ let Trie = new {
 	                  makeBin<K,V>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tl
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  tl
 	                };
@@ -626,12 +626,12 @@ let Trie = new {
 	                  makeBin<K,X>(t0, t1)
 	                };
              case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
              case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
@@ -684,12 +684,12 @@ let Trie = new {
 	                  makeBin<K,X>(t0, t1)
 	                };
 	           case (false, true) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
 	           case (true, false) {
-	                  assert(false);
+	                  assert false;
 	                  // XXX impossible, until we lift uniform depth assumption
 	                  makeEmpty<K,X>()
 	                };
