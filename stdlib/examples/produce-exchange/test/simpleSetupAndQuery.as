@@ -32,7 +32,7 @@ actor class Test() = this {
   go() {
     ignore(async
     {
-      let s = Server();
+      let s = server; //Server();
 
       print "\nExchange setup\n====================================\n";
 

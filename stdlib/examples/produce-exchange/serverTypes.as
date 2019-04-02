@@ -61,7 +61,6 @@ type TransporterId = Nat;
 type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
-
 /**
 Public info associated with Ids
 =====================================
