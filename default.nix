@@ -228,6 +228,7 @@ rec {
       "guide/"
       "guide/Makefile"
       "guide/.*css"
+      "guide/.*md"
       "guide/.*png"
       ];
 
@@ -238,7 +239,7 @@ rec {
       }; in
       [ pandoc tex bash ];
 
-    FONTCONFIG_FILE =
+    NIX_FONTCONFIG_FILE =
       with nixpkgs;
       nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
 

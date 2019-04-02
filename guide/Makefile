@@ -37,6 +37,7 @@ TEX_OPTIONS=\
   --include-in-header=<(echo '\newunicodechar{ツ}{\textrm{\textfallback{ツ}}}') \
 
 actorscript-guide.pdf: ../design/guide.md
+	if [ -n "$$NIX_FONTCONFIG_FILE" ]; then export FONTCONFIG_FILE="$$NIX_FONTCONFIG_FILE"; fi; \
 	pandoc \
 	  --toc \
 	  --toc-depth 2 \
