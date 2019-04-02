@@ -51,6 +51,7 @@ alldoc: docMd docHtml
 # Markdown documentation, extracted from the source directory
 docMd: \
 	$(DOCDIR)/README.md \
+	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/hash.md \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
@@ -71,6 +72,7 @@ docMd: \
 # HTML documentation, extracted from the source directory
 docHtml: \
 	$(DOCDIR)/README.html \
+	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/hash.html \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
@@ -114,61 +116,61 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	@cat $< >> $@
 
-$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
+$(OUTDIR)/Hash.out: prelude.as hash.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/List.out: list.as | $(OUTDIR)
+$(OUTDIR)/List.out: prelude.as list.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ListTest.out: list.as listTest.as | $(OUTDIR)
+$(OUTDIR)/ListTest.out: prelude.as list.as listTest.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/AssocList.out: list.as assocList.as | $(OUTDIR)
+$(OUTDIR)/AssocList.out: prelude.as list.as assocList.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Trie.out: hash.as list.as assocList.as trie.as | $(OUTDIR)
+$(OUTDIR)/Trie.out: prelude.as hash.as list.as assocList.as trie.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/DocTable.out: hash.as list.as assocList.as trie.as docTable.as | $(OUTDIR)
+$(OUTDIR)/DocTable.out: prelude.as hash.as list.as assocList.as trie.as docTable.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/Set.out: hash.as list.as assocList.as trie.as set.as | $(OUTDIR)
+$(OUTDIR)/Set.out: prelude.as hash.as list.as assocList.as trie.as set.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDb.out: hash.as list.as assocList.as trie.as set.as setDb.as | $(OUTDIR)
+$(OUTDIR)/SetDb.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/SetDbTest.out: hash.as list.as assocList.as trie.as set.as setDb.as setDbTest.as | $(OUTDIR)
+$(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as setDbTest.as | $(OUTDIR)
 	@echo $(MODULE_NAME) $(basename $(notdir $@))
 	@echo $(BEGIN)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 	@echo $(DONE)
 
-$(OUTDIR)/ProduceExchange.out: hash.as list.as assocList.as trie.as docTable.as \
+$(OUTDIR)/ProduceExchange.out: prelude.as hash.as list.as assocList.as trie.as docTable.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \

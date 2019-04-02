@@ -157,7 +157,7 @@ let Trie = new {
 	      case null { (buildNewPath<K,V>(bitpos, k, v), null) };
 	      case (?n) {
 	             assertIsBin<K,V>(t);
-	             let bit = getHashBit(k.hash, bitpos);
+	             let bit = BitList.getHashBit(k.hash, bitpos);
 	             // rebuild either the left or right path with the inserted (k,v) pair
 	             if (not bit) {
 	               let (l, v_) = rec(n.left, bitpos+1);
@@ -354,7 +354,7 @@ let Trie = new {
 	           };
 	      case (?n) {
 	             assertIsBin<K,V>(t);
-	             let bit = getHashBit(k.hash, bitpos);
+	             let bit = BitList.getHashBit(k.hash, bitpos);
 	             if (not bit) { rec(n.left,  bitpos+1) }
 	             else         { rec(n.right, bitpos+1) }
 	           };
@@ -1035,7 +1035,7 @@ let Trie = new {
   // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
   func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
     func (key1:Key<K>, key2:Key<K>) : Bool =
-      (hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
+      (BitList.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
   };
 
   /**
@@ -1169,7 +1169,7 @@ let Trie = new {
       if ( bitpos < HASH_BITS ) {
 	      // create new bin node for this bit of the hash
 	      let path = rec(bitpos+1);
-	      let bit = getHashBit(k.hash, bitpos);
+	      let bit = BitList.getHashBit(k.hash, bitpos);
 	      if (not bit) {
 	        ?(new {left=path; right=null; keyvals=null})
 	      }

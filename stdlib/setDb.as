@@ -11,26 +11,6 @@ let SetDb = new {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
-      func bitsPrintRev(bits:Bits) {
-	      switch bits {
-	      case null { print "" };
-	      case (?(bit,bits_)) {
-		           bitsPrintRev(bits_);
-		           if bit { print "1R." }
-		           else   { print "0L." }
-	           }
-	      }
-      };
-      func hashPrintRev(bits:Bits) {
-	      switch bits {
-	      case null { print "" };
-	      case (?(bit,bits_)) {
-		           hashPrintRev(bits_);
-		           if bit { print "1" }
-		           else   { print "0" }
-	           }
-	      }
-      };
       switch s {
       case null {
 	           //indPrint(ind);
@@ -57,7 +37,7 @@ let SetDb = new {
                         print("hash(");
                         printInt(k.key);
                         print(")=");
-		                    hashPrintRev(k.hash);
+		                    BitList.hashPrintRev(k.hash);
                         print("; ");
                         ()
                       }
