@@ -21,6 +21,6 @@ nixpkgs.mkShell {
     default.users-guide.buildInputs ++
     [ nixpkgs.ncurses ];
 
-  FONTCONFIG_FILE = default.users-guide.FONTCONFIG_FILE;
+  NIX_FONTCONFIG_FILE = default.users-guide.NIX_FONTCONFIG_FILE;
 }
 
