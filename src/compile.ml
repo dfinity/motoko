@@ -2622,9 +2622,9 @@ module Serialization = struct
     Also see (and update) `design/TmpWireFormat.md`, which documents the format
     in a “user-facing” way.
 
-    We have a specific serialization strategy for `Text`, `Word32` and
-    references for easier interop with the console and the nonce. This is a
-    stop-gap measure until we have nailed down IDL and Bidirectional Messaging.
+    We have a specific serialization strategy for `Text` and references for
+    easier interop with the console and the nonce. This is a stop-gap measure
+    until we have nailed down IDL and Bidirectional Messaging.
 
     The general serialization strategy is as follows:
     * We traverse the data to calculate the size needed for the data buffer and the
@@ -3018,8 +3018,7 @@ module Serialization = struct
     else Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
       match Type.normalize t with
       | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
-      | Type.Prim Type.Word32 -> get_x ^^ BoxedSmallWord.unbox env
-      | Type.Obj (Type.Actor, _) -> get_x ^^ Dfinity.unbox_reference env
+      | Type.Obj (Type.Actor, _)
       | Type.Func (Type.Sharable, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -3114,8 +3113,7 @@ module Serialization = struct
     Func.share_code1 env name ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
       match Type.normalize t with
       | Type.Prim Type.Text -> deserialize_text env get_elembuf
-      | Type.Prim Type.Word32 -> get_elembuf ^^ BoxedSmallWord.box env
-      | Type.Obj (Type.Actor, _) -> get_elembuf ^^ Dfinity.box_reference env
+      | Type.Obj (Type.Actor, _)
       | Type.Func (Type.Sharable, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -3184,7 +3182,6 @@ module Serialization = struct
 
     let dfinity_type t = match Type.normalize t with
       | Type.Prim Type.Text -> CustomSections.DataBuf
-      | Type.Prim Type.Word32 -> CustomSections.I32
       | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
       | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
       | t' when has_no_references t' -> CustomSections.DataBuf
