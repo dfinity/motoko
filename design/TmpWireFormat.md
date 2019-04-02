@@ -22,12 +22,6 @@ defined with a list of arguments, these all become arguments of the WebAssembly
 function. See the [ActorScript guide](https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript.pr-252/users-guide/latest/download/1/guide/#function-types) for the precise rules for function arities.
 
 
-Specialized argument format: `Word32`
--------------------------------------
-
-A message entry point with an argument of type `Word32` is directly represented
-as a `I32`.
-
 Specialized argument format: `Text`
 -------------------------------------
 
