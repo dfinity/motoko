@@ -115,11 +115,11 @@ let disjoint_union env at fmt env1 env2 =
 
 let check_ids env vrnt ids = ignore
  begin
-  let home, member = if vrnt then "variant", "constructor" else "object", "field" in
+  let compound, member = if vrnt then "variant", "case" else "object", "field" in
   (List.fold_left
     (fun dom id ->
       if List.mem id.it dom
-      then error env id.at "duplicate %s name %s in %s type" member id.it home
+      then error env id.at "duplicate %s name %s in %s type" member id.it compound
       else id.it::dom
     ) [] ids
   )
@@ -870,14 +870,15 @@ and check_pat' env t pat : val_env =
         (T.string_of_typ_expand t)
     )
   | VrnP (i, pat1) ->
-    T.(try
-         match List.find_opt (fun (c, _) -> i.it = c) (as_vrn t) with
-              | Some (_, typ) -> check_pat env typ pat1
-              | None -> error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
-                          i.it (T.string_of_typ_expand t)
-       with Invalid_argument _ ->
-         error env pat.at "variant pattern cannot consume expected type\n  %s"
-           (T.string_of_typ_expand t)
+    (try
+       match List.find_opt (fun (c, _) -> i.it = c) (T.as_vrn t) with
+       | Some (_, typ) -> check_pat env typ pat1
+       | None ->
+          error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
+            i.it (T.string_of_typ_expand t)
+     with Invalid_argument _ ->
+       error env pat.at "variant pattern cannot consume expected type\n  %s"
+         (T.string_of_typ_expand t)
     )
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -1142,9 +1143,7 @@ and infer_id_typdecs id c k : con_env =
   | T.Abs (_, T.Pre) ->
     T.set_kind c k;
     id.note <- Some c
-  | k' ->
-    if not (T.eq_kind k' k) then Printf.eprintf "### K': %s      K: %s \n" (Type.string_of_kind k') (Type.string_of_kind k')
-    ; assert (T.eq_kind k' k)
+  | k' -> assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
 
