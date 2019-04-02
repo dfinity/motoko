@@ -219,8 +219,39 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
 
+  stdlib-reference = stdenv.mkDerivation {
+    name = "stdlib-reference";
+
+    src = sourceByRegex ./stdlib [
+      "examples"
+      "examples/produce-exchange"
+      "examples/produce-exchange/test"
+      ".*\.py"
+      ".*\.as"
+      ".*\.md"
+      "Makefile"
+      ];
+
+    buildInputs = with nixpkgs;
+      [ pandoc bash python ];
+
+    buildPhase = ''
+      patchShebangs .
+      make alldoc
+    '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv doc $out/
+      mkdir -p $out/nix-support
+      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+    '';
+
+    forceShare = ["man"];
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report ];
+    constituents = [ native js native_test coverage-report stdlib-reference ];
   };
 }
