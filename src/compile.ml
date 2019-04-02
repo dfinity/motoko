@@ -2126,15 +2126,16 @@ module Array = struct
     (* Write fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
-      (* The closure *)
+      (* Where to store *)
       get_r ^^ get_i ^^ idx env ^^
-      (* The arg *)
+      (* The closure *)
       get_f ^^
+      (* The arg *)
       get_i ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
       BoxedInt.box env ^^
       (* The closure again *)
-      get_r ^^ get_i ^^ idx env ^^
+      get_f ^^
       (* Call *)
       Closure.call_closure env (Value.local_cc 1 1) ^^
       store_ptr
