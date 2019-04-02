@@ -4,7 +4,7 @@
  --------------------
 */
 
-actor server = {
+actor {
 
 /**
  PESS: Server Actor
