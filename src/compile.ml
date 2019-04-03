@@ -4618,14 +4618,27 @@ and find_prelude_names env =
 
 
 and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
+  let find_last_actor (ds1,e) = match ds1, e.it with
+    | _, ActorE (i, ds2, fs, _) -> Some (i, ds1 @ ds2, fs)
+    | [], _ -> None
+    | _, _ ->
+      match Lib.List.split_last ds1, e.it with
+      | (ds1', {it = LetD ({it = VarP i1; _}, {it = ActorE (i2, ds2, fs, _); _}); _})
+        , VarE i3 when i1 = i2 && i2 = i3 -> Some (i2, ds1' @ ds2, fs)
+      | _ -> None
+  in
+
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
       (* If the last program ends with an actor, then consider this the current actor  *)
-      | [((decls, {it = ActorE (i, ds, fs, _); _}), _flavor)] ->
-        let (env', code1) = compile_decs env decls in
-        let code2 = main_actor env' i ds fs in
-        code1 ^^ code2
+      | [(prog, _flavor)] ->
+        begin match find_last_actor prog with
+        | Some (i, ds, fs) -> main_actor env i ds fs
+        | None ->
+          let (_env, code) = compile_prog env prog in
+          code
+        end
       | ((prog, _flavor) :: progs) ->
         let (env1, code1) = compile_prog env prog in
         let code2 = go env1 progs in
