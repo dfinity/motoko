@@ -30,8 +30,8 @@ type sets =
 
 let make_sets () =
   { cases = AtSet.empty;
-		alts = AtSet.empty;
-		reached_cases = AtSet.empty;
+    alts = AtSet.empty;
+    reached_cases = AtSet.empty;
     reached_alts = AtSet.empty;
   }
 
