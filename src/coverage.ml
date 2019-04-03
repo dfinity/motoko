@@ -7,12 +7,6 @@ module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 module TagSet = Set.Make(struct type t = string let compare = compare end)
 
-let warn1 fmt =(*TODO:remove*)
-	Printf.ksprintf (fun s ->
-            () (*Printf.eprintf "warning, %s\n%!" s  *)
-  ) fmt
-
-
 type desc =
   | Any
   | Val of V.value
@@ -71,9 +65,7 @@ let rec match_pat ctxt desc pat t sets =
   | WildP | VarP _ ->
     succeed ctxt desc sets
   | LitP lit ->
-    warn1 "LitP(Any) %s    Val %s\n" 
-        (Type.string_of_typ t) (Wasm.Sexpr.to_string 80 (Arrange.pat pat))
-    ;match_lit ctxt desc (value_of_lit !lit) t sets
+    match_lit ctxt desc (value_of_lit !lit) t sets
   | SignP (op, lit) ->
     let f = Operator.unop pat.note op in
     match_lit ctxt desc (f (value_of_lit !lit)) t sets
@@ -100,61 +92,30 @@ let rec match_pat ctxt desc pat t sets =
     | _ -> assert false
     )
   | VrnP (id, pat1) ->
-     Value.(
-      let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
+     begin
+       let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
        match desc with
-       | Val v when is_vrn v ->
-          let c, v' = as_vrn v
-          in if id.it = c
-             then match_pat ctxt desc pat1 t sets
-             else fail ctxt desc sets
+       | NotTag ts when TagSet.mem id.it ts ->
+         fail ctxt desc sets
 
-       | NotTag ts as pass when TagSet.mem id.it ts -> warn1 "TagP(dull NotTag[%d]) %s    Pat: %s\n" 
-                                                 (TagSet.cardinal ts) (Type.string_of_typ t)
-                                                 (Wasm.Sexpr.to_string 80 (Arrange.pat pat))
-                                             ; fail ctxt pass sets
+       | NotTag ts ->
+         let explored = TagSet.add id.it ts in
+         (vanishing (Type.promote t) explored || fail ctxt (NotTag explored) sets) &&
+           match_pat (InTag (ctxt, id)) Any pat1 t' sets
 
-       | NotTag ts (*when not (TagSet.mem id.it ts)  *) -> warn1
-                  "TagP(interesting NotTag[%d]) %s    Pat: %s\n" 
-                  (TagSet.cardinal ts)(Type.string_of_typ t) (Wasm.Sexpr.to_string 80 (Arrange.pat pat));
-                                                           let
-                  explored = TagSet.add id.it ts in
-                (vanishing t explored || fail ctxt (NotTag explored) sets) &&
-                  match_pat (InTag (ctxt, id)) Any pat1 t' sets
+       | Tag (desc', id') ->
+         if id.it <> id'.it
+         then fail ctxt desc sets
+         else match_pat (InTag (ctxt, id)) desc' pat1 t' sets
 
+       | Any ->
+         let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
+         fail ctxt (NotTag (TagSet.singleton id.it)) sets &&
+           match_pat (InTag (ctxt, id)) Any pat1 t' sets
 
-       | Tag (desc', id') as tagged ->
-          warn1 "TagP(Tag desc'=%s) %s    Pat: %s\n" id'.it
-            (Type.string_of_typ t) (Wasm.Sexpr.to_string 80 (Arrange.pat pat))
-         ; if id.it <> id'.it
-           then fail ctxt tagged sets
-           else match_pat (InTag (ctxt, id)) desc' pat1 t' sets
-
-       | Any -> warn1 "TagP(Any) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80 (Arrange.pat pat));
-                let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
-
-                fail ctxt (NotTag (TagSet.singleton id.it)) sets &&
-                  match_pat (InTag (ctxt, id)) Any pat1 t' sets
-
-                (* these below shouldn't happen*)
-       | Val _ -> warn1 "TagP(Val) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80
-                                            (Arrange.pat pat));assert false
-       | NotVal _ -> warn1 "TagP(NotVal) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80
-                                            (Arrange.pat pat));assert false
-       | Opt _ -> warn1 "TagP(?????Opt) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80
-                                            (Arrange.pat pat));assert false
-       | Tup _ -> warn1 "TagP(?????Tup) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80
-                                            (Arrange.pat pat));assert false
-  (*     | _ -> warn1 "TagP(____) %s    Pat: %s\n" 
-                  (Type.string_of_typ t) (Wasm.Sexpr.to_string 80
-                                            (Arrange.pat pat));assert false
-   *)
-     )
+       | _ ->
+         assert false
+     end
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
@@ -242,15 +203,14 @@ and fail ctxt desc sets : bool =
     Type.span t = Some 0 && skip (case::cases) sets ||
     match_pat (InCase (case.at, cases, t)) desc case.it.pat t sets
 
-and vanishing t nottag =
-  match t with (Type.Vrn cts) ->
-                List.compare_length_with (List.filter (fun (l, _) -> not
-                                                                  (TagSet.mem
-                                                                  l
-                                                                  nottag))
-                                                                   cts)
-  0 = 0
-                                   | _ -> assert false
+and vanishing t excluded =
+  match t with
+    (Type.Vrn cts) ->
+     List.compare_length_with
+       (List.filter (fun (l, _) -> not (TagSet.mem l excluded)) cts)
+       0
+     = 0
+  | _ -> assert false
 
 let warn at fmt =
 	Printf.ksprintf (fun s ->
@@ -258,44 +218,7 @@ let warn at fmt =
       Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
-let (@?) it at = {it; at; note = empty_typ_note}
-
-let (*rec*) check_cases (cases : Syntax.case list) = function (*t : bool*)
-    (*
-  | Type.Vrn cts as t ->
-     (* for every tag, form alt patterns *)
-     let same_tag lab (l, _p) = lab = l in
-     let rec go (acc : (id * pat) list) : Syntax.case list -> (id *
-                                                                 pat)
-                                                                list =
-       (function (* left fold,
-                                 * better : right fold *)
-        | [] -> acc
-        | ({it={pat={it=ParP pat; _}; _}; _} as case)::cases' ->
-           go acc ({case with it={case.it with pat=pat}}::cases')
-        | {it={pat=({it=(WildP | VarP _); _} as pat); _}; _}::_ ->
-           let cases' = List.map (fun (l', t') ->
-                                    { pat = {it=(VrnP (l' @@ Source.no_region,
-                                                  pat));
-                                             at=Source.no_region; note=t}
-                                    ; exp = TupE [] @? Source.no_region}
-                                    @@ Source.no_region) cts in
-           go acc cases'
-        | {it={pat={it=VrnP (lab, pat); _}; _}; _}::cases' ->
-           (match List.find_opt (same_tag lab) acc with
-            | Some (l, p) -> go ((l, {it=AltP (p, pat);
-                                      at=Source.no_region; note=t})::acc) cases'
-            | _ -> go ((lab, pat)::acc) cases')
-        | c::_ -> warn1 "check_cases %s\n" (Wasm.Sexpr.to_string 80 (Arrange.case c))
-                ; assert false) in
-     let clumped : (id * pat) list = go [] cases in
-     let same_tag2 lab (l, _p) = lab = l.it in
-     let check_variant (l, t) = match List.find_opt (same_tag2 l) clumped with
-       | Some (_, pat) -> check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
-       | _ -> false
-     in List.for_all check_variant cts
-     *)
-  | t ->
+let check_cases cases t =
   let sets = make_sets () in
   let exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
@@ -305,5 +228,7 @@ let (*rec*) check_cases (cases : Syntax.case list) = function (*t : bool*)
     unreached_alts;
   exhaustive
 
-let check_pat pat t =
+let (@?) it at = {it; at; note = empty_typ_note}
+
+let check_pat pat t : bool =
   check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t

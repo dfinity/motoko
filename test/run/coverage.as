@@ -35,3 +35,51 @@ func f() {
   switch (0, 0) { case (0, _) {}; case (_, 0) {} };
   switch (0, 0) { case (0, _) {}; case (_, 0) {}; case _ {} };
 };
+
+
+type Tree = {#leaf : Int; #branch : (Tree, Tree)};
+
+// leaf is not fully covered and branch is covered twice
+func size(t : Tree) : Nat {
+  switch t {
+  case (#leaf 3) 1;
+  case (#branch(t1, t2)) { 1 + size(t1) + size(t2) };
+  case (#branch(t1, t2)) { 1 + size(t1) + size(t2) };
+  }
+};
+
+// the following is fully covered
+func size1(t : Tree) : Nat {
+  switch t {
+  case (#leaf 3) 1;
+  case (#branch(t1, t2)) { 1 + size1(t1) + size1(t2) };
+  case (#leaf _) 1;
+  }
+};
+
+// example from Sestoft's paper
+// ML pattern match compilation and partial evaluation
+type Lam =
+ { #va : Int
+ ; #lam : (Int, Lam)
+ ; #app : (Lam, Lam)
+ ; #le : (Int, Lam, Lam)
+ };
+
+func test (t : Lam) : Nat = switch (t) {
+  case (#va x) 111;
+  case (#lam(x, #va y)) 222;
+  case (#lam(x, #lam(y, z))) 333;
+  case (#lam(x, #app(y, z))) 444;
+  case (#app(#lam(x, y), z)) 555;
+  case (#app(#app(x, y), z)) 666;
+  case (#le(x, #le(y, z, v), w)) 777;
+  case (#lam(x, #le(y, z, v))) 888;
+  case (#le(x, y, #app(z, v))) 999;
+  case (#app(#app(#lam(x, #lam(y, z)), v), w)) 1010;
+
+  case (#app(_, _)) 2200;
+  case (#le(_, _, _)) 2300;
+};
+
+assert (test (#le(1, #va 0, #app(#va 0, #va 1))) == 999)
