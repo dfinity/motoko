@@ -204,9 +204,11 @@ text ::= '"' character* '"'
 
 |      |          |
 |------|----------|
-| `_`  |  numeric negation |
-| `+`  |  numeric identify |
-| `^`  |  logical negation |
+| `-`  |  numeric negation |
+| `+`  |  numeric identity |
+| `^`  |  bitwise negation |
+
+
 
 ### Relational Operators
 
@@ -219,6 +221,9 @@ text ::= '"' character* '"'
 |  `<=` | less than or equal |
 |  `>=` | greater than or equal |
 
+
+Equality is structural.
+
 ### Numeric Binary Operators
 
 |      |          |
@@ -229,6 +234,11 @@ text ::= '"' character* '"'
 |  `/` | division |
 |  `%` | modulo |
 |  `**` | exponentiation |
+
+### Bitwise Binary Operators
+
+|      |          |
+|------|----------|
 |  `&` | logical and |
 |  `|` | logical or |
 |  `^` | exclusive or |
@@ -305,20 +315,41 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ( type )                                      parenthesized type
 ```
 
-## Ground types
+## Primitive types
 
-For `<id>` taking the form `Bool`, `Text`, `Char`, `Int`, `Nat` or `Word`*n*
-(with *n* in 8, 16, 32, 64), the built-in ground types are
-constituted. These come with a variety of built-in operations.
+ActorScript provides the following primitive types, including support for Booleans, integers, words of various sizes, characters and text.
 
-### The boolean type
+| Identifier | Sort | Description |
+|---|------------|--------|
+| `Bool` | boolean  | boolean values `true` and `false` and logical operators |
+| `Int`  | arithmetic | signed integer values with checked arithmetic (currently 64-bit, eventually unbounded)|
+| `Nat`  | arithmetic | non-negative integer values with checked arithmetic (currently 63-bit, eventually unbounded)|
+| `Word8` | arithmetic & bitwise | unsigned 8-bit integers with bitwise operations |
+| `Word16` | arithmetic & bitwise | unsigned 16-bit integers with bitwise operations |
+| `Word32` | arithmetic & bitwise | unsigned 32-bit integers with bitwise operations |
+| `Word64` | arithmetic & bitwise | unsigned 64-bit integers with bitwise operations |
+| `Char` | text  | unicode characters |
+| `Text` | text  | unicode strings of characters with concatentation `#` |
 
-`Bool` is inhabited by `true` and `false` and is typically eliminated
-by an `if` expression.
+The sort of a type determines the operators it supports.
+
+### Type `Bool`
+
+The logical type `Bool` has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 Comparison TODO.
 
-### The type of text
+### Type `Char`
+
+A `Char` represents characters as a code point in the Unicode character
+set. Characters can be converted to `Word32`, and `Word32`s in the
+range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
+if outside of this range). With `singletonText` a character can be
+converted into a text of length 1.
+
+Comparison TODO.
+
+### Type `Text`
 
 For representing prose, the built-in type `Text` is available. Its
 operations include concatenation and iteration over its constituent
@@ -327,24 +358,21 @@ the text contains.
 
 Comparison TODO.
 
-### The type of characters
+### Type `Int` and `Nat`
 
-A `Char` represents a code point in the Unicode character
-set. Characters can be converted to `Word32`, and `Word32`s in the
-range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
-if outside of this range). With `singletonText` a character can be
-converted into a text of length 1.
-
-Comparison TODO.
-
-### Arithmetic types
-
-The types `Int` and `Nat` are signed integral and natural numbers of
-arbitrary precision with
-the arithmetic operations of addition `(+)`, subtraction `(-)` (which
-may trap for `Nat`), multiplication `(*)`, division `(/)`, modulus `(%)` and
+The types `Int` and `Nat` are signed integral and natural numbers of with
+the arithmetic operations of addition `+`, subtraction `-` (which
+may trap for `Nat`), multiplication `*`, division `/`, modulus `%` and
 exponentiation `(**)`. All arithmetic operations have type `t -> t -> t` for `t` being `Int` or `Nat`. Additionally, since every inhabitant
 of `Nat` is also an inhabitant of `Int`, the subtype relation `Nat <: Int` holds.
+
+Both `Int` and `Nat` will be arbitrary precision,
+with only subtraction `-` on `Nat` trapping on underflow.
+
+Due to subtyping, every value of type `Nat` is also a value of type `Int`, without change of representation.
+
+> The `asc` compiled wasm code,`Int` and `Nat` values are represented with only 64-bit precision, and operations that would over or underflow trap.
+> Moreover, viewing a natural number value as an integer value is only meaning preserving if the value of the natural is between 0 and 2^64-1. TBR
 
 Comparison TODO.
 
@@ -508,7 +536,7 @@ Type constructors and functions may take type arguments.
 
 The number of type arguments must agree with the number of declared type parameters of the function.
 
-Given a vector of type arguments instantiating a vector of type parameters,
+Given a vector of type arguments instantiating a vector of type parametbooleaners,
 each type argument must satisfy the instantiated bounds of the corresponding
 type parameter.
 
@@ -665,7 +693,6 @@ the result of `v1 <binop> v2`.
 
 ## Tuples
 
-
 Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
 `<exp1>`, ..., `<expN>` have types `T1`, ..., `Tn`.
 
@@ -683,7 +710,6 @@ The option expression `? <exp>` has type `? T` provided `<exp>` has type `T`.
 The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `null` also has type `? T` and signifies the "missing" value at type `? T`.
 
 ## Object projection (Member access)
-
 
 The object projection `<exp> . <id>` has type `var? T` provided <exp> has object type
 `sort { var1? <id1> : T1, ..., var? <id> : T, ..., var? <idn> : Tn }` for some sort `sort`.
