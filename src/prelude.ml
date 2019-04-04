@@ -262,15 +262,16 @@ let prim = function
                     let s = as_text v in
                     let take_and_mask bits offset =
                       Int32.(logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset]))) in
+                    let open List in
                     let classify_utf8_leader =
                       function
-                      | ch when Int32.compare ch 0x80l < 0 -> List.map take_and_mask [7]
-                      | ch when Int32.compare ch 0xe0l < 0 -> List.map take_and_mask [5; 6]
-                      | ch when Int32.compare ch 0xf0l < 0 -> List.map take_and_mask [4; 6; 6]
-                      | ch                                 -> List.map take_and_mask [3; 6; 6; 6] in
-                    let nobbles = List.mapi (fun i f -> f i) (classify_utf8_leader (Int32.of_int (Char.code s.[0]))) in
-                    let code = List.fold_left Int32.(fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
-                    k (Tup [Word32 (Int32.of_int (List.length nobbles)); Char (Int32.to_int code)])
+                      | ch when Int32.compare ch 0x80l < 0 -> map take_and_mask [7]
+                      | ch when Int32.compare ch 0xe0l < 0 -> map take_and_mask [5; 6]
+                      | ch when Int32.compare ch 0xf0l < 0 -> map take_and_mask [4; 6; 6]
+                      | ch                                 -> map take_and_mask [3; 6; 6; 6] in
+                    let nobbles = mapi (fun i f -> f i) (classify_utf8_leader (Int32.of_int (Char.code s.[0]))) in
+                    let code = fold_left Int32.(fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
+                    k (Tup [Word32 (Int32.of_int (length nobbles)); Char (Int32.to_int code)])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->
