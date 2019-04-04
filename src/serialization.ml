@@ -43,26 +43,27 @@ module Transform() = struct
     let t = T.as_serialized e.note.note_typ in
     callE deserialize_prim [t] e
 
-  let serialize e =
-    let t = e.note.note_typ in
+  let serialize e t =
     callE serialize_prim [t] e
 
   let serialized_arg a =
     { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
 
-  let rec map_tuple n f e = match n, e.it with
+  let rec map_tuple n f e t = match n, e.it with
     | 0, _ -> e
+    | 1, _ -> f e t
     | _, TupE es ->
+      let ts = T.as_tup t in
       assert (List.length es = n);
-      tupE (List.map f es)
+      tupE (List.map2 f es ts)
     | _, BlockE (ds, e) ->
-      blockE ds (map_tuple n f e)
+      blockE ds (map_tuple n f e t)
     | _, _ ->
-      let ts = T.as_tup e.note.note_typ in
+      let ts = T.as_tup t in
       assert (List.length ts = n);
       let vs = fresh_vars "tup" ts in
       blockE [letP (seqP (List.map varP vs)) e]
-        (tupE (List.map f vs))
+        (tupE (List.map2 f vs ts))
 
   let rec t_typ (t:T.typ) =
     match t with
@@ -130,14 +131,14 @@ module Transform() = struct
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
       | T.Sharable ->
+        let fun_ty = exp1.note.note_typ in
+        (* We should take the type to serialize at from the function, not the
+           argument, as the latter could be a subtype *)
+        let _, tbs, t2, _ = T.as_func_sub cc.Value.sort (List.length typs) fun_ty in
+        let t_arg = t_typ (T.open_ typs t2) in
         assert (T.is_unit exp.note.note_typ);
-        if cc.Value.n_args = 1
-        then
-          let exp2' = serialize (t_exp exp2) in
-          CallE (cc, t_exp exp1, [], exp2')
-        else
-          let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) in
-          CallE (cc, t_exp exp1, [], exp2')
+        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) t_arg in
+        CallE (cc, t_exp exp1, [], exp2')
       end
     | FuncE (x, cc, typbinds, args, ret_tys, exp) ->
       begin match cc.Value.sort with
