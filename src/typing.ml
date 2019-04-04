@@ -870,16 +870,17 @@ and check_pat' env t pat : val_env =
         (T.string_of_typ_expand t)
     )
   | VariantP (i, pat1) ->
-    (try
-       match List.find_opt (fun (c, _) -> i.it = c) (T.as_variant t) with
-       | Some (_, typ) -> check_pat env typ pat1
-       | None ->
-          error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
-            i.it (T.string_of_typ_expand t)
-     with Invalid_argument _ ->
-       error env pat.at "variant pattern cannot consume expected type\n  %s"
-         (T.string_of_typ_expand t)
-    )
+    begin
+      try
+        match List.find_opt (fun (c, _) -> i.it = c) (T.as_variant t) with
+        | Some (_, typ) -> check_pat env typ pat1
+        | None ->
+           error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
+             i.it (T.string_of_typ_expand t)
+      with Invalid_argument _ ->
+        error env pat.at "variant pattern cannot consume expected type\n  %s"
+          (T.string_of_typ_expand t)
+    end
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
