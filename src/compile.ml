@@ -2799,7 +2799,7 @@ module Serialization = struct
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^
         Opt.is_some env ^^
-        G.if_ (ValBlockType None) ( get_x ^^ Opt.project ^^ size env t) G.nop
+        G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
       | (Func _ | Obj (Actor, _)) ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^
         inc_ref_size 1l
