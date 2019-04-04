@@ -1068,12 +1068,25 @@ module Var = struct
 end (* Var *)
 
 module Opt = struct
-  (* The Option type. Not much interesting to see here *)
+  (* The Option type. Not much interesting to see here. Structure for
+     Some:
+
+       ┌─────┬─────────┐
+       │ tag │ payload │
+       └─────┴─────────┘
+
+    A None value is simply an unboxed scalar.
+
+  *)
 
   let payload_field = Tagged.header_size
 
   (* This needs to be disjoint from all pointers, i.e. tagged as a scalar. *)
   let null = compile_unboxed_const 5l
+
+  let is_some env =
+    null ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
   let inject env e = Tagged.obj env Tagged.Some [e]
   let project = Heap.load_field Tagged.header_size
@@ -2785,10 +2798,8 @@ module Serialization = struct
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^
-        Opt.null ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) G.nop
-          ( get_x ^^ Opt.project ^^ size env t)
+        Opt.is_some env ^^
+        G.if_ (ValBlockType None) ( get_x ^^ Opt.project ^^ size env t) G.nop
       | (Func _ | Obj (Actor, _)) ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^
         inc_ref_size 1l
@@ -2887,11 +2898,10 @@ module Serialization = struct
       | (Prim Null | Shared) -> G.nop
       | Opt t ->
         get_x ^^
-        Opt.null ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        Opt.is_some env ^^
         G.if_ (ValBlockType None)
-          ( write_byte (compile_unboxed_const 0l) )
           ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
+          ( write_byte (compile_unboxed_const 0l) )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Text.len_field ^^
@@ -4454,18 +4464,17 @@ and fill_pat env pat : patternCode =
   match pat.it with
   | WildP -> CannotFail (G.i Drop)
   | OptP p ->
-      let code1 = fill_pat env p in
-      let (set_i, get_i) = new_local env "opt_scrut" in
+      let (set_x, get_x) = new_local env "opt_scrut" in
       CanFail (fun fail_code ->
-        set_i ^^
-        get_i ^^
-        Opt.null ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) fail_code
-          ( get_i ^^
+        set_x ^^
+        get_x ^^
+        Opt.is_some env ^^
+        G.if_ (ValBlockType None)
+          ( get_x ^^
             Opt.project ^^
-            with_fail fail_code code1
+            with_fail fail_code (fill_pat env p)
           )
+          fail_code
       )
   | LitP l ->
       CanFail (fun fail_code ->
