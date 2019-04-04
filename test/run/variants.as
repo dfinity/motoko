@@ -23,3 +23,12 @@ let ts1 : Sub = #c 25;
 func ts2(v : Super) { ignore v };
 
 let ts3 = ts2 ts1;
+
+// type syntac variations
+
+type A = { # };           // empty variant
+type B = { #foo : Int };  // singleton variant
+type C = { #foo : Int; };
+type D = { #foo : Int; #bar : Char };
+type E = { #foo : Int; #bar : Char; };
+type F = { #foo : Int; #bar : Char; #daz : Bool };

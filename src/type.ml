@@ -696,6 +696,7 @@ let rec string_of_typ_nullary vs = function
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Variant [] -> "{#}"
   | Variant cts ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_summand vs) cts))
   | t -> sprintf "(%s)" (string_of_typ' vs t)

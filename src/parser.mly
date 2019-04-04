@@ -113,6 +113,7 @@ let share_expfield (ef : exp_field) =
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
+%token<string> VARIANT_TAG
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
@@ -156,6 +157,9 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
+%inline variant_tag :
+  | variant_tag=VARIANT_TAG { variant_tag @@ at $sloc }
+
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -197,13 +201,12 @@ typ_obj :
     { tfs }
 
 typ_variant :
+  | LCURLY CATOP RCURLY
+    { [] }
+  | LCURLY ct=typ_tag RCURLY
+    { [ct] }
   | LCURLY ct=typ_tag semicolon cts=seplist(typ_tag, semicolon) RCURLY
-    { ct :: cts } (* TODO(gabor) this needed to avoid ambiguity with typ_obj, *)
-(* should have a syntax for nullary variant types, later? *)
-(* Also unary variants without the trailing semi? *)
-(* Joachim suggested accepting hashmarked and non-hashmarked identifiers,  *)
-(* and then making sure they are consistent, resulting in object *)
-(* vs. variant types. *)
+    { ct :: cts }
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
@@ -263,7 +266,7 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | CATOP c=id COLON t=typ
+  | c=variant_tag COLON t=typ
     { (c, t) }
 
 typ_bind :
@@ -377,7 +380,7 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
-  | CATOP i=id e=exp_nullary
+  | i=variant_tag e=exp_nullary
     { VariantE (i, e) @? at $sloc }
 
 exp_bin :
@@ -501,7 +504,7 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
-  | CATOP i=id p=pat_nullary
+  | i=variant_tag p=pat_nullary
     { VariantP(i, p) @! at $sloc }
 
 pat_bin :
