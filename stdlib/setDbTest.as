@@ -6,15 +6,18 @@
  */
 
 func SetDb__test() {
-  let hash_0 = ?(false,?(false,?(false,?(false, null))));
-  let hash_1 = ?(false,?(false,?(false,?(true,  null))));
-  let hash_2 = ?(false,?(false,?(true, ?(false, null))));
-  let hash_3 = ?(false,?(false,?(true, ?(true,  null))));
-  let hash_4 = ?(false,?(true, ?(false,?(false, null))));
-  let hash_5 = ?(false,?(true, ?(false,?(true,  null))));
-  let hash_6 = ?(false,?(true, ?(true, ?(false, null))));
-  let hash_7 = ?(false,?(true, ?(true, ?(true,  null))));
-  let hash_8 = ?(true, ?(false,?(false,?(false, null))));
+
+  let hash_0 = Hash.hashInt(0);
+  let hash_1 = Hash.hashInt(1);
+  let hash_2 = Hash.hashInt(2);
+  let hash_3 = Hash.hashInt(3);
+  let hash_4 = Hash.hashInt(4);
+  let hash_5 = Hash.hashInt(5);
+  let hash_6 = Hash.hashInt(6);
+  let hash_7 = Hash.hashInt(7);
+  let hash_8 = Hash.hashInt(8);
+  let hash_9 = Hash.hashInt(9);
+
 
   print "inserting...\n";
   // Insert numbers [0..8] into the set, using their bits as their hashes:

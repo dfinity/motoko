@@ -203,7 +203,7 @@ actor server = {
     getModel().produceTable.addInfoGetId(
       func (id_:ProduceId) : ProduceInfo =
         shared {
-          id = id_:ProduceId;
+          id = id:ProduceId;
           short_name=short_name_:Text;
           description=description_:Text;
           grade=grade_:Grade

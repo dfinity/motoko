@@ -39,6 +39,7 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
+func hashIntAcc(acc : Word32, n : Int) : Word32 = (prim "Int~hashAcc" : (Word32, Int) -> Word32) n;
 
 
 // Conversions
@@ -147,6 +148,12 @@ let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
   | "Int~hash" -> fun v k ->
+                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
+                  let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
+                  in k (Word32 (Word32.of_int_u (Int64.to_int j)))
+  | "Int~hashAcc" -> fun v k ->
+                  let (acc, w) = as_pair v in
+                  (* To do: Use hash accumulator argument `acc` somehow: *)
                   let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
                   let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
                   in k (Word32 (Word32.of_int_u (Int64.to_int j)))

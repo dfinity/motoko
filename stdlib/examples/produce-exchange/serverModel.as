@@ -46,9 +46,9 @@ class Model() = this {
 
   private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
 
-  private idHash(x:Nat):Hash { null /* xxx */ };
+  private idHash(x:Nat):Hash { Hash.hashInt(x) };
 
-  private idPairHash(x:(Nat,Nat)):Hash { null /* xxx */ };
+  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashIntAcc(Hash.hashInt(x.0), x.1) };
 
   private keyOf(x:Nat):Key<Nat> {
     new { key = x ; hash = idHash(x) }

@@ -7,7 +7,7 @@
 let SetDb = new {
 
   private func setDbPrint(s:Set<Nat>) {
-    func rec(s:Set<Nat>, ind:Nat, bits:Hash) {
+    func rec(s:Set<Nat>, ind:Nat, bits:BitList) {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
@@ -37,7 +37,7 @@ let SetDb = new {
                         print("hash(");
                         printInt(k.key);
                         print(")=");
-		                    BitList.hashPrintRev(k.hash);
+		                    Hash.hashPrintRev(k.hash);
                         print("; ");
                         ()
                       }
