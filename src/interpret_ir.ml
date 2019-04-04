@@ -496,14 +496,10 @@ and define_pat env pat v =
     | _ -> assert false
     )
   | VariantP (i, pat1) ->
-    begin
-      match v with
-      | V.Variant (lab, v1) ->
-        if lab = i.it
-        then define_pat env pat1 v1
-        else trap pat.at "value %s does not match pattern" (V.string_of_val v)
-      | _ -> assert false
-    end
+    let lab, v1 = V.as_variant v in
+    if lab = i.it
+    then define_pat env pat1 v1
+    else trap pat.at "value %s does not match pattern" (V.string_of_val v)
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
