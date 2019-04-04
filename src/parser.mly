@@ -266,8 +266,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | c=variant_tag COLON t=typ
-    { (c, t) }
+  | i=variant_tag COLON t=typ
+    { (i, t) }
 
 typ_bind :
   | x=id SUB t=typ
