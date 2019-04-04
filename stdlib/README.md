@@ -310,3 +310,12 @@ or may not shrink the table.
 ?? Htbl.union                     : O(n)
 ?? Htbl.intersect                 : O(n)
 ```
+
+### Swiss tables
+
+Swiss tables are special implementations of imperative hash tables that try to be extra efficient, compared to other options:
+
+ - [Swiss tables blog post](https://abseil.io/blog/20180927-swisstables)
+ - [Swiss tables in Rust](https://github.com/Amanieu/hashbrown)
+ 
+ 
