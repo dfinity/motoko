@@ -59,8 +59,8 @@ and pat p = match p.it with
   | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
   | LitP l        -> "LitP"       $$ [lit !l]
   | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
-  | VariantP (i, p) -> "VariantP" $$ [tag i; pat p]
   | OptP p        -> "OptP"       $$ [pat p]
+  | VariantP (i, p) -> "VariantP" $$ [tag i; pat p]
   | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
   | ParP p        -> "ParP"       $$ [pat p]
 

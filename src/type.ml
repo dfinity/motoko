@@ -257,7 +257,7 @@ let rec promote = function
 
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
-let is_vrn = function Variant _ -> true | _ -> false
+let is_variant = function Variant _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
 let is_tup = function Tup _ -> true | _ -> false
@@ -272,9 +272,9 @@ let invalid s = raise (Invalid_argument ("Type." ^ s))
 
 let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
 let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
-let as_vrn = function Variant cts -> cts | _ -> invalid "as_vrn"
 let as_array = function Array t -> t | _ -> invalid "as_array"
 let as_opt = function Opt t -> t | _ -> invalid "as_opt"
+let as_variant = function Variant cts -> cts | _ -> invalid "as_variant"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
@@ -348,8 +348,8 @@ let rec span = function
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
-  | Variant cts -> Some (List.length cts)
   | Opt _ -> Some 2
+  | Variant cts -> Some (List.length cts)
   | Mut t -> span t
   | Serialized t -> None
   | Non -> Some 0

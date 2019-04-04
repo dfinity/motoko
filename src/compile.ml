@@ -2690,10 +2690,10 @@ module Serialization = struct
           List.for_all go (List.map (open_ ts) ts1) &&
           List.for_all go (List.map (open_ ts) ts2)
         | Opt t -> go t
+        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
         | Async t -> go t
         | Obj (Actor, fs) -> false
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
-        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
         | Mut t -> go t
         | Serialized t -> go t
       end

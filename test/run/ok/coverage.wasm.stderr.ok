@@ -27,36 +27,39 @@ coverage.as:24.3-24.36: warning, the cases in this switch do not cover all possi
 coverage.as:32.3-32.50: warning, the cases in this switch do not cover all possible values
 coverage.as:35.3-35.51: warning, the cases in this switch do not cover all possible values
 coverage.as:44.3-48.4: warning, the cases in this switch do not cover all possible values
-variant pat: (VrnP branch (TupP (VarP t1) (VarP t2)))
-variant pat: (VrnP branch (TupP (VarP t1) (VarP t2)))
-variant pat: (VrnP leaf (LitP (IntLit 3)))
-variant pat: (VrnP leaf WildP)
-variant pat: (VrnP branch (TupP (VarP t1) (VarP t2)))
-variant pat: (VrnP leaf (LitP (IntLit 3)))
-variant pat: (VrnP le (TupP WildP WildP WildP))
-variant pat: (VrnP app (TupP WildP WildP))
-variant pat: (VrnP
+variant pat: (VariantP branch (TupP (VarP t1) (VarP t2)))
+variant pat: (VariantP branch (TupP (VarP t1) (VarP t2)))
+variant pat: (VariantP leaf (LitP (IntLit 3)))
+variant pat: (VariantP leaf WildP)
+variant pat: (VariantP branch (TupP (VarP t1) (VarP t2)))
+variant pat: (VariantP leaf (LitP (IntLit 3)))
+variant pat: (VariantP le (TupP WildP WildP WildP))
+variant pat: (VariantP app (TupP WildP WildP))
+variant pat: (VariantP
   app
   (TupP
-    (VrnP
+    (VariantP
       app
       (TupP
-        (VrnP lam (TupP (VarP x) (VrnP lam (TupP (VarP y) (VarP z)))))
+        (VariantP lam (TupP (VarP x) (VariantP lam (TupP (VarP y) (VarP z)))))
         (VarP v)
       )
     )
     (VarP w)
   )
 )
-variant pat: (VrnP le (TupP (VarP x) (VarP y) (VrnP app (TupP (VarP z) (VarP v)))))
-variant pat: (VrnP lam (TupP (VarP x) (VrnP le (TupP (VarP y) (VarP z) (VarP v)))))
-variant pat: (VrnP le (TupP (VarP x) (VrnP le (TupP (VarP y) (VarP z) (VarP v))) (VarP w)))
-variant pat: (VrnP app (TupP (VrnP app (TupP (VarP x) (VarP y))) (VarP z)))
-variant pat: (VrnP app (TupP (VrnP lam (TupP (VarP x) (VarP y))) (VarP z)))
-variant pat: (VrnP lam (TupP (VarP x) (VrnP app (TupP (VarP y) (VarP z)))))
-variant pat: (VrnP lam (TupP (VarP x) (VrnP lam (TupP (VarP y) (VarP z)))))
-variant pat: (VrnP lam (TupP (VarP x) (VrnP va (VarP y))))
-variant pat: (VrnP va (VarP x))
+variant pat: (VariantP le (TupP (VarP x) (VarP y) (VariantP app (TupP (VarP z) (VarP v)))))
+variant pat: (VariantP lam (TupP (VarP x) (VariantP le (TupP (VarP y) (VarP z) (VarP v)))))
+variant pat: (VariantP
+  le
+  (TupP (VarP x) (VariantP le (TupP (VarP y) (VarP z) (VarP v))) (VarP w))
+)
+variant pat: (VariantP app (TupP (VariantP app (TupP (VarP x) (VarP y))) (VarP z)))
+variant pat: (VariantP app (TupP (VariantP lam (TupP (VarP x) (VarP y))) (VarP z)))
+variant pat: (VariantP lam (TupP (VarP x) (VariantP app (TupP (VarP y) (VarP z)))))
+variant pat: (VariantP lam (TupP (VarP x) (VariantP lam (TupP (VarP y) (VarP z)))))
+variant pat: (VariantP lam (TupP (VarP x) (VariantP va (VarP y))))
+variant pat: (VariantP va (VarP x))
 variant exp: (VariantE
   le
   (TupE

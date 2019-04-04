@@ -471,8 +471,8 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | AnnotP (pat1, _)
   | VariantP (_, pat1)
+  | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
@@ -508,17 +508,17 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
-  | VariantP (i, pat1) ->
-    let k, v1 = V.as_vrn v in
-    if i.it = k
-    then match_pat pat1 v1
-    else None
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
     | V.Null -> None
     | _ -> assert false
     )
+  | VariantP (i, pat1) ->
+    let k, v1 = V.as_variant v in
+    if i.it = k
+    then match_pat pat1 v1
+    else None
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v

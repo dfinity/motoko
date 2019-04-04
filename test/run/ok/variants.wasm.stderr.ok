@@ -1,5 +1,5 @@
-variant pat: (VrnP branch (TupP (VarP t1) (VarP t2)))
-variant pat: (VrnP leaf WildP)
+variant pat: (VariantP branch (TupP (VarP t1) (VarP t2)))
+variant pat: (VariantP leaf WildP)
 variant exp: (VariantE
   branch
   (TupE

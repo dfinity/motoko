@@ -538,7 +538,7 @@ and match_pat pat v : val_env option =
     | _ -> assert false
     )
   | VariantP (i, pat1) ->
-    let tag, v1 = V.as_vrn v in
+    let tag, v1 = V.as_variant v in
     if i.it = tag
     then match_pat pat1 v1
     else None

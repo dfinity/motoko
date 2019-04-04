@@ -411,6 +411,8 @@ and infer_exp'' env exp : T.typ =
   | OptE exp1 ->
     let t1 = infer_exp env exp1 in
     T.Opt t1
+  | VariantE (c, exp1) ->
+    T.Variant [(c.it, infer_exp env exp1)]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -427,8 +429,6 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it fields exp.at
-  | VariantE (c, exp1) ->
-    T.Variant [(c.it, infer_exp env exp1)]
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -871,7 +871,7 @@ and check_pat' env t pat : val_env =
     )
   | VariantP (i, pat1) ->
     (try
-       match List.find_opt (fun (c, _) -> i.it = c) (T.as_vrn t) with
+       match List.find_opt (fun (c, _) -> i.it = c) (T.as_variant t) with
        | Some (_, typ) -> check_pat env typ pat1
        | None ->
           error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
@@ -935,9 +935,9 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
-  | VariantP (_, pat1)
   | AltP (pat1, _)
   | OptP pat1
+  | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 ->
     pub_pat pat1 xs

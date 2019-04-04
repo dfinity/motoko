@@ -93,7 +93,7 @@ let rec match_pat ctxt desc pat t sets =
     )
   | VariantP (id, pat1) ->
      begin
-       let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
+       let t' = List.assoc id.it (Type.as_variant (Type.promote t)) in
        match desc with
        | NotTag ts when TagSet.mem id.it ts ->
          fail ctxt desc sets
