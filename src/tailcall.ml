@@ -154,7 +154,7 @@ and pat' env p = match p with
   | TupP ps       -> pats env ps
   | LitP l        -> env
   | OptP p
-  | VrnP (_, p)   -> pat env p
+  | VariantP (_, p) -> pat env p
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      env

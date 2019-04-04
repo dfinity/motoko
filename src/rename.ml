@@ -98,8 +98,8 @@ and pat' rho p = match p with
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
-  | VrnP (i, p)   -> let (p', rho') = pat rho p in
-                     (VrnP (i, p'), rho')
+  | VariantP (i, p) -> let (p', rho') = pat rho p in
+                       (VariantP (i, p'), rho')
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      let (p1', _) = pat rho p1 in

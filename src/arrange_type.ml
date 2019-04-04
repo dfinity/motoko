@@ -40,7 +40,7 @@ let rec typ (t:Type.typ) = match t with
   | Obj (s, ts)            -> "Obj" $$ [obj_sort s] @ List.map typ_field ts
   | Array t                -> "Array" $$ [typ t]
   | Opt t                  -> "Opt" $$ [typ t]
-  | Vrn cts                -> "Vrn" $$ List.map typ_summand cts
+  | Variant cts            -> "Variant" $$ List.map typ_summand cts
   | Tup ts                 -> "Tup" $$ List.map typ ts
   | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (sharing s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]

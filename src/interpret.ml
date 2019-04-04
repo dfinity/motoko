@@ -439,7 +439,7 @@ and declare_pat pat : val_env =
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | OptP pat1
-  | VrnP (_, pat1)
+  | VariantP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
@@ -472,7 +472,7 @@ and define_pat env pat v =
     | _ -> assert false
     )
   | AnnotP (pat1, _)
-  | VrnP (_, pat1)
+  | VariantP (_, pat1)
   | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
@@ -508,7 +508,7 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     let k, v1 = V.as_vrn v in
     if i.it = k
     then match_pat pat1 v1

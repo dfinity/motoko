@@ -406,7 +406,7 @@ and declare_pat pat exp : exp =
   | VarP id -> declare_id id pat.note exp
   | TupP pats -> declare_pats pats exp
   | OptP pat1
-  | VrnP (_, pat1) -> declare_pat pat1 exp
+  | VariantP (_, pat1) -> declare_pat pat1 exp
   | AltP (pat1, pat2) -> declare_pat pat1 exp
 
 and declare_pats pats exp : exp =
@@ -433,9 +433,9 @@ and rename_pat' pat =
   | OptP pat1 ->
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, OptP pat1)
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     let (patenv,pat1) = rename_pat pat1 in
-    (patenv, VrnP (i, pat1))
+    (patenv, VariantP (i, pat1))
   | AltP (pat1,pat2) ->
     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
@@ -458,7 +458,7 @@ and define_pat patenv pat : dec list =
     [ expD (define_idE id constM (PatEnv.find id.it patenv)) ]
   | TupP pats -> define_pats patenv pats
   | OptP pat1
-  | VrnP (_, pat1) -> define_pat patenv pat1
+  | VariantP (_, pat1) -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));

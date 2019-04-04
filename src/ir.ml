@@ -21,7 +21,7 @@ and pat' =
   | LitP of lit                                (* literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
-  | VrnP of id * pat                           (* variant *)
+  | VariantP of id * pat                       (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 (* Like id, but with a type attached *)

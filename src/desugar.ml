@@ -219,7 +219,7 @@ and pat' = function
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
-  | S.VrnP (i, p) -> I.VrnP (i, pat p)
+  | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it

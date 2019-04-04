@@ -2693,7 +2693,7 @@ module Serialization = struct
         | Async t -> go t
         | Obj (Actor, fs) -> false
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
-        | Vrn cts -> List.for_all (fun (_, t) -> go t) cts
+        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
         | Mut t -> go t
         | Serialized t -> go t
       end
@@ -4457,7 +4457,7 @@ and fill_pat env pat : patternCode =
             with_fail fail_code code1
           )
       )
-  | VrnP (i, p) ->
+  | VariantP (i, p) ->
       CanFail(fun _ -> todo "variant pat" (Arrange_ir.pat pat) (G.i Unreachable))
   | LitP l ->
       CanFail (fun fail_code ->

@@ -29,7 +29,7 @@ and typ =
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
-  | Vrn of (lab * typ) list                   (* variant *)
+  | Variant of (lab * typ) list               (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)

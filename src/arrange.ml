@@ -59,7 +59,7 @@ and pat p = match p.it with
   | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
   | LitP l        -> "LitP"       $$ [lit !l]
   | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
-  | VrnP (i, p)   -> "VrnP"       $$ [tag i; pat p]
+  | VariantP (i, p) -> "VariantP" $$ [tag i; pat p]
   | OptP p        -> "OptP"       $$ [pat p]
   | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
   | ParP p        -> "ParP"       $$ [pat p]
@@ -154,7 +154,7 @@ and typ t = match t.it with
   | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
-  | VrnT cts            -> "VrnT" $$ List.map typ_constr cts
+  | VariantT cts            -> "VariantT" $$ List.map typ_constr cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]

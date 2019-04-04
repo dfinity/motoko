@@ -186,10 +186,10 @@ and check_typ' env typ : T.typ =
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
-  | VrnT cts ->
+  | VariantT cts ->
     check_ids env true (List.map fst cts);
     let cs = List.map (check_typ_constructor env) cts in
-    T.Vrn (List.sort T.compare_summand cs)
+    T.Variant (List.sort T.compare_summand cs)
   | AsyncT typ ->
     let t = check_typ env typ in
     if not env.pre && not (T.sub t T.Shared) then
@@ -428,7 +428,7 @@ and infer_exp'' env exp : T.typ =
     let env' = if sort.it = T.Actor then {env with async = false} else env in
     infer_obj env' sort.it fields exp.at
   | VariantE (c, exp1) ->
-    T.Vrn [(c.it, infer_exp env exp1)]
+    T.Variant [(c.it, infer_exp env exp1)]
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -794,9 +794,9 @@ and infer_pat' env pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     let typ, ve = infer_pat env pat1 in
-    T.Vrn [(i.it, typ)], ve
+    T.Variant [(i.it, typ)], ve
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
@@ -869,7 +869,7 @@ and check_pat' env t pat : val_env =
       error env pat.at "option pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
     )
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     (try
        match List.find_opt (fun (c, _) -> i.it = c) (T.as_vrn t) with
        | Some (_, typ) -> check_pat env typ pat1
@@ -935,7 +935,7 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
-  | VrnP (_, pat1)
+  | VariantP (_, pat1)
   | AltP (pat1, _)
   | OptP pat1
   | AnnotP (pat1, _)
@@ -1164,7 +1164,7 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | VrnP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+  | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then

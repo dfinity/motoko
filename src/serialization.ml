@@ -84,7 +84,7 @@ module Transform() = struct
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
-    | T.Vrn cts -> T.(Vrn (map_constr_typ t_typ cts))
+    | T.Variant cts -> T.(Variant (map_constr_typ t_typ cts))
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
     | T.Mut t -> T.Mut (t_typ t)
 
@@ -245,8 +245,8 @@ module Transform() = struct
       TupP (List.map t_pat pats)
     | OptP pat1 ->
       OptP (t_pat pat1)
-    | VrnP (id, pat1) ->
-      VrnP (id, t_pat pat1)
+    | VariantP (id, pat1) ->
+      VariantP (id, t_pat pat1)
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 

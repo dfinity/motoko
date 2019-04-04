@@ -137,7 +137,7 @@ and pat msgs p : fd = match p.it with
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
   | OptP p
-  | VrnP (_, p)   -> pat msgs p
+  | VariantP (_, p) -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps

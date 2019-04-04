@@ -91,7 +91,7 @@ let rec match_pat ctxt desc pat t sets =
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
-  | VrnP (id, pat1) ->
+  | VariantP (id, pat1) ->
      begin
        let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
        match desc with
@@ -199,7 +199,7 @@ and fail ctxt desc sets : bool =
 
 and vanishing t excluded =
   match t with
-    (Type.Vrn cts) ->
+    (Type.Variant cts) ->
      List.compare_length_with
        (List.filter (fun (l, _) -> not (TagSet.mem l excluded)) cts)
        0

@@ -56,7 +56,7 @@ and pat p = match p.it with
   | TupP ps       -> "TupP"       $$ List.map pat ps
   | LitP l        -> "LitP"       $$ [ Arrange.lit l ]
   | OptP p        -> "OptP"       $$ [ pat p ]
-  | VrnP (i, p)   -> "VrnP"       $$ [ id i; pat p ]
+  | VariantP (i, p)   -> "VariantP"       $$ [ id i; pat p ]
   | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]

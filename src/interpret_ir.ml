@@ -465,7 +465,7 @@ and declare_pat pat : val_env =
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | OptP pat1
-  | VrnP (_, pat1) -> declare_pat pat1
+  | VariantP (_, pat1) -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
@@ -495,7 +495,7 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | VrnP (i, pat1) -> assert false
+  | VariantP (i, pat1) -> assert false
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
@@ -537,7 +537,7 @@ and match_pat pat v : val_env option =
     | V.Null -> None
     | _ -> assert false
     )
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     let tag, v1 = V.as_vrn v in
     if i.it = tag
     then match_pat pat1 v1

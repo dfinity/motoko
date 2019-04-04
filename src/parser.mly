@@ -215,7 +215,7 @@ typ_nullary :
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
   | cts=typ_variant
-    { VrnT cts @! at $sloc }
+    { VariantT cts @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -502,7 +502,7 @@ pat_un :
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
   | CATOP i=id p=pat_nullary
-    { VrnP(i, p) @! at $sloc }
+    { VariantP(i, p) @! at $sloc }
 
 pat_bin :
   | p=pat_un

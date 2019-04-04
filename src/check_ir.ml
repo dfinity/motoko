@@ -186,7 +186,7 @@ let rec check_typ env typ : unit =
     check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
-  | T.Vrn cts ->
+  | T.Variant cts ->
     let rec sorted = function
       | [] | [_] -> true
       | (c1, _)::(((c2, _)::_) as summands') ->
@@ -322,7 +322,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.Opt (typ exp1) <: t;
   | VariantE (i, exp1) ->
     check_exp env exp1;
-    T.Vrn [(i.it, typ exp1)] <: t;
+    T.Variant [(i.it, typ exp1)] <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -578,7 +578,7 @@ and gather_pat env ve0 pat : val_env =
     | AltP (pat1, pat2) ->
       ve
     | OptP pat1
-    | VrnP (_, pat1) ->
+    | VariantP (_, pat1) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -607,9 +607,9 @@ and check_pat env pat : val_env =
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
     ve
-  | VrnP (i, pat1) ->
+  | VariantP (i, pat1) ->
     let ve = check_pat env pat1 in
-    T.Vrn [(i.it, pat1.note)] <: t;
+    T.Variant [(i.it, pat1.note)] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
