@@ -538,10 +538,10 @@ and match_pat pat v : val_env option =
     | _ -> assert false
     )
   | VrnP (i, pat1) ->
-    let constr, v1 = V.as_vrn v
-    in if i.it = constr
-       then match_pat pat1 v1
-       else None
+    let tag, v1 = V.as_vrn v in
+    if i.it = tag
+    then match_pat pat1 v1
+    else None
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v

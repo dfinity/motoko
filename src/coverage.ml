@@ -97,24 +97,18 @@ let rec match_pat ctxt desc pat t sets =
        match desc with
        | NotTag ts when TagSet.mem id.it ts ->
          fail ctxt desc sets
-
        | NotTag ts ->
          let explored = TagSet.add id.it ts in
          (vanishing (Type.promote t) explored || fail ctxt (NotTag explored) sets) &&
            match_pat (InTag (ctxt, id)) Any pat1 t' sets
-
        | Tag (desc', id') ->
          if id.it <> id'.it
          then fail ctxt desc sets
          else match_pat (InTag (ctxt, id)) desc' pat1 t' sets
-
        | Any ->
-         let t' = List.assoc id.it (Type.as_vrn (Type.promote t)) in
          fail ctxt (NotTag (TagSet.singleton id.it)) sets &&
            match_pat (InTag (ctxt, id)) Any pat1 t' sets
-
-       | _ ->
-         assert false
+       | _ -> assert false
      end
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
