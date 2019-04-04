@@ -200,7 +200,7 @@ and open the path printed on the last line of that command.
 
 * Unary and binary arithmetic operators
   - `- x`, `not b`
-  - `a + b`
+  - `a + b`, `c ** d`
 
 * Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
@@ -229,6 +229,9 @@ and open the path printed on the last line of that command.
   - `if b ... else ...`
   - `switch x { case 1 ...; case 2 ...; case _ ...}`
 
+* Short-circuit logical operators
+  - `b and c`, `a or d`
+
 * While loops and iterations
   - `while (p()) ...`
   - `loop ...`
@@ -245,9 +248,6 @@ and open the path printed on the last line of that command.
 
 * Type annotation
   - `e : T`
-
-* Instance check
-  - `x is T`
 
 * Assertions
   - `assert (x > 0)`

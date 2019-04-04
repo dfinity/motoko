@@ -22,12 +22,6 @@ defined with a list of arguments, these all become arguments of the WebAssembly
 function. See the [ActorScript guide](https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript.pr-252/users-guide/latest/download/1/guide/#function-types) for the precise rules for function arities.
 
 
-Specialized argument format: `Word32`
--------------------------------------
-
-A message entry point with an argument of type `Word32` is directly represented
-as a `I32`.
-
 Specialized argument format: `Text`
 -------------------------------------
 
@@ -36,6 +30,10 @@ A message entry point with an argument of type `Text` is represented as a `datab
 Note that there is no terminating `\0`, and the length is implicit as the
 length of the `databuf`.
 
+Specialized argument format: `actor {…}` and `shared … -> …`
+------------------------------------------------------------
+
+A message entry point with an argument of actor type or of shared function type is represented as an `actorref` resp. `funcref.`
 
 General argument format (without references)
 --------------------------------------------
