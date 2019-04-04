@@ -45,11 +45,11 @@ let BitVec = new {
 
   func length() : Nat = 31;
 
-  func hashInt(i:Int) : BitVec {
+  func hashOfInt(i:Int) : BitVec {
     hashInt(i)
   };
 
-  func hashIntAcc(h:BitVec, i:Int) : BitVec {
+  func hashOfIntAcc(h:BitVec, i:Int) : BitVec {
     hashIntAcc(h, i)
   };
 
@@ -110,8 +110,8 @@ let BitVec = new {
 */
 let BitList = new {
 
-  func hashInt(i:Int) : BitList {
-    BitVec.toList(BitVec.hashInt(i))
+  func hashOfInt(i:Int) : BitList {
+    BitVec.toList(BitVec.hashOfInt(i))
   };
 
   /** Test if two lists of bits are equal. */

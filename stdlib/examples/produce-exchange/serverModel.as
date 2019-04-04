@@ -22,48 +22,7 @@ uses are is not.
 
 type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;
 
-class Model() = this {
-
-  /**
-   Misc helpers
-   ==================
-   */
-
-  private debug (t:Text)   { print t };
-  private debugInt (i:Int) { printInt i };
-
-  private debugOff (t:Text)   {  };
-  private debugIntOff (i:Int) {  };
-
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
-  private idIsEq(x:Nat,y:Nat):Bool { x == y };
-
-  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
-
-  private idHash(x:Nat):Hash { Hash.hashInt(x) };
-
-  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashIntAcc(Hash.hashInt(x.0), x.1) };
-
-  private keyOf(x:Nat):Key<Nat> {
-    new { key = x ; hash = idHash(x) }
-  };
-
-  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
-    new { key = (x,y) ; hash = idPairHash(x,y) }
-  };
-
-  /**
-   Misc counters
-   ==================
-   */
-
-  var joinCount = 0;
+class Model() {
 
 
 /**
@@ -1149,6 +1108,48 @@ than the MVP goals, however.
   };
 
 
+
+
+  /**
+   Misc helpers
+   ==================
+   */
+
+  private debug (t:Text)   { print t };
+  private debugInt (i:Int) { printInt i };
+
+  private debugOff (t:Text)   {  };
+  private debugIntOff (i:Int) {  };
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
+
+  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+
+  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
+
+  private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
+
+  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
+
+  private keyOf(x:Nat):Key<Nat> {
+    new { key = x ; hash = idHash(x) }
+  };
+
+  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
+    new { key = (x,y) ; hash = idPairHash(x,y) }
+  };
+
+  /**
+   Misc counters
+   ==================
+   */
+
+  var joinCount = 0;
 
 
 };

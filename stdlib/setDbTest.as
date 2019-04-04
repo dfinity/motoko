@@ -7,16 +7,16 @@
 
 func SetDb__test() {
 
-  let hash_0 = Hash.hashInt(0);
-  let hash_1 = Hash.hashInt(1);
-  let hash_2 = Hash.hashInt(2);
-  let hash_3 = Hash.hashInt(3);
-  let hash_4 = Hash.hashInt(4);
-  let hash_5 = Hash.hashInt(5);
-  let hash_6 = Hash.hashInt(6);
-  let hash_7 = Hash.hashInt(7);
-  let hash_8 = Hash.hashInt(8);
-  let hash_9 = Hash.hashInt(9);
+  let hash_0 = Hash.hashOfInt(0);
+  let hash_1 = Hash.hashOfInt(1);
+  let hash_2 = Hash.hashOfInt(2);
+  let hash_3 = Hash.hashOfInt(3);
+  let hash_4 = Hash.hashOfInt(4);
+  let hash_5 = Hash.hashOfInt(5);
+  let hash_6 = Hash.hashOfInt(6);
+  let hash_7 = Hash.hashOfInt(7);
+  let hash_8 = Hash.hashOfInt(8);
+  let hash_9 = Hash.hashOfInt(9);
 
 
   print "inserting...\n";
