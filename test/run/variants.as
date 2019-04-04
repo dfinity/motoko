@@ -24,7 +24,7 @@ func ts2(v : Super) { ignore v };
 
 let ts3 = ts2 ts1;
 
-// type syntac variations
+// type syntax variations
 
 type A = { # };           // empty variant
 type B = { #foo : Int };  // singleton variant
