@@ -34,6 +34,14 @@ let a = actor {
     printInt(c);
     print("\n");
   };
+  incVariant(v : { #foo : Nat; #bar : Nat }) {
+    c += (switch v {
+      case (#foo n) n;
+      case (#bar n) n;
+    });
+    printInt(c);
+    print("\n");
+  };
   printCounter() {
     printInt(c);
     print("\n");
@@ -64,6 +72,8 @@ a.incopt(null);
 a.incopt(?14);
 a.increcord(shared {x = 15; y = 16});
 a.increcord(shared {x = 17; y = 18; z = 19});
+a.incVariant(#foo 20);
+a.incVariant(#bar 20);
 a.printCounter();
 a.printLabeled("Foo1: ");
 a.printLabeledOpt(?"Foo2: ");

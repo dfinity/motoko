@@ -509,6 +509,8 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' Shared
   | Variant cts1, Variant cts2 ->
     rel_summands rel eq cts1 cts2
+  | Variant cts1, Shared ->
+    rel_list rel_typ rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->

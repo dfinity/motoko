@@ -61,7 +61,9 @@ little endian format.
    otherwise by a single byte `1` followed by the representation of the value
  * An empty tuple, the type `Null` and the type `Shared` are represented by
    zero bytes.
-
+ * A `Variant` with `n` constructors sorted by constructor name is represented
+   by a single word indicating the constructor as a number `0..n-1`, followed
+   by the payload of the constructor. (Yes, obviously no subtyping here.)
 
 *Example:* The ActorScript value
 ```
