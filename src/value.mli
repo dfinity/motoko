@@ -84,7 +84,7 @@ and value =
   | Opt of value
   | Variant of string * value
   | Array of value array
-  | Obj of value Env.t (* exactly one key for variants *)
+  | Obj of value Env.t
   | Func of call_conv * func
   | Async of async
   | Mut of value ref

@@ -219,7 +219,7 @@ and value =
   | Opt of value
   | Variant of string * value
   | Array of value array
-  | Obj of value Env.t (* exactly one key for variants *)
+  | Obj of value Env.t
   | Func of call_conv * func
   | Async of async
   | Mut of value ref
@@ -257,6 +257,7 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
+let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
@@ -314,7 +315,6 @@ let obj_of_text t =
   Env.from_list ["chars", chars; "len", len]
 
 let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | Text t -> obj_of_text t | _ -> invalid "as_obj"
-let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
