@@ -411,8 +411,8 @@ and infer_exp'' env exp : T.typ =
   | OptE exp1 ->
     let t1 = infer_exp env exp1 in
     T.Opt t1
-  | VariantE (c, exp1) ->
-    T.Variant [(c.it, infer_exp env exp1)]
+  | VariantE (i, exp1) ->
+    T.Variant [(i.it, infer_exp env exp1)]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
