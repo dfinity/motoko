@@ -82,6 +82,7 @@ and value =
   | Text of string
   | Tup of value list
   | Opt of value
+  | Variant of string * value
   | Array of value array
   | Obj of value Env.t (* exactly one key for variants *)
   | Func of call_conv * func
@@ -132,10 +133,6 @@ val as_func : value -> call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
 val as_serialized : value -> value
-
-(* Predicates *)
-
-val is_variant : value -> bool
 
 
 (* Ordering *)

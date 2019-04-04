@@ -217,6 +217,7 @@ and value =
   | Text of string
   | Tup of value list
   | Opt of value
+  | Variant of string * value
   | Array of value array
   | Obj of value Env.t (* exactly one key for variants *)
   | Func of call_conv * func
@@ -313,10 +314,7 @@ let obj_of_text t =
   Env.from_list ["chars", chars; "len", len]
 
 let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | Text t -> obj_of_text t | _ -> invalid "as_obj"
-let is_variant = function Obj constr -> List.length (Env.bindings constr) = 1 | _ -> false
-let as_variant = function
-  | Obj constr as o when is_variant o -> List.hd (Env.bindings constr)
-  | _ -> invalid "as_variant"
+let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"

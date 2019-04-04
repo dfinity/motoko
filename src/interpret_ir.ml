@@ -296,7 +296,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | VariantE (i, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (V.Obj (V.Env.from_list [i.it, v1])))
+    interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | DotE (exp1, {it = Name n; _})
@@ -495,7 +495,15 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | VariantP (i, pat1) -> assert false
+  | VariantP (i, pat1) ->
+    begin
+      match v with
+      | V.Variant (lab, v1) ->
+        if lab = i.it
+        then define_pat env pat1 v1
+        else trap pat.at "value %s does not match pattern" (V.string_of_val v)
+      | _ -> assert false
+    end
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
