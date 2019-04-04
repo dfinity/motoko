@@ -53,16 +53,16 @@ let rec exp e = match e.it with
   | PrimE p             -> "PrimE"   $$ [Atom p]
 
 and pat p = match p.it with
-  | WildP         -> Atom "WildP"
-  | VarP x        -> "VarP"       $$ [id x]
-  | TupP ps       -> "TupP"       $$ List.map pat ps
-  | AnnotP (p, t) -> "AnnotP"     $$ [pat p; typ t]
-  | LitP l        -> "LitP"       $$ [lit !l]
-  | SignP (uo, l) -> "SignP"      $$ [unop uo ; lit !l]
-  | OptP p        -> "OptP"       $$ [pat p]
-  | VariantP (i, p) -> "VariantP" $$ [tag i; pat p]
-  | AltP (p1,p2)  -> "AltP"       $$ [pat p1; pat p2]
-  | ParP p        -> "ParP"       $$ [pat p]
+  | WildP           -> Atom "WildP"
+  | VarP x          -> "VarP"       $$ [id x]
+  | TupP ps         -> "TupP"       $$ List.map pat ps
+  | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]
+  | LitP l          -> "LitP"       $$ [lit !l]
+  | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
+  | OptP p          -> "OptP"       $$ [pat p]
+  | VariantP (i, p) -> "VariantP"   $$ [tag i; pat p]
+  | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
+  | ParP p          -> "ParP"       $$ [pat p]
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
@@ -137,7 +137,7 @@ and vis v = match v.it with
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
-and typ_constr (c, t)
+and typ_tag (c, t)
   = c.it $$ [typ t]
 
 and typ_bind (tb : typ_bind)
@@ -154,7 +154,7 @@ and typ t = match t.it with
   | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
   | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts            -> "VariantT" $$ List.map typ_constr cts
+  | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
