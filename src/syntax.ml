@@ -215,5 +215,5 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
-  | FloatLit f    ->  Value.Float.to_string f
+  | FloatLit f    -> Value.Float.to_string f
   | PreLit _      -> assert false

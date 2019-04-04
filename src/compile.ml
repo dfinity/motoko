@@ -3882,7 +3882,10 @@ let compile_unop env t op =
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
       StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
                           G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-  | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
+  | _ ->
+    (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
+       `compile_exp_as`, which does not take SR.Unreachable. *)
+    todo "compile_unop" (Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
 
 
 
