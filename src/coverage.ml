@@ -199,11 +199,7 @@ and fail ctxt desc sets : bool =
 
 and vanishing t excluded =
   match t with
-    (Type.Variant cts) ->
-     List.compare_length_with
-       (List.filter (fun (l, _) -> not (TagSet.mem l excluded)) cts)
-       0
-     = 0
+  | Type.Variant cts -> List.for_all (fun (l, _) -> TagSet.mem l excluded) cts
   | _ -> assert false
 
 let warn at fmt =
