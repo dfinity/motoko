@@ -164,6 +164,8 @@ module E = struct
     (* Static *)
     mode : mode;
     prelude : prog; (* The prelude. Re-used when compiling actors *)
+    trap_with : t -> string -> G.t;
+      (* Trap with message; in the env for dependency injection *)
 
     (* Immutable *)
     local_vars_env : t varloc NameEnv.t; (* variables ↦ their location *)
@@ -195,9 +197,10 @@ module E = struct
   }
 
   (* The initial global environment *)
-  let mk_global mode prelude dyn_mem : t = {
+  let mk_global mode prelude trap_with dyn_mem : t = {
     mode;
     prelude;
+    trap_with;
     local_vars_env = NameEnv.empty;
     func_types = ref [];
     func_imports = ref [];
@@ -367,6 +370,11 @@ module E = struct
 
   let get_prelude (env : t) = env.prelude
 
+  let get_trap_with (env : t) = env.trap_with
+  let trap_with env msg = env.trap_with env msg
+  let then_trap_with env msg = G.if_ (ValBlockType None) (trap_with env msg) G.nop
+  let else_trap_with env msg = G.if_ (ValBlockType None) G.nop (trap_with env msg)
+
   let reserve_static_memory (env : t) size : int32 =
     if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
     let ptr = !(env.end_of_static_memory) in
@@ -417,6 +425,12 @@ let compile_shl_const = function
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
+
+
+(* A common variant of todo *)
+
+let todo_trap env fn se = todo fn se (E.trap_with env ("TODO: " ^ fn))
+let todo_trap_SR env fn se = todo fn se (SR.Unreachable, E.trap_with env ("TODO: " ^ fn))
 
 (* Locals *)
 
@@ -563,7 +577,7 @@ module Heap = struct
           (* Check result *)
           compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          G.if_ (ValBlockType None) (G.i Unreachable) G.nop
+          E.then_trap_with env "Cannot grow memory."
         ) G.nop
       )
 
@@ -989,8 +1003,8 @@ module Var = struct
       compile_unboxed_const i ^^
       get_new_val ^^
       store_ptr
-    | Some (Deferred d) -> G.i Unreachable
-    | None   -> G.i Unreachable
+    | Some (Deferred d) -> assert false
+    | None   -> assert false
 
   (* Returns the payload (vanilla representation) *)
   let get_val_vanilla env var = match E.lookup_var env var with
@@ -998,7 +1012,7 @@ module Var = struct
     | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
     | Some (Static i) -> compile_unboxed_const i ^^ load_ptr
     | Some (Deferred d) -> d.materialize_vanilla env
-    | None -> G.i Unreachable
+    | None -> assert false
 
   (* Returns the payload (optimized representation) *)
   let get_val env var = match E.lookup_var env var with
@@ -1039,7 +1053,7 @@ module Var = struct
       else
         ( compile_unboxed_zero,
           fun env1 -> (E.add_local_deferred env1 var d, G.i Drop))
-    | None -> (G.i Unreachable, fun env1 -> (env1, G.i Unreachable))
+    | None -> assert false
 
   (* Returns a pointer to a heap allocated box for this.
      (either a mutbox, if already mutable, or a freshly allocated box)
@@ -1985,7 +1999,7 @@ module Array = struct
       get_idx ^^
       get_array ^^ Heap.load_field len_field ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+      E.else_trap_with env "Array index out of bounds" ^^
 
       get_idx ^^
       compile_add_const header_size ^^
@@ -2126,15 +2140,16 @@ module Array = struct
     (* Write fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
-      (* The closure *)
+      (* Where to store *)
       get_r ^^ get_i ^^ idx env ^^
-      (* The arg *)
+      (* The closure *)
       get_f ^^
+      (* The arg *)
       get_i ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
       BoxedInt.box env ^^
       (* The closure again *)
-      get_r ^^ get_i ^^ idx env ^^
+      get_f ^^
       (* Call *)
       Closure.call_closure env (Value.local_cc 1 1) ^^
       store_ptr
@@ -2330,13 +2345,18 @@ module Dfinity = struct
     Text.lit env bytes ^^ compile_databuf_of_text env
 
   (* For debugging *)
-  let _compile_static_print env s =
+  let compile_static_print env s =
       compile_databuf_of_bytes env s ^^
       G.i (Call (nr (test_print_i env)))
   let _compile_print_int env =
       G.i (Call (nr (test_show_i32_i env))) ^^
       G.i (Call (nr (test_print_i env))) ^^
-      _compile_static_print env "\n"
+      compile_static_print env "\n"
+
+  let trap_with env s =
+    if E.mode env = DfinityMode
+    then compile_static_print env (s ^ "\n") ^^ G.i Unreachable
+    else G.i Unreachable
 
   let prim_printInt env =
     if E.mode env = DfinityMode
@@ -2621,9 +2641,9 @@ module Serialization = struct
     Also see (and update) `design/TmpWireFormat.md`, which documents the format
     in a “user-facing” way.
 
-    We have a specific serialization strategy for `Text`, `Word32` and
-    references for easier interop with the console and the nonce. This is a
-    stop-gap measure until we have nailed down IDL and Bidirectional Messaging.
+    We have a specific serialization strategy for `Text` and references for
+    easier interop with the console and the nonce. This is a stop-gap measure
+    until we have nailed down IDL and Bidirectional Messaging.
 
     The general serialization strategy is as follows:
     * We traverse the data to calculate the size needed for the data buffer and the
@@ -3006,7 +3026,7 @@ module Serialization = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         load_unskewed_ptr ^^
         Dfinity.box_reference env
-      | _ -> todo "deserialize" (Arrange_ir.typ t) (G.i Unreachable)
+      | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
       get_data_buf
     )
@@ -3018,8 +3038,8 @@ module Serialization = struct
     else Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
       match Type.normalize t with
       | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
-      | Type.Prim Type.Word32 -> get_x ^^ BoxedSmallWord.unbox env
-      | Type.Obj (Type.Actor, _) -> get_x ^^ Dfinity.unbox_reference env
+      | Type.Obj (Type.Actor, _)
+      | Type.Func (Type.Sharable, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -3058,11 +3078,11 @@ module Serialization = struct
         (* Sanity check: Did we fill exactly the buffer *)
         get_refs_size ^^ compile_add_const 1l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+        E.else_trap_with env "reference buffer not filled " ^^
 
         get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+        E.else_trap_with env "data buffer not filled " ^^
 
         (* Create databuf, and store at beginning of ref area *)
         get_refs_start ^^
@@ -3076,7 +3096,7 @@ module Serialization = struct
           (* Sanity check: Really no references *)
           get_refs_size ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-          G.if_ (ValBlockType None) G.nop (G.i Unreachable) ^^
+          E.else_trap_with env "has_no_references wrong" ^^
           (* If there are no references, just return the databuf *)
           get_refs_start ^^
           load_unskewed_ptr
@@ -3113,8 +3133,8 @@ module Serialization = struct
     Func.share_code1 env name ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
       match Type.normalize t with
       | Type.Prim Type.Text -> deserialize_text env get_elembuf
-      | Type.Prim Type.Word32 -> get_elembuf ^^ BoxedSmallWord.box env
-      | Type.Obj (Type.Actor, _) -> get_elembuf ^^ Dfinity.box_reference env
+      | Type.Obj (Type.Actor, _)
+      | Type.Func (Type.Sharable, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -3182,8 +3202,8 @@ module Serialization = struct
 
     let dfinity_type t = match Type.normalize t with
       | Type.Prim Type.Text -> CustomSections.DataBuf
-      | Type.Prim Type.Word32 -> CustomSections.I32
       | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
+      | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
       | t' when has_no_references t' -> CustomSections.DataBuf
       | _ -> CustomSections.ElemBuf
 
@@ -3772,9 +3792,9 @@ module PatCode = struct
           G.if_ (ValBlockType None) G.nop is2
         )
 
-  let orTrap : patternCode -> G.t = function
+  let orTrap env : patternCode -> G.t = function
     | CannotFail is -> is
-    | CanFail is -> is (G.i Unreachable)
+    | CanFail is -> is (E.trap_with env "pattern failed")
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -3785,42 +3805,34 @@ open PatCode
 
 (* The actual compiler code that looks at the AST *)
 
-let compile_lit env lit = Syntax.(match lit with
-  (* Booleans are directly in Vanilla representation *)
-  | BoolLit false -> SR.bool, Bool.lit false
-  | BoolLit true ->  SR.bool, Bool.lit true
-  (* This maps int to int32, instead of a proper arbitrary precision library *)
-  | IntLit n      -> SR.UnboxedInt64,
-    (try compile_const_64 (Big_int.int64_of_big_int n)
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | NatLit n      -> SR.UnboxedInt64,
-    (try compile_const_64 (Big_int.int64_of_big_int n)
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %s\n" (Big_int.string_of_big_int n); G.i Unreachable)
-  | Word8Lit n    -> SR.Vanilla,
-    (try compile_unboxed_const (Value.Word8.to_bits n)
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int (Value.Word8.to_bits n)); G.i Unreachable)
-  | Word16Lit n   -> SR.Vanilla,
-    (try compile_unboxed_const (Value.Word16.to_bits n)
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int (Value.Word16.to_bits n)); G.i Unreachable)
-  | Word32Lit n   -> SR.UnboxedWord32,
-    (try compile_unboxed_const n
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int32.to_int n); G.i Unreachable)
-  | Word64Lit n   -> SR.UnboxedInt64,
-    (try compile_const_64 n
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" (Int64.to_int n); G.i Unreachable)
-  | CharLit c   -> SR.Vanilla,
-    (try compile_unboxed_const Int32.(shift_left (of_int c) 8)
-    with Failure _ -> Printf.eprintf "compile_lit: Overflow in literal %d\n" c; G.i Unreachable)
-  | NullLit       -> SR.Vanilla, Opt.null
-  | TextLit t     -> SR.Vanilla, Text.lit env t
-  | _ -> todo "compile_lit" (Arrange.lit lit) (SR.Vanilla, G.i Unreachable)
-  )
+let compile_lit env lit =
+  try Syntax.(match lit with
+    (* Booleans are directly in Vanilla representation *)
+    | BoolLit false -> SR.bool, Bool.lit false
+    | BoolLit true ->  SR.bool, Bool.lit true
+    (* This maps int to int32, instead of a proper arbitrary precision library *)
+    | IntLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
+    | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
+    | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
+    | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
+    | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
+    | Word64Lit n   -> SR.UnboxedInt64, compile_const_64 n
+    | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
+    | NullLit       -> SR.Vanilla, Opt.null
+    | TextLit t     -> SR.Vanilla, Text.lit env t
+    | _ -> todo_trap_SR env "compile_lit" (Arrange.lit lit)
+    )
+  with Failure _ ->
+    Printf.eprintf "compile_lit: Overflow in literal %s\n" (Syntax.string_of_lit lit);
+    SR.Unreachable, E.trap_with env "static literal overflow"
 
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-let compile_unop env t op = Syntax.(match op, t with
+let compile_unop env t op =
+  let open Syntax in
+  match op, t with
   | NegOp, Type.(Prim (Int | Word64)) ->
       SR.UnboxedInt64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
@@ -3842,8 +3854,11 @@ let compile_unop env t op = Syntax.(match op, t with
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
       StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
                           G.i (Binary (Wasm.Values.I32 I32Op.Xor))
-  | _ -> todo "compile_unop" (Arrange.unop op) (SR.Vanilla, G.i Unreachable)
-  )
+  | _ ->
+    (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
+       `compile_exp_as`, which does not take SR.Unreachable. *)
+    todo "compile_unop" (Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
+
 
 
 (* This returns a single StackRep, to be used for both arguments and the
@@ -3857,9 +3872,8 @@ let rec compile_binop env t op =
   | Type.Prim Type.Nat,                       SubOp ->
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
-        (G.i Unreachable)
-        (get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
+      E.then_trap_with env "Natural subtraction underflow" ^^
+      get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
   | Type.(Prim (Nat | Int | Word64)),         MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim (Nat | Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
@@ -3897,11 +3911,11 @@ let rec compile_binop env t op =
   | Type.(Prim Int),                          PowOp ->
      let _, pow = compile_binop env Type.(Prim Nat) PowOp in
      let (set_n, get_n) = new_local64 env "n" in
-     let (set_exp, get_exp) = new_local64 env "exp"
-     in set_exp ^^ set_n ^^ get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-          G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
-            (G.i Unreachable)
-            (get_n ^^ get_exp ^^ pow)
+     let (set_exp, get_exp) = new_local64 env "exp" in
+     set_exp ^^ set_n ^^
+     get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+     E.then_trap_with env "negative power" ^^
+     get_n ^^ get_exp ^^ pow
   | Type.(Prim (Nat|Word64)),                 PowOp ->
      let rec pow () = Func.share_code2 env "pow"
                         (("n", I64Type), ("exp", I64Type)) [I64Type]
@@ -3957,7 +3971,7 @@ let rec compile_binop env t op =
       sanitize_word_result ty))
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
-  | _ -> todo "compile_binop" (Arrange.binop op) (G.i Unreachable)
+  | _ -> todo_trap env "compile_binop" (Arrange.binop op)
   )
 
 let compile_eq env t = match t with
@@ -3965,7 +3979,7 @@ let compile_eq env t = match t with
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | _ -> todo "compile_eq" (Arrange.relop Syntax.EqOp) (G.i Unreachable)
+  | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
 let get_relops = Syntax.(function
   | GeOp -> I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
@@ -3974,30 +3988,30 @@ let get_relops = Syntax.(function
   | LtOp -> I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
-let compile_comparison t op =
-  let u64op, s64op, u32op, s32op = get_relops op
-  in Type.(match t with
-     | (Nat | Word64) -> G.i (Compare (Wasm.Values.I64 u64op))
-     | Int -> G.i (Compare (Wasm.Values.I64 s64op))
-     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
-     | _ -> todo "compile_comparison" (Arrange.prim t) (G.i Unreachable))
+let compile_comparison env t op =
+  let u64op, s64op, u32op, s32op = get_relops op in
+  let open Type in
+  match t with
+    | (Nat | Word64) -> G.i (Compare (Wasm.Values.I64 u64op))
+    | Int -> G.i (Compare (Wasm.Values.I64 s64op))
+    | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
+    | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
 let compile_relop env t op =
   StackRep.of_type t,
-  Syntax.(match t, op with
+  let open Syntax in
+  match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-             G.if_ (StackRep.to_block_type env SR.bool)
-                   (Bool.lit false) (Bool.lit true)
+     G.if_ (StackRep.to_block_type env SR.bool) (Bool.lit false) (Bool.lit true)
   | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
-     compile_comparison t1 op1
-  | _ -> todo "compile_relop" (Arrange.relop op) (G.i Unreachable)
-  )
+     compile_comparison env t1 op1
+  | _ -> todo_trap env "compile_relop" (Arrange.relop op)
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) exp =
-  (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
+  (fun (code,fill_code) -> (G.with_region exp.at code, G.with_region exp.at fill_code)) @@
   match exp.it with
   | VarE var ->
      G.nop,
@@ -4013,7 +4027,7 @@ let rec compile_lexp (env : E.t) exp =
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.note_typ n,
      store_ptr
-  | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (G.i Unreachable, G.nop)
+  | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (E.trap_with env "TODO: compile_lexp", G.nop)
 
 and compile_exp (env : E.t) exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
@@ -4190,9 +4204,9 @@ and compile_exp (env : E.t) exp =
                                in set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
                                   G.i (Binary (Wasm.Values.I64 I64Op.And)))
 
-             | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+             | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp pe)
           end
-        | _ -> SR.Unreachable, todo "compile_exp" (Arrange_ir.exp pe) (G.i Unreachable)
+        | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp pe)
         end
     end
   | VarE var ->
@@ -4324,7 +4338,7 @@ and compile_exp (env : E.t) exp =
                  (go env cs)
           in
       let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap code2 ^^ get_j
+      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (env1, i) = E.add_local_with_offset env name.it 1l in
@@ -4347,7 +4361,7 @@ and compile_exp (env : E.t) exp =
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env i ds fs exp.at
-    else todo "non-closed actor" (Arrange_ir.exp exp) G.i Unreachable
+    else todo_trap env "non-closed actor" (Arrange_ir.exp exp) 
   | NewObjE (Type.Object _ (*sharing*), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
@@ -4356,7 +4370,7 @@ and compile_exp (env : E.t) exp =
         then Var.get_val_ptr env f.it.var.it
         else Var.get_val_vanilla env f.it.var.it)) in
     Object.lit_raw env fs'
-  | _ -> SR.unit, todo "compile_exp" (Arrange_ir.exp exp) (G.i Unreachable)
+  | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
 and compile_exp_as env sr_out e =
   G.with_region e.at (
@@ -4437,7 +4451,7 @@ and compile_lit_pat env l =
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
-  | _ -> todo "compile_lit_pat" (Arrange.lit l) (G.i Unreachable)
+  | _ -> todo_trap env "compile_lit_pat" (Arrange.lit l)
 
 and fill_pat env pat : patternCode =
   PatCode.with_region pat.at @@
@@ -4536,11 +4550,11 @@ and compile_n_ary_pat env how pat =
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      G.concat_mapi (fun i p -> orTrap (fill_pat env1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orTrap env (fill_pat env1 p)) (List.rev ps)
     (* The general case: Create a single value, match that. *)
     | _ ->
       Some SR.Vanilla,
-      orTrap (fill_pat env1 pat)
+      orTrap env (fill_pat env1 pat)
   in (env1, alloc_code, arity, fill_code)
 
 and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
@@ -4617,20 +4631,34 @@ This function compiles the prelude, just to find out the bound names.
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env1 = E.mk_fun_env (E.mk_global (E.mode env) (E.get_prelude env) 0l) 0l 0 in
+  let env0 = E.mk_global (E.mode env) (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  let env1 = E.mk_fun_env env0 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
 
 
 and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
+  let find_last_actor (ds1,e) = match ds1, e.it with
+    | _, ActorE (i, ds2, fs, _) -> Some (i, ds1 @ ds2, fs)
+    | [], _ -> None
+    | _, _ ->
+      match Lib.List.split_last ds1, e.it with
+      | (ds1', {it = LetD ({it = VarP i1; _}, {it = ActorE (i2, ds2, fs, _); _}); _})
+        , VarE i3 when i1 = i2 && i2 = i3 -> Some (i2, ds1' @ ds2, fs)
+      | _ -> None
+  in
+
   Func.of_body env [] [] (fun env1 ->
     let rec go env = function
       | [] -> G.nop
       (* If the last program ends with an actor, then consider this the current actor  *)
-      | [((decls, {it = ActorE (i, ds, fs, _); _}), _flavor)] ->
-        let (env', code1) = compile_decs env decls in
-        let code2 = main_actor env' i ds fs in
-        code1 ^^ code2
+      | [(prog, _flavor)] ->
+        begin match find_last_actor prog with
+        | Some (i, ds, fs) -> main_actor env i ds fs
+        | None ->
+          let (_env, code) = compile_prog env prog in
+          code
+        end
       | ((prog, _flavor) :: progs) ->
         let (env1, code1) = compile_prog env prog in
         let code2 = go env1 progs in
@@ -4680,7 +4708,11 @@ and actor_lit outer_env this ds fs at =
   if E.mode outer_env <> DfinityMode then G.i Unreachable else
 
   let wasm_binary =
-    let env = E.mk_global (E.mode outer_env) (E.get_prelude outer_env) ClosureTable.table_end in
+    let env = E.mk_global
+      (E.mode outer_env)
+      (E.get_prelude outer_env)
+      (E.get_trap_with outer_env)
+      ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
@@ -4815,7 +4847,7 @@ and conclude_module env module_name start_fi_o =
   }
 
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
-  let env = E.mk_global mode prelude ClosureTable.table_end in
+  let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
 

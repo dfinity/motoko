@@ -517,10 +517,15 @@ let rec rel_typ rel eq t1 t2 =
     rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     c1 = c2 && s1 = s2 &&
+    (* subtyping on shared functions needs to imply subtyping of the serialized
+       arguments, i.e. the IDL. Until we have a real IDL, we are conservative
+       here and assum no subtyping in the IDL. This makes shared functions invariant. *)
+    let rel_param =
+      if s1 = Sharable then eq_typ else rel_typ in
     (match rel_binds rel eq tbs1 tbs2 with
     | Some ts ->
-      rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-      rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+      rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+      rel_list rel_param rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
   | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
