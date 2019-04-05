@@ -101,6 +101,7 @@ val as_async_sub : typ -> typ
 
 val seq : typ list -> typ
 val as_seq : typ -> typ list
+val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
 val lookup_field : string -> field list -> typ
 val compare_field : field -> field -> int
