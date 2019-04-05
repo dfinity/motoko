@@ -131,13 +131,12 @@ module Transform() = struct
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
       | T.Sharable ->
-        let fun_ty = exp1.note.note_typ in
         (* We should take the type to serialize at from the function, not the
            argument, as the latter could be a subtype *)
-        let _, tbs, t2, _ = T.as_func_sub cc.Value.sort (List.length typs) fun_ty in
-        let t_arg = t_typ (T.open_ typs t2) in
-        assert (T.is_unit exp.note.note_typ);
-        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) t_arg in
+        let fun_ty = exp1.note.note_typ in
+        let t_arg, t_ret = T.inst_func_type fun_ty cc.Value.sort typs in
+        assert (T.is_unit t_ret);
+        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) (t_typ t_arg) in
         CallE (cc, t_exp exp1, [], exp2')
       end
     | FuncE (x, cc, typbinds, args, ret_tys, exp) ->

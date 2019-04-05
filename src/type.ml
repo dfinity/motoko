@@ -329,6 +329,12 @@ let as_async_sub t = match promote t with
   | _ -> invalid "as_async_sub"
 
 
+let inst_func_type fun_ty sort typs =
+    let _, tbs, t2, t3 = as_func_sub sort (List.length typs) fun_ty in
+    let t_arg = open_ typs t2 in
+    let t_ret = open_ typs t3 in
+    t_arg, t_ret
+
 let lookup_field lab' tfs =
   match List.find_opt (fun {lab; _} -> lab = lab') tfs with
   | Some {typ = t; _} -> t
