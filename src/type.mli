@@ -29,6 +29,7 @@ and typ =
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
+  | Variant of (lab * typ) list               (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
@@ -62,6 +63,7 @@ val prim : string -> prim
 
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
+val is_variant : typ -> bool
 val is_array : typ -> bool
 val is_opt : typ -> bool
 val is_tup : typ -> bool
@@ -74,6 +76,7 @@ val is_serialized : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
+val as_variant : typ -> (lab * typ) list
 val as_array : typ -> typ
 val as_opt : typ -> typ
 val as_tup : typ -> typ list
@@ -101,6 +104,9 @@ val as_seq : typ -> typ list
 
 val lookup_field : string -> field list -> typ
 val compare_field : field -> field -> int
+
+val map_constr_typ : (typ -> typ) -> (lab * typ) list -> (lab * typ) list
+val compare_summand : (lab * typ) -> (lab * typ) -> int
 
 val span : typ -> int option
 

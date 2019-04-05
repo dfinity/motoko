@@ -2723,9 +2723,10 @@ module Serialization = struct
           List.for_all go (List.map (open_ ts) ts1) &&
           List.for_all go (List.map (open_ ts) ts2)
         | Opt t -> go t
+        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
         | Async t -> go t
         | Obj (Actor, fs) -> false
-        | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+        | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t
         | Serialized t -> go t
       end
@@ -4294,6 +4295,9 @@ and compile_exp (env : E.t) exp =
   | OptE e ->
     SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
+  | VariantE (i, e) ->
+    SR.Vanilla,
+    todo "variant exp" (Arrange_ir.exp exp) (G.i Unreachable)
   | TupE es ->
     SR.UnboxedTuple (List.length es),
     G.concat_map (compile_exp_vanilla env) es
@@ -4476,6 +4480,8 @@ and fill_pat env pat : patternCode =
           )
           fail_code
       )
+  | VariantP (i, p) ->
+      CanFail(fun _ -> todo "variant pat" (Arrange_ir.pat pat) (G.i Unreachable))
   | LitP l ->
       CanFail (fun fail_code ->
         compile_lit_pat env l ^^

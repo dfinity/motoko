@@ -84,6 +84,7 @@ let rec exp e : f = match e.it with
   | AwaitE e            -> exp e
   | AssertE e           -> exp e
   | OptE e              -> exp e
+  | VariantE (_, e)     -> exp e
   | DeclareE (i, t, e)  -> exp e  // i.it
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, cc, tp, as_, t, e) -> under_lambda (exp e /// args as_)
@@ -99,12 +100,13 @@ and arg a : fd = (M.empty, S.singleton a.it)
 and args as_ : fd = union_binders arg as_
 
 and pat p : fd = match p.it with
-  | WildP         -> (M.empty, S.empty)
-  | VarP i        -> (M.empty, S.singleton i.it)
-  | TupP ps       -> pats ps
-  | LitP l        -> (M.empty, S.empty)
-  | OptP p        -> pat p
-  | AltP (p1, p2) -> pat p1 ++++ pat p2
+  | WildP           -> (M.empty, S.empty)
+  | VarP i          -> (M.empty, S.singleton i.it)
+  | TupP ps         -> pats ps
+  | LitP l          -> (M.empty, S.empty)
+  | OptP p          -> pat p
+  | VariantP (i, p) -> pat p
+  | AltP (p1, p2)   -> pat p1 ++++ pat p2
 
 and pats ps : fd = union_binders pat ps
 

@@ -178,16 +178,23 @@ let rec check_typ env typ : unit =
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
-    let rec sorted fields =
-      match fields with
-      | []
-      | [_] -> true
+    let rec sorted = function
+      | [] | [_] -> true
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
     in
     check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
+  | T.Variant cts ->
+    let rec sorted = function
+      | [] | [_] -> true
+      | (c1, _)::(((c2, _)::_) as summands') ->
+        compare c1 c2  < 0 && sorted summands'
+    in
+    check_ids env (List.map fst cts);
+    List.iter (check_typ_summand env) cts;
+    check env no_region (sorted cts) "variant type's constructors are not sorted"
   | T.Mut typ ->
     check_typ env typ
   | T.Serialized typ ->
@@ -206,6 +213,8 @@ and check_typ_field env s typ_field : unit =
      (s = T.Object T.Local || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
 
+and check_typ_summand env (c, typ) : unit =
+  check_typ env typ
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -311,6 +320,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | OptE exp1 ->
     check_exp env exp1;
     T.Opt (typ exp1) <: t;
+  | VariantE (i, exp1) ->
+    check_exp env exp1;
+    T.Variant [(i.it, typ exp1)] <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -565,7 +577,8 @@ and gather_pat env ve0 pat : val_env =
       List.fold_left go ve pats
     | AltP (pat1, pat2) ->
       ve
-    | OptP pat1 ->
+    | OptP pat1
+    | VariantP (_, pat1) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -593,6 +606,10 @@ and check_pat env pat : val_env =
   | OptP pat1 ->
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
+    ve
+  | VariantP (i, pat1) ->
+    let ve = check_pat env pat1 in
+    T.Variant [(i.it, pat1.note)] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in

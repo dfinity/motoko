@@ -295,6 +295,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
+  | VariantE (i, exp1) ->
+    interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | DotE (exp1, {it = Name n; _})
@@ -462,7 +464,8 @@ and declare_pat pat : val_env =
   | WildP | LitP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | OptP pat1 -> declare_pat pat1
+  | OptP pat1
+  | VariantP (_, pat1) -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
 
 and declare_pats pats ve : val_env =
@@ -492,6 +495,11 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
+  | VariantP (i, pat1) ->
+    let lab, v1 = V.as_variant v in
+    if lab = i.it
+    then define_pat env pat1 v1
+    else trap pat.at "value %s does not match pattern" (V.string_of_val v)
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
@@ -533,6 +541,11 @@ and match_pat pat v : val_env option =
     | V.Null -> None
     | _ -> assert false
     )
+  | VariantP (i, pat1) ->
+    let tag, v1 = V.as_variant v in
+    if i.it = tag
+    then match_pat pat1 v1
+    else None
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v

@@ -43,6 +43,7 @@ and exp' at note = function
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
     obj at s None es note.S.note_typ
+  | S.VariantE (c, e) -> I.VariantE (c, exp e)
   | S.DotE (e, x) ->
     let n = {x with it = I.Name x.it} in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
@@ -218,6 +219,7 @@ and pat' = function
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
+  | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it

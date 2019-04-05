@@ -118,6 +118,7 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | VariantE (_, e)     -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -129,7 +130,8 @@ and pat msgs p : fd = match p.it with
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
-  | OptP p        -> pat msgs p
+  | OptP p
+  | VariantP (_, p) -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
