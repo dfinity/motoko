@@ -20,9 +20,13 @@ and pat' =
   | VarP of id                                 (* variable *)
   | LitP of lit                                (* literal *)
   | TupP of pat list                           (* tuple *)
+  | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
   | VariantP of id * pat                       (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
+
+and pat_field = pat_field' Source.phrase
+and pat_field' = {id : id; pat : pat}
 
 (* Like id, but with a type attached *)
 type arg = (string, Type.typ) Source.annotated_phrase

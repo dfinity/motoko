@@ -791,6 +791,7 @@ and infer_pat' env pat : T.typ * val_env =
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
+  | ObjP pfs -> assert false
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
@@ -861,6 +862,15 @@ and check_pat' env t pat : val_env =
       error env pat.at "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
     )
+  | ObjP pfs ->
+    begin
+      try
+        let _, tfs = T.as_obj_sub "" t in
+        check_obj_pats env tfs (List.sort compare_pat_field pfs) T.Env.empty pat.at
+      with Invalid_argument _ ->
+        error env pat.at "object pattern cannot consume expected type\n  %s"
+          (T.string_of_typ_expand t)
+    end
   | OptP pat1 ->
     (try
       let t1 = T.as_opt t in
@@ -911,6 +921,26 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
+and check_obj_pats env tfs pfs ve at : val_env =
+  match pfs, tfs with
+  | [], [] -> ve
+  | {it={id;pat;_};at=fat;_}::pfs', {T.lab=l;typ;_}::tfs' ->
+    if id.it = l then
+      let ve1 = check_pat env typ pat in
+      let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+      check_obj_pats env tfs' pfs' ve' at
+    else if id.it > l then
+      check_obj_pats env tfs' pfs ve at
+    else
+      begin
+        local_error env fat "object pattern has component %s missing in expected type"
+          id.it;
+        ve
+      end
+  | [], _ -> ve
+  | _ -> assert false
+
+and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
 (* Objects *)
 
@@ -936,6 +966,7 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
+  | ObjP pfs -> assert false
   | AltP (pat1, _)
   | OptP pat1
   | VariantP (_, pat1)
@@ -1165,6 +1196,7 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | ObjP pfs -> assert false
   | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =

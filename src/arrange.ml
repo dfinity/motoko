@@ -56,6 +56,7 @@ and pat p = match p.it with
   | WildP           -> Atom "WildP"
   | VarP x          -> "VarP"       $$ [id x]
   | TupP ps         -> "TupP"       $$ List.map pat ps
+  | ObjP ps         -> "ObjP"       $$ List.map pat_field ps
   | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]
   | LitP l          -> "LitP"       $$ [lit !l]
   | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
@@ -109,6 +110,8 @@ and relop ro = match ro with
   | GeOp  -> Atom "GeOp"
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
+
+and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
 
 and prim p = Atom (Type.string_of_prim p)
 

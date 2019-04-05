@@ -380,6 +380,8 @@ module Transform() = struct
       pat
     | TupP pats ->
       TupP (List.map t_pat pats)
+    | ObjP pfs ->
+      assert false (*ObjP (List.map t_pat pfs)*)
     | OptP pat1 ->
       OptP (t_pat pat1)
     | VariantP (i, pat1) ->

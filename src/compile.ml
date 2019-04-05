@@ -4412,7 +4412,7 @@ and compile_exp (env : E.t) exp =
 
     let rec go env cs = match cs with
       | [] -> CanFail (fun k -> k)
-      | (c::cs) ->
+      | ((c : case)::cs) ->
           let pat = c.it.pat in
           let e = c.it.exp in
           let (env1, code) = compile_pat_local env pat in
@@ -4583,6 +4583,8 @@ and fill_pat env pat : patternCode =
             code1 ^^^
             code2 ) in
       CannotFail set_i ^^^ go 0 ps env
+  | ObjP _ ->
+    CanFail(fun _ -> todo "compile_obj_pat" (Arrange_ir.pat pat) (G.i Unreachable))
   | AltP (p1, p2) ->
       let code1 = fill_pat env p1 in
       let code2 = fill_pat env p2 in

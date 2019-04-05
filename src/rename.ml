@@ -95,6 +95,7 @@ and pat' rho p = match p with
      (VarP i, rho')
   | TupP ps       -> let (ps, rho') = pats rho ps in
                      (TupP ps, rho')
+  | ObjP ps       -> assert false
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')

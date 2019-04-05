@@ -77,6 +77,22 @@ let rec match_pat ctxt desc pat t sets =
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
+  | ObjP pfs ->
+    let _, tfs = Type.as_obj (Type.promote t) in
+    let pat_of_lab lab =
+      begin
+        match List.find_opt (fun (pf : pat_field) -> pf.it.id.it = lab) pfs with
+        | Some pf -> pf.it.Syntax.pat
+        | None -> {it = WildP; at = no_region; note = Type.Pre}
+      end in
+    let pats = List.map (fun {Type.lab; _} -> pat_of_lab lab) tfs in
+    let ts = List.map (fun {Type.typ; _} -> typ) tfs in
+    let descs =
+      match desc with
+      | Tup descs -> descs
+      | Any -> List.map (fun _ -> Any) pats
+      | _ -> assert false
+    in match_tup ctxt [] descs pats ts sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with

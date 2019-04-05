@@ -438,6 +438,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
+  | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | VariantP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
@@ -464,6 +465,9 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
+  | ObjP pfs ->
+    let pats, vs = assocs_of_obj_pat pfs v in
+    define_pats env pats vs
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -495,6 +499,14 @@ and match_lit lit v : bool =
   | PreLit _, _ -> assert false
   | _ -> false
 
+and pats_of_obj_pat = List.map (fun (pf : Syntax.pat_field) -> pf.it.pat)
+
+and assocs_of_obj_pat pfs v =
+  let fs = V.as_obj v in
+  let binding id = V.Env.find id fs in
+  pats_of_obj_pat pfs,
+  List.map (fun (pf : Syntax.pat_field) -> binding pf.it.id.it) pfs
+
 and match_pat pat v : val_env option =
   match pat.it with
   | WildP -> Some V.Env.empty
@@ -508,6 +520,9 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | ObjP pfs ->
+    let pats, vs = assocs_of_obj_pat pfs v in
+    match_pats pats vs V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1

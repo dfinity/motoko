@@ -464,6 +464,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
+  | ObjP pfs -> assert false
   | OptP pat1
   | VariantP (_, pat1) -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
@@ -488,6 +489,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
+  | ObjP pfs -> assert false
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -535,6 +537,7 @@ and match_pat pat v : val_env option =
     else None
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | ObjP pfs -> assert false
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1

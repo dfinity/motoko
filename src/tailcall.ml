@@ -147,11 +147,12 @@ and pat env p =
   env
 
 and pat' env p = match p with
-  | WildP          ->  env
+  | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in
     env1
   | TupP ps       -> pats env ps
+  | ObjP pfs      -> assert false
   | LitP l        -> env
   | OptP p
   | VariantP (_, p) -> pat env p

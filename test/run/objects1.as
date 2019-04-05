@@ -13,3 +13,12 @@ let oo = object {
   func g() : T { f() + y };
   private class C() {};
 };
+
+// pattern matching
+
+func get_b () : Int = switch (o) {
+  case {b = 11} 22;
+  case {b = result} result;
+  case {a; b} b;
+  case {a} 42
+}

@@ -575,6 +575,7 @@ and gather_pat env ve0 pat : val_env =
       T.Env.add id.it pat.note ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
+    | ObjP pats -> assert false
     | AltP (pat1, pat2) ->
       ve
     | OptP pat1
@@ -603,6 +604,7 @@ and check_pat env pat : val_env =
     let ts = List.map (fun pat -> pat.note) pats in
     T.Tup ts <: t;
     ve
+  | ObjP pats -> assert false
   | OptP pat1 ->
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
