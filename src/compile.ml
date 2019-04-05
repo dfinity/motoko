@@ -425,7 +425,9 @@ let compile_shl_const = function
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
-
+let compile_eq_const i =
+  compile_unboxed_const i ^^
+  G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
 (* A common variant of todo *)
 
@@ -926,8 +928,7 @@ module Tagged = struct
       | [] -> def
       | ((tag, code) :: cases) ->
         get_tag ^^
-        compile_unboxed_const (int_of_tag tag) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        compile_eq_const (int_of_tag tag) ^^
         G.if_ retty code (go cases)
     in
     load ^^
@@ -2474,8 +2475,7 @@ module OrthogonalPersistence = struct
        set_i ^^
 
        get_i ^^
-       compile_unboxed_zero ^^
-       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+       compile_eq_const 0l ^^
        G.if_ (ValBlockType None)
          (* First run, call the start function *)
          ( G.i (Call (nr start_funid)) )
@@ -3010,8 +3010,7 @@ module Serialization = struct
       | (Prim Null | Shared) -> Opt.null
       | Opt t ->
         read_byte ^^
-        compile_unboxed_const 0l ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        compile_eq_const 0l ^^
         G.if_ (ValBlockType (Some I32Type))
           ( Opt.null )
           ( Opt.inject env (read env t) )
