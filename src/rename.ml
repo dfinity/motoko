@@ -95,7 +95,9 @@ and pat' rho p = match p with
      (VarP i, rho')
   | TupP ps       -> let (ps, rho') = pats rho ps in
                      (TupP ps, rho')
-  | ObjP ps       -> assert false
+  | ObjP pfs      ->
+    let (pats, rho') = pats rho (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) in
+    (ObjP (List.map2 (fun ({it={id; _}; _} as pf) pat -> {pf with it={id; pat}}) pfs pats), rho')
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')

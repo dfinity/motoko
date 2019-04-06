@@ -405,7 +405,7 @@ and declare_pat pat exp : exp =
   | WildP | LitP  _ ->  exp
   | VarP id -> declare_id id pat.note exp
   | TupP pats -> declare_pats pats exp
-  | ObjP pats -> assert false
+  | ObjP pfs -> declare_pats (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) exp
   | OptP pat1
   | VariantP (_, pat1) -> declare_pat pat1 exp
   | AltP (pat1, pat2) -> declare_pat pat1 exp
@@ -431,7 +431,10 @@ and rename_pat' pat =
   | TupP pats ->
     let (patenv,pats') = rename_pats pats in
     (patenv,TupP pats')
-  | ObjP pats -> assert false
+  | ObjP pfs ->
+    let (patenv, pats') = rename_pats (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) in
+    let pfs' = List.map2 (fun ({it={id; _}; _} as pf) pat -> {pf with it={id; pat}}) pfs pats' in
+    (patenv, ObjP pfs')
   | OptP pat1 ->
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, OptP pat1)
@@ -459,7 +462,7 @@ and define_pat patenv pat : dec list =
   | VarP id ->
     [ expD (define_idE id constM (PatEnv.find id.it patenv)) ]
   | TupP pats -> define_pats patenv pats
-  | ObjP pats -> assert false
+  | ObjP pfs -> define_pats patenv (List.map (fun (pf : pat_field) -> pf.it.pat) pfs)
   | OptP pat1
   | VariantP (_, pat1) -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
