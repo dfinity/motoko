@@ -538,18 +538,7 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | ObjP pfs ->
-    let fs = V.as_obj v in
-    let labs = V.Env.keys fs in
-    let pat lab =
-      begin
-        match List.find_opt (fun {it={id; _}; _} -> id.it = lab) pfs with
-        | Some pf -> pf.it.pat
-        | None -> {it = WildP; at = no_region; note = Type.Pre}
-      end in
-    match_pats
-      (List.map pat labs)
-      (List.map snd (V.Env.bindings fs))
-      V.Env.empty
+    match_field_pats pfs (V.as_obj v) V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
@@ -576,6 +565,16 @@ and match_pats pats vs ve : val_env option =
     | None -> None
     )
   | _ -> assert false
+
+and match_field_pats pfs vs ve : val_env option =
+  match pfs with
+  | [] -> Some ve
+  | pf::pfs' ->
+    begin
+      match match_pat pf.it.pat (V.Env.find pf.it.id.it vs) with
+      | Some ve' -> match_field_pats pfs' vs (V.Env.adjoin ve ve')
+      | None -> None
+    end
 
 (* Blocks and Declarations *)
 
