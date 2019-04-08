@@ -25,6 +25,50 @@ type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;
 class Model() {
 
 
+
+
+  /**
+   Misc helpers
+   ==================
+   */
+
+  private debug (t:Text)   { print t };
+  private debugInt (i:Int) { printInt i };
+
+  private debugOff (t:Text)   {  };
+  private debugIntOff (i:Int) {  };
+
+  private unwrap<T>(ox:?T) : T {
+    switch ox {
+    case (null) { assert false ; unwrap<T>(ox) };
+    case (?x) x;
+    }
+  };
+
+  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+
+  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
+
+  private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
+
+  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
+
+  private keyOf(x:Nat):Key<Nat> {
+    new { key = x ; hash = idHash(x) }
+  };
+
+  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
+    new { key = (x,y) ; hash = idPairHash(x,y) }
+  };
+
+  /**
+   Misc counters
+   ==================
+   */
+
+  var joinCount = 0;
+
+
 /**
 
 Representation
@@ -444,11 +488,11 @@ secondary maps.
 
   private var inventoryByRegion : ByRegionInventoryMap = null;
 
-  /** 
-   
+  /**
+
    Reserved inventory by produce and region
    --------------------------------------------
-   
+
    The `produceMarketInfo` query asks the server for market info:
 
    > the last sales price for produce within a given geographic area
@@ -600,7 +644,7 @@ than the MVP goals, however.
     };
 
     /**- Update the producer's inventory collection to hold the new inventory document: */
-    let updatedInventory = 
+    let updatedInventory =
       Map.insertFresh<InventoryId, InventoryDoc>(
         producer_.inventory,
         keyOf(item.id),
@@ -646,7 +690,42 @@ than the MVP goals, however.
       removing this inventory item; use `Trie.remove2D`.
    */
   producerRemInventory(id:InventoryId) : ?() {
-    // xxx rem
+
+/*
+    /// xxx macro for this pattern?
+    let doc = switch (inventoryTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+
+    /// xxx macro for this pattern?
+    let producer = switch (producerTable.getDoc(doc.producer)) {
+      case null { impossible() }
+      case (?x) { x };
+    };
+
+    /// xxx an abstraction to hide these type arguments?
+    let (updatedInventory, _) = Trie.remove(producer.inventory, id, xxx);
+
+    /// xxx syntax for functional record updates?
+    let updatedProducer = {
+      id          = producer.id ;
+      short_name  = producer.short_name ;
+      description = producer.description ;
+      region      = producer.region ;
+      inventory   = updatedInventory ;
+      reserved    = producer.reserved ;
+    };
+
+    producerTable.updateDoc( producer.id, updatedProducer );
+
+    /// xxx an abstraction to hide this assignment, and type args?
+    inventoryByRegion =
+      Trie.remove2D<RegionId, InventoryId, InventoryItem>(
+        inventoryByRegion, producer.region.id, xxx, id, xxx
+      );
+*/
+
     null
   };
 
@@ -719,9 +798,9 @@ than the MVP goals, however.
           cost=cost_;
         };
       });
-    
+
     /**- Update the transporter's routes collection to hold the new route document: */
-    let updatedRoutes = 
+    let updatedRoutes =
       Map.insertFresh<RouteId, RouteDoc>(
         transporter.routes,
         keyOf(route.id),
@@ -731,7 +810,7 @@ than the MVP goals, however.
 
     /**- Update the transporter document; xxx more concise syntax for functional record updates would be nice: */
     let _ = transporterTable.updateDoc(
-      transporter.id, 
+      transporter.id,
       new {
         id = transporter.id;
         short_name = transporter.short_name;
@@ -820,13 +899,13 @@ than the MVP goals, however.
    ====================
    */
 
-  
+
   /**
   `makeReservationInfo`
   ----------------------
-  Prepare reservation information for a server client 
+  Prepare reservation information for a server client
   based on the given inventory and route documents.
-  */  
+  */
   makeReservationInfo(item:InventoryDoc, route:RouteDoc) : ReservationInfo {
     shared {
       produce  =item.produce.id :ProduceId;
@@ -835,7 +914,7 @@ than the MVP goals, however.
       ppu      =item.ppu        :Price;
       weight   =item.weight     :Weight;
       prod_cost=item.quantity * item.ppu:Price;
-      
+
       transporter = route.transporter :TransporterId;
       truck_type  = route.truck_type.id :TruckTypeId;
 
@@ -852,10 +931,10 @@ than the MVP goals, however.
 
   `isCompatibleTruckType`
   ----------------------
-  
+
   Check whether the given truck type can accommodate the given produce type.
 
-  */    
+  */
   isCompatibleTruckType(tt:TruckTypeDoc, produce:ProduceDoc) : Bool {
     // xxx to do
     true
@@ -867,10 +946,10 @@ than the MVP goals, however.
   ----------------------
   Check whether the given retailer can reserve the given item and route pair.
 
-  */    
+  */
 
   isFeasibleReservation(retailer:RetailerDoc, item:InventoryDoc, route:RouteDoc) : Bool {
-    /** - window start: check that the route begins after the inventory window begins */    
+    /** - window start: check that the route begins after the inventory window begins */
     if (item.start_date > route.start_date) {
       debugOff "nope: item start after route start\n";
       return false
@@ -885,24 +964,24 @@ than the MVP goals, however.
       debugOff "nope: truck is not compatible\n";
       return false
     };
-    /** - all checks pass: */    
+    /** - all checks pass: */
     true
   };
-  
-  /** to do: check route window inside of inventory window, e.g., 
+
+  /** to do: check route window inside of inventory window, e.g.,
    by 1 day before and 3 days after on each side: */
 
   /**
    `retailerQueryAll`
    ---------------------------
-   
+
    List all available inventory items and routes for a given retailer.
 
    The business logic:
    - [`isCompatibleTruckType`](#isCompatibleTruckType): Checks truck and produce compatibility.
    - [`isFeasibleReservation`](#isFeasibleReservation): Checks timing constraints.
    - [`makeReservationInfo`](#makereservationinfo): Summarizes the reserved route and inventory documents.
-   
+
    For `Trie`-based DB operations:
    - [`Trie.conj`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#conj): For the inner join on common `RegionId`s of routes and inventory.
    - [`Trie.prod`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#prod): For the catesian product of routes and inventory.
@@ -918,14 +997,14 @@ than the MVP goals, however.
 
     /** - Find the retailer's document: */
     let retailer =
-      switch (retailerTable.getDoc(id)) { 
+      switch (retailerTable.getDoc(id)) {
       case (null) { return null };
-      case (?x) { x }};     
-    
+      case (?x) { x }};
+
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
       switch (Trie.find<RegionId, ByRegionRouteMap>(
-                routesByDstSrcRegions, 
+                routesByDstSrcRegions,
                 keyOf(retailer.region.id),
                 idIsEq
               )) {
@@ -949,31 +1028,31 @@ than the MVP goals, however.
         retailerRoutes,
         inventoryByRegion,
         idIsEq,
-        func (routes:RouteMap, 
-              inventory:ByProducerInventoryMap) : RouteInventoryMap 
+        func (routes:RouteMap,
+              inventory:ByProducerInventoryMap) : RouteInventoryMap
       {
-        
+
         /** - Within this production region, consider every route-item pairing: */
         let product = Trie.prod<RouteId, RouteDoc,
                                 InventoryId, InventoryDoc,
-                                (RouteId, InventoryId), 
+                                (RouteId, InventoryId),
                                 (RouteDoc, InventoryDoc)>(
-          routes,          
+          routes,
           /** - (To perform this Cartesian product, use a 1D inventory map:) */
           Trie.mergeDisjoint2D<ProducerId, InventoryId, InventoryDoc>(
             inventory, idIsEq, idIsEq),
-          
+
           func (route_id:RouteId,
                 route   :RouteDoc,
-                item_id :InventoryId, 
+                item_id :InventoryId,
                 item    :InventoryDoc) :
-            ?(Key<(RouteId, InventoryId)>, 
-              (RouteDoc, InventoryDoc)) 
+            ?(Key<(RouteId, InventoryId)>,
+              (RouteDoc, InventoryDoc))
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
           if (isFeasibleReservation(retailer, item, route)) {
-            ?( keyOfIdPair(route_id, item_id), 
+            ?( keyOfIdPair(route_id, item_id),
                (route, item)
             )
           } else { null }
@@ -983,28 +1062,28 @@ than the MVP goals, however.
         product
       }
       )};
-    
+
     /** - The results are still organized by producer region; merge all such regions: */
     let queryResultsMerged : RouteInventoryMap =
       Trie.mergeDisjoint2D<RegionId, (RouteId, InventoryId), (RouteDoc, InventoryDoc)>(
         queryResults, idIsEq, idPairIsEq);
 
     debug "- query result count: ";
-    debugInt(Trie.count<(RouteId, InventoryId), 
+    debugInt(Trie.count<(RouteId, InventoryId),
                         (RouteDoc, InventoryDoc)>(queryResultsMerged));
     debug " (count of feasible route-item pairs).\n";
-    
+
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
-    let arr = 
-      Trie.toArray<(RouteId, InventoryId), 
+    let arr =
+      Trie.toArray<(RouteId, InventoryId),
                    (RouteDoc, InventoryDoc),
                    ReservationInfo>(
         queryResultsMerged,
         func (_:(RouteId,InventoryId), (r:RouteDoc, i:InventoryDoc))
-          : [ ReservationInfo ] { 
-            [ makeReservationInfo(i, r) ] 
+          : [ ReservationInfo ] {
+            [ makeReservationInfo(i, r) ]
           });
-    
+
     ?arr
   };
 
@@ -1065,7 +1144,7 @@ than the MVP goals, however.
     retailerQueryCount += 1;
 
     // xxx join+filter
-    
+
     null
   };
 
@@ -1106,50 +1185,6 @@ than the MVP goals, however.
     // xxx query+add/rem
     null
   };
-
-
-
-
-  /**
-   Misc helpers
-   ==================
-   */
-
-  private debug (t:Text)   { print t };
-  private debugInt (i:Int) { printInt i };
-
-  private debugOff (t:Text)   {  };
-  private debugIntOff (i:Int) {  };
-
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
-  private idIsEq(x:Nat,y:Nat):Bool { x == y };
-
-  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
-
-  private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
-
-  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
-
-  private keyOf(x:Nat):Key<Nat> {
-    new { key = x ; hash = idHash(x) }
-  };
-
-  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
-    new { key = (x,y) ; hash = idPairHash(x,y) }
-  };
-
-  /**
-   Misc counters
-   ==================
-   */
-
-  var joinCount = 0;
 
 
 };
