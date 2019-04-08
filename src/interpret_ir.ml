@@ -489,7 +489,8 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> assert false
+  | ObjP pfs ->
+     define_field_pats env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -505,6 +506,11 @@ and define_pat env pat v =
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
+
+and define_field_pats env pfs vs =
+  let define_field {it={id; pat}; _} =
+    define_pat env pat (V.Env.find id.it vs) in
+  List.iter define_field pfs
 
 
 and match_lit lit v : bool =
