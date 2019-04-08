@@ -576,7 +576,7 @@ and gather_pat env ve0 pat : val_env =
     | TupP pats ->
       List.fold_left go ve pats
     | ObjP pfs ->
-      List.fold_left go ve (List.map (fun {it={id; pat}; _} -> pat) pfs)
+      List.fold_left go ve (pats_of_obj_pat pfs)
     | AltP (pat1, pat2) ->
       ve
     | OptP pat1
@@ -606,8 +606,7 @@ and check_pat env pat : val_env =
     T.Tup ts <: t;
     ve
   | ObjP pfs ->
-    let pats = List.map (fun {it={id; pat}; _} -> pat) pfs in
-    let ve = check_pats pat.at env pats T.Env.empty in
+    let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
     let tfs = List.map (fun {it={id; pat}; _} -> T.{lab=id.it; typ=pat.note}) pfs in
     let s, _ = T.as_obj t in
     t <: T.Obj (s, tfs);

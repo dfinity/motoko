@@ -152,7 +152,7 @@ and pat' env p = match p with
     let env1 = bind env i None in
     env1
   | TupP ps       -> pats env ps
-  | ObjP pfs      -> pats env (List.map (fun {it={id; pat}; _} -> pat) pfs)
+  | ObjP pfs      -> pats env (pats_of_obj_pat pfs)
   | LitP l        -> env
   | OptP p
   | VariantP (_, p) -> pat env p
