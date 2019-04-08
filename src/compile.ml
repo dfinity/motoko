@@ -4581,8 +4581,19 @@ and fill_pat env pat : patternCode =
             code1 ^^^
             code2 ) in
       CannotFail set_i ^^^ go 0 ps env
-  | ObjP _ ->
-    CanFail(fun _ -> todo "compile_obj_pat" (Arrange_ir.pat pat) (G.i Unreachable))
+  | ObjP pfs ->
+      let t = pat.note in
+      let (set_i, get_i) = new_local env "obj_scrut" in
+      let rec go = function
+        | [] -> CannotFail G.nop
+        | {it={id; pat}; _}::pfs' ->
+          let code1 = fill_pat env pat in
+          let code2 = go pfs' in
+          let name = {id with it=Name id.it} in
+          ( CannotFail (get_i ^^ Object.load_idx env t name) ^^^
+            code1 ^^^
+            code2 ) in
+      CannotFail set_i ^^^ go pfs
   | AltP (p1, p2) ->
       let code1 = fill_pat env p1 in
       let code2 = fill_pat env p2 in

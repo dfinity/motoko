@@ -1,6 +1,2 @@
 objects1.as:22.3-22.16: warning, this case is never reached
 objects1.as:23.3-23.14: warning, this case is never reached
-compile_obj_pat: (ObjP (a (VarP a)))
-compile_obj_pat: (ObjP (a (VarP a)) (b (VarP b)))
-compile_obj_pat: (ObjP (b (VarP result)))
-compile_obj_pat: (ObjP (b (LitP (NatLit 11))))
