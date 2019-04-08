@@ -489,8 +489,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs ->
-     define_field_pats env pfs (V.as_obj v)
+  | ObjP pfs -> define_field_pats env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1

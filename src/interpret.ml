@@ -500,8 +500,7 @@ and match_lit lit v : bool =
   | _ -> false
 
 and assocs_of_obj_pat pfs v =
-  let fs = V.as_obj v in
-  let binding id = V.Env.find id fs in
+  let binding id = V.Env.find id (V.as_obj v) in
   pats_of_obj_pat pfs,
   List.map (fun (pf : Syntax.pat_field) -> binding pf.it.id.it) pfs
 
