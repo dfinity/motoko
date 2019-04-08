@@ -4,7 +4,7 @@ module I = Ir
 module T = Type
 open Construct
 
-(* Combinators used in the desguaring *)
+(* Combinators used in the desugaring *)
 
 let trueE : Ir.exp = boolE true
 let falseE : Ir.exp = boolE false
@@ -219,8 +219,7 @@ and pat' = function
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
   | S.ObjP pfs ->
-    let conv {id;S.pat=p} = {id;I.pat=pat p} in
-    I.ObjP (List.map (fun pf -> {pf with it = conv pf.it}) pfs)
+    I.ObjP (List.map (phrase (fun S.{id; pat=p} -> I.{id; pat=pat p})) pfs)
   | S.OptP p -> I.OptP (pat p)
   | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
