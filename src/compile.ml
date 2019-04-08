@@ -4572,17 +4572,15 @@ and fill_pat env pat : patternCode =
       CannotFail (Var.set_val env name.it)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
-      let rec go i ps env = match ps with
+      let rec go i = function
         | [] -> CannotFail G.nop
-        | (p::ps) ->
+        | p::ps ->
           let code1 = fill_pat env p in
-          let code2 = go (i+1) ps env in
-          ( CannotFail (get_i ^^ Tuple.load_n (Int32.of_int i)) ^^^
-            code1 ^^^
-            code2 ) in
-      CannotFail set_i ^^^ go 0 ps env
+          let code2 = go (Int32.add i 1l) ps in
+          CannotFail (get_i ^^ Tuple.load_n i) ^^^ code1 ^^^ code2 in
+      CannotFail set_i ^^^ go 0l ps
   | ObjP pfs ->
-      let t = pat.note in
+      let project = Object.load_idx env pat.note in
       let (set_i, get_i) = new_local env "obj_scrut" in
       let rec go = function
         | [] -> CannotFail G.nop
@@ -4590,9 +4588,7 @@ and fill_pat env pat : patternCode =
           let code1 = fill_pat env pat in
           let code2 = go pfs' in
           let name = {id with it=Name id.it} in
-          ( CannotFail (get_i ^^ Object.load_idx env t name) ^^^
-            code1 ^^^
-            code2 ) in
+          CannotFail (get_i ^^ project name) ^^^ code1 ^^^ code2 in
       CannotFail set_i ^^^ go pfs
   | AltP (p1, p2) ->
       let code1 = fill_pat env p1 in
