@@ -11,7 +11,7 @@ type desc =
   | Any
   | Val of V.value
   | NotVal of ValSet.t
-  | Tup of desc list
+  | Product of desc list
   | Opt of desc
   | Tag of desc * id
   | NotTag of TagSet.t
@@ -19,7 +19,7 @@ type desc =
 type ctxt =
   | InOpt of ctxt
   | InTag of ctxt * id
-  | InTup of ctxt * desc list * desc list * pat list * Type.typ list
+  | InProduct of ctxt * desc list * desc list * pat list * Type.typ list
   | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
   | InCase of Source.region * case list * Type.typ
@@ -73,10 +73,10 @@ let rec match_pat ctxt desc pat t sets =
     let ts = Type.as_tup (Type.promote t) in
     let descs =
       match desc with
-      | Tup descs -> descs
+      | Product descs -> descs
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
-    in match_tup ctxt [] descs pats ts sets
+    in match_product ctxt [] descs pats ts sets
   | ObjP pfs ->
     let _, tfs = Type.as_obj (Type.promote t) in
     let pat_of_lab lab =
@@ -89,10 +89,10 @@ let rec match_pat ctxt desc pat t sets =
     let ts = List.map (fun {Type.typ; _} -> typ) tfs in
     let descs =
       match desc with
-      | Tup descs -> descs
+      | Product descs -> descs
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
-    in match_tup ctxt [] descs pats ts sets
+    in match_product ctxt [] descs pats ts sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
@@ -159,12 +159,12 @@ and match_lit ctxt desc v t sets =
   | _ ->
     assert false
 
-and match_tup ctxt descs_r descs pats ts sets =
+and match_product ctxt descs_r descs pats ts sets =
   match descs, pats, ts with
   | [], [], [] ->
-    succeed ctxt (Tup (List.rev descs_r)) sets
+    succeed ctxt (Product (List.rev descs_r)) sets
   | desc::descs', pat::pats', t::ts' ->
-    match_pat (InTup (ctxt, descs_r, descs', pats', ts')) desc pat t sets
+    match_pat (InProduct (ctxt, descs_r, descs', pats', ts')) desc pat t sets
   | _ ->
     assert false
     
@@ -175,8 +175,8 @@ and succeed ctxt desc sets : bool =
     succeed ctxt' (Opt desc) sets
   | InTag (ctxt', t) ->
     succeed ctxt' (Tag (desc, t)) sets
-  | InTup (ctxt', descs_r, descs, pats, ts) ->
-    match_tup ctxt' (desc::descs_r) descs pats ts sets
+  | InProduct (ctxt', descs_r, descs, pats, ts) ->
+    match_product ctxt' (desc::descs_r) descs pats ts sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
     sets.reached_alts <- AtSet.add at1 sets.reached_alts;
     succeed ctxt' desc sets
@@ -201,8 +201,8 @@ and fail ctxt desc sets : bool =
     fail ctxt' (Opt desc) sets
   | InTag (ctxt', id) ->
     fail ctxt' (Tag (desc, id)) sets
-  | InTup (ctxt', descs', descs, pats, _ts) ->
-    fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
+  | InProduct (ctxt', descs', descs, pats, _ts) ->
+    fail ctxt' (Product (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
     match_pat (InAlt2 (ctxt', pat2.at)) desc pat2 t sets
   | InAlt2 (ctxt', at2) ->
