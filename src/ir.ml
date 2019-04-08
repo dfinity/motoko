@@ -116,3 +116,6 @@ let pats_of_obj_pat pfs = List.map (fun {Source.it={id; pat}; _} -> pat) pfs
 
 let map_obj_pat f pfs =
   List.map (fun ({Source.it={id; pat}; _} as pf) -> {pf with Source.it={id; pat=f pat}}) pfs
+
+let replace_obj_pat pfs pats =
+  List.map2 (fun ({Source.it={id; _}; _} as pf) pat -> {pf with Source.it={id; pat}}) pfs pats

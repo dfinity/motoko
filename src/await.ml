@@ -433,7 +433,7 @@ and rename_pat' pat =
     (patenv,TupP pats')
   | ObjP pfs ->
     let (patenv, pats') = rename_pats (pats_of_obj_pat pfs) in
-    let pfs' = List.map2 (fun ({it={id; _}; _} as pf) pat -> {pf with it={id; pat}}) pfs pats' in
+    let pfs' = replace_obj_pat pfs pats' in
     (patenv, ObjP pfs')
   | OptP pat1 ->
     let (patenv,pat1) = rename_pat pat1 in
