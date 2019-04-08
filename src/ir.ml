@@ -113,3 +113,6 @@ type prog = (dec list * exp) * flavor
 (* object pattern helpers *)
 
 let pats_of_obj_pat pfs = List.map (fun {Source.it={id; pat}; _} -> pat) pfs
+
+let map_obj_pat f pfs =
+  List.map (fun ({Source.it={id; pat}; _} as pf) -> {pf with Source.it={id; pat=f pat}}) pfs

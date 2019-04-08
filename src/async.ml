@@ -381,7 +381,7 @@ module Transform() = struct
     | TupP pats ->
       TupP (List.map t_pat pats)
     | ObjP pfs ->
-      ObjP (List.map (fun ({it={id; pat}; _} as pf) -> {pf with it={id; pat=t_pat pat}}) pfs)
+      ObjP (map_obj_pat t_pat pfs)
     | OptP pat1 ->
       OptP (t_pat pat1)
     | VariantP (i, pat1) ->
