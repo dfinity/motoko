@@ -4412,9 +4412,7 @@ and compile_exp (env : E.t) exp =
 
     let rec go env cs = match cs with
       | [] -> CanFail (fun k -> k)
-      | ((c : case)::cs) ->
-          let pat = c.it.pat in
-          let e = c.it.exp in
+      | {it={pat; exp}; _}::cs ->
           let (env1, code) = compile_pat_local env pat in
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
