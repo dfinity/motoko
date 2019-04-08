@@ -21,4 +21,6 @@ func get_b () : Int = switch (o) {
   case {b = result} result;
   case {a; b} b;
   case {a} 42
-}
+};
+
+assert(get_b () == 0)
