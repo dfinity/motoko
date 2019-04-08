@@ -108,3 +108,8 @@ type flavor = {
 (* Program *)
 
 type prog = (dec list * exp) * flavor
+
+
+(* object pattern helpers *)
+
+let pats_of_obj_pat pfs = List.map (fun {Source.it={id; pat}; _} -> pat) pfs

@@ -96,7 +96,7 @@ and pat' rho p = match p with
   | TupP ps       -> let (ps, rho') = pats rho ps in
                      (TupP ps, rho')
   | ObjP pfs      ->
-    let (pats, rho') = pats rho (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) in
+    let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
     (ObjP (List.map2 (fun ({it={id; _}; _} as pf) pat -> {pf with it={id; pat}}) pfs pats), rho')
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in

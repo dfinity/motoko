@@ -464,7 +464,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | ObjP pfs -> declare_pats (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) V.Env.empty
+  | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | VariantP (_, pat1) -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1

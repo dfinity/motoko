@@ -499,8 +499,6 @@ and match_lit lit v : bool =
   | PreLit _, _ -> assert false
   | _ -> false
 
-and pats_of_obj_pat = List.map (fun (pf : Syntax.pat_field) -> pf.it.pat)
-
 and assocs_of_obj_pat pfs v =
   let fs = V.as_obj v in
   let binding id = V.Env.find id fs in

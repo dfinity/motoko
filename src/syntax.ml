@@ -204,6 +204,11 @@ let as_seqT t =
   | TupT ts -> ts
   | _ -> [t]
 
+(* object pattern helpers *)
+
+let pats_of_obj_pat pfs = List.map (fun {Source.it={id; pat}; _} -> pat) pfs
+
+
 (* Literals *)
 
 let string_of_lit = function

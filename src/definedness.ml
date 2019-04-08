@@ -126,7 +126,7 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
-  | ObjP pfs      -> pats msgs (List.map (fun (pf : Syntax.pat_field) -> pf.it.pat) pfs)
+  | ObjP pfs      -> pats msgs (pats_of_obj_pat pfs)
   | AnnotP (p, _)
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)

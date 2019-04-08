@@ -792,7 +792,7 @@ and infer_pat' env pat : T.typ * val_env =
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
   | ObjP pfs ->
-    let pats = List.map (fun (pf : pat_field) -> pf.it.pat) pfs in
+    let pats = pats_of_obj_pat pfs in
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     let labs = List.map (fun (pf : pat_field) -> pf.it.id.it) pfs in
     let s = T.(Object Local) in
@@ -971,7 +971,7 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
-  | ObjP pfs -> List.fold_right pub_pat (List.map (fun (pf : pat_field) -> pf.it.pat) pfs) xs
+  | ObjP pfs -> List.fold_right pub_pat (pats_of_obj_pat pfs) xs
   | AltP (pat1, _)
   | OptP pat1
   | VariantP (_, pat1)
@@ -1201,7 +1201,7 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | ObjP pfs -> List.fold_left (gather_pat env) ve (List.map (fun (pf : pat_field) -> pf.it.pat) pfs)
+  | ObjP pfs -> List.fold_left (gather_pat env) ve (pats_of_obj_pat pfs)
   | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =
