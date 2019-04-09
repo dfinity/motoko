@@ -165,7 +165,7 @@ $(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as 
 #	@echo $(DONE)
 
 PRODUCE_EXCHANGE_SRC=\
-  prelude.as hash.as list.as assocList.as trie.as docTable.as \
+	prelude.as hash.as list.as assocList.as trie.as docTable.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
