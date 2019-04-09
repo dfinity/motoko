@@ -13,9 +13,12 @@ We consider two representations for a hash value:
  - as a linked list of booleans, as `BitList` below; or,
  - as a "bit vector" packed into a `Word` type (viz., `Word32`).
 
+
+### Why?
+
 Initially, during the first implementation of some of the standard
 library (e.g., for hash tries), we didn't have access to `Word`-based
-operations and hence used bit lists instead.
+operations and hence we instead used bit lists.
 
 Bit lists are closest to the mathematical definition of finite, but
 unbounded bit strings, but the `Word32` provides more efficient

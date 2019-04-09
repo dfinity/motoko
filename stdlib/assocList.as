@@ -148,7 +148,7 @@ let AssocList = new {
   };
 
   /**
-   `conj`
+   `join`
    ---------
    This operation generalizes the notion of "set intersection" to
    finite maps.  Produces a "conjuctive image" of the two lists, where
@@ -156,7 +156,7 @@ let AssocList = new {
    operator, and unmatched key-value pairs are not present in the output.
   
   */
-  func conj<K,V,W,X>(al1 : AssocList<K,V>,
+  func join<K,V,W,X>(al1 : AssocList<K,V>,
                      al2:AssocList<K,W>,
                      keq:(K,K)->Bool,
                      vbin:(V,W)->X)

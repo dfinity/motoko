@@ -384,7 +384,7 @@ let Trie = new {
    See also:
 
    - [`disj`](#disj)
-   - [`conj`](#conj)
+   - [`join`](#join)
    - [`prod`](#prod)
 
    */
@@ -574,7 +574,7 @@ let Trie = new {
 
    See also:
 
-   - [`conj`](#conj)
+   - [`join`](#join)
    - [`merge`](#merge)
    - [`prod`](#prod)
 
@@ -642,7 +642,7 @@ let Trie = new {
   };
 
   /** 
-   `conj`
+   `join`
    ---------
    This operation generalizes the notion of "set intersection" to
    finite maps.  Produces a "conjuctive image" of the two tries, where
@@ -658,7 +658,7 @@ let Trie = new {
    - [`prod`](#prod)
 
    */
-  func conj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
+  func join<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
     : Trie<K,X>
   {
@@ -690,7 +690,7 @@ let Trie = new {
 	                  assert(isLeaf<K,V>(tl));
 	                  assert(isLeaf<K,W>(tr));
                     makeLeaf<K,X>(
-                      AssocList.conj<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
+                      AssocList.join<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
                     )
 	                };
 	           }
@@ -717,7 +717,7 @@ let Trie = new {
    See also:
 
    - [`disj`](#disj)
-   - [`conj`](#conj)
+   - [`join`](#join)
    - [`merge`](#merge)
 
    */

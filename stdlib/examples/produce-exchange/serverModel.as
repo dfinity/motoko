@@ -987,7 +987,7 @@ TODO
    - [`makeReservationInfo`](#makereservationinfo): Summarizes the reserved route and inventory documents.
 
    For `Trie`-based DB operations:
-   - [`Trie.conj`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#conj): For the inner join on common `RegionId`s of routes and inventory.
+   - [`Trie.join`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#join): For the inner join on common `RegionId`s of routes and inventory.
    - [`Trie.prod`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
@@ -1025,7 +1025,7 @@ TODO
     /** - Join: For each production region, consider all routes and inventory: */
     let queryResults : Trie<RegionId, RouteInventoryMap> = {
       retailerJoinCount += 1;
-      Trie.conj<RegionId,
+      Trie.join<RegionId,
                 RouteMap,
                 ByProducerInventoryMap,
                 RouteInventoryMap>(

@@ -67,7 +67,7 @@ let Set = new {
 
   func intersect<T>(s1:Set<T>, s2:Set<T>, eq:(T,T)->Bool):Set<T> {
     let noop : ((),())->(()) = func (_:(),_:()):(())=();
-    let s3 = Trie.conj<T,(),(),()>(s1, s2, eq, noop);
+    let s3 = Trie.join<T,(),(),()>(s1, s2, eq, noop);
     s3
   };
 
