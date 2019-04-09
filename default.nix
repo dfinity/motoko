@@ -105,8 +105,11 @@ rec {
       "stdlib/"
       "stdlib/.*Makefile.*"
       "stdlib/.*.as"
+      "stdlib/examples/"
       "stdlib/examples/produce-exchange/"
       "stdlib/examples/produce-exchange/.*.as"
+      "stdlib/examples/produce-exchange/test/"
+      "stdlib/examples/produce-exchange/test/.*.as"
       ];
 
     buildInputs =
@@ -122,7 +125,7 @@ rec {
     buildPhase = ''
       patchShebangs .
       asc --version
-      make -C stdlib ASC=asc all
+      make -C stdlib ASC=asc alltests
       make -C samples ASC=asc all
     '' +
       (if test-dvm
