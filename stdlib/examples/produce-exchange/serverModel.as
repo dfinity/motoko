@@ -189,6 +189,44 @@ secondary maps.
   );
 
   /**
+   `producerTable`
+   -----------------
+   */
+
+  var producerTable : ProducerTable =
+    DocTable<ProducerId, ProducerDoc, ProducerInfo>(
+    0,
+    func(x:ProducerId):ProducerId{x+1},
+    func(x:ProducerId,y:ProducerId):Bool{x==y},
+    idHash,
+    func(doc:ProducerDoc):ProducerInfo = shared {
+      id=doc.id;
+      short_name=doc.short_name;
+      description=doc.description;
+      region=doc.region.id;
+      inventory=[];
+      reserved=[];
+    },
+    func(info:ProducerInfo):?ProducerDoc =
+      switch (regionTable.getDoc(info.region)) {
+        case (?regionDoc) {
+               ?(new {
+                   id=info.id;
+                   short_name=info.short_name;
+                   description=info.description;
+                   region=regionDoc;
+                   inventory=Table.empty<InventoryId, InventoryDoc>();
+                   reserved=Table.empty<ReservedInventoryId, ReservedInventoryDoc>();
+                 }
+               )};
+        case (null) {
+               null
+             };
+      }
+    );
+
+
+  /**
    `inventoryTable`
    ---------------
    */
@@ -233,76 +271,6 @@ secondary maps.
       }}
     );
 
-  /**
-   `reservedInventoryTable`
-   ---------------------------
-   */
-
-  var reservedInventoryTable : ReservedInventoryTable =
-    DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
-    0,
-    func(x:ReservedInventoryId):ReservedInventoryId{x+1},
-    func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
-    idHash,
-    func(doc:ReservedInventoryDoc):ReservedInventoryInfo = shared {
-      id=doc.id;
-      item=doc.item.id;
-      retailer=doc.retailer
-    },
-    func(info:ReservedInventoryInfo):?ReservedInventoryDoc = {
-      // validate the info's item id
-      switch (inventoryTable.getDoc(info.id),
-              retailerTable.getDoc(info.retailer)) {
-        case (?item, ?_) {
-               ?(new {
-                   id=info.id;
-                   item=item:InventoryDoc;
-                   retailer=info.retailer;
-                 })
-             };
-        case _ {
-               null
-             }
-      }}
-    );
-
-
-  /**
-   `producerTable`
-   -----------------
-   */
-
-  var producerTable : ProducerTable =
-    DocTable<ProducerId, ProducerDoc, ProducerInfo>(
-    0,
-    func(x:ProducerId):ProducerId{x+1},
-    func(x:ProducerId,y:ProducerId):Bool{x==y},
-    idHash,
-    func(doc:ProducerDoc):ProducerInfo = shared {
-      id=doc.id;
-      short_name=doc.short_name;
-      description=doc.description;
-      region=doc.region.id;
-      inventory=[];
-      reserved=[];
-    },
-    func(info:ProducerInfo):?ProducerDoc =
-      switch (regionTable.getDoc(info.region)) {
-        case (?regionDoc) {
-               ?(new {
-                   id=info.id;
-                   short_name=info.short_name;
-                   description=info.description;
-                   region=regionDoc;
-                   inventory=inventoryTable.empty();
-                   reserved=reservedInventoryTable.empty();
-                 }
-               )};
-        case (null) {
-               null
-             };
-      }
-    );
 
   /**
    `transporterTable`
@@ -327,8 +295,8 @@ secondary maps.
             id=info.id;
             short_name=info.short_name;
             description=info.description;
-            routes=routeTable.empty();
-            reserved=reservedRouteTable.empty();
+            routes=Table.empty<RouteId, RouteDoc>();
+            reserved=Table.empty<ReservedRouteId, ReservedRouteDoc>();
           })
     );
 
@@ -414,6 +382,40 @@ secondary maps.
         }}
     );
 
+
+  /**
+   `reservedInventoryTable`
+   ---------------------------
+   */
+
+  var reservedInventoryTable : ReservedInventoryTable =
+    DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
+    0,
+    func(x:ReservedInventoryId):ReservedInventoryId{x+1},
+    func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
+    idHash,
+    func(doc:ReservedInventoryDoc):ReservedInventoryInfo = shared {
+      id=doc.id;
+      item=doc.item.id;
+      retailer=doc.retailer
+    },
+    func(info:ReservedInventoryInfo):?ReservedInventoryDoc = {
+      // validate the info's item id
+      switch (inventoryTable.getDoc(info.id),
+              retailerTable.getDoc(info.retailer)) {
+        case (?item_, ?_) {
+               ?(new {
+                   id=info.id;
+                   item=item_:InventoryDoc;
+                   retailer=info.retailer;
+                 })
+             };
+        case _ {
+               null
+             }
+      }}
+    );
+
   /**
    `reservedRouteTable`
    ----------------
@@ -434,10 +436,10 @@ secondary maps.
       // validate the info's item id
       switch (routeTable.getDoc(info.id),
               retailerTable.getDoc(info.retailer)) {
-        case (?route, ?_) {
+        case (?route_, ?_) {
                ?(new {
                    id=info.id;
-                   route=route:RouteDoc;
+                   route=route_:RouteDoc;
                    retailer=info.retailer;
                  })
              };
