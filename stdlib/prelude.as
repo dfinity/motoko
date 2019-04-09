@@ -35,7 +35,7 @@ func xxx() : None = nyi();
  trap in all execution contexts.
 
 */
-func impossible() : None = { assert false ; nyi(); };
+func unreachable() : None = { assert false ; nyi(); };
 
 /***
 
@@ -47,7 +47,7 @@ func impossible() : None = { assert false ; nyi(); };
 */
 func assertSome<X>( x : ?X ) = { 
   switch x { 
-    case null { impossible() };
+    case null { unreachable() };
     case (?_) { };
   }
 };

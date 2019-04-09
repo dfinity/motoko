@@ -702,7 +702,7 @@ than the MVP goals, however.
     /**- remove document from `producerTable`, in several steps: */
     /// xxx macro for this pattern?
     let producer = switch (producerTable.getDoc(doc.producer)) {
-      case null { impossible() };
+      case null { unreachable() };
       case (?x) { x };
     };
 
