@@ -682,26 +682,24 @@ than the MVP goals, however.
    `producerRemInventory`
    ---------------------------
 
+   Remove the given inventory item from the exchange.
 
-   **Implementation summary:**
-
-    - remove from the inventory in inventory table; use `Trie.removeThen`
-    - if successful, look up the producer ID; should not fail; `Trie.find`
-    - update the producer, removing this inventory; use `Trie.{replace,remove}`
-    - finally, use producer's region to update inventoryByRegion table,
-      removing this inventory item; use `Trie.remove2D`.
    */
   producerRemInventory(id:InventoryId) : ?() {
-/*
-TODO
+
+    /**- validate the `id` */
     /// xxx macro for this pattern?
     let doc = switch (inventoryTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    inventoryTable.remove( id );
+    /**- remove document from `inventoryTable` */
+    assertSome<InventoryDoc>(
+      inventoryTable.rem( id )
+    );
 
+    /**- remove document from `producerTable`, in several steps: */
     /// xxx macro for this pattern?
     let producer = switch (producerTable.getDoc(doc.producer)) {
       case null { impossible() };
@@ -709,8 +707,9 @@ TODO
     };
 
     /// xxx an abstraction to hide these type arguments?
-    let (updatedInventory, _) = 
-      Trie.remove(producer.inventory, id, xxx);
+    let (updatedInventory, _) =
+      Trie.remove<InventoryId, InventoryDoc>(
+        producer.inventory, keyOf(id), idIsEq);
 
     /// xxx syntax for functional record updates?
     let updatedProducer = new {
@@ -722,14 +721,23 @@ TODO
       reserved    = producer.reserved ;
     };
 
-    producerTable.updateDoc( producer.id, updatedProducer );
+    assertSome<ProducerDoc>(
+      producerTable.updateDoc( producer.id, updatedProducer )
+    );
 
-    /// xxx an abstraction to hide this assignment, and type args?
-    inventoryByRegion :=
-      Trie.remove2D<RegionId, InventoryId, InventoryItem>(
-        inventoryByRegion, producer.region.id, xxx, id, xxx
+    /**- remove document from table `inventoryByRegion`: */
+    /// xxx an abstraction to hide this tuple projection, assignment, and type args?
+    inventoryByRegion := {
+      let (t, d) = Trie.remove3D<RegionId, ProducerId, InventoryId, InventoryDoc>(
+        inventoryByRegion,
+        keyOf(producer.region.id), idIsEq,
+        keyOf(producer.id), idIsEq,
+        keyOf(id), idIsEq
       );
-*/
+      assertSome<InventoryDoc>(d);
+      t
+    };
+
     ?()
   };
 

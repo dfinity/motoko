@@ -36,3 +36,18 @@ func xxx() : None = nyi();
 
 */
 func impossible() : None = { assert false ; nyi(); };
+
+/***
+
+ assertSome
+ --------------------
+
+ Assert that the given value is not `null`; ignore this value and return unit.
+
+*/
+func assertSome<X>( x : ?X ) = { 
+  switch x { 
+    case null { impossible() };
+    case (?_) { };
+  }
+};

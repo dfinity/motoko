@@ -94,7 +94,7 @@ type Trie<K,V> = ?Node<K,V>;
  Association lists
  -----------------
  Notice above that the `Leaf` case uses a list of key-value pairs.
- 
+
  See [this document](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md) for more details.
 */
 
@@ -134,7 +134,7 @@ let Trie = new {
    */
   func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
-  /** 
+  /**
    `copy`
    ---------
    Purely-functional representation permits _O(1)_-time copy, via persistent sharing.
@@ -142,7 +142,7 @@ let Trie = new {
    */
 
   func copy<K, V>(t : Trie<K, V>) : Trie<K, V> = t;
-  
+
   /**
    `replace`
    ---------
@@ -205,7 +205,7 @@ let Trie = new {
     }
   };
 
-  /** 
+  /**
    `insert`
    ------------
    insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
@@ -264,13 +264,13 @@ let Trie = new {
   {
     let inner1 = find<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq);
     let (updated_inner1, _) = switch inner1 {
-    case (null)   { 
+    case (null)   {
            insert<K2,Trie<K3,V>>(
              null, k2, k2_eq,
              (insert<K3,V>(null, k3, k3_eq, v)).0
-           )           
+           )
          };
-    case (?inner1) { 
+    case (?inner1) {
            let inner2 = find<K2,Trie<K3,V>>(inner1, k2, k2_eq);
            let (updated_inner2, _) = switch inner2 {
            case (null) { insert<K3,V>(null, k3, k3_eq, v) };
@@ -283,8 +283,8 @@ let Trie = new {
     updated_outer;
   };
 
-  /** 
-   `remove`   
+  /**
+   `remove`
    -------------
    remove the given key's value in the trie; return the new trie
    */
@@ -292,7 +292,7 @@ let Trie = new {
     replace<K,V>(t, k, k_eq, null)
   };
 
-  /** 
+  /**
    `removeThen`
    ------------
    remove the given key's value in the trie,
@@ -310,9 +310,9 @@ let Trie = new {
       case (?v) { success(t2, v) };
     }
   };
-  
 
-  /** 
+
+  /**
    `remove2D`
    --------------
    remove the given key-key pair's value in the 2D trie; return the
@@ -337,7 +337,36 @@ let Trie = new {
     }
   };
 
-  /** 
+  /**
+   `remove3D`
+   ---------------
+   remove the given key-key pair's value in the 3D trie; return the
+   new trie, and the prior value, if any.
+   */
+  func remove3D<K1,K2,K3,V>
+    (t : Trie3D<K1,K2,K3,V>,
+     k1:Key<K1>, k1_eq:(K1,K1)->Bool,
+     k2:Key<K2>, k2_eq:(K2,K2)->Bool,
+     k3:Key<K3>, k3_eq:(K3,K3)->Bool,
+    )
+    : (Trie3D<K1,K2,K3,V>, ?V)
+  {
+    switch (find<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq)) {
+    case (null)   {
+           (t, null)
+         };
+    case (?inner) {
+           let (updated_inner, ov) = remove2D<K2,K3,V>(inner, k2, k2_eq, k3, k3_eq);
+           let (updated_outer, _) = {
+             insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner)
+           };
+           (updated_outer, ov)
+         };
+    }
+  };
+
+
+  /**
    `find`
    ---------
    find the given key's value in the trie, or return null if nonexistent
@@ -380,7 +409,7 @@ let Trie = new {
    in common keys. note: the `disj` operation generalizes this `merge`
    operation in various ways, and does not (in general) loose
    information; this operation is a simpler, special case.
-   
+
    See also:
 
    - [`disj`](#disj)
@@ -433,7 +462,7 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  /** 
+  /**
    `mergeDisjoint`
    ----------------
    like `merge`, it merges tries, but unlike `merge`, it signals a
@@ -493,7 +522,7 @@ let Trie = new {
   };
 
 
-  /** 
+  /**
    `mergeDisjoint2D`
    --------------
 
@@ -506,7 +535,7 @@ let Trie = new {
     : Trie<K2,V>
   {
     foldUp<K1,Trie<K2,V>, Trie<K2,V>>
-    ( t, 
+    ( t,
       func (t1:Trie<K2,V>, t2:Trie<K2,V>):Trie<K2,V> {  mergeDisjoint<K2,V>(t1, t2, k2_eq) },
       func (_:K1, t:Trie<K2,V>): Trie<K2,V> { t },
       null )
@@ -641,7 +670,7 @@ let Trie = new {
     rec(tl, tr)
   };
 
-  /** 
+  /**
    `join`
    ---------
    This operation generalizes the notion of "set intersection" to
@@ -700,7 +729,7 @@ let Trie = new {
   };
 
 
-  /** 
+  /**
 
    `prod`
    ---------
@@ -722,20 +751,20 @@ let Trie = new {
 
    */
   func prod<K1,V1,K2,V2,K3,V3>(
-    tl    :Trie<K1,V1>, 
-    tr    :Trie<K2,V2>, 
+    tl    :Trie<K1,V1>,
+    tr    :Trie<K2,V2>,
     op    :(K1,V1,K2,V2) -> ?(Key<K3>,V3),
     k3_eq :(K3,K3) -> Bool
   )
     : Trie<K3,V3>
   {
     /**- binary case: merge disjoint results: */
-    func merge (a:Trie<K3,V3>, b:Trie<K3,V3>) : Trie<K3,V3> = 
+    func merge (a:Trie<K3,V3>, b:Trie<K3,V3>) : Trie<K3,V3> =
       mergeDisjoint<K3,V3>(a, b, k3_eq);
 
     /**- `foldUp` "squared"; something like "`foldUp^2((tl, tr), merge, (insert null <?< op))`", but real: */
-    foldUp<K1, V1, Trie<K3, V3>>( 
-      tl, merge, 
+    foldUp<K1, V1, Trie<K3, V3>>(
+      tl, merge,
       func (k1:K1, v1:V1) : Trie<K3,V3> {
         foldUp<K2, V2, Trie<K3, V3>>(
           tr, merge,
@@ -752,7 +781,7 @@ let Trie = new {
     )
   };
 
-  /** 
+  /**
    `foldUp`
    ------------
    This operation gives a recursor for the internal structure of
@@ -805,7 +834,7 @@ let Trie = new {
     rec(t, x)
   };
 
-  /** 
+  /**
    `exists`
    --------
    Test whether a given key-value pair is present, or not.
@@ -829,7 +858,7 @@ let Trie = new {
   };
 
 
-  /** 
+  /**
    `forAll`
    ---------
    Test whether all key-value pairs have a given property.
@@ -851,7 +880,7 @@ let Trie = new {
       }};
     rec(t)
   };
-  
+
   /**
    `count`
    --------
@@ -1041,7 +1070,7 @@ let Trie = new {
   /**
    Helpers for missing variants
    ==============================
-   Until ActorScript has variant types, we need various helper functions here.  They are uninteresting.   
+   Until ActorScript has variant types, we need various helper functions here.  They are uninteresting.
    */
   // @Omit:
 
@@ -1154,7 +1183,7 @@ let Trie = new {
 
   /**
    More helpers
-   ==============================   
+   ==============================
    */
 
 
