@@ -50,7 +50,9 @@ let BitVec = new {
   };
 
   func hashOfIntAcc(h:BitVec, i:Int) : BitVec {
-    hashIntAcc(h, i)
+    //hashIntAcc(h, i)
+    // xxx use the value h
+    hashInt(i)
   };
 
   /** Test if two lists of bits are equal. */
