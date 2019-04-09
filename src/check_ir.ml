@@ -178,16 +178,23 @@ let rec check_typ env typ : unit =
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
-    let rec sorted fields =
-      match fields with
-      | []
-      | [_] -> true
+    let rec sorted = function
+      | [] | [_] -> true
       | f1::((f2::_) as fields') ->
         T.compare_field f1 f2  < 0 && sorted fields'
     in
     check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
     check env no_region (sorted fields) "object type's fields are not sorted"
+  | T.Variant cts ->
+    let rec sorted = function
+      | [] | [_] -> true
+      | (c1, _)::(((c2, _)::_) as summands') ->
+        compare c1 c2  < 0 && sorted summands'
+    in
+    check_ids env (List.map fst cts);
+    List.iter (check_typ_summand env) cts;
+    check env no_region (sorted cts) "variant type's constructors are not sorted"
   | T.Mut typ ->
     check_typ env typ
   | T.Serialized typ ->
@@ -206,6 +213,8 @@ and check_typ_field env s typ_field : unit =
      (s = T.Object T.Local || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
 
+and check_typ_summand env (c, typ) : unit =
+  check_typ env typ
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -311,6 +320,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | OptE exp1 ->
     check_exp env exp1;
     T.Opt (typ exp1) <: t;
+  | VariantE (i, exp1) ->
+    check_exp env exp1;
+    T.Variant [(i.it, typ exp1)] <: t;
   | ProjE (exp1, n) ->
     begin
     check_exp env exp1;
@@ -489,31 +501,25 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, cc, typ_binds, args, ret_ty, exp) ->
+  | FuncE (x, cc, typ_binds, args, ret_tys, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
-    check_typ env' ret_ty;
-    check ((cc.Value.sort = T.Sharable && Type.is_async ret_ty)
+    List.iter (check_typ env') ret_tys;
+    check ((cc.Value.sort = T.Sharable && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    if (cc.Value.sort = T.Sharable) then check_concrete env exp.at ret_ty;
+    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some ret_ty; async = false} in
+      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at (typ exp) ret_ty;
+    check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    let ts2 = if cc.Value.n_res = 1
-              then [ret_ty]
-              else T.as_seq ret_ty in
-    if (cc.Value.sort = T.Sharable) then begin
-      List.iter (check_concrete env exp.at) ts1;
-      List.iter (check_concrete env exp.at) ts2;
-    end;
+    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
       ( cc.Value.sort, cc.Value.control
-      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2
+      , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
   | ActorE (id, ds, fs, t0) ->
@@ -571,7 +577,8 @@ and gather_pat env ve0 pat : val_env =
       List.fold_left go ve pats
     | AltP (pat1, pat2) ->
       ve
-    | OptP pat1 ->
+    | OptP pat1
+    | VariantP (_, pat1) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -599,6 +606,10 @@ and check_pat env pat : val_env =
   | OptP pat1 ->
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
+    ve
+  | VariantP (i, pat1) ->
+    let ve = check_pat env pat1 in
+    T.Variant [(i.it, pat1.note)] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in

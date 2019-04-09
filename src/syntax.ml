@@ -26,6 +26,7 @@ and typ' =
   | ObjT of obj_sort * typ_field list              (* object *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
+  | VariantT of (id * typ) list                    (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
@@ -101,6 +102,7 @@ and pat' =
   | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
+  | VariantP of id * pat                       (* tagged variant *)
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
   | ParP of pat                                (* parenthesis *)
@@ -132,6 +134,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ObjE of obj_sort * exp_field list          (* object *)
+  | VariantE of id * exp                       (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
@@ -156,7 +159,7 @@ and exp' =
   | AnnotE of exp * typ                        (* type annotation *)
 (*
   | ThrowE of exp list                         (* throw exception *)
-  | TryE of exp * case list                    (* catch eexception *)
+  | TryE of exp * case list                    (* catch exception *)
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
@@ -201,3 +204,19 @@ let as_seqT t =
   | TupT ts -> ts
   | _ -> [t]
 
+(* Literals *)
+
+let string_of_lit = function
+  | BoolLit false -> "false"
+  | BoolLit true  ->  "true"
+  | IntLit n
+  | NatLit n      -> Value.Int.to_string n
+  | Word8Lit n    -> Value.Word8.to_string n
+  | Word16Lit n   -> Value.Word16.to_string n
+  | Word32Lit n   -> Value.Word32.to_string n
+  | Word64Lit n   -> Value.Word64.to_string n
+  | CharLit c     -> string_of_int c
+  | NullLit       -> "null"
+  | TextLit t     -> t
+  | FloatLit f    -> Value.Float.to_string f
+  | PreLit _      -> assert false

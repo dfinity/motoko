@@ -158,6 +158,7 @@ module Transform() = struct
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
       end
     | Opt t -> Opt (t_typ t)
+    | Variant cts -> Variant (map_constr_typ t_typ cts)
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
@@ -220,6 +221,8 @@ module Transform() = struct
       TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
+    | VariantE (i, exp1) ->
+      VariantE (i, t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->
@@ -312,17 +315,16 @@ module Transform() = struct
       begin
         match s with
         | T.Local  ->
-          FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+          FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
         | T.Sharable ->
           begin
             match typ exp with
             | T.Tup [] ->
-              FuncE (x, cc, t_typ_binds typbinds, t_args args, t_typ typT, t_exp exp)
+              FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
               let cc' = Value.message_cc (cc.Value.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
-              let typ' = T.Tup []  in
               let k = fresh_var "k" reply_typ in
               let args' = t_args args @ [ arg_of_exp k ] in
               let typbinds' = t_typ_binds typbinds in
@@ -337,7 +339,7 @@ module Transform() = struct
                   end
                 | _ -> assert false
               in
-              FuncE (x, cc', typbinds', args', typ', exp')
+              FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end
       end
@@ -380,6 +382,8 @@ module Transform() = struct
       TupP (List.map t_pat pats)
     | OptP pat1 ->
       OptP (t_pat pat1)
+    | VariantP (i, pat1) ->
+      VariantP (i, t_pat pat1)
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 

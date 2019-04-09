@@ -152,16 +152,14 @@ let boolE b =
   }
 
 let callE exp1 ts exp2 =
-  let ret_ty = match T.promote (typ exp1) with
-    | T.Func (_, _, tbs, _, ts2) -> T.open_ ts (T.seq ts2)
-    | _ -> assert false in
-  { it = CallE (Value.call_conv_of_typ (typ exp1), exp1, ts, exp2);
+  let fun_ty = typ exp1 in
+  let cc = Value.call_conv_of_typ fun_ty in
+  let arg_ty, ret_ty = T.inst_func_type fun_ty cc.Value.sort ts in
+  { it = CallE (cc, exp1, ts, exp2);
     at = no_region;
     note = { S.note_typ = ret_ty;
              S.note_eff = max_eff (eff exp1) (eff exp2) }
   }
-
-
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -303,7 +301,7 @@ let ignoreE exp =
 (* Mono-morphic function expression *)
 let funcE name t x exp =
   let arg_tys, retty = match t with
-    | T.Func(_, _, _, ts1, ts2) -> ts1, T.seq ts2
+    | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   let args, exp' =
@@ -330,7 +328,7 @@ let funcE name t x exp =
 
 let nary_funcE name t xs exp =
   let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> T.seq ts2
+    | T.Func(_, _, _, _, ts2) -> ts2
     | _ -> assert false in
   let cc = Value.call_conv_of_typ t in
   assert (cc.Value.n_args = List.length xs);

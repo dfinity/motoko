@@ -125,14 +125,15 @@ and exp' env e  : exp' = match e.it with
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
   | OptE e              -> OptE (exp env e)
+  | VariantE (i, e)     -> VariantE (i, exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
-  | FuncE (x, cc, tbs, as_, typT, exp0) ->
+  | FuncE (x, cc, tbs, as_, ret_tys, exp0) ->
     let env1 = { tail_pos = true; info = None} in
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
-    FuncE (x, cc, tbs, as_, typT, exp0')
+    FuncE (x, cc, tbs, as_, ret_tys, exp0')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
@@ -152,7 +153,8 @@ and pat' env p = match p with
     env1
   | TupP ps       -> pats env ps
   | LitP l        -> env
-  | OptP p        -> pat env p
+  | OptP p
+  | VariantP (_, p) -> pat env p
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      env

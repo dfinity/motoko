@@ -266,6 +266,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
     interpret_obj env sort fields k
+  | VariantE (i, exp1) ->
+    interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
@@ -437,6 +439,7 @@ and declare_pat pat : val_env =
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | OptP pat1
+  | VariantP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
@@ -468,6 +471,7 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
+  | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
@@ -510,6 +514,11 @@ and match_pat pat v : val_env option =
     | V.Null -> None
     | _ -> assert false
     )
+  | VariantP (i, pat1) ->
+    let k, v1 = V.as_variant v in
+    if i.it = k
+    then match_pat pat1 v1
+    else None
   | AltP (pat1, pat2) ->
     (match match_pat pat1 v with
     | None -> match_pat pat2 v

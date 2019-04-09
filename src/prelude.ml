@@ -110,7 +110,7 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
   let empty = func k (t:T) = ();
   var result : ?T = null;
   var ks : T -> () = empty;
-  func fullfill(t:T):() {
+  func fulfill(t:T):() {
     switch(result) {
       case null {
         result := ?t;
@@ -130,7 +130,7 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
       case (?t) (k(t));
     };
   };
-  (enqueue,fullfill)
+  (enqueue,fulfill)
 };
 |}
 
@@ -211,59 +211,53 @@ let prim = function
   | "Word32->Char" -> fun v k ->
                       let i = Conv.of_signed_Word32 (as_word32 v)
                       in k (Char i)
-  | "shrs8"
-  | "shrs16"
-  | "shrs"
-  | "shrs64" -> fun v k ->
-                let w, a = as_pair v
-                in k (match w with
-                      | Word8  y -> Word8  (Word8 .shr_s y  (as_word8  a))
-                      | Word16 y -> Word16 (Word16.shr_s y  (as_word16 a))
-                      | Word32 y -> Word32 (Word32.shr_s y  (as_word32 a))
-                      | Word64 y -> Word64 (Word64.shr_s y  (as_word64 a))
-                      | _ -> failwith "shrs")
-  | "popcnt8"
-  | "popcnt16"
-  | "popcnt"
-  | "popcnt64" -> fun v k ->
-                  k (match v with
-                     | Word8  w -> Word8  (Word8. popcnt w)
-                     | Word16 w -> Word16 (Word16.popcnt w)
-                     | Word32 w -> Word32 (Word32.popcnt w)
-                     | Word64 w -> Word64 (Word64.popcnt w)
-                     | _ -> failwith "popcnt")
-  | "clz8"
-  | "clz16"
-  | "clz"
-  | "clz64" -> fun v k ->
-               k (match v with
-                  | Word8  w -> Word8  (Word8. clz w)
-                  | Word16 w -> Word16 (Word16.clz w)
-                  | Word32 w -> Word32 (Word32.clz w)
-                  | Word64 w -> Word64 (Word64.clz w)
-                  | _ -> failwith "clz")
-  | "ctz8"
-  | "ctz16"
-  | "ctz"
-  | "ctz64" -> fun v k ->
-               k (match v with
-                  | Word8  w -> Word8  (Word8. ctz w)
-                  | Word16 w -> Word16 (Word16.ctz w)
-                  | Word32 w -> Word32 (Word32.ctz w)
-                  | Word64 w -> Word64 (Word64.ctz w)
-                  | _ -> failwith "ctz")
 
-  | "btst8"
-  | "btst16"
-  | "btst"
-  | "btst64" -> fun v k ->
-                let w, a = as_pair v
-                in k (match w with
-                      | Word8  y -> Word8  Word8.(and_ y (shl (of_int_u 1) (as_word8  a)))
-                      | Word16 y -> Word16 Word16.(and_ y (shl (of_int_u 1) (as_word16  a)))
-                      | Word32 y -> Word32 (Word32.and_ y (Word32.shl 1l  (as_word32 a)))
-                      | Word64 y -> Word64 (Word64.and_ y (Word64.shl 1L  (as_word64 a)))
-                      | _ -> failwith "btst")
+  | "shrs8" | "shrs16" | "shrs" | "shrs64" ->
+     fun v k ->
+     let w, a = as_pair v
+     in k (match w with
+           | Word8  y -> Word8  (Word8 .shr_s y  (as_word8  a))
+           | Word16 y -> Word16 (Word16.shr_s y  (as_word16 a))
+           | Word32 y -> Word32 (Word32.shr_s y  (as_word32 a))
+           | Word64 y -> Word64 (Word64.shr_s y  (as_word64 a))
+           | _ -> failwith "shrs")
+
+  | "popcnt8" | "popcnt16" | "popcnt" | "popcnt64" ->
+     fun v k ->
+     k (match v with
+        | Word8  w -> Word8  (Word8. popcnt w)
+        | Word16 w -> Word16 (Word16.popcnt w)
+        | Word32 w -> Word32 (Word32.popcnt w)
+        | Word64 w -> Word64 (Word64.popcnt w)
+        | _ -> failwith "popcnt")
+
+  | "clz8" | "clz16" | "clz" | "clz64" ->
+     fun v k ->
+     k (match v with
+        | Word8  w -> Word8  (Word8. clz w)
+        | Word16 w -> Word16 (Word16.clz w)
+        | Word32 w -> Word32 (Word32.clz w)
+        | Word64 w -> Word64 (Word64.clz w)
+        | _ -> failwith "clz")
+
+  | "ctz8" | "ctz16" | "ctz" | "ctz64" ->
+     fun v k ->
+     k (match v with
+        | Word8  w -> Word8  (Word8. ctz w)
+        | Word16 w -> Word16 (Word16.ctz w)
+        | Word32 w -> Word32 (Word32.ctz w)
+        | Word64 w -> Word64 (Word64.ctz w)
+        | _ -> failwith "ctz")
+
+  | "btst8" | "btst16" | "btst" | "btst64" ->
+     fun v k ->
+     let w, a = as_pair v
+     in k (match w with
+           | Word8  y -> Word8  Word8. (and_ y (shl (of_int_u 1) (as_word8  a)))
+           | Word16 y -> Word16 Word16.(and_ y (shl (of_int_u 1) (as_word16 a)))
+           | Word32 y -> Word32 Word32.(and_ y (shl 1l (as_word32 a)))
+           | Word64 y -> Word64 Word64.(and_ y (shl 1L (as_word64 a)))
+           | _ -> failwith "btst")
 
   | "Char->Text" -> fun v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
@@ -273,17 +267,19 @@ let prim = function
   | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
-                    let take_and_mask bits offset = Int32.(logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset]))) in
+                    let open Int32 in
+                    let take_and_mask bits offset =
+                      logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset])) in
+                    let open List in
                     let classify_utf8_leader =
-                      Int32.(function
-                          | ch when logand ch (lognot 0b01111111l) = 0b00000000l -> [take_and_mask 7]
-                          | ch when logand ch (lognot 0b00011111l) = 0b11000000l -> [take_and_mask 5; take_and_mask 6]
-                          | ch when logand ch (lognot 0b00001111l) = 0b11100000l -> [take_and_mask 4; take_and_mask 6; take_and_mask 6]
-                          | ch when logand ch (lognot 0b00000111l) = 0b11110000l -> [take_and_mask 3; take_and_mask 6; take_and_mask 6; take_and_mask 6]
-                          | _ -> failwith "decodeUTF8") in
-                    let nobbles = List.mapi (fun i f -> f i) (classify_utf8_leader (Int32.of_int (Char.code s.[0]))) in
-                    let code = List.fold_left Int32.(fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles
-                    in k (Tup [Word32 (Int32.of_int (List.length nobbles)); Char (Int32.to_int code)])
+                      function
+                      | ch when compare ch 0x80l < 0 -> map take_and_mask [7]
+                      | ch when compare ch 0xe0l < 0 -> map take_and_mask [5; 6]
+                      | ch when compare ch 0xf0l < 0 -> map take_and_mask [4; 6; 6]
+                      | ch                           -> map take_and_mask [3; 6; 6; 6] in
+                    let nobbles = mapi (fun i f -> f i) (classify_utf8_leader (of_int (Char.code s.[0]))) in
+                    let code = fold_left (fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
+                    k (Tup [Word32 (of_int (length nobbles)); Char (to_int code)])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
   | "Array.init" -> fun v k ->
