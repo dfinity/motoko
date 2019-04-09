@@ -19,7 +19,7 @@ let oo = object {
 func get_b () : Int = switch (o) {
   case {b = 11} 22;
   case {b = result} result;
-  case {a; b = b : Int} b;
+  case {b = b : Int; a} b;
   case {a} 42
 };
 
@@ -52,5 +52,5 @@ let row : (Nat, Int, Nat) = (100, -42, 25);
 
 func foo () : Int = switch row {
   //case (25, a : Nat, -25) 42;     // NOT OK: Nat cannot consume all Ints
-  case (a : Int, -25, 25 : Int) 0   
+  case (a : Int, -25, 25 : Int) 0   // OK: 25 is Int by ascription
 }
