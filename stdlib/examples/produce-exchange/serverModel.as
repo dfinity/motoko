@@ -690,25 +690,28 @@ than the MVP goals, however.
       removing this inventory item; use `Trie.remove2D`.
    */
   producerRemInventory(id:InventoryId) : ?() {
-
 /*
+TODO
     /// xxx macro for this pattern?
     let doc = switch (inventoryTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
+    inventoryTable.remove( id );
+
     /// xxx macro for this pattern?
     let producer = switch (producerTable.getDoc(doc.producer)) {
-      case null { impossible() }
+      case null { impossible() };
       case (?x) { x };
     };
 
     /// xxx an abstraction to hide these type arguments?
-    let (updatedInventory, _) = Trie.remove(producer.inventory, id, xxx);
+    let (updatedInventory, _) = 
+      Trie.remove(producer.inventory, id, xxx);
 
     /// xxx syntax for functional record updates?
-    let updatedProducer = {
+    let updatedProducer = new {
       id          = producer.id ;
       short_name  = producer.short_name ;
       description = producer.description ;
@@ -720,13 +723,12 @@ than the MVP goals, however.
     producerTable.updateDoc( producer.id, updatedProducer );
 
     /// xxx an abstraction to hide this assignment, and type args?
-    inventoryByRegion =
+    inventoryByRegion :=
       Trie.remove2D<RegionId, InventoryId, InventoryItem>(
         inventoryByRegion, producer.region.id, xxx, id, xxx
       );
 */
-
-    null
+    ?()
   };
 
   /**
