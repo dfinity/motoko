@@ -9,12 +9,7 @@ shared func baz (sh : Shob) : async Int = async (switch sh {
   case { a; b = { c = ?c } } (a + c)
 });
 
-shared func check (a : Int, b : Int) : async () = async {
-  assert (a == b);
-};
-
-
 async {
   let b = await (baz foo);
-  await (check (b, 42))
+  assert (b == 42);
 };
