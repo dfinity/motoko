@@ -603,14 +603,13 @@ and check_pat env pat : val_env =
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
     let ts = List.map (fun pat -> pat.note) pats in
-    T.Tup ts <: t;
+    t <: T.Tup ts;
     ve
   | ObjP pfs ->
     let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
     let tfs = List.map (fun {it={id; pat}; _} -> T.{lab=id.it; typ=pat.note}) pfs in
-    let appears tf' = List.exists (fun tf -> tf.T.lab = tf'.T.lab) tfs in
-    let s, tfs' = T.as_obj t in
-    T.Obj (s, List.sort T.compare_field tfs) <: T.Obj (s, List.filter appears tfs');
+    let s, _ = T.as_obj t in
+    t <: T.Obj (s, List.sort T.compare_field tfs);
     ve
   | OptP pat1 ->
     let ve = check_pat env pat1 in

@@ -1,11 +1,4 @@
 objects1.as:22.3-22.26: warning, this case is never reached
 objects1.as:23.3-23.14: warning, this case is never reached
-objects1.as:44.3-44.21: warning, this case is never reached
-objects1.as:32.23-38.2: warning, the cases in this switch do not cover all possible values
-objects1.as:42.22-46.2: warning, the cases in this switch do not cover all possible values
-objects1.as:53.21-56.2: warning, the cases in this switch do not cover all possible values
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-objects1.as:37.8-37.16: IR type error, subtype violation:
-  Int
-  Nat
-
+objects1.as:32.23-35.2: warning, the cases in this switch do not cover all possible values
+objects1.as:43.21-45.2: warning, the cases in this switch do not cover all possible values
