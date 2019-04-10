@@ -45,9 +45,39 @@ func unreachable() : None = { assert false ; nyi(); };
  Assert that the given value is not `null`; ignore this value and return unit.
 
 */
-func assertSome<X>( x : ?X ) = { 
-  switch x { 
+func assertSome<X>( x : ?X ) = {
+  switch x {
     case null { unreachable() };
     case (?_) { };
+  }
+};
+
+/***
+
+ assertNull
+ --------------------
+
+ Assert that the given value is `null`; ignore this value and return unit.
+
+*/
+func assertNull<X>( x : ?X ) = {
+  switch x {
+    case null { };
+    case (?_) { unreachable() };
+  }
+};
+
+/***
+
+ printOpInt
+ --------------------
+
+ Print an optional integer.
+
+*/
+func printOpInt( x : ?Int ) = {
+  switch x {
+    case null  { print "null" };
+    case (?x_) { print "?"; printInt x_ };
   }
 };

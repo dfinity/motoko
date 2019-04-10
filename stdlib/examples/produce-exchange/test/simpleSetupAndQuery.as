@@ -95,7 +95,7 @@ actor class Test() = this {
         unwrap<ProducerId>(pra),
         unwrap<ProduceId>(pea), 100, 100, 10, 0, 110, ""
       );
-      let paib = await s.producerAddInventory(
+      let praib = await s.producerAddInventory(
         unwrap<ProducerId>(pra),
         unwrap<ProduceId>(peb), 200, 200, 10, 1, 111, ""
       );
@@ -128,9 +128,57 @@ actor class Test() = this {
         unwrap<ProduceId>(pec), 300, 300, 6, 2, 112, ""
       );
 
-      printEntityCount("Inventory", (await s.getCounts()).inventory_count);
+      printEntityCount("Inventory@time1", (await s.getCounts()).inventory_count);
 
-      // populate with routes
+      ////////////////////////////////////////////////////////////////////////////////////
+
+      /**- remove some of the inventory items added above */
+
+      let x = await s.producerRemInventory(unwrap<InventoryId>(prdib));
+      assertSome<()>(x);
+
+      // a double-remove should return null
+      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(prdib)));
+
+      let y = await s.producerRemInventory(unwrap<InventoryId>(praib));
+      assertSome<()>(y);
+
+      // a double-remove should return null
+      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(praib)));
+
+      printEntityCount("Inventory@time2", (await s.getCounts()).inventory_count);
+
+      ////////////////////////////////////////////////////////////////////////////////////
+
+      /**- update some of the (remaining) inventory items added above */
+
+      let praic2 = await s.producerUpdateInventory(
+        unwrap<InventoryId>(praic),
+        unwrap<ProducerId>(pra),
+        unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
+      );
+      assertSome<()>(praic2);
+
+      let prbia2 = await s.producerUpdateInventory(
+        unwrap<InventoryId>(prbia),
+        unwrap<ProducerId>(prb),
+        unwrap<ProduceId>(peb), 200, 200, 10, 4, 117, ""
+      );
+      assertSome<()>(prbia2);
+
+      let prbib2 = await s.producerUpdateInventory(
+        unwrap<InventoryId>(prbib),
+        unwrap<ProducerId>(prb),
+        unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 115, ""
+      );
+      assertSome<()>(prbib2);
+
+      printEntityCount("Inventory@time3", (await s.getCounts()).inventory_count);
+
+      ////////////////////////////////////////////////////////////////////////////////////
+
+      /**- populate with routes */
+
       let rta_a_c_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(tra),
         unwrap<RegionId>(rega),
@@ -224,7 +272,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      print "\nRetailer queries\n====================================\n";      
+      print "\nRetailer queries\n====================================\n";
 
       // do some queries
       let rra_qa = await s.retailerQueryAll(unwrap<RetailerId>(rra));
@@ -235,7 +283,7 @@ actor class Test() = this {
 
       print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
-      
+
       printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);

@@ -676,7 +676,7 @@ than the MVP goals, however.
         };
       })) {
       case (?item) { item };
-      case (null) { assert false ; return null };
+      case (null) { unreachable() };
       }
     };
 
@@ -750,7 +750,7 @@ than the MVP goals, however.
       }};
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome<()>( producerRemInventory(id_) );
+    assertSome<()>( producerRemInventory(iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
     assertSome<InventoryId>(
