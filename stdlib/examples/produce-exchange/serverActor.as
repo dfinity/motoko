@@ -461,7 +461,28 @@ actor server = {
   ) : async ?InventoryId {
     getModel().
       producerAddInventory(
-        id, prod, quant, weight, ppu, begin, end, comments)
+        null, id, prod, quant, weight, ppu, begin, end, comments)
+  };
+
+  /**
+   `producerUpdateInventory`
+   ------------------------------------------
+
+   */
+  producerUpdateInventory(
+    iid:  InventoryId,
+    id:   ProducerId,
+    prod: ProduceId,
+    quant:Quantity,
+    weight:Weight,
+    ppu:  PricePerUnit,
+    begin:Date,
+    end:  Date,
+    comments: Text,
+  ) : async ?() {
+    getModel().
+      producerUpdateInventory(
+        iid, id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**

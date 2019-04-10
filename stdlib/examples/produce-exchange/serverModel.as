@@ -603,6 +603,7 @@ than the MVP goals, however.
 
   */
   producerAddInventory(
+    iid_       : ?InventoryId,
     id_        : ProducerId,
     produce_id : ProduceId,
     quantity_  : Quantity,
@@ -626,7 +627,7 @@ than the MVP goals, however.
 
     /**- Create the inventory item document: */
     let (_, item) = {
-      switch (inventoryTable.addInfo(
+      switch (inventoryTable.addInfoAs(iid_,
                 func(iid:InventoryId):InventoryInfo{
         shared {
           id        = iid       :InventoryId;
@@ -676,6 +677,57 @@ than the MVP goals, however.
     );
 
     ?item.id
+  };
+
+  /**
+   `producerUpdateInventory`
+   ---------------------------
+
+  */
+  producerUpdateInventory(
+    iid_       : InventoryId,
+    id_        : ProducerId,
+    produce_id : ProduceId,
+    quantity_  : Quantity,
+    weight_    : Weight,
+    ppu_       : Price,
+    start_date_: Date,
+    end_date_  : Date,
+    comments_  : Text,
+  ) : ?()
+  {
+    /**- Validate these ids; fail here if anything is invalid: */
+    let oinventory : ?InventoryDoc = inventoryTable.getDoc(iid_);
+    let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
+    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
+    let (inventory_, oproducer_, produce_) = {
+      switch (oinventory, oproducer, oproduce) {
+      case (?inventory, ?producer, ?produce) {
+             // it's an error if the producer is not fixed across the
+             // update.  i.e., producer A cannot update the inventory
+             // of producer B, only her own.
+             if ( inventory.producer == producer.id ) {
+               (inventory, producer, produce)
+             } else {
+               return null
+             }
+           };
+      case _ { return null };
+      }};
+
+    /**- remove the inventory item; given the validation above, this cannot fail. */
+    assertSome<()>( producerRemInventory(id_) );
+
+    /**- add the (updated) inventory item; given the validation above, this cannot fail. */
+    assertSome<InventoryId>(
+      producerAddInventory(
+        ?iid_, id_,
+        produce_id,
+        quantity_, weight_, ppu_, start_date_, end_date_, comments_ )
+    );
+
+    /**- Success! */
+    ?()
   };
 
   /**

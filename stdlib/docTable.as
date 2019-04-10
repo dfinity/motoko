@@ -5,10 +5,10 @@ Document Table
 ===============
 
 This table abstracts over a set of _documents_, each with a distinct
-id assigned by this abstraction.  
+id assigned by this abstraction.
 
 Documents potentially contain _deep nested structure_, e.g., other
-document collections, etc.  
+document collections, etc.
 
 Each document has a shallow, lossy projection to its _document
 information_; this information may contain more than a unique id, but
@@ -28,25 +28,25 @@ type information.
 
  See also: [private state](#private-state).
 
- notes on representation 
+ notes on representation
  -------------------------
 
- The ActorScript standard library provides several purely-functional finite map representations: 
+ The ActorScript standard library provides several purely-functional finite map representations:
 
- - as association lists (via modules `List` and `AssocList`) 
+ - as association lists (via modules `List` and `AssocList`)
  - and  as hash tries (via (module `Trie`), whose representation uses those lists, for its
  "buckets".
 
  These map representations could change and expand in the future, so we
  introduce the name `Table` here to abstract over the representation
  choice between (for now) using tries (and internally, association lists).
- 
+
  */
 type Table<Id, Doc> = Trie<Id, Doc>;
 let Table = Trie;
 
 /**
- 
+
  Aside: Eventually, we'll likely have a more optimized trie that uses
  small arrays in its leaf nodes.  The current representation is simple,
  uses lots of pointers, and is likely not the optimal candidate for
@@ -58,17 +58,17 @@ let Table = Trie;
 /**
  Client interface
  ===============================
- 
+
  When the client provides the [parameters below](#client-parameters),
 this module [implements the public interface given further
 below](#public-interface).
- 
+
  */
 
 /**
  Client parameters
  ==================
- 
+
  The document table abstracts over the following client choices:
 
  - types `Id`, `Doc` and `Info`.
@@ -92,11 +92,11 @@ class DocTable<Id,Doc,Info>(
 ) = this {
 
 /**
- Public interface 
+ Public interface
  ===============================
 */
 
-  /** 
+  /**
    `empty`
    ---------
 
@@ -104,11 +104,11 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  empty() : Table<Id, Doc> { 
+  empty() : Table<Id, Doc> {
     Table.empty<Id, Doc>()
   };
 
-  /** 
+  /**
    `getTable`
    ---------
 
@@ -120,7 +120,7 @@ class DocTable<Id,Doc,Info>(
     Table.copy<Id, Doc>(table)
   };
 
-  /** 
+  /**
    `addDoc`
    ---------
 
@@ -152,28 +152,57 @@ class DocTable<Id,Doc,Info>(
     oldDoc
   };
 
-  /** 
+  /**
+   `addInfoAs`
+   ---------
+
+   See also [`addInfo`](#addinfo).
+
+   This variant of `addInfo` permits the caller to choose the id, but still insists that it be fresh (not currently in use).
+
+   */
+  addInfoAs(idChoice:?Id, info:Id -> Info) : ?(Id, Doc) {
+    switch idChoice {
+      // subcase: No pre-chosen Id, so mint a new fresh one:
+      case null {
+             let id = idNext;
+             let doc = docOfInfo(info(id));
+             switch doc {
+             case null { null };
+             case (?doc) {
+                    idNext := idIncr(idNext);
+                    table := Table.insertFresh<Id, Doc>
+                    (table, keyOfId(id), idIsEq, doc);
+                    ?(id, doc)
+                  }
+             }
+           };
+      // subcase: Have a pre-chosen Id, so use that; still must be fresh.
+      case (?idChoice_) {
+             let doc = docOfInfo(info(idChoice_));
+             switch doc {
+             case null { null };
+             case (?doc) {
+                    table := Table.insertFresh<Id, Doc>
+                    (table, keyOfId(idChoice_), idIsEq, doc);
+                    ?(idChoice_, doc)
+                  }
+             }
+           };
+      }
+  };
+
+  /**
    `addInfo`
    ---------
 
    See also [`Table.insertFresh`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
 
    */
-
   addInfo(info:Id -> Info) : ?(Id, Doc) {
-    let id = idNext;
-    let doc = docOfInfo(info(id));
-    switch doc {
-      case null { null };
-      case (?doc) {
-             idNext := idIncr(idNext);
-             table := Table.insertFresh<Id, Doc>
-             (table, keyOfId(id), idIsEq, doc);
-             ?(id, doc)
-           }
-    }
+    addInfoAs(null, info)
   };
-  
+
   addInfoGetId(info:Id -> Info) : ?Id {
     switch (addInfo(info)) {
       case null { null };
@@ -181,7 +210,7 @@ class DocTable<Id,Doc,Info>(
     }
   };
 
-  /** 
+  /**
    `rem`
    ---------
 
@@ -223,19 +252,19 @@ class DocTable<Id,Doc,Info>(
     )
   };
 
-  /** 
+  /**
    `getDoc`
    ---------
 
    See also [`Table.find`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#find)
 
    */
-  
+
   getDoc(id:Id) : ?Doc {
     Table.find<Id, Doc>(table, keyOfId(id), idIsEq)
   };
 
-  /** 
+  /**
    `getInfo`
    ---------
    */
@@ -247,10 +276,10 @@ class DocTable<Id,Doc,Info>(
     }
   };
 
-  /** 
+  /**
    `count`
    ---------
-  
+
    See also [`Table.count`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#count)
   */
 
@@ -258,7 +287,7 @@ class DocTable<Id,Doc,Info>(
     Table.count<Id, Doc>(table)
   };
 
-  /** 
+  /**
    `allDoc`
    ---------
 
@@ -270,10 +299,10 @@ class DocTable<Id,Doc,Info>(
     (table, func (id:Id, doc:Doc):[Doc] = [doc] )
   };
 
-  /** 
+  /**
    `allInfo`
    ---------
-   
+
    See also [`Table.toArray`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#toarray)
   */
 
@@ -289,7 +318,7 @@ class DocTable<Id,Doc,Info>(
  */
 
   keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
-  
+
   getIdIsEq() :(Id,Id)->Bool  = idIsEq;
   getIdHash() : Id->Hash      = idHash;
 
@@ -303,7 +332,7 @@ class DocTable<Id,Doc,Info>(
  */
 
   private var idNext:Id = idFirst;
-  
+
   private var table : Table<Id,Doc> = null;
 
 /**
@@ -315,4 +344,3 @@ class DocTable<Id,Doc,Info>(
 /** The end */
 
 }
-  
