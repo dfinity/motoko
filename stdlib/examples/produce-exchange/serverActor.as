@@ -119,6 +119,16 @@ actor server = {
     getModel().userTable.allInfo()
   };
 
+  /**
+   `getUserInfo`
+   ---------------------------
+   Get the information associated with a user, based on its id.
+   */
+  getUserInfo(id:UserId) : async ?UserInfo {
+    getModel()
+      .userTable.getInfo(id)
+  };
+
  /**
  `TruckType`
  ==============
