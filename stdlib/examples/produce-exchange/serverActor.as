@@ -42,6 +42,84 @@ actor server = {
  - `Transporter`.
 
 
+ `User`
+ =========
+ Messages about users.
+
+
+ `registrarAddUser`
+ ----------------------
+ Register a new user, who may play several roles in the exchange.
+
+ */
+
+  registrarAddUser(
+    short_name_: Text,
+    description_: Text,
+    region_: RegionId,
+    isDeveloper_: Bool,
+    isProducer: Bool,
+    isRetailer: Bool,
+    isTransporter: Bool
+  ) : async ?UserId {
+
+    let prId = if isProducer { getModel().producerTable.addInfoGetId(
+      func(id_:ProducerId):ProducerInfo {
+        shared {
+          id=id_:ProducerId;
+          short_name=short_name_;
+          description=description_;
+          region=region_;
+          inventory=[];
+          reserved=[];
+        }
+      }) } else null;
+
+    let trId = if isTransporter { getModel().transporterTable.addInfoGetId(
+      func(id_:TransporterId):TransporterInfo {
+        shared {
+          id=id_:TransporterId;
+          short_name=short_name_;
+          description=description_;
+          routes=[];
+          reserved=[];
+        }
+      }) } else null;
+
+    let rrId = if isRetailer { getModel().retailerTable.addInfoGetId(
+      func(id_:RetailerId):RetailerInfo {
+        shared {
+          id=id_;
+          short_name=short_name_;
+          description=description_;
+          region=region_:RegionId
+        }
+      }) } else null;
+
+    getModel().userTable.addInfoGetId(
+      func (id_: UserId) : UserInfo =
+        shared {
+          id = id_;
+          short_name = short_name_;
+          description = description_;
+          region = region_;
+          producerId = prId;
+          transporterId = trId;
+          retailerId = rrId;
+          isDeveloper = isDeveloper_;
+        })
+  };
+
+  /**
+   `allUserInfo`
+   -------------
+   Get info for all users.
+   */
+  allUserInfo() : async [UserInfo] {
+    getModel().userTable.allInfo()
+  };
+
+ /**
  `TruckType`
  ==============
  Messages about truck types.

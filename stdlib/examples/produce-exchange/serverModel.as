@@ -112,6 +112,40 @@ secondary maps.
 */
 
   /**
+   `userTable`
+   -----------------
+   */
+
+  var userTable : UserTable =
+    DocTable<UserId, UserDoc, UserInfo>(
+    0,
+    func(x:UserId):UserId{x+1},
+    func(x:UserId,y:UserId):Bool{x==y},
+    idHash,
+    func(doc:UserDoc):UserInfo = shared {
+      id=doc.id;
+      short_name=doc.short_name;
+      description=doc.description;
+      region=doc.region;
+      producerId=doc.producerId;
+      transporterId=doc.transporterId;
+      retailerId=doc.retailerId;
+      isDeveloper=doc.isDeveloper;
+    },
+    func(info:UserInfo):?UserDoc = ?(new {
+      id=info.id;
+      short_name=info.short_name;
+      description=info.description;
+      region=info.region;
+      producerId=info.producerId;
+      transporterId=info.transporterId;
+      retailerId=info.retailerId;
+      isDeveloper=info.isDeveloper;
+    }),
+  );
+
+
+  /**
    `truckTypeTable`
    -----------------
    */
