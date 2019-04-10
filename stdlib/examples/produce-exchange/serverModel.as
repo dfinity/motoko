@@ -944,8 +944,7 @@ than the MVP goals, however.
       removing this inventory item; use `Trie.remove2D`.
    */
   transporterRemRoute(id:RouteId) : ?() {
-    // xxx rem
-    null
+    nyi()
   };
 
   /**
@@ -1034,8 +1033,7 @@ than the MVP goals, however.
 
   */
   isCompatibleTruckType(tt:TruckTypeDoc, produce:ProduceDoc) : Bool {
-    // xxx to do
-    true
+    nyi()
   };
 
   /**
@@ -1241,9 +1239,7 @@ than the MVP goals, however.
   {
     retailerQueryCount += 1;
 
-    // xxx join+filter
-
-    null
+    nyi()
   };
 
   /**
@@ -1255,8 +1251,7 @@ than the MVP goals, however.
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
   {
-    // xxx add/rem
-    null
+    nyi()
   };
 
   /**
@@ -1280,8 +1275,7 @@ than the MVP goals, however.
     end:Date
   ) : ?(ReservedInventoryId, ReservedRouteId)
   {
-    // xxx query+add/rem
-    null
+    nyi()
   };
 
 
