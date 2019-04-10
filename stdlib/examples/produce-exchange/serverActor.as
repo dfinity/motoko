@@ -33,6 +33,7 @@ actor server = {
  and remove (`Rem`) function below, prefixed by `registrar`-, and
  suffixed by one of the entities in the following list:
 
+ - `User`,
  - `TruckType`,
  - `Region`,
  - `Produce`,
