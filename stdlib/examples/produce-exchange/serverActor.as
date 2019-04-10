@@ -109,6 +109,14 @@ actor server = {
         })
   };
 
+  /**
+   `allUserInfo`
+   -------------
+   Get info for all users.
+   */
+  allUserInfo() : async [UserInfo] {
+    getModel().userTable.allInfo()
+  };
 
  /**
  `TruckType`
