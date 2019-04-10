@@ -91,6 +91,28 @@ internal sharing:
 
 */
 
+
+
+/**
+`UserDoc`
+-------------
+User documents.
+*/
+
+type UserDoc = {
+  id: UserId;
+  short_name: Text;
+  description: Text;
+  region: RegionId;
+  producerId: ?ProducerId;
+  transporterId: ?TransporterId;
+  retailerId: ?RetailerId;
+  isDeveloper: Bool;
+};
+
+type UserTable =
+  DocTable<UserId, UserDoc, UserInfo>;
+
 /**
  `TruckType` documents
  ==================

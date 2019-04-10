@@ -49,6 +49,8 @@ Externally, these Ids give a unique identifier that is unique to its type, but n
 Internally, each type of Id serves as a "row key" for a table (or two).
 
 */
+type UserId        = Nat;
+
 type RegionId      = Nat;
 type TruckTypeId   = Nat;
 type ProduceId     = Nat;
@@ -65,6 +67,23 @@ type ReservedRouteId = Nat;
 Public info associated with Ids
 =====================================
 */
+
+/**
+`UserInfo`
+-------------
+*/
+
+type UserInfo = shared {
+  id: UserId;
+  short_name: Text;
+  description: Text;
+  region: RegionId;
+  producerId: ?ProducerId;
+  transporterId: ?TransporterId;
+  retailerId: ?RetailerId;
+  isDeveloper: Bool;
+};
+
 
 /**
 `TruckTypeInfo`
