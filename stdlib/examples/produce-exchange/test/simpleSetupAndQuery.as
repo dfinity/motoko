@@ -155,21 +155,21 @@ actor class Test() = this {
       let praic2 = await s.producerUpdateInventory(
         unwrap<InventoryId>(praic),
         unwrap<ProducerId>(pra),
-        unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
+        unwrap<ProduceId>(pec), 666, 300, 10, 2, 112, ""
       );
       assertSome<()>(praic2);
 
       let prbia2 = await s.producerUpdateInventory(
         unwrap<InventoryId>(prbia),
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 200, 200, 10, 4, 117, ""
+        unwrap<ProduceId>(peb), 200, 666, 10, 4, 117, ""
       );
       assertSome<()>(prbia2);
 
       let prbib2 = await s.producerUpdateInventory(
         unwrap<InventoryId>(prbib),
         unwrap<ProducerId>(prb),
-        unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 115, ""
+        unwrap<ProduceId>(peb), 666, 1600, 9, 2, 115, ""
       );
       assertSome<()>(prbib2);
 
