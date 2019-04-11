@@ -870,7 +870,8 @@ and check_pat' env t pat : val_env =
   | ObjP pfs ->
     begin
       try
-        let _, tfs = T.as_obj_sub "" t in
+        let s, tfs = T.as_obj_sub "" t in
+        if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
         check_obj_pats env tfs (List.sort compare_pat_field pfs) T.Env.empty pat.at
       with Invalid_argument _ ->
         error env pat.at "object pattern cannot consume expected type\n  %s"
