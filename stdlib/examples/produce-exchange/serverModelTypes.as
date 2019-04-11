@@ -1,6 +1,6 @@
 /**
 
-[PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
+[Background]($DOCURL/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification)
 --------------------
  
 Server Model Types
@@ -28,7 +28,7 @@ Representation
  ------------
 
  See also: modules for [`Trie`]() 
- and [`DocTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md).
+ and [`DocTable`]($DOCURL/docTable.html).
  
 */
 
@@ -38,7 +38,7 @@ let Map = Trie;
 
 /**
 
-[Document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+[Document tables]($DOCURL/docTable.html)
 --------------------------
 
 Document tables abstract over the various finite map operations we
@@ -53,7 +53,7 @@ Nested document structures
 -----------------------------
 
 Below, we define top-level **document structures** for representing each `Producer`,
-`Retailer` and `Transporter`'s officially published state within the PESS.
+`Retailer` and `Transporter`'s officially published state within the exchange.
 
 Formally, these types define the types of forests (a set of trees with many
 roots) that constitute our internal data model.
@@ -63,7 +63,7 @@ For each kind of structure below, we assume a type of unique Id.
 We associate document information, such as textual names and
 descriptions, where appropriate.
 
-We include other fields from the PESS, such as "units", "grades",
+We include other fields such as "units", "grades",
 "dates" and time intervals (start/end dates), each where appropriate.
 
 Query implementation

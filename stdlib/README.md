@@ -17,7 +17,7 @@ of the [produce exchange example](https://github.com/dfinity-lab/actorscript/tre
 
 See also, the [library modules by priority](#library-modules-by-priority).
 
-[`DocTable`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+[`DocTable`]($DOCURL/docTable.html)
 ----------
 
 A _document table_ abstracts over a **mutable collection of _documents_**,
@@ -36,17 +36,17 @@ See also
     [`Trie`](#trie) 
 and [`AssocList`](#assoclist).
 
-[`Trie`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)
+[`Trie`]($DOCURL/trie.html)
 ----------
 
 Represent a finite map with a _canonical binary tree_, based on hashing each key.
 
-[`AssocList`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md)
+[`AssocList`]($DOCURL/assocList.html)
 ------------
 
 Represent a finite map with an _association list_ a list of key-value pairs.
 
-[`List`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/list.md)
+[`List`]($DOCURL/list.html)
 -----------
 
 Linked lists.

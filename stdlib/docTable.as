@@ -24,7 +24,7 @@ type information.
 /**
  Representation
  ================
- A table is a finite map (currently a [Trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md)) mapping ids to documents.
+ A table is a finite map (currently a [Trie]($DOCURL/trie.html)) mapping ids to documents.
 
  See also: [private state](#private-state).
 
@@ -100,7 +100,7 @@ class DocTable<Id,Doc,Info>(
    `empty`
    ---------
 
-   See also [`Table.empty`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#empty)
+   See also [`Table.empty`]($DOCURL/trie.md#empty)
 
    */
 
@@ -112,7 +112,7 @@ class DocTable<Id,Doc,Info>(
    `getTable`
    ---------
 
-   See also [`Table.copy`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#copy)
+   See also [`Table.copy`]($DOCURL/trie.md#copy)
 
    */
 
@@ -124,7 +124,7 @@ class DocTable<Id,Doc,Info>(
    `addDoc`
    ---------
 
-   See also [`Table.insertFresh`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+   See also [`Table.insertFresh`]($DOCURL/trie.md#insertfresh)
 
    */
 
@@ -141,7 +141,7 @@ class DocTable<Id,Doc,Info>(
    `updateDoc`
    ---------
 
-   See also [`Table.replace`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+   See also [`Table.replace`]($DOCURL/trie.md#insertfresh)
 
    */
 
@@ -196,7 +196,7 @@ class DocTable<Id,Doc,Info>(
    `addInfo`
    ---------
 
-   See also [`Table.insertFresh`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#insertfresh)
+   See also [`Table.insertFresh`]($DOCURL/trie.md#insertfresh)
 
    */
   addInfo(info:Id -> Info) : ?(Id, Doc) {
@@ -214,7 +214,7 @@ class DocTable<Id,Doc,Info>(
    `rem`
    ---------
 
-   See also [`Table.removeThen`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#removeThen)
+   See also [`Table.removeThen`]($DOCURL/trie.md#removeThen)
 
    */
 
@@ -256,7 +256,7 @@ class DocTable<Id,Doc,Info>(
    `getDoc`
    ---------
 
-   See also [`Table.find`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#find)
+   See also [`Table.find`]($DOCURL/trie.md#find)
 
    */
 
@@ -280,7 +280,7 @@ class DocTable<Id,Doc,Info>(
    `count`
    ---------
 
-   See also [`Table.count`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#count)
+   See also [`Table.count`]($DOCURL/trie.md#count)
   */
 
   count() : Nat {
@@ -291,7 +291,7 @@ class DocTable<Id,Doc,Info>(
    `allDoc`
    ---------
 
-   See also [`Table.toArray`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#toarray)
+   See also [`Table.toArray`]($DOCURL/trie.md#toarray)
    */
 
   allDoc() : [Doc] {
@@ -303,7 +303,7 @@ class DocTable<Id,Doc,Info>(
    `allInfo`
    ---------
 
-   See also [`Table.toArray`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#toarray)
+   See also [`Table.toArray`]($DOCURL/trie.md#toarray)
   */
 
   allInfo() : [Info] {

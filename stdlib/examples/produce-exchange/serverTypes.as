@@ -1,13 +1,13 @@
 /**
 
-[PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
+[Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
 --------------------
 
 Server Types
 ==================
 
 This file defines structures that appear the server actor's messaging
-interface.  They are part of the formal PESS definition.
+interface.  They are part of the formal standards definition.
 
 */
 
@@ -15,7 +15,7 @@ interface.  They are part of the formal PESS definition.
 /**
 Basic types
 ---------------------
-These types standardize representations for many common PESS notions
+These types standardize representations for many common notions
 
 */
 
@@ -288,9 +288,9 @@ type ProduceExchangeCounts = shared {
 
 /**
 //
-// PESS: Query parameters and results
+// Query parameters and results
 // ----------------------------------
-// Externally, these types define the input and output structures for PESS queries.
+// Externally, these types define the input and output structures for queries.
 // Internally, producing instances of the result structures will require
 // performing joins based on internal tables, and the information from the input structures.
 
