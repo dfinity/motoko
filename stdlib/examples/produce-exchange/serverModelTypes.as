@@ -1,6 +1,6 @@
 /**
 
-[Background]($DOCURL/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification)
+[Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
 --------------------
  
 Server Model Types

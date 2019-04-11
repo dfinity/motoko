@@ -1,14 +1,3 @@
-/** See `README.md` in this directory. */
-
-/**
-Matt-Says: Let's use markdown in the longer comments, in anticipation
-of a documentation tool for converting ActorScript into Markdown
-files.  I'll use an extra `*` in the opening comment when I expect the
-comment to be processed as markdown.
-*/
-
-// xxx regression tests go here, for now
-
 func unwrap<T>(ox:?T) : T {
   switch ox {
     case (null) { assert false ; unwrap<T>(ox) };
