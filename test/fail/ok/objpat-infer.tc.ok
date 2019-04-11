@@ -1,0 +1,5 @@
+objpat-infer.as:3.36-3.37: type error, object pattern has field a missing in expected type
+objpat-infer.as:16.14-16.23: type error, expression of type
+  shared {}
+cannot produce expected type
+  {}
