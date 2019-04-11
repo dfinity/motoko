@@ -47,14 +47,22 @@ class Model() {
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
+  private userIdIsEq(x:UserId,y:UserId):Bool { x == y };
+
   private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
 
   private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
+
+  private userIdHash(x:UserId):Hash { Hash.hashOfText(x) };
 
   private idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
 
   private keyOf(x:Nat):Key<Nat> {
     new { key = x ; hash = idHash(x) }
+  };
+
+  private keyOfUserId(x:UserId):Key<UserId> {
+    new { key = x ; hash = userIdHash(x) }
   };
 
   private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
@@ -118,10 +126,10 @@ secondary maps.
 
   var userTable : UserTable =
     DocTable<UserId, UserDoc, UserInfo>(
-    0,
-    func(x:UserId):UserId{x+1},
+    "",
+    func(x:UserId):UserId{x},
     func(x:UserId,y:UserId):Bool{x==y},
-    idHash,
+    userIdHash,
     func(doc:UserDoc):UserInfo = shared {
       id=doc.id;
       short_name=doc.short_name;
@@ -229,10 +237,10 @@ secondary maps.
 
   var producerTable : ProducerTable =
     DocTable<ProducerId, ProducerDoc, ProducerInfo>(
-    0,
-    func(x:ProducerId):ProducerId{x+1},
+    "",
+    func(x:ProducerId):ProducerId{x},
     func(x:ProducerId,y:ProducerId):Bool{x==y},
-    idHash,
+    userIdHash,
     func(doc:ProducerDoc):ProducerInfo = shared {
       id=doc.id;
       short_name=doc.short_name;
@@ -313,10 +321,10 @@ secondary maps.
 
   var transporterTable : TransporterTable =
     DocTable<TransporterId, TransporterDoc, TransporterInfo> (
-      0,
-      func(x:TransporterId):TransporterId{x+1},
+      "",
+      func(x:TransporterId):TransporterId{x},
       func(x:TransporterId,y:TransporterId):Bool{x==y},
-      idHash,
+      userIdHash,
       func(doc:TransporterDoc):TransporterInfo = shared {
         id=doc.id;
         short_name=doc.short_name;
@@ -341,10 +349,10 @@ secondary maps.
 
   var retailerTable : RetailerTable =
     DocTable<RetailerId, RetailerDoc, RetailerInfo>(
-      0,
-      func(x:RetailerId):RetailerId{x+1},
+      "",
+      func(x:RetailerId):RetailerId{x},
       func(x:RetailerId,y:RetailerId):Bool{x==y},
-      idHash,
+      userIdHash,
       func(doc:RetailerDoc):RetailerInfo = shared {
         id=doc.id;
         short_name=doc.short_name;
@@ -706,7 +714,7 @@ than the MVP goals, however.
     Map.insert2D<RegionId, ProducerId, InventoryMap>(
       inventoryByRegion,
       keyOf(producer_.region.id), idIsEq,
-      keyOf(producer_.id), idIsEq,
+      keyOfUserId(producer_.id), userIdIsEq,
       updatedInventory,
     );
 
@@ -817,7 +825,7 @@ than the MVP goals, however.
       let (t, d) = Trie.remove3D<RegionId, ProducerId, InventoryId, InventoryDoc>(
         inventoryByRegion,
         keyOf(producer.region.id), idIsEq,
-        keyOf(producer.id), idIsEq,
+        keyOfUserId(producer.id), userIdIsEq,
         keyOf(id), idIsEq
       );
       assertSome<InventoryDoc>(d);
@@ -951,7 +959,7 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(id:RouteId) : ?[RouteInfo] {
+  transporterAllRouteInfo(id:TransporterId) : ?[RouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1087,7 +1095,7 @@ than the MVP goals, however.
     retailerQueryCount += 1;
 
     debug "\nRetailer ";
-    debugInt id;
+    debug id;
     debug " sends `retailerQueryAll`\n";
     debug "------------------------------------\n";
 
@@ -1136,7 +1144,7 @@ than the MVP goals, however.
           routes,
           /** - (To perform this Cartesian product, use a 1D inventory map:) */
           Trie.mergeDisjoint2D<ProducerId, InventoryId, InventoryDoc>(
-            inventory, idIsEq, idIsEq),
+            inventory, userIdIsEq, idIsEq),
 
           func (route_id:RouteId,
                 route   :RouteDoc,

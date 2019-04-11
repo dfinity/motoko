@@ -70,6 +70,14 @@ let BitVec = new {
     ha == hb
   };
 
+  func hashOfText(t:Text) : BitVec {
+    var x = 0 : Word32;
+    for (c in t.chars()) {
+      x := x ^ charToWord32(c);
+    };
+    return x
+  };
+
   func bitsPrintRev(bits:BitVec) {
     for (j in range(0, length() - 1)) {
       if (getHashBit(bits, j)) {
@@ -89,7 +97,7 @@ let BitVec = new {
       }
     }
   };
-  
+
   func toList(v:BitVec) : BitList {
     func rec(pos:Nat) : BitList {
       if (pos >= length()) { null }
@@ -171,12 +179,12 @@ let BitList = new {
 };
 
 
-/** 
+/**
  Canonical representations
  ---------------------------
 
  Choose a canonical representation of hash values for the rest of
- the standard library to use: 
+ the standard library to use:
 */
 
 type Hash = BitVec;

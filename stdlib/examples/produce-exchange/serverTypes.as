@@ -49,17 +49,18 @@ Externally, these Ids give a unique identifier that is unique to its type, but n
 Internally, each type of Id serves as a "row key" for a table (or two).
 
 */
-type UserId        = Nat;
+type Id            = Text;
+type UserId        = Id;
 
 type RegionId      = Nat;
 type TruckTypeId   = Nat;
 type ProduceId     = Nat;
 
-type ProducerId    = Nat;
+type ProducerId    = Id;
 type InventoryId   = Nat;
 type ReservedInventoryId = Nat;
-type RetailerId    = Nat;
-type TransporterId = Nat;
+type RetailerId    = Id;
+type TransporterId = Id;
 type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
