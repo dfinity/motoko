@@ -39,16 +39,29 @@ type Quantity = Nat;
 type PricePerUnit = Price; // needed to calculate prices
 type PriceTotal = Price;
 
+/**
+User Names
+-----------------
+
+Each user of the exchange chooses a unique _user name_, represented as `Text`.
+
+In response to this choice, the exchange assigns the user a unique Id (see below); it maintains a mapping from this user name to the (internally-chosen) user Id.
+*/
+
+type UserName  = Text;
 
 /**
 Unique Ids
 -----------------
+
+The produce exchange uses unique ids to concisely identify entities in the system.  Each id is a number.
 
 Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
 
 Internally, each type of Id serves as a "row key" for a table (or two).
 
 */
+
 type UserId        = Nat;
 
 type RegionId      = Nat;
@@ -75,7 +88,8 @@ Public info associated with Ids
 
 type UserInfo = shared {
   id: UserId;
-  short_name: Text;
+  user_name: Text;
+  public_key: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;

@@ -51,63 +51,30 @@ actor server = {
  ----------------------
  Register a new user, who may play several roles in the exchange.
 
+ The given `user_name` must be unique to the exchange; the operation fails otherwise.
+
  */
 
   registrarAddUser(
-    short_name_: Text,
-    description_: Text,
-    region_: RegionId,
-    isDeveloper_: Bool,
+    user_name: Text,
+    public_key: Text,
+    description: Text,
+    region: RegionId,
+    isDeveloper: Bool,
     isProducer: Bool,
     isRetailer: Bool,
     isTransporter: Bool
   ) : async ?UserId {
-
-    let prId = if isProducer { getModel().producerTable.addInfoGetId(
-      func(id_:ProducerId):ProducerInfo {
-        shared {
-          id=id_:ProducerId;
-          short_name=short_name_;
-          description=description_;
-          region=region_;
-          inventory=[];
-          reserved=[];
-        }
-      }) } else null;
-
-    let trId = if isTransporter { getModel().transporterTable.addInfoGetId(
-      func(id_:TransporterId):TransporterInfo {
-        shared {
-          id=id_:TransporterId;
-          short_name=short_name_;
-          description=description_;
-          routes=[];
-          reserved=[];
-        }
-      }) } else null;
-
-    let rrId = if isRetailer { getModel().retailerTable.addInfoGetId(
-      func(id_:RetailerId):RetailerInfo {
-        shared {
-          id=id_;
-          short_name=short_name_;
-          description=description_;
-          region=region_:RegionId
-        }
-      }) } else null;
-
-    getModel().userTable.addInfoGetId(
-      func (id_: UserId) : UserInfo =
-        shared {
-          id = id_;
-          short_name = short_name_;
-          description = description_;
-          region = region_;
-          producerId = prId;
-          transporterId = trId;
-          retailerId = rrId;
-          isDeveloper = isDeveloper_;
-        })
+    getModel().addUser(
+      user_name,
+      public_key,
+      description,
+      region,
+      isDeveloper,
+      isProducer,
+      isRetailer,
+      isTransporter
+    )
   };
 
   /**
@@ -900,4 +867,3 @@ been processed
   With the following closing brace, the interface of the `Server` is thusly defined.
  */
 }; // end: actor class `Server`
-

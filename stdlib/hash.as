@@ -58,6 +58,14 @@ let BitVec = new {
     hashInt(i)
   };
 
+  func hashOfText(t:Text) : BitVec {
+    var x = 0 : Word32;
+    for (c in t.chars()) {
+      x := x ^ charToWord32(c);
+    };
+    return x
+  };
+
   /** Test if two lists of bits are equal. */
   func getHashBit(h:BitVec, pos:Nat) : Bool {
     assert (pos <= length());
@@ -89,7 +97,7 @@ let BitVec = new {
       }
     }
   };
-  
+
   func toList(v:BitVec) : BitList {
     func rec(pos:Nat) : BitList {
       if (pos >= length()) { null }
@@ -171,12 +179,12 @@ let BitList = new {
 };
 
 
-/** 
+/**
  Canonical representations
  ---------------------------
 
  Choose a canonical representation of hash values for the rest of
- the standard library to use: 
+ the standard library to use:
 */
 
 type Hash = BitVec;

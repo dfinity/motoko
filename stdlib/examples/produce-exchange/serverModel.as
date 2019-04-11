@@ -47,6 +47,8 @@ class Model() {
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
+  private textIsEq(x:Text,y:Text):Bool { x == y };
+
   private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
 
   private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
@@ -59,6 +61,10 @@ class Model() {
 
   private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
     new { key = (x,y) ; hash = idPairHash(x,y) }
+  };
+
+  private keyOfText(x:Text):Key<Text> {
+    new { key = x ; hash = Hash.hashOfText(x) }
   };
 
   /**
@@ -124,7 +130,8 @@ secondary maps.
     idHash,
     func(doc:UserDoc):UserInfo = shared {
       id=doc.id;
-      short_name=doc.short_name;
+      user_name=doc.user_name;
+      public_key=doc.public_key;
       description=doc.description;
       region=doc.region;
       producerId=doc.producerId;
@@ -134,7 +141,8 @@ secondary maps.
     },
     func(info:UserInfo):?UserDoc = ?(new {
       id=info.id;
-      short_name=info.short_name;
+      user_name=info.user_name;
+      public_key=info.public_key;
       description=info.description;
       region=info.region;
       producerId=info.producerId;
@@ -483,6 +491,13 @@ secondary maps.
       }}
     );
 
+  /**
+   Indexing by `UserName`
+   =====================================
+   */
+
+  private var usersByUserName
+    : UserNameMap = null;
 
   /**
 
@@ -584,6 +599,109 @@ than the MVP goals, however.
 
    */
 
+  /**
+
+   `User`-oriented operations
+   ==========================================
+
+   */
+
+
+  /**
+
+   `addUser`
+   ---------
+
+   The given `user_name` must be unique to the exchange; the operation fails otherwise.
+
+   */
+  addUser(
+    user_name_: Text,
+    public_key_: Text,
+    description_: Text,
+    region_: RegionId,
+    isDeveloper_: Bool,
+    isProducer: Bool,
+    isRetailer: Bool,
+    isTransporter: Bool
+  ) : ?UserId {
+
+    /**- Fail immediately if the user name is already taken: */
+    switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name_), textIsEq)) {
+      case null {};
+      case (?_) { return null };
+    };
+
+    /**- Fail immediately if the region Id is invalid: */
+    switch (regionTable.getDoc(region_)) {
+      case null { return null };
+      case (?_) {};
+    };
+
+    /** Input is valid: All subsequent operations will succeed: */
+
+    /**- Create a producer role for the user: */
+    let prId = if isProducer { producerTable.addInfoGetId(
+      func(id_:ProducerId):ProducerInfo {
+        shared {
+          id=id_:ProducerId;
+          short_name=user_name_;
+          description=description_;
+          region=region_;
+          inventory=[];
+          reserved=[];
+        }
+      }) } else null;
+
+    /**- Create a transporter role for the user: */
+    let trId = if isTransporter { transporterTable.addInfoGetId(
+      func(id_:TransporterId):TransporterInfo {
+        shared {
+          id=id_:TransporterId;
+          short_name=user_name_;
+          description=description_;
+          routes=[];
+          reserved=[];
+        }
+      }) } else null;
+
+    /**- Create a retailer role for the user: */
+    let rrId = if isRetailer { retailerTable.addInfoGetId(
+      func(id_:RetailerId):RetailerInfo {
+        shared {
+          id=id_;
+          short_name=user_name_;
+          description=description_;
+          region=region_:RegionId;
+        }
+      }) } else null;
+
+    /**- Record the user information: */
+    let id = userTable.addInfoGetId(
+      func (id_: UserId) : UserInfo =
+        shared {
+          id = id_;
+          user_name = user_name_;
+          public_key = public_key_;
+          description = description_;
+          region = region_;
+          producerId = prId;
+          transporterId = trId;
+          retailerId = rrId;
+          isDeveloper = isDeveloper_;
+        });
+
+    /**- Record the mapping from user-chosen name to exchange-chosen id: */
+    usersByUserName :=
+    Trie.insertFresh<UserName,UserId>(
+      usersByUserName,
+      keyOfText(user_name_), textIsEq,
+      unwrap<UserId>(id)
+    );
+
+    /**- return the id */
+    id
+  };
 
 
   /**
@@ -1033,7 +1151,8 @@ than the MVP goals, however.
 
   */
   isCompatibleTruckType(tt:TruckTypeDoc, produce:ProduceDoc) : Bool {
-    nyi()
+    // todo
+    true
   };
 
   /**
