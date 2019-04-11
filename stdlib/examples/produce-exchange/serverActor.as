@@ -57,7 +57,7 @@ actor server = {
 
   registrarAddUser(
     user_name: Text,
-    short_name: Text,
+    public_key: Text,
     description: Text,
     region: RegionId,
     isDeveloper: Bool,
@@ -67,7 +67,7 @@ actor server = {
   ) : async ?UserId {
     getModel().addUser(
       user_name,
-      short_name,
+      public_key,
       description,
       region,
       isDeveloper,

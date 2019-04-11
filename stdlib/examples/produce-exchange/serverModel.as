@@ -131,7 +131,7 @@ secondary maps.
     func(doc:UserDoc):UserInfo = shared {
       id=doc.id;
       user_name=doc.user_name;
-      short_name=doc.short_name;
+      public_key=doc.public_key;
       description=doc.description;
       region=doc.region;
       producerId=doc.producerId;
@@ -142,7 +142,7 @@ secondary maps.
     func(info:UserInfo):?UserDoc = ?(new {
       id=info.id;
       user_name=info.user_name;
-      short_name=info.short_name;
+      public_key=info.public_key;
       description=info.description;
       region=info.region;
       producerId=info.producerId;
@@ -617,7 +617,7 @@ than the MVP goals, however.
    */
   addUser(
     user_name_: Text,
-    short_name_: Text,
+    public_key_: Text,
     description_: Text,
     region_: RegionId,
     isDeveloper_: Bool,
@@ -645,7 +645,7 @@ than the MVP goals, however.
       func(id_:ProducerId):ProducerInfo {
         shared {
           id=id_:ProducerId;
-          short_name=short_name_;
+          short_name=user_name_;
           description=description_;
           region=region_;
           inventory=[];
@@ -658,7 +658,7 @@ than the MVP goals, however.
       func(id_:TransporterId):TransporterInfo {
         shared {
           id=id_:TransporterId;
-          short_name=short_name_;
+          short_name=user_name_;
           description=description_;
           routes=[];
           reserved=[];
@@ -670,9 +670,9 @@ than the MVP goals, however.
       func(id_:RetailerId):RetailerInfo {
         shared {
           id=id_;
-          short_name=short_name_;
+          short_name=user_name_;
           description=description_;
-          region=region_:RegionId
+          region=region_:RegionId;
         }
       }) } else null;
 
@@ -682,7 +682,7 @@ than the MVP goals, however.
         shared {
           id = id_;
           user_name = user_name_;
-          short_name = short_name_;
+          public_key = public_key_;
           description = description_;
           region = region_;
           producerId = prId;

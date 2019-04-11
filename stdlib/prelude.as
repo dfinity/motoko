@@ -20,9 +20,12 @@ some further experience and discussion.  Until then, they live here.
 trap in all execution contexts.
 
 */
-func nyi() : None = { assert false ; nyi(); };
-func xxx() : None = nyi();
 
+func nyi() : None =
+  { assert false ; nyi(); };
+
+func xxx() : None =
+  { assert false ; xxx(); };
 
 /***
 
@@ -35,7 +38,7 @@ func xxx() : None = nyi();
  trap in all execution contexts.
 
 */
-func unreachable() : None = { assert false ; nyi(); };
+func unreachable() : None = { assert false ; unreachable() };
 
 /***
 

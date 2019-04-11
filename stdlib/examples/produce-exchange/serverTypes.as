@@ -54,7 +54,7 @@ type UserName  = Text;
 Unique Ids
 -----------------
 
-The produce exchange uses unique ids to conisely identify entities in the system.  Each id is a number.
+The produce exchange uses unique ids to concisely identify entities in the system.  Each id is a number.
 
 Externally, these Ids give a unique identifier that is unique to its type, but not universally unique.
 
@@ -89,7 +89,7 @@ Public info associated with Ids
 type UserInfo = shared {
   id: UserId;
   user_name: Text;
-  short_name: Text;
+  public_key: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;

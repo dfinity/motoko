@@ -102,7 +102,7 @@ User documents.
 type UserDoc = {
   id: UserId;
   user_name: Text;
-  short_name: Text; // xxx: `short_name` is either redundant with `user_name`, or is like the "display name" in Slack, perhaps?
+  public_key: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;
