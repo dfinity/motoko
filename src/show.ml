@@ -397,12 +397,6 @@ and show_field fs ft =
 
 (* Entry point for the program transformation *)
 
-let check_prog scope prog =
-  ()
-  (* Temporarily disabled due to circular module dependency
-  Check_ir.check_prog (Check_ir.env_of_scope scope) prog
-  *)
-
 let transform scope prog =
   let env = empty_env in
   (* Find all parameters to show in the program *)
@@ -411,5 +405,4 @@ let transform scope prog =
   let decls = show_decls !(env.params) in
   (* Add them to the program *)
   let prog' = let ((d,e),f) = prog in ((decls @ d,e), f) in
-  check_prog scope prog';
   prog';
