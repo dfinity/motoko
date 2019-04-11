@@ -11,8 +11,8 @@ some further experience and discussion.  Until then, they live here.
 
 /***
 
- Not yet implemented
- --------------------
+ `nyi`: Not yet implemented
+ -----------------------------
 
  Mark incomplete code with the `nyi` and `xxx` functions.
 
@@ -26,7 +26,7 @@ func xxx() : None = nyi();
 
 /***
 
- Unreachable
+ `unreachable`
  --------------------
 
  Mark unreachable code with the `unreachable` function.
@@ -39,7 +39,7 @@ func unreachable() : None = { assert false ; nyi(); };
 
 /***
 
- assertSome
+ `assertSome`
  --------------------
 
  Assert that the given value is not `null`; ignore this value and return unit.
@@ -54,7 +54,7 @@ func assertSome<X>( x : ?X ) = {
 
 /***
 
- assertNull
+ `assertNull`
  --------------------
 
  Assert that the given value is `null`; ignore this value and return unit.
@@ -69,7 +69,22 @@ func assertNull<X>( x : ?X ) = {
 
 /***
 
- printOpInt
+ `unwrap`
+ --------------------
+
+ Unwrap an optional value, and fail if it is `null`.
+
+*/
+func unwrap<T>(ox:?T) : T {
+  switch ox {
+    case (null) { unreachable() };
+    case (?x) x;
+  }
+};
+
+/***
+
+ `printOpInt`
  --------------------
 
  Print an optional integer.
@@ -81,3 +96,4 @@ func printOpInt( x : ?Int ) = {
     case (?x_) { print "?"; printInt x_ };
   }
 };
+

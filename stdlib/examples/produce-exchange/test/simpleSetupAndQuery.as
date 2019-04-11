@@ -1,10 +1,3 @@
-func unwrap<T>(ox:?T) : T {
-  switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-  }
-};
-
 func printEntityCount(entname:Text, count:Nat) {
   print ("- " # entname # " count: ");
   printInt count;

@@ -2,7 +2,7 @@
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
 --------------------
- 
+
 Server Model Types
 ==================
 
@@ -12,7 +12,7 @@ internal model of the exchange.
 They are _not_ present in the public-facing interface of the server;
 they are only are used in its internal model implementation
 `serverModel.as`.
-    
+
 */
 
 
@@ -27,9 +27,9 @@ Representation
  Finite maps
  ------------
 
- See also: modules for [`Trie`]() 
+ See also: modules for [`Trie`]()
  and [`DocTable`]($DOCURL/docTable.html).
- 
+
 */
 
 type Map<X, Y> = Trie<X, Y>;
@@ -58,7 +58,7 @@ Below, we define top-level **document structures** for representing each `Produc
 Formally, these types define the types of forests (a set of trees with many
 roots) that constitute our internal data model.
 
-For each kind of structure below, we assume a type of unique Id.  
+For each kind of structure below, we assume a type of unique Id.
 
 We associate document information, such as textual names and
 descriptions, where appropriate.
@@ -101,7 +101,8 @@ User documents.
 
 type UserDoc = {
   id: UserId;
-  short_name: Text;
+  user_name: Text;
+  short_name: Text; // xxx: `short_name` is either redundant with `user_name`, or is like the "display name" in Slack, perhaps?
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;
@@ -113,12 +114,15 @@ type UserDoc = {
 type UserTable =
   DocTable<UserId, UserDoc, UserInfo>;
 
+type UserNameMap =
+  Map<UserName, UserId>;
+
 /**
  `TruckType` documents
  ==================
 
  - See also [`serverTypes`]() for `TypeTypeId` and `TypeTypeInfo`.
- - See also [`DocTable`](). 
+ - See also [`DocTable`]().
  */
 
 type TruckTypeDoc = {
@@ -131,7 +135,7 @@ type TruckTypeDoc = {
   isFreezer : Bool;
 };
 
-type TruckTypeTable = 
+type TruckTypeTable =
   DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>;
 
 /**
@@ -145,7 +149,7 @@ type RegionDoc = {
   description : Text;
 };
 
-type RegionTable = 
+type RegionTable =
   DocTable<RegionId, RegionDoc, RegionInfo>;
 
 /**
@@ -160,7 +164,7 @@ type ProduceDoc = {
   grade : Grade;
 };
 
-type ProduceTable = 
+type ProduceTable =
   DocTable<ProduceId, ProduceDoc, ProduceInfo>;
 
 /**
@@ -177,7 +181,7 @@ type ProducerDoc = {
   reserved : ReservedInventoryMap;
 };
 
-type ProducerTable = 
+type ProducerTable =
   DocTable<ProducerId, ProducerDoc, ProducerInfo>;
 
 /**
@@ -197,13 +201,13 @@ type InventoryDoc = {
   comments : Text;
 };
 
-type InventoryTable = 
+type InventoryTable =
   DocTable<InventoryId, InventoryDoc, InventoryInfo>;
 
-type InventoryMap = 
+type InventoryMap =
   Map<InventoryId, InventoryDoc>;
 
-type ByProducerInventoryMap = 
+type ByProducerInventoryMap =
   Map<ProducerId, Map<InventoryId, InventoryDoc>>;
 
 /**
@@ -228,10 +232,10 @@ type ReservedInventoryDoc= {
  -----------------------------
 */
 
-type ReservedInventoryTable = 
+type ReservedInventoryTable =
   DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>;
 
-type ReservedInventoryMap = 
+type ReservedInventoryMap =
   Map<ReservedInventoryId, ReservedInventoryDoc>;
 
 /**
@@ -247,13 +251,13 @@ type RetailerDoc = {
   reserved : ReservedInventoryRouteMap;
 };
 
-type RetailerTable = 
+type RetailerTable =
   DocTable<RetailerId, RetailerDoc, RetailerInfo>;
 
-type ReservedInventoryRouteMap = 
+type ReservedInventoryRouteMap =
   Map<ReservedInventoryId, (ReservedInventoryDoc, ReservedRouteDoc)>;
 
-type ByProduceByRegionInventoryReservationMap = 
+type ByProduceByRegionInventoryReservationMap =
   Map<ProduceId, Map<RegionId, Map<ReservedInventoryId, ReservedInventoryDoc>>>;
 
 /**
@@ -271,7 +275,7 @@ type TransporterDoc = {
   reserved : ReservedRouteMap;
 };
 
-type TransporterTable = 
+type TransporterTable =
   DocTable<TransporterId, TransporterDoc, TransporterInfo>;
 
 /**
@@ -291,11 +295,11 @@ type RouteDoc = {
   // ... more?
 };
 
-type RouteTable = 
+type RouteTable =
   DocTable<RouteId, RouteDoc, RouteInfo>;
 
 
-type RouteMap = 
+type RouteMap =
   Map<RouteId, RouteDoc>;
 
 /**
