@@ -54,6 +54,7 @@ actor server = {
  */
 
   registrarAddUser(
+    userId: UserId,
     short_name_: Text,
     description_: Text,
     region_: RegionId,
@@ -63,51 +64,56 @@ actor server = {
     isTransporter: Bool
   ) : async ?UserId {
 
-    let prId = if isProducer { getModel().producerTable.addInfoGetId(
-      func(id_:ProducerId):ProducerInfo {
+    let producer_ = if isProducer {
+      getModel().producerTable.upsertInfo(userId,
         shared {
-          id=id_:ProducerId;
+          id=userId:ProducerId;
           short_name=short_name_;
           description=description_;
           region=region_;
           inventory=[];
           reserved=[];
         }
-      }) } else null;
+      )
+    } else null;
 
-    let trId = if isTransporter { getModel().transporterTable.addInfoGetId(
-      func(id_:TransporterId):TransporterInfo {
+    let transporter_ = if isTransporter {
+      getModel().transporterTable.upsertInfo(userId,
         shared {
-          id=id_:TransporterId;
+          id=userId:TransporterId;
           short_name=short_name_;
           description=description_;
           routes=[];
           reserved=[];
         }
-      }) } else null;
+      )
+    } else null;
 
-    let rrId = if isRetailer { getModel().retailerTable.addInfoGetId(
-      func(id_:RetailerId):RetailerInfo {
+    let retailer_ = if isRetailer {
+      getModel().retailerTable.upsertInfo(userId,
         shared {
-          id=id_;
+          id=userId;
           short_name=short_name_;
           description=description_;
           region=region_:RegionId
         }
-      }) } else null;
+      )
+    } else null;
 
-    getModel().userTable.addInfoGetId(
-      func (id_: UserId) : UserInfo =
-        shared {
-          id = id_;
-          short_name = short_name_;
-          description = description_;
-          region = region_;
-          producerId = prId;
-          transporterId = trId;
-          retailerId = rrId;
-          isDeveloper = isDeveloper_;
-        })
+    let user_ = getModel().userTable.upsertInfo(userId,
+      shared {
+        id = userId;
+        short_name = short_name_;
+        description = description_;
+        region = region_;
+        producerId = ?userId;
+        transporterId = ?userId;
+        retailerId = ?userId;
+        isDeveloper = isDeveloper_;
+      }
+    );
+
+    ?userId
   };
 
   /**
@@ -338,21 +344,22 @@ actor server = {
    */
 
   registrarAddProducer(
+    producerId: ProducerId,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
   ) : async ?ProducerId {
-    getModel().producerTable.addInfoGetId(
-      func(id_:ProducerId):ProducerInfo {
-        shared {
-          id=id_:ProducerId;
-          short_name=short_name_:Text;
-          description=description_:Text;
-          region=region_:RegionId;
-          inventory=[];
-          reserved=[];
-        }
-      })
+    let producer_ = getModel().producerTable.upsertInfo(producerId,
+      shared {
+        id=producerId:ProducerId;
+        short_name=short_name_;
+        description=description_;
+        region=region_;
+        inventory=[];
+        reserved=[];
+      });
+
+    ?producerId
   };
 
   /**
@@ -405,19 +412,20 @@ actor server = {
    */
 
   registrarAddRetailer(
+    retailerId:   RetailerId,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
   ) : async ?RetailerId {
-    getModel().retailerTable.addInfoGetId(
-      func(id_:RetailerId):RetailerInfo {
-        shared {
-          id=id_:RetailerId;
-          short_name=short_name_:Text;
-          description=description_:Text;
-          region=region_:RegionId
-        }
-      })
+    let retailer_ = getModel().retailerTable.upsertInfo(retailerId,
+      shared {
+        id=retailerId:RetailerId;
+        short_name=short_name_:Text;
+        description=description_:Text;
+        region=region_:RegionId
+      });
+
+    ?retailerId
   };
 
   /**
@@ -466,20 +474,20 @@ actor server = {
 
    */
   registrarAddTransporter(
+    transporterId: TransporterId,
     short_name_:  Text,
     description_: Text,
   ) : async ?TransporterId {
-    getModel().transporterTable.addInfoGetId(
-      func(id_:TransporterId):TransporterInfo {
-        shared {
-          id=id_:TransporterId;
-          short_name=short_name_:Text;
-          description=description_:Text;
-          routes=[];
-          reserved=[];
-        }
-      })
+    let transporter_ = getModel().transporterTable.upsertInfo(transporterId,
+      shared {
+        id=transporterId:TransporterId;
+        short_name=short_name_:Text;
+        description=description_:Text;
+        routes=[];
+        reserved=[];
+      });
 
+    ?transporterId
   };
 
   /**
