@@ -1,13 +1,13 @@
 /**
 
- [PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
+ [Background]($DOCURL/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification)
  --------------------
 */
 
 actor server = {
 
 /**
- PESS: Server Actor
+ Server Actor
  =======================================
 
  The `Server` actor defines an interface for messages sent
@@ -15,11 +15,11 @@ actor server = {
 
  See also:
 
- - [client-server types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#server-types).
- - the **[server `Model` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md)**.
+ - [client-server types]($DOCURL/examples/produce-exchange/serverTypes.md#server-types).
+ - the **[server `Model` class]($DOCURL/examples/produce-exchange/serverModel.html)**.
 
 
- PESS: Registrar-based ingress messages
+ Registrar-based ingress messages
  ================================================
 
  The registrar provides functions to add and to remove entities from
@@ -246,7 +246,7 @@ actor server = {
    `getRegionInfo`
    ---------------------
 
-   See also: [server type `RegionInfo`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#regioninfo).
+   See also: [server type `RegionInfo`]($DOCURL/examples/produce-exchange/serverTypes.md#regioninfo).
 
    */
 
@@ -261,7 +261,7 @@ actor server = {
    `allRegionInfo`
    ---------------------
 
-   See also: [server type `RegionInfo`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md#regioninfo).
+   See also: [server type `RegionInfo`]($DOCURL/examples/produce-exchange/serverTypes.md#regioninfo).
 
    */
 
@@ -527,7 +527,7 @@ actor server = {
 
 
   /**
-   PESS: `Producer`-based ingress messages:
+   `Producer`-based ingress messages:
    ==========================================
    */
 
@@ -535,7 +535,7 @@ actor server = {
    `producerAddInventory`
    ------------------------------------------
 
-   See also [Model.producerAddInventory](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
+   See also [Model.producerAddInventory]($DOCURL/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
    */
   producerAddInventory(
     id:   ProducerId,
@@ -631,7 +631,7 @@ actor server = {
 
 
   /**
-   PESS: `Transporter`-based ingress messages:
+   `Transporter`-based ingress messages:
    ===========================================
    */
 
@@ -679,7 +679,7 @@ actor server = {
   };
 
   /**
-   PESS: `Retailer`-based ingress messages:
+   `Retailer`-based ingress messages:
    ======================================
 
    `retailerQueryAll`
@@ -726,31 +726,6 @@ actor server = {
   };
 
   /**
-   `retailerReserveCheapest`
-   ---------------------------
-
-   Like `retailerReserve`, but chooses cheapest choice among all
-   feasible produce inventory items and routes, given a grade,
-   quant, and delivery window.
-
-   ?? This may be an example of what Mack described to me as
-   wanting, and being important -- a "conditional update"?
-
-   */
-  retailerReserveCheapest(
-    id:RetailerId,
-    produce:ProduceId,
-    grade:Grade,
-    quant:Quantity,
-    begin:Date,
-    end:Date
-  ) : async ?(ReservedInventoryId, ReservedRouteId)
-  {
-    getModel().
-      retailerReserveCheapest(id, produce, grade, quant, begin, end)
-  };
-
-  /**
    `retailerReservations`
    ---------------------------
 
@@ -769,7 +744,7 @@ actor server = {
 
   /**
 
-   PESS: Developer-based ingress messages:
+   Developer-based ingress messages:
    ========================================================
 
    The following messages may originate from developers
@@ -812,8 +787,7 @@ been processed
 */
 
   devViewGMV() : async ?Nat {
-    // xxx
-    null
+    nyi()
   };
 
   /**
@@ -921,27 +895,9 @@ been processed
   };
 
 /**
- End of PESS interface definition
+ End of interface definition
 -----------------------------------
-  With the following closing brace, the interface of the PESS `Server` is thusly defined.
+  With the following closing brace, the interface of the `Server` is thusly defined.
  */
 }; // end: actor class `Server`
 
-/////////////////////////////////////////////////////////////////////////////
-
-/**
- To do: PESS definition
- ================================================
-
- More registrar ingress messages:
- --------------------------------
-
- - Get a list of all ids for each entity class in the registry:
- ids of all truck types, all regions, all produce, all transporters, all producers, all retailers.
-
- - For each id kind, provide a server message to get back the other registry info
- that the registrar stores in association with it (short_name, description, etc.).
-
- - not now, but eventually, may need a cursor-message sub-system for going through extremely long lists of ids.
-
- */

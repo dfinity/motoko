@@ -95,7 +95,7 @@ type Trie<K,V> = ?Node<K,V>;
  -----------------
  Notice above that the `Leaf` case uses a list of key-value pairs.
 
- See [this document](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md) for more details.
+ See [this document]($DOCURL/assocList.html) for more details.
 */
 
 /**

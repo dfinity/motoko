@@ -1,21 +1,21 @@
 /**
 
-[PESS Background](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification-PESS)
+[Background]($DOCURL/stdlib/examples/produce-exchange#Produce-Exchange-Standards-Specification)
 --------------------
 
 Server Model
 ===============================
 
-**[`Server` actor class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md)**
+**[`Server` actor class]($DOCURL/examples/produce-exchange/serverActor.html)**
 defines an interface for messages sent by all participants, and the responses received in return.
 
 
-Here, we depart from defining PESS data types and messages, and
+Here, we depart from defining messages and their data types, and
 instead turn our attention to the _internal representation_ of the
 server actor's state, defined by the **[server model
-types](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md)**,
+types]($DOCURL/examples/produce-exchange/serverModelTypes.html)**,
 and the _outer behavior_ of this `Server` actor.  The latter behavior
-is part of the PESS definition, and the internal type definitions that it
+is part of the standards definition, and the internal type definitions that it
 uses are is not.
 
 */
@@ -77,10 +77,10 @@ Representation
 We use several public-facing **tables**, implemented as document tables.
 
 
-CRUD operations via [document tables](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
+CRUD operations via [document tables]($DOCURL/docTable.html)
 ----------------------------------------------------
 
-This server model provides [document table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md) objects to hold the
+This server model provides [document table]($DOCURL/docTable.html) objects to hold the
 following kinds of entities in the exchange:
 
 - **Static resource information:** truck types, produce types and region information.
@@ -572,7 +572,7 @@ than the MVP goals, however.
 
   /**
 
-   PESS Behavior: message-response specifications
+   Message-response specifications
    ======================================================
 
    As explained in the `README.md` file, this actor also gives a
@@ -580,7 +580,7 @@ than the MVP goals, however.
    implementation of this behavior (and wrapped trivially by `Server`).
 
    The functional behavior of this interface, but not implementation
-   details, are part of the formal PESS.
+   details, are part of the formal spec.
 
    */
 
@@ -1079,9 +1079,9 @@ than the MVP goals, however.
    - [`makeReservationInfo`](#makereservationinfo): Summarizes the reserved route and inventory documents.
 
    For `Trie`-based DB operations:
-   - [`Trie.join`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#join): For the inner join on common `RegionId`s of routes and inventory.
-   - [`Trie.prod`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#prod): For the catesian product of routes and inventory.
-   - [`Trie.mergeDisjoint2D`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
+   - [`Trie.join`]($DOCURL/trie.md#join): For the inner join on common `RegionId`s of routes and inventory.
+   - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
+   - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
@@ -1187,8 +1187,6 @@ than the MVP goals, however.
    `retailerAllReservationInfo`
    ---------------------------
 
-   TODO-Cursors (see above).
-
   */
   retailerAllReservationInfo(id:RetailerId) :
     ?[(ReservedInventoryInfo,
@@ -1250,30 +1248,6 @@ than the MVP goals, however.
     id:RetailerId,
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
-  {
-    nyi()
-  };
-
-  /**
-   `retailerReserveCheapest`
-   ---------------------------
-
-   Like `retailerReserve`, but chooses cheapest choice among all
-   feasible produce inventory items and routes, given a grade,
-   quant, and delivery window.
-
-   ?? This may be an example of what Mack described to me as
-   wanting, and being important -- a "conditional update"?
-
-  */
-  retailerReserveCheapest(
-    id:RetailerId,
-    produce:ProduceId,
-    grade:Grade,
-    quant:Quantity,
-    begin:Date,
-    end:Date
-  ) : ?(ReservedInventoryId, ReservedRouteId)
   {
     nyi()
   };

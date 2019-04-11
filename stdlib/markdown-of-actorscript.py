@@ -43,6 +43,18 @@
 ##     - KISS: Dont mix mode switches on a single line.
 ##
 
+
+## Stable links
+## -----------
+## https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript.pr-234/stdlib-reference/latest/download/1/doc/
+##
+## (PR 234 is the current PR for the standard library and produce exchange)
+##
+
+DOCURL="https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript.pr-234/stdlib-reference/latest/download/1/doc/"
+
+#############################################################################################################
+
 import sys
 import re
 
@@ -85,6 +97,7 @@ def switchModeTo(toMode, toModeOpen, toModeClose):
                 modeLines.pop()
                 print ""
             for l in modeLines:
+                l = l.replace("$DOCURL", DOCURL);
                 print(l.rstrip())
             print modeClose
         # The source file explicitly omitted this

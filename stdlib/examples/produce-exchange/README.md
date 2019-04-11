@@ -40,24 +40,24 @@ The documentation of this design now evolves in two places:
 
 --------------------------------------------------------------
 
-Produce Exchange Standards Specification (PESS)
+Produce Exchange Standards Specification
 ==================================================
 
 The Produce Exchange is a DFINITY canister whose implementation
 defines a set of _standards_ whose **formal specification** we refer to collectively as
-the _"Produce Exchange Standards Specification"_, or _"PESS"_ for short.
+the _"Produce Exchange Standards Specification"_.
 
 
 Organizational overview
 ----------------------------
 
-We break the PESS definition into several files, described below in detail as
+We break the standards definition into several files, described below in detail as
 [**server components**](#server-components).
 
 **Server message formats**
 
 As ActorScript-based documentation, the embedded source code for these
-components makes the PESS definition into a **formal definition**, to
+components makes the standards definition into a **formal definition**, to
 the same degree that ActorScript has a formal semantics of its own, in
 terms of DFINITY's semantics, etc:
 
@@ -68,10 +68,10 @@ terms of DFINITY's semantics, etc:
 **Server message behavior**
 
 The _behavior_ of this server defines the _semantic_ aspects of the
-PESS standard.
+standards definition.
 
 The _implementation details_ of this behavior are not included in the
-PESS standard. We include a prototype specification of this behavior,
+standards definition. We include a prototype specification of this behavior,
 which is subject to change:
 
 - The [server model types](#server-model-types) define the internal data model used by the server to support its behavior.
@@ -124,7 +124,7 @@ following definitional pieces, listed below.
 
 Basic types used in messages, and published/stored internally in the server actor's state.
 
-See [`serverTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverTypes.md) for authoritative documentation.
+See [`serverTypes.md`]($DOCURL/examples/produce-exchange/serverTypes.html) for authoritative documentation.
 
 See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.
 
@@ -133,7 +133,7 @@ See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-ex
 
 Defined by the server actor's public signature, which specifies the messages and message formats for each participant.
 
-See [`serverActor.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md) for authoritative documentation.
+See [`serverActor.md`]($DOCURL/examples/produce-exchange/serverActor.html) for authoritative documentation.
 
 See [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) for the source code.
 
@@ -143,7 +143,7 @@ See [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-ex
 
 This component defines structures that the next component uses to implement the server actor; neither component is exposed by the actor's public-facing interface.
 
-See [`serverModelTypes.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModelTypes.md) for authoritative documentation.
+See [`serverModelTypes.md`]($DOCURL/examples/produce-exchange/serverModelTypes.html) for authoritative documentation.
 
 See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.
 
@@ -153,8 +153,8 @@ See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdl
 See [the standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/#produce-exchange)
 for collection abstractions,
 including 
-    the [`DocTable` class](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md)
-and the [`Trie` type](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md).
+    the [`DocTable` class]($DOCURL/docTable.html)
+and the [`Trie` type]($DOCURL/trie.html).
 
 **Server model implementation**
 --------------------------------
@@ -164,14 +164,14 @@ The model implementation formally defines the _behavioral
 by implementing the server's interface in terms of the [_server model
 types_](#server-model-types).
 
-See  [`serverModel.md`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverModel.md) for authoritative documentation.
+See  [`serverModel.md`]($DOCURL/examples/produce-exchange/serverModel.html) for authoritative documentation.
 
 See [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.
 
-Note that while we define the **behavior for the PESS**, the
+Note that while we define the **behavior for the server**, the
 _implementation details of this component and [server model
-types](#server-model-types) themselves are not in PESS, and are
-subject to change independently of PESS.
+types](#server-model-types) themselves are not in definition, and are
+subject to change independently of this definition.
 
 **Aside:** This model implementation is highly formulaic.  In the
 future, we could likely _derive_ such implementations (auto-generate
@@ -200,7 +200,7 @@ We decompose the **test suite** for the Produce Exchange into the following mile
 
     To do
 
-See below for [more thoughts about performance testing](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/design/stdlib/examples/produce-exchange#performance-considerations).
+See below for [more thoughts about performance testing]($DOCURL/stdlib/examples/produce-exchange#performance-considerations).
 
 
 
@@ -225,10 +225,10 @@ ALL USERS
 
 > **Sign up**	User can add their name and role and receive a unique ID	
 
-See these, provided by the [**registrar** role](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#pess-registrar-based-ingress-messages):
-- [**`registrarAddProducer`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddproducer)
-- [**`registrarAddTransporter`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddtransporter)
-- [**`registrarAddRetailer`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#registraraddretailer)
+See these, provided by the [**registrar** role]($DOCURL/examples/produce-exchange/serverActor.md#registrar-based-ingress-messages):
+- [**`registrarAddProducer`**]($DOCURL/examples/produce-exchange/serverActor.md#registraraddproducer)
+- [**`registrarAddTransporter`**]($DOCURL/examples/produce-exchange/serverActor.md#registraraddtransporter)
+- [**`registrarAddRetailer`**]($DOCURL/examples/produce-exchange/serverActor.md#registraraddretailer)
 	
 > **Log in**	A user can identify themselves from a dropdown and "log in"	
 
@@ -242,63 +242,63 @@ PRODUCER
 -------------
 > **Add/update inventory**	Producer updates the goods, prices in the inventory available on the exchange	
 	
-See [**`produerAddInventory`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#produceraddinventory)
-and [**`produerRemInventory`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreminventory)
+See [**`produerAddInventory`**]($DOCURL/examples/produce-exchange/serverActor.md#produceraddinventory)
+and [**`produerRemInventory`**]($DOCURL/examples/produce-exchange/serverActor.md#producerreminventory)
     
 > **View inventory**	Producer can see their inventory	
 	
-See [**`producerAllInventoryInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerallinventoryinfo)
+See [**`producerAllInventoryInfo`**]($DOCURL/examples/produce-exchange/serverActor.md#producerallinventoryinfo)
     
 > **View past sales orders**	Producer can see sales orders they fulfilled in the past	
 
 Note: We call them "reservations".
 
-See [**`producerReservations`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producerreservations)
+See [**`producerReservations`**]($DOCURL/examples/produce-exchange/serverActor.md#producerreservations)
 	
 > **View "market price"**	Producer can see the last sales price for any good within any geographic area	
 	
-See [**`produceMarketInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#producemarketinfo)
+See [**`produceMarketInfo`**]($DOCURL/examples/produce-exchange/serverActor.md#producemarketinfo)
 
 TRANSPORTER
 ---------------------
 > **Add/update routes**	Transporter updates the routes available on the exchange. Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
 
-See [**`transporterAddRoute`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporteraddroute)
-and [**`transporterRemRoute`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterremroute)
+See [**`transporterAddRoute`**]($DOCURL/examples/produce-exchange/serverActor.md#transporteraddroute)
+and [**`transporterRemRoute`**]($DOCURL/examples/produce-exchange/serverActor.md#transporterremroute)
 	
 > **View routes**	Transporter can see their routes. Each route is composed of an origin zone, destination zone, pickup date, delivery date, cost.	
 
-See [**`transporterAllRouteInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallrouteinfo)
+See [**`transporterAllRouteInfo`**]($DOCURL/examples/produce-exchange/serverActor.md#transporterallrouteinfo)
 
 > **View past sales orders**	Transporter can see routes which were utilized in the past	
 	
 Note: We call them "reservations".
 
-See [**`transporterAllReservationInfo`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#transporterallreservationinfo)
+See [**`transporterAllReservationInfo`**]($DOCURL/examples/produce-exchange/serverActor.md#transporterallreservationinfo)
 
 	
 RETAILER
 -------------------
 > **Query inventory**	Retailer can query a good with a delivery date. The Exchange will return a list of goods (and prices) that can be delivered to that retailer's geography within that date. 	
 
-See [**`retailerQueryDates`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerquerydates)
+See [**`retailerQueryDates`**]($DOCURL/examples/produce-exchange/serverActor.md#retailerquerydates)
 and
-[**`retailerQueryAll`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerqueryall)
+[**`retailerQueryAll`**]($DOCURL/examples/produce-exchange/serverActor.md#retailerqueryall)
 
 	
 > **Place a sales order**	Retailer can place order for one or more of options presented by any query.	
 
 Note: We call them "reservations".
 
-See [**`retailerReserve`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreserve)
+See [**`retailerReserve`**]($DOCURL/examples/produce-exchange/serverActor.md#retailerreserve)
 and
-[**`retailerReserveCheapest`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservecheapest)
+[**`retailerReserveCheapest`**]($DOCURL/examples/produce-exchange/serverActor.md#retailerreservecheapest)
 	
 > **View past sales orders**	Retailer can see sales orders they placed in the past	
 
 Note: We call them "reservations".
 
-See [**`retailerReservations`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#retailerreservations)
+See [**`retailerReservations`**]($DOCURL/examples/produce-exchange/serverActor.md#retailerreservations)
 
 	
 	
@@ -307,27 +307,27 @@ EXCHANGE DAPP DEVELOPER
 
 > **View GMV**	Developer can see aggregate sum of how many sales have been processed	
 
-See [**`devViewGMV`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewgmv).
+See [**`devViewGMV`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewgmv).
 
 > **View queries**	Developer can see how many aggregate queries have been made by all retailers	
 
-See [**`devViewQueries`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewqueries).
+See [**`devViewQueries`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewqueries).
 
 > **View sales orders**	Developer can see how many aggregate sales orders have been made by all retailers	
 
-See [**`devViewReservations`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewreservations).
+See [**`devViewReservations`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewreservations).
 
 > **View producers**	Developer can see how many producers in the system and how many goods each has	
 
-See [**`devViewProducers`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewproducers).
+See [**`devViewProducers`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewproducers).
 
 > **View transporters**	Developer can see how many producers in the system and how many goods each has	
 
-See [**`devViewTransporters`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewtransporters).
+See [**`devViewTransporters`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewtransporters).
 
 > ****View retailers**	Developer can see how many retailers in the system and how many queries and how many sales orders
 
-See [**`devViewRetailers`**](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/examples/produce-exchange/serverActor.md#devviewretailers).
+See [**`devViewRetailers`**]($DOCURL/examples/produce-exchange/serverActor.md#devviewretailers).
 	
 
 
@@ -542,13 +542,13 @@ We have the following questions:
 Canister upgrades
 ====================
 
-The PESS evolves according to the "central authority" (cf PE spec
+The standards evolve according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
 developer community that surrounds this implementation.
 
-Updating the types in the PESS requires changing the file `serverTypes.as`
+Updating the types in the standards requires changing the file `serverTypes.as`
 mentioned above, and performing a canister upgrade on the running
-system.  Similarly, to evolve the behavioral definition of PESS, the
+system.  Similarly, to evolve the behavioral definition of standards, the
 implementation of this actor will change (in `serverActor.as` and
 `serverModel.as`), and will also require a canister upgrade.
 
