@@ -14,6 +14,7 @@ let rec exp e = match e.it with
   | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
   | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
+  | ShowE (t, e)        -> "ShowE"     $$ [typ t; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom (name n)]

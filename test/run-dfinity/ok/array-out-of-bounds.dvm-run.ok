@@ -1,4 +1,4 @@
-W, hypervisor: calling func$98 failed with trap message: Uncaught RuntimeError: unreachable
-W, hypervisor: calling func$104 failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$112 failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$118 failed with trap message: Uncaught RuntimeError: unreachable
 Array index out of bounds
 Array index out of bounds

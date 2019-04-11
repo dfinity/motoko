@@ -67,6 +67,8 @@ and t_exp' context exp' =
     BinE (ot, t_exp context exp1, op, t_exp context exp2)
   | RelE (ot, exp1, op, exp2) ->
     RelE (ot, t_exp context exp1, op, t_exp context exp2)
+  | ShowE (ot, exp1) ->
+    ShowE (ot, t_exp context exp1)
   | TupE exps ->
     TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
@@ -241,6 +243,8 @@ and c_exp' context exp k =
     binary context k (fun v1 v2 -> e (BinE (ot, v1, op, v2))) exp1 exp2
   | RelE (ot, exp1, op, exp2) ->
     binary context k (fun v1 v2 -> e (RelE (ot, v1, op, v2))) exp1 exp2
+  | ShowE (ot, exp1) ->
+    unary context k (fun v1 -> e (ShowE (ot, v1))) exp1
   | TupE exps ->
     nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->

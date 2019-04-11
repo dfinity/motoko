@@ -31,6 +31,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | FuncE _ ->
     T.Triv
   | UnE (_, _, exp1)
+  | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
   | VariantE (_, exp1)
@@ -123,6 +124,7 @@ module Ir =
       | LitE _ ->
         T.Triv
       | UnE (_, _, exp1)
+      | ShowE (_, exp1)
       | ProjE (exp1, _)
       | OptE exp1
       | VariantE (_, exp1)

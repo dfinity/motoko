@@ -208,7 +208,7 @@ rule token mode = parse
   | "private" { PRIVATE }
   | "return" { RETURN }
   | "shared" { SHARED }
-  | "show" { SHOW }
+  | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }

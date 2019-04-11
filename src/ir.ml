@@ -37,6 +37,7 @@ and exp' =
   | UnE of Type.typ * unop * exp               (* unary operator *)
   | BinE of Type.typ * exp * binop * exp       (* binary operator *)
   | RelE of Type.typ * exp * relop * exp       (* relational operator *)
+  | ShowE of Type.typ * exp                    (* debug show *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
@@ -97,6 +98,7 @@ should hold.
 type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
+  has_show : bool; (* ShowE *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 

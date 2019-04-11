@@ -26,10 +26,8 @@ let unop t op =
   | T.Prim p, PosOp -> let id v = v in num_unop id id id id id id p
   | T.Prim p, NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
   | T.Prim p, NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
-  | t, ShowOp when Show.can_show t -> fun v -> Text (Show.show_val t v)
   | T.Non, _ -> impossible
   | _, _ -> raise (Invalid_argument "unop")
-
 
 (* Binary operators *)
 

@@ -38,6 +38,8 @@ and exp' at note = function
     I.BinE (!ot, exp e1, o, exp e2)
   | S.RelE (ot, e1, o, e2) ->
     I.RelE (!ot, exp e1, o, exp e2)
+  | S.ShowE (ot, e) ->
+    I.ShowE (!ot, exp e)
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
@@ -283,6 +285,7 @@ and prog (p : Syntax.prog) : Ir.prog =
   end
   , { I.has_await = true
     ; I.has_async_typ = true
+    ; I.has_show = true
     ; I.serialized = false
     }
 

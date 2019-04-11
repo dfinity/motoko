@@ -64,7 +64,7 @@ and t_exp' env = function
   | PrimE p -> PrimE p
   | LitE l -> LitE l
   | VarE id -> VarE id
-  | UnE (ot, Syntax.ShowOp, exp1) ->
+  | ShowE (ot, exp1) ->
     let t' = T.normalize ot in
     add_type env t';
     let f = idE (show_name_for t' @@ no_region) (show_fun_typ_for t') in
@@ -404,5 +404,5 @@ let transform scope prog =
   (* Create declarations for them *)
   let decls = show_decls !(env.params) in
   (* Add them to the program *)
-  let prog' = let ((d,e),f) = prog in ((decls @ d,e), f) in
+  let prog' = let ((d,e),f) = prog in ((decls @ d,e), { f with has_show = false }) in
   prog';

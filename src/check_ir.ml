@@ -299,9 +299,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check (Operator.has_unop ot op) "unary operator is not defined for operand type";
     check_exp env exp1;
     typ exp1 <: ot;
-    if op = Syntax.ShowOp
-    then T.Prim T.Text <: t
-    else ot <: t
+    ot <: t
   | BinE (ot, exp1, op, exp2) ->
     check (Operator.has_binop ot op) "binary operator is not defined for operand type";
     check_exp env exp1;
@@ -309,6 +307,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: ot;
     typ exp2 <: ot;
     ot <: t;
+  | ShowE (ot, exp1) ->
+    check env.flavor.has_show "show expression in non-show flavor";
+    check (Show.can_show ot) "show is not defined for operand type";
+    check_exp env exp1;
+    typ exp1 <: ot;
+    T.Prim T.Text <: t
   | RelE (ot, exp1, op, exp2) ->
     check (Operator.has_relop ot op) "relational operator is not defined for operand type";
     check_exp env exp1;
