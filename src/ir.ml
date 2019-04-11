@@ -14,6 +14,9 @@ type relop = Syntax.relop
 type mut = Syntax.mut
 type vis = Syntax.vis
 
+type name = name' Source.phrase
+and name' = Name of string
+
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
@@ -26,7 +29,7 @@ and pat' =
   | AltP of pat * pat                          (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
-and pat_field' = {id : id; pat : pat}
+and pat_field' = {name : name; pat : pat}
 
 (* Like id, but with a type attached *)
 type arg = (string, Type.typ) Source.annotated_phrase
@@ -72,9 +75,6 @@ and exp' =
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : name; var : id} (* the var is by reference, not by value *)
 
-and name = name' Source.phrase
-and name' = Name of string
-
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
@@ -112,10 +112,10 @@ type prog = (dec list * exp) * flavor
 
 (* object pattern helpers *)
 
-let pats_of_obj_pat pfs = List.map (fun {Source.it={id; pat}; _} -> pat) pfs
+let pats_of_obj_pat pfs = List.map (fun {Source.it={name; pat}; _} -> pat) pfs
 
 let map_obj_pat f pfs =
-  List.map (fun ({Source.it={id; pat}; _} as pf) -> {pf with Source.it={id; pat=f pat}}) pfs
+  List.map (fun ({Source.it={name; pat}; _} as pf) -> {pf with Source.it={name; pat=f pat}}) pfs
 
 let replace_obj_pat pfs pats =
-  List.map2 (fun ({Source.it={id; _}; _} as pf) pat -> {pf with Source.it={id; pat}}) pfs pats
+  List.map2 (fun ({Source.it={name; pat=_}; _} as pf) pat -> {pf with Source.it={name; pat}}) pfs pats

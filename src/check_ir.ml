@@ -607,7 +607,8 @@ and check_pat env pat : val_env =
     ve
   | ObjP pfs ->
     let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
-    let tfs = List.map (fun {it={id; pat}; _} -> T.{lab=id.it; typ=pat.note}) pfs in
+    let tf_of_pf {it={name={it=Name lab; _}; pat}; _} = T.{lab; typ=pat.note} in
+    let tfs = List.map tf_of_pf pfs in
     let s, _ = T.as_obj t in
     t <: T.Obj (s, List.sort T.compare_field tfs);
     ve

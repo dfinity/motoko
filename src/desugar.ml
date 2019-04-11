@@ -228,7 +228,7 @@ and pat' = function
 
 and pat_fields pfs = List.map pat_field pfs
 
-and pat_field pf = phrase (fun S.{id; pat=p} -> I.{id; pat=pat p}) pf
+and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with

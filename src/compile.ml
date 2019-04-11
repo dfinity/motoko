@@ -4584,10 +4584,9 @@ and fill_pat env pat : patternCode =
       let (set_i, get_i) = new_local env "obj_scrut" in
       let rec go = function
         | [] -> CannotFail G.nop
-        | {it={id; pat}; _}::pfs' ->
+        | {it={name; pat}; _}::pfs' ->
           let code1 = fill_pat env pat in
           let code2 = go pfs' in
-          let name = {id with it=Name id.it} in
           CannotFail (get_i ^^ project name) ^^^ code1 ^^^ code2 in
       CannotFail set_i ^^^ go pfs
   | AltP (p1, p2) ->
