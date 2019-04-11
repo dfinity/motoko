@@ -792,11 +792,7 @@ and infer_pat' env pat : T.typ * val_env =
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
   | ObjP pfs ->
-    let pats = pats_of_obj_pat pfs in
-    let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
-    let labs = List.map (fun (pf : pat_field) -> pf.it.id.it) pfs in
-    let s = T.(Object Local) in
-    T.Obj (s, List.map2 (fun lab typ -> T.{lab; typ}) labs ts), ve
+    failwith "GOTCHA"
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
@@ -939,12 +935,14 @@ and check_obj_pats env tfs pfs ve at : val_env =
       check_obj_pats env tfs' pfs ve at
     else
       begin
-        local_error env fat "object pattern has component %s missing in expected type"
+        local_error env fat "object pattern has field %s missing in expected type"
           id.it;
         ve
       end
   | [], _ -> ve
-  | _ -> assert false
+  | pf::_, [] ->
+    local_error env pf.at "object pattern has field %s missing in expected type" pf.it.id.it;
+    ve
 
 and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
