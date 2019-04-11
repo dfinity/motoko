@@ -507,9 +507,9 @@ and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
 
 and define_field_pats env pfs vs =
-  let define_field {it={name; pat}; _} =
-    let Name key = name.it in
-    define_pat env pat (V.Env.find key vs) in
+  let define_field (pf : pat_field) =
+    let Name key = pf.it.name.it in
+    define_pat env pf.it.pat (V.Env.find key vs) in
   List.iter define_field pfs
 
 
