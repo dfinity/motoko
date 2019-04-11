@@ -174,12 +174,12 @@ let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
     )
   )
 
-let invoke_text_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
+let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.Prim T.Text]) in
   text_exp (CallE
     ( Value.local_cc 2 1
-    , { it = VarE ("@text_option" @@ no_region)
+    , { it = VarE ("@text_of_option" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
@@ -191,12 +191,29 @@ let invoke_text_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
     )
   )
 
-let invoke_text_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
+let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun t f l e ->
+  let fun_typ =
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.Prim T.Text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.Prim T.Text]) in
+  text_exp (CallE
+    ( Value.local_cc 3 1
+    , { it = VarE ("@text_of_variant" @@ no_region)
+      ; at = no_region
+      ; note = { note_typ = fun_typ; note_eff = T.Triv }
+      }
+    , [t]
+    , { it = TupE [textE l; f; e]
+      ; at = no_region
+      ; note = { note_typ = T.Tup [T.Prim T.Text; show_fun_typ_for t; t]; note_eff = T.Triv }
+      }
+    )
+  )
+
+let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.Prim T.Text]) in
   text_exp (CallE
     ( Value.local_cc 2 1
-    , { it = VarE ("@text_array" @@ no_region)
+    , { it = VarE ("@text_of_array" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
@@ -208,12 +225,12 @@ let invoke_text_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
     )
   )
 
-let invoke_text_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
+let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.Prim T.Text]) in
   text_exp (CallE
     ( Value.local_cc 2 1
-    , { it = VarE ("@text_array_mut" @@ no_region)
+    , { it = VarE ("@text_of_array_mut" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
@@ -290,16 +307,16 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ts'
   | T.Opt t' ->
     let t' = T.normalize t' in
-    define_show t (invoke_text_option t' (show_var_for t') (argE t)),
+    define_show t (invoke_text_of_option t' (show_var_for t') (argE t)),
     [t']
   | T.Array t' ->
     let t' = T.normalize t' in
     begin match t' with
     | T.Mut t' ->
-      define_show t (invoke_text_array_mut t' (show_var_for t') (argE t)),
+      define_show t (invoke_text_of_array_mut t' (show_var_for t') (argE t)),
       [t']
     | _ ->
-      define_show t (invoke_text_array t' (show_var_for t') (argE t)),
+      define_show t (invoke_text_of_array t' (show_var_for t') (argE t)),
       [t']
     end
   | T.Obj (T.Object _, fs) ->
@@ -321,6 +338,19 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       )
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
+  | T.Variant cts ->
+    define_show t (
+      switch_variantE
+        (argE t)
+        (List.map (fun (l, t') ->
+          let t' = T.normalize t' in
+          l @@ no_region,
+          (varP (argE t')), (* Shadowing, but thats fine *)
+          (invoke_text_of_variant t' (show_var_for t') l (argE t'))
+        ) cts)
+        (T.Prim T.Text)
+    ),
+    List.map (fun (_l, t') -> T.normalize t') cts
   | _ -> assert false (* Should be prevented by can_show *)
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
@@ -353,6 +383,8 @@ let rec can_show t =
   | T.Array t' -> can_show (T.as_immut t')
   | T.Obj (T.Object _, fs) ->
     List.for_all (fun f -> can_show (T.as_immut f.T.typ)) fs
+  | T.Variant cts ->
+    List.for_all (fun (l,t) -> can_show t) cts
   | _ -> false
 
 (* Entry point for the interpreter (reference implementation) *)
@@ -379,6 +411,11 @@ let rec show_val t v =
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
     Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
+  | T.Variant cts, Value.Variant (l, v) ->
+    begin match List.find_opt (fun (l',t) -> l = l') cts with
+    | Some (_, t') -> Printf.sprintf "(#%s %s)" l (show_val t' v)
+    | _ -> assert false
+    end
   | _ ->
     Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val v) (T.string_of_typ t);
     assert false

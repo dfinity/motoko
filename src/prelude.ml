@@ -143,14 +143,18 @@ func @text_of_Text(t : Text) : Text {
   "\"" # t # "\"";
 };
 
-func @text_option<T>(f : T -> Text, x : ?T) : Text {
+func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
   switch (x) {
     case (?y) {"?(" # f y # ")"};
     case null {"null"};
   }
 };
 
-func @text_array<T>(f : T -> Text, xs : [T]) : Text {
+func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
+  "(#" # l # " " # f x # ")"
+};
+
+func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
   var text = "";
   for (x in xs.vals()) {
     if (text == "") {
@@ -164,7 +168,7 @@ func @text_array<T>(f : T -> Text, xs : [T]) : Text {
   return text;
 };
 
-func @text_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
+func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   var text = "";
   for (x in xs.vals()) {
     if (text == "") {
