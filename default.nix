@@ -253,6 +253,34 @@ rec {
     forceShare = ["man"];
   };
 
+  produce-exchange = stdenv.mkDerivation {
+    name = "produce-exchange";
+    src = sourceByRegex ./. [
+      "stdlib/"
+      "stdlib/.*Makefile.*"
+      "stdlib/.*.as"
+      "stdlib/examples/"
+      "stdlib/examples/produce-exchange/"
+      "stdlib/examples/produce-exchange/.*.as"
+      "stdlib/examples/produce-exchange/test/"
+      "stdlib/examples/produce-exchange/test/.*.as"
+      ];
+    buildInputs = [
+      native
+    ];
+    doCheck = true;
+    buildPhase = ''
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+    '';
+    checkPhase = ''
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.out
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp stdlib/_out/ProduceExchange.wasm $out
+    '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [ native js native_test coverage-report stdlib-reference ];
