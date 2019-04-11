@@ -211,6 +211,23 @@ class DocTable<Id,Doc,Info>(
   };
 
   /**
+   `upsertInfo`
+   ---------
+
+   Updates the document with the given id, or inserts a new document if nothing exists. Returns the old document if it was replaced.
+
+   */
+  upsertInfo(id:Id, info:Info) : ?Doc {
+    let doc = docOfInfo(info);
+    switch doc {
+      case null { null };
+      case (?doc) {
+        updateDoc(id, doc)
+      }
+    }
+  };
+
+  /**
    `rem`
    ---------
 
