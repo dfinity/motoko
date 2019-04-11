@@ -1151,7 +1151,8 @@ than the MVP goals, however.
 
   */
   isCompatibleTruckType(tt:TruckTypeDoc, produce:ProduceDoc) : Bool {
-    nyi()
+    // todo
+    true
   };
 
   /**
