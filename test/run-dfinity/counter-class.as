@@ -2,14 +2,14 @@ actor class Counter(i : Int) {
   private var c = i;
 
   dec() {
-   show(c);
+   showCounter(c);
    c -= 1;
   };
 
   read() : async Int { c };
 };
 
-func show(c : Int) {};
+func showCounter(c : Int) {};
 
 let c = Counter(10);
 

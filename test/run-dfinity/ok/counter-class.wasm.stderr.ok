@@ -8,7 +8,7 @@ non-closed actor: (ActorE
       (shared  0 -> 0)
       ()
       (BlockE
-        (LetD WildP (CallE ( 1 -> 0) (VarE show) (VarE c)))
+        (LetD WildP (CallE ( 1 -> 0) (VarE showCounter) (VarE c)))
         (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1))))
       )
     )

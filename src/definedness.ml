@@ -92,6 +92,7 @@ let rec exp msgs e : f = match e.it with
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
+  | ShowE (_, e)        -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
   | ObjE (s, efs)       ->
