@@ -1,5 +1,5 @@
-W, hypervisor: calling func$124 failed with trap message: Uncaught RuntimeError: unreachable
-W, hypervisor: calling func$130 failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+W, hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
 This is reachable.
 This is reachable.
 Natural subtraction underflow
