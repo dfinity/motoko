@@ -213,6 +213,8 @@ module Transform() = struct
     | VarE id -> exp'
     | UnE (ot, op, exp1) ->
       UnE (t_operator_type ot, op, t_exp exp1)
+    | ShowE (ot, exp1) ->
+      ShowE (t_operator_type ot, t_exp exp1)
     | BinE (ot, exp1, op, exp2) ->
       BinE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
     | RelE (ot, exp1, op, exp2) ->

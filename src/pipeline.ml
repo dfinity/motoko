@@ -219,6 +219,9 @@ let serialization =
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
+let show_translation =
+  transform_if "Translate show" Show.transform
+
 (* Interpretation *)
 
 type interpret_result =
@@ -235,6 +238,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
         let prog_ir = async_lowering (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         let prog_ir = serialization (!Flags.await_lowering && !Flags.async_lowering) senv prog_ir name in
         let prog_ir = tailcall_optimization true senv prog_ir name in
+        let prog_ir = show_translation true senv prog_ir name in
         Interpret_ir.interpret_prog denv prog_ir
       else Interpret.interpret_prog denv prog in
     match vo with
@@ -352,6 +356,7 @@ let compile_with check mode name : compile_result =
     let prog_ir = async_lowering true initial_stat_env prog_ir name in
     let prog_ir = serialization true initial_stat_env prog_ir name in
     let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
+    let prog_ir = show_translation true initial_stat_env prog_ir name in
     phase "Compiling" name;
     let module_ = Compile.compile mode name prelude_ir [prog_ir] in
     Ok module_

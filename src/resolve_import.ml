@@ -52,6 +52,7 @@ let rec
   (* The rest is just a boring syntax traversal *)
   | (PrimE _ | VarE _ | LitE _) -> ()
   | UnE (_, _, exp1)
+  | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
   | VariantE (_, exp1)

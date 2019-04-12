@@ -278,6 +278,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (Operator.unop ot op v1))
+  | ShowE (ot, exp1) ->
+    interpret_exp env exp1 (fun v ->
+      if Show.can_show ot
+      then k (Value.Text (Show.show_val ot v))
+      else raise (Invalid_argument "debug_show"))
   | BinE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->

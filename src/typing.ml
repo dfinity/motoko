@@ -379,6 +379,15 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     t
+  | ShowE (ot, exp1) ->
+    let t = infer_exp_promote env exp1 in
+    if not env.pre then begin
+      if not (Show.can_show t) then
+        error env exp.at "show is not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    T.Prim T.Text
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in

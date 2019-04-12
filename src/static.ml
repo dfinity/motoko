@@ -52,6 +52,7 @@ let rec exp m e = match e.it with
 
   (* Clearly non-static *)
   | UnE _
+  | ShowE _
   | NotE _
   | AssertE _
   | LabelE _

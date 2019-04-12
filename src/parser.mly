@@ -99,6 +99,7 @@ let share_expfield (ef : exp_field) =
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT
+%token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
@@ -385,6 +386,8 @@ exp_un :
     { ImportE (f, ref "") @? at $sloc }
   | i=variant_tag e=exp_nullary
     { VariantE (i, e) @? at $sloc }
+  | DEBUG_SHOW e=exp_un
+    { ShowE (ref Type.Pre, e) @? at $sloc }
 
 exp_bin :
   | e=exp_un

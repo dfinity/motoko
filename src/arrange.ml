@@ -13,6 +13,7 @@ let rec exp e = match e.it with
   | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
   | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; relop ro; exp e2]
+  | ShowE (ot, e)       -> "ShowE"   $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | ObjE (s, efs)       -> "ObjE"    $$ [obj_sort s] @ List.map exp_field efs
