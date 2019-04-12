@@ -112,10 +112,12 @@ let rec chase_imports todo seen imported : imports Diag.result =
   | Some f ->
     let todo = remove f todo in
     let seen = add f seen in
-    Diag.bind (parse_file f) (fun pr ->
-      Diag.bind (resolve pr) (fun (prog, more_imports) ->
-        let todo = union todo (diff more_imports seen) in
-        chase_imports todo seen ((f, prog) :: imported)
+    Diag.bind (parse_file f) (fun (prog, base) ->
+      Diag.bind (Static.prog prog) (fun () ->
+        Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
+          let todo = union todo (diff more_imports seen) in
+          chase_imports todo seen ((f, prog) :: imported)
+        )
       )
     )
 
