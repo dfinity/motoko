@@ -3,7 +3,7 @@ This module traverses the syntax tree. For each `import` statement, it looks
 at the given relative path and tries to resolve it to a full path (where
 full means relative to the current working directory, so that source
 directories do not creep into the build output). If no file can be found
-there, this prints an error message, otherwise it stors the real path
+there, this prints an error message, otherwise it stores the real path
 in the second, mutable field of the ImportE statement.
 
 It returns a list of all imported file names.
