@@ -1076,14 +1076,8 @@ and gather_dec_typdecs env scope dec : scope =
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     let ve' =  match dec.it with
-      | ClassD (_id, _binds, _sort, pat, _self_id, _fields) ->
-        let cs = List.map (fun tb-> Con.fresh tb.T.var (T.Abs ([], T.Pre))) pre_tbs in
-        let ts1 = match pat.it with
-          | TupP ps -> List.map (fun _ -> T.Any) ps
-          | _ -> [T.Any] in
-        let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-        T.Env.add id.it (T.Func (T.Local, T.Returns, pre_tbs, List.map (T.close cs) ts1, [T.close cs t2]))
-          scope.val_env
+      | ClassD _ ->
+        T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
     { typ_env = te'; con_env = ce'; val_env = ve' }
