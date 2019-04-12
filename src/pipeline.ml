@@ -28,6 +28,7 @@ let print_stat_ve =
 
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
+    if Syntax.is_import_id x then () else
     let t = Type.Env.find x scope.Typing.val_env in
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
@@ -42,10 +43,7 @@ let print_scope senv scope dve =
 let print_val _senv v t =
   printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
 
-
-(* Parsing *)
-
-type parse_result = (Syntax.prog, Diag.message) result
+(* Dumping *)
 
 let dump_prog flag prog =
     if !flag then
@@ -57,9 +55,15 @@ let dump_ir flag prog_ir =
       Wasm.Sexpr.print 80 (Arrange_ir.prog prog_ir)
     else ()
 
-let parse_with mode lexer parser name : parse_result =
+(* Parsing *)
+
+type rel_path = string
+
+type parse_result = (Syntax.prog * rel_path) Diag.result
+
+let parse_with mode lexer parser name =
   try
-    (*phase "Parsing" name;*)
+    phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
     let prog = parser (Lexer.token mode) lexer in
@@ -71,28 +75,60 @@ let parse_with mode lexer parser name : parse_result =
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
 
-let parse_string s name =
+let parse_string s name : parse_result =
   let lexer = Lexing.from_string s in
   let parser = Parser.parse_prog in
-  parse_with Lexer.Normal lexer parser name
+  match parse_with Lexer.Normal lexer parser name with
+  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
+  | Error e -> Error [e]
 
-let parse_file filename =
+let parse_file filename : parse_result =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let parser = Parser.parse_prog in
   let result = parse_with Lexer.Normal lexer parser filename in
   close_in ic;
-  result
+  match result with
+  | Ok prog -> Diag.return (prog, filename)
+  | Error e -> Error [e]
 
-let parse_files filenames =
-  let open Source in
-  let rec loop progs = function
-    | [] -> Ok (List.concat (List.rev progs) @@ no_region)
-    | filename::filenames' ->
-      match parse_file filename with
-      | Error e -> Error e
-      | Ok prog -> loop (prog.it::progs) filenames'
-  in loop [] filenames
+(* Import file name resolution *)
+
+type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
+
+let resolve (prog, base) : resolve_result =
+  Diag.map_result (fun imports -> (prog, imports)) (Resolve_import.resolve prog base)
+
+
+(* Imported file loading *)
+
+type imports = (rel_path * Syntax.prog) list
+type load_imports_result = (imports * Syntax.prog list) Diag.result
+
+let rec chase_imports todo seen imported : imports Diag.result =
+  let open Resolve_import.S in
+  match min_elt_opt todo with
+  | None -> Diag.return imported
+  | Some f ->
+    let todo = remove f todo in
+    let seen = add f seen in
+    Diag.bind (parse_file f) (fun pr ->
+      Diag.bind (resolve pr) (fun (prog, more_imports) ->
+        let todo = union todo (diff more_imports seen) in
+        chase_imports todo seen ((f, prog) :: imported)
+      )
+    )
+
+let load_imports progs : load_imports_result =
+  Diag.bind (Diag.traverse resolve progs) (fun rs ->
+    let progs' = List.map fst rs in
+    let imports =
+      List.fold_left Resolve_import.S.union Resolve_import.S.empty
+      (List.map snd rs) in
+    Diag.map_result
+      (fun imported -> (imported, progs'))
+      (chase_imports imports Resolve_import.S.empty [])
+  )
 
 
 (* Checking *)
@@ -112,6 +148,46 @@ let check_prog infer senv name prog
     | Error _ -> ()
   end;
   r
+
+let combine_files imports progs : Syntax.prog =
+    let open Source in
+    ( List.map (fun (f, prog) ->
+        { it = Syntax.LetD
+          ( { it = Syntax.VarP (Syntax.id_of_full_path f)
+            ; at = no_region
+            ; note = Type.Pre
+            }
+          , { it = Syntax.BlockE prog.it
+            ; at = no_region
+            ; note = Syntax.empty_typ_note
+            }
+          )
+        ; at = no_region
+        ; note = Syntax.empty_typ_note
+        }) imports
+      @ List.concat (List.map (fun p -> p.it) progs)
+    ) @@ no_region
+
+let check_with parse infer senv name : check_result =
+  Diag.bind parse (fun parse_result ->
+    Diag.bind (load_imports parse_result) (fun (imports, progs) ->
+      let prog = combine_files imports progs in
+      Diag.map_result (fun (t, scope) -> (prog, t, scope))
+        (check_prog infer senv name prog)
+    )
+  )
+let check_with_one parse_one infer senv name : check_result =
+  let parse = Diag.map_result (fun r -> [r]) parse_one in
+  check_with parse infer senv name
+
+let infer_prog_unit senv prog =
+  Diag.map_result (fun scope -> (Type.unit, scope))
+    (Typing.check_prog senv prog)
+
+let check_string senv s n =
+  check_with_one (parse_string s n) Typing.infer_prog senv n
+let check_files senv ns =
+  check_with (Diag.traverse parse_file ns) Typing.infer_prog senv "all"
 
 (* IR transforms *)
 
@@ -141,24 +217,6 @@ let serialization =
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
-let check_with parse infer senv name : check_result =
-  match parse name with
-  | Error e -> Error [e]
-  | Ok prog ->
-    Diag.map_result (fun (t, scope) -> (prog, t, scope))
-      (check_prog infer senv name prog)
-
-let infer_prog_unit senv prog =
-  Diag.map_result (fun (scope) -> (Type.unit, scope))
-    (Typing.check_prog senv prog)
-
-let check_string senv s = check_with (parse_string s) Typing.infer_prog senv
-let check_file senv n = check_with parse_file Typing.infer_prog senv n
-let check_files senv = function
-  | [n] -> check_file senv n
-  | ns -> check_with (fun _n -> parse_files ns) Typing.infer_prog senv "all"
-
-
 (* Interpretation *)
 
 type interpret_result =
@@ -186,7 +244,7 @@ let interpret_prog (senv,denv) name prog : (Value.value * Interpret.scope) optio
     None
 
 let interpret_with check (senv, denv) name : interpret_result =
-  match check senv name with
+  match check senv with
   | Error msgs ->
     Diag.print_messages msgs;
     None
@@ -198,12 +256,8 @@ let interpret_with check (senv, denv) name : interpret_result =
     | None -> None
     | Some (v, dscope) -> Some (prog, t, v, sscope, dscope)
 
-let interpret_string env s =
-  interpret_with (fun senv name -> check_string senv s name) env
-let interpret_file env n = interpret_with check_file env n
-let interpret_files env = function
-  | [n] -> interpret_file env n
-  | ns -> interpret_with (fun senv _name -> check_files senv ns) env "all"
+let interpret_files env ns =
+  interpret_with (fun senv -> check_files senv ns) env "all"
 
 
 (* Prelude *)
@@ -253,7 +307,7 @@ let output_scope (senv, _) t v sscope dscope =
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let run_with interpret output ((senv, denv) as env) name : run_result =
-  let result = interpret env name in
+  let result = interpret env in
   let env' =
     match result with
     | None ->
@@ -276,13 +330,8 @@ let run_with interpret output ((senv, denv) as env) name : run_result =
   if !Flags.verbose then printf "\n";
   env'
 
-let run_string env s =
-  run_with (fun env name -> interpret_string env s name) output_dscope env
-let run_file env n = run_with interpret_file output_dscope env n
-let run_files env = function
-  | [n] -> run_file env n
-  | ns ->
-    run_with (fun env _name -> interpret_files env ns) output_dscope env "all"
+let run_files env ns =
+    run_with (fun env -> interpret_files env ns) output_dscope env "all"
 
 
 (* Compilation *)
@@ -307,7 +356,6 @@ let compile_with check mode name : compile_result =
 
 let compile_string mode s name =
   compile_with (fun senv name -> check_string senv s name) mode name
-let compile_file mode file name = compile_with check_file mode name
 let compile_files mode files name =
   compile_with (fun senv _name -> check_files senv files) mode name
 
@@ -327,7 +375,7 @@ let lexer_stdin buf len =
     if ch = '\n' then i + 1 else loop (i + 1)
   in loop 0
 
-let parse_lexer lexer name =
+let parse_lexer lexer name : parse_result =
   let open Lexing in
   if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
   match parse_with Lexer.Normal lexer Parser.parse_prog_interactive name with
@@ -335,14 +383,15 @@ let parse_lexer lexer name =
     Lexing.flush_input lexer;
     (* Reset beginning-of-line, too, to sync consecutive positions. *)
     lexer.lex_curr_p <- {lexer.lex_curr_p with pos_bol = 0};
-    Error e
-  | some -> some
+    Error [e]
+  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
 
-let check_lexer senv lexer = check_with (parse_lexer lexer) Typing.infer_prog senv
-let interpret_lexer env lexer =
-  interpret_with (fun senv name -> check_lexer senv lexer name) env
-let run_lexer env lexer =
-  run_with (fun env name -> interpret_lexer env lexer name) output_scope env
+let check_lexer senv lexer name =
+  check_with_one (parse_lexer lexer name) Typing.infer_prog senv name
+let interpret_lexer env lexer name =
+  interpret_with (fun senv -> check_lexer senv lexer name) env name
+let run_lexer env lexer name  =
+  run_with (fun env -> interpret_lexer env lexer name) output_scope env name
 
 let run_stdin env =
   let lexer = Lexing.from_function lexer_stdin in

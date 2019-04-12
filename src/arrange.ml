@@ -51,6 +51,7 @@ let rec exp e = match e.it with
   | OptE e              -> "OptE"    $$ [exp e]
   | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
+  | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"

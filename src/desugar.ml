@@ -82,6 +82,9 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
+  | S.ImportE (f, fp) ->
+    if !fp = "" then assert false; (* unresolved import *)
+    I.VarE (Syntax.id_of_full_path !fp)
 
 and obj at s self_id es obj_typ =
   match s.it with

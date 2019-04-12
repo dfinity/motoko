@@ -198,6 +198,7 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
+  | "import" { IMPORT }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }
