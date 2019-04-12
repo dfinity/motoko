@@ -153,6 +153,7 @@ module E = struct
 
   (* The environment type *)
   module NameEnv = Env.Make(String)
+  module StringEnv = Env.Make(String)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
@@ -178,6 +179,7 @@ module E = struct
     dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
+    static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -209,6 +211,7 @@ module E = struct
     dfinity_types = ref [];
     funcs = ref [];
     built_in_funcs = ref NameEnv.empty;
+    static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -382,10 +385,19 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-  let add_static_bytes (env : t) data : int32 =
+
+  let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
+
+  let add_static_bytes (env : t) data : int32 =
+    match StringEnv.find_opt data !(env.static_strings)  with
+    | Some ptr -> ptr
+    | None ->
+      let ptr = add_mutable_static_bytes env data  in
+      env.static_strings := StringEnv.add data ptr !(env.static_strings);
+      ptr
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -4764,7 +4776,7 @@ and allocate_actor_field env f =
   (* Create a Reference heap object in static memory *)
   let tag = Text.bytes_of_int32 (Tagged.int_of_tag Tagged.Reference) in
   let zero = Text.bytes_of_int32 0l in
-  let ptr = E.add_static_bytes env (tag ^ zero) in
+  let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
   let ptr_payload = Int32.add ptr Heap.word_size in
   (f, ptr_payload)
 
