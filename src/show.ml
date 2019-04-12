@@ -284,6 +284,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (textE ("func")),
     []
   | T.Con (c,_) ->
+    (* t is normalized, so this is a type parameter *)
     define_show t (textE ("show_for: cannot handle type parameter " ^ T.string_of_typ t)),
     []
   | T.Tup [] ->

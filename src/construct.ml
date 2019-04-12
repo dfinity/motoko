@@ -214,7 +214,7 @@ let switch_variantE exp1 cases typ1 =
       );
     at = no_region;
     note = { S.note_typ = typ1;
-             S.note_eff = List.fold_left max_eff Type.Triv (List.map (fun (l,p,e) -> eff e) cases)
+             S.note_eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
            }
   }
 
