@@ -1,1 +1,35 @@
 pull_request_rules:
+  - name: Automatic merge
+    conditions:
+      - "#approved-reviews-by>=1"
+      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - base=master
+      - label=automerge
+    actions:
+      merge:
+        method: merge
+        strict: smart
+      delete_head_branch: {}
+  - name: Automatic merge (squash)
+    conditions:
+      - "#approved-reviews-by>=1"
+      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - base=master
+      - label=automerge-squash
+    actions:
+      merge:
+        method: squash
+        strict: smart
+      delete_head_branch: {}
+  - name: Automatic merge (rebase)
+    conditions:
+      - "#approved-reviews-by>=1"
+      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - base=master
+      - label=automerge-rebase
+    actions:
+      merge:
+        method: rebase
+        strict: smart
+        strict_method: rebase
+      delete_head_branch: {}
