@@ -587,6 +587,16 @@ actor server = {
 
 
   /**
+   `allInventoryInfo`
+   ---------------------------
+   Get the information for all known inventory.
+   */
+  allInventoryInfo() : async [InventoryInfo] {
+    getModel()
+      .inventoryTable.allInfo()
+  };
+
+  /**
    `getInventoryInfo`
    ---------------------------
    Get the information associated with inventory, based on its id.
@@ -643,6 +653,16 @@ actor server = {
   transporterAllReservationInfo(id:TransporterId) : async ?[ReservedRouteInfo] {
     getModel()
       .transporterAllReservationInfo(id)
+  };
+
+  /**
+   `allRouteInfo`
+   ---------------------------
+   Get the information for all known routes.
+   */
+  allRouteInfo() : async [RouteInfo] {
+    getModel()
+      .routeTable.allInfo()
   };
 
   /**
@@ -866,4 +886,4 @@ been processed
 -----------------------------------
   With the following closing brace, the interface of the `Server` is thusly defined.
  */
-}; // end: actor class `Server`
+};// end: actor class `Server`

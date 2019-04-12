@@ -16,7 +16,7 @@ actor class Test() = this {
     {
       let s = server; //Server();
 
-      print "\nExchange setup\n====================================\n";
+      print "\nExchange setup: Begin...\n====================================\n";
 
       // populate with truck types
       let tta = await s.registrarAddTruckType("tta", "", 10, false, false);
@@ -254,14 +254,19 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
+      print "\nExchange setup: Done.\n====================================\n";
+      await debugDumpAll();
+
+      //////////////////////////////////////////////////////////////////
+
       print "\nRetailer queries\n====================================\n";
 
       // do some queries
-      let rra_qa = await s.retailerQueryAll(unwrap<RetailerId>(rra));
-      let rrb_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrb));
-      let rrc_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrc));
-      let rrd_qa = await s.retailerQueryAll(unwrap<RetailerId>(rrd));
-      let rre_qa = await s.retailerQueryAll(unwrap<RetailerId>(rre));
+      await retailerQueryAll(rra);
+      await retailerQueryAll(rrb);
+      await retailerQueryAll(rrc);
+      await retailerQueryAll(rrd);
+      await retailerQueryAll(rre);
 
       print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
@@ -270,8 +275,92 @@ actor class Test() = this {
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
+      //////////////////////////////////////////////////////////////////
 
     })
+  };
+};
+
+
+func retailerQueryAll(r:?RetailerId) : async () {
+
+  print "\nRetailer ";
+  printInt (unwrap<RetailerId>(r));
+  print " sends `retailerQueryAll`\n";
+  print "------------------------------------\n";
+
+  print "\n## Query begin:\n";
+  let res = unwrap<QueryAllResults>(
+    await server.retailerQueryAll(unwrap<RetailerId>(r))
+  );
+  print "\n## Query end.";
+
+  print "\n## Query results (";
+  printInt (res.len());
+  print ")\n";
+  for (info in res.vals()) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  }
+};
+
+func debugDumpAll() : async () {
+
+  print "\nTruck type info\n----------------\n";
+  for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nRegion info\n----------------\n";
+  for ( info in ((await server.allRegionInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nProduce info\n----------------\n";
+  for ( info in ((await server.allProduceInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nProducer info\n----------------\n";
+  for ( info in ((await server.allProducerInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nTransporter info\n----------------\n";
+  for ( info in ((await server.allTransporterInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nRetailer info\n----------------\n";
+  for ( info in ((await server.allRetailerInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nInventory info\n----------------\n";
+  for ( info in ((await server.allInventoryInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nRoute info\n----------------\n";
+  for ( info in ((await server.allRouteInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
   };
 };
 

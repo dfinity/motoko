@@ -1205,11 +1205,6 @@ than the MVP goals, however.
   retailerQueryAll(id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
 
-    debug "\nRetailer ";
-    debugInt id;
-    debug " sends `retailerQueryAll`\n";
-    debug "------------------------------------\n";
-
     /** - Find the retailer's document: */
     let retailer =
       switch (retailerTable.getDoc(id)) {
@@ -1370,6 +1365,5 @@ than the MVP goals, however.
   {
     nyi()
   };
-
 
 };
