@@ -53,6 +53,7 @@ function normalize () {
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
     sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
+    sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     cat > $1.norm
     mv $1.norm $1
   fi

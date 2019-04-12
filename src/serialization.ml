@@ -162,6 +162,8 @@ module Transform() = struct
       BinE (t_typ ot, t_exp exp1, op, t_exp exp2)
     | RelE (ot, exp1, op, exp2) ->
       RelE (t_typ ot, t_exp exp1, op, t_exp exp2)
+    | ShowE (ot, exp1) ->
+      ShowE (t_typ ot, t_exp exp1)
     | TupE exps ->
       TupE (List.map t_exp exps)
     | OptE exp1 ->

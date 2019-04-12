@@ -94,6 +94,7 @@ and exp' env e  : exp' = match e.it with
   | UnE (ot, uo, e)      -> UnE (ot, uo, exp env e)
   | BinE (ot, e1, bo, e2)-> BinE (ot, exp env e1, bo, exp env e2)
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
+  | ShowE (ot, e)       -> ShowE (ot, exp env e)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)
