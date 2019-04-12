@@ -217,6 +217,7 @@ and value =
   | Text of string
   | Tup of value list
   | Opt of value
+  | Variant of string * value
   | Array of value array
   | Obj of value Env.t
   | Func of call_conv * func
@@ -256,6 +257,7 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
+let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"

@@ -153,6 +153,7 @@ module E = struct
 
   (* The environment type *)
   module NameEnv = Env.Make(String)
+  module StringEnv = Env.Make(String)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
@@ -178,6 +179,7 @@ module E = struct
     dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
+    static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -209,6 +211,7 @@ module E = struct
     dfinity_types = ref [];
     funcs = ref [];
     built_in_funcs = ref NameEnv.empty;
+    static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -382,10 +385,19 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-  let add_static_bytes (env : t) data : int32 =
+
+  let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
+
+  let add_static_bytes (env : t) data : int32 =
+    match StringEnv.find_opt data !(env.static_strings)  with
+    | Some ptr -> ptr
+    | None ->
+      let ptr = add_mutable_static_bytes env data  in
+      env.static_strings := StringEnv.add data ptr !(env.static_strings);
+      ptr
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -425,7 +437,9 @@ let compile_shl_const = function
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
-
+let compile_eq_const i =
+  compile_unboxed_const i ^^
+  G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
 (* A common variant of todo *)
 
@@ -887,6 +901,7 @@ module Tagged = struct
     | MutBox (* used for local variables *)
     | Closure
     | Some (* For opt *)
+    | Variant
     | Text
     | Indirection
     | SmallWord (* Contains a 32 bit unsigned number *)
@@ -901,9 +916,10 @@ module Tagged = struct
     | MutBox -> 6l
     | Closure -> 7l
     | Some -> 8l
-    | Text -> 9l
-    | Indirection -> 10l
-    | SmallWord -> 11l
+    | Variant -> 9l
+    | Text -> 10l
+    | Indirection -> 11l
+    | SmallWord -> 12l
 
   (* The tag *)
   let header_size = 1l
@@ -926,8 +942,7 @@ module Tagged = struct
       | [] -> def
       | ((tag, code) :: cases) ->
         get_tag ^^
-        compile_unboxed_const (int_of_tag tag) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        compile_eq_const (int_of_tag tag) ^^
         G.if_ retty code (go cases)
     in
     load ^^
@@ -1089,9 +1104,40 @@ module Opt = struct
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
   let inject env e = Tagged.obj env Tagged.Some [e]
-  let project = Heap.load_field Tagged.header_size
+  let project = Heap.load_field payload_field
 
 end (* Opt *)
+
+module Variant = struct
+  (* The Variant type. We store the variant tag in a first word; we can later
+     optimize and squeeze it in the Tagged tag. We can also later support unboxing
+     variants with an argument of type ().
+
+       ┌─────────┬────────────┬─────────┐
+       │ heaptag │ varianttag │ payload │
+       └─────────┴────────────┴─────────┘
+
+  *)
+
+  let tag_field = Tagged.header_size
+  let payload_field = Int32.add Tagged.header_size 1l
+
+  let hash_variant_label : Type.lab -> int32 = fun l ->
+    Int32.of_int (Hashtbl.hash l)
+
+  let inject env l e =
+    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label l); e]
+
+  let get_tag = Heap.load_field tag_field
+  let project = Heap.load_field payload_field
+
+  (* Test if the top of the stacks points to a variant with this label *)
+  let test_is env l =
+    get_tag ^^
+    compile_eq_const (hash_variant_label l)
+
+end (* Variant *)
+
 
 (* This is a bit oddly placed, but needed by module Closure *)
 module AllocHow = struct
@@ -2474,8 +2520,7 @@ module OrthogonalPersistence = struct
        set_i ^^
 
        get_i ^^
-       compile_unboxed_zero ^^
-       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+       compile_eq_const 0l ^^
        G.if_ (ValBlockType None)
          (* First run, call the start function *)
          ( G.i (Call (nr start_funid)) )
@@ -2542,6 +2587,8 @@ module HeapTraversal = struct
           compile_unboxed_const 2l
         ; Tagged.Some,
           compile_unboxed_const 2l
+        ; Tagged.Variant,
+          compile_unboxed_const 3l
         ; Tagged.ObjInd,
           compile_unboxed_const 2l
         ; Tagged.MutBox,
@@ -2599,6 +2646,11 @@ module HeapTraversal = struct
       ; Tagged.Some,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
+        set_ptr_loc ^^
+        mk_code get_ptr_loc
+      ; Tagged.Variant,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size Variant.payload_field) ^^
         set_ptr_loc ^^
         mk_code get_ptr_loc
       ; Tagged.ObjInd,
@@ -2723,9 +2775,10 @@ module Serialization = struct
           List.for_all go (List.map (open_ ts) ts1) &&
           List.for_all go (List.map (open_ ts) ts2)
         | Opt t -> go t
+        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
         | Async t -> go t
         | Obj (Actor, fs) -> false
-        | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+        | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t
         | Serialized t -> go t
       end
@@ -2800,6 +2853,17 @@ module Serialization = struct
         get_x ^^
         Opt.is_some env ^^
         G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
+      | Variant vs ->
+        inc_data_size (compile_unboxed_const 4l) ^^ (* one word tag *)
+        List.fold_right (fun (l,t) continue ->
+            get_x ^^
+            Variant.test_is env l ^^
+            G.if_ (ValBlockType None)
+              ( get_x ^^ Variant.project ^^ size env t)
+              continue
+          )
+          vs
+          ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^
         inc_ref_size 1l
@@ -2902,6 +2966,17 @@ module Serialization = struct
         G.if_ (ValBlockType None)
           ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
           ( write_byte (compile_unboxed_const 0l) )
+      | Variant vs ->
+        List.fold_right (fun (i, (l,t)) continue ->
+            get_x ^^
+            Variant.test_is env l ^^
+            G.if_ (ValBlockType None)
+              ( write_word (compile_unboxed_const (Int32.of_int i)) ^^
+                get_x ^^ Variant.project ^^ write env t)
+              continue
+          )
+          ( List.mapi (fun i x -> (i,x)) vs )
+          ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Text.len_field ^^
@@ -3009,11 +3084,22 @@ module Serialization = struct
       | (Prim Null | Shared) -> Opt.null
       | Opt t ->
         read_byte ^^
-        compile_unboxed_const 0l ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        compile_eq_const 0l ^^
         G.if_ (ValBlockType (Some I32Type))
           ( Opt.null )
           ( Opt.inject env (read env t) )
+      | Variant vs ->
+        let (set_tag, get_tag) = new_local env "tag" in
+        read_word ^^ set_tag ^^
+        List.fold_right (fun (i, (l,t)) continue ->
+            get_tag ^^
+            compile_eq_const (Int32.of_int i) ^^
+            G.if_ (ValBlockType (Some I32Type))
+              ( Variant.inject env l (read env t) )
+              continue
+          )
+          ( List.mapi (fun i x -> (i,x)) vs )
+          ( E.trap_with env "deserialize_go: unexpected variant tag" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
@@ -4294,6 +4380,9 @@ and compile_exp (env : E.t) exp =
   | OptE e ->
     SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
+  | VariantE (l, e) ->
+    SR.Vanilla,
+    Variant.inject env l.it (compile_exp_vanilla env e)
   | TupE es ->
     SR.UnboxedTuple (List.length es),
     G.concat_map (compile_exp_vanilla env) es
@@ -4472,6 +4561,19 @@ and fill_pat env pat : patternCode =
         G.if_ (ValBlockType None)
           ( get_x ^^
             Opt.project ^^
+            with_fail fail_code (fill_pat env p)
+          )
+          fail_code
+      )
+  | VariantP (l, p) ->
+      let (set_x, get_x) = new_local env "variant_scrut" in
+      CanFail (fun fail_code ->
+        set_x ^^
+        get_x ^^
+        Variant.test_is env l.it ^^
+        G.if_ (ValBlockType None)
+          ( get_x ^^
+            Variant.project ^^
             with_fail fail_code (fill_pat env p)
           )
           fail_code
@@ -4674,7 +4776,7 @@ and allocate_actor_field env f =
   (* Create a Reference heap object in static memory *)
   let tag = Text.bytes_of_int32 (Tagged.int_of_tag Tagged.Reference) in
   let zero = Text.bytes_of_int32 0l in
-  let ptr = E.add_static_bytes env (tag ^ zero) in
+  let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
   let ptr_payload = Int32.add ptr Heap.word_size in
   (f, ptr_payload)
 
