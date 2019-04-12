@@ -244,7 +244,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, fp) ->
     (match Lib.Promise.value_opt (find (Syntax.id_of_full_path !fp).it env.vals) with
     | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
+    | None -> trap exp.at "accessing import identifier before its definition"
     )
   | LitE lit ->
     k (interpret_lit env lit)
