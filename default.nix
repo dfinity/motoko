@@ -5,11 +5,14 @@
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.filterSource (path: type:
+let sourceByRegex = src: regexes: builtins.path
+  { name = "actorscript";
+    path = src;
+    filter = path: type:
       let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
       let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null
-      || match relPath != null)) src; in
+      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
+  }; in
 
 let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -30,12 +33,12 @@ let real-dvm =
   then
     if test-dvm
     then
-      if !builtins.pathExists ./nix/dev/default.nix
-      then
-        throw "\"test-dvm = true\" requires a checkout of dev in ./nix.\nSee Jenkinsfile for the required revision. "
-      else
-        # Pass devel = true until the dev test suite runs on MacOS again
-        ((import ./nix/dev) { devel = true; }).dvm
+      let dev = builtins.fetchGit {
+        url = "ssh://git@github.com/dfinity-lab/dev";
+        ref = "master";
+        rev = "22285295f0095d5596f762371a98e03313dc8a72";
+      }; in
+      (import dev {}).dvm
     else null
   else dvm; in
 
@@ -92,12 +95,18 @@ rec {
       "test/"
       "test/.*Makefile.*"
       "test/quick.mk"
-      "test/(run.*|fail)/"
-      "test/(run.*|fail)/.*.as"
-      "test/(run.*|fail)/ok/.*"
+      "test/(fail|run|run-dfinity)/"
+      "test/(fail|run|run-dfinity)/.*.as"
+      "test/(fail|run|run-dfinity)/ok/"
+      "test/(fail|run|run-dfinity)/ok/.*.ok"
       "test/.*.sh"
       "samples/"
       "samples/.*"
+      "stdlib/"
+      "stdlib/.*Makefile.*"
+      "stdlib/.*.as"
+      "stdlib/examples/"
+      "stdlib/examples/.*.as"
       ];
 
     buildInputs =
@@ -106,19 +115,22 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+        filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []);
 
     buildPhase = ''
       patchShebangs .
       asc --version
+      make -C stdlib ASC=asc all
       make -C samples ASC=asc all
-      make -C test/run VERBOSE=1 ASC=asc all
-      make -C test/fail VERBOSE=1 ASC=asc all
     '' +
-      (if test-dvm then ''
-      make -C test/run-dfinity VERBOSE=1 ASC=asc all
-      '' else "");
+      (if test-dvm
+      then ''
+      make -C test ASC=asc parallel
+      '' else ''
+      make -C test ASC=asc quick
+      '');
 
     installPhase = ''
       mkdir -p $out
@@ -143,9 +155,10 @@ rec {
       "test/"
       "test/.*Makefile.*"
       "test/quick.mk"
-      "test/(run.*|fail)/"
-      "test/(run.*|fail)/.*.as"
-      "test/(run.*|fail)/ok/.*"
+      "test/(fail|run|run-dfinity)/"
+      "test/(fail|run|run-dfinity)/.*.as"
+      "test/(fail|run|run-dfinity)/ok/"
+      "test/(fail|run|run-dfinity)/ok/.*.ok"
       "test/.*.sh"
       "samples/"
       "samples/.*"
@@ -202,6 +215,9 @@ rec {
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
+  filecheck = nixpkgs.linkFarm "FileCheck"
+    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
+  wabt = nixpkgs.wabt;
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";

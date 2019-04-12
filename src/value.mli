@@ -82,11 +82,13 @@ and value =
   | Text of string
   | Tup of value list
   | Opt of value
+  | Variant of string * value
   | Array of value array
   | Obj of value Env.t
   | Func of call_conv * func
   | Async of async
   | Mut of value ref
+  | Serialized of value
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
@@ -126,9 +128,11 @@ val as_unit : value -> unit
 val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> value Env.t
+val as_variant : value -> string * value
 val as_func : value -> call_conv * func
 val as_async : value -> async
 val as_mut : value -> value ref
+val as_serialized : value -> value
 
 
 (* Ordering *)

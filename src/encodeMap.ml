@@ -34,7 +34,7 @@ let encode m =
   let s = stream () in
 
   (* source map *)
-  let map = ref [] in
+  let map = Buffer.create 0 in
   let sources = ref [] in
   let sourcesContent = ref [] in
   let segs = ref 0 in
@@ -53,23 +53,19 @@ let encode m =
   in
 
   if !Flags.prelude then begin
-    sources := [ "prelude" ];
+    sources := !sources @ [ "prelude" ];
     sourcesContent := !sourcesContent @ [ Prelude.prelude ]
   end;
 
   let add_to_map file il ic ol oc =
     let il = il - 1 in
     let if_ = add_source file !sources in
-    if ol <> !prev_ol then map := !map @ [";"];
-    let buf1 = Buffer.create 100 in
-    let buf2 = Buffer.create 100 in
-    let buf3 = Buffer.create 100 in
-    let buf4 = Buffer.create 100 in
-    Vlq.Base64.encode buf1 (oc - !prev_oc);             (* output column *)
-    Vlq.Base64.encode buf2 (if_ - !prev_if);            (* sources index *)
-    Vlq.Base64.encode buf3 (il - !prev_il);             (* input row *)
-    Vlq.Base64.encode buf4 (ic - !prev_ic);             (* input column *)
-    map := !map @ [Buffer.contents buf1; Buffer.contents buf2; Buffer.contents buf3; Buffer.contents buf4] @ [","];
+    if ol <> !prev_ol then Buffer.add_char map ';';
+    Vlq.Base64.encode map (oc - !prev_oc);             (* output column *)
+    Vlq.Base64.encode map (if_ - !prev_if);            (* sources index *)
+    Vlq.Base64.encode map (il - !prev_il);             (* input row *)
+    Vlq.Base64.encode map (ic - !prev_ic);             (* input column *)
+    Buffer.add_char map ',';
 
     prev_if := if_; prev_ol := ol; prev_oc := oc; prev_il := il; prev_ic := ic; segs := !segs + 1
   in
@@ -547,7 +543,7 @@ let encode m =
   end
   in E.module_ m;
 
-  let mappings = String.concat "" !map in
+  let mappings = Buffer.contents map in
   let n = max 0 ((String.length mappings) - 1) in
   let json : Yojson.Basic.json = `Assoc [
     ("version", `Int 3);

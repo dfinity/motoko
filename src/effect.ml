@@ -33,6 +33,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | UnE (_, _, exp1)
   | ProjE (exp1, _)
   | OptE exp1
+  | VariantE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1
@@ -51,7 +52,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | OrE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
-  | ForE (_, exp1, exp2)->
+  | ForE (_, exp1, exp2) ->
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
@@ -128,22 +129,20 @@ module Ir =
       | UnE (_, _, exp1)
       | ProjE (exp1, _)
       | OptE exp1
+      | VariantE (_, exp1)
       | DotE (exp1, _)
       | ActorDotE (exp1, _)
       | AssertE exp1
       | LabelE (_, _, exp1)
       | BreakE (_, exp1)
       | RetE exp1
-      | LoopE (exp1, None) ->
+      | LoopE exp1 ->
         effect_exp exp1
       | BinE (_, exp1, _, exp2)
       | IdxE (exp1, exp2)
       | RelE (_, exp1, _, exp2)
       | AssignE (exp1, exp2)
-      | CallE (_, exp1, _, exp2)
-      | WhileE (exp1, exp2)
-      | LoopE (exp1, Some exp2)
-      | ForE (_, exp1, exp2) ->
+      | CallE (_, exp1, _, exp2) ->
         let t1 = effect_exp exp1 in
         let t2 = effect_exp exp2 in
         max_eff t1 t2

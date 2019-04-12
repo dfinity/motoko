@@ -1,7 +1,5 @@
 # ActorScript
 
-[![Build Status](https://jenkins.london.dfinity.build/job/actorscript-multibranch/job/master/badge/icon)](https://jenkins.london.dfinity.build/job/actorscript-multibranch/job/master/)
-
 A simple language for writing Dfinity actors.
 
 
@@ -12,21 +10,6 @@ To install the `asc` binary into your nix environment, use
 ```
 $ nix-env -i -f . -A native
 ```
-
-## Setup of `dev`
-
-Until we join the monorepo, we need a checkout the `dev` repository in
-`nix/dev`; see the `Jenkinsfile` the precise revision to use.
-
-For a fresh checkout, run
-```
-git clone --recursive git@github.com:dfinity-lab/dev nix/dev
-git -C nix/dev checkout 2bc6…see…Jenkinsfile…fecd
-git -C nix/dev submodule update --init --recursive
-```
-
-To update, just run the last two commands again.
-
 
 ## Development using Nix
 
@@ -65,7 +48,7 @@ installing all required tools without nix is out of scope).
    ```
    opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
    ```
- * Install the `wasm` package. We use a newer version than is on opam, and a
+ * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
    fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
@@ -73,33 +56,53 @@ installing all required tools without nix is out of scope).
    cd $(nix-build -Q -A wasm.src)/interpreter
    make install
    ```
- * Install the `wasm` tool, using
+ * Install various command line tools used by, in particuar, the test suite:
    ```
    nix-env -i -f . -A wasm
-   ```
- * Install the `dvm` tool, using
-   ```
+   nix-env -i -f . -A filecheck
+   nix-env -i -f . -A wabt
    nix-env -i -f . -A dvm
    ```
-   or simply
-   ```
-   ./update-dvm.sh
-   ```
-   which also updates the `dev` checkout.
 
 
 ## Create a coverage report
 
-Run
+Three ways of obtaining the coverage report:
 
-    BISECT_COVERAGE=YES make -C src asc
-    make -C test coverage
+ * Run
+   ```
+   BISECT_COVERAGE=YES make -C src asc
+   make -C test coverage
+   ```
+   and open `test/coverage/index.html` in the browser.
 
-and open `test/coverage/index.html` in the browser, or run
-
+ * Alternatively, you can run
+   ```
    nix-build -A coverage-report
+   ```
+   and open the path printed on the last line of that command.
+ * On the VPN, simply go to
+   <https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript/coverage-report/latest/download/1/coverage/index.html>
+   for the report for the latest version on `master`.
 
-and open the path printed on the last line of that command.
+## Profile the compiler
+
+1. Build with profiling
+   ```
+   make -C src clean
+   make BUILD=p.native -C src asc
+   ```
+2. Run `asc` as normal, e.g.
+   ```
+   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ```
+   this should dump a `gmon.out` file in the current directory.
+3. Create the report, e.g. using
+   ```
+   gprof --graph src/asc
+   ```
+   (Note that you have to _run_ this in the directory with `gmon.out`, but
+   _pass_ it the path to the binary.)
 
 
 ## Introduction
@@ -223,7 +226,7 @@ and open the path printed on the last line of that command.
 
 * Unary and binary arithmetic operators
   - `- x`, `not b`
-  - `a + b`
+  - `a + b`, `c ** d`
 
 * Object, actor, and array literals, field/element access and update
   - `{c = 3; var x = 4; f() {return y}; private y = 9}`
@@ -250,7 +253,10 @@ and open the path printed on the last line of that command.
 * Conditionals and switches
   - `if b ...`
   - `if b ... else ...`
-  - `switch x case 1 ... case 2 ... case _ ...`
+  - `switch x { case 1 ...; case 2 ...; case _ ...}`
+
+* Short-circuit logical operators
+  - `b and c`, `a or d`
 
 * While loops and iterations
   - `while (p()) ...`
@@ -268,9 +274,6 @@ and open the path printed on the last line of that command.
 
 * Type annotation
   - `e : T`
-
-* Instance check
-  - `x is T`
 
 * Assertions
   - `assert (x > 0)`

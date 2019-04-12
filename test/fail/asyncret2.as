@@ -1,1 +1,1 @@
-func call3<B <: Shared>(f : shared () -> async B) : async B { f(); };
+func call3(f : shared () -> async Int) : async Int { f(); };

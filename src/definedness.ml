@@ -72,12 +72,6 @@ let eager_vars : f -> S.t =
 let delayed_vars : f -> S.t =
   fun f -> S.of_list (M.keys (M.filter (fun _ u -> u = Delayed) f))
 
-(* This closes a combined set over itself (recursion or mutual recursion) *)
-let close (f,d) =
-  if S.is_empty (S.inter d (eager_vars f))
-  then diff f d
-  else eagerify (diff f d)
-
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp msgs e : f = match e.it with
@@ -103,7 +97,7 @@ let rec exp msgs e : f = match e.it with
   | ObjE (s, efs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    close (exp_fields msgs efs)
+    exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
@@ -124,6 +118,7 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | VariantE (_, e)     -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -131,10 +126,12 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
-  | AnnotP (p, t) -> pat msgs p
+  | AnnotP (p, _)
+  | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
-  | OptP p        -> pat msgs p
+  | OptP p
+  | VariantP (_, p) -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
@@ -143,10 +140,8 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
 
-and exp_field msgs (ef : exp_field) : fd
-  = dec msgs ef.it.dec
-
-and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
+and exp_fields msgs efs : f =
+  decs msgs (List.map (fun ef -> ef.it.dec) efs)
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
@@ -154,9 +149,10 @@ and dec msgs d = match d.it with
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, tp, s, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
+    (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
   | ModuleD (i, ds) ->
     (M.empty, S.singleton i.it) +++ decs msgs ds    (* TBR *)
+
 
 and decs msgs decs : f =
   (* Annotate the declarations with the analysis results *)

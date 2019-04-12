@@ -29,11 +29,13 @@ and typ =
   | Obj of obj_sort * field list              (* object *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
+  | Variant of (lab * typ) list               (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
   | Shared                                    (* sharable *)
+  | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
@@ -47,6 +49,8 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Helper for variant constructors *)
+let map_constr_typ f = List.map (fun (c, t) -> c, f t)
 
 (* Constructors *)
 
@@ -82,6 +86,7 @@ let prim = function
 
 let seq = function [t] -> t | ts -> Tup ts
 
+
 let compare_field f1 f2 =
   match f1,f2 with
   | {lab = l1; typ = Kind _}, {lab = l2; typ = Kind _ } -> compare l1 l2
@@ -89,6 +94,7 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _}, {lab = l2; typ = Kind _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
+let compare_summand (c1, _) (c2, _) = compare c1 c2
 
 let iter_obj t =
   Obj (Object Local,
@@ -107,6 +113,12 @@ let array_obj t =
   | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
   | t -> Obj (Object Local, List.sort compare_field (immut t))
 
+let text_obj =
+  let immut =
+    [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+    ] in
+  Obj (Object Local, List.sort compare_field immut)
 
 (* Shifting *)
 
@@ -121,10 +133,12 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
+  | Variant cts -> Variant (map_constr_typ (shift i n) cts)
   | Async t -> Async (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
+  | Serialized t -> Serialized (shift i n t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -166,8 +180,10 @@ let rec subst sigma t =
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
+  | Variant cts -> Variant (map_constr_typ (subst sigma) cts)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
+  | Serialized t -> Serialized (subst sigma t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -216,8 +232,10 @@ let rec open' i ts t =
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
+  | Variant cts -> Variant (map_constr_typ (open' i ts) cts)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
+  | Serialized t -> Serialized (open' i ts t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
@@ -278,6 +296,7 @@ let rec promote = function
 
 let is_prim p = function Prim p' -> p = p' | _ -> false
 let is_obj = function Obj _ -> true | _ -> false
+let is_variant = function Variant _ -> true | _ -> false
 let is_array = function Array _ -> true | _ -> false
 let is_opt = function Opt _ -> true | _ -> false
 let is_tup = function Tup _ -> true | _ -> false
@@ -286,6 +305,7 @@ let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
+let is_serialized = function Serialized _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -293,6 +313,7 @@ let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
 let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
 let as_array = function Array t -> t | _ -> invalid "as_array"
 let as_opt = function Opt t -> t | _ -> invalid "as_opt"
+let as_variant = function Variant cts -> cts | _ -> invalid "as_variant"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
@@ -300,6 +321,7 @@ let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> 
 let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
+let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
@@ -310,6 +332,7 @@ let as_prim_sub p t = match promote t with
 let rec as_obj_sub lab t = match promote t with
   | Obj (s, tfs) -> s, tfs
   | Array t -> as_obj_sub lab (array_obj t)
+  | Prim Text -> as_obj_sub lab text_obj
   | Non -> Object Sharable, [{lab; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub t = match promote t with
@@ -331,9 +354,9 @@ let as_pair_sub t = match promote t with
   | Tup [t1; t2] -> t1, t2
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
-let as_func_sub n t = match promote t with
-  | Func (_, _, tbs, ts1, ts2) -> tbs, seq ts1,  seq ts2
-  | Non -> Lib.List.make n {var = "X"; bound = Any}, Any, Non
+let as_func_sub default_s default_arity t = match promote t with
+  | Func (s, _, tbs, ts1, ts2) -> s, tbs, seq ts1,  seq ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -343,6 +366,12 @@ let as_async_sub t = match promote t with
   | Async t -> t
   | Non -> Non
   | _ -> invalid "as_async_sub"
+
+let inst_func_type fun_ty sort typs =
+    let _, tbs, t2, t3 = as_func_sub sort (List.length typs) fun_ty in
+    let t_arg = open_ typs t2 in
+    let t_ret = open_ typs t3 in
+    t_arg, t_ret
 
 let lookup_field lab' tfs =
   match List.find_opt (fun {lab; typ } ->
@@ -374,7 +403,9 @@ let rec span = function
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
+  | Variant cts -> Some (List.length cts)
   | Mut t -> span t
+  | Serialized t -> None
   | Non -> Some 0
   | Kind _ -> assert false (* TBR *)
 
@@ -405,10 +436,13 @@ let rec avoid' cons = function
           List.map (avoid_bind cons) tbs,
           List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
   | Opt t -> Opt (avoid' cons t)
+  | Variant cts -> Variant (map_constr_typ (avoid' cons) cts)
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
   | Mut t -> Mut (avoid' cons t)
+  | Serialized t -> Serialized (avoid' cons t)
   | Kind (c,k) -> Kind(c, avoid_kind cons k) (* TBR *)
+
 
 
 and avoid_bind cons {var; bound} =
@@ -429,6 +463,45 @@ and avoid_kind cons k =
 let avoid cons t =
   if cons = ConSet.empty then t else
   avoid' cons t
+
+(* Checking for concrete types *)
+
+module TS = Set.Make (struct type t = typ let compare = compare end)
+
+(*
+This check is a stop-gap measure until we have an IDL strategy that
+allows polymorphic types, see #250. It is not what we desire for ActorScript.
+*)
+
+let is_concrete t =
+  let seen = ref TS.empty in (* break the cycles *)
+  let rec go t =
+    TS.mem t !seen ||
+    begin
+      seen := TS.add t !seen;
+      match t with
+      | Var _ -> assert false
+      | (Prim _ | Any | Non | Shared | Pre) -> true
+      | Con (c, ts) ->
+        begin match Con.kind c with
+        | Abs _ -> false
+        | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+        end
+      | Array t -> go t
+      | Tup ts -> List.for_all go ts
+      | Func (s, c, tbs, ts1, ts2) ->
+        let ts = open_binds tbs in
+        List.for_all go (List.map (open_ ts) ts1) &&
+        List.for_all go (List.map (open_ ts) ts2)
+      | Opt t -> go t
+      | Variant cts -> List.for_all (fun (_, t) -> go t) cts
+      | Async t -> go t
+      | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+      | Mut t -> go t
+      | Kind (c,k) -> assert false (* TBR *)
+      | Serialized t -> go t
+    end
+  in go t
 
 (* Equivalence & Subtyping *)
 
@@ -499,6 +572,10 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Opt t1', Shared ->
     rel_typ rel eq t1' Shared
+  | Variant cts1, Variant cts2 ->
+    rel_summands rel eq cts1 cts2
+  | Variant cts1, Shared ->
+    rel_list rel_typ rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
@@ -507,10 +584,15 @@ let rec rel_typ rel eq t1 t2 =
     rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     c1 = c2 && s1 = s2 &&
+    (* subtyping on shared functions needs to imply subtyping of the serialized
+       arguments, i.e. the IDL. Until we have a real IDL, we are conservative
+       here and assum no subtyping in the IDL. This makes shared functions invariant. *)
+    let rel_param =
+      if s1 = Sharable then eq_typ else rel_typ in
     (match rel_binds rel eq tbs1 tbs2 with
     | Some ts ->
-      rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-      rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+      rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+      rel_list rel_param rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
   | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
@@ -521,13 +603,15 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
+  | Serialized t1', Serialized t2' ->
+    eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
   | Kind (c1, k1), Kind (c2, k2) ->
     Con.eq c1 c2 (* && eq_kind k1 k2 *)
   | _, _ -> false
   end
 
 and rel_fields rel eq tfs1 tfs2 =
-  (* Assume that tf1 and tf2 are sorted. *)
+  (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
     true
@@ -540,6 +624,24 @@ and rel_fields rel eq tfs1 tfs2 =
       rel_fields rel eq tfs1' tfs2'
     | -1 when rel != eq ->
       rel_fields rel eq tfs1' tfs2
+    | _ -> false
+    )
+  | _, _ -> false
+
+and rel_summands rel eq tcs1 tcs2 =
+  (* Assume that tcs1 and tcs2 are sorted. *)
+  match tcs1, tcs2 with
+  | [], [] ->
+    true
+  | [], _ when rel != eq ->
+    true
+  | (c1, t1)::tcs1', (c2, t2)::tcs2' ->
+    (match compare c1 c2 with
+    | 0 ->
+      rel_typ rel eq t1 t2 &&
+      rel_summands rel eq tcs1' tcs2'
+    | 1 when rel != eq ->
+      rel_summands rel eq tcs1 tcs2'
     | _ -> false
     )
   | _, _ -> false
@@ -663,6 +765,9 @@ let rec string_of_typ_nullary vs = function
     sprintf "[%s]" (string_of_typ_nullary vs t)
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+  | Variant [] -> "{#}"
+  | Variant cts ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_summand vs) cts))
   | Kind (c,k) ->
     sprintf "= {%s}" (string_of_kind k)
   | t -> sprintf "(%s)" (string_of_typ' vs t)
@@ -711,6 +816,8 @@ and string_of_typ' vs t =
     sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind k)
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
+  | Serialized t ->
+    sprintf "serialized %s" (string_of_typ' vs t)
   | t -> string_of_typ_nullary vs t
 
 and string_of_field vs {lab; typ} =
@@ -720,6 +827,9 @@ and string_of_field vs {lab; typ} =
     sprintf "type %s%s %s %s" lab sbs op st
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
+
+and string_of_summand vs (tag, typ) =
+  sprintf "#%s : %s" tag (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs

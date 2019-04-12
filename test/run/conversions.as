@@ -135,3 +135,33 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip (-100000000);
     roundtrip (-1000000000);
 };
+
+
+
+
+// Char <--> Word32
+
+assert(charToWord32 '\u{00}' == (0 : Word32));
+assert(charToWord32 '*' == (42 : Word32));
+assert(charToWord32 'П' == (1055 : Word32));
+assert(charToWord32 '\u{ffff}' == (65535 : Word32)); // 2**16 - 1
+assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
+
+{
+    func roundtrip(w : Word32) = assert (charToWord32 (word32ToChar w) == w);
+    roundtrip 0;
+    roundtrip 10;
+    roundtrip 100;
+    roundtrip 1000;
+    roundtrip 10000;
+    roundtrip 100000;
+    roundtrip 1000000;
+    roundtrip 0x10FFFF;  // largest code point
+};
+
+
+// Char <--> Text
+
+assert(charToText 'П' == "П");
+func snd((a : Word32, b : Char)) : Char = b;
+assert(snd (decodeUTF8 "П") =='П');

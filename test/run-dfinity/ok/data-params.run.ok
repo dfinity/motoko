@@ -1,3 +1,25 @@
+data-params.as:54.18-54.28: warning, this pattern does not cover all possible values
+data-params.as:128.18-128.28: warning, this pattern does not cover all possible values
+data-params.as:200.18-200.28: warning, this pattern does not cover all possible values
+1
+3
+6
+10
+1010
+1021
+6021
+6045
+6091
+1006091
+1006105
+1006136
+1006171
+1006191
+1006211
+1006211
+Foo1: 1006211
+Foo2: 1006211
+10000001006211
 1
 3
 6
@@ -12,4 +34,21 @@
 1006136
 1006171
 1006171
-Foo: 1006171
+Foo1: 1006171
+Foo2: 1006171
+1
+3
+6
+10
+1010
+1021
+6021
+6045
+6091
+16091
+16105
+16136
+16171
+16171
+Foo1: 16171
+Foo2: 16171

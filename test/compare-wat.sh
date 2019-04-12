@@ -24,6 +24,7 @@ done
 shift $((OPTIND-1))
 
 function build_ref_to {
+  rm -f $2-asc
   if [ -z "$1" ]
   then
     echo "Building $2 asc from working copy.."
@@ -32,14 +33,19 @@ function build_ref_to {
       -o $2-asc/ |& tail -n1
   else
     echo "Building $2 asc (rev $1).."
-    nix-build --argstr rev "$1" -E '
-      {rev}:
+    nix-build \
+      --argstr rev "$1" \
+      --argstr path "$(realpath "$(dirname $0)/..")" \
+      -E '
+      {rev, path}:
       let nixpkg = import (../nix/nixpkgs.nix) {}; in
-      let checkout = (builtins.fetchGit {url = ".."; ref = rev; rev = rev; name = "old-asc";}).outPath; in
-      ((import checkout) {}).native' \
+      let checkout = (builtins.fetchGit {url = path; ref = rev; rev = rev; name = "old-asc";}).outPath; in
+      builtins.trace checkout (
+      ((import checkout) {}).native)' \
       --option binary-caches '' \
       -o $2-asc/ |& tail -n1
   fi
+  test -x $2-asc/bin/asc || exit 1
 }
 build_ref_to "$old" old
 build_ref_to "$new" new
@@ -64,13 +70,13 @@ do
 
   rm -rf compare-out/$base.old
   mkdir compare-out/$base.old
-  old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
+  old-asc/bin/asc --dfinity $file --map -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
   $WASM2WAT compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
-  new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
+  new-asc/bin/asc --dfinity $file --map -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
   $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 

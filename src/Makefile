@@ -11,7 +11,7 @@ JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain
 
-OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45 -warn-error +a'
+OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
 OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -use-ocamlfind \
  -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
@@ -21,10 +21,11 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  $(OPAM_PACKAGES:%=-pkg %) \
  -tags debug
 
-.PHONY: all quick clean test test-quick
+.PHONY: all parallel quick clean test test-parallel test-quick
 
 all: $(NAME) test
 
+parallel: $(NAME) test-parallel
 quick: $(NAME) test-quick
 
 $(NAME): $(MAIN).$(BUILD)
@@ -49,11 +50,15 @@ clean:
 	$(MAKE) -C ../test clean
 
 test: $(NAME)
+	$(MAKE) -C ../stdlib ASC=$(ASC) all
 	$(MAKE) -C ../test ASC=$(ASC) all
 	$(MAKE) -C ../samples ASC=$(ASC) all
 
 accept: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) accept
+
+test-parallel: $(NAME)
+	$(MAKE) -C ../test ASC=$(ASC) parallel
 
 test-quick: $(NAME)
 	$(MAKE) -C ../test ASC=$(ASC) quick
