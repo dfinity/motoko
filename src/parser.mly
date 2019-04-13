@@ -267,6 +267,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
+  | i=variant_tag
+    { (i, TupT[] @! at $sloc) }
   | i=variant_tag COLON t=typ
     { (i, t) }
 
@@ -350,6 +352,8 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
+  | i=variant_tag
+    { VariantE (i, TupE[] @? at $sloc) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
@@ -497,6 +501,8 @@ pat_nullary :
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
+  | i=variant_tag
+    { VariantP(i, TupP[] @! at $sloc) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
