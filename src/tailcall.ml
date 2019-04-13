@@ -94,6 +94,7 @@ and exp' env e  : exp' = match e.it with
   | UnE (ot, uo, e)      -> UnE (ot, uo, exp env e)
   | BinE (ot, e1, bo, e2)-> BinE (ot, exp env e1, bo, exp env e2)
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
+  | ShowE (ot, e)       -> ShowE (ot, exp env e)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)
@@ -125,6 +126,7 @@ and exp' env e  : exp' = match e.it with
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
   | OptE e              -> OptE (exp env e)
+  | VariantE (i, e)     -> VariantE (i, exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
@@ -152,7 +154,8 @@ and pat' env p = match p with
     env1
   | TupP ps       -> pats env ps
   | LitP l        -> env
-  | OptP p        -> pat env p
+  | OptP p
+  | VariantP (_, p) -> pat env p
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      env

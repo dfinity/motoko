@@ -21,6 +21,7 @@ and pat' =
   | LitP of lit                                (* literal *)
   | TupP of pat list                           (* tuple *)
   | OptP of pat                                (* option *)
+  | VariantP of id * pat                       (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 (* Like id, but with a type attached *)
@@ -36,9 +37,11 @@ and exp' =
   | UnE of Type.typ * unop * exp               (* unary operator *)
   | BinE of Type.typ * exp * binop * exp       (* binary operator *)
   | RelE of Type.typ * exp * relop * exp       (* relational operator *)
+  | ShowE of Type.typ * exp                    (* debug show *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
+  | VariantE of id * exp                       (* variant injection *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
@@ -61,7 +64,7 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Value.call_conv * typ_bind list * arg list * Type.typ list * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
-  | NewObjE of  Type.obj_sort * field list * Type.typ  (* make an object *)
+  | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : name; var : id} (* the var is by reference, not by value *)
@@ -95,6 +98,7 @@ should hold.
 type flavor = {
   has_async_typ : bool; (* AsyncT *)
   has_await : bool; (* AwaitE and AsyncE *)
+  has_show : bool; (* ShowE *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 

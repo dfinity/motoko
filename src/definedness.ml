@@ -72,17 +72,12 @@ let eager_vars : f -> S.t =
 let delayed_vars : f -> S.t =
   fun f -> S.of_list (M.keys (M.filter (fun _ u -> u = Delayed) f))
 
-(* This closes a combined set over itself (recursion or mutual recursion) *)
-let close (f,d) =
-  if S.is_empty (S.inter d (eager_vars f))
-  then diff f d
-  else eagerify (diff f d)
-
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
+  | ImportE (_, fp)     -> M.singleton (Syntax.id_of_full_path !fp).it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   (* And break and return can be thought of as calling a continuation: *)
@@ -98,12 +93,13 @@ let rec exp msgs e : f = match e.it with
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
+  | ShowE (_, e)        -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
   | ObjE (s, efs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    close (exp_fields msgs efs)
+    exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
@@ -124,6 +120,7 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | VariantE (_, e)     -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -135,7 +132,8 @@ and pat msgs p : fd = match p.it with
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
-  | OptP p        -> pat msgs p
+  | OptP p
+  | VariantP (_, p) -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
@@ -144,10 +142,8 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
 
-and exp_field msgs (ef : exp_field) : fd
-  = dec msgs ef.it.dec
-
-and exp_fields msgs efs : fd = union_binders (exp_field msgs) efs
+and exp_fields msgs efs : f =
+  decs msgs (List.map (fun ef -> ef.it.dec) efs)
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
@@ -155,7 +151,7 @@ and dec msgs d = match d.it with
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, tp, s, p, i', efs) ->
-    (M.empty, S.singleton i.it) +++ delayify (close (exp_fields msgs efs) /// pat msgs p // i'.it)
+    (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
 
 and decs msgs decs : f =
   (* Annotate the declarations with the analysis results *)

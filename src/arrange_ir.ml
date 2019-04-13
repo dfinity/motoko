@@ -14,6 +14,7 @@ let rec exp e = match e.it with
   | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
   | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
+  | ShowE (t, e)        -> "ShowE"     $$ [typ t; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom (name n)]
@@ -33,6 +34,7 @@ let rec exp e = match e.it with
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | OptE e              -> "OptE"    $$ [exp e]
+  | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
@@ -50,12 +52,13 @@ and args = function
 and arg a = Atom a.it
 
 and pat p = match p.it with
-  | WildP         -> Atom "WildP"
-  | VarP i        -> "VarP"       $$ [ id i]
-  | TupP ps       -> "TupP"       $$ List.map pat ps
-  | LitP l        -> "LitP"       $$ [ Arrange.lit l ]
-  | OptP p        -> "OptP"       $$ [ pat p ]
-  | AltP (p1,p2)  -> "AltP"       $$ [ pat p1; pat p2 ]
+  | WildP           -> Atom "WildP"
+  | VarP i          -> "VarP"       $$ [ id i ]
+  | TupP ps         -> "TupP"       $$ List.map pat ps
+  | LitP l          -> "LitP"       $$ [ Arrange.lit l ]
+  | OptP p          -> "OptP"       $$ [ pat p ]
+  | VariantP (i, p) -> "VariantP"   $$ [ id i; pat p ]
+  | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 

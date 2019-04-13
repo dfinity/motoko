@@ -158,6 +158,7 @@ module Transform() = struct
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
       end
     | Opt t -> Opt (t_typ t)
+    | Variant cts -> Variant (map_constr_typ t_typ cts)
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
@@ -212,6 +213,8 @@ module Transform() = struct
     | VarE id -> exp'
     | UnE (ot, op, exp1) ->
       UnE (t_operator_type ot, op, t_exp exp1)
+    | ShowE (ot, exp1) ->
+      ShowE (t_operator_type ot, t_exp exp1)
     | BinE (ot, exp1, op, exp2) ->
       BinE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
     | RelE (ot, exp1, op, exp2) ->
@@ -220,6 +223,8 @@ module Transform() = struct
       TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
+    | VariantE (i, exp1) ->
+      VariantE (i, t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->
@@ -379,6 +384,8 @@ module Transform() = struct
       TupP (List.map t_pat pats)
     | OptP pat1 ->
       OptP (t_pat pat1)
+    | VariantP (i, pat1) ->
+      VariantP (i, t_pat pat1)
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 

@@ -5,6 +5,7 @@ module V = Value
 
 module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
+module TagSet = Set.Make(struct type t = string let compare = compare end)
 
 type desc =
   | Any
@@ -12,9 +13,12 @@ type desc =
   | NotVal of ValSet.t
   | Tup of desc list
   | Opt of desc
+  | Tag of desc * id
+  | NotTag of TagSet.t
 
 type ctxt =
   | InOpt of ctxt
+  | InTag of ctxt * id
   | InTup of ctxt * desc list * desc list * pat list * Type.typ list
   | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
@@ -30,8 +34,8 @@ type sets =
 
 let make_sets () =
   { cases = AtSet.empty;
-		alts = AtSet.empty;
-		reached_cases = AtSet.empty;
+    alts = AtSet.empty;
+    reached_cases = AtSet.empty;
     reached_alts = AtSet.empty;
   }
 
@@ -73,7 +77,7 @@ let rec match_pat ctxt desc pat t sets =
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
-	| OptP pat1 ->
+  | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
     | Val Value.Null ->
@@ -87,6 +91,25 @@ let rec match_pat ctxt desc pat t sets =
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
+  | VariantP (id, pat1) ->
+     begin
+       let t' = List.assoc id.it (Type.as_variant (Type.promote t)) in
+       match desc with
+       | NotTag ts when TagSet.mem id.it ts ->
+         fail ctxt desc sets
+       | NotTag ts ->
+         let explored = TagSet.add id.it ts in
+         (vanishing (Type.promote t) explored || fail ctxt (NotTag explored) sets) &&
+           match_pat (InTag (ctxt, id)) Any pat1 t' sets
+       | Tag (desc', id') ->
+         if id.it <> id'.it
+         then fail ctxt desc sets
+         else match_pat (InTag (ctxt, id)) desc' pat1 t' sets
+       | Any ->
+         fail ctxt (NotTag (TagSet.singleton id.it)) sets &&
+           match_pat (InTag (ctxt, id)) Any pat1 t' sets
+       | _ -> assert false
+     end
   | AltP (pat1, pat2) ->
     sets.alts <- AtSet.add pat1.at (AtSet.add pat2.at sets.alts);
     match_pat (InAlt1 (ctxt, pat1.at, pat2, t)) desc pat1 t sets
@@ -134,6 +157,8 @@ and succeed ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
     succeed ctxt' (Opt desc) sets
+  | InTag (ctxt', t) ->
+    succeed ctxt' (Tag (desc, t)) sets
   | InTup (ctxt', descs_r, descs, pats, ts) ->
     match_tup ctxt' (desc::descs_r) descs pats ts sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
@@ -158,6 +183,8 @@ and fail ctxt desc sets : bool =
   match ctxt with
   | InOpt ctxt' ->
     fail ctxt' (Opt desc) sets
+  | InTag (ctxt', id) ->
+    fail ctxt' (Tag (desc, id)) sets
   | InTup (ctxt', descs', descs, pats, _ts) ->
     fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
@@ -170,6 +197,10 @@ and fail ctxt desc sets : bool =
     Type.span t = Some 0 && skip (case::cases) sets ||
     match_pat (InCase (case.at, cases, t)) desc case.it.pat t sets
 
+and vanishing t excluded =
+  match t with
+  | Type.Variant cts -> List.for_all (fun (l, _) -> TagSet.mem l excluded) cts
+  | _ -> assert false
 
 let warn at fmt =
 	Printf.ksprintf (fun s ->
@@ -177,7 +208,7 @@ let warn at fmt =
       Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
   ) fmt
 
-let check_cases cases t : bool =
+let check_cases cases t =
   let sets = make_sets () in
   let exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in

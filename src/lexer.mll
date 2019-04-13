@@ -198,6 +198,7 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
+  | "import" { IMPORT }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }
@@ -208,6 +209,7 @@ rule token mode = parse
   | "private" { PRIVATE }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }
@@ -216,6 +218,7 @@ rule token mode = parse
 
   | "prim" as s { if mode = Privileged then PRIM else ID s }
   | id as s { ID s }
+  | "#" (id as s) { VARIANT_TAG s }
   | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl*eof { EOF }

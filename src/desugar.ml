@@ -38,11 +38,14 @@ and exp' at note = function
     I.BinE (!ot, exp e1, o, exp e2)
   | S.RelE (ot, e1, o, e2) ->
     I.RelE (!ot, exp e1, o, exp e2)
+  | S.ShowE (ot, e) ->
+    I.ShowE (!ot, exp e)
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
     obj at s None es note.S.note_typ
+  | S.VariantE (c, e) -> I.VariantE (c, exp e)
   | S.DotE (e, x) ->
     let n = {x with it = I.Name x.it} in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
@@ -81,6 +84,9 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
+  | S.ImportE (f, fp) ->
+    if !fp = "" then assert false; (* unresolved import *)
+    I.VarE (Syntax.id_of_full_path !fp)
 
 and obj at s self_id es obj_typ =
   match s.it with
@@ -218,6 +224,7 @@ and pat' = function
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
   | S.OptP p -> I.OptP (pat p)
+  | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
@@ -281,6 +288,7 @@ and prog (p : Syntax.prog) : Ir.prog =
   end
   , { I.has_await = true
     ; I.has_async_typ = true
+    ; I.has_show = true
     ; I.serialized = false
     }
 

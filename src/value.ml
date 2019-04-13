@@ -217,6 +217,7 @@ and value =
   | Text of string
   | Tup of value list
   | Opt of value
+  | Variant of string * value
   | Array of value array
   | Obj of value Env.t
   | Func of call_conv * func
@@ -256,6 +257,7 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
+let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
@@ -384,7 +386,7 @@ let rec string_of_val_nullary d = function
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val' d) (Array.to_list a)))
-  | Func ( _, _) -> "func"
+  | Func (_, _) -> "func"
   | v -> "(" ^ string_of_val' d v ^ ")"
 
 and string_of_val' d = function
@@ -393,6 +395,8 @@ and string_of_val' d = function
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
       (List.length waiters) (string_of_def_nullary d result)
+  | Variant (l, v) ->
+    sprintf "#%s %s" l (string_of_val_nullary d v)
   | Mut r -> sprintf "%s" (string_of_val' d !r)
   | v -> string_of_val_nullary d v
 

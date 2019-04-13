@@ -36,6 +36,7 @@ and exp' rho e  = match e with
   | UnE (ot, uo, e)      -> UnE (ot, uo, exp rho e)
   | BinE (ot, e1, bo, e2)-> BinE (ot, exp rho e1, bo, exp rho e2)
   | RelE (ot, e1, ro, e2)-> RelE (ot, exp rho e1, ro, exp rho e2)
+  | ShowE (ot, e)       -> ShowE (ot, exp rho e)
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
@@ -61,6 +62,7 @@ and exp' rho e  = match e with
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
   | OptE e              -> OptE (exp rho e)
+  | VariantE (i, e)     -> VariantE (i, exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
@@ -97,6 +99,8 @@ and pat' rho p = match p with
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
+  | VariantP (i, p) -> let (p', rho') = pat rho p in
+                       (VariantP (i, p'), rho')
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      let (p1', _) = pat rho p1 in

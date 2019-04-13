@@ -1,7 +1,7 @@
 %{
 
 open Syntax
-open Source 
+open Source
 
 (* Position handling *)
 
@@ -93,11 +93,13 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN 
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
-%token AND OR NOT 
+%token AND OR NOT
+%token IMPORT
+%token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
@@ -113,6 +115,7 @@ let share_expfield (ef : exp_field) =
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
+%token<string> VARIANT_TAG
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
@@ -156,6 +159,9 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
+%inline variant_tag :
+  | variant_tag=VARIANT_TAG { variant_tag @@ at $sloc }
+
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -196,6 +202,14 @@ typ_obj :
   | LCURLY tfs=seplist(typ_field, semicolon) RCURLY
     { tfs }
 
+typ_variant :
+  | LCURLY CATOP RCURLY
+    { [] }
+  | LCURLY ct=typ_tag RCURLY
+    { [ct] }
+  | LCURLY ct=typ_tag semicolon cts=seplist(typ_tag, semicolon) RCURLY
+    { ct :: cts }
+
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
@@ -205,6 +219,8 @@ typ_nullary :
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
+  | cts=typ_variant
+    { VariantT cts @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -246,10 +262,14 @@ typ_args :
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ 
+  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
     { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
+
+typ_tag :
+  | i=variant_tag COLON t=typ
+    { (i, t) }
 
 typ_bind :
   | x=id SUB t=typ
@@ -353,7 +373,7 @@ exp_post :
 
 exp_un :
   | e=exp_post
-    { e } 
+    { e }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -362,6 +382,12 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
+  | IMPORT f=TEXT
+    { ImportE (f, ref "") @? at $sloc }
+  | i=variant_tag e=exp_nullary
+    { VariantE (i, e) @? at $sloc }
+  | DEBUG_SHOW e=exp_un
+    { ShowE (ref Type.Pre, e) @? at $sloc }
 
 exp_bin :
   | e=exp_un
@@ -396,7 +422,7 @@ exp_pre :
 
 exp_nondec :
   | e=exp_pre
-    { e } 
+    { e }
   | LABEL x=id rt=return_typ_nullary? e=exp
     { let x' = ("continue " ^ x.it) @@ x.at in
       let t = Lib.Option.get rt (TupT [] @! at $sloc) in
@@ -484,6 +510,8 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
+  | i=variant_tag p=pat_nullary
+    { VariantP(i, p) @! at $sloc }
 
 pat_bin :
   | p=pat_un

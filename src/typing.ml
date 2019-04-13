@@ -113,14 +113,17 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let check_ids env ids = ignore
+let check_ids env vrnt ids = ignore
+ begin
+  let compound, member = if vrnt then "variant", "case" else "object", "field" in
   (List.fold_left
     (fun dom id ->
       if List.mem id.it dom
-      then error env id.at "duplicate field name %s in object type" id.it
+      then error env id.at "duplicate %s name %s in %s type" member id.it compound
       else id.it::dom
     ) [] ids
   )
+ end
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -183,6 +186,10 @@ and check_typ' env typ : T.typ =
     T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
+  | VariantT cts ->
+    check_ids env true (List.map fst cts);
+    let cs = List.map (check_typ_constructor env) cts in
+    T.Variant (List.sort T.compare_summand cs)
   | AsyncT typ ->
     let t = check_typ env typ in
     if not env.pre && not (T.sub t T.Shared) then
@@ -190,7 +197,7 @@ and check_typ' env typ : T.typ =
         (T.string_of_typ_expand t);
     T.Async t
   | ObjT (sort, fields) ->
-    check_ids env (List.map (fun (field : typ_field) -> field.it.id) fields);
+    check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
   | ParT typ ->
@@ -206,6 +213,10 @@ and check_typ_field env s typ_field : T.field =
     error env typ.at "shared object or actor field %s has non-shared type\n  %s"
       id.it (T.string_of_typ_expand t);
   T.{lab = id.it; typ = t}
+
+and check_typ_constructor env ct =
+  let (c, t) = ct
+  in (c.it, check_typ env t)
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -352,7 +363,8 @@ and infer_exp'' env exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t -> t
-    | None -> error env id.at "unbound variable %s" id.it
+    | None ->
+      error env id.at "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -368,6 +380,15 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     t
+  | ShowE (ot, exp1) ->
+    let t = infer_exp_promote env exp1 in
+    if not env.pre then begin
+      if not (Show.can_show t) then
+        error env exp.at "show is not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    T.Prim T.Text
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
@@ -400,6 +421,8 @@ and infer_exp'' env exp : T.typ =
   | OptE exp1 ->
     let t1 = infer_exp env exp1 in
     T.Opt t1
+  | VariantE (i, exp1) ->
+    T.Variant [(i.it, infer_exp env exp1)]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -651,6 +674,14 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
+  | ImportE (_, fp) ->
+    if !fp = "" then assert false;
+    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    | Some T.Pre ->
+      error env exp.at "cannot infer type of forward import %s" !fp
+    | Some t -> t
+    | None -> error env exp.at "unresolved import %s" !fp
+    )
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -781,6 +812,9 @@ and infer_pat' env pat : T.typ * val_env =
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
+  | VariantP (i, pat1) ->
+    let typ, ve = infer_pat env pat1 in
+    T.Variant [(i.it, typ)], ve
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
@@ -853,6 +887,18 @@ and check_pat' env t pat : val_env =
       error env pat.at "option pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
     )
+  | VariantP (i, pat1) ->
+    begin
+      try
+        match List.find_opt (fun (c, _) -> i.it = c) (T.as_variant t) with
+        | Some (_, typ) -> check_pat env typ pat1
+        | None ->
+           error env pat.at "variant pattern constructor %s cannot consume expected type\n  %s"
+             i.it (T.string_of_typ_expand t)
+      with Invalid_argument _ ->
+        error env pat.at "variant pattern cannot consume expected type\n  %s"
+          (T.string_of_typ_expand t)
+    end
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
@@ -910,6 +956,7 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | TupP pats -> List.fold_right pub_pat pats xs
   | AltP (pat1, _)
   | OptP pat1
+  | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 ->
     pub_pat pat1 xs
@@ -1074,7 +1121,12 @@ and gather_dec_typdecs env scope dec : scope =
     let c = Con.fresh id.it pre_k in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
-    {scope with typ_env = te'; con_env = ce'}
+    let ve' =  match dec.it with
+      | ClassD _ ->
+        T.Env.add id.it T.Pre scope.val_env
+      | _ -> scope.val_env
+    in
+    { typ_env = te'; con_env = ce'; val_env = ve' }
 
 
 (* Pass 2 and 3: infer type definitions *)
@@ -1115,8 +1167,7 @@ and infer_id_typdecs id c k : con_env =
   | T.Abs (_, T.Pre) ->
     T.set_kind c k;
     id.note <- Some c
-  | k' ->
-    assert (T.eq_kind k' k)
+  | k' -> assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
 
@@ -1137,7 +1188,7 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+  | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then
