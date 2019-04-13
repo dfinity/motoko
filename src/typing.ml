@@ -380,6 +380,15 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     t
+  | ShowE (ot, exp1) ->
+    let t = infer_exp_promote env exp1 in
+    if not env.pre then begin
+      if not (Show.can_show t) then
+        error env exp.at "show is not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    T.Prim T.Text
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
@@ -665,6 +674,14 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
+  | ImportE (_, fp) ->
+    if !fp = "" then assert false;
+    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    | Some T.Pre ->
+      error env exp.at "cannot infer type of forward import %s" !fp
+    | Some t -> t
+    | None -> error env exp.at "unresolved import %s" !fp
+    )
 
 and check_exp env t exp =
   assert (not env.pre);

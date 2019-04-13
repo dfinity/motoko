@@ -38,6 +38,8 @@ and exp' at note = function
     I.BinE (!ot, exp e1, o, exp e2)
   | S.RelE (ot, e1, o, e2) ->
     I.RelE (!ot, exp e1, o, exp e2)
+  | S.ShowE (ot, e) ->
+    I.ShowE (!ot, exp e)
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
@@ -82,6 +84,9 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
+  | S.ImportE (f, fp) ->
+    if !fp = "" then assert false; (* unresolved import *)
+    I.VarE (Syntax.id_of_full_path !fp)
 
 and obj at s self_id es obj_typ =
   match s.it with
@@ -283,6 +288,7 @@ and prog (p : Syntax.prog) : Ir.prog =
   end
   , { I.has_await = true
     ; I.has_async_typ = true
+    ; I.has_show = true
     ; I.serialized = false
     }
 

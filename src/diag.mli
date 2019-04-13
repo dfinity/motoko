@@ -24,7 +24,10 @@ Both success and failure can come with messages)
 
 type 'a result = ('a * messages, messages) Pervasives.result
 
+val return : 'a -> 'a result
+val bind : 'a result -> ('a -> 'b result) -> 'b result
 val map_result : ('a -> 'b) -> 'a result -> 'b result
+val traverse: ('a -> 'b result) -> 'a list -> 'b list result
 
 (*
 An impure, but more more convenient interface.

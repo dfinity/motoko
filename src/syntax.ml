@@ -130,6 +130,7 @@ and exp' =
   | UnE of op_typ * unop * exp                 (* unary operator *)
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
+  | ShowE of (op_typ * exp)                    (* debug show operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
@@ -157,6 +158,7 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
+  | ImportE of (string * string ref)           (* import statement *)
 (*
   | ThrowE of exp list                         (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
@@ -220,3 +222,16 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_string f
   | PreLit _      -> assert false
+
+
+(*
+As a first scaffolding, we translate imported files into let-bound
+variables with a special, non-colliding name, which we sometimes
+want to recognize for better user experience.
+*)
+let is_import_id s =
+  String.length s > 5 && String.sub s 0 5 = "file$"
+let id_of_full_path (fp : string) : id =
+  let open Source in
+  ("file$" ^ fp) @@ no_region
+
