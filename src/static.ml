@@ -32,7 +32,7 @@ let pat_err m at =
   }
 
 let rec exp m e = match e.it with
-  (* Plan values *)
+  (* Plain values *)
   | (PrimE _ | LitE _ | FuncE _) -> ()
   | (VariantE (_, exp1) | OptE exp1) -> exp m exp1
   | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
@@ -81,6 +81,14 @@ and dec m d = match d.it with
 
 and triv m p = match p.it with
   | (WildP | VarP _) -> ()
+
+  (*
+  If we allow projections above, then we should allow irrefutable
+  patterns here.
+  *)
+  | TupP ps -> List.iter (triv m) ps
+
+  (* Everything else is forbidden *)
   | _ -> pat_err m p.at
 
 let prog p =
