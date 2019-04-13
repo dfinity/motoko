@@ -363,7 +363,8 @@ and infer_exp'' env exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t -> t
-    | None -> error env id.at "unbound variable %s" id.it
+    | None ->
+      error env id.at "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1120,7 +1121,12 @@ and gather_dec_typdecs env scope dec : scope =
     let c = Con.fresh id.it pre_k in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
-    {scope with typ_env = te'; con_env = ce'}
+    let ve' =  match dec.it with
+      | ClassD _ ->
+        T.Env.add id.it T.Pre scope.val_env
+      | _ -> scope.val_env
+    in
+    { typ_env = te'; con_env = ce'; val_env = ve' }
 
 
 (* Pass 2 and 3: infer type definitions *)
