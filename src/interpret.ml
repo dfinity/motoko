@@ -237,10 +237,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE s ->
     k (V.Func (V.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
   | VarE id ->
-    (match Lib.Promise.value_opt (find id.it env.vals) with
+    begin match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"
-    )
+    end
+  | ImportE (f, fp) ->
+    begin match Lib.Promise.value_opt (find (Syntax.id_of_full_path !fp).it env.vals) with
+    | Some v -> k v
+    | None -> trap exp.at "accessing import identifier before its definition"
+    end
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
