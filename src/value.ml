@@ -395,6 +395,8 @@ and string_of_val' d = function
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
       (List.length waiters) (string_of_def_nullary d result)
+  | Variant (l, Tup[]) ->
+    sprintf "#%s" l
   | Variant (l, v) ->
     sprintf "#%s %s" l (string_of_val_nullary d v)
   | Mut r -> sprintf "%s" (string_of_val' d !r)
