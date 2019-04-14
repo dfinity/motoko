@@ -757,7 +757,7 @@ and string_of_field vs {lab; typ} =
   sprintf "%s : %s" lab (string_of_typ' vs typ)
 
 and string_of_summand vs = function
-  | (tag, Tup[]) -> sprintf "#%s" tag
+  | (tag, Tup []) -> sprintf "#%s" tag
   | (tag, typ) -> sprintf "#%s : %s" tag (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
