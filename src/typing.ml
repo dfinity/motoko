@@ -673,6 +673,14 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
+  | ImportE (_, fp) ->
+    if !fp = "" then assert false;
+    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    | Some T.Pre ->
+      error env exp.at "cannot infer type of forward import %s" !fp
+    | Some t -> t
+    | None -> error env exp.at "unresolved import %s" !fp
+    )
 
 and check_exp env t exp =
   assert (not env.pre);

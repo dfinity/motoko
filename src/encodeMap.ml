@@ -545,7 +545,7 @@ let encode m =
 
   let mappings = Buffer.contents map in
   let n = max 0 ((String.length mappings) - 1) in
-  let json : Yojson.Basic.json = `Assoc [
+  let json : Yojson.Basic.t = `Assoc [
     ("version", `Int 3);
     ("sources", `List ( List.map (fun x -> `String x) !sources ) );
     ("sourcesContent", `List ( List.map (fun x -> if x = "" then `Null else `String x) !sourcesContent ) );
