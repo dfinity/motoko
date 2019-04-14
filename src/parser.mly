@@ -500,7 +500,7 @@ pat_nullary :
   | l=lit
     { LitP(ref l) @! at $sloc }
   | i=variant_tag
-    { VariantP(i, TupP([]) @! at $sloc) @! at $sloc }
+    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
