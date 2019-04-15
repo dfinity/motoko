@@ -1,5 +1,7 @@
 open Source
 
+module Js = Js_of_ocaml.Js
+
 let position_of_pos pos =
   object%js
     (* The LSP spec requires zero-based positions *)

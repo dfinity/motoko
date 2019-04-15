@@ -36,7 +36,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "22285295f0095d5596f762371a98e03313dc8a72";
+        rev = "b6f587c3303b9f2585548e5fcb98f907b0275219";
       }; in
       (import dev {}).dvm
     else null
@@ -55,6 +55,33 @@ let commonBuildInputs = [
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
 ]; in
+
+let
+  test_files = [
+    "test/"
+    "test/.*Makefile.*"
+    "test/quick.mk"
+    "test/(fail|run|run-dfinity)/"
+    "test/(fail|run|run-dfinity)/lib/"
+    "test/(fail|run|run-dfinity)/lib/dir/"
+    "test/(fail|run|run-dfinity)/.*.as"
+    "test/(fail|run|run-dfinity)/ok/"
+    "test/(fail|run|run-dfinity)/ok/.*.ok"
+    "test/.*.sh"
+  ];
+  samples_files = [
+    "samples/"
+    "samples/.*"
+  ];
+  stdlib_files = [
+    "stdlib/"
+    "stdlib/.*Makefile.*"
+    "stdlib/.*.as"
+    "stdlib/examples/"
+    "stdlib/examples/.*.as"
+  ];
+
+in
 
 rec {
 
@@ -91,23 +118,11 @@ rec {
   native_test = stdenv.mkDerivation {
     name = "native.test";
 
-    src = sourceByRegex ./. [
-      "test/"
-      "test/.*Makefile.*"
-      "test/quick.mk"
-      "test/(fail|run|run-dfinity)/"
-      "test/(fail|run|run-dfinity)/.*.as"
-      "test/(fail|run|run-dfinity)/ok/"
-      "test/(fail|run|run-dfinity)/ok/.*.ok"
-      "test/.*.sh"
-      "samples/"
-      "samples/.*"
-      "stdlib/"
-      "stdlib/.*Makefile.*"
-      "stdlib/.*.as"
-      "stdlib/examples/"
-      "stdlib/examples/.*.as"
-      ];
+    src = sourceByRegex ./. (
+      test_files ++
+      samples_files ++
+      stdlib_files
+    );
 
     buildInputs =
       [ native
@@ -151,18 +166,10 @@ rec {
   coverage-report = stdenv.mkDerivation {
     name = "native.coverage";
 
-    src = sourceByRegex ./. [
-      "test/"
-      "test/.*Makefile.*"
-      "test/quick.mk"
-      "test/(fail|run|run-dfinity)/"
-      "test/(fail|run|run-dfinity)/.*.as"
-      "test/(fail|run|run-dfinity)/ok/"
-      "test/(fail|run|run-dfinity)/ok/.*.ok"
-      "test/.*.sh"
-      "samples/"
-      "samples/.*"
-      ];
+    src = sourceByRegex ./. (
+      test_files ++
+      samples_files
+    );
 
     buildInputs =
       [ native-coverage

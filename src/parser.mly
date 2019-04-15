@@ -98,6 +98,7 @@ let share_expfield (ef : exp_field) =
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
+%token IMPORT
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
@@ -383,6 +384,8 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
+  | IMPORT f=TEXT
+    { ImportE (f, ref "") @? at $sloc }
   | i=variant_tag e=exp_nullary
     { VariantE (i, e) @? at $sloc }
   | DEBUG_SHOW e=exp_un

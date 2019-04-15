@@ -77,6 +77,7 @@ let delayed_vars : f -> S.t =
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
+  | ImportE (_, fp)     -> M.singleton (Syntax.id_of_full_path !fp).it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   (* And break and return can be thought of as calling a continuation: *)

@@ -9,9 +9,21 @@ type messages = message list
 
 type 'a result = ('a * messages, messages) Pervasives.result
 
+let return x = Ok (x, [])
+
 let map_result f = function
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
+
+let bind x f = match x with
+  | Pervasives.Error msgs -> Pervasives.Error msgs
+  | Ok (y, msgs1) -> match f y with
+    | Ok (z, msgs2) -> Ok (z, msgs1 @ msgs2)
+    | Pervasives.Error msgs2 -> Error (msgs1 @ msgs2)
+
+let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
+  | [] -> return []
+  | x :: xs -> bind (f x) (fun y -> map_result (fun ys -> y :: ys) (traverse f xs))
 
 type msg_store = messages ref
 let add_msg s m = s := m :: !s
@@ -41,3 +53,5 @@ let with_message_store f =
   match r with
   | Some x when not (has_errors msgs) -> Ok (x, msgs)
   | _ -> Error msgs
+
+
