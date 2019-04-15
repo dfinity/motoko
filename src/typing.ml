@@ -872,7 +872,7 @@ and check_pat' env t pat : val_env =
       try
         let s, tfs = T.as_obj_sub "" t in
         if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
-        check_obj_pats env tfs (List.sort compare_pat_field pfs) T.Env.empty pat.at
+        check_pat_fields env tfs (List.sort compare_pat_field pfs) T.Env.empty pat.at
       with Invalid_argument _ ->
         error env pat.at "object pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
@@ -927,16 +927,16 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
-and check_obj_pats env tfs pfs ve at : val_env =
+and check_pat_fields env tfs pfs ve at : val_env =
   match pfs, tfs with
   | [], [] -> ve
   | {it={id;pat;_};at=fat;_}::pfs', {T.lab=l;typ;_}::tfs' ->
     if id.it = l then
       let ve1 = check_pat env typ pat in
       let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-      check_obj_pats env tfs' pfs' ve' at
+      check_pat_fields env tfs' pfs' ve' at
     else if id.it > l then
-      check_obj_pats env tfs' pfs ve at
+      check_pat_fields env tfs' pfs ve at
     else
       begin
         local_error env fat "object pattern has field %s missing in expected type"
