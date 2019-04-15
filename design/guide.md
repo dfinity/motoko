@@ -10,7 +10,7 @@ TODO
 -->
 TODO:
 
-* [ ] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop,binop, relop, a(ssing)op) etc.
+* [X] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop,binop, relop, a(ssing)op) etc.
 * [ ] Various inline TBCs and TBRs and TODOs
 * [ ] Typing of patterns
 * [ ] Variants
@@ -1198,7 +1198,9 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
   type <id> <typ-params>? = <typ>                                 type
   obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` class
+```
 
+```bnf
 <exp-field> ::=                                object expression fields
   private? <dec>                                   field
   private? <id> = <exp>                          short-hand
