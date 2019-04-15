@@ -344,22 +344,26 @@ exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
-exp_nullary :
+exp_noshorthand :
   | e=exp_block
     { e }
   | x=id
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | i=variant_tag
-    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
+exp_nullary :
+  | e=exp_noshorthand
+    { e }
+  | i=variant_tag
+    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
+
 exp_post :
-  | e=exp_nullary
+  | e=exp_noshorthand
     { e }
   | LBRACKET m=var_opt es=seplist(exp_nonvar, COMMA) RBRACKET
     { ArrayE(m, es) @? at $sloc }
@@ -376,6 +380,8 @@ exp_post :
 exp_un :
   | e=exp_post
     { e }
+  | i=variant_tag
+    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
