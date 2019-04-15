@@ -28,7 +28,6 @@ let print_stat_ve =
 
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
-    if Syntax.is_import_id x then () else
     let t = Type.Env.find x scope.Typing.val_env in
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
@@ -149,7 +148,7 @@ type load_decl_result =
 let chase_imports senv0 to_load : (imports * Typing.scope) Diag.result =
   let open Resolve_import.S in
   let todo = ref to_load in
-  let seen = ref empty in
+  let pending = ref empty in
   let senv = ref senv0 in
   let imports = ref [] in
 
@@ -157,12 +156,15 @@ let chase_imports senv0 to_load : (imports * Typing.scope) Diag.result =
     match min_elt_opt !todo with
     | None ->
       Diag.return ()
-    | Some f when mem f !seen->
+    | Some f when Type.Env.mem f !senv.Typing.imp_env ->
+      todo := remove f !todo;
+      go ()
+    | Some f when mem f !pending->
       Error [ { Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
               text = Printf.sprintf "file %s must not depend on itself" f } ]
     | Some f ->
       todo := remove f !todo;
-      seen := add f !seen;
+      pending := add f !pending;
       Diag.bind (parse_file f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
       Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
@@ -171,6 +173,7 @@ let chase_imports senv0 to_load : (imports * Typing.scope) Diag.result =
       Diag.bind (go ()) (fun () ->
       Diag.bind (check_import !senv f prog) (fun sscope ->
       senv := Typing.adjoin_scope !senv sscope;
+      pending := remove f !pending;
       Diag.return ()
       )))))
   in
@@ -212,8 +215,12 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
-let desugar =
-  transform "Desugaring" Desugar.transform
+let desugar env imp_env imports progs name =
+  phase "Desugaring" name;
+  let prog_ir' : Ir.prog = Desugar.transform_graph imp_env imports progs in
+  dump_ir Flags.dump_lowering prog_ir';
+  Check_ir.check_prog env "Desugaring" prog_ir';
+  prog_ir'
 
 let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
@@ -300,7 +307,7 @@ let check_only_string s name : check_only_result =
 (* Running *)
 
 let output_scope (senv, _) t v sscope dscope =
-  print_scope senv sscope dscope;
+  print_scope senv sscope dscope.Interpret.val_env;
   if v <> Value.unit then print_val senv v t
 
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
@@ -333,34 +340,10 @@ let run_files files : unit Diag.result =
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
 
-let combine_files senv imports progs : Syntax.prog =
-  (* This is a hack until the backend has explicit support for imports *)
-  let open Source in
-  { it = List.map (fun (f, prog) ->
-      let t = Type.Env.find (Syntax.id_of_full_path f).it senv.Typing.val_env in
-      { it = Syntax.LetD
-        ( { it = Syntax.VarP (Syntax.id_of_full_path f)
-          ; at = no_region
-          ; note = t
-          }
-        , { it = Syntax.BlockE prog.it
-          ; at = no_region
-          ; note = { Syntax.empty_typ_note with Syntax.note_typ = t }
-          }
-        )
-      ; at = no_region
-      ; note = { Syntax.empty_typ_note with Syntax.note_typ = t }
-      }) imports
-    @ List.concat (List.map (fun p -> p.it) progs)
-  ; at = no_region
-  ; note = match progs with
-    | [prog] -> prog.Source.note
-    | _ -> "all"
-  }
 
-let lower_prog prog =
-  let name = prog.Source.note in
-  let prog_ir = desugar initial_stat_env prog name in
+let lower_prog senv imp_env imports progs =
+  let name = "all" in
+  let prog_ir = desugar senv imp_env imports progs name in
   let prog_ir = await_lowering true initial_stat_env prog_ir name in
   let prog_ir = async_lowering true initial_stat_env prog_ir name in
   let prog_ir = serialization true initial_stat_env prog_ir name in
@@ -368,11 +351,11 @@ let lower_prog prog =
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode prog : compile_result =
-  let prelude_ir = Desugar.transform Typing.empty_scope prelude in
-  let prog_ir = lower_prog prog in
-  phase "Compiling" prog.Source.note;
-  let module_name = Filename.remove_extension prog.Source.note in
+let compile_prog mode imp_env imports progs : compile_result =
+  let prelude_ir = Desugar.transform prelude in
+  let prog_ir = lower_prog initial_stat_env imp_env imports progs in
+  let module_name = "todo" in
+  phase "Compiling" module_name;
   let module_ = Compile.compile mode module_name prelude_ir [prog_ir] in
   Ok module_
 
@@ -381,23 +364,22 @@ let compile_files mode files : compile_result =
   | Error msgs -> Error msgs
   | Ok ((imports, progs, senv), msgs) ->
     Diag.print_messages msgs;
-    let prog = combine_files senv imports progs in
-    compile_prog mode prog
+    compile_prog mode senv.Typing.imp_env imports progs
 
 let compile_string mode s name : compile_result =
   match load_one (parse_string s name) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((imports, prog, senv, _t, _sscope), msgs) ->
     Diag.print_messages msgs;
-    let prog = combine_files senv imports [prog] in
-    compile_prog mode prog
+    compile_prog mode senv.Typing.imp_env imports [prog]
 
 (* Interpretation (IR) *)
 
-let interpret_ir_prog prog =
-  let prelude_ir = Desugar.transform Typing.empty_scope prelude in
-  let prog_ir = lower_prog prog in
-  phase "Compiling" prog.Source.note;
+let interpret_ir_prog inp_env imports progs =
+  let prelude_ir = Desugar.transform prelude in
+  let prog_ir = lower_prog initial_stat_env inp_env imports progs in
+  let module_name = "todo" in
+  phase "Compiling" module_name;
   let denv0 = Interpret_ir.empty_scope in
   let _, dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
@@ -410,8 +392,7 @@ let interpret_ir_files files =
   | Error msgs -> Error msgs
   | Ok ((imports, progs, senv), msgs) ->
     Diag.print_messages msgs;
-    let prog = combine_files senv imports progs in
-    interpret_ir_prog prog;
+    interpret_ir_prog senv.Typing.imp_env imports progs;
     Diag.return ()
 
 (* Interactively *)

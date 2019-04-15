@@ -1,0 +1,16 @@
+ActorScript 0.1 interpreter
+-- Parsing stdin:
+> -- Parsing empty.as:
+-- Checking empty.as:
+-- Checking stdin:
+-- Interpreting empty.as:
+-- Interpreting stdin:
+-- Finished stdin:
+
+-- Parsing stdin:
+> -- Checking stdin:
+-- Interpreting stdin:
+-- Finished stdin:
+
+-- Parsing stdin:
+> 

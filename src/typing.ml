@@ -17,30 +17,34 @@ let recover f y = recover_with () f y
 (* Scopes *)
 
 type val_env = T.typ T.Env.t
+type imp_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 
 
 type scope =
   { val_env : val_env;
+    imp_env : imp_env;
     typ_env : typ_env;
     con_env : con_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
+    imp_env = T.Env.empty;
     typ_env = T.Env.empty;
     con_env = T.ConSet.empty
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
+    imp_env = T.Env.adjoin scope1.imp_env scope2.imp_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
     con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
   }
 
 let import_scope f t =
-  { empty_scope with val_env = T.Env.add (Syntax.id_of_full_path f).it t empty_scope.val_env }
+  { empty_scope with imp_env = T.Env.add f t empty_scope.imp_env }
 
 (* Contexts (internal) *)
 
@@ -49,6 +53,7 @@ type ret_env = T.typ option
 
 type env =
   { vals : val_env;
+    imps : imp_env;
     typs : typ_env;
     cons : con_env;
     labs : lab_env;
@@ -60,6 +65,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.val_env;
+    imps = scope.imp_env;
     typs = scope.typ_env;
     cons = scope.con_env;
     labs = T.Env.empty;
@@ -97,6 +103,7 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.val_env;
+    imps = T.Env.adjoin env.imps scope.imp_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
     cons = T.ConSet.disjoint_union env.cons scope.con_env;
   }
@@ -678,7 +685,7 @@ and infer_exp'' env exp : T.typ =
     t
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
-    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    (match T.Env.find_opt !fp env.imps with
     | Some T.Pre ->
       error env exp.at "cannot infer type of forward import %s" !fp
     | Some t -> t
@@ -1128,7 +1135,7 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { typ_env = te'; con_env = ce'; val_env = ve' }
+    { typ_env = te'; imp_env = scope.imp_env; con_env = ce'; val_env = ve' }
 
 
 (* Pass 2 and 3: infer type definitions *)

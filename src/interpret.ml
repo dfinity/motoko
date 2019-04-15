@@ -8,28 +8,38 @@ module T = Type
 (* Context *)
 
 type val_env = V.def V.Env.t
+type imp_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 
-type scope = val_env
+type scope = {
+  val_env: V.def V.Env.t;
+  imp_env: V.value V.Env.t;
+}
 
 type env =
   { vals : val_env;
     labs : lab_env;
+    imps : imp_env;
     rets : ret_env;
     async : bool
   }
 
-let adjoin_scope s ve = V.Env.adjoin s ve
-let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
+let adjoin_scope scope1 scope2 =
+  { val_env = V.Env.adjoin scope1.val_env scope2.val_env;
+    imp_env = V.Env.adjoin scope1.imp_env scope2.imp_env;
+  }
 
-let empty_scope = V.Env.empty
+let adjoin_vals env ve = { env with vals = V.Env.adjoin env.vals ve }
 
-let import_scope f v : scope =
-  V.Env.singleton (Syntax.id_of_full_path f).it v
+let empty_scope = { val_env = V.Env.empty; imp_env = V.Env.empty }
 
-let env_of_scope ve =
-  { vals = ve;
+let import_scope f v scope : scope =
+  { scope with imp_env = V.Env.add f v scope.imp_env }
+
+let env_of_scope scope =
+  { vals = scope.val_env;
+    imps = scope.imp_env;
     labs = V.Env.empty;
     rets = None;
     async = false;
@@ -245,10 +255,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | None -> trap exp.at "accessing identifier before its definition"
     end
   | ImportE (f, fp) ->
-    begin match Lib.Promise.value_opt (find (Syntax.id_of_full_path !fp).it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing import identifier before its definition"
-    end
+    k (find !fp env.imps)
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
@@ -650,6 +657,7 @@ and interpret_func env name pat f v (k : V.value V.cont) =
     in
     let env' =
       { vals = V.Env.adjoin env.vals ve;
+        imps = env.imps;
         labs = V.Env.empty;
         rets = Some k';
         async = false
@@ -668,7 +676,7 @@ let interpret_prog scope p : V.value option * scope =
     interpret_block env p.it (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  !vo, !ve
+  !vo, { val_env = !ve; imp_env = scope.imp_env }
 
 let interpret_import scope (filename, p) : scope =
   let env = env_of_scope scope in
@@ -680,7 +688,7 @@ let interpret_import scope (filename, p) : scope =
   );
   Scheduler.run ();
   match !vo with
-  | Some v -> import_scope filename (Lib.Promise.make_fulfilled v)
+  | Some v -> import_scope filename v scope
   | None -> assert false
 
 
