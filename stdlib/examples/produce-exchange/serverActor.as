@@ -4,6 +4,9 @@
  --------------------
 */
 
+import "serverTypes.as";
+import "serverModel.as";
+
 actor server = {
 
 /**

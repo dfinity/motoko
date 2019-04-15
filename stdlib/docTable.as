@@ -21,6 +21,10 @@ type information.
 
 */
 
+import "prelude.as";
+import "assocList.as";
+import "trie.as";
+
 /**
  Representation
  ================

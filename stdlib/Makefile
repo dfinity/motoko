@@ -104,31 +104,31 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	$(MDofMD) $< >> $@
 
 $(OUTDIR)/Hash.out: prelude.as hash.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r hash.as > $@
 
 $(OUTDIR)/List.out: prelude.as list.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r list.as > $@
 
 $(OUTDIR)/ListTest.out: prelude.as list.as listTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r listTest.as > $@
 
 $(OUTDIR)/AssocList.out: prelude.as list.as assocList.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r assocList.as > $@
 
 $(OUTDIR)/Trie.out: prelude.as hash.as list.as assocList.as trie.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r trie.as > $@
 
 $(OUTDIR)/DocTable.out: prelude.as hash.as list.as assocList.as trie.as docTable.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r docTable.as > $@
 
 $(OUTDIR)/Set.out: prelude.as hash.as list.as assocList.as trie.as set.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r set.as > $@
 
 $(OUTDIR)/SetDb.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r setDb.as > $@
 
 $(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as setDbTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r setDbTest.as > $@
 
 PRODUCE_EXCHANGE_SRC=\
 	prelude.as hash.as list.as assocList.as trie.as docTable.as \
@@ -139,10 +139,10 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r examples/produce-exchange/test/simpleSetupAndQuery.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@

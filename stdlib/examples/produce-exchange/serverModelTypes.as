@@ -15,6 +15,8 @@ they are only are used in its internal model implementation
 
 */
 
+import "../../trie.as";
+import "../../docTable.as";
 
 /**
 
@@ -328,3 +330,5 @@ type ReservedRouteDoc = {
 type ReservedRouteTable = DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>;
 
 type ReservedRouteMap = Map<ReservedRouteId, ReservedRouteDoc>;
+
+type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;

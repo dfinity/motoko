@@ -20,8 +20,6 @@ uses are is not.
 
 */
 
-type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;
-
 class Model() {
 
 

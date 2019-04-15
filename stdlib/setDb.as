@@ -4,6 +4,9 @@
  ========================================
 
  */
+
+import "set.as";
+
 let SetDb = new {
 
   private func setDbPrint(s:Set<Nat>) {

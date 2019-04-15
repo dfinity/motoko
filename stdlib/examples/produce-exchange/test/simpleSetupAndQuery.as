@@ -1,3 +1,6 @@
+import "../../../prelude.as";
+import "../serverActor.as";
+
 func printEntityCount(entname:Text, count:Nat) {
   print ("- " # entname # " count: ");
   printInt count;

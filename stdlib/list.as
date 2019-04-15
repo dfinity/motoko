@@ -16,6 +16,8 @@ remainder of the list (the cell's _tail_).
 
 */
 
+import "prelude.as";
+
 type List<T> = ?(T, List<T>);
 
 /**

@@ -18,6 +18,8 @@
 
 */
 
+import "trie.as";
+
 type Set<T> = Trie<T,()>;
 
 let Set = new {

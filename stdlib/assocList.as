@@ -9,6 +9,9 @@ Implements the same interface as `Trie`, but as a linked-list of key-value pairs
 
 */
 
+import "prelude.as";
+import "list.as";
+
 // polymorphic association linked lists between keys and values
 type AssocList<K,V> = List<(K,V)>;
 

@@ -60,6 +60,9 @@ See the full details in the definitions below:
 
 */
 
+import "prelude.as";
+import "hash.as";
+
 let HASH_BITS = 4;
 
 type Key<K> = {

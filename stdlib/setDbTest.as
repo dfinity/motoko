@@ -5,6 +5,8 @@
 
  */
 
+import "setDb.as";
+
 func SetDb__test() {
 
   let hash_0 = Hash.hashOfInt(0);
