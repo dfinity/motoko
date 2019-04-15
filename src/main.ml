@@ -51,12 +51,16 @@ let argspec = Arg.align
 
 (* Main *)
 
-let exit_on_none = function
-  | Some x -> x
-  | None -> exit 1
-
 let exit_on_failure = function
   | Ok x -> x
+  | Error errs ->
+    Diag.print_messages errs;
+    exit 1
+
+let run_diag = function
+  | Ok ((), warns) ->
+    Diag.print_messages warns;
+    exit 0
   | Error errs ->
     Diag.print_messages errs;
     exit 1
@@ -66,13 +70,14 @@ let process_files files : unit =
   | Default ->
     assert false
   | Run ->
-    ignore (exit_on_none Pipeline.(run_files initial_env files))
+    if !Flags.interpret_ir
+    then run_diag (Pipeline.interpret_ir_files files)
+    else run_diag (Pipeline.run_files files)
   | Interact ->
     printf "%s\n" banner;
-    let env = exit_on_none Pipeline.(run_files initial_env files) in
-    Pipeline.run_stdin env
+    run_diag (Pipeline.run_files_and_stdin files)
   | Check ->
-    let (_,msgs) = exit_on_failure Pipeline.(check_files initial_stat_env files) in
+    let ((), msgs) = exit_on_failure (Pipeline.check_only_files files) in
     Diag.print_messages msgs
   | Compile ->
     if !out_file = "" then begin
@@ -80,8 +85,7 @@ let process_files files : unit =
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_name = Filename.remove_extension (Filename.basename !out_file) in
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
+    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;

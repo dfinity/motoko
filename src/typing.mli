@@ -13,5 +13,5 @@ type scope =
 val empty_scope : scope
 val adjoin_scope : scope -> scope -> scope
 
-val check_prog : scope -> Syntax.prog -> scope Diag.result
 val infer_prog : scope -> Syntax.prog -> (typ * scope) Diag.result
+val check_import : scope -> (string * Syntax.prog) -> scope Diag.result

@@ -187,7 +187,7 @@ and dec' =
 
 (* Program *)
 
-type prog = prog' Source.phrase
+type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
 

@@ -25,6 +25,9 @@ let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
 
 let empty_scope = V.Env.empty
 
+let import_scope f v : scope =
+  V.Env.singleton (Syntax.id_of_full_path f).it v
+
 let env_of_scope ve =
   { vals = ve;
     labs = V.Env.empty;
@@ -666,3 +669,18 @@ let interpret_prog scope p : V.value option * scope =
   );
   Scheduler.run ();
   !vo, !ve
+
+let interpret_import scope (filename, p) : scope =
+  let env = env_of_scope scope in
+  trace_depth := 0;
+  let vo = ref None in
+  let ve = ref V.Env.empty in
+  Scheduler.queue (fun () ->
+    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+  );
+  Scheduler.run ();
+  match !vo with
+  | Some v -> import_scope filename (Lib.Promise.make_fulfilled v)
+  | None -> assert false
+
+

@@ -55,3 +55,7 @@ let with_message_store f =
   | _ -> Error msgs
 
 
+let flush_messages : 'a result -> 'a result = function
+  | Pervasives.Error msgs -> print_messages msgs; Pervasives.Error []
+  | Ok (x, msgs) -> print_messages msgs; Ok (x, [])
+

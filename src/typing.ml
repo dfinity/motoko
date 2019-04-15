@@ -39,6 +39,8 @@ let adjoin_scope scope1 scope2 =
     con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
   }
 
+let import_scope f t =
+  { empty_scope with val_env = T.Env.add (Syntax.id_of_full_path f).it t empty_scope.val_env }
 
 (* Contexts (internal) *)
 
@@ -1230,17 +1232,6 @@ and infer_dec_valdecs env dec : val_env =
 
 (* Programs *)
 
-let check_prog scope prog : scope Diag.result =
-  Diag.with_message_store (fun msgs ->
-    recover_opt
-      (fun prog ->
-        let env = env_of_scope msgs scope in
-        let res = check_block env T.unit prog.it prog.at in
-        Definedness.check_prog msgs prog;
-        res)
-      prog
-    )
-
 let infer_prog scope prog : (T.typ * scope) Diag.result =
   Diag.with_message_store
     (fun msgs ->
@@ -1254,4 +1245,16 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
         prog
     )
 
+
+let check_import scope (filename, prog) : scope Diag.result =
+  Diag.with_message_store (fun msgs ->
+    recover_opt
+      (fun prog ->
+        let env = env_of_scope msgs scope in
+        let (typ, _scope) = infer_block env prog.it prog.at in
+        Definedness.check_prog msgs prog;
+        import_scope filename typ
+      )
+      prog
+    )
 
