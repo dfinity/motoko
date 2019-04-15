@@ -129,8 +129,7 @@ rec {
 
     src = sourceByRegex ./. (
       test_files ++
-      samples_files ++
-      stdlib_files
+      samples_files
     );
 
     buildInputs =
@@ -146,7 +145,6 @@ rec {
     buildPhase = ''
       patchShebangs .
       asc --version
-      make -C stdlib ASC=asc alltests
       make -C samples ASC=asc all
     '' +
       (if test-dvm
@@ -286,6 +284,6 @@ rec {
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report stdlib-reference ];
+    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange ];
   };
 }
