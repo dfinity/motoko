@@ -414,6 +414,7 @@ let rec show_val t v =
     Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
   | T.Variant cts, Value.Variant (l, v) ->
     begin match List.find_opt (fun (l',t) -> l = l') cts with
+    | Some (_, T.Tup []) -> Printf.sprintf "#%s" l
     | Some (_, t') -> Printf.sprintf "(#%s %s)" l (show_val t' v)
     | _ -> assert false
     end

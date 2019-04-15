@@ -40,7 +40,6 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
 
-
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
@@ -151,7 +150,9 @@ func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
 };
 
 func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
-  "(#" # l # " " # f x # ")"
+  let fx = f x;
+  if (fx == "()") "#" # l
+  else "(#" # l # " " # fx # ")"
 };
 
 func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
