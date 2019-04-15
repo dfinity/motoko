@@ -40,7 +40,6 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
 
-
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;

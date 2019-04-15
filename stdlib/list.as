@@ -1,37 +1,44 @@
-/*
- * Lists, a la functional programming, in ActorScript.
- */
+/**
 
-// Done:
-//
-//  - standard list definition
-//  - standard list recursors: foldl, foldr, iter
-//  - standard higher-order combinators: map, filter, etc.
-//  - (Every function here: http://sml-family.org/Basis/list.html)
+# List
 
-// TODO-Matthew: File issues:
-//
-//  - 'assert_unit' vs 'assert_any' (related note: 'any' vs 'none')
-//  - apply type args, but no actual args? (should be ok, and zero cost, right?)
-//  - unhelpful error message around conditional parens (search for XXX below)
+Purely-functional, singly-linked lists.
 
-// TODO-Matthew: Write:
-//
-//  - iterator objects, for use in 'for ... in ...' patterns
-//  - lists+pairs: zip, split, etc
-//  - regression tests for everything that is below
+*/
 
+/**
+ Representation
+ =================
 
-// polymorphic linked lists
+ A singly-linked list consists of zero or more _cons cells_, wherein
+each cell contains a single list element (the cell's _head_), and a pointer to the
+remainder of the list (the cell's _tail_).
+
+*/
+
 type List<T> = ?(T, List<T>);
+
+/**
+ Interface
+ ==============
+*/
 
 let List = new {
 
-  // empty list
+  /**
+   `nil`
+   ------
+   empty list
+   */
   func nil<T>() : List<T> =
     null;
 
-  // test for empty list
+
+  /**
+   `isNil`
+   --------
+   test for empty list
+   */
   func isNil<T>(l : List<T>) : Bool {
     switch l {
     case null { true  };
@@ -39,11 +46,19 @@ let List = new {
     }
   };
 
-  // aka "list cons"
+  /**
+   `push`
+   -------------
+   aka "list cons"
+   */
   func push<T>(x : T, l : List<T>) : List<T> =
     ?(x, l);
 
-  // last element, optionally; tail recursive
+  /**
+   `last`
+   ----------
+   last element, optionally; tail recursive
+   */
   func last<T>(l : List<T>) : ?T = {
     switch l {
     case null        { null };
@@ -52,7 +67,11 @@ let List = new {
     }
   };
 
-  // treat the list as a stack; combines 'hd' and (non-failing) 'tl' into one operation
+  /**
+   `pop`
+   --------
+   treat the list as a stack; combines the usual operations `head` and (non-failing) `tail` into one operation
+   */
   func pop<T>(l : List<T>) : (?T, List<T>) = {
     switch l {
     case null      { (null, null) };
@@ -60,7 +79,11 @@ let List = new {
     }
   };
 
-  // length; tail recursive
+  /**
+   `len`
+  --------
+   length; tail recursive
+   */
   func len<T>(l : List<T>) : Nat = {
     func rec(l : List<T>, n : Nat) : Nat {
       switch l {
@@ -71,7 +94,11 @@ let List = new {
     rec(l,0)
   };
 
-  // array-like list access, but in linear time; tail recursive
+  /**
+   `nth`
+   ---------
+   array-like list access, but in linear time; tail recursive
+   */
   func nth<T>(l : List<T>, n : Nat) : ?T = {
     switch (n, l) {
     case (_, null)     { null };
@@ -80,7 +107,11 @@ let List = new {
     }
   };
 
-  // reverse; tail recursive
+  /**
+   `rev`
+   --------
+   reverse the list; tail recursive
+   */
   func rev<T>(l : List<T>) : List<T> = {
     func rec(l : List<T>, r : List<T>) : List<T> {
       switch l {
@@ -91,7 +122,11 @@ let List = new {
     rec(l, null)
   };
 
-  // Called "app" in SML Basis, and "iter" in OCaml; tail recursive
+  /**
+   `iter`
+   ---------
+   Called `app` in SML Basis, and `iter` in OCaml; tail recursive
+   */
   func iter<T>(l : List<T>, f:T -> ()) : () = {
     func rec(l : List<T>) : () {
       switch l {
@@ -102,8 +137,13 @@ let List = new {
     rec(l)
   };
 
-  // map; non-tail recursive
-  // (Note: need mutable Cons tails for tail-recursive map)
+  /**
+   `map`
+   ---------
+   map the list elements; non-tail recursive
+
+   Note: need mutable Cons tails for tail-recursive map.
+   */
   func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
@@ -114,8 +154,11 @@ let List = new {
     rec(l)
   };
 
-  // filter; non-tail recursive
-  // (Note: need mutable Cons tails for tail-recursive version)
+  /**
+   `filter`
+   ----------
+   filter the list elements; non-tail recursive
+   */
   func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
     func rec(l : List<T>) : List<T> {
       switch l {
@@ -126,8 +169,11 @@ let List = new {
     rec(l)
   };
 
-  // map-and-filter; non-tail recursive
-  // (Note: need mutable Cons tails for tail-recursive version)
+  /**
+   `mapFilter`
+   --------------
+   map and filter the list elements; non-tail recursive
+   */
   func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
@@ -143,8 +189,11 @@ let List = new {
     rec(l)
   };
 
-  // append; non-tail recursive
-  // (Note: need mutable Cons tails for tail-recursive version)
+  /**
+   `append`
+   ---------
+   append two lists; non-tail recursive
+   */
   func append<T>(l : List<T>, m : List<T>) : List<T> = {
     func rec(l : List<T>) : List<T> {
       switch l {
@@ -155,7 +204,11 @@ let List = new {
     rec(l)
   };
 
-  // concat (aka "list join"); tail recursive, but requires "two passes"
+  /**
+   `concat`
+   -----------
+   concat (aka "list join"); tail recursive, but requires "two passes"
+   */
   func concat<T>(l : List<List<T>>) : List<T> = {
     // 1/2: fold from left to right, reverse-appending the sublists...
     let r =
@@ -166,7 +219,11 @@ let List = new {
     rev<T>(r)
   };
 
-  // (See SML Basis library); tail recursive
+  /**
+   `revAppend`
+   -------------
+   See SML Basis library; tail recursive
+   */
   func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
     switch l1 {
     case null     { l2 };
@@ -174,8 +231,12 @@ let List = new {
     }
   };
 
-  // take; non-tail recursive
-  // (Note: need mutable Cons tails for tail-recursive version)
+  /**
+   `take`
+   ---------
+   "take" `n` elements from the prefix of the given list.
+   If the given list has fewer than `n` elements, we return the full input list.
+   */
   func take<T>(l : List<T>, n:Nat) : List<T> = {
     switch (l, n) {
     case (_, 0) { null };
@@ -184,7 +245,10 @@ let List = new {
     }
   };
 
-  // drop; tail recursive
+  /**
+   `drop`
+   ----------
+   */
   func drop<T>(l : List<T>, n:Nat) : List<T> = {
     switch (l, n) {
     case (l_,     0) { l_ };
@@ -193,7 +257,11 @@ let List = new {
     }
   };
 
-  // fold list left-to-right using f; tail recursive
+  /**
+   `foldLeft`
+   ---------------
+   fold list left-to-right using function `f`; tail recursive
+   */
   func foldLeft<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
     func rec(l:List<T>, a:S) : S = {
       switch l {
@@ -204,7 +272,11 @@ let List = new {
     rec(l,a)
   };
 
-  // fold list right-to-left using f; non-tail recursive
+  /***
+   `foldRight`
+   ------------
+   fold the list right-to-left using function `f`; non-tail recursive
+   */
   func foldRight<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
     func rec(l:List<T>) : S = {
       switch l {
@@ -215,7 +287,11 @@ let List = new {
     rec(l)
   };
 
-  // test if there exists list element for which given predicate is true
+  /**
+   `find`
+   -----------
+   test if there exists list element for which given predicate is true
+   */
   func find<T>(l: List<T>, f:T -> Bool) : ?T = {
     func rec(l:List<T>) : ?T {
       switch l {
@@ -226,7 +302,11 @@ let List = new {
     rec(l)
   };
 
-  // test if there exists list element for which given predicate is true
+  /**
+   `exists`
+   ---------
+   test if there exists list element for which given predicate is true
+   */
   func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
@@ -239,7 +319,11 @@ let List = new {
     rec(l)
   };
 
-  // test if given predicate is true for all list elements
+  /**
+   `all`
+   -------
+   test if given predicate is true for all list elements
+   */
   func all<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
@@ -250,7 +334,11 @@ let List = new {
     rec(l)
   };
 
-  // Given two ordered lists, merge them into a single ordered list
+  /**
+   `merge`
+   ---------
+   Given two ordered lists, merge them into a single ordered list
+   */
   func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
     func rec(l1: List<T>, l2: List<T>) : List<T> {
       switch (l1, l2) {
@@ -268,9 +356,14 @@ let List = new {
     rec(l1, l2)
   };
 
-  // Compare two lists lexicographic` ordering. tail recursive.
-  // XXX: Eventually, follow `collate` design from SML Basis, with real sum types, use 3-valued `order` type here.
-  //
+  /**
+   `lessThanEq`
+   --------------
+
+   Compare two lists lexicographic` ordering. tail recursive.
+
+   To do: Eventually, follow `collate` design from SML Basis, with real sum types, use 3-valued `order` type here.
+  */
   func lessThanEq<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
@@ -282,8 +375,13 @@ let List = new {
     rec(l1, l2)
   };
 
-  // Compare two lists for equality. tail recursive.
-  // `isEq(l1, l2)` =equiv= `lessThanEq(l1,l2) && lessThanEq(l2,l1)`, but the former is more efficient.
+  /**
+   `isEq`
+   ---------
+   Compare two lists for equality. tail recursive.
+
+   `isEq(l1, l2)` is equivalent to `lessThanEq(l1,l2) && lessThanEq(l2,l1)`, but the former is more efficient.
+   */
   func isEq<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
@@ -296,8 +394,12 @@ let List = new {
     rec(l1, l2)
   };
 
-  // using a predicate, create two lists from one: the "true" list, and the "false" list.
-  // (See SML basis library); non-tail recursive
+  /**
+   `partition`
+   ---------------
+   using a predicate, create two lists from one: the "true" list, and the "false" list.
+   (See SML basis library); non-tail recursive.
+   */
   func partition<T>(l: List<T>, f:T -> Bool) : (List<T>, List<T>) {
     func rec(l: List<T>) : (List<T>, List<T>) {
       switch l {
@@ -315,8 +417,12 @@ let List = new {
     rec(l)
   };
 
-  // generate a list based on a length, and a function from list index to list element;
-  // (See SML basis library); non-tail recursive
+  /**
+   `tabulate`
+   --------------
+   generate a list based on a length, and a function from list index to list element.
+   (See SML basis library); non-tail recursive.
+   */
   func tabulate<T>(n:Nat, f:Nat -> T) : List<T> {
     func rec(i:Nat) : List<T> {
       if (i == n) { null } else { ?(f(i), rec(i+1)) }
@@ -325,3 +431,13 @@ let List = new {
   };
 
 };
+
+/**
+
+To do:
+--------
+- iterator objects, for use in `for ... in ...` patterns
+- operations for lists of pairs and pairs of lists: zip, split, etc
+- more regression tests for everything that is below
+
+*/
