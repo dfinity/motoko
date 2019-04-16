@@ -158,8 +158,10 @@ let chase_imports senv0 to_load : (Syntax.libraries * Typing.scope) Diag.result 
       todo := remove f !todo;
       go ()
     | Some f when mem f !pending->
-      Error [ { Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
-              text = Printf.sprintf "file %s must not depend on itself" f } ]
+      Error [{
+        Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
+        text = Printf.sprintf "file %s must not depend on itself" f
+      }]
     | Some f ->
       todo := remove f !todo;
       pending := add f !pending;
@@ -338,9 +340,12 @@ let run_files files : unit Diag.result =
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
 
+let name_progs progs =
+  if progs = []
+  then "empty"
+  else (Lib.List.last progs).Source.note
 
-let lower_prog senv lib_env libraries progs =
-  let name = "all" in
+let lower_prog senv lib_env libraries progs name =
   let prog_ir = desugar senv lib_env libraries progs name in
   let prog_ir = await_lowering true initial_stat_env prog_ir name in
   let prog_ir = async_lowering true initial_stat_env prog_ir name in
@@ -351,10 +356,10 @@ let lower_prog senv lib_env libraries progs =
 
 let compile_prog mode lib_env libraries progs : compile_result =
   let prelude_ir = Desugar.transform prelude in
-  let prog_ir = lower_prog initial_stat_env lib_env libraries progs in
-  let module_name = "todo" in
-  phase "Compiling" module_name;
-  let module_ = Compile.compile mode module_name prelude_ir [prog_ir] in
+  let name = name_progs progs in
+  let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
+  phase "Compiling" name;
+  let module_ = Compile.compile mode name prelude_ir [prog_ir] in
   Ok module_
 
 let compile_files mode files : compile_result =
@@ -375,9 +380,9 @@ let compile_string mode s name : compile_result =
 
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Desugar.transform prelude in
-  let prog_ir = lower_prog initial_stat_env inp_env libraries progs in
-  let module_name = "todo" in
-  phase "Compiling" module_name;
+  let name = name_progs progs in
+  let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
+  phase "Interpreting" name;
   let denv0 = Interpret_ir.empty_scope in
   let _, dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in

@@ -190,6 +190,8 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
+(* Libraries *)
+
 type library = string * prog
 type libraries = library list
 
