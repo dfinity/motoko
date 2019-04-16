@@ -296,18 +296,16 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 type check_result = unit Diag.result
 
 let check_files files : check_result =
-  Diag.map_result (fun _ -> ())
-    (load_progs (parse_files files) initial_stat_env)
+  Diag.ignore (load_progs (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
-  Diag.map_result (fun _ -> ())
-    (load_decl (parse_string s name) initial_stat_env)
+  Diag.ignore (load_decl (parse_string s name) initial_stat_env)
 
 
 (* Running *)
 
 let run_files files : unit Diag.result =
-  Diag.map_result (fun _ -> ()) (interpret_files initial_env files)
+  Diag.ignore (interpret_files initial_env files)
 
 
 (* Interactively *)

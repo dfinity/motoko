@@ -15,6 +15,10 @@ let map_result f = function
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
 
+let ignore = function
+  | Pervasives.Error msgs -> Pervasives.Error msgs
+  | Ok (_, msgs) -> Ok ((), msgs)
+
 let bind x f = match x with
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (y, msgs1) -> match f y with

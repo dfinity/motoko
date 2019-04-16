@@ -27,6 +27,7 @@ type 'a result = ('a * messages, messages) Pervasives.result
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
 val map_result : ('a -> 'b) -> 'a result -> 'b result
+val ignore : 'a result -> unit result
 val traverse: ('a -> 'b result) -> 'a list -> 'b list result
 val flush_messages : 'a result -> 'a result
 
