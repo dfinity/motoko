@@ -92,12 +92,20 @@ let parse_file filename : parse_result =
   | Ok prog -> Diag.return (prog, filename)
   | Error e -> Error [e]
 
+let parse_files =
+  Diag.traverse parse_file
+
 (* Import file name resolution *)
 
 type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
 
-let resolve (prog, base) : resolve_result =
-  Diag.map_result (fun libraries -> (prog, libraries)) (Resolve_import.resolve prog base)
+let resolve_prog (prog, base) : resolve_result =
+  Diag.map_result
+    (fun libraries -> (prog, libraries))
+    (Resolve_import.resolve prog base)
+
+let resolve_progs =
+  Diag.traverse resolve_prog
 
 
 (* Typechecking *)
@@ -184,7 +192,7 @@ let chase_imports senv0 to_load : (Syntax.libraries * Typing.scope) Diag.result 
 
 let load_many parse senv : load_result =
   Diag.bind parse (fun parsed ->
-  Diag.bind (Diag.traverse resolve parsed) (fun rs ->
+  Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
   let libraries =
     List.fold_left Resolve_import.S.union Resolve_import.S.empty
@@ -196,7 +204,7 @@ let load_many parse senv : load_result =
 
 let load_one parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
-  Diag.bind (resolve parsed) (fun (prog, libraries) ->
+  Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
   Diag.bind (infer_prog senv' prog) (fun (t, sscope) ->
   let senv'' = Typing.adjoin_scope senv' sscope in
@@ -217,6 +225,15 @@ let interpret_prog denv prog : (Value.value * Interpret.scope) option =
     Interpret.print_exn exn;
     None
 
+let rec interpret_libraries denv libraries : Interpret.scope =
+  match libraries with
+  | [] -> denv
+  | (f, p)::libs ->
+    phase "Interpreting" p.Source.note;
+    let dscope = Interpret.interpret_library denv (f, p) in
+    let denv' = Interpret.adjoin_scope denv dscope in
+    interpret_libraries denv' libs
+
 let rec interpret_progs denv progs : Interpret.scope option =
   match progs with
   | [] -> Some denv
@@ -226,6 +243,16 @@ let rec interpret_progs denv progs : Interpret.scope option =
       let denv' = Interpret.adjoin_scope denv dscope in
       interpret_progs denv' ps
     | None -> None
+
+let interpret_files (senv0, denv0) files : Interpret.scope Diag.result =
+  Diag.bind (Diag.flush_messages
+    (load_many (parse_files files) senv0))
+    (fun (libraries, progs, _sscope) ->
+  let denv1 = interpret_libraries denv0 libraries in
+  match interpret_progs denv1 progs with
+  | None -> Error []
+  | Some denv2 -> Diag.return denv2
+  )
 
 
 (* Prelude *)
@@ -260,6 +287,8 @@ let run_prelude () : dyn_env =
 
 let initial_dyn_env = run_prelude ()
 
+let initial_env = (initial_stat_env, initial_dyn_env)
+
 
 (* Only checking *)
 
@@ -267,7 +296,7 @@ type check_result = unit Diag.result
 
 let check_files files : check_result =
   Diag.map_result (fun _ -> ())
-    (load_many (Diag.traverse parse_file files) initial_stat_env)
+    (load_many (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
   Diag.map_result (fun _ -> ())
@@ -280,30 +309,76 @@ let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope.Interpret.val_env;
   if v <> Value.unit then print_val senv v t
 
+let run_files files : unit Diag.result =
+  Diag.map_result (fun _ -> ()) (interpret_files initial_env files)
+
+
+(* Interactively *)
+
+let continuing = ref false
+
+let lexer_stdin buf len =
+  let prompt = if !continuing then "  " else "> " in
+  printf "%s" prompt; flush_all ();
+  continuing := true;
+  let rec loop i =
+    if i = len then i else
+    let ch = input_char stdin in
+    Bytes.set buf i ch;
+    if ch = '\n' then i + 1 else loop (i + 1)
+  in loop 0
+
+let parse_lexer lexer : parse_result =
+  let open Lexing in
+  if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
+  match parse_with Lexer.Normal lexer Parser.parse_prog_interactive "stdin" with
+  | Error e ->
+    Lexing.flush_input lexer;
+    (* Reset beginning-of-line, too, to sync consecutive positions. *)
+    lexer.lex_curr_p <- {lexer.lex_curr_p with pos_bol = 0};
+    Error [e]
+  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
+
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
-let rec interpret_libraries denv libraries : Interpret.scope =
-  match libraries with
-  | [] -> denv
-  | (f, p)::is ->
-    phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library denv (f, p) in
-    let denv' = Interpret.adjoin_scope denv dscope in
-    interpret_libraries denv' is
+let run_stdin lexer (senv, denv) : env option =
+  match load_one (parse_lexer lexer) senv with
+  | Error msgs ->
+    Diag.print_messages msgs;
+    if !Flags.verbose then printf "\n";
+    None
+  | Ok ((libraries, prog, senv', t, sscope), msgs) ->
+    Diag.print_messages msgs;
+    let denv' = interpret_libraries denv libraries in
+    match interpret_prog denv' prog with
+    | None ->
+      if !Flags.verbose then printf "\n";
+      None
+    | Some (v, dscope) ->
+      phase "Finished" "stdin";
+      let denv' = Interpret.adjoin_scope denv dscope in
+      let env' = (senv', denv') in
+      (* TBR: hack *)
+      let t', v' =
+        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
+        then t, v
+        else Type.unit, Value.unit
+      in
+      output_scope env' t' v' sscope dscope;
+      if !Flags.verbose then printf "\n";
+      Some env'
 
-let interpret_files files : Interpret.scope Diag.result =
-  Diag.bind (Diag.flush_messages
-    (load_many (Diag.traverse parse_file files) initial_stat_env))
-    (fun (libraries, progs, _sscope) ->
-  let denv0 = initial_dyn_env in
-  let denv1 = interpret_libraries denv0 libraries in
-  match interpret_progs denv1 progs with
-  | None -> Error []
-  | Some denv2 -> Diag.return denv2
-  )
-
-let run_files files : unit Diag.result =
-  Diag.map_result (fun _ -> ()) (interpret_files files)
+let run_files_and_stdin files =
+  match load_many (parse_files files) initial_stat_env with
+  | Error msgs -> Error msgs
+  | Ok ((libraries, progs, senv), msgs) ->
+    let lexer = Lexing.from_function lexer_stdin in
+    Diag.bind (interpret_files initial_env files) (fun denv ->
+      let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
+      try loop (senv, denv) with End_of_file ->
+        printf "\n%!";
+        Diag.return ()
+    )
 
 
 (* IR transforms *)
@@ -370,7 +445,7 @@ let compile_prog mode lib_env libraries progs : compile_result =
   Ok module_
 
 let compile_files mode files : compile_result =
-  match load_many (Diag.traverse parse_file files) initial_stat_env with
+  match load_many (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
@@ -392,82 +467,16 @@ let interpret_ir_prog inp_env libraries progs =
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let denv0 = Interpret_ir.empty_scope in
-  let _, dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
+  let dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _, _ = Interpret_ir.interpret_prog denv1 prog_ir in
+  let _ = Interpret_ir.interpret_prog denv1 prog_ir in
   ()
 
 
 let interpret_ir_files files =
-  match load_many (Diag.traverse parse_file files) initial_stat_env with
+  match load_many (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
     interpret_ir_prog senv.Typing.lib_env libraries progs;
     Diag.return ()
-
-
-(* Interactively *)
-
-let continuing = ref false
-
-let lexer_stdin buf len =
-  let prompt = if !continuing then "  " else "> " in
-  printf "%s" prompt; flush_all ();
-  continuing := true;
-  let rec loop i =
-    if i = len then i else
-    let ch = input_char stdin in
-    Bytes.set buf i ch;
-    if ch = '\n' then i + 1 else loop (i + 1)
-  in loop 0
-
-let parse_lexer lexer : parse_result =
-  let open Lexing in
-  if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
-  match parse_with Lexer.Normal lexer Parser.parse_prog_interactive "stdin" with
-  | Error e ->
-    Lexing.flush_input lexer;
-    (* Reset beginning-of-line, too, to sync consecutive positions. *)
-    lexer.lex_curr_p <- {lexer.lex_curr_p with pos_bol = 0};
-    Error [e]
-  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
-
-let run_stdin lexer (senv, denv) : env option =
-  match load_one (parse_lexer lexer) senv with
-  | Error msgs ->
-    Diag.print_messages msgs;
-    if !Flags.verbose then printf "\n";
-    None
-  | Ok ((libraries, prog, senv', t, sscope), msgs) ->
-    Diag.print_messages msgs;
-    let denv' = interpret_libraries denv libraries in
-    match interpret_prog denv' prog with
-    | None ->
-      if !Flags.verbose then printf "\n";
-      None
-    | Some (v, dscope) ->
-      phase "Finished" "stdin";
-      let denv' = Interpret.adjoin_scope denv dscope in
-      let env' = (senv', denv') in
-      (* TBR: hack *)
-      let t', v' =
-        if prog.Source.it <> [] && is_exp (Lib.List.last prog.Source.it)
-        then t, v
-        else Type.unit, Value.unit
-      in
-      output_scope env' t' v' sscope dscope;
-      if !Flags.verbose then printf "\n";
-      Some env'
-
-let run_files_and_stdin files =
-  match load_many (Diag.traverse parse_file files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    let lexer = Lexing.from_function lexer_stdin in
-    Diag.bind (interpret_files files) (fun denv ->
-      let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
-      try loop (senv, denv) with End_of_file ->
-        printf "\n%!";
-        Diag.return ()
-    )
