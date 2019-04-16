@@ -29,22 +29,25 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "-t", Arg.Set Flags.trace, " activate tracing";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-a", Arg.Set Flags.await_lowering, " translate async/await (implies -r)";
-  "-A", Arg.Set Flags.async_lowering, " translate async<T> (implies -r)";
-  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
-  "-dp", Arg.Set Flags.dump_parse, " dump parse";
-  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "-o", Arg.Set_string out_file, " output file";
+
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
   "--dfinity",
     Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
       " compile for dfinity";
   "--map", Arg.Set Flags.source_map, " output source map";
+
+  "-t", Arg.Set Flags.trace, " activate tracing";
+  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
+  "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
+  "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
+
+  "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
+  "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 ]
 

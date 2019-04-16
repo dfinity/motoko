@@ -100,7 +100,7 @@ let resolve (prog, base) : resolve_result =
   Diag.map_result (fun libraries -> (prog, libraries)) (Resolve_import.resolve prog base)
 
 
-(* Checking *)
+(* Typechecking *)
 
 let infer_prog senv prog
   : (Type.typ * Typing.scope) Diag.result =
@@ -129,14 +129,16 @@ let typecheck_library senv filename prog : Typing.scope Diag.result =
   phase "Checking" prog.Source.note;
   Typing.check_library senv (filename, prog)
 
+
 (* Imported file loading *)
 
 (*
 Loading a file (or string) implies lexing, parsing, resolving imports to
-libraries, and typechecking. The resulting prog is typechecked.  The
-Typing.scope field in load_result is the accumulated scope.  When we load a
-declaration (i.e from the REPL), we also care about the type and the newly
-added scopes, these are returned separately.
+libraries, and typechecking.
+The resulting prog is typechecked.
+The Typing.scope field in load_result is the accumulated scope.
+When we load a declaration (i.e from the REPL), we also care about the type
+and the newly added scopes, so these are returned separately.
 *)
 type load_result =
   (Syntax.libraries * Syntax.prog list * Typing.scope) Diag.result
@@ -202,6 +204,108 @@ let load_one parse_one senv : load_decl_result =
   ))))
 
 
+(* Interpretation (Source) *)
+
+let interpret_prog denv prog : (Value.value * Interpret.scope) option =
+  try
+    phase "Interpreting" prog.Source.note;
+    match Interpret.interpret_prog denv prog with
+    | None, _ -> None
+    | Some v, scope -> Some (v, scope)
+  with exn ->
+    (* For debugging, should never happen. *)
+    Interpret.print_exn exn;
+    None
+
+let rec interpret_progs denv progs : Interpret.scope option =
+  match progs with
+  | [] -> Some denv
+  | p::ps ->
+    match interpret_prog denv p with
+    | Some (_v, dscope) ->
+      let denv' = Interpret.adjoin_scope denv dscope in
+      interpret_progs denv' ps
+    | None -> None
+
+
+(* Prelude *)
+
+let prelude_name = "prelude"
+
+let prelude_error phase (msgs : Diag.messages) =
+  Printf.eprintf "%s prelude failed\n" phase;
+  Diag.print_messages msgs;
+  exit 1
+
+let typecheck_prelude () : Syntax.prog * stat_env =
+  let lexer = Lexing.from_string Prelude.prelude in
+  let parse = Parser.parse_prog in
+  match parse_with Lexer.Privileged lexer parse prelude_name with
+  | Error e -> prelude_error "parsing" [e]
+  | Ok prog ->
+    let senv0 = Typing.empty_scope  in
+    match infer_prog senv0 prog with
+    | Error es -> prelude_error "checking" es
+    | Ok ((_t, sscope), msgs) ->
+      let senv1 = Typing.adjoin_scope senv0 sscope in
+      prog, senv1
+
+let prelude, initial_stat_env = typecheck_prelude ()
+
+let run_prelude () : dyn_env =
+  match interpret_prog Interpret.empty_scope prelude with
+  | None -> prelude_error "initializing" []
+  | Some (_v, dscope) ->
+    Interpret.adjoin_scope Interpret.empty_scope dscope
+
+let initial_dyn_env = run_prelude ()
+
+
+(* Only checking *)
+
+type check_result = unit Diag.result
+
+let check_files files : check_result =
+  Diag.map_result (fun _ -> ())
+    (load_many (Diag.traverse parse_file files) initial_stat_env)
+
+let check_string s name : check_result =
+  Diag.map_result (fun _ -> ())
+    (load_one (parse_string s name) initial_stat_env)
+
+
+(* Running *)
+
+let output_scope (senv, _) t v sscope dscope =
+  print_scope senv sscope dscope.Interpret.val_env;
+  if v <> Value.unit then print_val senv v t
+
+let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
+
+let rec interpret_libraries denv libraries : Interpret.scope =
+  match libraries with
+  | [] -> denv
+  | (f, p)::is ->
+    phase "Interpreting" p.Source.note;
+    let dscope = Interpret.interpret_library denv (f, p) in
+    let denv' = Interpret.adjoin_scope denv dscope in
+    interpret_libraries denv' is
+
+let interpret_files files : Interpret.scope Diag.result =
+  Diag.bind (Diag.flush_messages
+    (load_many (Diag.traverse parse_file files) initial_stat_env))
+    (fun (libraries, progs, _sscope) ->
+  let denv0 = initial_dyn_env in
+  let denv1 = interpret_libraries denv0 libraries in
+  match interpret_progs denv1 progs with
+  | None -> Error []
+  | Some denv2 -> Diag.return denv2
+  )
+
+let run_files files : unit Diag.result =
+  Diag.map_result (fun _ -> ()) (interpret_files files)
+
+
 (* IR transforms *)
 
 let transform transform_name trans env prog name =
@@ -237,103 +341,6 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
-(* Interpretation (Source) *)
-
-let interpret_prog denv prog : (Value.value * Interpret.scope) option =
-  try
-    phase "Interpreting" prog.Source.note;
-    match Interpret.interpret_prog denv prog with
-    | None, _ -> None
-    | Some v, scope -> Some (v, scope)
-  with exn ->
-    (* For debugging, should never happen. *)
-    Interpret.print_exn exn;
-    None
-
-let rec interpret_progs denv progs : Interpret.scope option =
-  match progs with
-  | [] -> Some denv
-  | p::ps ->
-    match interpret_prog denv p with
-    | Some (_v, dscope) ->
-      let denv' = Interpret.adjoin_scope denv dscope in
-      interpret_progs denv' ps
-    | None -> None
-
-(* Prelude *)
-
-let prelude_name = "prelude"
-
-let prelude_error phase (msgs : Diag.messages) =
-  Printf.eprintf "%s prelude failed\n" phase;
-  Diag.print_messages msgs;
-  exit 1
-
-let typecheck_prelude () : Syntax.prog * stat_env =
-  let lexer = Lexing.from_string Prelude.prelude in
-  let parse = Parser.parse_prog in
-  match parse_with Lexer.Privileged lexer parse prelude_name with
-  | Error e -> prelude_error "parsing" [e]
-  | Ok prog ->
-    let senv0 = Typing.empty_scope  in
-    match infer_prog senv0 prog with
-    | Error es -> prelude_error "checking" es
-    | Ok ((_t, sscope), msgs) ->
-      let senv1 = Typing.adjoin_scope senv0 sscope in
-      prog, senv1
-
-let prelude, initial_stat_env = typecheck_prelude ()
-
-let run_prelude () : dyn_env =
-  match interpret_prog Interpret.empty_scope prelude with
-  | None -> prelude_error "initializing" []
-  | Some (_v, dscope) ->
-    Interpret.adjoin_scope Interpret.empty_scope dscope
-
-let initial_dyn_env = run_prelude ()
-
-(* Only checking *)
-
-type check_result = unit Diag.result
-
-let check_files files : check_result =
-  Diag.map_result (fun _ -> ())
-    (load_many (Diag.traverse parse_file files) initial_stat_env)
-
-let check_string s name : check_result =
-  Diag.map_result (fun _ -> ())
-    (load_one (parse_string s name) initial_stat_env)
-
-(* Running *)
-
-let output_scope (senv, _) t v sscope dscope =
-  print_scope senv sscope dscope.Interpret.val_env;
-  if v <> Value.unit then print_val senv v t
-
-let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
-
-let rec interpret_libraries denv libraries : Interpret.scope =
-  match libraries with
-  | [] -> denv
-  | (f, p)::is ->
-    phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library denv (f, p) in
-    let denv' = Interpret.adjoin_scope denv dscope in
-    interpret_libraries denv' is
-
-let interpret_files files : Interpret.scope Diag.result =
-  Diag.bind (Diag.flush_messages
-    (load_many (Diag.traverse parse_file files) initial_stat_env))
-    (fun (libraries, progs, _sscope) ->
-  let denv0 = initial_dyn_env in
-  let denv1 = interpret_libraries denv0 libraries in
-  match interpret_progs denv1 progs with
-  | None -> Error []
-  | Some denv2 -> Diag.return denv2
-  )
-
-let run_files files : unit Diag.result =
-  Diag.map_result (fun _ -> ()) (interpret_files files)
 
 (* Compilation *)
 
@@ -347,9 +354,9 @@ let name_progs progs =
 
 let lower_prog senv lib_env libraries progs name =
   let prog_ir = desugar senv lib_env libraries progs name in
-  let prog_ir = await_lowering true initial_stat_env prog_ir name in
-  let prog_ir = async_lowering true initial_stat_env prog_ir name in
-  let prog_ir = serialization true initial_stat_env prog_ir name in
+  let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
+  let prog_ir = async_lowering !Flags.async_lowering initial_stat_env prog_ir name in
+  let prog_ir = serialization !Flags.await_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
@@ -376,6 +383,7 @@ let compile_string mode s name : compile_result =
     Diag.print_messages msgs;
     compile_prog mode senv.Typing.lib_env libraries [prog]
 
+
 (* Interpretation (IR) *)
 
 let interpret_ir_prog inp_env libraries progs =
@@ -397,6 +405,7 @@ let interpret_ir_files files =
     Diag.print_messages msgs;
     interpret_ir_prog senv.Typing.lib_env libraries progs;
     Diag.return ()
+
 
 (* Interactively *)
 

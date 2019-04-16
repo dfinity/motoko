@@ -113,9 +113,9 @@ do
         normalize $out/$base.run
         diff_files="$diff_files $base.run"
 
-        # Interpret IR
+        # Interpret IR without lowering
         $ECHO -n " [run-ir]"
-        $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-ir 2>&1
+        $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
         normalize $out/$base.run-ir
         diff_files="$diff_files $base.run-ir"
 
@@ -125,7 +125,7 @@ do
 
         # Interpret IR with lowering
         $ECHO -n " [run-low]"
-        $ASC $ASC_FLAGS -r -iR -a -A $base.as > $out/$base.run-low 2>&1
+        $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
         normalize $out/$base.run-low
         diff_files="$diff_files $base.run-low"
 
