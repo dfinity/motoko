@@ -1,4 +1,5 @@
--- Checking counter.as:
+-- Parsing counter.as:
+-- Checking all:
 type Counter = actor {dec : shared () -> (); read : shared () -> async Int}
 let Counter : Int -> Counter
 let c : actor {dec : shared () -> (); read : shared () -> async Int}
@@ -6,7 +7,7 @@ let show : (Text, Int) -> ()
 let showAsync : (Text, async Int) -> ()
 let testDec : () -> ()
 let testRead : () -> ()
--- Interpreting counter.as:
+-- Interpreting all:
 Counter(10)
   <= {dec = func; read = func}
 testDec()
@@ -286,7 +287,7 @@ testRead()
   showAsync("after", async -10)
     <= ()
   <= ()
--- Finished counter.as:
+-- Finished all:
 let Counter : Int -> Counter = func
 let c : actor {dec : shared () -> (); read : shared () -> async Int} = {dec = func; read = func}
 let show : (Text, Int) -> () = func
