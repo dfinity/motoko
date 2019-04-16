@@ -148,8 +148,10 @@ The Typing.scope field in load_result is the accumulated scope.
 When we load a declaration (i.e from the REPL), we also care about the type
 and the newly added scopes, so these are returned separately.
 *)
+
 type load_result =
   (Syntax.libraries * Syntax.prog list * Typing.scope) Diag.result
+
 type load_decl_result =
   (Syntax.libraries * Syntax.prog * Typing.scope * Type.typ * Typing.scope) Diag.result
 
@@ -189,8 +191,7 @@ let chase_imports senv0 to_load : (Syntax.libraries * Typing.scope) Diag.result 
   in
   Diag.bind (go ()) (fun () -> Diag.return (!libraries, !senv))
 
-
-let load_many parse senv : load_result =
+let load_progs parse senv : load_result =
   Diag.bind parse (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
@@ -202,7 +203,7 @@ let load_many parse senv : load_result =
   Diag.return (libraries, progs', senv'')
   ))))
 
-let load_one parse_one senv : load_decl_result =
+let load_decl parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
   Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
@@ -246,7 +247,7 @@ let rec interpret_progs denv progs : Interpret.scope option =
 
 let interpret_files (senv0, denv0) files : Interpret.scope Diag.result =
   Diag.bind (Diag.flush_messages
-    (load_many (parse_files files) senv0))
+    (load_progs (parse_files files) senv0))
     (fun (libraries, progs, _sscope) ->
   let denv1 = interpret_libraries denv0 libraries in
   match interpret_progs denv1 progs with
@@ -296,18 +297,14 @@ type check_result = unit Diag.result
 
 let check_files files : check_result =
   Diag.map_result (fun _ -> ())
-    (load_many (parse_files files) initial_stat_env)
+    (load_progs (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
   Diag.map_result (fun _ -> ())
-    (load_one (parse_string s name) initial_stat_env)
+    (load_decl (parse_string s name) initial_stat_env)
 
 
 (* Running *)
-
-let output_scope (senv, _) t v sscope dscope =
-  print_scope senv sscope dscope.Interpret.val_env;
-  if v <> Value.unit then print_val senv v t
 
 let run_files files : unit Diag.result =
   Diag.map_result (fun _ -> ()) (interpret_files initial_env files)
@@ -341,8 +338,12 @@ let parse_lexer lexer : parse_result =
 
 let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
+let output_scope (senv, _) t v sscope dscope =
+  print_scope senv sscope dscope.Interpret.val_env;
+  if v <> Value.unit then print_val senv v t
+
 let run_stdin lexer (senv, denv) : env option =
-  match load_one (parse_lexer lexer) senv with
+  match load_decl (parse_lexer lexer) senv with
   | Error msgs ->
     Diag.print_messages msgs;
     if !Flags.verbose then printf "\n";
@@ -369,7 +370,7 @@ let run_stdin lexer (senv, denv) : env option =
       Some env'
 
 let run_files_and_stdin files =
-  match load_many (parse_files files) initial_stat_env with
+  match load_progs (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     let lexer = Lexing.from_function lexer_stdin in
@@ -445,14 +446,14 @@ let compile_prog mode lib_env libraries progs : compile_result =
   Ok module_
 
 let compile_files mode files : compile_result =
-  match load_many (parse_files files) initial_stat_env with
+  match load_progs (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
     compile_prog mode senv.Typing.lib_env libraries progs
 
 let compile_string mode s name : compile_result =
-  match load_one (parse_string s name) initial_stat_env with
+  match load_decl (parse_string s name) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, prog, senv, _t, _sscope), msgs) ->
     Diag.print_messages msgs;
@@ -472,9 +473,8 @@ let interpret_ir_prog inp_env libraries progs =
   let _ = Interpret_ir.interpret_prog denv1 prog_ir in
   ()
 
-
 let interpret_ir_files files =
-  match load_many (parse_files files) initial_stat_env with
+  match load_progs (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
