@@ -4,4 +4,4 @@ switch ([1,2]) {
     for (x in iter()) { y := x; }
   }
 };
-assert (x == 2);
+assert (y == 2);
