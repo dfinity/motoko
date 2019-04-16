@@ -80,20 +80,19 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_product ctxt [] descs pats ts sets
   | ObjP pfs ->
-    let _, tfs = Type.as_obj (Type.promote t) in
-    let pf_of_lab lab =
-      begin
-        match List.find_opt (fun (pf : pat_field) -> pf.it.id.it = lab) pfs with
-        | Some pf -> {id=pf.it.id; pat=pf.it.Syntax.pat}
-        | None -> {id={it = lab; at = no_region; note = ()}; pat={it = WildP; at = no_region; note = Type.Pre}}
-      end in
-    let pfs' = List.map (fun {Type.lab; _} -> {it = pf_of_lab lab; at = no_region; note = ()}) tfs in
+    let t' = Type.promote t in
+    let sensible (pf : pat_field) =
+      List.exists (fun {Type.lab; _} -> pf.it.id.it = lab) (snd (Type.as_obj_sub pf.it.id.it t')) in
+    let pfs' = List.filter sensible pfs in
+    let tf_of_pf (pf : pat_field) =
+      List.find (fun {Type.lab; _} -> pf.it.id.it = lab) (snd (Type.as_obj_sub pf.it.id.it t')) in
+    let tfs' = List.map tf_of_pf pfs' in
     let descs =
       match desc with
       | Object descs -> descs
-      | Any -> List.map (fun _ -> Any) tfs
+      | Any -> List.map (fun _ -> Any) pfs'
       | _ -> assert false
-    in match_object ctxt [] descs pfs' tfs sets
+    in match_object ctxt [] descs pfs' tfs' sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
