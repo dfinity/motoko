@@ -198,6 +198,7 @@ rule token mode = parse
   | "func" { FUNC }
   | "if" { IF }
   | "in" { IN }
+  | "import" { IMPORT }
   | "module" { MODULE }
   | "new" { NEW }
   | "not" { NOT }
@@ -209,6 +210,7 @@ rule token mode = parse
   | "private" { PRIVATE }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }

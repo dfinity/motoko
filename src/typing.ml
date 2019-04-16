@@ -426,7 +426,8 @@ and infer_exp'' env exp : T.typ =
     | Some T.Pre ->
       error env id.at "cannot infer type of forward variable %s" id.it;
     | Some t -> t
-    | None -> error env id.at "unbound variable %s" id.it
+    | None ->
+      error env id.at "unbound variable %s" id.it
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -442,6 +443,15 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     t
+  | ShowE (ot, exp1) ->
+    let t = infer_exp_promote env exp1 in
+    if not env.pre then begin
+      if not (Show.can_show t) then
+        error env exp.at "show is not defined for operand type\n  %s"
+          (T.string_of_typ_expand t);
+      ot := t
+    end;
+    T.Prim T.Text
   | BinE (ot, exp1, op, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let t2 = infer_exp_promote env exp2 in
@@ -726,6 +736,14 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
+  | ImportE (_, fp) ->
+    if !fp = "" then assert false;
+    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    | Some T.Pre ->
+      error env exp.at "cannot infer type of forward import %s" !fp
+    | Some t -> t
+    | None -> error env exp.at "unresolved import %s" !fp
+    )
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -1231,7 +1249,12 @@ and gather_dec_typdecs env scope dec : scope =
       | Some c -> c  in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
-    {scope with typ_env = te'; con_env = ce'}
+    let ve' =  match dec.it with
+      | ClassD _ ->
+        T.Env.add id.it T.Pre scope.val_env
+      | _ -> scope.val_env
+    in
+    { typ_env = te'; con_env = ce'; val_env = ve' }
   | ModuleD (id, decs) ->
     (* TODO: this won't catch shadowing of ordinary val and module; instead gather vals here too?*)
     if T.Env.mem id.it scope.val_env then

@@ -372,7 +372,7 @@ charlie.go("charlie", server);
 
 ## Syntax
 
-See [here](design/Syntax.md).
+See [here](design/Syntax.html).
 
 
 ## Semantics
@@ -382,4 +382,4 @@ TODO...
 
 ## Implementation
 
-See [here](design/Implementation.md)
+See [here](design/Implementation.html)

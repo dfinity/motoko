@@ -32,3 +32,21 @@ type C = { #foo : Int; };
 type D = { #foo : Int; #bar : Char };
 type E = { #foo : Int; #bar : Char; };
 type F = { #foo : Int; #bar : Char; #daz : Bool };
+
+// lightweight (enumeration-like) variants
+
+type Weekday = { #Monday; #Tuesday; #Wednesday; #Thursday; #Friday; #Saturday; #Sunday };
+
+func sayIcelandic (day : Weekday) : Text = switch day {
+  case #Monday "Mánudagur";
+  case #Tuesday "Þriðjudagur";
+  case #Wednesday "Miðvikudagur";
+  case #Thursday "Fimmtudagur";
+  case #Friday "Föstudagur";
+  case #Saturday "Laugardagur";
+  case #Sunday "Sunnudagur"
+};
+
+assert (sayIcelandic #Wednesday == "Miðvikudagur");
+
+assert (debug_show (#foo #bar) == "(#foo #bar)")

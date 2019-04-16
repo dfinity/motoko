@@ -40,7 +40,6 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
 
-
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
@@ -91,6 +90,100 @@ func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
 
+// Internal helper functions for the show translation
+
+// The @ in the name ensures that this connot be shadowed by user code, so
+// compiler passes can rely on them being in scope
+// The text_of functions do not need to be exposed; the user can just use
+// the show above.
+
+func @text_of_Nat(x : Nat) : Text {
+  var text = "";
+  var n = x;
+  let base = 10;
+
+  while (n > 0) {
+    let rem = n % base;
+    text := (switch (rem) {
+      case (0) { "0" };
+      case (1) { "1" };
+      case (2) { "2" };
+      case (3) { "3" };
+      case (4) { "4" };
+      case (5) { "5" };
+      case (6) { "6" };
+      case (7) { "7" };
+      case (8) { "8" };
+      case (9) { "9" };
+      case (_) { assert false; "" };
+    }) # text;
+    n := n / base;
+  };
+  return text;
+};
+
+func @text_of_Int(x : Int) : Text {
+  if (x == 0) {
+    return "0";
+  };
+  if (x < 0) {
+    "-" # @text_of_Nat(abs x)
+  } else {
+    @text_of_Nat(abs x)
+  }
+};
+
+func @text_of_Bool(b : Bool) : Text {
+  if (b) "true" else "false"
+};
+
+func @text_of_Text(t : Text) : Text {
+  // TODO: Escape properly
+  "\"" # t # "\"";
+};
+
+func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
+  switch (x) {
+    case (?y) {"?(" # f y # ")"};
+    case null {"null"};
+  }
+};
+
+func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
+  let fx = f x;
+  if (fx == "()") "#" # l
+  else "(#" # l # " " # fx # ")"
+};
+
+func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
+  var text = "";
+  for (x in xs.vals()) {
+    if (text == "") {
+      text := text # "[";
+    } else {
+      text := text # ", ";
+    };
+    text := text # f x;
+  };
+  text := text # "]";
+  return text;
+};
+
+func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
+  var text = "";
+  for (x in xs.vals()) {
+    if (text == "") {
+      text := text # "[var ";
+    } else {
+      text := text # ", ";
+    };
+    text := text # f x;
+  };
+  text := text # "]";
+  return text;
+};
+
+// Array utilities
 
 // This would be nicer as a objects, but lets do them as functions
 // until the compiler has a concept of “static objects”

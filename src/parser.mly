@@ -98,6 +98,8 @@ let share_expfield (ef : exp_field) =
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
+%token IMPORT
+%token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
@@ -276,8 +278,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | i=variant_tag COLON t=typ
-    { (i, t) }
+  | i=variant_tag t=return_typ_nullary?
+    { (i, Lib.Option.get t (TupT [] @! at $sloc)) }
 
 typ_bind :
   | x=id SUB t=typ
@@ -359,6 +361,8 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
+  | i=variant_tag
+    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
@@ -390,8 +394,12 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
+  | IMPORT f=TEXT
+    { ImportE (f, ref "") @? at $sloc }
   | i=variant_tag e=exp_nullary
     { VariantE (i, e) @? at $sloc }
+  | DEBUG_SHOW e=exp_un
+    { ShowE (ref Type.Pre, e) @? at $sloc }
 
 exp_bin :
   | e=exp_un
@@ -504,6 +512,8 @@ pat_nullary :
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
+  | i=variant_tag
+    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 

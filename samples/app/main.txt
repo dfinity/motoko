@@ -1,3 +1,8 @@
+-- Parsing list.as:
+-- Parsing types.as:
+-- Parsing server.as:
+-- Parsing client.as:
+-- Parsing main.as:
 -- Checking all:
 type Client = actor {go : shared (Text, Server) -> (); send : shared Text -> ()}
 type ClientData = {client : Client; id : Nat; revoked : var Bool}

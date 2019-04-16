@@ -386,7 +386,8 @@ let rec string_of_val_nullary d = function
   | Array a ->
     sprintf "[%s]" (String.concat ", "
       (List.map (string_of_val' d) (Array.to_list a)))
-  | Func ( _, _) -> "func"
+  | Func (_, _) -> "func"
+  | Variant (l, Tup []) -> sprintf "#%s" l
   | v -> "(" ^ string_of_val' d v ^ ")"
 
 and string_of_val' d = function
@@ -395,6 +396,8 @@ and string_of_val' d = function
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
       (List.length waiters) (string_of_def_nullary d result)
+  | Variant (l, v) when v <> unit ->
+    sprintf "#%s %s" l (string_of_val_nullary d v)
   | Mut r -> sprintf "%s" (string_of_val' d !r)
   | v -> string_of_val_nullary d v
 
