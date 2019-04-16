@@ -245,14 +245,14 @@ let rec interpret_progs denv progs : Interpret.scope option =
       interpret_progs denv' ps
     | None -> None
 
-let interpret_files (senv0, denv0) files : Interpret.scope Diag.result =
+let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) Diag.result =
   Diag.bind (Diag.flush_messages
     (load_progs (parse_files files) senv0))
-    (fun (libraries, progs, _sscope) ->
+    (fun (libraries, progs, senv1) ->
   let denv1 = interpret_libraries denv0 libraries in
   match interpret_progs denv1 progs with
   | None -> Error []
-  | Some denv2 -> Diag.return denv2
+  | Some denv2 -> Diag.return (senv1, denv2)
   )
 
 
@@ -370,16 +370,13 @@ let run_stdin lexer (senv, denv) : env option =
       Some env'
 
 let run_files_and_stdin files =
-  match load_progs (parse_files files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    let lexer = Lexing.from_function lexer_stdin in
-    Diag.bind (interpret_files initial_env files) (fun denv ->
-      let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
-      try loop (senv, denv) with End_of_file ->
-        printf "\n%!";
-        Diag.return ()
-    )
+  let lexer = Lexing.from_function lexer_stdin in
+  Diag.bind (interpret_files initial_env files) (fun env ->
+    let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
+    try loop env with End_of_file ->
+      printf "\n%!";
+      Diag.return ()
+  )
 
 
 (* IR transforms *)
