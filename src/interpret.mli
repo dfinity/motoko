@@ -3,7 +3,7 @@ module T = Type
 
 type scope = {
   val_env: V.def V.Env.t;
-  imp_env:  V.value V.Env.t;
+  imp_env: V.value V.Env.t;
 }
 
 val empty_scope : scope

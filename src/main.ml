@@ -77,7 +77,7 @@ let process_files files : unit =
     printf "%s\n" banner;
     run_diag (Pipeline.run_files_and_stdin files)
   | Check ->
-    let ((), msgs) = exit_on_failure (Pipeline.check_only_files files) in
+    let ((), msgs) = exit_on_failure (Pipeline.check_files files) in
     Diag.print_messages msgs
   | Compile ->
     if !out_file = "" then begin

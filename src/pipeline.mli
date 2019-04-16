@@ -1,5 +1,5 @@
-val check_only_files  : string list -> unit Diag.result
-val check_only_string : string -> string -> unit Diag.result
+val check_files  : string list -> unit Diag.result
+val check_string : string -> string -> unit Diag.result
 
 val run_files           : string list -> unit Diag.result
 val interpret_ir_files  : string list -> unit Diag.result

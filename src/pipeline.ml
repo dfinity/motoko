@@ -116,16 +116,16 @@ let infer_prog senv prog
   end;
   r
 
-let rec check_progs senv progs : Typing.scope Diag.result =
+let rec typecheck_progs senv progs : Typing.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
   | p::ps ->
     Diag.bind (infer_prog senv p) (fun (_t, sscope) ->
       let senv' = Typing.adjoin_scope senv sscope in
-      check_progs senv' ps
+      typecheck_progs senv' ps
     )
 
-let check_import senv filename prog : Typing.scope Diag.result =
+let typecheck_import senv filename prog : Typing.scope Diag.result =
   phase "Checking" prog.Source.note;
   Typing.check_import senv (filename, prog)
 
@@ -171,7 +171,7 @@ let chase_imports senv0 to_load : (imports * Typing.scope) Diag.result =
       todo := union !todo more_imports;
       imports := (f, prog) :: !imports; (* NB: Do this before recursing *)
       Diag.bind (go ()) (fun () ->
-      Diag.bind (check_import !senv f prog) (fun sscope ->
+      Diag.bind (typecheck_import !senv f prog) (fun sscope ->
       senv := Typing.adjoin_scope !senv sscope;
       pending := remove f !pending;
       Diag.return ()
@@ -188,7 +188,7 @@ let load_many parse senv : load_result =
     List.fold_left Resolve_import.S.union Resolve_import.S.empty
     (List.map snd rs) in
   Diag.bind (chase_imports senv imports) (fun (imports, senv') ->
-  Diag.bind (check_progs senv' progs') (fun senv'' ->
+  Diag.bind (typecheck_progs senv' progs') (fun senv'' ->
   Diag.return (imports, progs', senv'')
   ))))
 
@@ -269,7 +269,7 @@ let prelude_error phase (msgs : Diag.messages) =
   Diag.print_messages msgs;
   exit 1
 
-let check_prelude () : Syntax.prog * stat_env =
+let typecheck_prelude () : Syntax.prog * stat_env =
   let lexer = Lexing.from_string Prelude.prelude in
   let parse = Parser.parse_prog in
   match parse_with Lexer.Privileged lexer parse prelude_name with
@@ -282,7 +282,7 @@ let check_prelude () : Syntax.prog * stat_env =
       let senv1 = Typing.adjoin_scope senv0 sscope in
       prog, senv1
 
-let prelude, initial_stat_env = check_prelude ()
+let prelude, initial_stat_env = typecheck_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
@@ -294,13 +294,13 @@ let initial_dyn_env = run_prelude ()
 
 (* Only checking *)
 
-type check_only_result = unit Diag.result
+type check_result = unit Diag.result
 
-let check_only_files files : check_only_result =
+let check_files files : check_result =
   Diag.map_result (fun _ -> ())
     (load_many (Diag.traverse parse_file files) initial_stat_env)
 
-let check_only_string s name : check_only_result =
+let check_string s name : check_result =
   Diag.map_result (fun _ -> ())
     (load_one (parse_string s name) initial_stat_env)
 

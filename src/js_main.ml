@@ -26,7 +26,7 @@ let diagnostics_of_error (msg : Diag.message) =
 
 let js_check source =
   let msgs = match
-    Pipeline.check_only_string (Js.to_string source) "js-input" with
+    Pipeline.check_string (Js.to_string source) "js-input" with
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js

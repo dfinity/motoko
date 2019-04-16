@@ -191,7 +191,7 @@ type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
 type import = (string * prog)
-type imports = (string * prog) list
+type imports = import list
 
 (* n-ary arguments/result sequences *)
 

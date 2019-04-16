@@ -687,8 +687,6 @@ let interpret_import scope (filename, p) : scope =
     interpret_block env p.it (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  match !vo with
-  | Some v -> import_scope filename v scope
-  | None -> assert false
+  import_scope filename (Lib.Option.value !vo) scope
 
 
