@@ -12,6 +12,7 @@ type desc =
   | Val of V.value
   | NotVal of ValSet.t
   | Product of desc list
+  | Object of desc list
   | Opt of desc
   | Tag of desc * id
   | NotTag of TagSet.t
@@ -20,6 +21,7 @@ type ctxt =
   | InOpt of ctxt
   | InTag of ctxt * id
   | InProduct of ctxt * desc list * desc list * pat list * Type.typ list
+  | InObject of ctxt * desc list * desc list * pat_field list * Type.field list
   | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
   | InCase of Source.region * case list * Type.typ
@@ -79,20 +81,19 @@ let rec match_pat ctxt desc pat t sets =
     in match_product ctxt [] descs pats ts sets
   | ObjP pfs ->
     let _, tfs = Type.as_obj (Type.promote t) in
-    let pat_of_lab lab =
+    let pf_of_lab lab =
       begin
         match List.find_opt (fun (pf : pat_field) -> pf.it.id.it = lab) pfs with
-        | Some pf -> pf.it.Syntax.pat
-        | None -> {it = WildP; at = no_region; note = Type.Pre}
+        | Some pf -> {id=pf.it.id; pat=pf.it.Syntax.pat}
+        | None -> {id={it = lab; at = no_region; note = ()}; pat={it = WildP; at = no_region; note = Type.Pre}}
       end in
-    let pats = List.map (fun {Type.lab; _} -> pat_of_lab lab) tfs in
-    let ts = List.map (fun {Type.typ; _} -> typ) tfs in
+    let pfs' = List.map (fun {Type.lab; _} -> {it = pf_of_lab lab; at = no_region; note = ()}) tfs in
     let descs =
       match desc with
-      | Product descs -> descs
-      | Any -> List.map (fun _ -> Any) pats
+      | Object descs -> descs
+      | Any -> List.map (fun _ -> Any) tfs
       | _ -> assert false
-    in match_product ctxt [] descs pats ts sets
+    in match_object ctxt [] descs pfs' tfs sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
@@ -168,6 +169,14 @@ and match_product ctxt descs_r descs pats ts sets =
   | _ ->
     assert false
     
+and match_object ctxt descs_r descs (pfs : pat_field list) tfs sets =
+  match descs, pfs, tfs with
+  | [], [], [] ->
+    succeed ctxt (Object (List.rev descs_r)) sets
+  | desc::descs', pf::pfs', Type.{lab; typ}::tfs' ->
+    match_pat (InObject (ctxt, descs_r, descs', pfs', tfs')) desc pf.it.pat typ sets
+  | _ ->
+    assert false
 
 and succeed ctxt desc sets : bool =
   match ctxt with
@@ -177,6 +186,8 @@ and succeed ctxt desc sets : bool =
     succeed ctxt' (Tag (desc, t)) sets
   | InProduct (ctxt', descs_r, descs, pats, ts) ->
     match_product ctxt' (desc::descs_r) descs pats ts sets
+  | InObject (ctxt', descs_r, descs, pfs, tfs) ->
+    match_object ctxt' (desc::descs_r) descs pfs tfs sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
     sets.reached_alts <- AtSet.add at1 sets.reached_alts;
     succeed ctxt' desc sets
@@ -203,6 +214,8 @@ and fail ctxt desc sets : bool =
     fail ctxt' (Tag (desc, id)) sets
   | InProduct (ctxt', descs', descs, pats, _ts) ->
     fail ctxt' (Product (List.rev descs' @ [desc] @ descs)) sets
+  | InObject (ctxt', descs', descs, pats, _ts) ->
+    fail ctxt' (Object (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
     match_pat (InAlt2 (ctxt', pat2.at)) desc pat2 t sets
   | InAlt2 (ctxt', at2) ->
