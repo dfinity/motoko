@@ -18,13 +18,14 @@ TODO:
 * [ ] Import expressions
 * [ ] Modules
 * [ ] Prelude
+* [ ] pandoc confused by table entries containing `|` - figure out workaround
 
 # Introduction
 
 ActorScript is a new, general purpose programming language for the
 Dfinity platform.
 
-## Why a new language?
+## Why a new language
 
 Dfinity has chosen WebAssembly as its low-level virtual machine.
 
@@ -167,6 +168,7 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 ## Characters
 
 A character is a single quote (`'`) delimited:
+
 * unicode character in UTF-8,
 * `\`-escaped  newline, carriage return, tab, single or double quotation mark
 * `\`-prefixed ASCII character (TBR),
@@ -209,7 +211,6 @@ text ::= '"' character* '"'
 
 ## Operators
 
-
 ### Sorts
 
 To simplify the presentation of available operators, operators and primitive types are classified into basic sorts:
@@ -220,7 +221,7 @@ To simplify the presentation of available operators, operators and primitive typ
 | A | Arithmetic | arithmetic operations |
 | L | Logical A | boolean operations |
 | B | Bitwise | bitwise operations|
-| C | Comparable | equality and comparison | 
+| C | Comparable | equality and comparison |
 | T | Text | concatention |
 
 Some types have several sorts, e.g. type `Int` is both arithmetic and comparable and supports both addition and less than (amongst other operations).
@@ -265,7 +266,7 @@ Equality is structural.
 | `<binop>` | Sort |          |
 |-------|---|------|
 | `&`   | B | bitwise and |
-| `|`   | B | bitwise or |
+| `|`  | B | bitwise or |
 | `^`   | B | exclusive or |
 | `<<`  | B | shift left |
 | `␣>>` | B | shift right *(must be preceded by whitespace)* |
@@ -274,7 +275,7 @@ Equality is structural.
 
 ### String Operators
 
-|  `<binop>` | Sort         |
+|  `<binop>` | Sort |       |
 |------|---|------|
 |  `#` | T | concatenation |
 
@@ -308,7 +309,7 @@ Precedence | Associativity | Token |
 |---|------------|--------|
 LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 || none | `else`, `while`
-|| right | `:= `, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
+|| right | `:=`, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
 || left | `:`
 || left | `or`
 || left | `and`
@@ -321,12 +322,11 @@ LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 || none | `<<`, `>>`, `<<>`, `<>>`
 HIGHEST | left | `**`
 
-
 # Types
 
 Type expressions are used to specify the types of arguments, constraints (a.k.a bounds) on type parameters, definitions of type constructors, and the types of sub-expressions in type annotations.
 
-```
+```bnf
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
@@ -488,7 +488,7 @@ The optional identifier `<id>`, naming its components, is for documentation purp
 
 ## Any type
 
-Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type any.
+Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type `Any`.
 
 ## None type
 
@@ -500,7 +500,6 @@ As an empty type, `None` can be used to specify the impossible return value of a
 ## Shared type
 
 Type `Shared`  is the super-type of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
-
 
 ## Parenthesised type
 
@@ -697,11 +696,11 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
   <typ-params>? <pat> (: <typ>)? =? <exp>        function body
 ```
 
-## Identifiers
+## Identifiers (References)
 
 The expression `<id>` evaluates to the value bound to `<id>` in the current evaluation environment.
 
-## Literals
+## Literals (Constants)
 
 The literal (or constant) expression `<lit>` evaluates to itself.
 
@@ -1320,7 +1319,7 @@ where:
 
 * `<sort>` is `object` if `obj_sort?` is absent or `new` and `sort == obj_sort` otherwise.
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
-* `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
+* `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field>;*`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
 _TBR can we delete `new'?_
