@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script compares the compiler output (in wat format)
 # between the currently built version and the previous version
