@@ -80,6 +80,15 @@ let
     "stdlib/.*.as"
     "stdlib/examples/"
     "stdlib/examples/.*.as"
+    "stdlib/examples/produce-exchange/"
+    "stdlib/examples/produce-exchange/.*.as"
+    "stdlib/examples/produce-exchange/test/"
+    "stdlib/examples/produce-exchange/test/.*.as"
+  ];
+  stdlib_doc_files = [
+    "stdlib/.*\.py"
+    "stdlib/README.md"
+    "stdlib/examples/produce-exchange/README.md"
   ];
 
 in
@@ -121,8 +130,7 @@ rec {
 
     src = sourceByRegex ./. (
       test_files ++
-      samples_files ++
-      stdlib_files
+      samples_files
     );
 
     buildInputs =
@@ -138,7 +146,6 @@ rec {
     buildPhase = ''
       patchShebangs .
       asc --version
-      make -C stdlib ASC=asc all
       make -C samples ASC=asc all
     '' +
       (if test-dvm
@@ -227,8 +234,97 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
 
+
+  users-guide = stdenv.mkDerivation {
+    name = "users-guide";
+
+    src = sourceByRegex ./. [
+      "design/"
+      "design/guide.md"
+      "guide/"
+      "guide/Makefile"
+      "guide/.*css"
+      "guide/.*md"
+      "guide/.*png"
+      ];
+
+    buildInputs =
+      with nixpkgs;
+      let tex = texlive.combine {
+        inherit (texlive) scheme-small xetex newunicodechar;
+      }; in
+      [ pandoc tex bash ];
+
+    NIX_FONTCONFIG_FILE =
+      with nixpkgs;
+      nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
+
+    buildPhase = ''
+      patchShebangs .
+      make -C guide
+    '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv guide $out/
+      rm $out/guide/Makefile
+      mkdir -p $out/nix-support
+      echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
+
+  stdlib-reference = stdenv.mkDerivation {
+    name = "stdlib-reference";
+
+    src = sourceByRegex ./. (
+      stdlib_files ++
+      stdlib_doc_files
+    ) + "/stdlib";
+
+    buildInputs = with nixpkgs;
+      [ pandoc bash python ];
+
+    buildPhase = ''
+      patchShebangs .
+      make alldoc
+    '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv doc $out/
+      mkdir -p $out/nix-support
+      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+    '';
+
+    forceShare = ["man"];
+  };
+
+  produce-exchange = stdenv.mkDerivation {
+    name = "produce-exchange";
+    src = sourceByRegex ./. (
+      stdlib_files
+    );
+
+    buildInputs = [
+      native
+    ];
+
+    doCheck = true;
+    buildPhase = ''
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+    '';
+    checkPhase = ''
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.out
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp stdlib/_out/ProduceExchange.wasm $out
+    '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report ];
+    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
   };
 }

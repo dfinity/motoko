@@ -1,14 +1,24 @@
-/*
- * Association Lists, a la functional programming, in ActorScript.
- */
+/**
 
+Association Lists 
+==================
+ 
+Association Lists, a la functional programming, in ActorScript.
+ 
+Implements the same interface as `Trie`, but as a linked-list of key-value pairs.
+
+*/
 
 // polymorphic association linked lists between keys and values
 type AssocList<K,V> = List<(K,V)>;
 
 let AssocList = new {
 
-  // find the value associated with a given key, or null if absent.
+  /**
+   `find`
+   --------
+   find the value associated with a given key, or null if absent.
+  */
   func find<K,V>(al : AssocList<K,V>,
                  k:K,
                  k_eq:(K,K)->Bool)
@@ -28,8 +38,12 @@ let AssocList = new {
     rec(al)
   };
 
-  // replace the value associated with a given key, or add it, if missing.
-  // returns old value, or null, if no prior value existed.
+  /**
+   `replace`
+   ---------
+   replace the value associated with a given key, or add it, if missing.
+   returns old value, or null, if no prior value existed.
+  */
   func replace<K,V>(al : AssocList<K,V>,
                     k:K,
                     k_eq:(K,K)->Bool,
@@ -61,9 +75,13 @@ let AssocList = new {
     rec(al)
   };
 
-  // The key-value pairs of the final list consist of those pairs of
-  // the left list whose keys are not present in the right list; the
-  // values of the right list are irrelevant.
+  /**
+   `diff`
+   ---------
+   The key-value pairs of the final list consist of those pairs of
+   the left list whose keys are not present in the right list; the
+   values of the right list are irrelevant.
+  */
   func diff<K,V,W>(al1: AssocList<K,V>,
                    al2: AssocList<K,W>,
                    keq: (K,K)->Bool)
@@ -83,15 +101,19 @@ let AssocList = new {
     rec(al1)
   };
 
-  // This operation generalizes the notion of "set union" to finite maps.
-  // Produces a "disjunctive image" of the two lists, where the values of
-  // matching keys are combined with the given binary operator.
-  //
-  // For unmatched key-value pairs, the operator is still applied to
-  // create the value in the image.  To accomodate these various
-  // situations, the operator accepts optional values, but is never
-  // applied to (null, null).
-  //
+  /**
+   `disj`
+   --------
+   This operation generalizes the notion of "set union" to finite maps.
+   Produces a "disjunctive image" of the two lists, where the values of
+   matching keys are combined with the given binary operator.
+  
+   For unmatched key-value pairs, the operator is still applied to
+   create the value in the image.  To accomodate these various
+   situations, the operator accepts optional values, but is never
+   applied to (null, null).
+  
+  */
   func disj<K,V,W,X>(al1:AssocList<K,V>,
                      al2:AssocList<K,W>,
                      keq:(K,K)->Bool,
@@ -125,12 +147,16 @@ let AssocList = new {
     rec1(al1)
   };
 
-  // This operation generalizes the notion of "set intersection" to
-  // finite maps.  Produces a "conjuctive image" of the two lists, where
-  // the values of matching keys are combined with the given binary
-  // operator, and unmatched key-value pairs are not present in the output.
-  //
-  func conj<K,V,W,X>(al1 : AssocList<K,V>,
+  /**
+   `join`
+   ---------
+   This operation generalizes the notion of "set intersection" to
+   finite maps.  Produces a "conjuctive image" of the two lists, where
+   the values of matching keys are combined with the given binary
+   operator, and unmatched key-value pairs are not present in the output.
+  
+  */
+  func join<K,V,W,X>(al1 : AssocList<K,V>,
                      al2:AssocList<K,W>,
                      keq:(K,K)->Bool,
                      vbin:(V,W)->X)
@@ -151,6 +177,10 @@ let AssocList = new {
   };
 
 
+  /**
+   `fold`
+   ---------
+   */
   func fold<K,V,X>(al:AssocList<K,V>,
                    nil:X,
                    cons:(K,V,X)->X)

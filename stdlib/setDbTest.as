@@ -1,15 +1,23 @@
-// import SetDb
+/** 
+
+ Tests with debugging wrapper around `Set` module
+ ===============================================
+
+ */
 
 func SetDb__test() {
-  let hash_0 = ?(false,?(false,?(false,?(false, null))));
-  let hash_1 = ?(false,?(false,?(false,?(true,  null))));
-  let hash_2 = ?(false,?(false,?(true, ?(false, null))));
-  let hash_3 = ?(false,?(false,?(true, ?(true,  null))));
-  let hash_4 = ?(false,?(true, ?(false,?(false, null))));
-  let hash_5 = ?(false,?(true, ?(false,?(true,  null))));
-  let hash_6 = ?(false,?(true, ?(true, ?(false, null))));
-  let hash_7 = ?(false,?(true, ?(true, ?(true,  null))));
-  let hash_8 = ?(true, ?(false,?(false,?(false, null))));
+
+  let hash_0 = Hash.hashOfInt(0);
+  let hash_1 = Hash.hashOfInt(1);
+  let hash_2 = Hash.hashOfInt(2);
+  let hash_3 = Hash.hashOfInt(3);
+  let hash_4 = Hash.hashOfInt(4);
+  let hash_5 = Hash.hashOfInt(5);
+  let hash_6 = Hash.hashOfInt(6);
+  let hash_7 = Hash.hashOfInt(7);
+  let hash_8 = Hash.hashOfInt(8);
+  let hash_9 = Hash.hashOfInt(9);
+
 
   print "inserting...\n";
   // Insert numbers [0..8] into the set, using their bits as their hashes:
