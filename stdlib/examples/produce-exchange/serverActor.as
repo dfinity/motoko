@@ -666,6 +666,20 @@ actor server = {
   };
 
   /**
+   `getRouteInfo`
+   ---------------------
+
+   See also: [server type `RouteInfo`]($DOCURL/examples/produce-exchange/serverTypes.md#routeinfo).
+
+   */
+
+  getRouteInfo(
+    id: RouteId
+  ) : async ?RouteInfo {
+    getModel().routeTable.getInfo(id)
+  };
+
+  /**
    `Retailer`-based ingress messages:
    ======================================
 
