@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script compiles the test suite under various
 # different environments (using reprotest) and tests whether
