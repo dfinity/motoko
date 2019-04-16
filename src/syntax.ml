@@ -190,8 +190,8 @@ and dec' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
-type import = (string * prog)
-type imports = import list
+type library = (string * prog)
+type libraries = library list
 
 (* n-ary arguments/result sequences *)
 

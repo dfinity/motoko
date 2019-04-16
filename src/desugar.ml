@@ -304,8 +304,8 @@ and prog (p : Syntax.prog) : Ir.prog =
 
 
 
-let combine_files imp_env imports progs : Syntax.prog =
-  (* This is a hack until the backend has explicit support for imports *)
+let combine_files imp_env libraries progs : Syntax.prog =
+  (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
   { it = List.map (fun (f, prog) ->
       let t = Type.Env.find f imp_env in
@@ -321,7 +321,7 @@ let combine_files imp_env imports progs : Syntax.prog =
         )
       ; at = no_region
       ; note = { Syntax.empty_typ_note with Syntax.note_typ = t }
-      }) imports
+      }) libraries
     @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
@@ -331,6 +331,6 @@ let combine_files imp_env imports progs : Syntax.prog =
 
 let transform p = prog p
 
-let transform_graph imp_env imports progs =
-  prog (combine_files imp_env imports progs)
+let transform_graph imp_env libraries progs =
+  prog (combine_files imp_env libraries progs)
 
