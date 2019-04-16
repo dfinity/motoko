@@ -1,0 +1,39 @@
+ActorScript 0.1 interpreter
+-- Parsing stdin:
+> -- Parsing b.as:
+-- Parsing c.as:
+-- Checking c.as:
+-- Checking b.as:
+-- Checking stdin:
+-- Interpreting c.as:
+-- Interpreting b.as:
+-- Interpreting stdin:
+-- Finished stdin:
+42 : Nat
+
+-- Parsing stdin:
+> -- Parsing a.as:
+-- Checking a.as:
+-- Checking stdin:
+-- Interpreting a.as:
+-- Interpreting stdin:
+-- Finished stdin:
+42 : Nat
+
+-- Parsing stdin:
+> -- Checking stdin:
+-- Interpreting stdin:
+-- Finished stdin:
+42 : Nat
+
+-- Parsing stdin:
+> -- Parsing triangle.as:
+-- Checking triangle.as:
+-- Checking stdin:
+-- Interpreting triangle.as:
+-- Interpreting stdin:
+-- Finished stdin:
+42 : Nat
+
+-- Parsing stdin:
+> 
