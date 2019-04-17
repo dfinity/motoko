@@ -73,7 +73,7 @@ do
   elif [ ${file: -3} == ".sh" ]
   then base=$(basename $file .sh)
   else
-    echo "Unknown file extension in $file"; exit 1
+    echo "Unknown file extension in $file, expected .as or .sh"; exit 1
     failures=yes
     continue
   fi

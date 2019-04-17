@@ -1,4 +1,4 @@
-# Note: this rule collection is included for one level deeper
+# Note: this rule collection is included from one level deeper
 
 TO-TEST = \
   $(patsubst %.as,_out/%.done,$(wildcard *.as)) \
