@@ -607,18 +607,7 @@ and check_pat env pat : val_env =
     ve
   | ObjP pfs ->
     let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
-    let tf_of_pf {it={name={it=Name lab; _}; pat}; _} = T.{lab; typ=pat.note} in
-    let tfs = List.sort T.compare_field (List.map tf_of_pf pfs) in
-    begin match t with
-    | T.Obj (s, _) ->
-      t <: T.Obj (s, tfs)
-    | _ ->
-      let string_of_name (Name s) = s in
-      let check_pseudo (pf : pat_field) =
-        let s, _ = T.as_obj_sub (string_of_name pf.it.name.it) t in
-        t <: T.Obj (s, tfs) in
-      List.iter check_pseudo pfs
-    end;
+    check_pat_fields env t pfs;
     ve
   | OptP pat1 ->
     let ve = check_pat env pat1 in
@@ -644,6 +633,15 @@ and check_pats at env pats ve : val_env =
     let ve1 = check_pat env pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     check_pats at env pats' ve'
+
+and check_pat_fields env t = List.iter (check_pat_field env t)
+
+and check_pat_field env t (pf : pat_field) =
+  let (Name lab) = pf.it.name.it in
+  let tf = T.{lab; typ=pf.it.pat.note} in
+  let s, _ = T.as_obj_sub lab t in
+  let (<:) = check_sub env pf.it.pat.at in
+  t <: T.Obj (s, [tf])
 
 (* Objects *)
 
