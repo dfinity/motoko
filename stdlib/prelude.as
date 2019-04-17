@@ -72,21 +72,6 @@ func assertNull<X>( x : ?X ) = {
 
 /***
 
- `unwrap`
- --------------------
-
- Unwrap an optional value, and fail if it is `null`.
-
-*/
-func unwrap<T>(ox:?T) : T {
-  switch ox {
-    case (null) { unreachable() };
-    case (?x) x;
-  }
-};
-
-/***
-
  `printOpInt`
  --------------------
 
