@@ -544,7 +544,7 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | ObjP pfs ->
-    match_field_pats pfs (V.as_obj v) V.Env.empty
+    match_pat_fields pfs (V.as_obj v) V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
@@ -572,14 +572,14 @@ and match_pats pats vs ve : val_env option =
     )
   | _ -> assert false
 
-and match_field_pats pfs vs ve : val_env option =
+and match_pat_fields pfs vs ve : val_env option =
   match pfs with
   | [] -> Some ve
   | pf::pfs' ->
     begin
       let Name key = pf.it.name.it in
       match match_pat pf.it.pat (V.Env.find key vs) with
-      | Some ve' -> match_field_pats pfs' vs (V.Env.adjoin ve ve')
+      | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
       | None -> None
     end
 
