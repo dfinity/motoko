@@ -703,6 +703,21 @@ than the MVP goals, however.
     id
   };
 
+  /** Verifies that the user name and public key match */
+  isValidUser(public_key: Text, user_name: Text): Bool {
+    switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name), textIsEq)) {
+      case null { return false };
+      case (?userId) {
+        switch (userTable.getDoc(userId)) {
+          case null { return false };
+          case (?user) {
+            return user.public_key == public_key
+          }
+        }
+      }
+    }
+  };
+
 
   /**
 
@@ -717,7 +732,7 @@ than the MVP goals, however.
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
+  produceMarketInfo(public_key: Text, produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
     // switch (Map.find<ProduceId,Map<RegionId,Map<ReservedInventoryId>>>(
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
@@ -737,11 +752,14 @@ than the MVP goals, however.
    // `producerAllInventoryInfo`
    // ---------------------------
    */
-  producerAllInventoryInfo(id:ProducerId) : ?[InventoryInfo] {
+  producerAllInventoryInfo(public_key: Text, id:ProducerId) : ?[InventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
+
+    assert(isValidUser(public_key, doc.short_name));
+
     ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
       doc.inventory,
       func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] =
@@ -755,6 +773,7 @@ than the MVP goals, however.
 
   */
   producerAddInventory(
+    public_key : Text,
     iid_       : ?InventoryId,
     id_        : ProducerId,
     produce_id : ProduceId,
@@ -776,6 +795,8 @@ than the MVP goals, however.
       case (?producer, ?produce) (producer, produce);
       case _ { return null };
       }};
+
+    assert(isValidUser(public_key, producer_.short_name));
 
     /**- Create the inventory item document: */
     let (_, item) = {
@@ -837,6 +858,7 @@ than the MVP goals, however.
 
   */
   producerUpdateInventory(
+    public_key : Text,
     iid_       : InventoryId,
     id_        : ProducerId,
     produce_id : ProduceId,
@@ -849,10 +871,10 @@ than the MVP goals, however.
   ) : ?()
   {
     /**- Validate these ids; fail here if anything is invalid: */
-    let oinventory : ?InventoryDoc = inventoryTable.getDoc(iid_);
     let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
+    let oinventory : ?InventoryDoc = inventoryTable.getDoc(iid_);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
-    let (inventory_, oproducer_, produce_) = {
+    let (inventory_, producer_, produce_) = {
       switch (oinventory, oproducer, oproduce) {
       case (?inventory, ?producer, ?produce) {
              // it's an error if the producer is not fixed across the
@@ -867,13 +889,15 @@ than the MVP goals, however.
       case _ { return null };
       }};
 
+    assert(isValidUser(public_key, producer_.short_name));
+
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome( producerRemInventory(iid_) );
+    assertSome( producerRemInventory(public_key, iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
     assertSome(
       producerAddInventory(
-        ?iid_, id_,
+        public_key, ?iid_, id_,
         produce_id,
         quantity_, weight_, ppu_, start_date_, end_date_, comments_ )
     );
@@ -889,7 +913,7 @@ than the MVP goals, however.
    Remove the given inventory item from the exchange.
 
    */
-  producerRemInventory(id:InventoryId) : ?() {
+  producerRemInventory(public_key: Text, id:InventoryId) : ?() {
 
     /**- validate the `id` */
     /// xxx macro for this pattern?
@@ -897,11 +921,6 @@ than the MVP goals, however.
       case null { return null };
       case (?doc) { doc };
     };
-
-    /**- remove document from `inventoryTable` */
-    assertSome(
-      inventoryTable.rem( id )
-    );
 
     /**- remove document from `producerTable`, in several steps: */
     /// xxx macro for this pattern?
@@ -911,6 +930,12 @@ than the MVP goals, however.
     };
 
     /// xxx: access control: Check that the current user is the owner of this inventory
+    assert(isValidUser(public_key, producer.short_name));
+
+    /**- remove document from `inventoryTable` */
+    assertSome(
+      inventoryTable.rem( id )
+    );
 
     /// xxx an abstraction to hide these type arguments?
     let (updatedInventory, _) =
@@ -952,11 +977,14 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerReservations(id:ProducerId) : ?[ReservedInventoryInfo] {
+  producerReservations(public_key: Text, id:ProducerId) : ?[ReservedInventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
+
+    assert(isValidUser(public_key, doc.short_name));
+
     ?Map.toArray<ReservedInventoryId,
                  ReservedInventoryDoc,
                  ReservedInventoryInfo>(
@@ -981,6 +1009,7 @@ than the MVP goals, however.
    ---------------------------
   */
   transporterAddRoute(
+    public_key:      Text,
     rid_:            ?RouteId,
     id_:             TransporterId,
     start_region_id: RegionId,
@@ -1002,6 +1031,8 @@ than the MVP goals, however.
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
       case _ { return null };
       }};
+
+    assert(isValidUser(public_key, transporter.short_name));
 
     /**- Create the route item document: */
     let route : RouteDoc = {
@@ -1061,6 +1092,7 @@ than the MVP goals, however.
    Update the given route with the given field values.
    */
   transporterUpdateRoute(
+    public_key      : Text,
     rid_            : RouteId,
     id_             : TransporterId,
     start_region_id : RegionId,
@@ -1093,12 +1125,15 @@ than the MVP goals, however.
       case _ { return null };
       }};
 
+    assert(isValidUser(public_key, transporter.short_name));
+
     /**- remove the route; given the validation above, this cannot fail. */
-    assertSome( transporterRemRoute(rid_) );
+    assertSome( transporterRemRoute(public_key, rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
     assertSome(
       transporterAddRoute(
+        public_key,
         ?rid_, id_,
         start_region_id,
         end_region_id,
@@ -1118,21 +1153,23 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(id:RouteId) : ?() {
+  transporterRemRoute(public_key: Text, id:RouteId) : ?() {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    assertSome(
-      routeTable.rem( id )
-    );
-
     let transporter = switch (transporterTable.getDoc(doc.transporter)) {
       case null { unreachable() };
       case (?x) { x };
     };
+
+    assert(isValidUser(public_key, transporter.short_name));
+
+    assertSome(
+      routeTable.rem( id )
+    );
 
     /// xxx: access control: Check that the current user is the owner of this route
 
@@ -1170,11 +1207,14 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(id:RouteId) : ?[RouteInfo] {
+  transporterAllRouteInfo(public_key: Text, id:RouteId) : ?[RouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
+
+    assert(isValidUser(public_key, doc.short_name));
+
     ?Map.toArray<RouteId,
                  RouteDoc,
                  RouteInfo>(
@@ -1192,11 +1232,14 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  transporterAllReservationInfo(id:TransporterId) : ?[ReservedRouteInfo] {
+  transporterAllReservationInfo(public_key: Text, id:TransporterId) : ?[ReservedRouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
+
+    assert(isValidUser(public_key, doc.short_name));
+
     ?Map.toArray<ReservedRouteId,
                  ReservedRouteDoc,
                  ReservedRouteInfo>(
@@ -1303,7 +1346,7 @@ than the MVP goals, however.
    - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
-  retailerQueryAll(id:RetailerId) : ?QueryAllResults {
+  retailerQueryAll(public_key: Text, id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
 
     /** - Find the retailer's document: */
@@ -1311,6 +1354,8 @@ than the MVP goals, however.
       switch (retailerTable.getDoc(id)) {
       case (null) { return null };
       case (?x) { x }};
+
+    assert(isValidUser(public_key, retailer.short_name));
 
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
@@ -1403,7 +1448,7 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  retailerAllReservationInfo(id:RetailerId) :
+  retailerAllReservationInfo(public_key: Text, id:RetailerId) :
     ?[(ReservedInventoryInfo,
        ReservedRouteInfo)]
   {
@@ -1411,6 +1456,9 @@ than the MVP goals, however.
       case null { return null };
       case (?doc) { doc };
     };
+
+    assert(isValidUser(public_key, doc.short_name));
+
     ?Map.toArray<ReservedInventoryId,
                  (ReservedInventoryDoc,  ReservedRouteDoc),
                  (ReservedInventoryInfo, ReservedRouteInfo)>(
@@ -1445,6 +1493,7 @@ than the MVP goals, however.
 
    */
   retailerQueryDates(
+    public_key: Text,
     id:RetailerId,
     begin:Date,
     end:Date
@@ -1460,6 +1509,7 @@ than the MVP goals, however.
    ---------------------------
   */
   retailerReserve(
+    public_key: Text,
     id:RetailerId,
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
