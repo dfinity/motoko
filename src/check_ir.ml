@@ -637,7 +637,7 @@ and check_pats at env pats ve : val_env =
 and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
-  let (Name lab) = pf.it.name.it in
+  let Name lab = pf.it.name.it in
   let tf = T.{lab; typ=pf.it.pat.note} in
   let s, _ = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
