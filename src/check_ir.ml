@@ -608,9 +608,17 @@ and check_pat env pat : val_env =
   | ObjP pfs ->
     let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
     let tf_of_pf {it={name={it=Name lab; _}; pat}; _} = T.{lab; typ=pat.note} in
-    let tfs = List.map tf_of_pf pfs in
-    let s, _ = T.as_obj t in
-    t <: T.Obj (s, List.sort T.compare_field tfs);
+    let tfs = List.sort T.compare_field (List.map tf_of_pf pfs) in
+    begin match t with
+    | T.Obj (s, _) ->
+      t <: T.Obj (s, tfs)
+    | _ ->
+      let string_of_name (Name s) = s in
+      let check_pseudo (pf : pat_field) =
+        let s, ptfs = T.as_obj_sub (string_of_name pf.it.name.it) t in
+        T.Obj (s, ptfs) <: T.Obj (s, tfs) in
+      List.iter check_pseudo pfs
+    end;
     ve
   | OptP pat1 ->
     let ve = check_pat env pat1 in

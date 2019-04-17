@@ -4,4 +4,13 @@ switch ([1,2]) {
     for (x in iter()) { y := x; }
   }
 };
+
 assert (y == 2);
+
+switch ([1,2]) {
+  case { vals } {
+    for (x in vals()) { y += x; }
+  }
+};
+
+assert (y == 5);
