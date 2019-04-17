@@ -8,9 +8,17 @@ switch ([1,2]) {
 assert (y == 2);
 
 switch ([1,2]) {
-  case { vals } {
-    for (x in vals()) { y += x; }
+  case { vals; len } {
+      for (x in vals()) { y += x + len(); }
   }
 };
 
-assert (y == 5);
+assert (y == 9);
+
+switch "Hi" {
+  case { chars; len } {
+      for (x in chars()) { y += 1 + len(); }
+  }
+};
+
+assert (y == 15);
