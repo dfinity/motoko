@@ -617,7 +617,7 @@ than the MVP goals, however.
    */
   addUser(
     user_name_: Text,
-    public_key_: Text,
+    public_key_: PublicKey,
     description_: Text,
     region_: RegionId,
     isDeveloper_: Bool,
@@ -704,7 +704,7 @@ than the MVP goals, however.
   };
 
   /** Verifies that the user name and public key match */
-  isValidUser(public_key: Text, user_name: Text): Bool {
+  isValidUser(public_key: PublicKey, user_name: Text): Bool {
     switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name), textIsEq)) {
       case null { return false };
       case (?userId) {
@@ -732,7 +732,7 @@ than the MVP goals, however.
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(public_key: Text, produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
+  produceMarketInfo(public_key: PublicKey, produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
     // switch (Map.find<ProduceId,Map<RegionId,Map<ReservedInventoryId>>>(
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
@@ -752,7 +752,7 @@ than the MVP goals, however.
    // `producerAllInventoryInfo`
    // ---------------------------
    */
-  producerAllInventoryInfo(public_key: Text, id:ProducerId) : ?[InventoryInfo] {
+  producerAllInventoryInfo(public_key: PublicKey, id:ProducerId) : ?[InventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -913,7 +913,7 @@ than the MVP goals, however.
    Remove the given inventory item from the exchange.
 
    */
-  producerRemInventory(public_key: Text, id:InventoryId) : ?() {
+  producerRemInventory(public_key: PublicKey, id:InventoryId) : ?() {
 
     /**- validate the `id` */
     /// xxx macro for this pattern?
@@ -977,7 +977,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerReservations(public_key: Text, id:ProducerId) : ?[ReservedInventoryInfo] {
+  producerReservations(public_key: PublicKey, id:ProducerId) : ?[ReservedInventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1153,7 +1153,7 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(public_key: Text, id:RouteId) : ?() {
+  transporterRemRoute(public_key: PublicKey, id:RouteId) : ?() {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return null };
@@ -1207,7 +1207,7 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: Text, id:RouteId) : ?[RouteInfo] {
+  transporterAllRouteInfo(public_key: PublicKey, id:RouteId) : ?[RouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1232,7 +1232,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  transporterAllReservationInfo(public_key: Text, id:TransporterId) : ?[ReservedRouteInfo] {
+  transporterAllReservationInfo(public_key: PublicKey, id:TransporterId) : ?[ReservedRouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1346,7 +1346,7 @@ than the MVP goals, however.
    - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
-  retailerQueryAll(public_key: Text, id:RetailerId) : ?QueryAllResults {
+  retailerQueryAll(public_key: PublicKey, id:RetailerId) : ?QueryAllResults {
     retailerQueryCount += 1;
 
     /** - Find the retailer's document: */
@@ -1448,7 +1448,7 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  retailerAllReservationInfo(public_key: Text, id:RetailerId) :
+  retailerAllReservationInfo(public_key: PublicKey, id:RetailerId) :
     ?[(ReservedInventoryInfo,
        ReservedRouteInfo)]
   {
@@ -1493,7 +1493,7 @@ than the MVP goals, however.
 
    */
   retailerQueryDates(
-    public_key: Text,
+    public_key: PublicKey,
     id:RetailerId,
     begin:Date,
     end:Date
@@ -1509,7 +1509,7 @@ than the MVP goals, however.
    ---------------------------
   */
   retailerReserve(
-    public_key: Text,
+    public_key: PublicKey,
     id:RetailerId,
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
