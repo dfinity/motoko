@@ -12,7 +12,7 @@ Functions for Option types.
  Returns true if the value is not `null`.
 
 */
-func isSome<T>(ox: ?T) : Bool {
+func isSome(ox: ?Any) : Bool {
   switch ox {
     case (null) false;
     case (?_) true;
@@ -27,7 +27,7 @@ func isSome<T>(ox: ?T) : Bool {
  Returns true if the value is `null`.
 
 */
-func isNull<T>(ox: ?T) : Bool = not isSome<T>(ox);
+func isNull(ox: ?Any) : Bool = not isSome(ox);
 
 /***
 
