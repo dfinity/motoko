@@ -10,7 +10,7 @@ switch "duplicate bindings" {
   }
 };
 
-let exercise_coverage = true;
+let exercise_coverage = new { x = true };
 switch exercise_coverage {
   case { x = true; x = false } ()
 };
