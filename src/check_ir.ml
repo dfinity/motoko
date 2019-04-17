@@ -639,9 +639,12 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 and check_pat_field env t (pf : pat_field) =
   let Name lab = pf.it.name.it in
   let tf = T.{lab; typ=pf.it.pat.note} in
-  let s, _ = T.as_obj_sub lab t in
+  let s, tfs = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
-  t <: T.Obj (s, [tf])
+  t <: T.Obj (s, [tf]);
+  match List.find (fun tf -> tf.T.lab = lab) tfs with
+  | T.{typ=Mut _; _} -> error env pf.it.pat.at "cannot match mutable field %s" lab
+  | _ -> ()
 
 (* Objects *)
 

@@ -1,0 +1,2 @@
+objpat-mutable.as:8.12-8.13: type error, cannot pattern match mutable field x
+objpat-mutable.as:8.27-8.28: type error, unbound variable x
