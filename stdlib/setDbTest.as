@@ -5,9 +5,8 @@
 
  */
 
-import "setDb.as";
+let SetDb = import "setDb.as";
 
-func SetDb__test() {
 
   let hash_0 = Hash.hashOfInt(0);
   let hash_1 = Hash.hashOfInt(1);
@@ -180,6 +179,3 @@ func SetDb__test() {
   assert( SetDb.mem(s9, "s9", 8, hash_8 ) );
 
   print "done.\n";
-};
-
-SetDb__test();

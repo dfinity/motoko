@@ -30,8 +30,6 @@ going forward.
 
 */
 
-import "prelude.as";
-
 /** A "bit string" as a linked list of bits: */
 type BitList = ?(Bool, BitList);
 

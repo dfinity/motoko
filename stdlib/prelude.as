@@ -99,5 +99,3 @@ func printOpInt( x : ?Int ) = {
     case (?x_) { print "?"; printInt x_ };
   }
 };
-
-()

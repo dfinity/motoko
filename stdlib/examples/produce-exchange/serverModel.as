@@ -20,6 +20,10 @@ uses are is not.
 
 */
 
+let P = import "../../prelude.as";
+let Hash = import "../../hash.as";
+let Trie = import "../../trie.as";
+
 class Model() {
 
 
@@ -35,13 +39,6 @@ class Model() {
 
   private debugOff (t:Text)   {  };
   private debugIntOff (i:Int) {  };
-
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
@@ -694,7 +691,7 @@ than the MVP goals, however.
     Trie.insertFresh<UserName,UserId>(
       usersByUserName,
       keyOfText(user_name_), textIsEq,
-      unwrap<UserId>(id)
+      P.unwrap<UserId>(id)
     );
 
     /**- return the id */
@@ -866,10 +863,10 @@ than the MVP goals, however.
       }};
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome<()>( producerRemInventory(iid_) );
+    P.assertSome<()>( producerRemInventory(iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
-    assertSome<InventoryId>(
+    P.assertSome<InventoryId>(
       producerAddInventory(
         ?iid_, id_,
         produce_id,
@@ -897,7 +894,7 @@ than the MVP goals, however.
     };
 
     /**- remove document from `inventoryTable` */
-    assertSome<InventoryDoc>(
+    P.assertSome<InventoryDoc>(
       inventoryTable.rem( id )
     );
 
@@ -925,7 +922,7 @@ than the MVP goals, however.
       reserved    = producer.reserved ;
     };
 
-    assertSome<ProducerDoc>(
+    P.assertSome<ProducerDoc>(
       producerTable.updateDoc( producer.id, updatedProducer )
     );
 
@@ -938,7 +935,7 @@ than the MVP goals, however.
         keyOf(producer.id), idIsEq,
         keyOf(id), idIsEq
       );
-      assertSome<InventoryDoc>(d);
+      P.assertSome<InventoryDoc>(d);
       t
     };
 
@@ -1092,10 +1089,10 @@ than the MVP goals, however.
       }};
 
     /**- remove the route; given the validation above, this cannot fail. */
-    assertSome<()>( transporterRemRoute(rid_) );
+    P.assertSome<()>( transporterRemRoute(rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
-    assertSome<RouteId>(
+    P.assertSome<RouteId>(
       transporterAddRoute(
         ?rid_, id_,
         start_region_id,
@@ -1123,7 +1120,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assertSome<RouteDoc>(
+    P.assertSome<RouteDoc>(
       routeTable.rem( id )
     );
 
@@ -1146,7 +1143,7 @@ than the MVP goals, however.
       reserved    = transporter.reserved ;
     };
 
-    assertSome<TransporterDoc>(
+    P.assertSome<TransporterDoc>(
       transporterTable.updateDoc( transporter.id, updatedTransporter )
     );
 
@@ -1157,7 +1154,7 @@ than the MVP goals, however.
         keyOf(doc.start_region.id), idIsEq,
         keyOf(doc.id), idIsEq
       );
-      assertSome<RouteDoc>(d);
+      P.assertSome<RouteDoc>(d);
       t
     };
 
@@ -1450,7 +1447,7 @@ than the MVP goals, however.
   {
     retailerQueryCount += 1;
 
-    nyi()
+    P.nyi()
   };
 
   /**
@@ -1462,7 +1459,7 @@ than the MVP goals, however.
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
   {
-    nyi()
+    P.nyi()
   };
 
 };

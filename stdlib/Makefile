@@ -103,16 +103,16 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	$(MDofMD) $< >> $@
 
-$(OUTDIR)/Hash.out: prelude.as hash.as | $(OUTDIR)
+$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
 	$(ASC) -r hash.as > $@
 
-$(OUTDIR)/List.out: prelude.as list.as | $(OUTDIR)
+$(OUTDIR)/List.out: list.as | $(OUTDIR)
 	$(ASC) -r list.as > $@
 
-$(OUTDIR)/ListTest.out: prelude.as list.as listTest.as | $(OUTDIR)
+$(OUTDIR)/ListTest.out: list.as listTest.as | $(OUTDIR)
 	$(ASC) -r listTest.as > $@
 
-$(OUTDIR)/AssocList.out: prelude.as list.as assocList.as | $(OUTDIR)
+$(OUTDIR)/AssocList.out: list.as assocList.as | $(OUTDIR)
 	$(ASC) -r assocList.as > $@
 
 $(OUTDIR)/Trie.out: prelude.as hash.as list.as assocList.as trie.as | $(OUTDIR)

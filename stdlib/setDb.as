@@ -5,11 +5,9 @@
 
  */
 
-import "set.as";
+let Set = import "set.as";
 
-let SetDb = new {
-
-  private func setDbPrint(s:Set<Nat>) {
+  func setDbPrint(s:Set<Nat>) {
     func rec(s:Set<Nat>, ind:Nat, bits:BitList) {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
@@ -56,7 +54,7 @@ let SetDb = new {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  private func natEq(n:Nat,m:Nat):Bool{ n == m};
+  func natEq(n:Nat,m:Nat):Bool{ n == m};
 
   func insert(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
     print "  setInsert(";
@@ -108,5 +106,3 @@ let SetDb = new {
     setDbPrint(r);
     r
   };
-
-};

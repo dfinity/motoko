@@ -18,11 +18,10 @@
 
 */
 
-import "trie.as";
+let Trie = import "trie.as";
 
 type Set<T> = Trie<T,()>;
 
-let Set = new {
 
   func empty<T>():Set<T> =
     Trie.empty<T,()>();
@@ -75,4 +74,3 @@ let Set = new {
 
   func unitEq (_:(),_:()):Bool{ true };
 
-};

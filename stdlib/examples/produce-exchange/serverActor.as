@@ -4,8 +4,8 @@
  --------------------
 */
 
-import "serverTypes.as";
-import "serverModel.as";
+let ServerTypes = import "serverTypes.as";
+let ServerModel = import "serverModel.as";
 
 actor server = {
 

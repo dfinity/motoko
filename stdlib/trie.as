@@ -60,8 +60,7 @@ See the full details in the definitions below:
 
 */
 
-import "prelude.as";
-import "hash.as";
+let Hash = import "hash.as";
 
 let HASH_BITS = 4;
 
@@ -127,8 +126,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
  - [Helpers 2](#helpers-for-missing-variants)
 
  */
-
-let Trie = new {
 
   /**
    `empty`
@@ -1218,8 +1215,6 @@ let Trie = new {
     };
     rec(bitpos)
   };
-
-};
 
 
 /**
