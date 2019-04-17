@@ -868,10 +868,10 @@ than the MVP goals, however.
       }};
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome<()>( producerRemInventory(iid_) );
+    assertSome( producerRemInventory(iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
-    assertSome<InventoryId>(
+    assertSome(
       producerAddInventory(
         ?iid_, id_,
         produce_id,
@@ -899,7 +899,7 @@ than the MVP goals, however.
     };
 
     /**- remove document from `inventoryTable` */
-    assertSome<InventoryDoc>(
+    assertSome(
       inventoryTable.rem( id )
     );
 
@@ -927,7 +927,7 @@ than the MVP goals, however.
       reserved    = producer.reserved ;
     };
 
-    assertSome<ProducerDoc>(
+    assertSome(
       producerTable.updateDoc( producer.id, updatedProducer )
     );
 
@@ -940,7 +940,7 @@ than the MVP goals, however.
         keyOf(producer.id), idIsEq,
         keyOf(id), idIsEq
       );
-      assertSome<InventoryDoc>(d);
+      assertSome(d);
       t
     };
 
@@ -1094,10 +1094,10 @@ than the MVP goals, however.
       }};
 
     /**- remove the route; given the validation above, this cannot fail. */
-    assertSome<()>( transporterRemRoute(rid_) );
+    assertSome( transporterRemRoute(rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
-    assertSome<RouteId>(
+    assertSome(
       transporterAddRoute(
         ?rid_, id_,
         start_region_id,
@@ -1125,7 +1125,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assertSome<RouteDoc>(
+    assertSome(
       routeTable.rem( id )
     );
 
@@ -1148,7 +1148,7 @@ than the MVP goals, however.
       reserved    = transporter.reserved ;
     };
 
-    assertSome<TransporterDoc>(
+    assertSome(
       transporterTable.updateDoc( transporter.id, updatedTransporter )
     );
 
@@ -1159,7 +1159,7 @@ than the MVP goals, however.
         keyOf(doc.start_region.id), idIsEq,
         keyOf(doc.id), idIsEq
       );
-      assertSome<RouteDoc>(d);
+      assertSome(d);
       t
     };
 
