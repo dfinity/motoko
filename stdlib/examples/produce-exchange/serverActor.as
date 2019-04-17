@@ -625,7 +625,24 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async ?RouteId {
-    getModel().transporterAddRoute(trans, rstart, rend, start, end, cost, ttid)
+    getModel().transporterAddRoute(null, trans, rstart, rend, start, end, cost, ttid)
+  };
+
+  /**
+   `transporterUpdateRoute`
+   ---------------------------
+   */
+  transporterUpdateRoute(
+    route:  RouteId,
+    trans:  TransporterId,
+    rstart: RegionId,
+    rend:   RegionId,
+    start:  Date,
+    end:    Date,
+    cost:   Price,
+    ttid:   TruckTypeId
+  ) : async ?() {
+    getModel().transporterUpdateRoute(route, trans, rstart, rend, start, end, cost, ttid)
   };
 
   /**
