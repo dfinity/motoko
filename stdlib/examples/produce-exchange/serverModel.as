@@ -250,21 +250,17 @@ secondary maps.
       reserved=[];
     },
     func(info:ProducerInfo):?ProducerDoc =
-      switch (regionTable.getDoc(info.region)) {
-        case (?regionDoc) {
-               ?(new {
-                   id=info.id;
-                   short_name=info.short_name;
-                   description=info.description;
-                   region=regionDoc;
-                   inventory=Table.empty<InventoryId, InventoryDoc>();
-                   reserved=Table.empty<ReservedInventoryId, ReservedInventoryDoc>();
-                 }
-               )};
-        case (null) {
-               null
-             };
-      }
+      map<RegionDoc, ProducerDoc>(
+        regionTable.getDoc(info.region),
+        func (regionDoc: RegionDoc): ProducerDoc = new {
+          id=info.id;
+          short_name=info.short_name;
+          description=info.description;
+          region=regionDoc;
+          inventory=Table.empty<InventoryId, InventoryDoc>();
+          reserved=Table.empty<ReservedInventoryId, ReservedInventoryDoc>();
+        }
+      )
     );
 
 
@@ -361,21 +357,18 @@ secondary maps.
         reserved_routes=[];
         reserved_items=[];
       },
-      func(info:RetailerInfo):?RetailerDoc {
-        switch (regionTable.getDoc(info.region))
-        {
-        case (?regionDoc) {
-               ?(new {
-                   id=info.id;
-                   short_name=info.short_name;
-                   description=info.description;
-                   region=regionDoc;
-                   reserved=null;
-                 }
-               )};
-        case (null) { null };
-        }}
-    );
+      func(info:RetailerInfo):?RetailerDoc =
+        map<RegionDoc, RetailerDoc>(
+          regionTable.getDoc(info.region),
+          func (regionDoc: RegionDoc): RetailerDoc = new {
+            id=info.id;
+            short_name=info.short_name;
+            description=info.description;
+            region=regionDoc;
+            reserved=null;
+          }
+        )
+      );
 
   var retailerQueryCount : Nat = 0;
   var retailerQueryCost : Nat = 0;
@@ -708,12 +701,11 @@ than the MVP goals, however.
     switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name), textIsEq)) {
       case null { return false };
       case (?userId) {
-        switch (userTable.getDoc(userId)) {
-          case null { return false };
-          case (?user) {
-            return user.public_key == public_key
-          }
-        }
+        option<UserDoc, Bool>(
+          userTable.getDoc(userId),
+          func (u:UserDoc): Bool { u.public_key == public_key },
+          false
+        )
       }
     }
   };
@@ -923,11 +915,7 @@ than the MVP goals, however.
     };
 
     /**- remove document from `producerTable`, in several steps: */
-    /// xxx macro for this pattern?
-    let producer = switch (producerTable.getDoc(doc.producer)) {
-      case null { unreachable() };
-      case (?x) { x };
-    };
+    let producer = unwrap<ProducerDoc>(producerTable.getDoc(doc.producer));
 
     /// xxx: access control: Check that the current user is the owner of this inventory
     assert(isValidUser(public_key, producer.short_name));
@@ -1160,10 +1148,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    let transporter = switch (transporterTable.getDoc(doc.transporter)) {
-      case null { unreachable() };
-      case (?x) { x };
-    };
+    let transporter = unwrap<TransporterDoc>(transporterTable.getDoc(doc.transporter));
 
     assert(isValidUser(public_key, transporter.short_name));
 
