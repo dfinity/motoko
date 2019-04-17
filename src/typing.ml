@@ -939,13 +939,13 @@ and check_pat_fields env tfs pfs ve at : val_env =
       check_pat_fields env tfs' pfs ve at
     else
       begin
-        local_error env fat "object pattern has field %s missing in expected type"
+        local_error env fat "object pattern field %s is not contained in expected type"
           id.it;
         ve
       end
   | [], _ -> ve
   | pf::_, [] ->
-    local_error env pf.at "object pattern has field %s missing in expected type" pf.it.id.it;
+    local_error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it;
     ve
 
 and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
