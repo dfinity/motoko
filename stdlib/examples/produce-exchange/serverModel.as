@@ -908,6 +908,8 @@ than the MVP goals, however.
       case (?x) { x };
     };
 
+    /// xxx: access control: Check that the current user is the owner of this inventory
+
     /// xxx an abstraction to hide these type arguments?
     let (updatedInventory, _) =
       Trie.remove<InventoryId, InventoryDoc>(
@@ -977,6 +979,7 @@ than the MVP goals, however.
    ---------------------------
   */
   transporterAddRoute(
+    rid_:            ?RouteId,
     id_:             TransporterId,
     start_region_id: RegionId,
     end_region_id:   RegionId,
@@ -991,7 +994,7 @@ than the MVP goals, however.
     let otransporter : ?TransporterDoc = transporterTable.getDoc(id_);
     let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
     let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
-    let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
+    let otrucktype   : ?TruckTypeInfo  = truckTypeTable.getInfo(trucktype_id);
     let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
@@ -999,19 +1002,23 @@ than the MVP goals, however.
       }};
 
     /**- Create the route item document: */
-    let (_, route) = routeTable.addDoc(
-      func(routeId:RouteId):RouteDoc{
-        new {
-          id= routeId;
-          transporter=id_;
-          truck_type=truck_type_;
-          start_date=start_date_;
-          end_date=end_date_;
-          start_region=start_region_;
-          end_region=end_region_;
-          cost=cost_;
+    let route : RouteDoc = {
+      switch (routeTable.addInfoAs(rid_, func(routeId:RouteId):RouteInfo{
+        shared {
+        id= routeId;
+        transporter=id_;
+        truck_type=truck_type_;
+        start_date=start_date_;
+        end_date=end_date_;
+        start_region=start_region_id;
+        end_region=end_region_id;
+        cost=cost_;
         };
-      });
+      })) {
+      case (?(_, route)) { route };
+      case null { unreachable() };
+      }
+    };
 
     /**- Update the transporter's routes collection to hold the new route document: */
     let updatedRoutes =
@@ -1047,20 +1054,114 @@ than the MVP goals, however.
   };
 
   /**
+   `transporterUpdateRoute`
+   ---------------------------
+   Update the given route with the given field values.
+   */
+  transporterUpdateRoute(
+    rid_            : RouteId,
+    id_             : TransporterId,
+    start_region_id : RegionId,
+    end_region_id   : RegionId,
+    start_date_     : Date,
+    end_date_       : Date,
+    cost_           : Price,
+    trucktype_id    : TruckTypeId
+  ) : ?() {
+    /** The model updates routes and maintains secondary indicies as follows: */
+
+    /**- Validate these ids; fail fast if not defined: */
+    let oroute       : ?RouteDoc   = routeTable.getDoc(rid_);
+    let otransporter : ?TransporterDoc = transporterTable.getDoc(id_);
+    let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
+    let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
+    let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
+    let (route, transporter, start_region_, end_region_, truck_type_) = {
+      switch (oroute, otransporter, orstart, orend, otrucktype) {
+      case (?route, ?transporter, ?x2, ?x3, ?x4) {
+             // it's an error if the transporter is not fixed across the
+             // update.  i.e., transporter A cannot update the routes
+             // of transporter B, only her own.
+             if ( route.transporter == transporter.id ) {
+               (route, transporter, x2, x3, x4);
+             } else {
+               return null
+             }
+           };
+      case _ { return null };
+      }};
+
+    /**- remove the route; given the validation above, this cannot fail. */
+    assertSome<()>( transporterRemRoute(rid_) );
+
+    /**- add the (updated) route; given the validation above, this cannot fail. */
+    assertSome<RouteId>(
+      transporterAddRoute(
+        ?rid_, id_,
+        start_region_id,
+        end_region_id,
+        start_date_,
+        end_date_,
+        cost_,
+        trucktype_id
+      )
+    );
+
+    /**- Success! */
+    ?()
+  };
+
+  /**
    `transporterRemRoute`
    ---------------------------
-
-
-   **Implementation summary:**
-
-    - remove from the inventory in inventory table; use `Trie.removeThen`
-    - if successful, look up the producer ID; should not fail; `Trie.find`
-    - update the transporter, removing this inventory; use `Trie.{replace,remove}`
-    - finally, use route info to update the routesByRegion table,
-      removing this inventory item; use `Trie.remove2D`.
+   Remove the given route from the exchange.
    */
   transporterRemRoute(id:RouteId) : ?() {
-    nyi()
+
+    let doc = switch (routeTable.getDoc(id)) {
+      case null { return null };
+      case (?doc) { doc };
+    };
+
+    assertSome<RouteDoc>(
+      routeTable.rem( id )
+    );
+
+    let transporter = switch (transporterTable.getDoc(doc.transporter)) {
+      case null { unreachable() };
+      case (?x) { x };
+    };
+
+    /// xxx: access control: Check that the current user is the owner of this route
+
+    let (updatedRoutes, _) =
+      Trie.remove<RouteId, RouteDoc>(
+        transporter.routes, keyOf(id), idIsEq);
+
+    let updatedTransporter = new {
+      id          = transporter.id ;
+      short_name  = transporter.short_name ;
+      description = transporter.description ;
+      routes      = updatedRoutes ;
+      reserved    = transporter.reserved ;
+    };
+
+    assertSome<TransporterDoc>(
+      transporterTable.updateDoc( transporter.id, updatedTransporter )
+    );
+
+    routesByDstSrcRegions := {
+      let (t, d) = Trie.remove3D<RegionId, RegionId, RouteId, RouteDoc>(
+        routesByDstSrcRegions,
+        keyOf(doc.end_region.id), idIsEq,
+        keyOf(doc.start_region.id), idIsEq,
+        keyOf(doc.id), idIsEq
+      );
+      assertSome<RouteDoc>(d);
+      t
+    };
+
+    ?()
   };
 
   /**

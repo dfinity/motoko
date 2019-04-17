@@ -628,7 +628,24 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async ?RouteId {
-    getModel().transporterAddRoute(trans, rstart, rend, start, end, cost, ttid)
+    getModel().transporterAddRoute(null, trans, rstart, rend, start, end, cost, ttid)
+  };
+
+  /**
+   `transporterUpdateRoute`
+   ---------------------------
+   */
+  transporterUpdateRoute(
+    route:  RouteId,
+    trans:  TransporterId,
+    rstart: RegionId,
+    rend:   RegionId,
+    start:  Date,
+    end:    Date,
+    cost:   Price,
+    ttid:   TruckTypeId
+  ) : async ?() {
+    getModel().transporterUpdateRoute(route, trans, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -666,6 +683,20 @@ actor server = {
   allRouteInfo() : async [RouteInfo] {
     getModel()
       .routeTable.allInfo()
+  };
+
+  /**
+   `getRouteInfo`
+   ---------------------
+
+   See also: [server type `RouteInfo`]($DOCURL/examples/produce-exchange/serverTypes.md#routeinfo).
+
+   */
+
+  getRouteInfo(
+    id: RouteId
+  ) : async ?RouteInfo {
+    getModel().routeTable.getInfo(id)
   };
 
   /**

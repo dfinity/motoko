@@ -1,11 +1,12 @@
--- Checking quicksort.as:
+-- Parsing quicksort.as:
+-- Checking all:
 type Array<T> = [var T]
 type QS<T> = {quicksort : (Array<T>, Nat, Nat) -> ()}
 let QS : <T>((T, T) -> Int) -> QS<T>
 let a : [var Int]
 let cmpi : (Int, Int) -> Int
 let qs : {quicksort : (Array<Int>, Nat, Nat) -> ()}
--- Interpreting quicksort.as:
+-- Interpreting all:
 QS(func)
   <= {quicksort = func}
 quicksort([8, 3, 9, 5, 2], 0, 4)
@@ -96,7 +97,7 @@ quicksort([8, 3, 9, 5, 2], 0, 4)
   quicksort([2, 3, 5, 8, 9], 4, 4)
     <= ()
   <= ()
--- Finished quicksort.as:
+-- Finished all:
 let QS : <T>((T, T) -> Int) -> QS<T> = func
 let a : [var Int] = [2, 3, 5, 8, 9]
 let cmpi : (Int, Int) -> Int = func

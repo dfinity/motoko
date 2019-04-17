@@ -137,7 +137,6 @@ Conceptually, each message received runs in the same instance of the actor's mod
    2. can easily lead to space leaks or inefficiencies if programmers aren't careful
 
 #### *Hybrid* persistence
-
 Wasm state entities can be marked as persistent selectively.
 Conceptually, each message received runs in the same instance of the actor's module,
 but Wasm is extended with some notion of volatile state and reinitialisation.
@@ -145,7 +144,6 @@ but Wasm is extended with some notion of volatile state and reinitialisation.
    Pros:
    1. compromise between other two models
 
-   Cons:
    1. compromise between other two models
    2. creates dangling references between bifurcated state parts
    3. incoherent with Wasm semantics (segments, start function)
@@ -153,7 +151,6 @@ but Wasm is extended with some notion of volatile state and reinitialisation.
 
 ### Implementing Transparent persistence
 
-We have discussed 3 approaches to realising transparent persistence:
 
 #### *High-level* implementation of persistence
 
