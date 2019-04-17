@@ -11,7 +11,7 @@ type desc =
   | Any
   | Val of V.value
   | NotVal of ValSet.t
-  | Product of desc list
+  | Tup of desc list
   | Object of desc list
   | Opt of desc
   | Tag of desc * id
@@ -20,7 +20,7 @@ type desc =
 type ctxt =
   | InOpt of ctxt
   | InTag of ctxt * id
-  | InProduct of ctxt * desc list * desc list * pat list * Type.typ list
+  | InTup of ctxt * desc list * desc list * pat list * Type.typ list
   | InObject of ctxt * desc list * desc list * pat_field list * Type.field list
   | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
@@ -75,10 +75,10 @@ let rec match_pat ctxt desc pat t sets =
     let ts = Type.as_tup (Type.promote t) in
     let descs =
       match desc with
-      | Product descs -> descs
+      | Tup descs -> descs
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
-    in match_product ctxt [] descs pats ts sets
+    in match_tup ctxt [] descs pats ts sets
   | ObjP pfs ->
     let t' = Type.promote t in
     let sensible (pf : pat_field) =
@@ -159,12 +159,12 @@ and match_lit ctxt desc v t sets =
   | _ ->
     assert false
 
-and match_product ctxt descs_r descs pats ts sets =
+and match_tup ctxt descs_r descs pats ts sets =
   match descs, pats, ts with
   | [], [], [] ->
-    succeed ctxt (Product (List.rev descs_r)) sets
+    succeed ctxt (Tup (List.rev descs_r)) sets
   | desc::descs', pat::pats', t::ts' ->
-    match_pat (InProduct (ctxt, descs_r, descs', pats', ts')) desc pat t sets
+    match_pat (InTup (ctxt, descs_r, descs', pats', ts')) desc pat t sets
   | _ ->
     assert false
     
@@ -183,8 +183,8 @@ and succeed ctxt desc sets : bool =
     succeed ctxt' (Opt desc) sets
   | InTag (ctxt', t) ->
     succeed ctxt' (Tag (desc, t)) sets
-  | InProduct (ctxt', descs_r, descs, pats, ts) ->
-    match_product ctxt' (desc::descs_r) descs pats ts sets
+  | InTup (ctxt', descs_r, descs, pats, ts) ->
+    match_tup ctxt' (desc::descs_r) descs pats ts sets
   | InObject (ctxt', descs_r, descs, pfs, tfs) ->
     match_object ctxt' (desc::descs_r) descs pfs tfs sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
@@ -211,8 +211,8 @@ and fail ctxt desc sets : bool =
     fail ctxt' (Opt desc) sets
   | InTag (ctxt', id) ->
     fail ctxt' (Tag (desc, id)) sets
-  | InProduct (ctxt', descs', descs, pats, _ts) ->
-    fail ctxt' (Product (List.rev descs' @ [desc] @ descs)) sets
+  | InTup (ctxt', descs', descs, pats, _ts) ->
+    fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
   | InObject (ctxt', descs', descs, pats, _ts) ->
     fail ctxt' (Object (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
