@@ -935,7 +935,7 @@ and check_pat_fields env tfs pfs ve at : val_env =
     | 0 ->
       let ve1 = check_pat env typ pat in
       let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-      check_pat_fields env tfs' pfs' ve' at
+      check_pat_fields env tfs pfs' ve' at
     | c when c > 0 ->
       check_pat_fields env tfs' pfs ve at
     | _ ->

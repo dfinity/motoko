@@ -1,2 +1,1 @@
-objpat-duplicate.as:2.26-2.29: type error, object pattern field len is not contained in expected type
 objpat-duplicate.as:8.8-8.28: type error, duplicate binding for len in pattern
