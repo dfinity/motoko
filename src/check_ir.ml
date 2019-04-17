@@ -8,7 +8,7 @@ module E = Effect
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as   part of desugaring.
+   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as part of desugaring.
  *)
 
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
@@ -615,8 +615,8 @@ and check_pat env pat : val_env =
     | _ ->
       let string_of_name (Name s) = s in
       let check_pseudo (pf : pat_field) =
-        let s, ptfs = T.as_obj_sub (string_of_name pf.it.name.it) t in
-        T.Obj (s, ptfs) <: T.Obj (s, tfs) in
+        let s, _ = T.as_obj_sub (string_of_name pf.it.name.it) t in
+        t <: T.Obj (s, tfs) in
       List.iter check_pseudo pfs
     end;
     ve
