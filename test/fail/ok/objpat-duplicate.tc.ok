@@ -1,1 +1,5 @@
 objpat-duplicate.as:8.8-8.28: type error, duplicate binding for len in pattern
+objpat-duplicate.as:15.8-15.31: type error, object pattern cannot consume expected type
+  Bool
+objpat-duplicate.as:22.7-22.37: type error, object pattern cannot consume expected type
+  (Bool, Bool)
