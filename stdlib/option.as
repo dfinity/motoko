@@ -64,10 +64,24 @@ func unwrapOr<T>(x: ?T, d: T): T =
  Unwrap an optional value. If null, return the default, else, apply the function to the unwrapped value.
 
 */
-func option<F, T>(x: ?F, f: F->T, d: T): T =
+func option<A, B>(x: ?A, f: A->B, d: B): B =
   switch x {
     case null { d };
     case (?x_) f(x_);
+  };
+
+/***
+
+ `map`
+ --------------------
+
+ Apply a function to the wrapped value.
+
+*/
+func map<A, B>(x: ?A, f: A->B): ?B =
+  switch x {
+    case null null;
+    case (?x_) ?f(x_);
   };
 
 /***
