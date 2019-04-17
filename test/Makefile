@@ -2,12 +2,14 @@ all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
 	$(MAKE) -C run-dfinity
+	$(MAKE) -C repl
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
 quick:
 	$(MAKE_PAR) -C fail quick
 	$(MAKE_PAR) -C run quick
+	$(MAKE_PAR) -C repl quick
 
 parallel: quick
 	$(MAKE_PAR) -C run-dfinity quick
