@@ -1,0 +1,205 @@
+-- Parsing list.as:
+-- Parsing types.as:
+-- Parsing server.as:
+-- Parsing client.as:
+-- Parsing main.as:
+-- Checking list.as:
+type List<T> = ?{head : T; tail : var List<T>}
+-- Checking types.as:
+type Subscription = shared {cancel : shared () -> (); post : shared Text -> ()}
+-- Checking server.as:
+type ClientData = {client : shared Text -> (); id : Nat; revoked : var Bool}
+type Server = actor {subscribe : shared (shared Text -> ()) -> async Subscription}
+let Server : () -> Server
+-- Checking client.as:
+type Client = actor {go : shared (Text, Server) -> (); send : shared Text -> ()}
+let Client : () -> Client
+-- Checking main.as:
+let alice : actor {go : shared (Text, Server) -> (); send : shared Text -> ()}
+let bob : actor {go : shared (Text, Server) -> (); send : shared Text -> ()}
+let charlie : actor {go : shared (Text, Server) -> (); send : shared Text -> ()}
+let server : actor {subscribe : shared (shared Text -> ()) -> async Subscription}
+-- Interpreting list.as:
+-- Interpreting types.as:
+-- Interpreting server.as:
+-- Interpreting client.as:
+-- Interpreting main.as:
+Server()
+  <= {subscribe = func}
+Client()
+  <= {go = func; send = func}
+Client()
+  <= {go = func; send = func}
+Client()
+  <= {go = func; send = func}
+-> message go("bob", {subscribe = func})
+-> message go("alice", {subscribe = func})
+-> message go("charlie", {subscribe = func})
+<- message go("bob", {subscribe = func})
+  go("bob", {subscribe = func})
+    -> async client.as:9.12-14.6
+    ignore(async _)
+      <= ()
+    <= ()
+<- message go("alice", {subscribe = func})
+  go("alice", {subscribe = func})
+    -> async client.as:9.12-14.6
+    ignore(async _)
+      <= ()
+    <= ()
+<- message go("charlie", {subscribe = func})
+  go("charlie", {subscribe = func})
+    -> async client.as:9.12-14.6
+    ignore(async _)
+      <= ()
+    <= ()
+<- async client.as:9.12-14.6
+  -> message subscribe(func)
+  => await client.as:10.17-10.45
+<- async client.as:9.12-14.6
+  -> message subscribe(func)
+  => await client.as:10.17-10.45
+<- async client.as:9.12-14.6
+  -> message subscribe(func)
+  => await client.as:10.17-10.45
+<- message subscribe(func)
+  subscribe(func)
+    -> async server.as:24.63-35.4
+    <= async _
+<- message subscribe(func)
+  subscribe(func)
+    -> async server.as:24.63-35.4
+    <= async _
+<- message subscribe(func)
+  subscribe(func)
+    -> async server.as:24.63-35.4
+    <= async _
+<- async server.as:24.63-35.4
+  <= {cancel = func; post = func}
+<- async server.as:24.63-35.4
+  <= {cancel = func; post = func}
+<- async server.as:24.63-35.4
+  <= {cancel = func; post = func}
+<- await client.as:10.17-10.45({cancel = func; post = func})
+  -> message anon-func-30.14("hello from bob")
+  -> message anon-func-30.14("goodbye from bob")
+  -> message anon-func-33.16()
+  <= ()
+<- await client.as:10.17-10.45({cancel = func; post = func})
+  -> message anon-func-30.14("hello from alice")
+  -> message anon-func-30.14("goodbye from alice")
+  -> message anon-func-33.16()
+  <= ()
+<- await client.as:10.17-10.45({cancel = func; post = func})
+  -> message anon-func-30.14("hello from charlie")
+  -> message anon-func-30.14("goodbye from charlie")
+  -> message anon-func-33.16()
+  <= ()
+<- message anon-func-30.14("hello from bob")
+  anon-func-30.14("hello from bob")
+    broadcast(0, "hello from bob")
+      -> message send("hello from bob")
+      -> message send("hello from bob")
+      <= ()
+    <= ()
+<- message anon-func-30.14("goodbye from bob")
+  anon-func-30.14("goodbye from bob")
+    broadcast(0, "goodbye from bob")
+      -> message send("goodbye from bob")
+      -> message send("goodbye from bob")
+      <= ()
+    <= ()
+<- message anon-func-33.16()
+  anon-func-33.16()
+    unsubscribe(0)
+      print("(unsubscribe ")
+(unsubscribe         <= ()
+      printInt(0)
+0        <= ()
+      print(")\n")
+)
+        <= ()
+      <= ()
+    <= ()
+<- message anon-func-30.14("hello from alice")
+  anon-func-30.14("hello from alice")
+    broadcast(1, "hello from alice")
+      -> message send("hello from alice")
+      <= ()
+    <= ()
+<- message anon-func-30.14("goodbye from alice")
+  anon-func-30.14("goodbye from alice")
+    broadcast(1, "goodbye from alice")
+      -> message send("goodbye from alice")
+      <= ()
+    <= ()
+<- message anon-func-33.16()
+  anon-func-33.16()
+    unsubscribe(1)
+      print("(unsubscribe ")
+(unsubscribe         <= ()
+      printInt(1)
+1        <= ()
+      print(")\n")
+)
+        <= ()
+      <= ()
+    <= ()
+<- message anon-func-30.14("hello from charlie")
+  anon-func-30.14("hello from charlie")
+    broadcast(2, "hello from charlie")
+      <= ()
+    <= ()
+<- message anon-func-30.14("goodbye from charlie")
+  anon-func-30.14("goodbye from charlie")
+    broadcast(2, "goodbye from charlie")
+      <= ()
+    <= ()
+<- message anon-func-33.16()
+  anon-func-33.16()
+    unsubscribe(2)
+      print("(unsubscribe ")
+(unsubscribe         <= ()
+      printInt(2)
+2        <= ()
+      print(")\n")
+)
+        <= ()
+      <= ()
+    <= ()
+<- message send("hello from bob")
+  send("hello from bob")
+    print("charlie received hello from bob\n")
+charlie received hello from bob
+      <= ()
+    <= ()
+<- message send("hello from bob")
+  send("hello from bob")
+    print("alice received hello from bob\n")
+alice received hello from bob
+      <= ()
+    <= ()
+<- message send("goodbye from bob")
+  send("goodbye from bob")
+    print("charlie received goodbye from bob\n")
+charlie received goodbye from bob
+      <= ()
+    <= ()
+<- message send("goodbye from bob")
+  send("goodbye from bob")
+    print("alice received goodbye from bob\n")
+alice received goodbye from bob
+      <= ()
+    <= ()
+<- message send("hello from alice")
+  send("hello from alice")
+    print("charlie received hello from alice\n")
+charlie received hello from alice
+      <= ()
+    <= ()
+<- message send("goodbye from alice")
+  send("goodbye from alice")
+    print("charlie received goodbye from alice\n")
+charlie received goodbye from alice
+      <= ()
+    <= ()
