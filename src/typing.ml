@@ -982,13 +982,16 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
-  | ObjP pfs -> List.fold_right pub_pat (pats_of_obj_pat pfs) xs
+  | ObjP pfs -> List.fold_right pub_pat_field pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 ->
     pub_pat pat1 xs
+
+and pub_pat_field pf xs =
+  pub_pat pf.it.pat xs
 
 and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (T.Env.add id.it id.at xs, ys)
@@ -1212,8 +1215,11 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | ObjP pfs -> List.fold_left (gather_pat env) ve (pats_of_obj_pat pfs)
+  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+
+and gather_pat_field env ve pf : val_env =
+  gather_pat env ve pf.it.pat
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then
