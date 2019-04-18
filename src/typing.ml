@@ -792,11 +792,8 @@ and infer_pat' env pat : T.typ * val_env =
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
   | ObjP pfs ->
-    let pats = pats_of_obj_pat pfs in
-    let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
-    let labs = List.map (fun (pf : pat_field) -> pf.it.id.it) pfs in
-    let s = T.(Object Local) in
-    T.Obj (s, List.map2 (fun lab typ -> T.{lab; typ}) labs ts), ve
+    let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
+    T.Obj (s, tfs), ve
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
@@ -824,6 +821,13 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
+and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * val_env =
+  match pfs with
+  | [] -> (T.(Object Local), List.rev ts), ve
+  | pf::pfs' ->
+    let typ, ve1 = infer_pat env pf.it.pat in
+    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
 and check_pat_exhaustive env t pat : val_env =
   let ve = check_pat env t pat in
