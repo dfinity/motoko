@@ -147,6 +147,8 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+  | false, S.ModuleD (x, _) ->
+    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
 
