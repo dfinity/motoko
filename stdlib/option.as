@@ -4,6 +4,8 @@ Functions for Option types.
 
 */
 
+type t<A> = ?A;
+
 /***
 
  `isSome`
@@ -12,11 +14,13 @@ Functions for Option types.
  Returns true if the value is not `null`.
 
 */
-func isSome(x: ?Any): Bool =
+func isSomeAny(x: ?Any): Bool =
   switch x {
     case null false;
     case _ true;
   };
+
+func isSome<A>(x: t<A>): Bool = isSomeAny(x);
 
 /***
 
@@ -26,7 +30,9 @@ func isSome(x: ?Any): Bool =
  Returns true if the value is `null`.
 
 */
-func isNull(x: ?Any): Bool = not isSome(x);
+func isNullAny(x: ?Any): Bool = not isSome<Any>(x);
+
+func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
 
 /***
 
@@ -92,11 +98,13 @@ func map<A, B>(x: ?A, f: A->B): ?B =
  Assert that the given value is not `null`; ignore this value and return unit.
 
 */
-func assertSome(x: ?Any) =
+func assertSomeAny(x: ?Any) =
   switch x {
     case null { unreachable() };
     case _ {};
   };
+
+func assertSome<A>(x: ?A) = assertSomeAny(x);
 
 /***
 
@@ -106,11 +114,13 @@ func assertSome(x: ?Any) =
  Assert that the given value is `null`; ignore this value and return unit.
 
 */
-func assertNull(x: ?Any) =
+func assertNullAny(x: ?Any) =
   switch x {
     case null { };
     case _ { unreachable() };
   };
+
+func assertNull<A>(x: ?A) = assertNullAny(x);
 
 /***
 

@@ -38,13 +38,6 @@ class Model() {
   private debugOff (t:Text)   {  };
   private debugIntOff (i:Int) {  };
 
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
   private textIsEq(x:Text,y:Text):Bool { x == y };
@@ -884,10 +877,10 @@ than the MVP goals, however.
     assert(isValidUser(public_key, producer_.short_name));
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome( producerRemInventory(public_key, iid_) );
+    assertSome<()>( producerRemInventory(public_key, iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
-    assertSome(
+    assertSome<InventoryId>(
       producerAddInventory(
         public_key, ?iid_, id_,
         produce_id,
@@ -921,7 +914,7 @@ than the MVP goals, however.
     assert(isValidUser(public_key, producer.short_name));
 
     /**- remove document from `inventoryTable` */
-    assertSome(
+    assertSome<InventoryDoc>(
       inventoryTable.rem( id )
     );
 
@@ -940,7 +933,7 @@ than the MVP goals, however.
       reserved    = producer.reserved ;
     };
 
-    assertSome(
+    assertSome<ProducerDoc>(
       producerTable.updateDoc( producer.id, updatedProducer )
     );
 
@@ -953,7 +946,7 @@ than the MVP goals, however.
         keyOf(producer.id), idIsEq,
         keyOf(id), idIsEq
       );
-      assertSome(d);
+      assertSome<InventoryDoc>(d);
       t
     };
 
@@ -1116,10 +1109,10 @@ than the MVP goals, however.
     assert(isValidUser(public_key, transporter.short_name));
 
     /**- remove the route; given the validation above, this cannot fail. */
-    assertSome( transporterRemRoute(public_key, rid_) );
+    assertSome<()>( transporterRemRoute(public_key, rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
-    assertSome(
+    assertSome<RouteId>(
       transporterAddRoute(
         public_key,
         ?rid_, id_,
@@ -1152,7 +1145,7 @@ than the MVP goals, however.
 
     assert(isValidUser(public_key, transporter.short_name));
 
-    assertSome(
+    assertSome<RouteDoc>(
       routeTable.rem( id )
     );
 
@@ -1170,7 +1163,7 @@ than the MVP goals, however.
       reserved    = transporter.reserved ;
     };
 
-    assertSome(
+    assertSome<TransporterDoc>(
       transporterTable.updateDoc( transporter.id, updatedTransporter )
     );
 
@@ -1181,7 +1174,7 @@ than the MVP goals, however.
         keyOf(doc.start_region.id), idIsEq,
         keyOf(doc.id), idIsEq
       );
-      assertSome(d);
+      assertSome<RouteDoc>(d);
       t
     };
 
