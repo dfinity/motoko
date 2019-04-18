@@ -642,9 +642,8 @@ and check_pat_field env t (pf : pat_field) =
   let s, tfs = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
-  match T.lookup_field lab tfs with
-  | T.Mut _ -> error env pf.it.pat.at "cannot match mutable field %s" lab
-  | _ -> ()
+  if T.is_mut (T.lookup_field lab tfs)
+  then error env pf.it.pat.at "cannot match mutable field %s" lab
 
 (* Objects *)
 
