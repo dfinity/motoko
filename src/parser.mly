@@ -529,9 +529,9 @@ return_typ_nullary :
 
 pat_field :
   | x=id
-    { {id=x; pat=VarP x @! x.at} @@ at $sloc }
+    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
   | x=id EQ p=pat
-    { {id=x; pat=p} @@ at $sloc }
+    { {id = x; pat = p} @@ at $sloc }
 
 
 (* Declarations *)
