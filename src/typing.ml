@@ -872,7 +872,7 @@ and check_pat' env t pat : val_env =
       try
         let s, tfs = T.as_obj_sub "" t in
         if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
-        check_pat_fields env tfs (List.sort compare_pat_field pfs) T.Env.empty pat.at
+        check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
       with Invalid_argument _ ->
         error env pat.at "object pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
@@ -928,25 +928,29 @@ and check_pats env ts pats ve at : val_env =
       (List.length ts)
 
 and check_pat_fields env tfs pfs ve at : val_env =
+  let repeated l = function
+    | [] -> None
+    | (pf : pat_field)::_ -> if l = pf.it.id.it then Some pf.at else None in
   match pfs, tfs with
   | [], [] -> ve
   | {it={id;pat;_};at=fat;_}::pfs', {T.lab=l;typ;_}::tfs' ->
-    begin match typ, compare id.it l with
-    | T.Mut _, 0 -> local_error env fat "cannot pattern match mutable field %s" l; ve
+    begin match T.is_mut typ, compare id.it l with
+    | true, 0 -> error env fat "cannot pattern match mutable field %s" l
     | _, 0 ->
       let ve1 = check_pat env typ pat in
       let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-      check_pat_fields env tfs pfs' ve' at
+      begin match repeated l pfs' with
+      | None -> check_pat_fields env tfs' pfs' ve' at
+      | Some at -> error env at "cannot pattern match repeated field %s" l
+      end
     | _, c when c > 0 ->
       check_pat_fields env tfs' pfs ve at
     | _ ->
-      local_error env fat "object pattern field %s is not contained in expected type" id.it;
-      ve
+      error env fat "object pattern field %s is not contained in expected type" id.it
     end
   | [], _ -> ve
   | pf::_, [] ->
-    local_error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it;
-    ve
+    error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
 
 and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
