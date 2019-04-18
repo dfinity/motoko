@@ -47,6 +47,7 @@ module SR = struct
   *)
   type static_thing =
     | StaticFun of int32
+    | StaticMessage of int32
 
   (* Value representation on the stack:
 
@@ -1214,14 +1215,11 @@ module AllocHow = struct
       (set_of_map (M.filter (fun _ h -> h != StoreStatic) how))))
 
   let is_static_exp env top_lvl how0 exp = match exp.it with
-    | FuncE (_, cc, _, _, _ , _) when cc.Value.sort = Type.Sharable ->
-      (* Messages cannot be static (TBR!) *)
-      false
     | FuncE (_, cc, _, _, _ , _) when top_lvl = TopLvl ->
       (* Top-level functions are always static *)
       true
     | FuncE (_, cc, _, _, _ , _) ->
-      (* Other functions only when they do not cpature anything *)
+      (* Other functions only when they do not capture anything *)
       is_static env how0 (Freevars.exp exp)
     | _ -> false
 
@@ -2510,6 +2508,11 @@ module Dfinity = struct
     G.i (Call (nr (actor_self_i env))) ^^
     box_reference env
 
+  let static_message_funcref env fi =
+    compile_unboxed_const fi ^^
+    G.i (Call (nr (func_externalize_i env)))
+
+
 end (* Dfinity *)
 
 module OrthogonalPersistence = struct
@@ -3554,8 +3557,18 @@ module StackRep = struct
     | StaticThing _ -> G.nop
     | Unreachable -> G.nop
 
+  let materialize_unboxed_ref env = function
+    | StaticFun fi ->
+      assert false
+    | StaticMessage fi ->
+      Dfinity.static_message_funcref env fi
+
   let materialize env = function
-    | StaticFun fi -> Var.static_fun_pointer env fi
+    | StaticFun fi ->
+      Var.static_fun_pointer env fi
+    | StaticMessage fi ->
+      Dfinity.static_message_funcref env fi ^^
+      Dfinity.box_reference env
 
   let deferred_of_static_thing env s =
     { materialize = (fun env -> (StaticThing s, G.nop))
@@ -3618,6 +3631,7 @@ module StackRep = struct
     | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
 
     | StaticThing s, Vanilla -> materialize env s
+    | StaticThing s, UnboxedReference -> materialize_unboxed_ref env s
     | StaticThing s, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
@@ -3666,14 +3680,14 @@ module FuncDec = struct
     Dfinity.compile_databuf_of_bytes env name ^^
     export_self_message env
 
-  let bind_args env0 as_ bind_arg =
+  let bind_args env0 first_arg as_ bind_arg =
     let rec go i env = function
     | [] -> env
     | a::as_ ->
       let get = G.i (LocalGet (nr (Int32.of_int i))) in
       let env' = bind_arg env a get in
       go (i+1) env' as_ in
-    go 1 (* skip closure*) env0 as_
+    go first_arg env0 as_
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -3687,7 +3701,7 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Add arguments to the environment *)
-      let env3 = bind_args env2 args (fun env a get ->
+      let env3 = bind_args env2 1 args (fun env a get ->
         E.add_local_deferred env a.it
           { materialize = (fun env -> SR.Vanilla, get)
           ; materialize_vanilla = (fun _ -> get)
@@ -3723,7 +3737,7 @@ module FuncDec = struct
       let (env2, closure_code) = restore_env env1 get_closure in
 
       (* Add arguments to the environment, as unboxed references *)
-      let env3 = bind_args env2 args (fun env a get ->
+      let env3 = bind_args env2 1 args (fun env a get ->
         E.add_local_deferred env a.it
           { materialize = (fun env -> SR.UnboxedReference, get)
           ; materialize_vanilla = (fun env ->
@@ -3744,7 +3758,7 @@ module FuncDec = struct
 
   (* A static message, from a public actor field *)
   (* Forward the call to the funcref at the given static location. *)
-  let compile_static_message env cc ptr : E.func_with_names =
+  let compile_message_forwarder env cc ptr : E.func_with_names =
     let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
     assert (cc.Value.n_res = 0);
     (* Messages take no closure, return nothing*)
@@ -3767,13 +3781,53 @@ module FuncDec = struct
       OrthogonalPersistence.save_mem env
       )
 
+  let compile_static_message env cc args mk_body at : E.func_with_names =
+    let arg_names = List.map (fun a -> a.it, I32Type) args in
+    assert (cc.Value.n_res = 0);
+    (* Messages take no closure, return nothing*)
+    Func.of_body env arg_names [] (fun env1 ->
+      (* Set up memory *)
+      OrthogonalPersistence.restore_mem env ^^
+
+      (* Add arguments to the environment, as unboxed references *)
+      let env2 = bind_args env1 0 args (fun env a get ->
+        E.add_local_deferred env a.it
+          { materialize = (fun env -> SR.UnboxedReference, get)
+          ; materialize_vanilla = (fun env ->
+               get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
+          ; is_local = true
+          }
+      ) in
+
+      mk_body env2 ^^
+
+      (* Collect garbage *)
+      G.i (Call (nr (E.built_in env2 "collect"))) ^^
+
+      (* Save memory *)
+      OrthogonalPersistence.save_mem env
+      )
+
+  let declare_dfinity_type env has_closure fi args =
+      E.add_dfinity_type env (fi,
+        (if has_closure then [ CustomSections.I32 ] else []) @
+        List.map (
+          fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
+        ) args
+      )
+
+  (* Compile a closed message declaration (captures no variables variables) *)
+  let closed_message pre_env cc name args mk_body at =
+      let (fi, fill) = E.reserve_fun pre_env name in
+      declare_dfinity_type pre_env false fi args;
+      ( SR.StaticMessage fi, fun env -> fill (compile_static_message env cc args mk_body at))
+
   (* Compile a closed function declaration (captures no variables variables) *)
   let closed pre_env cc name args mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name in
       ( SR.StaticFun fi, fun env ->
         let restore_no_env env1 _ = (env1, G.nop) in
-        let f = compile_local_function env cc restore_no_env args mk_body at in
-        fill f
+        fill (compile_local_function env cc restore_no_env args mk_body at)
       )
 
   (* Compile a closure declaration (captures local variables) *)
@@ -3813,13 +3867,7 @@ module FuncDec = struct
 
       let fi = E.add_fun env name f in
 
-      if not is_local then
-        E.add_dfinity_type env (fi,
-          CustomSections.I32 ::
-          List.map (
-            fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
-          ) args
-        );
+      if not is_local then declare_dfinity_type env true fi args;
 
       let code =
         (* Allocate a heap object for the closure *)
@@ -4756,6 +4804,10 @@ and compile_prog env (ds, e) =
     (env', code1 ^^ code2)
 
 and compile_static_exp pre_env how exp = match exp.it with
+  | FuncE (name, cc, typ_binds, args, _rt, e)
+      when cc.Value.sort = Type.Sharable ->
+      let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
+      FuncDec.closed_message pre_env cc name args mk_body exp.at
   | FuncE (name, cc, typ_binds, args, _rt, e) ->
       let mk_body env1 = compile_exp_as env1 (StackRep.of_arity cc.Value.n_res) e in
       FuncDec.closed pre_env cc name args mk_body exp.at
@@ -4846,7 +4898,7 @@ and export_actor_field env ((f : Ir.field), ptr) =
     edesc = nr (FuncExport (nr fi))
   });
   let cc = Value.call_conv_of_typ f.note in
-  fill (FuncDec.compile_static_message env cc ptr);
+  fill (FuncDec.compile_message_forwarder env cc ptr);
 
 (* Local actor *)
 and actor_lit outer_env this ds fs at =
