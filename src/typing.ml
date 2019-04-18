@@ -976,6 +976,10 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
+and is_actor_method dec : bool = match dec.it with
+  | LetD ({ it = VarP _; _}, {it = FuncE _; _} ) -> true
+  | _ -> false
+
 and infer_obj env s fields at : T.typ =
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
@@ -994,6 +998,12 @@ and infer_obj env s fields at : T.typ =
           "public shared object or actor field %s has non-shared type\n  %s"
           lab (T.string_of_typ_expand typ)
     ) tfs
+  end;
+  if not env.pre && s = T.Actor then begin
+    List.iter (fun ef ->
+      if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) then
+        local_error env ef.it.dec.at "public actor field needs to be a manifest function"
+    ) fields
   end;
   let t = T.Obj (s, tfs) in
   try T.avoid scope.con_env t with T.Unavoidable c ->

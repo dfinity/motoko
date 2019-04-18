@@ -46,6 +46,7 @@ let to_instr_list (is : t) : instr list =
 let to_nested_list d pos is =
   optimize (is Int32.(add d 1l) pos [])
 
+
 (* The concatenation operator *)
 let nop : t = fun _ _ rest -> rest
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
@@ -111,3 +112,8 @@ let branch_to_ (p : depth) : t =
 
 let labeled_block_ (ty : block_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
+
+(* Intended to be used within assert *)
+
+let is_nop (is :t) =
+  is 0l Wasm.Source.no_region [] = []

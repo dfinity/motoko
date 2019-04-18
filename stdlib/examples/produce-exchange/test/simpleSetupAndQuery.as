@@ -252,6 +252,26 @@ actor class Test() = this {
 
       printEntityCount("Route", (await s.getCounts()).route_count);
 
+      ////////////////////////////////////////////////////////////////////////////////////
+
+      /**- remove some of the routes added above */
+
+      { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta));
+      assertSome<()>(x); };
+
+      // a double-remove should return null
+      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta)));
+
+      printEntityCount("Route@time2", (await s.getCounts()).route_count);
+
+      { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta));
+      assertSome<()>(x); };
+
+      // a double-remove should return null
+      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta)));
+
+      printEntityCount("Route@time2", (await s.getCounts()).route_count);
+
       //////////////////////////////////////////////////////////////////
 
       print "\nExchange setup: Done.\n====================================\n";

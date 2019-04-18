@@ -1,0 +1,3 @@
+actor-reexport.as:5.3-5.30: type error, public actor field needs to be a manifest function
+actor-reexport.as:9.3-9.41: type error, public actor field needs to be a manifest function
+actor-reexport.as:10.3-14.39: type error, public actor field needs to be a manifest function
