@@ -438,7 +438,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
-  | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
+  | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | VariantP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
@@ -452,6 +452,12 @@ and declare_pats pats ve : val_env =
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
 
+and declare_pat_fields pfs ve : val_env =
+  match pfs with
+  | [] -> ve
+  | pf::pfs' ->
+    let ve' = declare_pat pf.it.pat in
+    declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
 and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
@@ -465,9 +471,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs ->
-    let pats, vs = assocs_of_obj_pat pfs v in
-    define_pats env pats vs
+  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -482,6 +486,12 @@ and define_pat env pat v =
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
 
+and define_pat_fields env pfs vs =
+  List.iter (define_pat_field env vs) pfs
+
+and define_pat_field env vs pf =
+  let v = V.Env.find pf.it.id.it vs in
+  define_pat env pf.it.pat v
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -499,11 +509,6 @@ and match_lit lit v : bool =
   | PreLit _, _ -> assert false
   | _ -> false
 
-and assocs_of_obj_pat pfs v =
-  let binding id = V.Env.find id (V.as_obj v) in
-  pats_of_obj_pat pfs,
-  List.map (fun (pf : Syntax.pat_field) -> binding pf.it.id.it) pfs
-
 and match_pat pat v : val_env option =
   match pat.it with
   | WildP -> Some V.Env.empty
@@ -518,8 +523,7 @@ and match_pat pat v : val_env option =
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | ObjP pfs ->
-    let pats, vs = assocs_of_obj_pat pfs v in
-    match_pats pats vs V.Env.empty
+    match_pat_fields pfs (V.as_obj v) V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
@@ -550,6 +554,15 @@ and match_pats pats vs ve : val_env option =
     )
   | _ -> assert false
 
+and match_pat_fields pfs vs ve : val_env option =
+  match pfs with
+  | [] -> Some ve
+  | pf::pfs' ->
+    let v = V.Env.find pf.it.id.it vs in
+    begin match match_pat pf.it.pat v with
+    | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
+    | None -> None
+    end
 
 (* Objects *)
 
