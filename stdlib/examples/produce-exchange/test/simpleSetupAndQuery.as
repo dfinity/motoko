@@ -117,16 +117,16 @@ actor class Test() = this {
       /**- remove some of the inventory items added above */
 
       let x = await s.producerRemInventory(unwrap<InventoryId>(prdib));
-      assertSome(x);
+      assertSome<()>(x);
 
       // a double-remove should return null
-      assertNull(await s.producerRemInventory(unwrap<InventoryId>(prdib)));
+      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(prdib)));
 
       let y = await s.producerRemInventory(unwrap<InventoryId>(praib));
-      assertSome(y);
+      assertSome<()>(y);
 
       // a double-remove should return null
-      assertNull(await s.producerRemInventory(unwrap<InventoryId>(praib)));
+      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(praib)));
 
       printEntityCount("Inventory@time2", (await s.getCounts()).inventory_count);
 
@@ -139,21 +139,21 @@ actor class Test() = this {
         unwrap<ProducerId>(pra),
         unwrap<ProduceId>(pec), 666, 300, 10, 2, 112, ""
       );
-      assertSome(praic2);
+      assertSome<()>(praic2);
 
       let prbia2 = await s.producerUpdateInventory(
         unwrap<InventoryId>(prbia),
         unwrap<ProducerId>(prb),
         unwrap<ProduceId>(peb), 200, 666, 10, 4, 117, ""
       );
-      assertSome(prbia2);
+      assertSome<()>(prbia2);
 
       let prbib2 = await s.producerUpdateInventory(
         unwrap<InventoryId>(prbib),
         unwrap<ProducerId>(prb),
         unwrap<ProduceId>(peb), 666, 1600, 9, 2, 115, ""
       );
-      assertSome(prbib2);
+      assertSome<()>(prbib2);
 
       printEntityCount("Inventory@time3", (await s.getCounts()).inventory_count);
 
@@ -257,18 +257,18 @@ actor class Test() = this {
       /**- remove some of the routes added above */
 
       { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta));
-      assertSome(x); };
+      assertSome<()>(x); };
 
       // a double-remove should return null
-      assertNull(await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta)));
+      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta)));
 
       printEntityCount("Route@time2", (await s.getCounts()).route_count);
 
       { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta));
-      assertSome(x); };
+      assertSome<()>(x); };
 
       // a double-remove should return null
-      assertNull(await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta)));
+      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta)));
 
       printEntityCount("Route@time2", (await s.getCounts()).route_count);
 
