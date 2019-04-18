@@ -4091,6 +4091,16 @@ let compile_relop env t op =
      compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (Arrange.relop op)
 
+(* compile_load_field performs a tag check if the projection's domain
+   is ambiguous, then calls the appropriate accessor *)
+let compile_load_field env typ ({it=(Name n); _} as name) =
+  let selective tag = function
+    | None -> [] | Some code -> [ tag, code ] in
+  Tagged.branch_with env (ValBlockType (Some I32Type))
+    (List.concat [ [Tagged.Object, Object.load_idx env typ name]
+                 ; selective Tagged.Array (Array.fake_object_idx env n)
+                 ; selective Tagged.Text (Text.fake_object_idx env n)])
+
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) exp =
@@ -4122,15 +4132,10 @@ and compile_exp (env : E.t) exp =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Array.idx env ^^
     load_ptr
-  | DotE (e, ({it = Name n;_} as name)) ->
+  | DotE (e, name) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-      let selective tag = function
-        | None -> [] | Some code -> [ tag, code ]
-      in Tagged.branch_with env (ValBlockType (Some I32Type))
-           (List.concat [ [Tagged.Object, Object.load_idx env e.note.note_typ name]
-                        ; selective Tagged.Array (Array.fake_object_idx env n)
-                        ; selective Tagged.Text (Text.fake_object_idx env n)])
+    compile_load_field env e.note.note_typ name
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else
@@ -4580,13 +4585,7 @@ and fill_pat env pat : patternCode =
           CannotFail (get_i ^^ Tuple.load_n i) ^^^ code1 ^^^ code2 in
       CannotFail set_i ^^^ go 0l ps
   | ObjP pfs ->
-      let selective tag = function
-        | None -> [] | Some code -> [ tag, code ] in
-      let project ({it=(Name n); _} as name) =
-        Tagged.branch_with env (ValBlockType (Some I32Type))
-          (List.concat [ [Tagged.Object, Object.load_idx env pat.note name]
-                       ; selective Tagged.Array (Array.fake_object_idx env n)
-                       ; selective Tagged.Text (Text.fake_object_idx env n)]) in
+      let project = compile_load_field env pat.note in
       let (set_i, get_i) = new_local env "obj_scrut" in
       let rec go = function
         | [] -> CannotFail G.nop
