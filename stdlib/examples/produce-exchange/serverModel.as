@@ -38,13 +38,6 @@ class Model() {
   private debugOff (t:Text)   {  };
   private debugIntOff (i:Int) {  };
 
-  private unwrap<T>(ox:?T) : T {
-    switch ox {
-    case (null) { assert false ; unwrap<T>(ox) };
-    case (?x) x;
-    }
-  };
-
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
   private textIsEq(x:Text,y:Text):Bool { x == y };
