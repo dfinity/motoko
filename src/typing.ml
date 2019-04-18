@@ -1205,31 +1205,9 @@ and infer_path env exp : T.typ option =
   match exp.it with
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
-    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
-    | Some T.Pre ->
-      error env exp.at "cannot infer type of forward import %s" !fp
-    | Some t ->
-      begin
-        match T.promote t with
-        | T.Obj (T.Module, _flds) ->
-          Some t
-        | _ -> None
-      end
-    | None ->
-      error env exp.at "infer_path unresolved import %s" !fp
-    )
+    T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals
   | VarE id ->
-    begin
-      match T.Env.find_opt id.it env.vals with
-      | Some t ->
-        begin
-          match T.promote t with
-          | T.Obj (T.Module, _flds) ->
-            Some t
-          | _ -> None
-        end
-      | None -> None
-    end
+    T.Env.find_opt id.it env.vals
   | DotE(path, id) ->
     begin
       match infer_path env path with
@@ -1239,22 +1217,24 @@ and infer_path env exp : T.typ option =
         | T.Obj (T.Module, flds) ->
           begin
             match T.lookup_field id.it flds with
-            | t ->
-              begin
-                match T.promote t with
-                | T.Obj(T.Module,flds) ->
-                  Some t
-                | _ -> None
-              end
+            | t -> Some t
             | exception _ -> None
           end
         | _ -> None
     end
   | _ -> None
 
-and is_path env exp =
+
+and is_module_path env exp =
   match infer_path env exp with
-  | Some _ -> true
+  | Some t ->
+    begin
+      match T.promote t with
+      | T.Obj (T.Module, flds) ->
+        true
+
+      | _ -> false
+    end
   | None -> false
 
 and gather_dec_typdecs env scope dec : scope =
@@ -1297,7 +1277,7 @@ and infer_block_typdecs env decs : scope =
 
 and infer_dec_typdecs env dec : scope =
   match dec.it with
-  | LetD ({ it = VarP id; _ }, exp) when is_path env exp ->
+  | LetD ({ it = VarP id; _ }, exp) when is_module_path env exp ->
     begin
       match infer_path env exp with
       | Some t -> { empty_scope with val_env = T.Env.singleton id.it t }
