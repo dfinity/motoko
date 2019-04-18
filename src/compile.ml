@@ -3546,6 +3546,7 @@ module StackRep = struct
     | StaticThing _ -> "StaticThing"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
+    | _, _ when sr1 = sr2 -> sr1
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
     | UnboxedInt64, UnboxedInt64 -> UnboxedInt64
@@ -3553,6 +3554,7 @@ module StackRep = struct
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
+    | StaticThing _, StaticThing _ -> Vanilla
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
@@ -3818,10 +3820,8 @@ module FuncDec = struct
       )
 
   (* Compile a closure declaration (captures local variables) *)
-  let closure env cc name free_vars args mk_body at =
+  let closure env cc name captured args mk_body at =
       let is_local = cc.Value.sort <> Type.Sharable in
-
-      let captured = List.filter (fun v -> E.needs_capture env v) free_vars in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
@@ -3896,14 +3896,18 @@ module FuncDec = struct
         ClosureTable.remember_closure env ^^
         G.i (Call (nr (Dfinity.func_bind_i env)))
 
-  let lit env how name cc captured args mk_body at =
+  let lit env how name cc free_vars args mk_body at =
     let is_local = cc.Value.sort <> Type.Sharable in
+    let captured = List.filter (E.needs_capture env) free_vars in
 
     if not is_local && E.mode env <> DfinityMode
     then SR.Unreachable, G.i Unreachable
-    else
-      (* TODO: Can we create a static function here? Do we ever have to? *)
-      closure env cc name captured args mk_body at
+    else if captured = []
+    then
+      let (st, fill) = closed env cc name args mk_body at in
+      fill env;
+      (SR.StaticThing st, G.nop)
+    else closure env cc name captured args mk_body at
 
 end (* FuncDec *)
 
