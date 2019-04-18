@@ -4580,7 +4580,13 @@ and fill_pat env pat : patternCode =
           CannotFail (get_i ^^ Tuple.load_n i) ^^^ code1 ^^^ code2 in
       CannotFail set_i ^^^ go 0l ps
   | ObjP pfs ->
-      let project = Object.load_idx env pat.note in
+      let selective tag = function
+        | None -> [] | Some code -> [ tag, code ] in
+      let project ({it=(Name n); _} as name) =
+        Tagged.branch_with env (ValBlockType (Some I32Type))
+          (List.concat [ [Tagged.Object, Object.load_idx env pat.note name]
+                       ; selective Tagged.Array (Array.fake_object_idx env n)
+                       ; selective Tagged.Text (Text.fake_object_idx env n)]) in
       let (set_i, get_i) = new_local env "obj_scrut" in
       let rec go = function
         | [] -> CannotFail G.nop
