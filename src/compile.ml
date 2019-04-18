@@ -254,7 +254,7 @@ module E = struct
       | Some l -> Some l
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
-  let _needs_capture env var = match lookup_var env var with
+  let needs_capture env var = match lookup_var env var with
     | Some l -> not (is_non_local l)
     | None -> assert false
 
@@ -1052,13 +1052,9 @@ module Var = struct
 
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
-     This currently reserves an unused word in the closure even for static stuff,
-     could be improved at some point.
   *)
   let capture env var : G.t * (E.t -> (E.t * G.t)) =
     match E.lookup_var env var with
-    | Some loc when E.is_non_local loc ->
-      ( compile_unboxed_zero, fun env1 -> (env1, G.i Drop))
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun env1 ->
@@ -3822,8 +3818,10 @@ module FuncDec = struct
       )
 
   (* Compile a closure declaration (captures local variables) *)
-  let closure env cc name captured args mk_body at =
+  let closure env cc name free_vars args mk_body at =
       let is_local = cc.Value.sort <> Type.Sharable in
+
+      let captured = List.filter (fun v -> E.needs_capture env v) free_vars in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
