@@ -3756,31 +3756,6 @@ module FuncDec = struct
       OrthogonalPersistence.save_mem env1
     ))
 
-  (* A static message, from a public actor field *)
-  (* Forward the call to the funcref at the given static location. *)
-  let compile_message_forwarder env cc ptr : E.func_with_names =
-    let args = Lib.List.table cc.Value.n_args (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-    assert (cc.Value.n_res = 0);
-    (* Messages take no closure, return nothing*)
-    Func.of_body env args [] (fun env1 ->
-      (* Set up memory *)
-      OrthogonalPersistence.restore_mem env ^^
-
-      (* Load the arguments *)
-      G.table cc.Value.n_args (fun i -> G.i (LocalGet (nr (Int32.of_int i)))) ^^
-
-      (* Forward the call *)
-      let get_funcref =
-        compile_unboxed_const ptr ^^
-        load_ptr ^^
-        ElemHeap.recall_reference env
-      in
-      call_funcref env cc get_funcref ^^
-
-      (* Save memory *)
-      OrthogonalPersistence.save_mem env
-      )
-
   let compile_static_message env cc args mk_body at : E.func_with_names =
     let arg_names = List.map (fun a -> a.it, I32Type) args in
     assert (cc.Value.n_res = 0);
@@ -4863,30 +4838,15 @@ and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
     go env1 progs
     )
 
-
-and allocate_actor_field env f =
-  (* Create a Reference heap object in static memory *)
-  let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Reference) in
-  let zero = bytes_of_int32 0l in
-  let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-  let ptr_payload = Int32.add ptr Heap.word_size in
-  (f, ptr_payload)
-
-and allocate_actor_fields env fs =
-  List.map (allocate_actor_field env) fs
-
-and fill_actor_field env (f, ptr) =
-  compile_unboxed_const ptr ^^
-  Var.get_val_vanilla env f.it.var.it ^^
-  Heap.load_field 1l ^^
-  store_ptr
-
-and fill_actor_fields env fs =
-  G.concat_map (fill_actor_field env) fs
-
-and export_actor_field env ((f : Ir.field), ptr) =
+and export_actor_field env (f : Ir.field) =
   let Name name = f.it.name.it in
-  let (fi, fill) = E.reserve_fun env name in
+  let sr, code = Var.get_val env f.it.var.it in
+  (* A public actor field is guaranteed to be compiled as a StaticMessage *)
+  let fi = match sr with
+    | SR.StaticThing (SR.StaticMessage fi) -> fi
+    | _ -> assert false in
+  (* There should be no code associated with this *)
+  assert (G.is_nop code);
   let _, _, _, ts, _ = Type.as_func f.note in
   E.add_dfinity_type env (fi,
     List.map (
@@ -4896,9 +4856,7 @@ and export_actor_field env ((f : Ir.field), ptr) =
   E.add_export env (nr {
     name = Dfinity.explode name;
     edesc = nr (FuncExport (nr fi))
-  });
-  let cc = Value.call_conv_of_typ f.note in
-  fill (FuncDec.compile_message_forwarder env cc ptr);
+  })
 
 (* Local actor *)
 and actor_lit outer_env this ds fs at =
@@ -4913,11 +4871,6 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
 
-    (* Allocate static positions for exported functions *)
-    let located_ids = allocate_actor_fields env fs in
-
-    List.iter (export_actor_field env) located_ids;
-
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
       let (env4, prelude_code) = compile_prelude env3 in
@@ -4928,10 +4881,10 @@ and actor_lit outer_env this ds fs at =
       (* Compile the declarations *)
       let (env6, decls_code) = compile_decs env5 AllocHow.TopLvl ds in
 
-      (* fill the static export references *)
-      let fill_code = fill_actor_fields env6 located_ids in
+      (* Export the public functions *)
+      List.iter (export_actor_field env6) fs;
 
-      prelude_code ^^ decls_code ^^ fill_code) in
+      prelude_code ^^ decls_code) in
     let start_fi = E.add_fun env "start" start_fun in
 
     OrthogonalPersistence.register env start_fi;
@@ -4949,21 +4902,16 @@ and actor_lit outer_env this ds fs at =
 and main_actor env this ds fs =
   if E.mode env <> DfinityMode then G.i Unreachable else
 
-  (* Allocate static positions for exported functions *)
-  let located_ids = allocate_actor_fields env fs in
-
-  List.iter (export_actor_field env) located_ids;
-
   (* Add this pointer *)
   let env2 = E.add_local_deferred_vanilla env this.it Dfinity.get_self_reference in
 
   (* Compile the declarations *)
   let (env3, decls_code) = compile_decs env2 AllocHow.TopLvl ds in
 
-  (* fill the static export references *)
-  let fill_code = fill_actor_fields env3 located_ids in
+  (* Export the public functions *)
+  List.iter (export_actor_field env3) fs;
 
-  decls_code ^^ fill_code
+  decls_code
 
 and actor_fake_object_idx env name =
     Dfinity.compile_databuf_of_bytes env (name.it) ^^
