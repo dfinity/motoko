@@ -1,15 +1,24 @@
-let o = [1,2];
 var y = 0;
-
-
-for (x in o.vals()) { y += x };
-
-
-switch o {
-  case ({ vals }) {
-    for (x in vals()) { y += x }
+switch ([1,2]) {
+  case ({ vals = iter }) {
+    for (x in iter()) { y := x; }
   }
 };
 
+assert (y == 2);
 
-assert (y == 6);
+switch ([1,2]) {
+  case { vals; len } {
+      for (x in vals()) { y += x + len(); }
+  }
+};
+
+assert (y == 9);
+
+switch "Hi" {
+  case { chars; len } {
+      for (x in chars()) { y += 1 + len(); }
+  }
+};
+
+assert (y == 15);
