@@ -1199,7 +1199,7 @@ module AllocHow = struct
       | LocalImmut, LocalImmut -> LocalImmut
     ))
 
-  type top_lvl = TopLvl | NotTopLvl
+  type lvl = TopLvl | NotTopLvl
 
   let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
   let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
@@ -1214,8 +1214,8 @@ module AllocHow = struct
       (Freevars.captured_vars f)
       (set_of_map (M.filter (fun _ h -> h != StoreStatic) how))))
 
-  let is_static_exp env top_lvl how0 exp = match exp.it with
-    | FuncE (_, cc, _, _, _ , _) when top_lvl = TopLvl ->
+  let is_static_exp env lvl how0 exp = match exp.it with
+    | FuncE (_, cc, _, _, _ , _) when lvl = TopLvl ->
       (* Top-level functions are always static *)
       true
     | FuncE (_, cc, _, _, _ , _) ->
@@ -1224,7 +1224,7 @@ module AllocHow = struct
     | _ -> false
 
 
-  let dec env top_lvl (seen, how0) dec =
+  let dec env lvl (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
 
     (* Which allocation is required for the things defined here? *)
@@ -1233,13 +1233,13 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
       (* Static functions in an let-expression *)
-      | LetD ({it = VarP _; _}, e) when is_static_exp env top_lvl how0 e ->
+      | LetD ({it = VarP _; _}, e) when is_static_exp env lvl how0 e ->
       M.empty
       (* Everything else needs at least a local *)
       | _ ->
       map_of_set LocalImmut d in
 
-    let top = match top_lvl with
+    let top = match lvl with
       | TopLvl -> StoreStatic
       | NotTopLvl -> StoreHeap in
 
@@ -1256,7 +1256,7 @@ module AllocHow = struct
        For local blocks, mutable things must be heap allocated.
        On the top-level, all captured non-static things must be heap allocated.
     *)
-    let relevant = match top_lvl with
+    let relevant = match lvl with
       | TopLvl -> fun _ h -> true
       | NotTopLvl -> fun _ h -> h = LocalMut in
     let how3 =
@@ -1269,9 +1269,9 @@ module AllocHow = struct
 
   (* We need to do a fixed-point analysis, starting with everything being static. *)
 
-  let decs env top_lvl decs : allocHow =
+  let decs env lvl decs : allocHow =
     let rec go how =
-      let _seen, how1 = List.fold_left (dec env top_lvl) (S.empty, how) decs in
+      let _seen, how1 = List.fold_left (dec env lvl) (S.empty, how) decs in
       if M.equal (=) how how1 then how else go how1 in
     go M.empty
 
@@ -3759,7 +3759,7 @@ module FuncDec = struct
   let compile_static_message env cc args mk_body at : E.func_with_names =
     let arg_names = List.map (fun a -> a.it, I32Type) args in
     assert (cc.Value.n_res = 0);
-    (* Messages take no closure, return nothing*)
+    (* Messages take no closure, return nothing *)
     Func.of_body env arg_names [] (fun env1 ->
       (* Set up memory *)
       OrthogonalPersistence.restore_mem env ^^
@@ -3791,13 +3791,13 @@ module FuncDec = struct
         ) args
       )
 
-  (* Compile a closed message declaration (captures no variables variables) *)
+  (* Compile a closed message declaration (captures no local variables) *)
   let closed_message pre_env cc name args mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name in
       declare_dfinity_type pre_env false fi args;
       ( SR.StaticMessage fi, fun env -> fill (compile_static_message env cc args mk_body at))
 
-  (* Compile a closed function declaration (captures no variables variables) *)
+  (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env cc name args mk_body at =
       let (fi, fill) = E.reserve_fun pre_env name in
       ( SR.StaticFun fi, fun env ->
@@ -4746,8 +4746,8 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
         Var.set_val env name.it
       )
 
-and compile_decs env top_lvl decs : E.t * G.t =
-  let how = AllocHow.decs env top_lvl decs in
+and compile_decs env lvl decs : E.t * G.t =
+  let how = AllocHow.decs env lvl decs in
   let rec go pre_env decs = match decs with
     | []          -> (pre_env, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec pre_env how dec
