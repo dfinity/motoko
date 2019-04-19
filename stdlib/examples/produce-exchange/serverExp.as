@@ -37,7 +37,7 @@ type AddReq = {
 /**
  EntId
  --------------------------------------
- An entity's ID; the response of bulk server population
+ An entity's ID; the response of an `Add` request
 */
 type EntId = {
   #user        : UserId ;
