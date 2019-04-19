@@ -628,13 +628,12 @@ and interpret_func env at x args f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope ((ds, exp), _flavor) : V.value option * scope =
+let interpret_prog scope ((ds, exp), _flavor) : scope =
   let env = env_of_scope scope in
   trace_depth := 0;
-  let vo = ref None in
   let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env (Some ve) ds exp  (fun v -> vo := Some v)
+    interpret_block env (Some ve) ds exp  (fun v -> ())
   );
   Scheduler.run ();
-  !vo, !ve
+  !ve

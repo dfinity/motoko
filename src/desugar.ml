@@ -4,6 +4,16 @@ module I = Ir
 module T = Type
 open Construct
 
+(*
+As a first scaffolding, we translate imported files into let-bound
+variables with a special, non-colliding name, which we sometimes
+want to recognize for better user experience.
+*)
+
+let id_of_full_path (fp : string) : Syntax.id =
+  let open Source in
+  ("file$" ^ fp) @@ no_region
+
 (* Combinators used in the desguaring *)
 
 let trueE : Ir.exp = boolE true
@@ -86,7 +96,7 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, fp) ->
     if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (Syntax.id_of_full_path !fp)
+    I.VarE (id_of_full_path !fp)
 
 and obj at s self_id es obj_typ =
   match s.it with
@@ -314,7 +324,48 @@ and prog (p : Syntax.prog) : Ir.prog =
     ; I.serialized = false
     }
 
-(* validation *)
+let declare_import imp_env (f, (prog:Syntax.prog))  =
+  let open Source in
+  let t = Type.Env.find f imp_env in
+  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
+  match prog.it with
+  |  [{it = Syntax.ExpD _;_}] ->
+     { it = Syntax.LetD
+              ( { it = Syntax.VarP (id_of_full_path f)
+                ; at = no_region
+                ; note = t
+                }
+              , { it = Syntax.BlockE prog.it
+                ; at = no_region
+                ; note = typ_note
+                }
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
+  |  ds ->
+     { it = Syntax.ModuleD
+              (  id_of_full_path f
+               , ds
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
 
-let transform scope p = prog p
+
+let combine_files imp_env libraries progs : Syntax.prog =
+  (* This is a hack until the backend has explicit support for libraries *)
+  let open Source in
+  { it = List.map (declare_import imp_env) libraries
+    @ List.concat (List.map (fun p -> p.it) progs)
+  ; at = no_region
+  ; note = match progs with
+    | [prog] -> prog.Source.note
+    | _ -> "all"
+  }
+
+let transform p = prog p
+
+let transform_graph imp_env libraries progs =
+  prog (combine_files imp_env libraries progs)
 

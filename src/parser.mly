@@ -138,8 +138,8 @@ let share_expfield (ef : exp_field) =
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
-%start<Syntax.prog> parse_prog
-%start<Syntax.prog> parse_prog_interactive
+%start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -624,9 +624,11 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+  | ds=seplist(dec, semicolon) EOF
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
+  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 %%

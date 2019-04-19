@@ -179,4 +179,4 @@ and dec d = match d.it with
   | ModuleD (i,ds) ->
     "ModuleD" $$  [id i] @ List.map dec ds
 
-and prog prog = "BlockE"  $$ List.map dec prog.it
+and prog prog = "Prog"  $$ List.map dec prog.it

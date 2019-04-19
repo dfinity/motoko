@@ -6,7 +6,7 @@ then
   exit 1
 fi
 
-name="$(basename $1 .wasm)_0"
+name="$(basename $1 .wasm)"
 DVM_TMP=$(mktemp --directory --tmpdir dvm-XXXXXX)
 trap 'rm -rf $DVM_TMP' EXIT
 
@@ -23,7 +23,7 @@ function dvm_ () {
 }
 
 dvm_ -q --db $DVM_TMP reset
-dvm_ -q --db $DVM_TMP new $1
+dvm_ -q --db $DVM_TMP new $1 -a $name
 dvm_ -q --db $DVM_TMP run $name start
 
 if [ -n "$2" ]

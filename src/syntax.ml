@@ -196,9 +196,13 @@ and dec' =
 
 (* Program *)
 
-type prog = prog' Source.phrase
+type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
+(* Libraries *)
+
+type library = string * prog
+type libraries = library list
 
 (* n-ary arguments/result sequences *)
 
@@ -231,16 +235,4 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_string f
   | PreLit _      -> assert false
-
-
-(*
-As a first scaffolding, we translate imported files into let-bound
-variables with a special, non-colliding name, which we sometimes
-want to recognize for better user experience.
-*)
-let is_import_id s =
-  String.length s > 5 && String.sub s 0 5 = "file$"
-let id_of_full_path (fp : string) : id =
-  let open Source in
-  ("file$" ^ fp) @@ no_region
 
