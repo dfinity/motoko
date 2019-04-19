@@ -23,38 +23,38 @@ actor class Test() = this {
 
 
       // populate with truck types
-      let tta = await s.registrarAddTruckType(pk, "tta", "", 10, false, false);
-      let ttb = await s.registrarAddTruckType(pk, "ttb", "", 20, false, false);
-      let ttc = await s.registrarAddTruckType(pk, "ttc", "", 10, true, false);
-      let ttd = await s.registrarAddTruckType(pk, "ttd", "", 30, true, false);
-      let tte = await s.registrarAddTruckType(pk, "tte", "", 50, false, true);
+      let tta = await s.registrarAddTruckType("tta", "", 10, false, false);
+      let ttb = await s.registrarAddTruckType("ttb", "", 20, false, false);
+      let ttc = await s.registrarAddTruckType("ttc", "", 10, true, false);
+      let ttd = await s.registrarAddTruckType("ttd", "", 30, true, false);
+      let tte = await s.registrarAddTruckType("tte", "", 50, false, true);
 
       printEntityCount("Truck type", (await s.getCounts()).truck_type_count);
 
       // populate with regions
-      let rega = await s.registrarAddRegion(pk, "rega", "");
-      let regb = await s.registrarAddRegion(pk, "regb", "");
-      let regc = await s.registrarAddRegion(pk, "regc", "");
-      let regd = await s.registrarAddRegion(pk, "regd", "");
-      let rege = await s.registrarAddRegion(pk, "rege", "");
+      let rega = await s.registrarAddRegion("rega", "");
+      let regb = await s.registrarAddRegion("regb", "");
+      let regc = await s.registrarAddRegion("regc", "");
+      let regd = await s.registrarAddRegion("regd", "");
+      let rege = await s.registrarAddRegion("rege", "");
 
       printEntityCount("Region", (await s.getCounts()).region_count);
 
-      // register user
+      // populate with produce
+      let pea = await s.registrarAddProduce("avocado1", "avocado", 1);
+      let peb = await s.registrarAddProduce("avocado2", "avocado avocado", 2);
+      let pec = await s.registrarAddProduce("avocado3", "avocado avocado avocado", 3);
+      let ped = await s.registrarAddProduce("avocado4", "avocado avocado avocado avocado", 4);
+      let pee = await s.registrarAddProduce("avocado5", "avocado avocado avocado avocado avocado", 5);
+
+      printEntityCount("Produce", (await s.getCounts()).produce_count);
+
+      // register all users
       let uida = await s.registrarAddUser(pk, "usera", "", unwrap<RegionId>rega, true, true, true, true);
       let uidb = await s.registrarAddUser(pk, "userb", "", unwrap<RegionId>regb, true, true, true, true);
       let uidc = await s.registrarAddUser(pk, "userc", "", unwrap<RegionId>regc, true, true, true, true);
       let uidd = await s.registrarAddUser(pk, "userd", "", unwrap<RegionId>regd, true, true, true, true);
       let uide = await s.registrarAddUser(pk, "usere", "", unwrap<RegionId>rege, true, true, true, true);
-
-      // populate with produce
-      let pea = await s.registrarAddProduce(pk, "avocado1", "avocado", 1);
-      let peb = await s.registrarAddProduce(pk, "avocado2", "avocado avocado", 2);
-      let pec = await s.registrarAddProduce(pk, "avocado3", "avocado avocado avocado", 3);
-      let ped = await s.registrarAddProduce(pk, "avocado4", "avocado avocado avocado avocado", 4);
-      let pee = await s.registrarAddProduce(pk, "avocado5", "avocado avocado avocado avocado avocado", 5);
-
-      printEntityCount("Produce", (await s.getCounts()).produce_count);
 
       // populate with producers
       // let pra = await s.registrarAddProducer(pk, "pra", "", unwrap<RegionId>(rega) );
@@ -285,7 +285,7 @@ actor class Test() = this {
         unwrap<TruckTypeId>(ttc)
       );
 
-      printEntityCount("Route", (await s.getCounts()).route_count);
+      printEntityCount("Route@time1", (await s.getCounts()).route_count);
 
       ////////////////////////////////////////////////////////////////////////////////////
 
@@ -305,7 +305,7 @@ actor class Test() = this {
       // a double-remove should return null
       assertNull<()>(await s.transporterRemRoute(pk, unwrap<RouteId>(rtc_c_e_tta)));
 
-      printEntityCount("Route@time2", (await s.getCounts()).route_count);
+      printEntityCount("Route@time3", (await s.getCounts()).route_count);
 
       //////////////////////////////////////////////////////////////////
 
@@ -332,7 +332,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      await s.registrarAddProduce(pk2, "avocado?", "avocado", 1);
+      await s.registrarAddProduce("avocado?", "avocado", 1);
     })
   };
 };

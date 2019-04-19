@@ -110,7 +110,6 @@ actor server = {
    */
 
   registrarAddTruckType(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     capacity_ : Weight,
@@ -144,7 +143,6 @@ actor server = {
    */
 
   registrarRemTruckType(
-    public_key: PublicKey,
     id: TruckTypeId
   ) : async ?() {
     getModel().truckTypeTable.remGetUnit(id)
@@ -186,7 +184,6 @@ actor server = {
    */
 
   registrarAddRegion(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async ?RegionId {
@@ -207,7 +204,6 @@ actor server = {
    */
 
   registrarRemRegion(
-    public_key: PublicKey,
     id: RegionId
   ) : async ?() {
     getModel().regionTable.remGetUnit(id)
@@ -256,7 +252,6 @@ actor server = {
    */
 
   registrarAddProduce(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     grade_: Grade,
@@ -279,7 +274,6 @@ actor server = {
    */
 
   registrarRemProduce(
-    public_key: PublicKey,
     id: ProduceId
   ) : async ?() {
     getModel().produceTable.remGetUnit(id)
@@ -321,7 +315,6 @@ actor server = {
    */
 
   registrarAddProducer(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -347,7 +340,6 @@ actor server = {
    */
 
   registrarRemProducer(
-    public_key: PublicKey,
     id: ProducerId
   ) : async ?() {
     getModel().producerTable.remGetUnit(id)
@@ -390,7 +382,6 @@ actor server = {
    */
 
   registrarAddRetailer(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -414,7 +405,6 @@ actor server = {
    */
 
   registrarRemRetailer(
-    public_key: PublicKey,
     id: RetailerId
   ) : async ?() {
     getModel().retailerTable.remGetUnit(id)
@@ -426,7 +416,6 @@ actor server = {
    */
 
   getRetailerInfo(
-    public_key: PublicKey,
     id: RetailerId
   ) : async ?RetailerInfo {
     getModel().retailerTable.getInfo(id)
@@ -454,7 +443,6 @@ actor server = {
 
    */
   registrarAddTransporter(
-    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async ?TransporterId {
@@ -478,7 +466,6 @@ actor server = {
    */
 
   registrarRemTransporter(
-    public_key: PublicKey,
     id: TransporterId
   ) : async ?() {
     getModel().transporterTable.remGetUnit(id)
@@ -490,7 +477,6 @@ actor server = {
    */
 
   getTransporterInfo(
-    public_key: PublicKey,
     id: TransporterId
   ) : async ?TransporterInfo {
     getModel().transporterTable.getInfo(id)

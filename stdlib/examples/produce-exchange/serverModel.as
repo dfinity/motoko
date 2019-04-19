@@ -1035,6 +1035,7 @@ than the MVP goals, however.
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
       case _ { return null };
       }};
+    let transporterId = transporter.id;
 
     assert(isValidUser(public_key, transporter.short_name));
 
@@ -1043,7 +1044,7 @@ than the MVP goals, however.
       switch (routeTable.addInfoAs(rid_, func(routeId:RouteId):RouteInfo{
         shared {
         id= routeId;
-        transporter=id_;
+        transporter=transporterId;
         truck_type=truck_type_;
         start_date=start_date_;
         end_date=end_date_;
@@ -1357,6 +1358,18 @@ than the MVP goals, however.
       case (?x) { x }};
 
     assert(isValidUser(public_key, retailer.short_name));
+
+    debug "- user_name: ";
+    debug (retailer.short_name);
+    debug ", public_key: ";
+    debug (public_key);
+    debug "\n";
+
+    /** - Temp: */
+    debug "- retailer is located in region ";
+    debugInt (retailer.region.id);
+    debug ", and\n- is accessible via routes from ";
+
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
       switch (Trie.find<RegionId, ByRegionRouteMap>(
@@ -1367,10 +1380,6 @@ than the MVP goals, however.
       case (null) { return null };
       case (?x) { x }};
 
-    /** - Temp: */
-    debug "- retailer is located in region ";
-    debugInt (retailer.region.id);
-    debug ", and\n- is accessible via routes from ";
     debugInt(Trie.count<RegionId, RouteMap>(retailerRoutes));
     debug " production regions.\n";
 
