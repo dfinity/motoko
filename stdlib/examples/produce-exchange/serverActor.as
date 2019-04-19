@@ -6,6 +6,35 @@
 
 actor server = {
 
+  // xxx these array/async combinators should go into a stdlib library (an stdlib Array "actor class", or what?)
+
+  /**
+   arrayTabulateAsync
+   -------------------
+   */
+
+  // matthew/xxx -- can't seem to make this parametric;
+  // Q; how do I say that I have "any shared type" here; is it possible?
+  arrayTabulateAsync(n:Nat, f:shared Nat -> async Nat) : async [Nat] = async {
+    let a = Array_init<?Nat>(n,null);
+    for (i in (range(0,n))) {
+      let x = await f(i);
+      a[i] := ?x;
+    };
+    Array_tabulate<Nat>(n,func(i:Nat):Nat{unwrap<Nat>(a[i])})
+  };
+
+  /**
+   arrayMapAsync
+   -------------------
+   */
+
+  // matthew/xxx -- can't seem to make this parametric;
+  // Q; how do I say that I have "any shared type" here; is it possible?
+  arrayMapAsync(a:[Nat], f:shared Nat -> async Nat) : async [Nat] = async {
+    await arrayTabulateAsync(a.len(), shared func (i:Nat):async Nat = async { await f(a[i]) })
+  };
+
 /**
  Server Actor
  =======================================
