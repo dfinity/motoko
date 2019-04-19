@@ -602,8 +602,8 @@ than the MVP goals, however.
 
    */
   addUser(
-    user_name_: Text,
     public_key_: PublicKey,
+    user_name_: Text,
     description_: Text,
     region_: RegionId,
     isDeveloper_: Bool,
@@ -703,6 +703,29 @@ than the MVP goals, however.
     }
   };
 
+  producerFromUserId(id: UserId): ?ProducerDoc = fmap<UserDoc, ProducerDoc>(
+    userTable.getDoc(id),
+    func (u: UserDoc): ?ProducerDoc = fmap<ProducerId, ProducerDoc>(
+      u.producerId,
+      func (i: ProducerId): ?ProducerDoc = producerTable.getDoc(i)
+    )
+  );
+
+  transporterFromUserId(id: UserId): ?TransporterDoc = fmap<UserDoc, TransporterDoc>(
+    userTable.getDoc(id),
+    func (u: UserDoc): ?TransporterDoc = fmap<TransporterId, TransporterDoc>(
+      u.transporterId,
+      func (i: TransporterId): ?TransporterDoc = transporterTable.getDoc(i)
+    )
+  );
+
+  retailerFromUserId(id: UserId): ?RetailerDoc = fmap<UserDoc, RetailerDoc>(
+    userTable.getDoc(id),
+    func (u: UserDoc): ?RetailerDoc = fmap<RetailerId, RetailerDoc>(
+      u.retailerId,
+      func (i: RetailerId): ?RetailerDoc = retailerTable.getDoc(i)
+    )
+  );
 
   /**
 
@@ -737,8 +760,8 @@ than the MVP goals, however.
    // `producerAllInventoryInfo`
    // ---------------------------
    */
-  producerAllInventoryInfo(public_key: PublicKey, id:ProducerId) : ?[InventoryInfo] {
-    let doc = switch (producerTable.getDoc(id)) {
+  producerAllInventoryInfo(public_key: PublicKey, id:UserId) : ?[InventoryInfo] {
+    let doc = switch (producerFromUserId(id)) {
       case null { return null };
       case (?doc) { doc };
     };
@@ -760,7 +783,7 @@ than the MVP goals, however.
   producerAddInventory(
     public_key : Text,
     iid_       : ?InventoryId,
-    id_        : ProducerId,
+    id_        : UserId,
     produce_id : ProduceId,
     quantity_  : Quantity,
     weight_    : Weight,
@@ -773,7 +796,7 @@ than the MVP goals, however.
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
+    let oproducer: ?ProducerDoc = producerFromUserId(id_);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
@@ -845,7 +868,7 @@ than the MVP goals, however.
   producerUpdateInventory(
     public_key : Text,
     iid_       : InventoryId,
-    id_        : ProducerId,
+    id_        : UserId,
     produce_id : ProduceId,
     quantity_  : Quantity,
     weight_    : Weight,
@@ -856,7 +879,7 @@ than the MVP goals, however.
   ) : ?()
   {
     /**- Validate these ids; fail here if anything is invalid: */
-    let oproducer : ?ProducerDoc = producerTable.getDoc(id_);
+    let oproducer: ?ProducerDoc = producerFromUserId(id_);
     let oinventory : ?InventoryDoc = inventoryTable.getDoc(iid_);
     let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
     let (inventory_, producer_, produce_) = {
@@ -958,8 +981,8 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerReservations(public_key: PublicKey, id:ProducerId) : ?[ReservedInventoryInfo] {
-    let doc = switch (producerTable.getDoc(id)) {
+  producerReservations(public_key: PublicKey, id:UserId) : ?[ReservedInventoryInfo] {
+    let doc = switch (producerFromUserId(id)) {
       case null { return null };
       case (?doc) { doc };
     };
@@ -992,7 +1015,7 @@ than the MVP goals, however.
   transporterAddRoute(
     public_key:      Text,
     rid_:            ?RouteId,
-    id_:             TransporterId,
+    id_:             UserId,
     start_region_id: RegionId,
     end_region_id:   RegionId,
     start_date_:     Date,
@@ -1003,7 +1026,7 @@ than the MVP goals, however.
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let otransporter : ?TransporterDoc = transporterTable.getDoc(id_);
+    let otransporter : ?TransporterDoc = transporterFromUserId(id_);
     let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
     let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
     let otrucktype   : ?TruckTypeInfo  = truckTypeTable.getInfo(trucktype_id);
@@ -1075,7 +1098,7 @@ than the MVP goals, however.
   transporterUpdateRoute(
     public_key      : Text,
     rid_            : RouteId,
-    id_             : TransporterId,
+    id_             : UserId,
     start_region_id : RegionId,
     end_region_id   : RegionId,
     start_date_     : Date,
@@ -1087,7 +1110,7 @@ than the MVP goals, however.
 
     /**- Validate these ids; fail fast if not defined: */
     let oroute       : ?RouteDoc   = routeTable.getDoc(rid_);
-    let otransporter : ?TransporterDoc = transporterTable.getDoc(id_);
+    let otransporter : ?TransporterDoc = transporterFromUserId(id_);
     let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
     let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
     let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
@@ -1185,8 +1208,8 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: PublicKey, id:RouteId) : ?[RouteInfo] {
-    let doc = switch (transporterTable.getDoc(id)) {
+  transporterAllRouteInfo(public_key: PublicKey, id:UserId) : ?[RouteInfo] {
+    let doc = switch (transporterFromUserId(id)) {
       case null { return null };
       case (?doc) { doc };
     };
@@ -1210,8 +1233,8 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  transporterAllReservationInfo(public_key: PublicKey, id:TransporterId) : ?[ReservedRouteInfo] {
-    let doc = switch (transporterTable.getDoc(id)) {
+  transporterAllReservationInfo(public_key: PublicKey, id:UserId) : ?[ReservedRouteInfo] {
+    let doc = switch (transporterFromUserId(id)) {
       case null { return null };
       case (?doc) { doc };
     };
@@ -1324,17 +1347,16 @@ than the MVP goals, however.
    - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
-  retailerQueryAll(public_key: PublicKey, id:RetailerId) : ?QueryAllResults {
+  retailerQueryAll(public_key: PublicKey, id:UserId) : ?QueryAllResults {
     retailerQueryCount += 1;
 
     /** - Find the retailer's document: */
     let retailer =
-      switch (retailerTable.getDoc(id)) {
+      switch (retailerFromUserId(id)) {
       case (null) { return null };
       case (?x) { x }};
 
     assert(isValidUser(public_key, retailer.short_name));
-
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
       switch (Trie.find<RegionId, ByRegionRouteMap>(
@@ -1426,11 +1448,11 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  retailerAllReservationInfo(public_key: PublicKey, id:RetailerId) :
+  retailerAllReservationInfo(public_key: PublicKey, id:UserId) :
     ?[(ReservedInventoryInfo,
        ReservedRouteInfo)]
   {
-    let doc = switch (retailerTable.getDoc(id)) {
+    let doc = switch (retailerFromUserId(id)) {
       case null { return null };
       case (?doc) { doc };
     };
@@ -1472,7 +1494,7 @@ than the MVP goals, however.
    */
   retailerQueryDates(
     public_key: PublicKey,
-    id:RetailerId,
+    id:UserId,
     begin:Date,
     end:Date
   ) : ?[InventoryInfo]
@@ -1488,7 +1510,7 @@ than the MVP goals, however.
   */
   retailerReserve(
     public_key: PublicKey,
-    id:RetailerId,
+    id:UserId,
     inventory:InventoryId,
     route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
   {

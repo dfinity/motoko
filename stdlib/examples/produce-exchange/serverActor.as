@@ -56,7 +56,7 @@ actor server = {
  */
 
   registrarAddUser(
-    public_key: Text,
+    public_key: PublicKey,
     user_name: Text,
     description: Text,
     region: RegionId,
@@ -66,8 +66,8 @@ actor server = {
     isTransporter: Bool
   ) : async ?UserId {
     getModel().addUser(
-      user_name,
       public_key,
+      user_name,
       description,
       region,
       isDeveloper,
@@ -110,7 +110,7 @@ actor server = {
    */
 
   registrarAddTruckType(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     capacity_ : Weight,
@@ -144,7 +144,7 @@ actor server = {
    */
 
   registrarRemTruckType(
-    public_key: Text,
+    public_key: PublicKey,
     id: TruckTypeId
   ) : async ?() {
     getModel().truckTypeTable.remGetUnit(id)
@@ -186,7 +186,7 @@ actor server = {
    */
 
   registrarAddRegion(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async ?RegionId {
@@ -207,7 +207,7 @@ actor server = {
    */
 
   registrarRemRegion(
-    public_key: Text,
+    public_key: PublicKey,
     id: RegionId
   ) : async ?() {
     getModel().regionTable.remGetUnit(id)
@@ -256,7 +256,7 @@ actor server = {
    */
 
   registrarAddProduce(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     grade_: Grade,
@@ -279,7 +279,7 @@ actor server = {
    */
 
   registrarRemProduce(
-    public_key: Text,
+    public_key: PublicKey,
     id: ProduceId
   ) : async ?() {
     getModel().produceTable.remGetUnit(id)
@@ -321,7 +321,7 @@ actor server = {
    */
 
   registrarAddProducer(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -347,7 +347,7 @@ actor server = {
    */
 
   registrarRemProducer(
-    public_key: Text,
+    public_key: PublicKey,
     id: ProducerId
   ) : async ?() {
     getModel().producerTable.remGetUnit(id)
@@ -390,7 +390,7 @@ actor server = {
    */
 
   registrarAddRetailer(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -414,7 +414,7 @@ actor server = {
    */
 
   registrarRemRetailer(
-    public_key: Text,
+    public_key: PublicKey,
     id: RetailerId
   ) : async ?() {
     getModel().retailerTable.remGetUnit(id)
@@ -426,7 +426,7 @@ actor server = {
    */
 
   getRetailerInfo(
-    public_key: Text,
+    public_key: PublicKey,
     id: RetailerId
   ) : async ?RetailerInfo {
     getModel().retailerTable.getInfo(id)
@@ -454,7 +454,7 @@ actor server = {
 
    */
   registrarAddTransporter(
-    public_key: Text,
+    public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async ?TransporterId {
@@ -478,7 +478,7 @@ actor server = {
    */
 
   registrarRemTransporter(
-    public_key: Text,
+    public_key: PublicKey,
     id: TransporterId
   ) : async ?() {
     getModel().transporterTable.remGetUnit(id)
@@ -490,7 +490,7 @@ actor server = {
    */
 
   getTransporterInfo(
-    public_key: Text,
+    public_key: PublicKey,
     id: TransporterId
   ) : async ?TransporterInfo {
     getModel().transporterTable.getInfo(id)
@@ -519,8 +519,8 @@ actor server = {
    See also [Model.producerAddInventory]($DOCURL/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
    */
   producerAddInventory(
-    public_key: Text,
-    id:   ProducerId,
+    public_key: PublicKey,
+    id:   UserId,
     prod: ProduceId,
     quant:Quantity,
     weight:Weight,
@@ -540,9 +540,9 @@ actor server = {
 
    */
   producerUpdateInventory(
-    public_key: Text,
+    public_key: PublicKey,
     iid:  InventoryId,
-    id:   ProducerId,
+    id:   UserId,
     prod: ProduceId,
     quant:Quantity,
     weight:Weight,
@@ -560,7 +560,7 @@ actor server = {
    `producerRemInventory`
    ---------------------------
    */
-  producerRemInventory(public_key: Text, id:InventoryId) : async ?() {
+  producerRemInventory(public_key: PublicKey, id:InventoryId) : async ?() {
     getModel()
       .producerRemInventory(public_key, id)
   };
@@ -569,7 +569,7 @@ actor server = {
    `producerAllInventoryInfo`
    ---------------------------
    */
-  producerAllInventoryInfo(public_key: Text, id:ProducerId) : async ?[InventoryInfo] {
+  producerAllInventoryInfo(public_key: PublicKey, id:UserId) : async ?[InventoryInfo] {
     getModel()
       .producerAllInventoryInfo(public_key, id)
   };
@@ -578,7 +578,7 @@ actor server = {
    `producerReservations`
    ---------------------------
    */
-  producerReservations(public_key: Text, id:ProducerId) : async ?[ReservedInventoryInfo] {
+  producerReservations(public_key: PublicKey, id:UserId) : async ?[ReservedInventoryInfo] {
     getModel()
       .producerReservations(public_key, id)
   };
@@ -596,7 +596,7 @@ actor server = {
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(public_key: Text, id:ProduceId, reg:?RegionId) : async ?[ProduceMarketInfo] {
+  produceMarketInfo(public_key: PublicKey, id:ProduceId, reg:?RegionId) : async ?[ProduceMarketInfo] {
     getModel()
       .produceMarketInfo(public_key, id, reg)
   };
@@ -633,8 +633,8 @@ actor server = {
    ---------------------------
    */
   transporterAddRoute(
-    public_key: Text,
-    trans:  TransporterId,
+    public_key: PublicKey,
+    id:  UserId,
     rstart: RegionId,
     rend:   RegionId,
     start:  Date,
@@ -642,7 +642,7 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async ?RouteId {
-    getModel().transporterAddRoute(public_key, null, trans, rstart, rend, start, end, cost, ttid)
+    getModel().transporterAddRoute(public_key, null, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -650,9 +650,9 @@ actor server = {
    ---------------------------
    */
   transporterUpdateRoute(
-    public_key: Text,
+    public_key: PublicKey,
     route:  RouteId,
-    trans:  TransporterId,
+    id:  UserId,
     rstart: RegionId,
     rend:   RegionId,
     start:  Date,
@@ -660,14 +660,14 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async ?() {
-    getModel().transporterUpdateRoute(public_key, route, trans, rstart, rend, start, end, cost, ttid)
+    getModel().transporterUpdateRoute(public_key, route, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
    `transporterRemRoute`
    ---------------------------
    */
-  transporterRemRoute(public_key: Text, id:RouteId) : async ?() {
+  transporterRemRoute(public_key: PublicKey, id:RouteId) : async ?() {
     getModel()
       .transporterRemRoute(public_key, id)
   };
@@ -676,7 +676,7 @@ actor server = {
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: Text, id:TransporterId) : async ?[RouteInfo] {
+  transporterAllRouteInfo(public_key: PublicKey, id:UserId) : async ?[RouteInfo] {
     getModel()
       .transporterAllRouteInfo(public_key, id)
   };
@@ -685,7 +685,7 @@ actor server = {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  transporterAllReservationInfo(public_key: Text, id:TransporterId) : async ?[ReservedRouteInfo] {
+  transporterAllReservationInfo(public_key: PublicKey, id:UserId) : async ?[ReservedRouteInfo] {
     getModel()
       .transporterAllReservationInfo(public_key, id)
   };
@@ -724,7 +724,7 @@ actor server = {
    TODO-Cursors (see above).
 
    */
-  retailerQueryAll(public_key: Text, id:RetailerId) : async ?QueryAllResults {
+  retailerQueryAll(public_key: PublicKey, id:UserId) : async ?QueryAllResults {
     getModel().
       retailerQueryAll(public_key, id)
   };
@@ -739,8 +739,8 @@ actor server = {
 
    */
   retailerQueryDates(
-    public_key: Text,
-    id:RetailerId,
+    public_key: PublicKey,
+    id:UserId,
     begin:Date,
     end:Date
   ) : async ?[InventoryInfo]
@@ -754,8 +754,8 @@ actor server = {
    ---------------------------
    */
   retailerReserve(
-    public_key: Text,
-    id:RetailerId,
+    public_key: PublicKey,
+    id:UserId,
     inventory:InventoryId,
     route:RouteId) : async ?(ReservedInventoryId, ReservedRouteId)
   {
@@ -770,7 +770,7 @@ actor server = {
    TODO-Cursors (see above).
 
    */
-  retailerReservations(public_key: Text, id:RetailerId) :
+  retailerReservations(public_key: PublicKey, id:UserId) :
     async ?[(ReservedInventoryInfo,
              ReservedRouteInfo)]
   {
