@@ -38,6 +38,7 @@ let argspec = Arg.align
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
+  "-ds", Arg.Set Flags.dump_skeleton, " dump skeleton of (linked) program";
   "-o", Arg.Set_string out_file, " output file";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";

@@ -179,15 +179,28 @@ let declare_import (f, (prog:Syntax.prog)) =
      }
 
 
+
+
 let combine_files imports progs : Syntax.prog =
-    let open Source in
+   let open Source in
     ( List.map declare_import imports
       @ List.concat (List.map (fun p -> p.it) progs)
     ) @@ no_region
 
+let dump_skeleton imports progs =
+  let imports =
+    List.map (fun (f,prog) ->
+        match prog.Source.it with
+        |  [ {Source.it = Syntax.ExpD _;_} ] ->
+           (f, prog)
+        |  ds -> (f,{ prog with Source.it = []})) imports in
+  let progs = [] in
+  let skel =  combine_files imports progs in
+  dump_prog (Flags.dump_skeleton) skel
+
 let check_with parse infer senv name : check_result =
-  Diag.bind parse (fun parse_result ->
-    Diag.bind (load_imports parse_result) (fun (imports, progs) ->
+  Diag.bind parse (fun parse_result -> Diag.bind (load_imports parse_result) (fun (imports, progs) ->
+      dump_skeleton imports progs;
       let prog = combine_files imports progs in
       Diag.map_result (fun (t, scope) -> (prog, t, scope))
         (check_prog infer senv name prog)

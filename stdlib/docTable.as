@@ -21,10 +21,17 @@ type information.
 
 */
 
+
+
+
+
+
 let P = import "prelude.as";
+let List = import "list.as";
 let AssocList = import "assocList.as";
-let Trie = import "trie.as";
 let Hash = import "hash.as";
+let Trie = import "trie.as";
+
 /**
  Representation
  ================
@@ -47,7 +54,7 @@ let Hash = import "hash.as";
 
  */
 type Table<Id, Doc> = Trie.Trie<Id, Doc>;
-let Table = Trie;
+
 
 /**
 
@@ -95,6 +102,7 @@ class DocTable<Id,Doc,Info>(
   docOfInfo:Info->?Doc
 ) = this {
 
+  private let Table = Trie;
 /**
  Public interface
  ===============================
