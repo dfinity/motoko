@@ -49,7 +49,7 @@ actor server = {
  add an array of requested entities, in bulk.
  */
 
-  registrarAddEnts(reqs:[Req]) : async ?[EntId] {
+  registrarAddEnts(addReqs:[AddReq]) : async ?[EntId] {
     nyi()
   };
 

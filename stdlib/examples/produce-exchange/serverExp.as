@@ -14,15 +14,24 @@
  a server request, as an AS datatype
 */
 type Req = {
-  #addUser        : UserInfo ;
-  #addTruckType   : TruckTypeInfo ;
-  #addRegion      : RegionInfo ;
-  #addProduce     : ProduceInfo ;
-  #addProducer    : ProducerInfo ;
-  #addRetailer    : RetailerInfo ;
-  #addTransporter : TransporterInfo ;
-  #addInventory   : InventoryInfo ;
-  #addRoute       : RouteInfo ;
+  #add : AddReq ;
+} ;
+
+/**
+ AddReq
+ --------------------------------------
+ a server `Add` request, as an AS datatype
+*/
+type AddReq = {
+  #user        : UserInfo ;
+  #truckType   : TruckTypeInfo ;
+  #region      : RegionInfo ;
+  #produce     : ProduceInfo ;
+  #producer    : ProducerInfo ;
+  #retailer    : RetailerInfo ;
+  #transporter : TransporterInfo ;
+  #inventory   : InventoryInfo ;
+  #route       : RouteInfo ;
 } ;
 
 /**
