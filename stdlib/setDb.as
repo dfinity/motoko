@@ -5,12 +5,11 @@
 
  */
 
-import "set.as";
+let Set = import "set.as";
 
-let SetDb = new {
 
-  private func setDbPrint(s:Set<Nat>) {
-    func rec(s:Set<Nat>, ind:Nat, bits:BitList) {
+  /* private */ func setDbPrint(s:Set.Set<Nat>) {
+    func rec(s:Set.Set<Nat>, ind:Nat, bits:BitList) {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
@@ -56,9 +55,9 @@ let SetDb = new {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  private func natEq(n:Nat,m:Nat):Bool{ n == m};
+  /* private */ func natEq(n:Nat,m:Nat):Bool{ n == m};
 
-  func insert(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
+  func insert(s:Set.Set<Nat>, x:Nat, xh:Hash):Set.Set<Nat> = {
     print "  setInsert(";
     printInt x;
     print ")";
@@ -68,7 +67,7 @@ let SetDb = new {
     r
   };
 
-  func mem(s:Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
+  func mem(s:Set.Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
     print "  setMem(";
     print sname;
     print ", ";
@@ -80,7 +79,7 @@ let SetDb = new {
     b
   };
 
-  func union(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
+  func union(s1:Set.Set<Nat>, s1name:Text, s2:Set.Set<Nat>, s2name:Text):Set.Set<Nat> = {
     print "  setUnion(";
     print s1name;
     print ", ";
@@ -97,7 +96,7 @@ let SetDb = new {
     r1
   };
 
-  func intersect(s1:Set<Nat>, s1name:Text, s2:Set<Nat>, s2name:Text):Set<Nat> = {
+  func intersect(s1:Set.Set<Nat>, s1name:Text, s2:Set.Set<Nat>, s2name:Text):Set.Set<Nat> = {
     print "  setIntersect(";
     print s1name;
     print ", ";
@@ -109,4 +108,4 @@ let SetDb = new {
     r
   };
 
-};
+

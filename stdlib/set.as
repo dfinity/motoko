@@ -18,16 +18,16 @@
 
 */
 
-import "trie.as";
+let Hash = import "hash.as";
+let Trie = import "trie.as";
 
-type Set<T> = Trie<T,()>;
 
-let Set = new {
+type Set<T> = Trie.Trie<T,()>;
 
   func empty<T>():Set<T> =
     Trie.empty<T,()>();
 
-  func insert<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+  func insert<T>(s:Set<T>, x:T, xh:Hash.Hash, eq:(T,T)->Bool) : Set<T> = {
     let (s2, _) = Trie.insert<T,()>(s, new {key=x; hash=xh}, eq, ());
     s2
   };
@@ -75,4 +75,4 @@ let Set = new {
 
   func unitEq (_:(),_:()):Bool{ true };
 
-};
+

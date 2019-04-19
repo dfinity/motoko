@@ -5,7 +5,7 @@
 
  */
 
-import "setDb.as";
+let SetDB = import "setDb.as";
 
 func SetDb__test() {
 
