@@ -121,6 +121,8 @@ actor server = {
   - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
  */
   evalBulk(req:[BulkReq]) : async ?[BulkResp] {
+    // xxx would like to write this, but can't until I have a more polymorphic version of the type for `arrayMapAsync` above.
+    // arrayMapAsync(req, evalRep)
     nyi()
   };
 
