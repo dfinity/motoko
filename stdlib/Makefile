@@ -16,7 +16,8 @@ MODULES=\
 	Set \
 	SetDb \
 	SetDbTest \
-	ProduceExchange \
+	ProduceExchangeTest1 \
+	ProduceExchangeTest2 \
 
 WASM=\
   ProduceExchange
@@ -137,8 +138,12 @@ PRODUCE_EXCHANGE_SRC=\
 	examples/produce-exchange/serverModel.as \
 	examples/produce-exchange/serverActor.as \
 
-$(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
+$(OUTDIR)/ProduceExchangeTest1.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/ProduceExchangeTest2.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/simpleUniformDistros.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
