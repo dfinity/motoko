@@ -1377,7 +1377,7 @@ than the MVP goals, however.
                 keyOf(retailer.region.id),
                 idIsEq
               )) {
-      case (null) { return null };
+      case (null) { return ?[] };
       case (?x) { x }};
 
     debugInt(Trie.count<RegionId, RouteMap>(retailerRoutes));
