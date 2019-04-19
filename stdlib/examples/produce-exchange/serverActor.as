@@ -44,12 +44,54 @@ actor server = {
 
 
 /**
- `registrarAddEnts`
+ `evalReq`
  ----------
- add an array of requested entities, in bulk.
+ evaluate an API call (a "request"), represented as an AS datatype.
+
+ A request currently consists of an add (`Add`), remove (`Rem`), or update (`Update`).
  */
 
-  registrarAddEnts(addReqs:[AddReq]) : async ?[EntId] {
+  evalReq(req:Req) : async ?Resp {
+    switch req {
+    case (#add info) {
+           switch (info) {
+             case (#user info) {
+                    let id = await registrarAddUser(
+                      info.user_name,
+                      info.public_key,
+                      info.description,
+                      info.region,
+                      info.isDeveloper,
+                      info.isProducer,
+                      info.isRetailer,
+                      info.isTransporter
+                    );
+                    ?(#add (#user (unwrap<UserId>(id))))
+                  };
+             case _ {
+                    nyi()
+                  };
+           }
+         };
+    case (#update info ) {
+           nyi()
+         };
+    case (#rem id) {
+           nyi()
+         };
+    }
+  };
+
+/**
+ `evalBulk`
+ ----------
+ evaluate groups of similar API calls, grouping their results.
+
+ Notice that there are two levels of grouping:
+  - The request is an array of bulk request, and
+  - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
+ */
+  evalBulk(req:[BulkReq]) : async ?[BulkResp] {
     nyi()
   };
 
