@@ -21,7 +21,20 @@ let numRouteEach = 50;
 
 func isOdd(n:Nat) : Bool = if(n == 0) { false } else { not isOdd(n-1) };
 
+
 actor class Test() = this {
+
+  // matthew/xxx -- can't seem to make this parametric;
+  // Q; how do I say that I have "any shared type" here; is it possible?
+  arrayTabulateAsync(n:Nat, f:shared Nat -> async Nat) : async [Nat] = async {
+    let a = Array_init<?Nat>(n,null);
+    for (i in (range(0,n))) {
+      let x = await f(i);
+      a[i] := ?x;
+    };
+    Array_tabulate<Nat>(n,func(i:Nat):Nat{unwrap<Nat>(a[i])})
+  };
+
   go() {
     ignore(async
     {
@@ -30,11 +43,11 @@ actor class Test() = this {
       print "\nExchange setup: Begin...\n====================================\n";
 
       // populate with truck types
-      let truckTypes = Array_tabulate<?TruckTypeId>(
+      let truckTypes = await arrayTabulateAsync(
         numTruckTypes,
-        func(n:Nat) : ?TruckTypeId {
-          await s.registrarAddTruckType("","",n*10, isOdd(n), isOdd(n*2));
-        });
+        shared func(n:Nat) : async TruckTypeId = 
+          async { unwrap<Nat>(await s.registrarAddTruckType("","",n*10, isOdd(n), isOdd(n*2))) }
+      );
       printEntityCount("Truck type", (await s.getCounts()).truck_type_count);
       let tt = truckTypes;
 
@@ -177,21 +190,21 @@ actor class Test() = this {
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         0, 20, 100,
-        unwrap<TruckTypeId>(tt[0])
+        tt[0]
       );
       let rta_b_c_ttb = await s.transporterAddRoute(
         unwrap<TransporterId>(tra),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regc),
         0, 20, 100,
-        unwrap<TruckTypeId>(tt[1])
+        tt[1]
       );
       let rta_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(tra),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(rege),
         0, 20, 100,
-        unwrap<TruckTypeId>(tt[2])
+        tt[2]
       );
 
       let rtb_a_c_tta = await s.transporterAddRoute(
@@ -199,21 +212,21 @@ actor class Test() = this {
         unwrap<RegionId>(regc),
         unwrap<RegionId>(rege),
         0, 20, 40,
-        unwrap<TruckTypeId>(tt[0])
+        tt[0]
       );
       let rtb_b_c_ttb = await s.transporterAddRoute(
         unwrap<TransporterId>(trb),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regc),
         0, 40, 70,
-        unwrap<TruckTypeId>(tt[1])
+        tt[1]
       );
       let rtb_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(trb),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         20, 40, 97,
-        unwrap<TruckTypeId>(tt[2])
+        tt[2]
       );
 
       let rtc_b_c_tta = await s.transporterAddRoute(
@@ -221,21 +234,21 @@ actor class Test() = this {
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regb),
         20, 40, 40,
-        unwrap<TruckTypeId>(tt[0])
+        tt[0]
       );
       let rtc_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regb),
         20, 40, 70,
-        unwrap<TruckTypeId>(tt[0])
+        tt[0]
       );
       let rtc_a_c_ttc = await s.transporterAddRoute(
         unwrap<TransporterId>(trc),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         20, 40, 97,
-        unwrap<TruckTypeId>(tt[2])
+        tt[2]
       );
 
       let rtd_b_c_ttb = await s.transporterAddRoute(
@@ -243,14 +256,14 @@ actor class Test() = this {
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regd),
         20, 40, 50,
-        unwrap<TruckTypeId>(tt[1])
+        tt[1]
       );
       let rtd_c_e_tta = await s.transporterAddRoute(
         unwrap<TransporterId>(trd),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regd),
         20, 40, 70,
-        unwrap<TruckTypeId>(tt[0])
+        tt[0]
       );
 
       let rte_a_c_ttc = await s.transporterAddRoute(
@@ -258,7 +271,7 @@ actor class Test() = this {
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regd),
         20, 40, 97,
-        unwrap<TruckTypeId>(tt[2])
+        tt[2]
       );
 
       printEntityCount("Route", (await s.getCounts()).route_count);
