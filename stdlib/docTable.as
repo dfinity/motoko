@@ -21,10 +21,10 @@ type information.
 
 */
 
-import "prelude.as";
-import "assocList.as";
-import "trie.as";
-
+let P = import "prelude.as";
+let AssocList = import "assocList.as";
+let Trie = import "trie.as";
+let Hash = import "hash.as";
 /**
  Representation
  ================
@@ -46,7 +46,7 @@ import "trie.as";
  choice between (for now) using tries (and internally, association lists).
 
  */
-type Table<Id, Doc> = Trie<Id, Doc>;
+type Table<Id, Doc> = Trie.Trie<Id, Doc>;
 let Table = Trie;
 
 /**
@@ -90,7 +90,7 @@ class DocTable<Id,Doc,Info>(
   idFirst:Id,
   idIncr:Id->Id,
   idIsEq:(Id,Id)->Bool,
-  idHash:Id->Hash,
+  idHash:Id->Hash.Hash,
   infoOfDoc:Doc->Info,
   docOfInfo:Info->?Doc
 ) = this {
@@ -321,10 +321,10 @@ class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
+  keyOfId(x:Id) : Trie.Key<Id>     = new { key = x ; hash = idHash(x) };
 
   getIdIsEq() :(Id,Id)->Bool  = idIsEq;
-  getIdHash() : Id->Hash      = idHash;
+  getIdHash() : Id-> Hash.Hash      = idHash;
 
   getInfoOfDoc() : Doc->Info  = infoOfDoc;
   getDocOfInfo() : Info->?Doc = docOfInfo;

@@ -60,35 +60,38 @@ See the full details in the definitions below:
 
 */
 
-import "prelude.as";
-import "hash.as";
+let P = import "prelude.as";
+let List = import "list.as";
+let AssocList = import "assocList.as";
+let Hash = import "hash.as";
+
 
 let HASH_BITS = 4;
 
 type Key<K> = {
   // hash field: permits fast inequality checks, permits collisions;
   // (eventually: permits incremental growth of deeper trie paths)
-  hash: Hash;
+  hash: Hash.Hash;
   // key field: for conservative equality checks, after equal hashes.
   key: K;
 };
 
 // Binary branch nodes
 type Branch<K,V> = {
-  left:Trie<K,V>;
-  right:Trie<K,V>;
+  left: Trie<K,V>;
+  right: Trie<K,V>;
 };
 // Leaf nodes are association lists of `Key<K>`s where every key
 // shares a common hash prefix, its (common) trie path.
 type Leaf<K,V> = {
-  keyvals:List<(Key<K>,V)>;
+  keyvals: List.List<(Key<K>,V)>;
 };
 
 // XXX: See AST-42
 type Node<K,V> = {
-  left:Trie<K,V>;
-  right:Trie<K,V>;
-  keyvals:List<(Key<K>,V)>;
+  left: Trie<K,V>;
+  right: Trie<K,V>;
+  keyvals: List.List<(Key<K>,V)>;
 };
 
 type Trie<K,V> = ?Node<K,V>;
@@ -128,7 +131,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
  */
 
-let Trie = new {
 
   /**
    `empty`
@@ -1124,12 +1126,12 @@ let Trie = new {
   };
 
   // XXX: until AST-42:
-  func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
+  func makeLeaf<K,V>(kvs:AssocList.AssocList<Key<K>,V>) : Trie<K,V> {
     ?(new {left=null; right=null; keyvals=kvs })
   };
 
   // XXX: until AST-42:
-  func matchLeaf<K,V>(t:Trie<K,V>) : ?List<(Key<K>,V)> {
+  func matchLeaf<K,V>(t:Trie<K,V>) : ?List.List<(Key<K>,V)> {
     switch t {
     case null { null };
     case (?t_) {
@@ -1158,7 +1160,7 @@ let Trie = new {
     switch t {
     case null { assert(false) };
     case (?n) {
-	         assertIsNull<((Key<K>,V),AssocList<Key<K>,V>)>(n.keyvals);
+	         assertIsNull<((Key<K>,V),AssocList.AssocList<Key<K>,V>)>(n.keyvals);
          };
     }
   };
@@ -1219,7 +1221,7 @@ let Trie = new {
     rec(bitpos)
   };
 
-};
+
 
 
 /**

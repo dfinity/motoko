@@ -1,4 +1,4 @@
-import "list.as";
+let List = import "list.as";
 
 type X = Nat;
 

@@ -16,7 +16,7 @@ remainder of the list (the cell's _tail_).
 
 */
 
-import "prelude.as";
+let P = import "prelude.as";
 
 type List<T> = ?(T, List<T>);
 
@@ -25,7 +25,7 @@ type List<T> = ?(T, List<T>);
  ==============
 */
 
-let List = new {
+
 
   /**
    `nil`
@@ -432,7 +432,6 @@ let List = new {
     rec(0)
   };
 
-};
 
 /**
 

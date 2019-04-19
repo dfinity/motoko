@@ -30,7 +30,7 @@ going forward.
 
 */
 
-import "prelude.as";
+let P = import "prelude.as";
 
 /** A "bit string" as a linked list of bits: */
 type BitList = ?(Bool, BitList);
@@ -46,7 +46,7 @@ type BitVec = Word32;
 
  */
 
-let BitVec = new {
+
 
   func length() : Nat = 31;
 
@@ -110,9 +110,9 @@ let BitVec = new {
       }
     };
     rec(0)
-  }
+  };
 
-};
+
 
 /**
 
@@ -123,10 +123,12 @@ let BitVec = new {
 
  TODO: Replace with bitwise operations on Words, for greater efficiency.
 */
-let BitList = new {
+let hashOfInt_ = hashOfInt;
+
+module BitList = {
 
   func hashOfInt(i:Int) : BitList {
-    BitVec.toList(BitVec.hashOfInt(i))
+     toList(hashOfInt_(i)) /* careful here! */
   };
 
   /** Test if two lists of bits are equal. */
@@ -190,4 +192,4 @@ let BitList = new {
 */
 
 type Hash = BitVec;
-let Hash = BitVec;
+
