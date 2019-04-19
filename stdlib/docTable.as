@@ -27,8 +27,6 @@ type information.
 
 
 let P = import "prelude.as";
-let List = import "list.as";
-let AssocList = import "assocList.as";
 let Hash = import "hash.as";
 let Trie = import "trie.as";
 
