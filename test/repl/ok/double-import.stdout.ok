@@ -8,12 +8,14 @@ ActorScript 0.1 interpreter
 -- Checking stdin:
 -- Interpreting stdin:
 -- Finished stdin:
+{} : module {}
 
 -- Parsing stdin:
 > -- Parsing ./lib/empty.as:
 -- Checking stdin:
 -- Interpreting stdin:
 -- Finished stdin:
+{} : module {}
 
 -- Parsing stdin:
 > 

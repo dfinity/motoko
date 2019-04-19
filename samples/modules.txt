@@ -1,0 +1,15 @@
+-- Parsing modules.as:
+-- Checking all:
+type Stack = t<Int>
+type t<T> = ?(T, t<T>)
+let Collections : module {List : module {type t<T> = ?(T, t<T>); cons : <T>(T, t<T>) -> t<T>; nil : <T>() -> t<T>}}
+let empty : ?(Int, t<Int>)
+let push : (Int, Stack) -> Stack
+-- Interpreting all:
+nil()
+  <= null
+-- Finished all:
+let Collections : module {List : module {type t<T> = ?(T, t<T>); cons : <T>(T, t<T>) -> t<T>; nil : <T>() -> t<T>}} = {List = {cons = func; nil = func}}
+let empty : ?(Int, t<Int>) = null
+let push : (Int, Stack) -> Stack = func
+

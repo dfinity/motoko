@@ -19,7 +19,15 @@ type obj_sort = Type.obj_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
+
+and path = (path', Type.typ) Source.annotated_phrase
+
+and path' =
+  | IdH  of id
+  | DotH of path * id
+
 type typ = (typ', Type.typ) Source.annotated_phrase
+
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)
@@ -31,6 +39,7 @@ and typ' =
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
+  | PathT of path * id * typ list                  (* type projection *)
 (*
   | UnionT of type * typ                           (* union *)
   | AtomT of string                                (* atom *)
@@ -183,7 +192,7 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * obj_sort * pat * id * exp_field list
-
+  | ModuleD of id * dec list
 
 (* Program *)
 

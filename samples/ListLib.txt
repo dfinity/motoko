@@ -1,0 +1,10 @@
+-- Parsing ListLib.as:
+-- Checking all:
+type t<T> = ?(T, t<T>)
+let cons : <T>(T, t<T>) -> t<T>
+let nil : <T>() -> t<T>
+-- Interpreting all:
+-- Finished all:
+let cons : <T>(T, t<T>) -> t<T> = func
+let nil : <T>() -> t<T> = func
+

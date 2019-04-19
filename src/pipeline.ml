@@ -151,22 +151,37 @@ let check_prog infer senv name prog
   end;
   r
 
+
+let declare_import (f, (prog:Syntax.prog)) =
+  let open Source in
+  match prog.it with
+  |  [{it = Syntax.ExpD _;_}] ->
+     { it = Syntax.LetD
+              ( { it = Syntax.VarP (Syntax.id_of_full_path f)
+                ; at = no_region
+                ; note = Type.Pre
+                }
+              , { it = Syntax.BlockE prog.it
+                ; at = no_region
+                ; note = Syntax.empty_typ_note
+                }
+              )
+     ; at = no_region
+     ; note = Syntax.empty_typ_note
+     }
+  |  ds ->
+     { it = Syntax.ModuleD
+              (  Syntax.id_of_full_path f
+              , ds
+              )
+     ; at = no_region
+     ; note = Syntax.empty_typ_note
+     }
+
+
 let combine_files imports progs : Syntax.prog =
     let open Source in
-    ( List.map (fun (f, prog) ->
-        { it = Syntax.LetD
-          ( { it = Syntax.VarP (Syntax.id_of_full_path f)
-            ; at = no_region
-            ; note = Type.Pre
-            }
-          , { it = Syntax.BlockE prog.it
-            ; at = no_region
-            ; note = Syntax.empty_typ_note
-            }
-          )
-        ; at = no_region
-        ; note = Syntax.empty_typ_note
-        }) imports
+    ( List.map declare_import imports
       @ List.concat (List.map (fun p -> p.it) progs)
     ) @@ no_region
 
