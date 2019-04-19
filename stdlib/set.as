@@ -32,7 +32,7 @@ type Set<T> = Trie.Trie<T,()>;
     s2
   };
 
-  func remove<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
+  func remove<T>(s:Set<T>, x:T, xh:Hash.Hash, eq:(T,T)->Bool) : Set<T> = {
     let (s2, _) = Trie.remove<T,()>(s, new {key=x; hash=xh}, eq);
     s2
   };
@@ -50,7 +50,7 @@ type Set<T> = Trie.Trie<T,()>;
      0)
   };
 
-  func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
+  func mem<T>(s:Set<T>, x:T, xh:Hash.Hash, eq:(T,T)->Bool):Bool {
     switch (Trie.find<T,()>(s, new {key=x; hash=xh}, eq)) {
     case null { false };
     case (?_) { true };

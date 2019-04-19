@@ -5,11 +5,16 @@
 
  */
 
+let List = import "list.as";
+let Hash = import "hash.as";
+let Trie = import "trie.as";
 let Set = import "set.as";
+let BitList = Hash.BitList;
+
 
 
   /* private */ func setDbPrint(s:Set.Set<Nat>) {
-    func rec(s:Set.Set<Nat>, ind:Nat, bits:BitList) {
+    func rec(s:Set.Set<Nat>, ind:Nat, bits:Hash.BitList) {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
       };
@@ -33,9 +38,9 @@ let Set = import "set.as";
 	           case (?keyvals) {
 		                //indPrint(ind);
 		                print "(leaf [";
-                    List.iter<(Key<Nat>,())>(
+                    List.iter<(Trie.Key<Nat>,())>(
                       ?keyvals, 
-                      func ((k:Key<Nat>, ())) : () = {
+                      func ((k:Trie.Key<Nat>, ())) : () = {
                         print("hash(");
                         printInt(k.key);
                         print(")=");
@@ -57,7 +62,7 @@ let Set = import "set.as";
 
   /* private */ func natEq(n:Nat,m:Nat):Bool{ n == m};
 
-  func insert(s:Set.Set<Nat>, x:Nat, xh:Hash):Set.Set<Nat> = {
+  func insert(s:Set.Set<Nat>, x:Nat, xh:Hash.Hash):Set.Set<Nat> = {
     print "  setInsert(";
     printInt x;
     print ")";
@@ -67,7 +72,7 @@ let Set = import "set.as";
     r
   };
 
-  func mem(s:Set.Set<Nat>, sname:Text, x:Nat, xh:Hash):Bool = {
+  func mem(s:Set.Set<Nat>, sname:Text, x:Nat, xh:Hash.Hash):Bool = {
     print "  setMem(";
     print sname;
     print ", ";

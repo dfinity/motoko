@@ -5,7 +5,9 @@
 
  */
 
-let SetDB = import "setDb.as";
+let Hash = import "hash.as";
+let SetDb = import "setDb.as";
+let Set = import "set.as";
 
 func SetDb__test() {
 
@@ -23,49 +25,49 @@ func SetDb__test() {
 
   print "inserting...\n";
   // Insert numbers [0..8] into the set, using their bits as their hashes:
-  let s0 : Set<Nat> = Set.empty<Nat>();
+  let s0 : Set.Set<Nat> = Set.empty<Nat>();
   assert(Set.card<Nat>(s0) == 0);
 
-  let s1 : Set<Nat> = SetDb.insert(s0, 0, hash_0);
+  let s1 : Set.Set<Nat> = SetDb.insert(s0, 0, hash_0);
   assert(Set.card<Nat>(s1) == 1);
 
-  let s2 : Set<Nat> = SetDb.insert(s1, 1, hash_1);
+  let s2 : Set.Set<Nat> = SetDb.insert(s1, 1, hash_1);
   assert(Set.card<Nat>(s2) == 2);
 
-  let s3 : Set<Nat> = SetDb.insert(s2, 2, hash_2);
+  let s3 : Set.Set<Nat> = SetDb.insert(s2, 2, hash_2);
   assert(Set.card<Nat>(s3) == 3);
 
-  let s4 : Set<Nat> = SetDb.insert(s3, 3, hash_3);
+  let s4 : Set.Set<Nat> = SetDb.insert(s3, 3, hash_3);
   assert(Set.card<Nat>(s4) == 4);
 
-  let s5 : Set<Nat> = SetDb.insert(s4, 4, hash_4);
+  let s5 : Set.Set<Nat> = SetDb.insert(s4, 4, hash_4);
   assert(Set.card<Nat>(s5) == 5);
 
-  let s6 : Set<Nat> = SetDb.insert(s5, 5, hash_5);
+  let s6 : Set.Set<Nat> = SetDb.insert(s5, 5, hash_5);
   assert(Set.card<Nat>(s6) == 6);
 
-  let s7 : Set<Nat> = SetDb.insert(s6, 6, hash_6);
+  let s7 : Set.Set<Nat> = SetDb.insert(s6, 6, hash_6);
   assert(Set.card<Nat>(s7) == 7);
 
-  let s8 : Set<Nat> = SetDb.insert(s7, 7, hash_7);
+  let s8 : Set.Set<Nat> = SetDb.insert(s7, 7, hash_7);
   assert(Set.card<Nat>(s8) == 8);
 
-  let s9 : Set<Nat> = SetDb.insert(s8, 8, hash_8);
+  let s9 : Set.Set<Nat> = SetDb.insert(s8, 8, hash_8);
   assert(Set.card<Nat>(s9) == 9);
   print "done.\n";
 
   print "unioning...\n";
-  let s1s2 : Set<Nat> = SetDb.union(s1, "s1", s2, "s2");
-  let s2s1 : Set<Nat> = SetDb.union(s2, "s2", s1, "s1");
-  let s3s2 : Set<Nat> = SetDb.union(s3, "s3", s2, "s2");
-  let s4s2 : Set<Nat> = SetDb.union(s4, "s4", s2, "s2");
-  let s1s5 : Set<Nat> = SetDb.union(s1, "s1", s5, "s5");
-  let s0s2 : Set<Nat> = SetDb.union(s0, "s0", s2, "s2");
+  let s1s2 : Set.Set<Nat> = SetDb.union(s1, "s1", s2, "s2");
+  let s2s1 : Set.Set<Nat> = SetDb.union(s2, "s2", s1, "s1");
+  let s3s2 : Set.Set<Nat> = SetDb.union(s3, "s3", s2, "s2");
+  let s4s2 : Set.Set<Nat> = SetDb.union(s4, "s4", s2, "s2");
+  let s1s5 : Set.Set<Nat> = SetDb.union(s1, "s1", s5, "s5");
+  let s0s2 : Set.Set<Nat> = SetDb.union(s0, "s0", s2, "s2");
   print "done.\n";
 
   print "intersecting...\n";
-  let s3is6 : Set<Nat> = SetDb.intersect(s3, "s3", s6, "s6");
-  let s2is1 : Set<Nat> = SetDb.intersect(s2, "s2", s1, "s1");
+  let s3is6 : Set.Set<Nat> = SetDb.intersect(s3, "s3", s6, "s6");
+  let s2is1 : Set.Set<Nat> = SetDb.intersect(s2, "s2", s1, "s1");
   print "done.\n";
 
 
