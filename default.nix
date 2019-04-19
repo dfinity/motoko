@@ -315,7 +315,8 @@ rec {
       make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
     '';
     checkPhase = ''
-      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.out
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange1.out
+      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange2.out
     '';
     installPhase = ''
       mkdir -p $out
