@@ -40,9 +40,22 @@ actor server = {
  - `Producer`,
  - `Retailer`, or
  - `Transporter`.
+*/
 
 
- `User`
+/**
+ `registrarAddEnts`
+ ----------
+ add an array of requested entities, in bulk.
+ */
+
+  registrarAddEnts(reqs:[Req]) : async ?[EntId] {
+    nyi()
+  };
+
+/**
+
+ `-User`
  =========
  Messages about users.
 
