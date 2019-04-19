@@ -64,6 +64,8 @@ Internally, each type of Id serves as a "row key" for a table (or two).
 
 type UserId        = Nat;
 
+type PublicKey     = Text;
+
 type RegionId      = Nat;
 type TruckTypeId   = Nat;
 type ProduceId     = Nat;

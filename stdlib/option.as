@@ -92,6 +92,20 @@ func map<A, B>(x: ?A, f: A->B): ?B =
 
 /***
 
+ `fmap`
+ --------------------
+
+ Apply a function to the wrapped value.
+
+*/
+func fmap<A, B>(x: ?A, f: A->?B): ?B =
+  switch x {
+    case null null;
+    case (?x_) f(x_);
+  };
+
+/***
+
  `assertSome`
  --------------------
 
