@@ -38,15 +38,17 @@ type F = { #foo : Int; #bar : Char; #daz : Bool };
 type Weekday = { #Monday; #Tuesday; #Wednesday; #Thursday; #Friday; #Saturday; #Sunday };
 
 func sayIcelandic (day : Weekday) : Text = switch day {
-  case #Monday "Mánudagur";
-  case #Tuesday "Þriðjudagur";
-  case #Wednesday "Miðvikudagur";
-  case #Thursday "Fimmtudagur";
-  case #Friday "Föstudagur";
-  case #Saturday "Laugardagur";
-  case #Sunday "Sunnudagur"
+  case (#Monday) "Mánudagur";
+  case (#Tuesday) "Þriðjudagur";
+  case (#Wednesday) "Miðvikudagur";
+  case (#Thursday) "Fimmtudagur";
+  case (#Friday) "Föstudagur";
+  case (#Saturday) "Laugardagur";
+  case (#Sunday) "Sunnudagur"
 };
 
-assert (sayIcelandic #Wednesday == "Miðvikudagur");
+assert (sayIcelandic (#Wednesday) == "Miðvikudagur");
 
-assert (debug_show (#foo #bar) == "(#foo #bar)")
+assert (debug_show (#foo (#bar)) == "(#foo (#bar))");
+
+assert (([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday] : [Weekday]).len() == 7);

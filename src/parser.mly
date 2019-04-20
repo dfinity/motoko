@@ -351,8 +351,6 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | i=variant_tag
-    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
@@ -376,6 +374,8 @@ exp_post :
 exp_un :
   | e=exp_post
     { e }
+  | i=variant_tag
+    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -502,14 +502,14 @@ pat_nullary :
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
-  | i=variant_tag
-    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_un :
   | p=pat_nullary
     { p }
+  | i=variant_tag
+    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit

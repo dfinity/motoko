@@ -151,7 +151,7 @@ func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
 
 func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
   let fx = f x;
-  if (fx == "()") "#" # l
+  if (fx == "()") "(#" # l # ")"
   else "(#" # l # " " # fx # ")"
 };
 
