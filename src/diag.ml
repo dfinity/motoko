@@ -29,6 +29,10 @@ let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> fun
   | [] -> return []
   | x :: xs -> bind (f x) (fun y -> map_result (fun ys -> y :: ys) (traverse f xs))
 
+let rec traverse_ : ('a -> unit result) -> 'a list -> unit result = fun f -> function
+  | [] -> return ()
+  | x :: xs -> bind (f x) (fun () -> traverse_ f xs)
+
 type msg_store = messages ref
 let add_msg s m = s := m :: !s
 let add_msgs s ms = s := List.rev ms @ !s
