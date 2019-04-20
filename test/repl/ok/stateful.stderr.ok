@@ -1,0 +1,4 @@
+stdin:2.9-2.17: syntax error, unclosed text literal
+stdin:2.9-2.17: type error, operator not defined for operand types
+  Nat and
+  Bool

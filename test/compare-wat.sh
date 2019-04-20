@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script compares the compiler output (in wat format)
 # between the currently built version and the previous version
@@ -70,13 +70,13 @@ do
 
   rm -rf compare-out/$base.old
   mkdir compare-out/$base.old
-  old-asc/bin/asc --dfinity $file --map -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
+  old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
   $WASM2WAT compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
-  new-asc/bin/asc --dfinity $file --map -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
+  new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
   $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
 

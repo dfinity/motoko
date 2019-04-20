@@ -61,12 +61,13 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity)/"
-    "test/(fail|run|run-dfinity)/lib/"
-    "test/(fail|run|run-dfinity)/lib/dir/"
-    "test/(fail|run|run-dfinity)/.*.as"
-    "test/(fail|run|run-dfinity)/ok/"
-    "test/(fail|run|run-dfinity)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl)/"
+    "test/(fail|run|run-dfinity|repl)/lib/"
+    "test/(fail|run|run-dfinity|repl)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl)/.*.as"
+    "test/(fail|run|run-dfinity|repl)/.*.sh"
+    "test/(fail|run|run-dfinity|repl)/ok/"
+    "test/(fail|run|run-dfinity|repl)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -233,6 +234,46 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
 
+
+  users-guide = stdenv.mkDerivation {
+    name = "users-guide";
+
+    src = sourceByRegex ./. [
+      "design/"
+      "design/guide.md"
+      "guide/"
+      "guide/Makefile"
+      "guide/.*css"
+      "guide/.*md"
+      "guide/.*png"
+      ];
+
+    buildInputs =
+      with nixpkgs;
+      let tex = texlive.combine {
+        inherit (texlive) scheme-small xetex newunicodechar;
+      }; in
+      [ pandoc tex bash ];
+
+    NIX_FONTCONFIG_FILE =
+      with nixpkgs;
+      nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
+
+    buildPhase = ''
+      patchShebangs .
+      make -C guide
+    '';
+
+    installPhase = ''
+      mkdir -p $out
+      mv guide $out/
+      rm $out/guide/Makefile
+      mkdir -p $out/nix-support
+      echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
+
   stdlib-reference = stdenv.mkDerivation {
     name = "stdlib-reference";
 
@@ -284,6 +325,6 @@ rec {
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange ];
+    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
   };
 }

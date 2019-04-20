@@ -1,6 +1,6 @@
 non-closed actor: (ActorE
   anon-object-1.30
-  (VarD c (VarE i))
+  (VarD j (VarE i))
   (LetD
     (VarP dec)
     (FuncE
@@ -8,8 +8,8 @@ non-closed actor: (ActorE
       (shared  0 -> 0)
       ()
       (BlockE
-        (LetD WildP (CallE ( 1 -> 0) (VarE showCounter) (VarE c)))
-        (AssignE (VarE c) (BinE Int (VarE c) SubOp (LitE (IntLit 1))))
+        (LetD WildP (CallE ( 1 -> 0) (VarE showCounter) (VarE j)))
+        (AssignE (VarE j) (BinE Int (VarE j) SubOp (LitE (IntLit 1))))
       )
     )
   )
@@ -39,7 +39,7 @@ non-closed actor: (ActorE
             ( 1 -> 0)
             (params $cont/0)
             ()
-            (CallE ( 1 -> 0) (VarE $cont/0) (VarE c))
+            (CallE ( 1 -> 0) (VarE $cont/0) (VarE j))
           )
           (FuncE
             $lambda

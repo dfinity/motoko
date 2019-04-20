@@ -18,6 +18,9 @@ nixpkgs.mkShell {
   buildInputs =
     default.native.buildInputs ++
     builtins.filter (i: i != default.native) default.native_test.buildInputs ++
+    default.users-guide.buildInputs ++
     [ nixpkgs.ncurses ];
+
+  NIX_FONTCONFIG_FILE = default.users-guide.NIX_FONTCONFIG_FILE;
 }
 
