@@ -615,6 +615,8 @@ and eq_kind k1 k2 : bool =
 
 (* Least upper bound and greatest lower bound *)
 
+let compare_summands f1 f2 = compare (fst f1) (fst f2)
+
 let rec lub t1 t2 =
   if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
@@ -635,8 +637,6 @@ let rec lub t1 t2 =
   | (Obj _ as t1), Array t2' -> lub t1 (array_obj t2')
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
-
-and compare_summands f1 f2 = compare (fst f1) (fst f2)
 
 and lub_summands fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -661,11 +661,21 @@ let rec glb t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Opt t1', Opt t2' -> Opt (glb t1' t2')
+  | Variant t1', Variant t2' -> Variant (glb_summands t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
+and glb_summands fs1 fs2 = match fs1, fs2 with
+  | fs1, [] -> []
+  | [], fs2 -> []
+  | f1::fs1', f2::fs2' ->
+     begin match compare_summands f1 f2 with
+     | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_summands fs1' fs2'
+     | 1 -> glb_summands fs1 fs2'
+     | _ -> glb_summands fs1' fs2
+     end
 
 (* Pretty printing *)
 
