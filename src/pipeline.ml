@@ -179,41 +179,35 @@ type load_result =
 type load_decl_result =
   (Syntax.libraries * Syntax.prog * Typing.scope * Type.typ * Typing.scope) Diag.result
 
-let chase_imports senv0 to_load : (Syntax.libraries * Typing.scope) Diag.result =
+let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result =
   let open Resolve_import.S in
-  let todo = ref to_load in
   let pending = ref empty in
   let senv = ref senv0 in
-  let libraries = ref [] in
 
-  let rec go () =
-    match min_elt_opt !todo with
-    | None ->
-      Diag.return ()
-    | Some f when Type.Env.mem f !senv.Typing.lib_env ->
-      todo := remove f !todo;
-      go ()
-    | Some f when mem f !pending->
+  let rec go f =
+    if Type.Env.mem f !senv.Typing.lib_env then
+      Diag.return []
+    else if mem f !pending then
       Error [{
         Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
         text = Printf.sprintf "file %s must not depend on itself" f
       }]
-    | Some f ->
-      todo := remove f !todo;
+    else begin
       pending := add f !pending;
       Diag.bind (parse_file f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (Resolve_import.resolve prog base) (fun more_libraries ->
-      todo := union !todo more_libraries;
-      libraries := (f, prog) :: !libraries; (* NB: Do this before recursing *)
-      Diag.bind (go ()) (fun () ->
+      Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
+      Diag.bind (go_set more_imports) (fun more_libs ->
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
       senv := Typing.adjoin_scope !senv sscope;
       pending := remove f !pending;
-      Diag.return ()
+      Diag.return (more_libs @ [ (f,prog) ])
       )))))
+    end
+    and go_set todo =
+      Diag.map_result List.concat (Diag.traverse go (elements todo))
   in
-  Diag.bind (go ()) (fun () -> Diag.return (!libraries, !senv))
+  Diag.map_result (fun libraries -> (libraries, !senv)) (go_set imports)
 
 let load_progs parse senv : load_result =
   Diag.bind parse (fun parsed ->
