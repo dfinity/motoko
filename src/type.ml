@@ -615,8 +615,6 @@ and eq_kind k1 k2 : bool =
 
 (* Least upper bound and greatest lower bound *)
 
-let compare_summands f1 f2 = compare (fst f1) (fst f2)
-
 let rec lub t1 t2 =
   if t1 == t2 then t1 else
   (* TBR: this is just a quick hack *)
@@ -642,7 +640,7 @@ and lub_summands fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
-     begin match compare_summands f1 f2 with
+     begin match compare_summand f1 f2 with
      | 0 -> (fst f1, lub (snd f1) (snd f2))::lub_summands fs1' fs2'
      | 1 -> f2::lub_summands fs1 fs2'
      | _ -> f1::lub_summands fs1' fs2
@@ -671,7 +669,7 @@ and glb_summands fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
   | [], fs2 -> []
   | f1::fs1', f2::fs2' ->
-     begin match compare_summands f1 f2 with
+     begin match compare_summand f1 f2 with
      | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_summands fs1' fs2'
      | 1 -> glb_summands fs1 fs2'
      | _ -> glb_summands fs1' fs2
