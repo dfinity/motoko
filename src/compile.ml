@@ -4158,12 +4158,20 @@ let compile_relop env t op =
   | _ -> todo_trap env "compile_relop" (Arrange.relop op)
 
 (* compile_load_field performs a tag check if the projection's domain
-   is ambiguous, then calls the appropriate accessor *)
+   is ambiguous, then calls the appropriate accessor. The tag check can
+   be further reduced if the type is well-known. *)
 let compile_load_field env typ ({it=(Name n); _} as name) =
   let selective tag = function
-    | None -> [] | Some code -> [ tag, code ] in
+    | None -> []
+    | Some _  when tag <> Tagged.Array && Type.is_array typ -> []
+    | Some _  when tag <> Tagged.Text && Type.(is_prim Text) typ -> []
+    | Some code -> [ tag, code ] in
+  let potentially_indexable =
+    if Type.(is_prim Text typ || is_array typ)
+    then []
+    else [Tagged.Object, Object.load_idx env typ name] in
   Tagged.branch_with env (ValBlockType (Some I32Type))
-    (List.concat [ [Tagged.Object, Object.load_idx env typ name]
+    (List.concat [ potentially_indexable
                  ; selective Tagged.Array (Array.fake_object_idx env n)
                  ; selective Tagged.Text (Text.fake_object_idx env n)])
 
