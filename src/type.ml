@@ -628,6 +628,7 @@ let rec lub t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
   | Opt t1', Opt t2' -> Opt (lub t1' t2')
+  | Variant t1', Variant t2' -> Variant (lub_summands t1' t2')
   | Prim Null, Opt t'
   | Opt t', Prim Null -> Opt t'
   | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
@@ -635,6 +636,15 @@ let rec lub t1 t2 =
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
 
+and lub_summands fs1 fs2 = match fs1, fs2 with
+  | fs1, [] -> fs1
+  | [], fs2 -> fs2
+  | f1::fs1', f2::fs2' ->
+     begin match compare_summand f1 f2 with
+     | 0 -> (fst f1, lub (snd f1) (snd f2))::lub_summands fs1' fs2'
+     | 1 -> f2::lub_summands fs1 fs2'
+     | _ -> f1::lub_summands fs1' fs2
+     end
 
 let rec glb t1 t2 =
   if t1 == t2 then t1 else
@@ -649,11 +659,21 @@ let rec glb t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Opt t1', Opt t2' -> Opt (glb t1' t2')
+  | Variant t1', Variant t2' -> Variant (glb_summands t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
+and glb_summands fs1 fs2 = match fs1, fs2 with
+  | fs1, [] -> []
+  | [], fs2 -> []
+  | f1::fs1', f2::fs2' ->
+     begin match compare_summand f1 f2 with
+     | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_summands fs1' fs2'
+     | 1 -> glb_summands fs1 fs2'
+     | _ -> glb_summands fs1' fs2
+     end
 
 (* Pretty printing *)
 
