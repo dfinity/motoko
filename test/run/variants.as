@@ -49,4 +49,6 @@ func sayIcelandic (day : Weekday) : Text = switch day {
 
 assert (sayIcelandic (#Wednesday) == "Miðvikudagur");
 
-assert (debug_show (#foo (#bar)) == "(#foo (#bar))")
+assert (debug_show (#foo (#bar)) == "(#foo (#bar))");
+
+assert (([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday] : [Weekday]).len() == 7);
