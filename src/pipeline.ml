@@ -180,13 +180,27 @@ type load_decl_result =
   (Syntax.libraries * Syntax.prog * Typing.scope * Type.typ * Typing.scope) Diag.result
 
 let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result =
+  (*
+  This function loads and type-checkes the files given in `imports`,
+  including any further dependencies.
+
+  The resulting `Syntax.libraries` list is in dependency order. To achieve this,
+  the function go below does an depth-first traversal of the import DAG.
+  * To detected illegal cycles, pending is a set of filenames that we started
+    processing, but did not add yet.
+  * To avoid duplicates, i.e. load each file at most once, we check the
+    senv.
+  * We accumulate the resulting libraries in reverse order, for O(1) appending.
+  *)
+
   let open Resolve_import.S in
   let pending = ref empty in
   let senv = ref senv0 in
+  let libraries = ref [] in
 
   let rec go f =
     if Type.Env.mem f !senv.Typing.lib_env then
-      Diag.return []
+      Diag.return ()
     else if mem f !pending then
       Error [{
         Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
@@ -197,17 +211,17 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
       Diag.bind (parse_file f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
       Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
-      Diag.bind (go_set more_imports) (fun more_libs ->
+      Diag.bind (go_set more_imports) (fun () ->
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
+      libraries := (f, prog) :: !libraries; (* NB: Conceptually an append *)
       senv := Typing.adjoin_scope !senv sscope;
       pending := remove f !pending;
-      Diag.return (more_libs @ [ (f,prog) ])
+      Diag.return ()
       )))))
     end
-    and go_set todo =
-      Diag.map_result List.concat (Diag.traverse go (elements todo))
+    and go_set todo = Diag.traverse_ go (elements todo)
   in
-  Diag.map_result (fun libraries -> (libraries, !senv)) (go_set imports)
+  Diag.map_result (fun () -> (List.rev !libraries, !senv)) (go_set imports)
 
 let load_progs parse senv : load_result =
   Diag.bind parse (fun parsed ->
