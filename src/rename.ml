@@ -96,9 +96,6 @@ and pat' rho p = match p with
      (VarP i, rho')
   | TupP ps       -> let (ps, rho') = pats rho ps in
                      (TupP ps, rho')
-  | ObjP pfs      ->
-    let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
-    (ObjP (replace_obj_pat pfs pats), rho')
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')

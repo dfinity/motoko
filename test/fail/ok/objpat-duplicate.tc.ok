@@ -1,2 +1,0 @@
-objpat-duplicate.as:2.26-2.29: type error, cannot pattern match repeated field len
-objpat-duplicate.as:8.8-8.28: type error, duplicate binding for len in pattern

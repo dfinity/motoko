@@ -498,8 +498,6 @@ let rec rel_typ rel eq t1 t2 =
     p1 = Nat && p2 = Int
   | Prim p1, Shared when rel != eq ->
     true
-  | Prim Text, Obj _ when rel != eq ->
-    rel_typ rel eq text_obj t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields rel eq tfs1 tfs2
@@ -529,7 +527,7 @@ let rec rel_typ rel eq t1 t2 =
     c1 = c2 && s1 = s2 &&
     (* subtyping on shared functions needs to imply subtyping of the serialized
        arguments, i.e. the IDL. Until we have a real IDL, we are conservative
-       here and assume no subtyping in the IDL. This makes shared functions invariant. *)
+       here and assum no subtyping in the IDL. This makes shared functions invariant. *)
     let rel_param =
       if s1 = Sharable then eq_typ else rel_typ in
     (match rel_binds rel eq tbs1 tbs2 with

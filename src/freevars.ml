@@ -104,7 +104,6 @@ and pat p : fd = match p.it with
   | WildP           -> (M.empty, S.empty)
   | VarP i          -> (M.empty, S.singleton i.it)
   | TupP ps         -> pats ps
-  | ObjP pfs        -> pats (pats_of_obj_pat pfs)
   | LitP l          -> (M.empty, S.empty)
   | OptP p          -> pat p
   | VariantP (i, p) -> pat p
