@@ -1,0 +1,33 @@
+objpat-infer.as:3.36-3.37: type error, object pattern field a is not contained in expected type
+objpat-infer.as:15.17-15.19: type error, shared function has non-shared parameter type
+  {}
+objpat-infer.as:20.14-20.23: type error, expression of type
+  shared {}
+cannot produce expected type
+  {}
+objpat-infer.as:21.14-21.22: type error, expression of type
+  actor {}
+cannot produce expected type
+  {}
+objpat-infer.as:23.21-23.23: type error, shared function has non-shared parameter type
+  {}
+objpat-infer.as:24.13-24.14: type error, expression of type
+  actor {bar : shared {} -> async Nat}
+cannot produce expected type
+  {}
+objpat-infer.as:28.14-28.23: type error, expression of type
+  shared {}
+cannot produce expected type
+  {}
+objpat-infer.as:29.14-29.22: type error, expression of type
+  actor {}
+cannot produce expected type
+  {}
+objpat-infer.as:32.16-32.25: type error, expression of type
+  shared {}
+cannot produce expected type
+  {}
+objpat-infer.as:33.16-33.24: type error, expression of type
+  actor {}
+cannot produce expected type
+  {}

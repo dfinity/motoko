@@ -423,7 +423,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 and interpret_fields env fs =
     let ve =
       List.fold_left
-        (fun ve f ->
+        (fun ve (f : field) ->
           let Name name = f.it.name.it in
           V.Env.disjoint_add name (Lib.Promise.value (find f.it.var.it env.vals)) ve
         ) V.Env.empty fs in
@@ -469,6 +469,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
+  | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | VariantP (_, pat1) -> declare_pat pat1
   | AltP (pat1, pat2) -> declare_pat pat1
@@ -493,6 +494,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
+  | ObjP pfs -> define_field_pats env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -508,6 +510,12 @@ and define_pat env pat v =
 
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
+
+and define_field_pats env pfs vs =
+  let define_field (pf : pat_field) =
+    let Name key = pf.it.name.it in
+    define_pat env pf.it.pat (V.Env.find key vs) in
+  List.iter define_field pfs
 
 
 and match_lit lit v : bool =
@@ -540,6 +548,8 @@ and match_pat pat v : val_env option =
     else None
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | ObjP pfs ->
+    match_pat_fields pfs (V.as_obj v) V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
@@ -566,6 +576,17 @@ and match_pats pats vs ve : val_env option =
     | None -> None
     )
   | _ -> assert false
+
+and match_pat_fields pfs vs ve : val_env option =
+  match pfs with
+  | [] -> Some ve
+  | pf::pfs' ->
+    begin
+      let Name key = pf.it.name.it in
+      match match_pat pf.it.pat (V.Env.find key vs) with
+      | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
+      | None -> None
+    end
 
 (* Blocks and Declarations *)
 

@@ -504,6 +504,8 @@ pat_nullary :
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { ObjP(fps) @! at $sloc }
 
 pat_un :
   | p=pat_nullary
@@ -534,6 +536,12 @@ return_typ :
 
 return_typ_nullary :
   | COLON t=typ_nullary { t }
+
+pat_field :
+  | x=id
+    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
+  | x=id EQ p=pat
+    { {id = x; pat = p} @@ at $sloc }
 
 
 (* Declarations *)
