@@ -872,15 +872,14 @@ and check_pat' env t pat : val_env =
         (T.string_of_typ_expand t)
     )
   | ObjP pfs ->
-    begin
-      try
-        let s, tfs = T.as_obj_sub "" t in
-        if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
-        check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
-      with Invalid_argument _ ->
-        error env pat.at "object pattern cannot consume expected type\n  %s"
-          (T.string_of_typ_expand t)
-    end
+    (try
+       let s, tfs = T.as_obj_sub "" t in
+       if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
+       check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
+     with Invalid_argument _ ->
+       error env pat.at "object pattern cannot consume expected type\n  %s"
+         (T.string_of_typ_expand t)
+    )
   | OptP pat1 ->
     (try
       let t1 = T.as_opt t in
@@ -938,16 +937,16 @@ and check_pat_fields env tfs pfs ve at : val_env =
   match pfs, tfs with
   | [], [] -> ve
   | pf::pfs', T.{ lab; typ }::tfs' ->
-    begin match T.is_mut typ, compare pf.it.id.it lab with
-    | true, 0 -> error env pf.at "cannot pattern match mutable field %s" lab
-    | _, 0 ->
+    begin match compare pf.it.id.it lab with
+    | 0 ->
+      if T.is_mut typ then error env pf.at "cannot pattern match mutable field %s" lab;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
       begin match repeated lab pfs' with
       | None -> check_pat_fields env tfs' pfs' ve' at
       | Some at -> error env at "cannot pattern match repeated field %s" lab
       end
-    | _, c when c > 0 ->
+    | c when c > 0 ->
       check_pat_fields env tfs' pfs ve at
     | _ ->
       error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
