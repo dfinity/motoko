@@ -92,7 +92,7 @@ func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, 
 
 // Internal helper functions for the show translation
 
-// The @ in the name ensures that this connot be shadowed by user code, so
+// The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 // The text_of functions do not need to be exposed; the user can just use
 // the show above.
