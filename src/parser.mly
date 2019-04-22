@@ -495,7 +495,7 @@ exp_field :
 
 (* Patterns *)
 
-pat_nullary :
+pat_argument :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
@@ -504,6 +504,12 @@ pat_nullary :
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
+pat_nullary :
+  | p=pat_argument
+    { p }
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { ObjP(fps) @! at $sloc }
 
 pat_un :
   | p=pat_nullary
@@ -535,6 +541,12 @@ return_typ :
 return_typ_nullary :
   | COLON t=typ_nullary { t }
 
+pat_field :
+  | x=id
+    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
+  | x=id EQ p=pat
+    { {id = x; pat = p} @@ at $sloc }
+
 
 (* Declarations *)
 
@@ -565,7 +577,7 @@ dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fe=func_exp
     { let named, x = xf "func" $sloc in
       let_or_exp named x (fe s x.it).it (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
@@ -582,7 +594,7 @@ dec :
     { ExpD e @? at $sloc }
 
 func_exp :
-  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_argument rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction

@@ -809,6 +809,9 @@ and infer_pat' env pat : T.typ * val_env =
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
+  | ObjP pfs ->
+    let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
+    T.Obj (s, tfs), ve
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
@@ -836,6 +839,13 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
+and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * val_env =
+  match pfs with
+  | [] -> (T.(Object Local), List.rev ts), ve
+  | pf::pfs' ->
+    let typ, ve1 = infer_pat env pf.it.pat in
+    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
 and check_pat_exhaustive env t pat : val_env =
   let ve = check_pat env t pat in
@@ -878,6 +888,15 @@ and check_pat' env t pat : val_env =
     with Invalid_argument _ ->
       error env pat.at "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
+    )
+  | ObjP pfs ->
+    (try
+       let s, tfs = T.as_obj_sub "" t in
+       if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
+       check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
+     with Invalid_argument _ ->
+       error env pat.at "object pattern cannot consume expected type\n  %s"
+         (T.string_of_typ_expand t)
     )
   | OptP pat1 ->
     (try
@@ -929,6 +948,32 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
+and check_pat_fields env tfs pfs ve at : val_env =
+  let repeated l = function
+    | [] -> None
+    | (pf : pat_field)::_ -> if l = pf.it.id.it then Some pf.at else None in
+  match pfs, tfs with
+  | [], [] -> ve
+  | pf::pfs', T.{ lab; typ }::tfs' ->
+    begin match compare pf.it.id.it lab with
+    | 0 ->
+      if T.is_mut typ then error env pf.at "cannot pattern match mutable field %s" lab;
+      let ve1 = check_pat env typ pf.it.pat in
+      let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+      begin match repeated lab pfs' with
+      | None -> check_pat_fields env tfs' pfs' ve' at
+      | Some at -> error env at "cannot pattern match repeated field %s" lab
+      end
+    | c when c > 0 ->
+      check_pat_fields env tfs' pfs ve at
+    | _ ->
+      error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+    end
+  | [], _ -> ve
+  | pf::_, [] ->
+    error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+
+and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
 (* Objects *)
 
@@ -954,12 +999,16 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
+  | ObjP pfs -> List.fold_right pub_pat_field pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 ->
     pub_pat pat1 xs
+
+and pub_pat_field pf xs =
+  pub_pat pf.it.pat xs
 
 and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (T.Env.add id.it id.at xs, ys)
@@ -1198,7 +1247,11 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+
+and gather_pat_field env ve pf : val_env =
+  gather_pat env ve pf.it.pat
 
 and gather_id env ve id : val_env =
   if T.Env.mem id.it ve then

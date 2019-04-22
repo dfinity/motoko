@@ -4157,6 +4157,16 @@ let compile_relop env t op =
      compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (Arrange.relop op)
 
+(* compile_load_field performs a tag check if the projection's domain
+   is ambiguous, then calls the appropriate accessor *)
+let compile_load_field env typ ({it=(Name n); _} as name) =
+  let selective tag = function
+    | None -> [] | Some code -> [ tag, code ] in
+  Tagged.branch_with env (ValBlockType (Some I32Type))
+    (List.concat [ [Tagged.Object, Object.load_idx env typ name]
+                 ; selective Tagged.Array (Array.fake_object_idx env n)
+                 ; selective Tagged.Text (Text.fake_object_idx env n)])
+
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) exp =
@@ -4188,15 +4198,10 @@ and compile_exp (env : E.t) exp =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Array.idx env ^^
     load_ptr
-  | DotE (e, ({it = Name n;_} as name)) ->
+  | DotE (e, name) ->
     SR.Vanilla,
     compile_exp_vanilla env e ^^
-      let selective tag = function
-        | None -> [] | Some code -> [ tag, code ]
-      in Tagged.branch_with env (ValBlockType (Some I32Type))
-           (List.concat [ [Tagged.Object, Object.load_idx env e.note.note_typ name]
-                        ; selective Tagged.Array (Array.fake_object_idx env n)
-                        ; selective Tagged.Text (Text.fake_object_idx env n)])
+    compile_load_field env e.note.note_typ name
   | ActorDotE (e, ({it = Name n;_} as name)) ->
     SR.UnboxedReference,
     if E.mode env <> DfinityMode then G.i Unreachable else
@@ -4478,9 +4483,7 @@ and compile_exp (env : E.t) exp =
 
     let rec go env cs = match cs with
       | [] -> CanFail (fun k -> k)
-      | (c::cs) ->
-          let pat = c.it.pat in
-          let e = c.it.exp in
+      | {it={pat; exp=e}; _}::cs ->
           let (env1, code) = compile_pat_local env pat in
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env1 e) ^^^ CannotFail set_j)
@@ -4640,15 +4643,23 @@ and fill_pat env pat : patternCode =
       CannotFail (Var.set_val env name.it)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
-      let rec go i ps env = match ps with
+      let rec go i = function
         | [] -> CannotFail G.nop
-        | (p::ps) ->
+        | p::ps ->
           let code1 = fill_pat env p in
-          let code2 = go (i+1) ps env in
-          ( CannotFail (get_i ^^ Tuple.load_n (Int32.of_int i)) ^^^
-            code1 ^^^
-            code2 ) in
-      CannotFail set_i ^^^ go 0 ps env
+          let code2 = go (Int32.add i 1l) ps in
+          CannotFail (get_i ^^ Tuple.load_n i) ^^^ code1 ^^^ code2 in
+      CannotFail set_i ^^^ go 0l ps
+  | ObjP pfs ->
+      let project = compile_load_field env pat.note in
+      let (set_i, get_i) = new_local env "obj_scrut" in
+      let rec go = function
+        | [] -> CannotFail G.nop
+        | {it={name; pat}; _}::pfs' ->
+          let code1 = fill_pat env pat in
+          let code2 = go pfs' in
+          CannotFail (get_i ^^ project name) ^^^ code1 ^^^ code2 in
+      CannotFail set_i ^^^ go pfs
   | AltP (p1, p2) ->
       let code1 = fill_pat env p1 in
       let code2 = fill_pat env p2 in
