@@ -17,37 +17,38 @@ let recover f y = recover_with () f y
 (* Scopes *)
 
 type val_env = T.typ T.Env.t
+type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 
 
 type scope =
   { val_env : val_env;
+    lib_env : lib_env;
     typ_env : typ_env;
     con_env : con_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
+    lib_env = T.Env.empty;
     typ_env = T.Env.empty;
     con_env = T.ConSet.empty
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
+    lib_env = T.Env.adjoin scope1.lib_env scope2.lib_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
     con_env = T.ConSet.union scope1.con_env scope2.con_env;
   }
 
+
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
-(*
-let adjoin_con_env c ce = {c with con_env = Con.Env.adjoin c.con_env ce}
-let adjoin_typ_env c te ce =
-  { c with
-    typ_env = T.Env.adjoin c.typ_env te;
-    con_env = Con.Env.adjoin c.con_env ce;
-  }
- *)
+
+let library_scope f t =
+  { empty_scope with lib_env = T.Env.add f t empty_scope.lib_env }
+
 
 (* Contexts (internal) *)
 
@@ -56,6 +57,7 @@ type ret_env = T.typ option
 
 type env =
   { vals : val_env;
+    libs : lib_env;
     typs : typ_env;
     cons : con_env;
     labs : lab_env;
@@ -67,6 +69,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.val_env;
+    libs = scope.lib_env;
     typs = scope.typ_env;
     cons = scope.con_env;
     labs = T.Env.empty;
@@ -105,6 +108,7 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.val_env;
+    libs = T.Env.adjoin env.libs scope.lib_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
     cons = T.ConSet.union env.cons scope.con_env;
   }
@@ -727,7 +731,7 @@ and infer_exp'' env exp : T.typ =
     t
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
-    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    (match T.Env.find_opt !fp env.libs with
     | Some T.Pre ->
       error env exp.at "cannot infer type of forward import %s" !fp
     | Some t -> t
@@ -860,6 +864,9 @@ and infer_pat' env pat : T.typ * val_env =
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
     T.Tup ts, ve
+  | ObjP pfs ->
+    let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
+    T.Obj (s, tfs), ve
   | OptP pat1 ->
     let t1, ve = infer_pat env pat1 in
     T.Opt t1, ve
@@ -887,6 +894,13 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
+and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * val_env =
+  match pfs with
+  | [] -> (T.(Object Local), List.rev ts), ve
+  | pf::pfs' ->
+    let typ, ve1 = infer_pat env pf.it.pat in
+    let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
 and check_pat_exhaustive env t pat : val_env =
   let ve = check_pat env t pat in
@@ -929,6 +943,15 @@ and check_pat' env t pat : val_env =
     with Invalid_argument _ ->
       error env pat.at "tuple pattern cannot consume expected type\n  %s"
         (T.string_of_typ_expand t)
+    )
+  | ObjP pfs ->
+    (try
+       let s, tfs = T.as_obj_sub "" t in
+       if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
+       check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
+     with Invalid_argument _ ->
+       error env pat.at "object pattern cannot consume expected type\n  %s"
+         (T.string_of_typ_expand t)
     )
   | OptP pat1 ->
     (try
@@ -980,6 +1003,32 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
+and check_pat_fields env tfs pfs ve at : val_env =
+  let repeated l = function
+    | [] -> None
+    | (pf : pat_field)::_ -> if l = pf.it.id.it then Some pf.at else None in
+  match pfs, tfs with
+  | [], [] -> ve
+  | pf::pfs', T.{ lab; typ }::tfs' ->
+    begin match compare pf.it.id.it lab with
+    | 0 ->
+      if T.is_mut typ then error env pf.at "cannot pattern match mutable field %s" lab;
+      let ve1 = check_pat env typ pf.it.pat in
+      let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+      begin match repeated lab pfs' with
+      | None -> check_pat_fields env tfs' pfs' ve' at
+      | Some at -> error env at "cannot pattern match repeated field %s" lab
+      end
+    | c when c > 0 ->
+      check_pat_fields env tfs' pfs ve at
+    | _ ->
+      error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+    end
+  | [], _ -> ve
+  | pf::_, [] ->
+    error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+
+and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
 (* Objects *)
 
@@ -1007,12 +1056,16 @@ and pub_pat pat xs : region T.Env.t * region T.Env.t =
   | WildP | LitP _ | SignP _ -> xs
   | VarP id -> pub_val_id id xs
   | TupP pats -> List.fold_right pub_pat pats xs
+  | ObjP pfs -> List.fold_right pub_pat_field pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | VariantP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 ->
     pub_pat pat1 xs
+
+and pub_pat_field pf xs =
+  pub_pat pf.it.pat xs
 
 and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (T.Env.add id.it id.at xs, ys)
@@ -1215,7 +1268,7 @@ and infer_path env exp : T.typ option =
   match exp.it with
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
-    T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals
+    T.Env.find_opt !fp env.libs
   | VarE id ->
     T.Env.find_opt id.it env.vals
   | DotE(path, id) ->
@@ -1265,7 +1318,7 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { typ_env = te'; con_env = ce'; val_env = ve' }
+    { typ_env = te'; lib_env = scope.lib_env; con_env = ce'; val_env = ve' }
   | ModuleD (id, decs) ->
     (* TODO: this won't catch shadowing of ordinary val and module; instead gather vals here too?*)
     if T.Env.mem id.it scope.val_env then
@@ -1274,6 +1327,7 @@ and gather_dec_typdecs env scope dec : scope =
     let ve' = T.Env.add id.it (module_of_scope scope') scope.val_env in
     {val_env = ve';
      typ_env = scope.typ_env;
+     lib_env = scope.lib_env;
      con_env = scope.con_env }
 
 (* Pass 2 and 3: infer type definitions *)
@@ -1359,7 +1413,11 @@ and gather_pat env ve pat : val_env =
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | VariantP (_, pat1) | AltP (pat1, _) | OptP pat1 | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+
+and gather_pat_field env ve pf : val_env =
+  gather_pat env ve pf.it.pat
 
 and gather_id env ve id : val_env =
   begin
@@ -1410,7 +1468,8 @@ and infer_dec_valdecs env dec : scope =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    { val_env = T.Env.singleton id.it
+    { empty_scope with
+      val_env = T.Env.singleton id.it
                   (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]));
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c
@@ -1425,17 +1484,6 @@ and infer_dec_valdecs env dec : scope =
 
 (* Programs *)
 
-let check_prog scope prog : scope Diag.result =
-  Diag.with_message_store (fun msgs ->
-    recover_opt
-      (fun prog ->
-        let env = env_of_scope msgs scope in
-        let res = check_block env T.unit prog.it prog.at in
-        Definedness.check_prog msgs prog;
-        res)
-      prog
-    )
-
 let infer_prog scope prog : (T.typ * scope) Diag.result =
   Diag.with_message_store
     (fun msgs ->
@@ -1447,4 +1495,25 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
           res
         )
         prog
+    )
+
+let infer_library env prog at =
+  let typ,scope = infer_block env prog at in
+  match prog with
+  |  [{it = Syntax.ExpD _;_}] ->
+     typ
+  (* HACK: to be removed once we support module expressions, remove ModuleD *)
+  |  ds ->
+     module_of_scope scope
+
+let check_library scope (filename, prog) : scope Diag.result =
+  Diag.with_message_store (fun msgs ->
+    recover_opt
+      (fun prog ->
+        let env = env_of_scope msgs scope in
+        let typ = infer_library env prog.it prog.at in
+        Definedness.check_prog msgs prog;
+        library_scope filename typ
+      )
+      prog
     )

@@ -45,15 +45,15 @@ type fd = f * defs
 (* Operations: *)
 
 (* This adds a set of free variables to a combined set *)
-let (+++) ((f,d) : fd)  x = ((++) f x, d)
+let (+++) ((f, d) : fd) x = ((++) f x, d)
 (* This takes the union of two combined sets *)
-let (++++) (f1, d1) (f2,d2) = ((++) f1 f2, S.union d1 d2)
+let (++++) (f1, d1) (f2, d2) = ((++) f1 f2, S.union d1 d2)
 let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs)
 
 let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
 
 (* The bound variables from the second argument scope over the first *)
-let (///) (x : f) ((f,d) : fd) = f ++ diff x d
+let (///) (x : f) ((f, d) : fd) = f ++ diff x d
 
 (* Usage tracking. We distinguish between eager and delayed variable use.
    Eager variables become delayed
@@ -77,7 +77,6 @@ let delayed_vars : f -> S.t =
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
-  | ImportE (_, fp)     -> M.singleton (Syntax.id_of_full_path !fp).it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   (* And break and return can be thought of as calling a continuation: *)
@@ -90,6 +89,7 @@ let rec exp msgs e : f = match e.it with
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
+  | ImportE _           -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
@@ -128,6 +128,7 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
+  | ObjP pfs      -> pat_fields msgs pfs
   | AnnotP (p, _)
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
@@ -137,6 +138,8 @@ and pat msgs p : fd = match p.it with
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
+
+and pat_fields msgs pfs = union_binders (fun (pf : pat_field) -> pat msgs pf.it.pat) pfs
 
 and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
