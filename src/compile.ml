@@ -2039,11 +2039,6 @@ module Text = struct
       Closure.fixed_closure env funid [ get_x ]
     )
 
-  let fake_object_idx env = function
-      | "chars" -> Some (text_chars env)
-      | "len" -> Some (partial_len env)
-      | _ -> None
-
   let prim_showChar env =
     let (set_c, get_c) = new_local env "c" in
     let (set_utf8, get_utf8) = new_local env "utf8" in
@@ -2187,14 +2182,6 @@ module Array = struct
         compile_unboxed_const 1l ^^ (* advance by one *)
         get_x ^^ get_i ^^ idx env ^^ load_ptr (* return the element *)
       )
-
-  let fake_object_idx env = function
-      | "get" -> Some (partial_get env)
-      | "set" -> Some (partial_set env)
-      | "len" -> Some (partial_len env)
-      | "keys" -> Some (keys_iter env)
-      | "vals" -> Some (vals_iter env)
-      | _ -> None
 
   (* Does not initialize the fields! *)
   let alloc env =
@@ -4190,15 +4177,30 @@ let compile_relop env t op =
      compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (Arrange.relop op)
 
-(* compile_load_field performs a tag check if the projection's domain
-   is ambiguous, then calls the appropriate accessor *)
+(* compile_load_field implements the various “virtual fields”, which
+   we currently have for arrays and text.
+   It goes through branch_typed_with, which does a dynamic check of the
+   heap object type *)
 let compile_load_field env typ ({it=(Name n); _} as name) =
-  let selective tag = function
-    | None -> [] | Some code -> [ tag, code ] in
-  Tagged.branch_typed_with env typ (ValBlockType (Some I32Type))
-    (List.concat [ [Tagged.Object, Object.load_idx env typ name]
-                 ; selective Tagged.Array (Array.fake_object_idx env n)
-                 ; selective Tagged.Text (Text.fake_object_idx env n)])
+  let branches =
+    ( Tagged.Object, Object.load_idx env typ name ) ::
+    match n with
+    | "len" ->
+      [ Tagged.Array, Array.partial_len env
+      ; Tagged.Text, Text.partial_len env ]
+    | "get" ->
+      [ Tagged.Array, Array.partial_get env ]
+    | "set" ->
+      [ Tagged.Array, Array.partial_set env ]
+    | "keys" ->
+      [ Tagged.Array, Array.keys_iter env ]
+    | "vals" ->
+      [ Tagged.Array, Array.vals_iter env ]
+    | "chars" ->
+      [ Tagged.Text, Text.text_chars env ]
+    | _ -> []
+    in
+  Tagged.branch_typed_with env typ (ValBlockType (Some I32Type)) branches
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
