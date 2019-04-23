@@ -45,15 +45,15 @@ type fd = f * defs
 (* Operations: *)
 
 (* This adds a set of free variables to a combined set *)
-let (+++) ((f,d) : fd)  x = ((++) f x, d)
+let (+++) ((f, d) : fd) x = ((++) f x, d)
 (* This takes the union of two combined sets *)
-let (++++) (f1, d1) (f2,d2) = ((++) f1 f2, S.union d1 d2)
+let (++++) (f1, d1) (f2, d2) = ((++) f1 f2, S.union d1 d2)
 let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs)
 
 let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
 
 (* The bound variables from the second argument scope over the first *)
-let (///) (x : f) ((f,d) : fd) = f ++ diff x d
+let (///) (x : f) ((f, d) : fd) = f ++ diff x d
 
 (* Usage tracking. We distinguish between eager and delayed variable use.
    Eager variables become delayed
@@ -128,6 +128,7 @@ and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
   | TupP ps       -> pats msgs ps
+  | ObjP pfs      -> pat_fields msgs pfs
   | AnnotP (p, _)
   | ParP p        -> pat msgs p
   | LitP l        -> (M.empty, S.empty)
@@ -137,6 +138,8 @@ and pat msgs p : fd = match p.it with
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
+
+and pat_fields msgs pfs = union_binders (fun (pf : pat_field) -> pat msgs pf.it.pat) pfs
 
 and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 

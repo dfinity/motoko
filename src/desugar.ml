@@ -14,7 +14,7 @@ let id_of_full_path (fp : string) : Syntax.id =
   let open Source in
   ("file$" ^ fp) @@ no_region
 
-(* Combinators used in the desguaring *)
+(* Combinators used in the desugaring *)
 
 let trueE : Ir.exp = boolE true
 let falseE : Ir.exp = boolE false
@@ -233,11 +233,17 @@ and pat' = function
   | S.LitP l -> I.LitP !l
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
+  | S.ObjP pfs ->
+    I.ObjP (pat_fields pfs)
   | S.OptP p -> I.OptP (pat p)
   | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
+
+and pat_fields pfs = List.map pat_field pfs
+
+and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
