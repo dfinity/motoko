@@ -635,8 +635,23 @@ let rec lub t1 t2 =
   | Variant t1', Variant t2' -> Variant (lub_variant t1' t2')
   | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
   | (Obj _ as t1), Array t2' -> lub t1 (array_obj t2')
+  | Prim Text, (Obj _ as t2) -> lub text_obj t2
+  | (Obj _ as t1), Prim Text -> lub t1 text_obj
+  | Prim Text, Array t2' -> lub text_obj (array_obj t2')
+  | Array t1', Prim Text -> lub (array_obj t1') text_obj
+  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, lub_object tf1 tf2)
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
+
+and lub_object fs1 fs2 = match fs1, fs2 with
+  | _, [] -> []
+  | [], _ -> []
+  | f1::fs1', f2::fs2' ->
+    begin match compare_field f1 f2 with
+    | 0 -> {lab = f1.lab; typ = lub f1.typ f2.typ}::lub_object fs1' fs2'
+    | 1 -> lub_object fs1 fs2'
+    | _ -> lub_object fs1' fs2
+    end
 
 and lub_variant fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -664,12 +679,29 @@ let rec glb t1 t2 =
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
   | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
+  | Array t1', (Obj _ as t2) -> glb (array_obj t1') t2
+  | (Obj _ as t1), Array t2' -> glb t1 (array_obj t2')
+  | Prim Text, (Obj _ as t2) -> glb text_obj t2
+  | (Obj _ as t1), Prim Text -> glb t1 text_obj
+  | Prim Text, Array t2' -> glb text_obj (array_obj t2')
+  | Array t1', Prim Text -> glb (array_obj t1') text_obj
+  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object tf1 tf2)
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
+and glb_object fs1 fs2 = match fs1, fs2 with
+  | fs1, [] -> fs1
+  | [], fs2 -> fs2
+  | f1::fs1', f2::fs2' ->
+    begin match compare_field f1 f2 with
+    | 0 -> {lab = f1.lab; typ = glb f1.typ f2.typ}::glb_object fs1' fs2'
+    | 1 -> f2::glb_object fs1 fs2'
+    | _ -> f1::glb_object fs1' fs2
+    end
+
 and glb_variant fs1 fs2 = match fs1, fs2 with
-  | fs1, [] -> []
-  | [], fs2 -> []
+  | _, [] -> []
+  | [], _ -> []
   | f1::fs1', f2::fs2' ->
     begin match compare_summand f1 f2 with
     | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_variant fs1' fs2'
