@@ -104,6 +104,10 @@ and infer_effect_dec dec =
   | TypD _
   | ClassD _ ->
     T.Triv
+  | ModuleD (_,decs) ->
+    let es = List.map effect_dec decs in
+    List.fold_left max_eff Type.Triv es
+
 
 (* effect inference on Ir *)
 

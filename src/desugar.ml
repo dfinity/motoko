@@ -100,19 +100,21 @@ and exp' at note = function
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | Type.Object _ -> build_obj at s self_id es obj_typ
+  | Type.Object _ | T.Module -> build_obj at s self_id es obj_typ
   | Type.Actor -> build_actor at self_id es obj_typ
+
+and build_field {Type.lab; Type.typ} =
+  { it = { I.name = I.Name lab @@ no_region
+         ; I.var = lab @@ no_region
+         }
+  ; at = no_region
+  ; note = typ
+  }
 
 and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.lab; Type.typ} ->
-        { it = { I.name = I.Name lab @@ no_region
-               ; I.var = lab @@ no_region
-               }
-        ; at = no_region
-        ; note = typ
-        }) fields
+      List.map build_field fields
     | _ -> assert false
 
 and build_actor at self_id es obj_typ =
@@ -155,6 +157,8 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+  | false, S.ModuleD (x, _) ->
+    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
 
@@ -216,6 +220,24 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
+  | S.ModuleD(id, ds) ->
+    (build_module id ds (n.S.note_typ)).it
+
+
+and field_typ_to_obj_entry (f: T.field) =
+  match f.T.typ with
+  | T.Kind _ -> []
+  | _ -> [ build_field f ]
+
+and build_module id ds typ =
+  let self = idE id typ in
+  let (s, fs) = T.as_obj typ in
+  letD self
+    (blockE
+       (decs ds)
+       (newObjE T.Module
+          (List.concat (List.map field_typ_to_obj_entry fs)) typ));
+          (* ^^^^ TBR: do these need to be sorted? *)
 
 and cases cs = List.map case cs
 
@@ -309,30 +331,46 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
+let declare_import imp_env (f, (prog:Syntax.prog))  =
+  let open Source in
+  let t = Type.Env.find f imp_env in
+  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
+  match prog.it with
+  |  [{it = Syntax.ExpD _;_}] ->
+     { it = Syntax.LetD
+              (
+                { it = Syntax.VarP (id_of_full_path f)
+                ; at = no_region
+                ; note = t
+                }
+              , { it = Syntax.BlockE prog.it
+                ; at = no_region
+                ; note = typ_note
+                }
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
+  (* HACK: to be removed once we support module expressions *)
+  |  ds ->
+     { it = Syntax.ModuleD
+              (  id_of_full_path f
+               , ds
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
+
 
 let combine_files imp_env libraries progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (fun (f, prog) ->
-      let t = Type.Env.find f imp_env in
-      { it = Syntax.LetD
-        ( { it = Syntax.VarP (id_of_full_path f)
-          ; at = no_region
-          ; note = t
-          }
-        , { it = Syntax.BlockE prog.it
-          ; at = no_region
-          ; note = { Syntax.empty_typ_note with Syntax.note_typ = t }
-          }
-        )
-      ; at = no_region
-      ; note = { Syntax.empty_typ_note with Syntax.note_typ = t }
-      }) libraries
-    @ List.concat (List.map (fun p -> p.it) progs)
+  { it = List.map (declare_import imp_env) libraries
+         @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
-    | [prog] -> prog.Source.note
-    | _ -> "all"
+           | [prog] -> prog.Source.note
+           | _ -> "all"
   }
 
 let transform p = prog p

@@ -2826,6 +2826,7 @@ module Serialization = struct
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t
         | Serialized t -> go t
+        | Kind (_c,_k) -> false
       end
     in go t
 
@@ -4531,8 +4532,8 @@ and compile_exp (env : E.t) exp =
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env i ds fs exp.at
-    else todo_trap env "non-closed actor" (Arrange_ir.exp exp) 
-  | NewObjE (Type.Object _ (*sharing*), fs, _) ->
+    else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
+  | NewObjE ((Type.Object _ (*sharing*) | Type.Module), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun env ->
