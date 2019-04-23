@@ -2749,11 +2749,18 @@ module Tuple = struct
   (* Takes an argument tuple and puts the elements on the stack: *)
   let to_stack env n =
     if n = 0 then G.i Drop else
-    let name = Printf.sprintf "from_%i_tuple" n in
-    let retty = Lib.List.make n I32Type in
-    Func.share_code1 env name ("tup", I32Type) retty (fun env get_tup ->
+    if !Flags.multi_value
+    then begin
+      let name = Printf.sprintf "from_%i_tuple" n in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code1 env name ("tup", I32Type) retty (fun env get_tup ->
+        G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
+      )
+    end else begin
+      let (set_tup, get_tup) = new_local env "tup" in
+      set_tup ^^
       G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
-    )
+    end
 end (* Tuple *)
 
 module Dfinity = struct
@@ -4133,7 +4140,9 @@ module StackRep = struct
    *)
 
   let of_arity n =
-    if n = 1 then Vanilla else UnboxedTuple n
+    if !Flags.multi_value
+    then if n = 1 then Vanilla else UnboxedTuple n
+    else if n >= 1 then Vanilla else UnboxedTuple n
 
   let refs_of_arity n =
     if n = 1 then UnboxedReference else UnboxedRefTuple n
@@ -4157,9 +4166,11 @@ module StackRep = struct
     | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedTuple n when not !Flags.multi_value -> assert false
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | UnboxedRefTuple 0 -> ValBlockType None
     | UnboxedRefTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedRefTuple n when not !Flags.multi_value -> assert false
     | UnboxedRefTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | StaticThing _ -> ValBlockType None
     | Unreachable -> ValBlockType None
@@ -4187,6 +4198,13 @@ module StackRep = struct
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
+
+  let _relax =
+    if !Flags.multi_value
+    then fun sr -> sr
+    else function
+      | UnboxedTuple n when n > 1 -> Vanilla
+      | sr -> sr
 
   let drop env (sr_in : t) =
     match sr_in with
@@ -4483,7 +4501,10 @@ module FuncDec = struct
    the function will find in the closure. *)
   let compile_local_function outer_env outer_ae cc restore_env args mk_body at =
     let arg_names = List.map (fun a -> a.it, I32Type) args in
-    let retty = Lib.List.make cc.Call_conv.n_res I32Type in
+    let retty =
+      if !Flags.multi_value
+      then Lib.List.make cc.Call_conv.n_res I32Type
+      else if cc.Call_conv.n_res = 0 then [] else [I32Type] in
     let ae0 = ASEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
