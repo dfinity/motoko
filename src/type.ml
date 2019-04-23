@@ -633,6 +633,7 @@ let rec lub t1 t2 =
   | Prim Null, Opt t'
   | Opt t', Prim Null -> Opt t'
   | Variant t1', Variant t2' -> Variant (lub_variant t1' t2')
+  | Array t1, Array t2 -> Array (lub t1 t2)
   | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
   | (Obj _ as t1), Array t2' -> lub t1 (array_obj t2')
   | Prim Text, (Obj _ as t2) -> lub text_obj t2
@@ -640,6 +641,7 @@ let rec lub t1 t2 =
   | Prim Text, Array t2' -> lub text_obj (array_obj t2')
   | Array t1', Prim Text -> lub (array_obj t1') text_obj
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, lub_object tf1 tf2)
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 lub ts1 ts2)
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
 
@@ -679,6 +681,7 @@ let rec glb t1 t2 =
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
   | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
+  | Array t1, Array t2 -> Array (glb t1 t2)
   | Array t1', (Obj _ as t2) -> glb (array_obj t1') t2
   | (Obj _ as t1), Array t2' -> glb t1 (array_obj t2')
   | Prim Text, (Obj _ as t2) -> glb text_obj t2
@@ -686,6 +689,7 @@ let rec glb t1 t2 =
   | Prim Text, Array t2' -> glb text_obj (array_obj t2')
   | Array t1', Prim Text -> glb (array_obj t1') text_obj
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object tf1 tf2)
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 glb ts1 ts2)
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
