@@ -987,6 +987,39 @@ module Tagged = struct
        let prep (t, code) = (t, get_o ^^ code)
        in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
 
+  (* Can a value of this type be represented by a heap object with this tag? *)
+  (* Needs to be conservative, i.e. return `true` if unsure *)
+  (* This function can also be used as assertions in a lint mode, e.g. in compile_exp *)
+  let can_have_tag ty tag =
+    let open Type in
+    match (tag : tag) with
+    | Array ->
+      begin match normalize ty with
+      | (Con _ | Shared | Any) -> true
+      | (Array _ | Tup _ | Obj _) -> true
+      | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      end
+    | Text ->
+      begin match normalize ty with
+      | (Con _ | Shared | Any) -> true
+      | (Prim Text | Obj _) -> true
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      end
+    | Object ->
+      begin match normalize ty with
+      | (Con _ | Shared | Any) -> true
+      | (Obj _) -> true
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      end
+    | _ -> true
+
+  (* like branch_with but with type information to statically skip some branches *)
+  let branch_typed_with env ty retty branches =
+    branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
+
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
@@ -4162,7 +4195,7 @@ let compile_relop env t op =
 let compile_load_field env typ ({it=(Name n); _} as name) =
   let selective tag = function
     | None -> [] | Some code -> [ tag, code ] in
-  Tagged.branch_with env (ValBlockType (Some I32Type))
+  Tagged.branch_typed_with env typ (ValBlockType (Some I32Type))
     (List.concat [ [Tagged.Object, Object.load_idx env typ name]
                  ; selective Tagged.Array (Array.fake_object_idx env n)
                  ; selective Tagged.Text (Text.fake_object_idx env n)])
