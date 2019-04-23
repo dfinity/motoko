@@ -3,9 +3,4 @@ type Subscription = shared {
   cancel : shared () -> ();
 };
 
-type ClientData = {
-  id : Nat;
-  client : Client;
-  var revoked : Bool;
-};
 

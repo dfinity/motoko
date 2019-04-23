@@ -1,17 +1,14 @@
 ActorScript 0.1 interpreter
--- Checking all:
--- Interpreting all:
--- Finished all:
-
 -- Parsing stdin:
-> -- Parsing ./lib/empty.as:
+> -- Parsing empty.as:
+-- Checking empty.as:
 -- Checking stdin:
+-- Interpreting empty.as:
 -- Interpreting stdin:
 -- Finished stdin:
 
 -- Parsing stdin:
-> -- Parsing ./lib/empty.as:
--- Checking stdin:
+> -- Checking stdin:
 -- Interpreting stdin:
 -- Finished stdin:
 
