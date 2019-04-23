@@ -480,6 +480,37 @@ let load_ptr : G.t =
 let store_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = ptr_unskew; sz = None})
 
+module FakeMultiVal = struct
+  (* For some use-cases (e.g. processing the compiler output with analysis
+     tools) it is useful to avoid the multi-value extension.
+
+     This module provides mostly transparent wrappers that put multiple values
+     in statically allocated globals (at most 10...) and pull them off again.
+
+     If the multi_value flag is on, these do not do anything.
+  *)
+  let first_multival_global = 6
+
+  let ty tys =
+    if !Flags.multi_value || List.length tys <= 1
+    then tys
+    else []
+
+  let store tys =
+    if !Flags.multi_value || List.length tys <= 1 then G.nop else
+    G.concat_mapi (fun i _ ->
+      G.i (GlobalSet (nr (Int32.of_int (first_multival_global + i))))
+    ) tys
+
+  let load tys =
+    if !Flags.multi_value || List.length tys <= 1 then G.nop else
+    let n = first_multival_global + List.length tys - 1 in
+    G.concat_mapi (fun i _ ->
+      G.i (GlobalGet (nr (Int32.of_int (n - i))))
+    ) tys
+
+end (* FakeMultiVal *)
+
 module Func = struct
   (* This module contains basic bookkeeping functionality to define functions,
      in particular creating the environment, and finally adding it to the environment.
@@ -488,8 +519,10 @@ module Func = struct
   let of_body env params retty mk_body =
     let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) (List.length retty) in
     List.iteri (fun i (n,_t) -> E.add_local_name env1 (Int32.of_int i) n) params;
-    let ty = FuncType (List.map snd params, retty) in
-    let body = G.to_instr_list (mk_body env1) in
+    let ty = FuncType (List.map snd params, FakeMultiVal.ty retty) in
+    let body = G.to_instr_list (
+      mk_body env1 ^^ FakeMultiVal.store retty
+    ) in
     (nr { ftype = nr (E.func_type env ty);
           locals = E.get_locals env1;
           body }
@@ -499,9 +532,12 @@ module Func = struct
     E.define_built_in env name (fun () -> of_body env params retty mk_body)
 
   (* (Almost) transparently lift code into a function and call this function. *)
+  (* Also add a hack to support multiple return values *)
   let share_code env name params retty mk_body =
     define_built_in env name params retty mk_body;
-    G.i (Call (nr (E.built_in env name)))
+    G.i (Call (nr (E.built_in env name))) ^^
+    FakeMultiVal.load retty
+
 
   (* Shorthands for various arities *)
   let _share_code0 env name retty mk_body =
@@ -1182,23 +1218,22 @@ module Closure = struct
   let load_data i = Heap.load_field (Int32.add header_size i)
   let store_data i = Heap.store_field (Int32.add header_size i)
 
-  (* Calculate the wasm type for a given calling convention.
-     An extra first argument for the closure! *)
-  let ty env cc =
-    E.func_type env (FuncType (
-      I32Type :: Lib.List.make cc.Call_conv.n_args I32Type,
-      Lib.List.make cc.Call_conv.n_res I32Type))
-
   (* Expect on the stack
      * the function closure
      * and arguments (n-ary!)
      * the function closure again!
   *)
   let call_closure env cc =
+    (* Calculate the wasm type for a given calling convention.
+       An extra first argument for the closure! *)
+    let ty = E.func_type env (FuncType (
+      I32Type :: Lib.List.make cc.Call_conv.n_args I32Type,
+      FakeMultiVal.ty (Lib.List.make cc.Call_conv.n_res I32Type))) in
     (* get the table index *)
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr (ty env cc)))
+    G.i (CallIndirect (nr ty)) ^^
+    FakeMultiVal.load (Lib.List.make cc.Call_conv.n_res I32Type)
 
   let fixed_closure env fi fields =
       Tagged.obj env Tagged.Closure
@@ -2770,11 +2805,13 @@ module Tuple = struct
   (* Takes an argument tuple and puts the elements on the stack: *)
   let to_stack env n =
     if n = 0 then G.i Drop else
-    let name = Printf.sprintf "from_%i_tuple" n in
-    let retty = Lib.List.make n I32Type in
-    Func.share_code1 env name ("tup", I32Type) retty (fun env get_tup ->
-      G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
-    )
+    begin
+      let name = Printf.sprintf "from_%i_tuple" n in
+      let retty = Lib.List.make n I32Type in
+      Func.share_code1 env name ("tup", I32Type) retty (fun env get_tup ->
+        G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
+      )
+    end
 end (* Tuple *)
 
 module Dfinity = struct
@@ -4216,9 +4253,11 @@ module StackRep = struct
     | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedTuple n when not !Flags.multi_value -> assert false
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | UnboxedRefTuple 0 -> ValBlockType None
     | UnboxedRefTuple 1 -> ValBlockType (Some I32Type)
+    | UnboxedRefTuple n when not !Flags.multi_value -> assert false
     | UnboxedRefTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | StaticThing _ -> ValBlockType None
     | Unreachable -> ValBlockType None
@@ -4246,6 +4285,15 @@ module StackRep = struct
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
+
+  (* This is used when two blocks join, e.g. in an if. In that
+     case, they cannot return multiple values. *)
+  let relax =
+    if !Flags.multi_value
+    then fun sr -> sr
+    else function
+      | UnboxedTuple n when n > 1 -> Vanilla
+      | sr -> sr
 
   let drop env (sr_in : t) =
     match sr_in with
@@ -5933,7 +5981,7 @@ and compile_exp (env : E.t) ae exp =
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.join sr1 sr2 in
+    let sr = StackRep.relax (StackRep.join sr1 sr2) in
     sr,
     code_scrut ^^ G.if_
       (StackRep.to_block_type env sr)
@@ -5970,6 +6018,7 @@ and compile_exp (env : E.t) ae exp =
   | RetE e ->
     SR.Unreachable,
     compile_exp_as env ae (StackRep.of_arity (E.get_n_res env)) e ^^
+    FakeMultiVal.store (Lib.List.make (E.get_n_res env) I32Type) ^^
     G.i Return
   | OptE e ->
     SR.Vanilla,
@@ -5994,7 +6043,8 @@ and compile_exp (env : E.t) ae exp =
         code1 ^^
         compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_args) e2 ^^ (* the args *)
-        G.i (Call (nr fi))
+        G.i (Call (nr fi)) ^^
+        FakeMultiVal.load (Lib.List.make cc.Call_conv.n_res I32Type)
      | _, Type.Local ->
         let (set_clos, get_clos) = new_local env "clos" in
         code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
@@ -6573,7 +6623,15 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      ] in
+      ] @
+      (* multi value return emulations *)
+      begin if !Flags.multi_value then [] else
+        Lib.List.table 10 (fun i ->
+        nr { gtype = GlobalType (I32Type, Mutable);
+          value = nr (G.to_instr_list compile_unboxed_zero)
+        })
+      end
+      in
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__stack_pointer";
     edesc = nr (GlobalExport (nr Stack.stack_global))
