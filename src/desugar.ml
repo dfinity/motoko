@@ -338,7 +338,8 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
   match prog.it with
   |  [{it = Syntax.ExpD _;_}] ->
      { it = Syntax.LetD
-              ( { it = Syntax.VarP (id_of_full_path f)
+              (
+                { it = Syntax.VarP (id_of_full_path f)
                 ; at = no_region
                 ; note = t
                 }
@@ -365,11 +366,11 @@ let combine_files imp_env libraries progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
   { it = List.map (declare_import imp_env) libraries
-    @ List.concat (List.map (fun p -> p.it) progs)
+         @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
-    | [prog] -> prog.Source.note
-    | _ -> "all"
+           | [prog] -> prog.Source.note
+           | _ -> "all"
   }
 
 let transform p = prog p

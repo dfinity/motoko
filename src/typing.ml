@@ -1246,7 +1246,7 @@ and module_of_scope scope =
 (* move me to type.ml *)
 and scope_of_module t =
   match t with
-  | T.Obj(T.Module, flds) ->
+  | T.Obj (T.Module, flds) ->
     List.fold_right
       (fun {T.lab;T.typ} scope ->
         match typ with
@@ -1264,7 +1264,7 @@ and gather_block_typdecs env decs : scope =
 
 
 
-and infer_path env exp : T.typ option =
+and infer_val_path env exp : T.typ option =
   match exp.it with
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
@@ -1273,7 +1273,7 @@ and infer_path env exp : T.typ option =
     T.Env.find_opt id.it env.vals
   | DotE(path, id) ->
     begin
-      match infer_path env path with
+      match infer_val_path env path with
       | None -> None
       | Some t ->
         match T.promote t with
@@ -1289,13 +1289,11 @@ and infer_path env exp : T.typ option =
 
 
 and is_module_path env exp =
-  match infer_path env exp with
+  match infer_val_path env exp with
   | Some t ->
     begin
       match T.promote t with
-      | T.Obj (T.Module, flds) ->
-        true
-
+      | T.Obj (T.Module, flds) -> true
       | _ -> false
     end
   | None -> false
@@ -1343,7 +1341,7 @@ and infer_dec_typdecs env dec : scope =
   match dec.it with
   | LetD ({ it = VarP id; _ }, exp) when is_module_path env exp ->
     begin
-      match infer_path env exp with
+      match infer_val_path env exp with
       | Some t -> { empty_scope with val_env = T.Env.singleton id.it t }
       | None -> empty_scope
     end
@@ -1477,8 +1475,11 @@ and infer_dec_valdecs env dec : scope =
   | ModuleD (id, decs) ->
     let t = try T.Env.find id.it env.vals with _ -> assert false  in
     let mod_scope = scope_of_module t in
-    let mod_scope' = infer_block_valdecs (adjoin {env with pre = true} mod_scope)
-                       decs empty_scope in
+    let mod_scope' =
+      infer_block_valdecs
+        (adjoin {env with pre = true} mod_scope)
+        decs empty_scope
+    in
     { empty_scope with
       val_env = T.Env.singleton id.it (module_of_scope mod_scope')}
 

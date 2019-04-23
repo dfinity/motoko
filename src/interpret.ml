@@ -662,9 +662,9 @@ and interpret_dec env dec (k : V.value V.cont) =
   | ModuleD (id, decs) ->
     let ve = ref V.Env.empty in
     interpret_block env decs (Some ve) (fun v ->
-        let v = V.Obj (V.Env.map Lib.Promise.value (!ve)) in
-        define_id env id v;
-        k v)
+      let v = V.Obj (V.Env.map Lib.Promise.value (!ve)) in
+      define_id env id v;
+      k v)
 
 and interpret_decs env decs (k : V.value V.cont) =
   match decs with
