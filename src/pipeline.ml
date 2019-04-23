@@ -124,30 +124,6 @@ let infer_prog senv prog
   end;
   r
 
-  (*
-
-let dump_skeleton imports progs =
-  let imports =
-    List.map (fun (f,prog) ->
-        match prog.Source.it with
-        |  [ {Source.it = Syntax.ExpD _;_} ] ->
-           (f, prog)
-        |  ds -> (f,{ prog with Source.it = []})) imports in
-  let progs = [] in
-  let skel =  combine_files imports progs in
-  dump_prog (Flags.dump_skeleton) skel
-
-
-  
-let check_with parse infer senv name : check_result =
-  Diag.bind parse (fun parse_result -> Diag.bind (load_imports parse_result) (fun (imports, progs) ->
-      (*    dump_skeleton imports progs; *)
-      let prog = combine_files imports progs in
-      Diag.map_result (fun (t, scope) -> (prog, t, scope))
-        (check_prog infer senv name prog)
-  ))
-   *)
-
 let rec typecheck_progs senv progs : Typing.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
@@ -155,7 +131,7 @@ let rec typecheck_progs senv progs : Typing.scope Diag.result =
     Diag.bind (infer_prog senv p) (fun (_t, sscope) ->
       let senv' = Typing.adjoin_scope senv sscope in
       typecheck_progs senv' ps
-      )
+    )
 
 let typecheck_library senv filename prog : Typing.scope Diag.result =
   phase "Checking" prog.Source.note;

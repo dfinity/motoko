@@ -21,6 +21,12 @@ actor class Test() = this {
 
       print "\nExchange setup: Begin...\n====================================\n";
 
+      let pka = "beef";
+      let pkb = "dead";
+      let pkc = "4242";
+      let pkd = "1234";
+      let pke = "f00d";
+
       // populate with truck types
       let tta = await s.registrarAddTruckType("tta", "", 10, false, false);
       let ttb = await s.registrarAddTruckType("ttb", "", 20, false, false);
@@ -48,68 +54,61 @@ actor class Test() = this {
 
       printEntityCount("Produce", (await s.getCounts()).produce_count);
 
-      // populate with producers
-      let pra = await s.registrarAddProducer("pra", "", unwrap<RegionId>(rega) );
-      let prb = await s.registrarAddProducer("prb", "", unwrap<RegionId>(rega) );
-      let prc = await s.registrarAddProducer("prc", "", unwrap<RegionId>(regb) );
-      let prd = await s.registrarAddProducer("prd", "", unwrap<RegionId>(rega) );
-      let pre = await s.registrarAddProducer("pre", "", unwrap<RegionId>(regb) );
+      // register all users
+      let uida = await s.registrarAddUser(pka, "usera", "", unwrap<RegionId>rega, true, true, true, true);
+      let uidb = await s.registrarAddUser(pkb, "userb", "", unwrap<RegionId>regb, true, true, true, true);
+      let uidc = await s.registrarAddUser(pkc, "userc", "", unwrap<RegionId>regc, true, true, true, true);
+      let uidd = await s.registrarAddUser(pkd, "userd", "", unwrap<RegionId>regd, true, true, true, true);
+      let uide = await s.registrarAddUser(pke, "usere", "", unwrap<RegionId>rege, true, true, true, true);
 
       printEntityCount("Producer", (await s.getCounts()).producer_count);
-
-      // populate with transporters
-      let tra = await s.registrarAddTransporter("tra", "" );
-      let trb = await s.registrarAddTransporter("trb", "" );
-      let trc = await s.registrarAddTransporter("trc", "" );
-      let trd = await s.registrarAddTransporter("trd", "" );
-      let tre = await s.registrarAddTransporter("tre", "" );
-
       printEntityCount("Transporter", (await s.getCounts()).transporter_count);
-
-      // populate with retailers
-      let rra = await s.registrarAddRetailer("rra", "", unwrap<RegionId>(regc) );
-      let rrb = await s.registrarAddRetailer("rrb", "", unwrap<RegionId>(regd) );
-      let rrc = await s.registrarAddRetailer("rrc", "", unwrap<RegionId>(rege) );
-      let rrd = await s.registrarAddRetailer("rrd", "", unwrap<RegionId>(regc) );
-      let rre = await s.registrarAddRetailer("rre", "", unwrap<RegionId>(rege) );
-
       printEntityCount("Retailer", (await s.getCounts()).retailer_count);
 
       // populate with inventory
       let praia = await s.producerAddInventory(
-        unwrap<ProducerId>(pra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<ProduceId>(pea), 100, 100, 10, 0, 110, ""
       );
       let praib = await s.producerAddInventory(
-        unwrap<ProducerId>(pra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<ProduceId>(peb), 200, 200, 10, 1, 111, ""
       );
       let praic = await s.producerAddInventory(
-        unwrap<ProducerId>(pra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
       );
       let prbia = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 200, 200, 10, 4, 117, ""
       );
       let prbib = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 1500, 1600, 9, 2, 115, ""
       );
       let prbic = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(pec), 300, 300, 10, 2, 112, ""
       );
       let prcia = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 200, 200, 9, 4, 711, ""
       );
       let prdib = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 1500, 1500, 7, 2, 115, ""
       );
       let prdic = await s.producerAddInventory(
-        unwrap<ProducerId>(prb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(pec), 300, 300, 6, 2, 112, ""
       );
 
@@ -119,17 +118,17 @@ actor class Test() = this {
 
       /**- remove some of the inventory items added above */
 
-      let x = await s.producerRemInventory(unwrap<InventoryId>(prdib));
+      let x = await s.producerRemInventory(pkb, unwrap<InventoryId>(prdib));
       assertSome<()>(x);
 
       // a double-remove should return null
-      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(prdib)));
+      assertNull<()>(await s.producerRemInventory(pkb, unwrap<InventoryId>(prdib)));
 
-      let y = await s.producerRemInventory(unwrap<InventoryId>(praib));
+      let y = await s.producerRemInventory(pka, unwrap<InventoryId>(praib));
       assertSome<()>(y);
 
       // a double-remove should return null
-      assertNull<()>(await s.producerRemInventory(unwrap<InventoryId>(praib)));
+      assertNull<()>(await s.producerRemInventory(pka, unwrap<InventoryId>(praib)));
 
       printEntityCount("Inventory@time2", (await s.getCounts()).inventory_count);
 
@@ -138,22 +137,25 @@ actor class Test() = this {
       /**- update some of the (remaining) inventory items added above */
 
       let praic2 = await s.producerUpdateInventory(
+        pka,
         unwrap<InventoryId>(praic),
-        unwrap<ProducerId>(pra),
+        unwrap<UserId>(uida),
         unwrap<ProduceId>(pec), 666, 300, 10, 2, 112, ""
       );
       assertSome<()>(praic2);
 
       let prbia2 = await s.producerUpdateInventory(
+        pkb,
         unwrap<InventoryId>(prbia),
-        unwrap<ProducerId>(prb),
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 200, 666, 10, 4, 117, ""
       );
       assertSome<()>(prbia2);
 
       let prbib2 = await s.producerUpdateInventory(
+        pkb,
         unwrap<InventoryId>(prbib),
-        unwrap<ProducerId>(prb),
+        unwrap<UserId>(uidb),
         unwrap<ProduceId>(peb), 666, 1600, 9, 2, 115, ""
       );
       assertSome<()>(prbib2);
@@ -165,21 +167,24 @@ actor class Test() = this {
       /**- populate with routes */
 
       let rta_a_c_tta = await s.transporterAddRoute(
-        unwrap<TransporterId>(tra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         0, 20, 100,
         unwrap<TruckTypeId>(tta)
       );
       let rta_b_c_ttb = await s.transporterAddRoute(
-        unwrap<TransporterId>(tra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regc),
         0, 20, 100,
         unwrap<TruckTypeId>(ttb)
       );
       let rta_a_c_ttc = await s.transporterAddRoute(
-        unwrap<TransporterId>(tra),
+        pka,
+        unwrap<UserId>(uida),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(rege),
         0, 20, 100,
@@ -187,21 +192,24 @@ actor class Test() = this {
       );
 
       let rtb_a_c_tta = await s.transporterAddRoute(
-        unwrap<TransporterId>(trb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(rege),
         0, 20, 40,
         unwrap<TruckTypeId>(tta)
       );
       let rtb_b_c_ttb = await s.transporterAddRoute(
-        unwrap<TransporterId>(trb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regc),
         0, 40, 70,
         unwrap<TruckTypeId>(ttb)
       );
       let rtb_a_c_ttc = await s.transporterAddRoute(
-        unwrap<TransporterId>(trb),
+        pkb,
+        unwrap<UserId>(uidb),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         20, 40, 97,
@@ -209,21 +217,24 @@ actor class Test() = this {
       );
 
       let rtc_b_c_tta = await s.transporterAddRoute(
-        unwrap<TransporterId>(trc),
+        pkc,
+        unwrap<UserId>(uidc),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regb),
         20, 40, 40,
         unwrap<TruckTypeId>(tta)
       );
       let rtc_c_e_tta = await s.transporterAddRoute(
-        unwrap<TransporterId>(trc),
+        pkc,
+        unwrap<UserId>(uidc),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regb),
         20, 40, 70,
         unwrap<TruckTypeId>(tta)
       );
       let rtc_a_c_ttc = await s.transporterAddRoute(
-        unwrap<TransporterId>(trc),
+        pkc,
+        unwrap<UserId>(uidc),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regc),
         20, 40, 97,
@@ -231,14 +242,16 @@ actor class Test() = this {
       );
 
       let rtd_b_c_ttb = await s.transporterAddRoute(
-        unwrap<TransporterId>(trd),
+        pkd,
+        unwrap<UserId>(uidd),
         unwrap<RegionId>(regb),
         unwrap<RegionId>(regd),
         20, 40, 50,
         unwrap<TruckTypeId>(ttb)
       );
       let rtd_c_e_tta = await s.transporterAddRoute(
-        unwrap<TransporterId>(trd),
+        pkd,
+        unwrap<UserId>(uidd),
         unwrap<RegionId>(regc),
         unwrap<RegionId>(regd),
         20, 40, 70,
@@ -246,34 +259,35 @@ actor class Test() = this {
       );
 
       let rte_a_c_ttc = await s.transporterAddRoute(
-        unwrap<TransporterId>(tre),
+        pke,
+        unwrap<UserId>(uide),
         unwrap<RegionId>(rega),
         unwrap<RegionId>(regd),
         20, 40, 97,
         unwrap<TruckTypeId>(ttc)
       );
 
-      printEntityCount("Route", (await s.getCounts()).route_count);
+      printEntityCount("Route@time1", (await s.getCounts()).route_count);
 
       ////////////////////////////////////////////////////////////////////////////////////
 
       /**- remove some of the routes added above */
 
-      { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta));
+      { let x = await s.transporterRemRoute(pkc, unwrap<RouteId>(rtc_b_c_tta));
       assertSome<()>(x); };
 
       // a double-remove should return null
-      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_b_c_tta)));
+      assertNull<()>(await s.transporterRemRoute(pkc, unwrap<RouteId>(rtc_b_c_tta)));
 
       printEntityCount("Route@time2", (await s.getCounts()).route_count);
 
-      { let x = await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta));
+      { let x = await s.transporterRemRoute(pkc, unwrap<RouteId>(rtc_c_e_tta));
       assertSome<()>(x); };
 
       // a double-remove should return null
-      assertNull<()>(await s.transporterRemRoute(unwrap<RouteId>(rtc_c_e_tta)));
+      assertNull<()>(await s.transporterRemRoute(pkc, unwrap<RouteId>(rtc_c_e_tta)));
 
-      printEntityCount("Route@time2", (await s.getCounts()).route_count);
+      printEntityCount("Route@time3", (await s.getCounts()).route_count);
 
       //////////////////////////////////////////////////////////////////
 
@@ -285,11 +299,11 @@ actor class Test() = this {
       print "\nRetailer queries\n====================================\n";
 
       // do some queries
-      await retailerQueryAll(rra);
-      await retailerQueryAll(rrb);
-      await retailerQueryAll(rrc);
-      await retailerQueryAll(rrd);
-      await retailerQueryAll(rre);
+      await retailerQueryAll(pka, uida);
+      await retailerQueryAll(pkb, uidb);
+      await retailerQueryAll(pkc, uidc);
+      await retailerQueryAll(pkd, uidd);
+      await retailerQueryAll(pke, uide);
 
       print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
@@ -299,22 +313,28 @@ actor class Test() = this {
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
       //////////////////////////////////////////////////////////////////
-
+      // xxx --- todo: separate test(s) for expected failures
+      // User c should not be able to remove user a's route
+      if false {
+        print "\nAuthentication test, expect assertion failure:\n";
+        ignore(await s.transporterRemRoute(pkc, unwrap<RouteId>(rta_a_c_tta)))
+      };
     })
   };
 };
 
 
-func retailerQueryAll(r:?RetailerId) : async () {
+func retailerQueryAll(pk:Text, r:?UserId) : async () {
 
   print "\nRetailer ";
-  printInt (unwrap<RetailerId>(r));
+  let retailerId: UserId = unwrap<UserId>(r);
+  printInt retailerId;
   print " sends `retailerQueryAll`\n";
   print "------------------------------------\n";
 
   print "\n## Query begin:\n";
   let res = unwrap<QueryAllResults>(
-    await server.retailerQueryAll(unwrap<RetailerId>(r))
+    await server.retailerQueryAll(pk, retailerId)
   );
   print "\n## Query end.";
 

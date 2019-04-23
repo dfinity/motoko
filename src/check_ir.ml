@@ -8,7 +8,7 @@ module E = Effect
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as   part of desugaring.
+   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as part of desugaring.
  *)
 
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
@@ -603,6 +603,8 @@ and gather_pat env ve0 pat : val_env =
       T.Env.add id.it pat.note ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
+    | ObjP pfs ->
+      List.fold_left go ve (pats_of_obj_pat pfs)
     | AltP (pat1, pat2) ->
       ve
     | OptP pat1
@@ -629,7 +631,11 @@ and check_pat env pat : val_env =
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
     let ts = List.map (fun pat -> pat.note) pats in
-    T.Tup ts <: t;
+    t <: T.Tup ts;
+    ve
+  | ObjP pfs ->
+    let ve = check_pats pat.at env (pats_of_obj_pat pfs) T.Env.empty in
+    check_pat_fields env t pfs;
     ve
   | OptP pat1 ->
     let ve = check_pat env pat1 in
@@ -655,6 +661,17 @@ and check_pats at env pats ve : val_env =
     let ve1 = check_pat env pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     check_pats at env pats' ve'
+
+and check_pat_fields env t = List.iter (check_pat_field env t)
+
+and check_pat_field env t (pf : pat_field) =
+  let Name lab = pf.it.name.it in
+  let tf = T.{lab; typ=pf.it.pat.note} in
+  let s, tfs = T.as_obj_sub lab t in
+  let (<:) = check_sub env pf.it.pat.at in
+  t <: T.Obj (s, [tf]);
+  if T.is_mut (T.lookup_field lab tfs)
+  then error env pf.it.pat.at "cannot match mutable field %s" lab
 
 (* Objects *)
 

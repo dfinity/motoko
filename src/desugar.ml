@@ -14,7 +14,7 @@ let id_of_full_path (fp : string) : Syntax.id =
   let open Source in
   ("file$" ^ fp) @@ no_region
 
-(* Combinators used in the desguaring *)
+(* Combinators used in the desugaring *)
 
 let trueE : Ir.exp = boolE true
 let falseE : Ir.exp = boolE false
@@ -255,11 +255,17 @@ and pat' = function
   | S.LitP l -> I.LitP !l
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
+  | S.ObjP pfs ->
+    I.ObjP (pat_fields pfs)
   | S.OptP p -> I.OptP (pat p)
   | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
+
+and pat_fields pfs = List.map pat_field pfs
+
+and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
@@ -324,6 +330,7 @@ and prog (p : Syntax.prog) : Ir.prog =
     ; I.serialized = false
     }
 
+
 let declare_import imp_env (f, (prog:Syntax.prog))  =
   let open Source in
   let t = Type.Env.find f imp_env in
@@ -331,7 +338,8 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
   match prog.it with
   |  [{it = Syntax.ExpD _;_}] ->
      { it = Syntax.LetD
-              ( { it = Syntax.VarP (id_of_full_path f)
+              (
+                { it = Syntax.VarP (id_of_full_path f)
                 ; at = no_region
                 ; note = t
                 }
@@ -343,6 +351,7 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
      ; at = no_region
      ; note = typ_note
      }
+  (* HACK: to be removed once we support module expressions *)
   |  ds ->
      { it = Syntax.ModuleD
               (  id_of_full_path f
@@ -357,11 +366,11 @@ let combine_files imp_env libraries progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
   { it = List.map (declare_import imp_env) libraries
-    @ List.concat (List.map (fun p -> p.it) progs)
+         @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
-    | [prog] -> prog.Source.note
-    | _ -> "all"
+           | [prog] -> prog.Source.note
+           | _ -> "all"
   }
 
 let transform p = prog p

@@ -383,6 +383,8 @@ module Transform() = struct
       pat
     | TupP pats ->
       TupP (List.map t_pat pats)
+    | ObjP pfs ->
+      ObjP (map_obj_pat t_pat pfs)
     | OptP pat1 ->
       OptP (t_pat pat1)
     | VariantP (i, pat1) ->

@@ -40,6 +40,7 @@ func xxx() : None =
 */
 func unreachable() : None = { assert false ; unreachable() };
 
+
 /***
 
  `assertSome`
@@ -101,3 +102,4 @@ func printOpInt( x : ?Int ) = {
 };
 
 ()
+

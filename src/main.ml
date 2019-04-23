@@ -31,7 +31,6 @@ let argspec = Arg.align
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-dl", Arg.Set Flags.dump_lowering, " dump lowering (requires -a)";
   "-o", Arg.Set_string out_file, " output file";
 
   "--version",

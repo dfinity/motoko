@@ -1,13 +1,15 @@
 module Collections = {
   module List = {
-    type t<T> = ?(T, t<T>);
-    func nil<T>() : t<T> = null;
-    func cons<T>(x : T, l : t<T>) : t<T> = ?(x, l);
+    type List<T> = ?(T, List<T>);
+    func nil<T>() : List<T> = null;
+    func cons<T>(x : T, l : List<T>) : List<T> = ?(x, l);
   };
 };
 
-type Stack = Collections.List.t<Int>;
+let List = Collections.List;
 
-func push(x : Int, s : Stack) : Stack = Collections.List.cons<Int>(x, s);
+type Stack = List.List<Int>;
 
-let empty = Collections.List.nil<Int>();
+let empty : Stack = List.nil<Int>();
+func push(x : Int, s : Stack) : Stack = List.cons<Int>(x, s);
+

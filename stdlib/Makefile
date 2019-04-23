@@ -43,6 +43,7 @@ alldoc: docMd docHtml
 docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
+	$(DOCDIR)/option.md \
 	$(DOCDIR)/hash.md \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
@@ -64,6 +65,7 @@ docMd: \
 docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
+	$(DOCDIR)/option.html \
 	$(DOCDIR)/hash.html \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
@@ -131,7 +133,7 @@ $(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as 
 	$(ASC) -r setDbTest.as > $@
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as hash.as list.as assocList.as trie.as docTable.as \
+	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \

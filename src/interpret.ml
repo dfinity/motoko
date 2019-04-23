@@ -37,6 +37,7 @@ let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 let library_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
+
 let env_of_scope scope =
   { vals = scope.val_env;
     libs = scope.lib_env;
@@ -458,6 +459,7 @@ and declare_pat pat : val_env =
   | WildP | LitP _ | SignP _ ->  V.Env.empty
   | VarP id -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
+  | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | VariantP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
@@ -471,6 +473,12 @@ and declare_pats pats ve : val_env =
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
 
+and declare_pat_fields pfs ve : val_env =
+  match pfs with
+  | [] -> ve
+  | pf::pfs' ->
+    let ve' = declare_pat pf.it.pat in
+    declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
 and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
@@ -484,6 +492,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
+  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -498,6 +507,12 @@ and define_pat env pat v =
 and define_pats env pats vs =
   List.iter2 (define_pat env) pats vs
 
+and define_pat_fields env pfs vs =
+  List.iter (define_pat_field env vs) pfs
+
+and define_pat_field env vs pf =
+  let v = V.Env.find pf.it.id.it vs in
+  define_pat env pf.it.pat v
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -528,6 +543,8 @@ and match_pat pat v : val_env option =
     match_pat {pat with it = LitP lit} (Operator.unop t op v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
+  | ObjP pfs ->
+    match_pat_fields pfs (V.as_obj v) V.Env.empty
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> match_pat pat1 v1
@@ -558,6 +575,15 @@ and match_pats pats vs ve : val_env option =
     )
   | _ -> assert false
 
+and match_pat_fields pfs vs ve : val_env option =
+  match pfs with
+  | [] -> Some ve
+  | pf::pfs' ->
+    let v = V.Env.find pf.it.id.it vs in
+    begin match match_pat pf.it.pat v with
+    | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
+    | None -> None
+    end
 
 (* Objects *)
 
@@ -637,9 +663,9 @@ and interpret_dec env dec (k : V.value V.cont) =
   | ModuleD (id, decs) ->
     let ve = ref V.Env.empty in
     interpret_block env decs (Some ve) (fun v ->
-        let v = V.Obj (V.Env.map Lib.Promise.value (!ve)) in
-        define_id env id v;
-        k v)
+      let v = V.Obj (V.Env.map Lib.Promise.value (!ve)) in
+      define_id env id v;
+      k v)
 
 and interpret_decs env decs (k : V.value V.cont) =
   match decs with
@@ -697,8 +723,9 @@ let interpret_library scope (filename, p) : scope =
   let v = match p.it with
     | [ { it = ExpD _ ; _ } ] ->
       Lib.Option.value !vo
-    | ds -> V.Obj (V.Env.map Lib.Promise.value (!ve))
+    (* HACK: to be remove once we support module expressions, remove ModuleD *)
+    | ds ->
+      V.Obj (V.Env.map Lib.Promise.value (!ve))
   in
   library_scope filename v scope
-
 

@@ -110,6 +110,7 @@ and pat' =
   | LitP of lit ref                            (* literal *)
   | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
+  | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
   | VariantP of id * pat                       (* tagged variant *)
   | AltP of pat * pat                          (* disjunctive *)
@@ -117,11 +118,10 @@ and pat' =
   | ParP of pat                                (* parenthesis *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
-  | ObjP of pat_field list                     (* object *)
+*)
 
 and pat_field = pat_field' Source.phrase
 and pat_field' = {id : id; pat : pat}
-*)
 
 
 (* Expressions *)
