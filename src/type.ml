@@ -630,9 +630,9 @@ let rec lub t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
   | Opt t1', Opt t2' -> Opt (lub t1' t2')
-  | Variant t1', Variant t2' -> Variant (lub_variant t1' t2')
   | Prim Null, Opt t'
   | Opt t', Prim Null -> Opt t'
+  | Variant t1', Variant t2' -> Variant (lub_variant t1' t2')
   | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
   | (Obj _ as t1), Array t2' -> lub t1 (array_obj t2')
   | t1', t2' when eq t1' t2' -> t1
@@ -661,9 +661,9 @@ let rec glb t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Opt t1', Opt t2' -> Opt (glb t1' t2')
-  | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
+  | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
