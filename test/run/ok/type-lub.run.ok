@@ -1,0 +1,12 @@
+type-lub.as:4.25-4.53: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:5.12-5.62: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:6.16-6.51: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:7.17-7.50: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:8.17-8.37: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:9.21-9.65: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:4.25-4.53: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:5.12-5.62: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:6.16-6.51: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:7.17-7.50: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:8.17-8.37: warning, this array has type [Any] because elements have inconsistent types
+type-lub.as:9.21-9.65: warning, this array has type [Any] because elements have inconsistent types
