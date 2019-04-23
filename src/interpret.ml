@@ -8,25 +8,38 @@ module T = Type
 (* Context *)
 
 type val_env = V.def V.Env.t
+type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 
-type scope = val_env
+type scope = {
+  val_env: V.def V.Env.t;
+  lib_env: V.value V.Env.t;
+}
 
 type env =
   { vals : val_env;
     labs : lab_env;
+    libs : lib_env;
     rets : ret_env;
     async : bool
   }
 
-let adjoin_scope s ve = V.Env.adjoin s ve
-let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
+let adjoin_scope scope1 scope2 =
+  { val_env = V.Env.adjoin scope1.val_env scope2.val_env;
+    lib_env = V.Env.adjoin scope1.lib_env scope2.lib_env;
+  }
 
-let empty_scope = V.Env.empty
+let adjoin_vals env ve = { env with vals = V.Env.adjoin env.vals ve }
 
-let env_of_scope ve =
-  { vals = ve;
+let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
+
+let library_scope f v scope : scope =
+  { scope with lib_env = V.Env.add f v scope.lib_env }
+
+let env_of_scope scope =
+  { vals = scope.val_env;
+    libs = scope.lib_env;
     labs = V.Env.empty;
     rets = None;
     async = false;
@@ -242,10 +255,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | None -> trap exp.at "accessing identifier before its definition"
     end
   | ImportE (f, fp) ->
-    begin match Lib.Promise.value_opt (find (Syntax.id_of_full_path !fp).it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing import identifier before its definition"
-    end
+    k (find !fp env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
@@ -672,6 +682,7 @@ and interpret_func env name pat f v (k : V.value V.cont) =
     in
     let env' =
       { vals = V.Env.adjoin env.vals ve;
+        libs = env.libs;
         labs = V.Env.empty;
         rets = Some k';
         async = false
@@ -690,4 +701,17 @@ let interpret_prog scope p : V.value option * scope =
     interpret_block env p.it (Some ve) (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  !vo, !ve
+  !vo, { val_env = !ve; lib_env = scope.lib_env }
+
+let interpret_library scope (filename, p) : scope =
+  let env = env_of_scope scope in
+  trace_depth := 0;
+  let vo = ref None in
+  let ve = ref V.Env.empty in
+  Scheduler.queue (fun () ->
+    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+  );
+  Scheduler.run ();
+  library_scope filename (Lib.Option.value !vo) scope
+
+
