@@ -1322,7 +1322,24 @@ than the MVP goals, however.
 
   */
 
-  isFeasibleReservation(retailer:RetailerDoc, item:InventoryDoc, route:RouteDoc) : Bool {
+  isFeasibleReservation(retailer:RetailerDoc, item:InventoryDoc, route:RouteDoc,
+                        produceId:?ProduceId, queryWindow:?(Date, Date)) : Bool
+  {
+
+    switch produceId {
+      case null { };
+      case (?pi) {
+             if (item.produce.id != pi) {
+               debugOff "nope: wrong produce kind\n";
+               return false
+             };
+           };
+    };
+    if (false) {
+      // xxx test the time windows -- what are our constraints here?
+      debugOff "nope: wrong time window\n";
+      return false
+    };
     /** - window start: check that the route begins after the inventory window begins */
     if (item.start_date > route.start_date) {
       debugOff "nope: item start after route start\n";
@@ -1361,7 +1378,13 @@ than the MVP goals, however.
    - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
-  retailerQueryAll(public_key: PublicKey, id:UserId) : ?QueryAllResults {
+  retailerQueryAll(
+    public_key: PublicKey,
+    id:UserId,
+    produceId:?ProduceId,
+    queryWindow:?(Date, Date)
+  ) : ?QueryAllResults
+  {
     retailerQueryCount += 1;
 
     /** - Find the retailer's document: */
@@ -1429,7 +1452,7 @@ than the MVP goals, however.
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
-          if (isFeasibleReservation(retailer, item, route)) {
+          if (isFeasibleReservation(retailer, item, route, produceId, queryWindow)) {
             ?( keyOfIdPair(route_id, item_id),
                (route, item)
             )

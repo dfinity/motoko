@@ -52,7 +52,7 @@ actor server = {
  Register a new user, who may play several roles in the exchange.
 
  The given `user_name` must be unique to the exchange; the operation fails otherwise.
- 
+
  */
 
   registrarAddUser(
@@ -77,7 +77,7 @@ actor server = {
         isTransporter
       ),
       {#idErr}
-    )   
+    )
   };
 
   /**
@@ -125,14 +125,14 @@ actor server = {
       getModel()
         .truckTypeTable.addInfoGetId(
         func (id_:TruckTypeId) : TruckTypeInfo =
-          
+
           // xxx: AS should have more concise syntax for this pattern, below:
           // two problems I see, that are separate:
           // 1: repeating the label/variable name, which is the same in each case, twice.
           // 2: explicit type annotations, because of "type error, cannot infer type of forward variable ..."
           //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
           //    and, the type of each of these `variables` is known, as well.
-          
+
           shared {
             id=id_ :TruckTypeId;
             short_name=short_name_:Text;
@@ -156,7 +156,7 @@ actor server = {
     optionResult<(),IdErr>(
       getModel().truckTypeTable.remGetUnit(id),
       {#idErr}
-    )    
+    )
   };
 
   /**
@@ -395,7 +395,7 @@ actor server = {
     optionResult<ProducerInfo,IdErr>(
       getModel().producerTable.getInfo(id),
       {#idErr}
-    )  
+    )
   };
 
   /**
@@ -403,7 +403,7 @@ actor server = {
    ---------------------
    */
 
-  allProducerInfo() : async [ProducerInfo] {    
+  allProducerInfo() : async [ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -454,7 +454,7 @@ actor server = {
     optionResult<(),IdErr>(
       getModel().retailerTable.remGetUnit(id),
       {#idErr}
-    )    
+    )
   };
 
   /**
@@ -786,13 +786,14 @@ actor server = {
    `retailerQueryAll`
    ---------------------------
 
-   TODO-Cursors (see above).
-
    */
-  retailerQueryAll(public_key: PublicKey, id:UserId) : async Result<QueryAllResults,IdErr> {
+  retailerQueryAll(public_key: PublicKey, id:UserId,
+                   produceId:?ProduceId,
+                   queryWindow:?(Date, Date)
+  ) : async Result<QueryAllResults,IdErr> {
     optionResult<QueryAllResults,IdErr>(
       getModel().
-        retailerQueryAll(public_key, id),
+        retailerQueryAll(public_key, id, produceId, queryWindow),
       {#idErr}
     )
   };

@@ -327,7 +327,7 @@ func retailerQueryAll(pk:Text, r:?UserId) : async () {
 
   print "\n## Query begin:\n";
   let res = assertUnwrapAny<QueryAllResults>(
-    await server.retailerQueryAll(pk, retailerId)
+    await server.retailerQueryAll(pk, retailerId, null, null)
   );
   print "\n## Query end.";
 
