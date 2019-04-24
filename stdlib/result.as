@@ -16,6 +16,19 @@ type Result<Ok,Err> = {
   #err:Err;
 };
 
+
+/**
+ `unwrapOptionResult`
+ ---------------
+ to do: rename me. cc @paulyoung.
+*/
+func optionUnwrapResult<Ok>(o:?Ok):Result<Ok,None> {
+  switch(o) {
+    case (?o) (#ok o);
+    case _ unreachable();
+  }
+};
+
 /**
  `assertUnwrap`
  ---------------
@@ -85,4 +98,4 @@ func optionResult<R,E>(x:?R, err:E):Result<R,E> {
     case (? x) {#ok x};
     case null {#err err};
   }
-}
+};

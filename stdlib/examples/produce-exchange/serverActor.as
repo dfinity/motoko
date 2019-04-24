@@ -120,8 +120,8 @@ actor server = {
     capacity_ : Weight,
     isFridge_ : Bool,
     isFreezer_ : Bool,
-  ) : async Result<TruckTypeId, ()> {
-    optionResult<TruckTypeId,()>(
+  ) : async Result<TruckTypeId,None> {
+    optionUnwrapResult<TruckTypeId>(
       getModel()
         .truckTypeTable.addInfoGetId(
         func (id_:TruckTypeId) : TruckTypeInfo =
@@ -140,8 +140,7 @@ actor server = {
             capacity=capacity_:Weight;
             isFridge=isFridge_:Bool;
             isFreezer=isFreezer_:Bool;
-          }),
-      ()
+          })
     )
   };
 
