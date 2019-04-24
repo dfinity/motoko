@@ -766,7 +766,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assert(isValidUser(public_key, doc.short_name));
+    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
       doc.inventory,
@@ -791,7 +791,7 @@ than the MVP goals, however.
     start_date_: Date,
     end_date_  : Date,
     comments_  : Text,
-  ) : ?InventoryId
+  ) : Result<InventoryId, ServerErr>
   {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
@@ -801,10 +801,12 @@ than the MVP goals, however.
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
-      case _ { return null };
+      case _ { return (#err #idErr) };
       }};
 
-    assert(isValidUser(public_key, producer_.short_name));
+    if (not isValidUser(public_key, producer_.short_name)) {
+      return (#err(#publicKeyErr))
+    };
 
     /**- Create the inventory item document: */
     let (_, item) = {
@@ -857,7 +859,7 @@ than the MVP goals, however.
       updatedInventory,
     );
 
-    ?item.id
+    return #ok(item.id)
   };
 
   /**
@@ -876,7 +878,7 @@ than the MVP goals, however.
     start_date_: Date,
     end_date_  : Date,
     comments_  : Text,
-  ) : ?()
+  ) : Result<(),ServerErr>
   {
     /**- Validate these ids; fail here if anything is invalid: */
     let oproducer: ?ProducerDoc = producerFromUserId(id_);
@@ -891,19 +893,21 @@ than the MVP goals, however.
              if ( inventory.producer == producer.id ) {
                (inventory, producer, produce)
              } else {
-               return null
+               return (#err(#idErr))
              }
            };
-      case _ { return null };
+      case _ { return (#err(#idErr)) };
       }};
 
-    assert(isValidUser(public_key, producer_.short_name));
+    if (not isValidUser(public_key, producer_.short_name)) {
+      return (#err(#publicKeyErr))
+    };
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertSome<()>( producerRemInventory(public_key, iid_) );
+    assertOk( producerRemInventory(public_key, iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
-    assertSome<InventoryId>(
+    assertOk(
       producerAddInventory(
         public_key, ?iid_, id_,
         produce_id,
@@ -911,7 +915,7 @@ than the MVP goals, however.
     );
 
     /**- Success! */
-    ?()
+    #ok
   };
 
   /**
@@ -921,12 +925,12 @@ than the MVP goals, however.
    Remove the given inventory item from the exchange.
 
    */
-  producerRemInventory(public_key: PublicKey, id:InventoryId) : ?() {
+  producerRemInventory(public_key: PublicKey, id:InventoryId) : Result<(),ServerErr> {
 
     /**- validate the `id` */
     /// xxx macro for this pattern?
     let doc = switch (inventoryTable.getDoc(id)) {
-      case null { return null };
+      case null { return #err(#idErr) };
       case (?doc) { doc };
     };
 
@@ -934,7 +938,9 @@ than the MVP goals, however.
     let producer = unwrap<ProducerDoc>(producerTable.getDoc(doc.producer));
 
     /// xxx: access control: Check that the current user is the owner of this inventory
-    assert(isValidUser(public_key, producer.short_name));
+    if (not isValidUser(public_key, producer.short_name)) {
+      return (#err(#publicKeyErr))
+    };
 
     /**- remove document from `inventoryTable` */
     assertSome<InventoryDoc>(
@@ -973,7 +979,7 @@ than the MVP goals, however.
       t
     };
 
-    ?()
+    #ok
   };
 
   /**
@@ -987,7 +993,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assert(isValidUser(public_key, doc.short_name));
+    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<ReservedInventoryId,
                  ReservedInventoryDoc,
@@ -1022,7 +1028,7 @@ than the MVP goals, however.
     end_date_:       Date,
     cost_:           Price,
     trucktype_id:    TruckTypeId
-  ) : ?RouteId {
+  ) : Result<RouteId,ServerErr> {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1033,11 +1039,13 @@ than the MVP goals, however.
     let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
-      case _ { return null };
+      case _ { return #err(#idErr) };
       }};
     let transporterId = transporter.id;
 
-    assert(isValidUser(public_key, transporter.short_name));
+    if (not isValidUser(public_key, transporter.short_name)) {
+      return (#err(#publicKeyErr))
+    };
 
     /**- Create the route item document: */
     let route : RouteDoc = {
@@ -1088,7 +1096,7 @@ than the MVP goals, however.
       route
     );
 
-    ?route.id
+    #ok(route.id)
   };
 
   /**
@@ -1106,7 +1114,7 @@ than the MVP goals, however.
     end_date_       : Date,
     cost_           : Price,
     trucktype_id    : TruckTypeId
-  ) : ?() {
+  ) : Result<(),ServerErr> {
     /** The model updates routes and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1124,19 +1132,22 @@ than the MVP goals, however.
              if ( route.transporter == transporter.id ) {
                (route, transporter, x2, x3, x4);
              } else {
-               return null
+               return #err(#idErr)
              }
            };
-      case _ { return null };
+      case _ { return #err(#idErr) };
       }};
 
-    assert(isValidUser(public_key, transporter.short_name));
+    // xxx
+    if (not isValidUser(public_key, transporter.short_name)) {
+      return #err(#publicKeyErr)
+    }
 
     /**- remove the route; given the validation above, this cannot fail. */
-    assertSome<()>( transporterRemRoute(public_key, rid_) );
+    assertOk( transporterRemRoute(public_key, rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
-    assertSome<RouteId>(
+    assertOk(
       transporterAddRoute(
         public_key,
         ?rid_, id_,
@@ -1150,7 +1161,7 @@ than the MVP goals, however.
     );
 
     /**- Success! */
-    ?()
+    #ok
   };
 
   /**
@@ -1158,16 +1169,18 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(public_key: PublicKey, id:RouteId) : ?() {
+  transporterRemRoute(public_key: PublicKey, id:RouteId) : Result<(),ServerErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
-      case null { return null };
+      case null { return #err(#idErr) };
       case (?doc) { doc };
     };
 
     let transporter = unwrap<TransporterDoc>(transporterTable.getDoc(doc.transporter));
 
-    assert(isValidUser(public_key, transporter.short_name));
+    if (not isValidUser(public_key, transporter.short_name)) {
+      return #err(#publicKeyErr)
+    }
 
     assertSome<RouteDoc>(
       routeTable.rem( id )
@@ -1202,7 +1215,7 @@ than the MVP goals, however.
       t
     };
 
-    ?()
+    #ok
   };
 
   /**
@@ -1215,7 +1228,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assert(isValidUser(public_key, doc.short_name));
+    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<RouteId,
                  RouteDoc,
@@ -1240,7 +1253,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assert(isValidUser(public_key, doc.short_name));
+    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<ReservedRouteId,
                  ReservedRouteDoc,
@@ -1357,7 +1370,7 @@ than the MVP goals, however.
       case (null) { return null };
       case (?x) { x }};
 
-    assert(isValidUser(public_key, retailer.short_name));
+    //assert(isValidUser(public_key, retailer.short_name));
 
     debug "- user_name: ";
     debug (retailer.short_name);
@@ -1466,7 +1479,7 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    assert(isValidUser(public_key, doc.short_name));
+    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<ReservedInventoryId,
                  (ReservedInventoryDoc,  ReservedRouteDoc),
