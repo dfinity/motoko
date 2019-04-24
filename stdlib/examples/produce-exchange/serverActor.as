@@ -788,12 +788,12 @@ actor server = {
 
    */
   retailerQueryAll(public_key: PublicKey, id:UserId,
-                   produceId:?ProduceId,
-                   queryWindow:?(Date, Date)
+                   queryProduce:?ProduceId,
+                   queryDate:?Date
   ) : async Result<QueryAllResults,IdErr> {
     optionResult<QueryAllResults,IdErr>(
       getModel().
-        retailerQueryAll(public_key, id, produceId, queryWindow),
+        retailerQueryAll(public_key, id, queryProduce, queryDate),
       {#idErr}
     )
   };

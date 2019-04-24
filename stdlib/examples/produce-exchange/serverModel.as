@@ -1322,23 +1322,32 @@ than the MVP goals, however.
 
   */
 
-  isFeasibleReservation(retailer:RetailerDoc, item:InventoryDoc, route:RouteDoc,
-                        produceId:?ProduceId, queryWindow:?(Date, Date)) : Bool
+  isFeasibleReservation(
+    retailer:RetailerDoc,
+    item:InventoryDoc,
+    route:RouteDoc,
+    queryProduce:?ProduceId,
+    queryDate:?Date)
+    : Bool
   {
 
-    switch produceId {
+    switch queryProduce {
       case null { };
-      case (?pi) {
-             if (item.produce.id != pi) {
+      case (?qp) {
+             if (item.produce.id != qp) {
                debugOff "nope: wrong produce kind\n";
                return false
              };
            };
     };
-    if (false) {
-      // xxx test the time windows -- what are our constraints here?
-      debugOff "nope: wrong time window\n";
-      return false
+    switch queryDate {
+      case null { };
+      case (?qd) {
+             if (route.end_date > qd ) {
+               debugOff "nope: route arrives too late\n";
+               return false
+             }
+           }
     };
     /** - window start: check that the route begins after the inventory window begins */
     if (item.start_date > route.start_date) {
@@ -1381,8 +1390,8 @@ than the MVP goals, however.
   retailerQueryAll(
     public_key: PublicKey,
     id:UserId,
-    produceId:?ProduceId,
-    queryWindow:?(Date, Date)
+    queryProduce:?ProduceId,
+    queryDate:?Date
   ) : ?QueryAllResults
   {
     retailerQueryCount += 1;
@@ -1452,7 +1461,7 @@ than the MVP goals, however.
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
-          if (isFeasibleReservation(retailer, item, route, produceId, queryWindow)) {
+          if (isFeasibleReservation(retailer, item, route, queryProduce, queryDate)) {
             ?( keyOfIdPair(route_id, item_id),
                (route, item)
             )
