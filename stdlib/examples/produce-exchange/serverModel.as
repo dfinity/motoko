@@ -766,8 +766,6 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    //assert(isValidUser(public_key, doc.short_name));
-
     ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
       doc.inventory,
       func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] =
@@ -993,8 +991,6 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    //assert(isValidUser(public_key, doc.short_name));
-
     ?Map.toArray<ReservedInventoryId,
                  ReservedInventoryDoc,
                  ReservedInventoryInfo>(
@@ -1138,7 +1134,7 @@ than the MVP goals, however.
       case _ { return #err(#idErr) };
       }};
 
-    // xxx
+    /**- validate the user */
     if (not isValidUser(public_key, transporter.short_name)) {
       return #err(#publicKeyErr)
     }
@@ -1186,8 +1182,6 @@ than the MVP goals, however.
       routeTable.rem( id )
     );
 
-    /// xxx: access control: Check that the current user is the owner of this route
-
     let (updatedRoutes, _) =
       Trie.remove<RouteId, RouteDoc>(
         transporter.routes, keyOf(id), idIsEq);
@@ -1228,8 +1222,6 @@ than the MVP goals, however.
       case (?doc) { doc };
     };
 
-    //assert(isValidUser(public_key, doc.short_name));
-
     ?Map.toArray<RouteId,
                  RouteDoc,
                  RouteInfo>(
@@ -1252,8 +1244,6 @@ than the MVP goals, however.
       case null { return null };
       case (?doc) { doc };
     };
-
-    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<ReservedRouteId,
                  ReservedRouteDoc,
@@ -1402,8 +1392,6 @@ than the MVP goals, however.
       case (null) { return null };
       case (?x) { x }};
 
-    //assert(isValidUser(public_key, retailer.short_name));
-
     debug "- user_name: ";
     debug (retailer.short_name);
     debug ", public_key: ";
@@ -1510,8 +1498,6 @@ than the MVP goals, however.
       case null { return null };
       case (?doc) { doc };
     };
-
-    //assert(isValidUser(public_key, doc.short_name));
 
     ?Map.toArray<ReservedInventoryId,
                  (ReservedInventoryDoc,  ReservedRouteDoc),
