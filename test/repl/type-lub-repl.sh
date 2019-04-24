@@ -34,4 +34,8 @@ obj_text_funcs[1]("hello");
 arr_text_funcs;
 arr_text_funcs[0]("hello");
 arr_text_funcs[1](['h', 'e', 'l', 'l', 'o']);
+
+variant_funcs;
+variant_funcs[0](#bar);
+variant_funcs[1](#bar);
 __END__

@@ -32,5 +32,9 @@ let arr_text_funcs = [ func (a : Text) : Nat = a.len()
                      , func (a : [Char]) : Nat { printChar (a[0]); a.len() }
                      ];
 
+let variant_funcs = [ func (a : {#foo; #bar}) { switch a { case (#foo) (); case (#bar) () } }
+                    , func (a : {#baz; #bar}) { switch a { case (#baz) (); case (#bar) () } }
+                    ];
+
 // TODO(gabor), mutable arrays
 // TODO(gabor), mutable fields, see fail/type-inference.as:13
