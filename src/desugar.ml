@@ -72,9 +72,13 @@ and exp' at note = function
     let args, wrap = to_args cc p in
     I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
-    let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
-    let inst = List.map (fun t -> t.Source.note) inst in
-    I.CallE (cc, exp e1, inst, exp e2)
+    let t = e1.Source.note.S.note_typ in
+    if Type.is_non t
+    then unreachableE.it
+    else
+      let cc = Value.call_conv_of_typ t in
+      let inst = List.map (fun t -> t.Source.note) inst in
+      I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (Type.is_unit note.S.note_typ) ds)
