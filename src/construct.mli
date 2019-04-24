@@ -73,6 +73,8 @@ val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
+val unreachableE : exp
+
 (* Declarations *)
 
 val letP : pat -> exp -> dec
