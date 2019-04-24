@@ -146,8 +146,7 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	$(ASC) -dt -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	#fixme:
-	#$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
+	$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
