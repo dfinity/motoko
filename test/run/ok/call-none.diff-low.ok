@@ -1,0 +1,66 @@
+--- call-none.run
++++ call-none.run-low
+@@ -0,0 +1,63 @@
++prelude:200.1-225.2: internal error, Invalid_argument("call_conv_of_typ Non")
++
++Last environment:
++@new_async = func
++@text_of_Bool = func
++@text_of_Int = func
++@text_of_Nat = func
++@text_of_Text = func
++@text_of_array = func
++@text_of_array_mut = func
++@text_of_option = func
++@text_of_variant = func
++Array_init = func
++Array_tabulate = func
++abs = func
++btstWord16 = func
++btstWord32 = func
++btstWord64 = func
++btstWord8 = func
++charToText = func
++charToWord32 = func
++clzWord16 = func
++clzWord32 = func
++clzWord64 = func
++clzWord8 = func
++ctzWord16 = func
++ctzWord32 = func
++ctzWord64 = func
++ctzWord8 = func
++decodeUTF8 = func
++hashInt = func
++ignore = func
++intToWord16 = func
++intToWord32 = func
++intToWord64 = func
++intToWord8 = func
++natToWord16 = func
++natToWord32 = func
++natToWord64 = func
++natToWord8 = func
++popcntWord16 = func
++popcntWord32 = func
++popcntWord64 = func
++popcntWord8 = func
++print = func
++printChar = func
++printInt = func
++range = func
++revrange = func
++shrsWord16 = func
++shrsWord32 = func
++shrsWord64 = func
++shrsWord8 = func
++word16ToInt = func
++word16ToNat = func
++word32ToChar = func
++word32ToInt = func
++word32ToNat = func
++word64ToInt = func
++word64ToNat = func
++word8ToInt = func
++word8ToNat = func
++
