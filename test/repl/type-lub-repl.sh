@@ -16,4 +16,22 @@ incompatible_funcs;
 funcs;
 funcs[0]([1, 2, 3]);
 funcs[1]([1, 2, 3]);
+obj_arr_funcs;
+obj_arr_funcs[0]([1, 2, 3]);
+obj_arr_funcs[1]([1, 2, 3]);
+let combined = new { len () : Nat = 42
+                   ; get (i : Nat) : Int = i
+                   ; keys () : {next () : ?Nat} = new { next () : ?Nat = null }
+                   ; vals () : {next () : ?Int} = new { next () : ?Int = null }
+                   };
+obj_arr_funcs[0](combined); // error: no object below array
+obj_arr_funcs[1](combined); // error
+
+obj_text_funcs;
+obj_text_funcs[0]("hello");
+obj_text_funcs[1]("hello");
+
+arr_text_funcs;
+arr_text_funcs[0]("hello");
+arr_text_funcs[1](['h', 'e', 'l', 'l', 'o']);
 __END__

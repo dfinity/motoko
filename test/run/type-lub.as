@@ -20,5 +20,17 @@ let funcs = [ func (a : [Int]) : Nat = a.len()
             , func (a : [Nat]) : Int = -42
             ];
 
+let obj_arr_funcs = [ func (a : [Int]) : Nat { printInt (a[0]); a.len() }
+                    , func (a : {len : () -> Nat}) : Nat = a.len()
+                    ];
+
+let obj_text_funcs = [ func (a : Text) : Nat = a.len()
+                     , func (a : {len : () -> Nat}) : Nat = a.len()
+                     ];
+
+let arr_text_funcs = [ func (a : Text) : Nat = a.len()
+                     , func (a : [Char]) : Nat { printChar (a[0]); a.len() }
+                     ];
+
 // TODO(gabor), mutable arrays
 // TODO(gabor), mutable fields, see fail/type-inference.as:13

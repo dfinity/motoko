@@ -13,11 +13,6 @@ true produces
   ()
 false produces
   {}
-type-inference.as:13.9-13.53: warning, this if has type Any because branches have inconsistent types,
-true produces
-  {x : Nat}
-false produces
-  {x : var Nat}
 type-inference.as:17.33-17.41: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
@@ -43,11 +38,6 @@ true produces
   ()
 false produces
   {}
-type-inference.as:13.9-13.53: warning, this if has type Any because branches have inconsistent types,
-true produces
-  {x : Nat}
-false produces
-  {x : var Nat}
 type-inference.as:17.33-17.41: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
