@@ -1552,7 +1552,7 @@ than the MVP goals, however.
     public_key: PublicKey,
     id:UserId,
     inventory:InventoryId,
-    route:RouteId) : ?(ReservedRouteId, ReservedInventoryId)
+    route:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
   {
     nyi()
   };

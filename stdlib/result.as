@@ -58,7 +58,7 @@ func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
 */
 func assertOk(r:Result<Any,Any>) {
   switch(r) {
-    case (#err _) unreachable();
+    case (#err _) assert false;
     case (#ok _) ();
   }
 };
@@ -70,7 +70,7 @@ func assertOk(r:Result<Any,Any>) {
 func assertErr(r:Result<Any,Any>) {
   switch(r) {
     case (#err _) ();
-    case (#ok _) unreachable();
+    case (#ok _) assert false;
   }
 };
 

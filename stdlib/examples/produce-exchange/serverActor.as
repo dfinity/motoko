@@ -199,16 +199,15 @@ actor server = {
   registrarAddRegion(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<RegionId,()> {
-    optionResult<RegionId,()>(
+  ) : async Result<RegionId,None> {
+    optionUnwrapResult<RegionId>(
       getModel().regionTable.addInfoGetId(
         func (id_:RegionId) : RegionInfo =
           shared {
             id = id_:RegionId;
             short_name=short_name_:Text;
             description=description_:Text
-          }),
-      ()
+          })
     )
   };
 
@@ -277,8 +276,8 @@ actor server = {
     short_name_:  Text,
     description_: Text,
     grade_: Grade,
-  ) : async Result<ProduceId,()> {
-    optionResult<ProduceId,()>(
+  ) : async Result<ProduceId,None> {
+    optionUnwrapResult<ProduceId>(
       getModel().produceTable.addInfoGetId(
         func (id_:ProduceId) : ProduceInfo =
           shared {
@@ -286,8 +285,7 @@ actor server = {
             short_name=short_name_:Text;
             description=description_:Text;
             grade=grade_:Grade
-          }),
-      ()
+          })
     )
   };
 
@@ -494,8 +492,8 @@ actor server = {
   registrarAddTransporter(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<TransporterId,()> {
-    optionResult<TransporterId,()>(
+  ) : async Result<TransporterId,None> {
+    optionUnwrapResult<TransporterId>(
       getModel().transporterTable.addInfoGetId(
         func(id_:TransporterId):TransporterInfo {
           shared {
@@ -505,8 +503,7 @@ actor server = {
             routes=[];
             reserved=[];
           }
-        }),
-      ()
+        })
     )
   };
 
@@ -828,31 +825,26 @@ actor server = {
     public_key: PublicKey,
     id:UserId,
     inventory:InventoryId,
-    route:RouteId) : async Result<(ReservedInventoryId, ReservedRouteId),()>
+    route:RouteId) : async Result<(ReservedInventoryId, ReservedRouteId),ServerErr>
   {
-    optionResult<(ReservedInventoryId, ReservedRouteId),()>(
-      getModel().
-        retailerReserve(public_key, id, inventory, route),
-      ()
-    )
+    getModel().
+      retailerReserve(public_key, id, inventory, route)
   };
 
   /**
    `retailerReservations`
    ---------------------------
 
-   TODO-Cursors (see above).
-
-   */
+  */
   retailerReservations(public_key: PublicKey, id:UserId) :
     async Result<[(ReservedInventoryInfo,
-                   ReservedRouteInfo)],()>
+                   ReservedRouteInfo)],ServerErr>
   {
     optionResult<[(ReservedInventoryInfo,
-                   ReservedRouteInfo)],()>(
+                   ReservedRouteInfo)],ServerErr>(
       getModel().
         retailerAllReservationInfo(public_key, id),
-      ()
+      #idErr
     )
   };
 
