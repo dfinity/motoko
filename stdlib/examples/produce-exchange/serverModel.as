@@ -801,7 +801,7 @@ than the MVP goals, however.
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
-      case _ { return (#err #idErr) };
+      case _ { return #err(#idErr) };
       }};
 
     if (not isValidUser(public_key, producer_.short_name)) {
