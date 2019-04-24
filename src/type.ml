@@ -691,9 +691,9 @@ and glb t1 t2 =
   | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
   | Array t1', Array t2' -> Array (glb t1' t2')
   | Array t1', (Obj _ as t2') when sub (array_obj t1') t2' -> t1
-  | (Obj _ as t1'), Array t2' when sub t1' (array_obj t2') -> t2
+  | (Obj _ as t1'), Array t2' when sub (array_obj t2') t1' -> t2
   | Prim Text, (Obj _ as t2') when sub text_obj t2' -> t1
-  | (Obj _ as t1'), Prim Text when sub t1' text_obj -> t2
+  | (Obj _ as t1'), Prim Text when sub text_obj t1' -> t2
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object tf1 tf2)
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 glb ts1 ts2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
