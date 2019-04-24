@@ -16,6 +16,11 @@ let arrs = [[-42], [25]];
 let incompatible_funcs = [ func (a : [Int]) : Nat = a.len()
                          , func (a : ()) : Int = -42
                          ];
+
+let poly_funcs = [ func<A> (a : [Int]) : Nat = a.len()
+                 , func<A> (a : [Nat]) : Int = -42
+                 ];
+
 let funcs = [ func (a : [Int]) : Nat = a.len()
             , func (a : [Nat]) : Int = -42
             ];

@@ -14,6 +14,9 @@ ActorScript 0.1 interpreter
 > [func, func] : [([Nat] -> Int)]
 > 3 : Int
 > -42 : Int
+> [func, func] : [(<A>[Nat] -> Int)]
+> 3 : Int
+> -42 : Int
 > [func, func] : [([Int] -> Nat)]
 > 13 : Nat
 > 3 : Nat
@@ -21,4 +24,5 @@ ActorScript 0.1 interpreter
 >       > 5 : Nat
 > 5 : Nat
 >   [func, func] : [(Non -> Nat)]
+> > >   [func, func] : [({#bar} -> ())]
 > > > 

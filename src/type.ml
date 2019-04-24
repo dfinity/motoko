@@ -643,7 +643,7 @@ let rec lub t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, lub_object tf1 tf2)
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 lub ts1 ts2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = [] && bs2 = [] &&
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence *)
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 glb args1 args2, List.map2 lub res1 res2)
   | t1', t2' when eq t1' t2' -> t1
@@ -693,7 +693,7 @@ and glb t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object tf1 tf2)
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 glb ts1 ts2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = [] && bs2 = [] &&
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence *)
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 lub args1 args2, List.map2 glb res1 res2)
   | t1', t2' when eq t1' t2' -> t1
