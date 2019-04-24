@@ -143,10 +143,11 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -dt -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
+	#fixme:
+	#$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
