@@ -998,21 +998,21 @@ module Tagged = struct
       | (Con _ | Shared | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
       | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Prim Text | Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
       end
     | _ -> true
 
