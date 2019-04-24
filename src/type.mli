@@ -65,6 +65,7 @@ val prim : string -> prim
 
 (* Projection *)
 
+val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
 val is_variant : typ -> bool
