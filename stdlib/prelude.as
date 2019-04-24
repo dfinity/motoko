@@ -22,10 +22,10 @@ trap in all execution contexts.
 */
 
 func nyi() : None =
-  { assert false ; nyi(); };
+  { assert false ; loop { } };
 
 func xxx() : None =
-  { assert false ; xxx(); };
+  { assert false ; loop { } };
 
 /***
 
@@ -38,4 +38,4 @@ func xxx() : None =
  trap in all execution contexts.
 
 */
-func unreachable() : None = { assert false ; unreachable() };
+func unreachable() : None = { assert false ; loop { } };
