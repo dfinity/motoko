@@ -42,4 +42,16 @@ let variant_funcs = [ func (a : {#foo; #bar}) { switch a { case (#foo) (); case 
                     ];
 
 // TODO(gabor), mutable arrays
+let mut_arrs = [[var 42], [var 25], [77]]; // boring
+
 // TODO(gabor), mutable fields, see fail/type-inference.as:13
+
+// TODO(gabor), Shared
+
+let sh : Shared = 42;
+let shareds = [sh, 77, [1, 2, 3]];
+// let shared2s = [77, [1, 2, 3], sh]; // CAVEAT: order dependency in lub!
+
+let shared_funcs = [ func (a : Int) : Int = a
+                   , func (a : Shared) : Nat = 42
+                   ];

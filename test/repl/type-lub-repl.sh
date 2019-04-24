@@ -41,4 +41,11 @@ arr_text_funcs[1](['h', 'e', 'l', 'l', 'o']);
 variant_funcs;
 variant_funcs[0](#bar);
 variant_funcs[1](#bar);
+
+mut_arrs;
+
+shareds;
+shared_funcs;
+shared_funcs[0](25);
+shared_funcs[1](25);
 __END__
