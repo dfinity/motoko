@@ -1290,19 +1290,6 @@ and infer_val_path env exp : T.typ option =
     end
   | _ -> None
 
-
-and is_module_path env exp =
-  match infer_val_path env exp with
-  | Some t ->
-    begin
-      match T.promote t with
-      | T.Obj (T.Module, flds) -> true
-      | _ -> false
-    end
-  | None -> false
-
-
-
 (* Pass 1: collect:
    * type identifiers and their arity,
    * module identifiers and their fields (if known) (recursively)
@@ -1374,13 +1361,15 @@ and infer_block_typdecs env decs : scope =
 
 and infer_dec_typdecs env dec : scope =
   match dec.it with
-  | LetD ({ it = VarP id; _ }, exp) when is_module_path env exp ->
-    begin
-      match infer_val_path env exp with
-      | Some t -> { empty_scope with val_env = T.Env.singleton id.it t }
-      | None ->  { empty_scope with val_env = T.Env.singleton id.it T.Pre }
-    end
-  | ExpD _ | LetD _ | VarD _ ->
+  | LetD ({ it = VarP id; _ } , exp) ->
+    (match infer_val_path env exp with
+     | Some t ->
+       (match T.promote t with
+        | T.Obj (T.Module, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
+        | _ -> { empty_scope with val_env = T.Env.singleton id.it T.Pre }
+       )
+     | None -> empty_scope)
+  | LetD _ | ExpD _ | VarD _ ->
     empty_scope
   | TypD (con_id, binds, typ) ->
     let c = T.Env.find con_id.it env.typs in

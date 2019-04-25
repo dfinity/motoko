@@ -1,6 +1,6 @@
 module X = {
 
-let C = A.B;
+let C = A.B
 
 let u = C.v;
 
