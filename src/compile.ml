@@ -683,7 +683,7 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env =
-    Func.share_code3 env "memcpy" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
+    Func.share_code3 env "memcpy" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
       get_n ^^
       from_0_to_n env (fun get_i ->
           get_to ^^
@@ -701,7 +701,7 @@ module Heap = struct
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
-    Func.share_code3 env "memcpy_words_skewed" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
+    Func.share_code3 env "memcpy_words_skewed" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
       get_n ^^
       from_0_to_n env (fun get_i ->
           get_to ^^
@@ -1955,14 +1955,14 @@ module Text = struct
       set_z ^^
 
       (* Copy first string *)
-      get_x ^^ payload_ptr_unskewed ^^
       get_z ^^ payload_ptr_unskewed ^^
+      get_x ^^ payload_ptr_unskewed ^^
       get_len1 ^^
       Heap.memcpy env ^^
 
       (* Copy second string *)
-      get_y ^^ payload_ptr_unskewed ^^
       get_z ^^ payload_ptr_unskewed ^^ get_len1 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      get_y ^^ payload_ptr_unskewed ^^
       get_len2 ^^
       Heap.memcpy env ^^
 
@@ -3051,9 +3051,9 @@ module Serialization = struct
         get_x ^^ Heap.load_field Text.len_field ^^
         compile_add_const Heap.word_size ^^
         set_len ^^
+        get_data_buf ^^
         get_x ^^ compile_add_const (Int32.mul Tagged.header_size Heap.word_size) ^^
         compile_add_const ptr_unskew ^^
-        get_data_buf ^^
         get_len ^^
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
@@ -3176,8 +3176,8 @@ module Serialization = struct
 
         get_len ^^ Text.alloc env ^^ set_x ^^
 
-        get_data_buf ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
+        get_data_buf ^^
         get_len ^^
         Heap.memcpy env ^^
 
@@ -3426,7 +3426,7 @@ module GC = struct
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
 
-    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
+    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
 
     (* Calculate new pointer *)
     get_end_to_space ^^
@@ -3499,8 +3499,8 @@ module GC = struct
       (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
 
     (* Copy the to-space to the beginning of memory. *)
-    get_begin_to_space ^^ compile_add_const ptr_unskew ^^
     get_begin_from_space ^^ compile_add_const ptr_unskew ^^
+    get_begin_to_space ^^ compile_add_const ptr_unskew ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     Heap.memcpy env ^^
 
