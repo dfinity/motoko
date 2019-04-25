@@ -26,8 +26,8 @@ and path' =
 
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
+  | PathT of path * typ list                       (* type path *)
   | PrimT of string                                (* primitive *)
-  | VarT of id * typ list                          (* constructor *)
   | ObjT of obj_sort * typ_field list              (* object *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
@@ -36,7 +36,6 @@ and typ' =
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
-  | PathT of path * id * typ list                  (* type projection *)
 (*
   | UnionT of type * typ                           (* union *)
   | AtomT of string                                (* atom *)

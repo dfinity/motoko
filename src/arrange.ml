@@ -159,7 +159,7 @@ and path p = match p.it with
   | DotH (p,i) -> "DotH" $$ [path p; id i]
 
 and typ t = match t.it with
-  | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
+  | PathT (p, ts)       -> "PathT" $$ [path p] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]
   | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
@@ -169,7 +169,6 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
-  | PathT (p, i, ts)         -> "PathT" $$ [path p; id i] @ List.map typ ts
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]

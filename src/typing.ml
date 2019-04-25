@@ -172,7 +172,33 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
-let rec check_path env path : T.typ =
+let rec check_typ_path env path : T.con =
+  let c = check_typ_path' env path in
+  let t = T.Kind (c, Con.kind c) in
+  path.note <- t;
+  c
+
+and check_typ_path' env path : T.con =
+  match path.it with
+  | IdH id ->
+    (match T.Env.find_opt id.it env.typs with
+     | Some c -> c
+     | None -> error env id.at "unbound type identifier %s" id.it)
+  | DotH (path, id) ->
+    let t = check_path env path in
+    match T.promote t with
+    | T.Pre ->
+      error env path.at "cannot infer type of forward path reference"
+    | T.Obj (T.Module, flds) ->
+      (match T.lookup_typ_field id.it flds with
+       | Some (c, k) -> c
+       | _ -> error env id.at "type field name %s does not exist in module type\n  %s"
+                id.it (T.string_of_typ_expand t))
+    | _ -> error env path.at "expecting a module type, but path expression produces a value of type %s"
+             (T.string_of_typ_expand t)
+
+
+and check_path env path : T.typ =
   let t = check_path' env path in
   path.note <- t;
   t
@@ -205,14 +231,11 @@ let rec check_typ env typ : T.typ =
 
 and check_typ' env typ : T.typ =
   match typ.it with
-  | VarT (id, typs) ->
-    (match T.Env.find_opt id.it env.typs with
-    | Some c ->
-      let T.Def (tbs, t) | T.Abs (tbs, t) = Con.kind c in
-      let ts = check_typ_bounds env tbs typs typ.at in
-      T.Con (c, ts)
-    | None -> error env id.at "unbound type identifier %s" id.it
-    )
+  | PathT (p, typs) ->
+    let c = check_typ_path env p in
+    let T.Def (tbs, t) | T.Abs (tbs, t) = Con.kind c in
+    let ts = check_typ_bounds env tbs typs typ.at in
+    T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
@@ -268,20 +291,6 @@ and check_typ' env typ : T.typ =
     check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
-  | PathT (p, id, typs) ->
-    let t = check_path env p in
-    (match T.promote t with
-     | T.Obj (_, flds) ->
-      begin
-        match T.lookup_typ_field id.it flds with
-        | Some (c, T.Def (tbs, t))
-        | Some (c, T.Abs (tbs, t)) ->
-          let ts = check_typ_bounds env tbs typs typ.at in
-          T.Con (c, ts)
-        | None -> error env id.at "unbound type identifier %s" id.it
-      end
-     |  _ -> error env p.at "expecting an object, found path of type %s" (T.string_of_typ_expand t);
-    )
   | ParT typ ->
     check_typ env typ
 
