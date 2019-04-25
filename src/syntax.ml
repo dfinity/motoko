@@ -19,15 +19,12 @@ type obj_sort = Type.obj_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
-
 and path = (path', Type.typ) Source.annotated_phrase
-
 and path' =
   | IdH  of id
   | DotH of path * id
 
 type typ = (typ', Type.typ) Source.annotated_phrase
-
 and typ' =
   | PrimT of string                                (* primitive *)
   | VarT of id * typ list                          (* constructor *)

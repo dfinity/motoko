@@ -369,24 +369,25 @@ let as_async_sub t = match promote t with
   | _ -> invalid "as_async_sub"
 
 let inst_func_type fun_ty sort typs =
-    let _, tbs, t2, t3 = as_func_sub sort (List.length typs) fun_ty in
-    let t_arg = open_ typs t2 in
-    let t_ret = open_ typs t3 in
-    t_arg, t_ret
+  let _, tbs, t2, t3 = as_func_sub sort (List.length typs) fun_ty in
+  let t_arg = open_ typs t2 in
+  let t_ret = open_ typs t3 in
+  t_arg, t_ret
 
 let lookup_field lab' tfs =
-  match List.find_opt (fun {lab; typ } ->
-                          match typ with Kind _ -> false
-                          | _ -> lab = lab') tfs with
+  let is_lab { lab; typ } = match typ with
+    | Kind (c, k) -> false
+    | _ -> lab = lab' in
+  match List.find_opt is_lab tfs with
   | Some {typ = t; _} -> t
   | None -> invalid "lookup_field"
 
 let lookup_typ_field lab' tfs =
-  match List.find_opt (fun {lab; typ } ->
-            match typ with
-            | Kind (c, k) -> lab=lab'
-            | _ -> false) tfs with
-  | Some {typ = Kind (c,k); _} -> (c,k)
+  let is_lab {lab; typ } = match typ with
+    | Kind (c, k) -> lab = lab'
+    | _ -> false in
+  match List.find_opt is_lab tfs with
+  | Some { typ = Kind (c,k); _ } -> (c,k)
   | Some _ -> assert false
   | None -> invalid "lookup_typ_field"
 

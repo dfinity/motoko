@@ -104,19 +104,19 @@ val as_func_sub : sharing -> int -> typ -> sharing * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
-(* n-ary argument/result sequences *)
+(* N-ary argument/result sequences *)
 
 val seq : typ list -> typ
 val as_seq : typ -> typ list
 val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
-(* field lookup, namespace sensitive *)
+(* Field lookup, namespace sensitive *)
 
 val lookup_typ_field : string -> field list -> (con * kind)
 
 val lookup_field : string -> field list -> typ
 
-(* field ordering *)
+(* Field ordering *)
 
 val compare_field : field -> field -> int
 
