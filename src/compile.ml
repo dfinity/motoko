@@ -577,17 +577,9 @@ module RTS = struct
   (* Imports into our RTS function *)
 
   (* function ids for imported stuff *)
-  let factorial_i env = 0l
-  let memcpy_i env = 1l
+  let memcpy_i env = 0l
 
   let system_imports env =
-    let i = E.add_func_import env (nr {
-      module_name = Wasm.Utf8.decode "rts";
-      item_name = Wasm.Utf8.decode "factorial";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (factorial_i env));
-
     let i = E.add_func_import env (nr {
       module_name = Wasm.Utf8.decode "rts";
       item_name = Wasm.Utf8.decode "as_memcpy";
@@ -706,7 +698,7 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env =
-     G.i (Call (nr (RTS.memcpy_i env)))
+    G.i (Call (nr (RTS.memcpy_i env)))
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -2340,9 +2332,9 @@ module Dfinity = struct
   let func_internalize_i env = 12l
   let func_externalize_i env = 13l
   let func_bind_i env = 14l
-  let rts_factorial_i env = 15l
 
   let system_imports env =
+  begin
     let i = E.add_func_import env (nr {
       module_name = Wasm.Utf8.decode "test";
       item_name = Wasm.Utf8.decode "print";
@@ -2447,13 +2439,7 @@ module Dfinity = struct
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_bind_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = Wasm.Utf8.decode "rts";
-      item_name = Wasm.Utf8.decode "factorial";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (rts_factorial_i env))
+  end
 
   let compile_databuf_of_text env  =
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
@@ -4286,11 +4272,6 @@ and compile_exp (env : E.t) exp =
          let t = match typ_args with [t] -> t | _ -> assert false in
          compile_exp_as env SR.UnboxedReference e ^^
          Serialization.deserialize env t
-
-       | "rts_factorial" ->
-         SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedWord32 e ^^
-         G.i (Call (nr (RTS.factorial_i env)))
 
        | "abs" ->
          SR.Vanilla,
