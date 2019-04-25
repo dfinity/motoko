@@ -128,7 +128,7 @@ Three ways of obtaining the coverage report:
 
 * Async construct for direct-style programming of asynchronous messaging
 
-* Nominally and structurally typed with simple generics and subtyping
+* Structurally typed with simple generics and subtyping
 
 * Overflow-checked number types, explicit conversions
 
