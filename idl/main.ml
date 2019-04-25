@@ -59,7 +59,7 @@ let process_files files : unit =
   | Default ->
      assert false
   | Check ->
-     let _ = exit_on_failure (Pipeline.(parse_file (List.hd files))) in ()
+     let _ = exit_on_failure (Pipeline.(check_file (List.hd files))) in ()
   | _ -> assert false
     (*
   | Run ->

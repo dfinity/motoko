@@ -1,4 +1,5 @@
 open Printf
+module Typing = Typing_idl
 
 type stat_env = Typing.scope
 type env = stat_env              
@@ -12,25 +13,17 @@ let phase heading name =
 let error at cat text =
   Error { Diag.sev = Diag.Error; at; cat; text }
 
-let print_ce =
-  Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.strings_of_kind (Con.kind c) in
-    printf "type %s%s %s %s\n" (Con.to_string c) params eq typ
-  )
-
 let print_stat_ve =
-  Type.Env.iter (fun x t ->
-    let t' = Type.as_immut t in
+  Typing.Env.iter (fun x t ->
     printf "%s %s : %s\n"
-      (if t == t' then "let" else "var") x (Type.string_of_typ t')
+      "var" x (Arrange_idl.string_of_typ t)
   )
-
+(*
 let print_val _senv v t =
-  printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
-
+  printf "%s : %s\n" (Value.string_of_val v) (Type_idl.string_of_typ t)
+ *)
 
 let dump_prog flag prog =
-    printf "Dump prog\n";
     if flag then
       Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
     else ()
@@ -74,23 +67,29 @@ let initial_stat_env = Typing.empty_scope
 let initial_env = initial_stat_env                     
    
 (* Checking *)
-(*
-type check_result = (Syntax.prog * Type.typ * Typing.scope) Diag.result
 
-let check_prog infer senv name prog
-  : (Type.typ * Typing.scope) Diag.result =
+type check_result = (Syntax_idl.prog * Typing.scope) Diag.result
+
+let check_prog check senv name prog
+  : Typing.scope Diag.result =
   phase "Checking" name;
-  let r = infer senv prog in
-  if !Flags.trace && !Flags.verbose then begin
+  let r = check senv prog in
+  if true then begin
     match r with
-    | Ok ((_, scope), _) ->
-      print_ce scope.Typing.con_env;
-      print_stat_ve scope.Typing.val_env;
-    (*dump_prog !Flags.dump_tc prog;*)
+    | Ok (scope, _) ->
+      print_stat_ve scope;
     | Error _ -> ()
   end;
   r
- *)
+
+let check_with parse check senv name : check_result =
+  Diag.bind (parse name) (fun prog ->
+      Diag.bind (check_prog check senv name prog) (fun senv' ->
+          Diag.return (prog, senv')
+    ))
+
+let check_file' senv name = check_with parse_file Typing.check_prog senv name
+let check_file name = check_file' initial_stat_env name
 (*
 (* Running *)
 

@@ -2,8 +2,6 @@ open Source
 open Syntax_idl
 open Wasm.Sexpr
 
-module Type = Type_idl
-   
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
@@ -15,13 +13,13 @@ let field_tag (tf : typ_field)
 let rec typ_field (tf : typ_field)
   = field_tag tf $$ [typ tf.it.typ]
 
-and typ_bind (tb : typ_bind)
+and typ_meth (tb : typ_meth)
   = tb.it.var.it $$ [typ tb.it.bound]
 
 and mode m = match m.it with
-  | Type.Sensitive -> Atom "Sensitive"
-  | Type.Pure -> Atom "Pure"
-  | Type.Updatable -> Atom "Updatable"
+  | Sensitive -> Atom "Sensitive"
+  | Pure -> Atom "Pure"
+  | Updatable -> Atom "Updatable"
   
 and typ t = match t.it with
   | VarT s        -> "VarT" $$ [id s]
@@ -32,13 +30,46 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (ms, at, rt) -> "FuncT" $$ List.map mode ms @ [ typ at; typ rt]
-  | RefFuncT t -> "RefFuncT" $$ [typ t]
-  | RefServT ts -> "RefServT" $$ List.map typ_bind ts
+  | ServT ts -> "ServT" $$ List.map typ_meth ts
                         
 and dec d = match d.it with
   | TypD (x, t) ->
     "TypD" $$ [id x] @ [typ t]
   | ActorD (x, tp) ->
-    "ActorD" $$ id x :: List.map typ_bind tp
+    "ActorD" $$ id x :: List.map typ_meth tp
 
 and prog prog = "BlockE"  $$ List.map dec prog.it
+
+
+(* Pretty printing  *)
+              
+open Printf
+let string_of_list f sep list = String.concat sep (List.map f list)
+let string_of_list_opt left right f sep list =
+  match list with
+  | [] -> ""
+  | l -> left ^ string_of_list f sep l ^ right
+    
+let rec string_of_typ t =
+  match t.it with
+  | VarT id -> sprintf "var %s" id.it
+  | PrimT s -> s
+  | FuncT (ms,s,t) ->
+     sprintf "%s -> %s%s" (string_of_typ s) (string_of_list_opt "[" "] " string_of_mode ", " ms) (string_of_typ t)
+  | TupT ts -> "(" ^ string_of_list string_of_typ ", " ts ^ ")"
+  | OptT t -> "opt " ^ string_of_typ t
+  | VecT t -> "vec " ^ string_of_typ t
+  | RecordT fs -> sprintf "{%s}" (string_of_list string_of_field "; " fs)
+  | VariantT fs -> sprintf "[%s]" (string_of_list string_of_field "; " fs)
+  | ServT ms -> sprintf "service {%s}" (string_of_list string_of_meth "; " ms)
+  | _ -> "TBD"
+
+and string_of_field f =
+  sprintf "%s : %s" f.it.name.it (string_of_typ f.it.typ)
+and string_of_meth m =
+  sprintf "%s : %s" m.it.var.it (string_of_typ m.it.bound)
+and string_of_mode m =
+  match m.it with
+  | Sensitive -> "Sensitive"
+  | Pure -> "Pure"
+  | Updatable -> "Update"

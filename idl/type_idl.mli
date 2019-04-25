@@ -43,6 +43,9 @@ and typ =
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
+(* Environments *)
+
+module Env : Env.S with type key = string
 
 (* Short-hands *)
 
@@ -142,11 +145,6 @@ val close_binds : con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
-
-
-(* Environments *)
-
-module Env : Env.S with type key = string
 
 
 (* Pretty printing *)

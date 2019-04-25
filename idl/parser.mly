@@ -80,8 +80,8 @@ prim_typ :
        | Some t -> PrimT t) @! at $sloc }
 
 ref_typ :
-  | FUNC t=func_typ { RefFuncT t @! at $sloc }
-  | SERVICE ts=actor_typ { RefServT ts @! at $sloc }
+  | FUNC t=func_typ { t }
+  | SERVICE ts=actor_typ { ServT ts @! at $sloc }
 
 field_typ :
   | n=NAT COLON t=data_typ
@@ -123,9 +123,9 @@ param_typs :
     { match ts with [t] -> t | _ -> TupT(ts) @! at $sloc }
 
 func_mode :
-  | SENSITIVE { Type_idl.Sensitive @@ at $sloc }
-  | PURE { Type_idl.Pure @@ at $sloc }
-  | UPDATE { Type_idl.Updatable @@ at $sloc }
+  | SENSITIVE { Sensitive @@ at $sloc }
+  | PURE { Pure @@ at $sloc }
+  | UPDATE { Updatable @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -154,6 +154,8 @@ def :
 actor :
   | SERVICE id=id tys=actor_typ
     { ActorD(id, tys) @? at $sloc }
+  | SERVICE id=id COLON x=id
+    { ActorD(id, (*TODO*)[]) @? at $sloc }
 
 dec :
   | d=def { d }

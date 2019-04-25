@@ -42,25 +42,6 @@ and typ =
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
-and con = kind Con.t
-and kind =
-  | Def of bind list * typ
-  | Abs of bind list * typ
-
-(* Helper for variant constructors *)
-let map_constr_typ f = List.map (fun (c, t) -> c, f t)
-
-(* Constructors *)
-
-let set_kind c k =
-  match Con.kind c with
-  | Abs (_, Pre) -> Con.unsafe_set_kind c k
-  | _ -> raise (Invalid_argument "set_kind")
-
-module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
-module ConSet = ConEnv.Dom
-
-
 (* Short-hands *)
 
 let unit = Tup []

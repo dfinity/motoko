@@ -1,4 +1,4 @@
-type stat_env = Typing.scope
+type stat_env = Typing_idl.scope
 type env = stat_env
 
 val initial_stat_env : stat_env
@@ -6,9 +6,10 @@ val initial_env      : env
 
 type parse_result = Syntax_idl.prog Diag.result
 val parse_file   : string -> parse_result
-(*
-type check_result = (Syntax.prog * Type.typ * Typing.scope) Diag.result
-val check_file   : stat_env -> string -> check_result
+
+type check_result = (Syntax_idl.prog * Typing_idl.scope) Diag.result
+val check_file   : string -> check_result
+  (*
 val check_files  : stat_env -> string list -> check_result
 val check_string : stat_env -> string -> string -> check_result
 val check_lexer  : stat_env -> Lexing.lexbuf -> string -> check_result
