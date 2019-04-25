@@ -37,6 +37,8 @@ func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
 func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
+func rts_factorial(x : Word32) : Word32 { (prim "rts_factorial" : Word32 -> Word32) x };
+
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
 
@@ -386,4 +388,7 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "rts_factorial" -> fun v k ->
+    let rec fac n = Int32.( if n = 0l then 1l else mul n (fac (sub n 1l))) in
+    k (Word32 (fac (Value.as_word32 v)))
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

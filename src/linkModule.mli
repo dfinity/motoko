@@ -22,4 +22,5 @@ val decode : string -> string -> dylink_module (* raises Code *)
 
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
-val link : int32 -> module_ -> dylink_module -> module_
+(* The third argument the name of the moduled linked in *)
+val link : int32 -> CustomModule.extended_module -> string -> dylink_module -> CustomModule.extended_module

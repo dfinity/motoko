@@ -15,7 +15,6 @@ open Wasm.Ast
 open Wasm.Types
 open Source
 open Ir
-open CustomModule
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
@@ -574,6 +573,30 @@ module Func = struct
 
 end (* Func *)
 
+module RTS = struct
+  (* Imports into our RTS function *)
+
+  (* function ids for imported stuff *)
+  let factorial_i env = 0l
+  let memcpy_i env = 1l
+
+  let system_imports env =
+    let i = E.add_func_import env (nr {
+      module_name = Wasm.Utf8.decode "rts";
+      item_name = Wasm.Utf8.decode "factorial";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (factorial_i env));
+
+    let i = E.add_func_import env (nr {
+      module_name = Wasm.Utf8.decode "rts";
+      item_name = Wasm.Utf8.decode "as_memcpy";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type],[])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (memcpy_i env));
+
+end (* RTS *)
+
 module Heap = struct
   (* General heap object functionalty (allocation, setting fields, reading fields) *)
 
@@ -683,21 +706,7 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env =
-    Func.share_code3 env "memcpy" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
-          get_from ^^
-          get_i ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-
-          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
-      )
-    )
+     G.i (Call (nr (RTS.memcpy_i env)))
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -1952,14 +1961,14 @@ module Text = struct
       set_z ^^
 
       (* Copy first string *)
-      get_x ^^ payload_ptr_unskewed ^^
       get_z ^^ payload_ptr_unskewed ^^
+      get_x ^^ payload_ptr_unskewed ^^
       get_len1 ^^
       Heap.memcpy env ^^
 
       (* Copy second string *)
-      get_y ^^ payload_ptr_unskewed ^^
       get_z ^^ payload_ptr_unskewed ^^ get_len1 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      get_y ^^ payload_ptr_unskewed ^^
       get_len2 ^^
       Heap.memcpy env ^^
 
@@ -2331,120 +2340,120 @@ module Dfinity = struct
   let func_internalize_i env = 12l
   let func_externalize_i env = 13l
   let func_bind_i env = 14l
-
-  (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
-  (* Ok to use as long as everything is ASCII *)
-  let explode s =
-    let rec exp i l =
-      if i < 0 then l else exp (i - 1) (Char.code s.[i] :: l) in
-    exp (String.length s - 1) []
+  let rts_factorial_i env = 15l
 
   let system_imports env =
     let i = E.add_func_import env (nr {
-      module_name = explode "test";
-      item_name = explode "print";
+      module_name = Wasm.Utf8.decode "test";
+      item_name = Wasm.Utf8.decode "print";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_print_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "test";
-      item_name = explode "show_i32";
+      module_name = Wasm.Utf8.decode "test";
+      item_name = Wasm.Utf8.decode "show_i32";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "externalize";
+      module_name = Wasm.Utf8.decode "data";
+      item_name = Wasm.Utf8.decode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "internalize";
+      module_name = Wasm.Utf8.decode "data";
+      item_name = Wasm.Utf8.decode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "length";
+      module_name = Wasm.Utf8.decode "data";
+      item_name = Wasm.Utf8.decode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (data_length_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "externalize";
+      module_name = Wasm.Utf8.decode "elem";
+      item_name = Wasm.Utf8.decode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "internalize";
+      module_name = Wasm.Utf8.decode "elem";
+      item_name = Wasm.Utf8.decode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "length";
+      module_name = Wasm.Utf8.decode "elem";
+      item_name = Wasm.Utf8.decode "length";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (elem_length_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "module";
-      item_name = explode "new";
+      module_name = Wasm.Utf8.decode "module";
+      item_name = Wasm.Utf8.decode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (module_new_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "new";
+      module_name = Wasm.Utf8.decode "actor";
+      item_name = Wasm.Utf8.decode "new";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_new_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "self";
+      module_name = Wasm.Utf8.decode "actor";
+      item_name = Wasm.Utf8.decode "self";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_self_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "export";
+      module_name = Wasm.Utf8.decode "actor";
+      item_name = Wasm.Utf8.decode "export";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (actor_export_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "internalize";
+      module_name = Wasm.Utf8.decode "func";
+      item_name = Wasm.Utf8.decode "internalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_internalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "externalize";
+      module_name = Wasm.Utf8.decode "func";
+      item_name = Wasm.Utf8.decode "externalize";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type], [I32Type])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (func_externalize_i env));
 
     let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "bind_i32";
+      module_name = Wasm.Utf8.decode "func";
+      item_name = Wasm.Utf8.decode "bind_i32";
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
     }) in
-    assert (Int32.to_int i == Int32.to_int (func_bind_i env))
+    assert (Int32.to_int i == Int32.to_int (func_bind_i env));
 
+    let i = E.add_func_import env (nr {
+      module_name = Wasm.Utf8.decode "rts";
+      item_name = Wasm.Utf8.decode "factorial";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (rts_factorial_i env))
 
   let compile_databuf_of_text env  =
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
@@ -2499,11 +2508,11 @@ module Dfinity = struct
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = explode "mem";
+      name = Wasm.Utf8.decode "mem";
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
-      name = explode "table";
+      name = Wasm.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
     })
 
@@ -2519,7 +2528,7 @@ module Dfinity = struct
       ) in
     let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
-      name = explode "start";
+      name = Wasm.Utf8.decode "start";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -2570,11 +2579,11 @@ module OrthogonalPersistence = struct
 
   let register env start_funid =
     E.add_export env (nr {
-      name = Dfinity.explode "datastore";
+      name = Wasm.Utf8.decode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
     });
     E.add_export env (nr {
-      name = Dfinity.explode "elemstore";
+      name = Wasm.Utf8.decode "elemstore";
       edesc = nr (GlobalExport (nr elem_global))
     });
 
@@ -3048,9 +3057,9 @@ module Serialization = struct
         get_x ^^ Heap.load_field Text.len_field ^^
         compile_add_const Heap.word_size ^^
         set_len ^^
+        get_data_buf ^^
         get_x ^^ compile_add_const (Int32.mul Tagged.header_size Heap.word_size) ^^
         compile_add_const ptr_unskew ^^
-        get_data_buf ^^
         get_len ^^
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
@@ -3173,8 +3182,8 @@ module Serialization = struct
 
         get_len ^^ Text.alloc env ^^ set_x ^^
 
-        get_data_buf ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
+        get_data_buf ^^
         get_len ^^
         Heap.memcpy env ^^
 
@@ -3496,8 +3505,8 @@ module GC = struct
       (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
 
     (* Copy the to-space to the beginning of memory. *)
-    get_begin_to_space ^^ compile_add_const ptr_unskew ^^
     get_begin_from_space ^^ compile_add_const ptr_unskew ^^
+    get_begin_to_space ^^ compile_add_const ptr_unskew ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     Heap.memcpy env ^^
 
@@ -4278,6 +4287,11 @@ and compile_exp (env : E.t) exp =
          compile_exp_as env SR.UnboxedReference e ^^
          Serialization.deserialize env t
 
+       | "rts_factorial" ->
+         SR.UnboxedWord32,
+         compile_exp_as env SR.UnboxedWord32 e ^^
+         G.i (Call (nr (RTS.factorial_i env)))
+
        | "abs" ->
          SR.Vanilla,
          compile_exp_vanilla env e ^^
@@ -4915,7 +4929,7 @@ and export_actor_field env (f : Ir.field) =
     ) ts
   );
   E.add_export env (nr {
-    name = Dfinity.explode name;
+    name = Wasm.Utf8.decode name;
     edesc = nr (FuncExport (nr fi))
   })
 
@@ -4930,7 +4944,9 @@ and actor_lit outer_env this ds fs at =
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
-    if E.mode env = DfinityMode then Dfinity.system_imports env;
+    if E.mode env = DfinityMode
+    then Dfinity.system_imports env
+    else RTS.system_imports env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -5025,7 +5041,7 @@ and conclude_module env module_name start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
-  { module_ = nr {
+  let module_ = nr {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
@@ -5039,23 +5055,43 @@ and conclude_module env module_name start_fi_o =
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
-    };
-    types = E.get_dfinity_types env;
-    persist =
-           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
-           ];
-    module_name;
-    function_names =
-	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-    locals_names =
-	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
-  }
+    } in
 
-let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
+  (* Load standard library *)
+  let load_file f =
+    let ic = open_in f in
+    let n = in_channel_length ic in
+    let s = Bytes.create n in
+    really_input ic s 0 n;
+    close_in ic;
+    s in
+  let stdlib =
+    let wasm = load_file "/home/jojo/dfinity/actorscript/rts/rts.wasm" in
+    LinkModule.decode "rts.wasm" wasm in
+
+  let emodule =
+    let open CustomModule in
+    { module_;
+      types = E.get_dfinity_types env;
+      persist =
+             [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
+             ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
+             ];
+      module_name;
+      function_names =
+          List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+      locals_names =
+          List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+    } in
+
+  LinkModule.link Heap.heap_global emodule "rts" stdlib
+
+let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
   let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
 
-  if E.mode env = DfinityMode then Dfinity.system_imports env;
+  if E.mode env = DfinityMode
+  then Dfinity.system_imports env
+  else RTS.system_imports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
