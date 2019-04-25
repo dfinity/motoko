@@ -12,8 +12,6 @@ type Set<T> = Set.Set<T>;
 
 let SetDb = (import "setDb.as");
 
-//func SetDb__test() {
-
   let hash_0 = Hash.hashOfInt(0);
   let hash_1 = Hash.hashOfInt(1);
   let hash_2 = Hash.hashOfInt(2);
@@ -185,6 +183,3 @@ let SetDb = (import "setDb.as");
   assert( SetDb.mem(s9, "s9", 8, hash_8 ) );
 
   print "done.\n";
-//};
-
-//SetDb__test();

@@ -14,9 +14,6 @@ let List = import "list.as";
 // polymorphic association linked lists between keys and values
 type AssocList<K,V> = List.List<(K,V)>;
 
-
-//let AssocList = new {
-
   /**
    `find`
    --------
@@ -197,5 +194,3 @@ type AssocList<K,V> = List.List<(K,V)>;
     };
     rec(al)
   };
-
-//};

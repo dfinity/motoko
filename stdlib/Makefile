@@ -8,6 +8,7 @@ PANDOC=pandoc
 # Add new module targets here:
 MODULES=\
 	Option \
+	Result \
 	Hash \
 	List \
 	ListTest \
@@ -112,6 +113,9 @@ $(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Option.out: option.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Result.out: result.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/List.out: list.as | $(OUTDIR)

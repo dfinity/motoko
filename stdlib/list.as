@@ -23,8 +23,6 @@ type List<T> = ?(T, List<T>);
  ==============
 */
 
-//let List = new {
-
   /**
    `nil`
    ------
@@ -429,8 +427,6 @@ type List<T> = ?(T, List<T>);
     };
     rec(0)
   };
-
-//};
 
 /**
 

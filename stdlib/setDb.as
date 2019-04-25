@@ -15,8 +15,6 @@ type BitList = Hash.BitList;
 type Hash = Hash.BitVec;
 type Key<K> = Trie.Key<K>;
 
-//let SetDb = new {
-
   func setDbPrint(s:Set<Nat>) {
     func rec(s:Set<Nat>, ind:Nat, bits:BitList) {
       func indPrint(i:Nat) {
@@ -116,5 +114,3 @@ type Key<K> = Trie.Key<K>;
     setDbPrint(r);
     r
   };
-
-//};

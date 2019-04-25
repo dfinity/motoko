@@ -1,10 +1,5 @@
-// import List
-
 type X = Nat;
-
 let List = import "list.as";
-
-//func List__tests() {
 
   func opnatEq(a : ?Nat, b : ?Nat) : Bool {
     switch (a, b) {
@@ -61,7 +56,3 @@ let List = import "list.as";
   assert (List.len<X>(l1) == 0);
   assert (List.len<X>(l2) == 1);
   assert (List.len<X>(l3) == 2);
-//};
-
-// Run the tests
-//List__tests();
