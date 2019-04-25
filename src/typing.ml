@@ -499,8 +499,11 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (try
       let s, tfs = T.as_obj_sub id.it t1 in
-      try T.lookup_field id.it tfs with
-      |  Invalid_argument _ ->
+      match T.lookup_field id.it tfs with
+      | T.Pre ->
+        error env exp.at "cannot infer type of forward field reference %s" id.it
+      | t -> t
+      | exception Invalid_argument _ ->
          error env exp1.at "field name %s does not exist in type\n  %s"
            id.it (T.string_of_typ_expand t1)
      with Invalid_argument _ ->
@@ -1343,7 +1346,7 @@ and infer_dec_typdecs env dec : scope =
     begin
       match infer_val_path env exp with
       | Some t -> { empty_scope with val_env = T.Env.singleton id.it t }
-      | None -> empty_scope
+      | None -> empty_scope (* { empty_scope with val_env = T.Env.singleton id.it T.Pre } *)
     end
   | ExpD _ | LetD _ | VarD _ ->
     empty_scope
@@ -1492,7 +1495,7 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
         (fun prog ->
           let env = env_of_scope msgs scope in
           let res = infer_block env prog.it prog.at in
-          Definedness.check_prog msgs prog;
+          (*           Definedness.check_prog msgs prog; *)
           res
         )
         prog
@@ -1513,7 +1516,7 @@ let check_library scope (filename, prog) : scope Diag.result =
       (fun prog ->
         let env = env_of_scope msgs scope in
         let typ = infer_library env prog.it prog.at in
-        Definedness.check_prog msgs prog;
+        (*        Definedness.check_prog msgs prog; *)
         library_scope filename typ
       )
       prog
