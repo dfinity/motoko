@@ -998,21 +998,21 @@ module Tagged = struct
       | (Con _ | Shared | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
       | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Prim Text | Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
 
@@ -2849,7 +2849,7 @@ module Serialization = struct
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t
         | Serialized t -> go t
-        | Kind (_c,_k) -> false
+        | Typ _ -> false
       end
     in go t
 

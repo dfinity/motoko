@@ -204,9 +204,10 @@ let rec check_typ env typ : unit =
       "Serialized in non-serialized flavor";
     check_typ env typ;
     check_sub env no_region typ T.Shared
-  | T.Kind (c,k) ->
-    check_kind env k
+  | T.Typ c ->
+    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
+(*
 and check_kind env k =
   let (binds,typ) =
     match k with
@@ -217,6 +218,7 @@ and check_kind env k =
   let ts = List.map (fun c -> T.Con(c,[])) cs in
   let env' = adjoin_cons env ce in
   check_typ env' (T.open_ ts  typ);
+*)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -556,7 +558,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | NewObjE (s, fs, t0) ->
     check (T.is_obj t0) "bad annotation (object type expected)";
     let is_typ_field {T.lab;T.typ} =
-      match typ with T.Kind _ -> true | _ -> false
+      match typ with T.Typ _ -> true | _ -> false
     in
     let (_s,tfs0) = T.as_obj t0 in
     let typ_tfs0, val_tfs0 = List.partition is_typ_field tfs0
@@ -766,7 +768,7 @@ and gather_typ env ce typ =
    | T.Obj(T.Module,fs) ->
      List.fold_right (fun {T.lab;T.typ = typ1} ce ->
          match typ1 with
-         | T.Kind (c, k) -> T.ConSet.add c ce
+         | T.Typ c -> T.ConSet.add c ce
          | _ -> gather_typ env ce typ1
        ) fs ce
    | _ -> ce

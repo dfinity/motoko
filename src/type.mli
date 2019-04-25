@@ -38,10 +38,8 @@ and typ =
   | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
+  | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
-  | Kind of con * kind
-
-
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
@@ -112,7 +110,7 @@ val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
 (* Field lookup, namespace sensitive *)
 
-val lookup_typ_field : string -> field list -> (con * kind) option
+val lookup_typ_field : string -> field list -> con option
 
 val lookup_field : string -> field list -> typ option
 

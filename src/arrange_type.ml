@@ -51,7 +51,7 @@ let rec typ (t:Type.typ) = match t with
   | Any                   -> Atom "Any"
   | Non                   -> Atom "Non"
   | Pre                   -> Atom "Pre"
-  | Kind (c,k)            -> Atom "Kind ..." (* TBC *)
+  | Typ c                 -> "Typ" $$ [con c]
 
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]

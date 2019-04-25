@@ -230,7 +230,7 @@ and dec' at n d = match d with
 
 and field_typ_to_obj_entry (f: T.field) =
   match f.T.typ with
-  | T.Kind _ -> []
+  | T.Typ _ -> []
   | _ -> [ build_field f ]
 
 and build_module id ds typ =

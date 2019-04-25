@@ -130,8 +130,7 @@ let module_of_scope scope =
   let typ_fields =
     T.Env.fold
       (fun id con flds ->
-        let kind = Con.kind con in
-        { T.lab = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
+        { T.lab = id; T.typ = T.Typ con }::flds) scope.typ_env  []
   in
   let fields =
     T.Env.fold
@@ -146,7 +145,7 @@ let scope_of_module t =
     List.fold_right
       (fun {T.lab;T.typ} scope ->
         match typ with
-        | T.Kind (c,k) ->
+        | T.Typ c ->
           { scope with con_env = T.ConSet.add c scope.con_env;
                        typ_env = T.Env.add lab c scope.typ_env}
         | typ ->
@@ -174,7 +173,7 @@ let infer_mut mut : T.typ -> T.typ =
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
-  let t = T.Kind (c, Con.kind c) in
+  let t = T.Typ c in
   path.note <- t;
   c
 
@@ -191,7 +190,7 @@ and check_typ_path' env path : T.con =
       error env path.at "cannot infer type of forward path reference"
     | T.Obj (T.Module, flds) ->
       (match T.lookup_typ_field id.it flds with
-       | Some (c, k) -> c
+       | Some c -> c
        | _ -> error env id.at "type field name %s does not exist in module type\n  %s"
                 id.it (T.string_of_typ_expand t))
     | _ -> error env path.at "expecting a module type, but path expression produces a value of type %s"

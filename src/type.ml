@@ -38,8 +38,8 @@ and typ =
   | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
+  | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
-  | Kind of con * kind
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
@@ -89,9 +89,9 @@ let seq = function [t] -> t | ts -> Tup ts
 
 let compare_field f1 f2 =
   match f1,f2 with
-  | {lab = l1; typ = Kind _}, {lab = l2; typ = Kind _ } -> compare l1 l2
-  | {lab = l1; typ = Kind _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Kind _ } -> 1
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
+  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
 let compare_summand (c1, _) (c2, _) = compare c1 c2
@@ -142,7 +142,7 @@ let rec shift i n t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Kind (c,k) -> Kind (c, shift_kind i n k)
+  | Typ c -> Typ c
 
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
@@ -150,6 +150,7 @@ and shift_bind i n {var; bound} =
 and shift_field i n {lab; typ} =
   {lab; typ = shift i n typ}
 
+(*
 and shift_kind i n k =
   match k with
   | Def (tbs, t) ->
@@ -158,6 +159,7 @@ and shift_kind i n k =
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
     Abs (List.map (shift_bind i' n) tbs, shift i' n t)
+ *)
 
 (* First-order substitution *)
 
@@ -187,7 +189,7 @@ let rec subst sigma t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Kind (c,k) -> Kind (c, subst_kind sigma k)
+  | Typ c -> Typ c
 
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
@@ -195,6 +197,7 @@ and subst_bind sigma {var; bound} =
 and subst_field sigma {lab; typ} =
   {lab; typ = subst sigma typ}
 
+(*
 and subst_kind sigma k =
   match k with
   | Def (tbs, t) ->
@@ -203,6 +206,7 @@ and subst_kind sigma k =
   | Abs (tbs, t) ->
     let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Abs (List.map (subst_bind sigma') tbs, subst sigma' t)
+ *)
 
 (* Handling binders *)
 
@@ -237,8 +241,8 @@ let rec open' i ts t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Kind (c,k) ->
-    Kind (c, open_kind i ts k)
+  | Typ c ->
+    Typ c
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -246,6 +250,7 @@ and open_bind i ts {var; bound} =
 and open_field i ts {lab; typ} =
   {lab; typ = open' i ts typ}
 
+(* 
 and open_kind i ts k =
   match k with
   | Def (tbs, t) ->
@@ -254,7 +259,8 @@ and open_kind i ts k =
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
     Abs (List.map (open_bind i' ts) tbs, open' i' ts t)
-
+ *)
+  
 let open_ ts t =
   if ts = [] then t else
   open' 0 ts t
@@ -374,19 +380,19 @@ let inst_func_type fun_ty sort typs =
 
 let lookup_field lab' tfs =
   let is_lab { lab; typ } = match typ with
-    | Kind (c, k) -> false
+    | Typ _ -> false
     | _ -> lab = lab' in
   match List.find_opt is_lab tfs with
-  | Some { typ = Kind (c,k); _ } -> assert false
+  | Some { typ = Typ _; _ } -> assert false
   | Some {typ = t; _} -> Some t
   | None -> None
 
 let lookup_typ_field lab' tfs =
   let is_lab {lab; typ } = match typ with
-    | Kind (c, k) -> lab = lab'
+    | Typ _ -> lab = lab'
     | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some { typ = Kind (c,k); _ } -> Some (c,k)
+  | Some { typ = Typ c; _ } -> Some c
   | Some _ -> assert false
   | None -> None
 
@@ -408,7 +414,7 @@ let rec span = function
   | Mut t -> span t
   | Serialized t -> None
   | Non -> Some 0
-  | Kind _ -> assert false (* TBR *)
+  | Typ _ -> assert false (* TBR *)
 
 (* Avoiding local constructors *)
 
@@ -442,7 +448,8 @@ let rec avoid' cons = function
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
   | Mut t -> Mut (avoid' cons t)
   | Serialized t -> Serialized (avoid' cons t)
-  | Kind (c,k) -> Kind(c, avoid_kind cons k) (* TBR *)
+  | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
+              else Typ c (* TBR *)
 
 
 
@@ -452,6 +459,7 @@ and avoid_bind cons {var; bound} =
 and avoid_field cons {lab; typ} =
   {lab; typ = avoid' cons typ}
 
+(*
 and avoid_kind cons k =
   match k with
   | Def (tbs, t) ->
@@ -460,6 +468,7 @@ and avoid_kind cons k =
   | Abs (tbs, t) ->
     Abs (List.map (avoid_bind cons) tbs,
          avoid' cons t)
+ *)
 
 let avoid cons t =
   if cons = ConSet.empty then t else
@@ -499,7 +508,7 @@ let is_concrete t =
       | Async t -> go t
       | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
       | Mut t -> go t
-      | Kind (c,k) -> assert false (* TBR *)
+      | Typ c -> assert false (* TBR *)
       | Serialized t -> go t
     end
   in go t
@@ -608,8 +617,8 @@ let rec rel_typ rel eq t1 t2 =
     eq_typ rel eq t1' t2'
   | Serialized t1', Serialized t2' ->
     eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
-  | Kind (c1, k1), Kind (c2, k2) ->
-    Con.eq c1 c2 (* && eq_kind k1 k2 *)
+  | Typ c1, Typ c2 ->
+    Con.eq c1 c2 
   | _, _ -> false
   end
 
@@ -791,8 +800,8 @@ let rec string_of_typ_nullary vs = function
   | Variant [] -> "{#}"
   | Variant cts ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_summand vs) cts))
-  | Kind (c,k) ->
-    sprintf "= {%s}" (string_of_kind k)
+  | Typ c ->
+    sprintf "= {%s}" (string_of_kind (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -835,8 +844,8 @@ and string_of_typ' vs t =
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Module, fs) ->
     sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
-  | Kind (c,k) ->
-    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind k)
+  | Typ c ->
+    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind (Con.kind c))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | Serialized t ->
@@ -845,8 +854,8 @@ and string_of_typ' vs t =
 
 and string_of_field vs {lab; typ} =
   match typ with
-  | Kind (c,k) ->
-    let op, sbs, st = strings_of_kind k in
+  | Typ c ->
+    let op, sbs, st = strings_of_kind (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
