@@ -6,6 +6,10 @@
  */
 
 let Hash = (import "hash.as").BitVec;
+
+let Set = (import "set.as");
+type Set<T> = Set.Set<T>;
+
 let SetDb = (import "setDb.as");
 
 //func SetDb__test() {

@@ -48,6 +48,7 @@ type Hash = Hash.Hash;
 
 let Trie = import "trie.as";
 type Trie<K,V> = Trie.Trie<K,V>;
+type Key<K> = Trie.Key<K>;
 
 /**
  We choose to represent each `Table` as a `Trie`:

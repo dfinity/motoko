@@ -4,7 +4,14 @@
  --------------------
 */
 
-actor server = {
+let P = (import "../../prelude.as");
+let T = (import "serverTypes.as");
+let Model = (import "serverModel.as");
+let Result = (import "../../result.as");
+
+type Result<Ok,Err> = Result.Result<Ok,Err>;
+
+actor class Server () {
 
 /**
  Server Actor
@@ -56,16 +63,16 @@ actor server = {
  */
 
   registrarAddUser(
-    public_key: PublicKey,
+    public_key: T.PublicKey,
     user_name: Text,
     description: Text,
-    region: RegionId,
+    region: T.RegionId,
     isDeveloper: Bool,
     isProducer: Bool,
     isRetailer: Bool,
     isTransporter: Bool
-  ) : async Result<UserId,IdErr> {
-    optionResult<UserId,IdErr>(
+  ) : async Result<T.UserId,T.IdErr> {
+    Result.fromOption<T.UserId,T.IdErr>(
       getModel().addUser(
         public_key,
         user_name,
@@ -85,7 +92,7 @@ actor server = {
    -------------
    Get info for all users.
    */
-  allUserInfo() : async [UserInfo] {
+  allUserInfo() : async [T.UserInfo] {
     getModel().userTable.allInfo()
   };
 
@@ -94,8 +101,8 @@ actor server = {
    ---------------------------
    Get the information associated with a user, based on its id.
    */
-  getUserInfo(id:UserId) : async Result<UserInfo, IdErr> {
-    optionResult<UserInfo, IdErr>(
+  getUserInfo(id:T.UserId) : async Result<T.UserInfo, T.IdErr> {
+    Result.fromOption<T.UserInfo, T.IdErr>(
       getModel().userTable.getInfo(id),
       {#idErr}
     )
@@ -117,14 +124,14 @@ actor server = {
   registrarAddTruckType(
     short_name_:  Text,
     description_: Text,
-    capacity_ : Weight,
+    capacity_ : T.Weight,
     isFridge_ : Bool,
     isFreezer_ : Bool,
-  ) : async Result<TruckTypeId, ()> {
-    optionResult<TruckTypeId,()>(
+  ) : async Result<T.TruckTypeId, ()> {
+    Result.fromOption<T.TruckTypeId,()>(
       getModel()
         .truckTypeTable.addInfoGetId(
-        func (id_:TruckTypeId) : TruckTypeInfo =
+        func (id_:T.TruckTypeId) : T.TruckTypeInfo =
           
           // xxx: AS should have more concise syntax for this pattern, below:
           // two problems I see, that are separate:
@@ -134,10 +141,10 @@ actor server = {
           //    and, the type of each of these `variables` is known, as well.
           
           shared {
-            id=id_ :TruckTypeId;
+            id=id_ :T.TruckTypeId;
             short_name=short_name_:Text;
             description=description_:Text;
-            capacity=capacity_:Weight;
+            capacity=capacity_:T.Weight;
             isFridge=isFridge_:Bool;
             isFreezer=isFreezer_:Bool;
           }),
@@ -151,9 +158,9 @@ actor server = {
    */
 
   registrarRemTruckType(
-    id: TruckTypeId
-  ) : async Result<(),ServerErr> {
-    optionResult<(),IdErr>(
+    id: T.TruckTypeId
+  ) : async Result<(),T.ServerErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().truckTypeTable.remGetUnit(id),
       {#idErr}
     )    
@@ -165,9 +172,9 @@ actor server = {
    */
 
   getTruckTypeInfo(
-    id: TruckTypeId
-  ) : async Result<TruckTypeInfo,IdErr> {
-    optionResult<TruckTypeInfo,IdErr>(
+    id: T.TruckTypeId
+  ) : async Result<T.TruckTypeInfo,T.IdErr> {
+    Result.fromOption<T.TruckTypeInfo,T.IdErr>(
       getModel().truckTypeTable.getInfo(id),
       {#idErr}
     )
@@ -178,7 +185,7 @@ actor server = {
    ---------------------
    */
 
-  allTruckTypeInfo() : async [TruckTypeInfo] {
+  allTruckTypeInfo() : async [T.TruckTypeInfo] {
     getModel().truckTypeTable.allInfo()
   };
 
@@ -200,12 +207,12 @@ actor server = {
   registrarAddRegion(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<RegionId,()> {
-    optionResult<RegionId,()>(
+  ) : async Result<T.RegionId,()> {
+    Result.fromOption<T.RegionId,()>(
       getModel().regionTable.addInfoGetId(
-        func (id_:RegionId) : RegionInfo =
+        func (id_:T.RegionId) : T.RegionInfo =
           shared {
-            id = id_:RegionId;
+            id = id_:T.RegionId;
             short_name=short_name_:Text;
             description=description_:Text
           }),
@@ -221,9 +228,9 @@ actor server = {
    */
 
   registrarRemRegion(
-    id: RegionId
-  ) : async Result<(),IdErr> {
-    optionResult<(),IdErr>(
+    id: T.RegionId
+  ) : async Result<(),T.IdErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().regionTable.remGetUnit(id),
       {#idErr},
     )
@@ -238,9 +245,9 @@ actor server = {
    */
 
   getRegionInfo(
-    id: RegionId
-  ) : async Result<RegionInfo,IdErr> {
-    optionResult<RegionInfo,IdErr>(
+    id: T.RegionId
+  ) : async Result<T.RegionInfo,T.IdErr> {
+    Result.fromOption<T.RegionInfo,T.IdErr>(
       getModel().regionTable.getInfo(id),
       {#idErr}
     )
@@ -255,7 +262,7 @@ actor server = {
 
    */
 
-  allRegionInfo() : async [RegionInfo] {
+  allRegionInfo() : async [T.RegionInfo] {
     getModel().regionTable.allInfo()
   };
 
@@ -277,16 +284,16 @@ actor server = {
   registrarAddProduce(
     short_name_:  Text,
     description_: Text,
-    grade_: Grade,
-  ) : async Result<ProduceId,()> {
-    optionResult<ProduceId,()>(
+    grade_: T.Grade,
+  ) : async Result<T.ProduceId,()> {
+    Result.fromOption<T.ProduceId,()>(
       getModel().produceTable.addInfoGetId(
-        func (id_:ProduceId) : ProduceInfo =
+        func (id_:T.ProduceId) : T.ProduceInfo =
           shared {
-            id = id_:ProduceId;
+            id = id_:T.ProduceId;
             short_name=short_name_:Text;
             description=description_:Text;
-            grade=grade_:Grade
+            grade=grade_:T.Grade
           }),
       ()
     )
@@ -300,9 +307,9 @@ actor server = {
    */
 
   registrarRemProduce(
-    id: ProduceId
-  ) : async Result<(),IdErr> {
-    optionResult<(),IdErr>(
+    id: T.ProduceId
+  ) : async Result<(),T.IdErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().produceTable.remGetUnit(id),
       {#idErr},
     )
@@ -315,9 +322,9 @@ actor server = {
    */
 
   getProduceInfo(
-    id: ProduceId
-  ) : async Result<ProduceInfo,IdErr> {
-    optionResult<ProduceInfo,IdErr>(
+    id: T.ProduceId
+  ) : async Result<T.ProduceInfo,T.IdErr> {
+    Result.fromOption<T.ProduceInfo,T.IdErr>(
       getModel().produceTable.getInfo(id),
       {#idErr}
     )
@@ -328,7 +335,7 @@ actor server = {
    ---------------------
    */
 
-  allProduceInfo() : async [ProduceInfo] {
+  allProduceInfo() : async [T.ProduceInfo] {
     getModel().produceTable.allInfo()
   };
 
@@ -349,16 +356,16 @@ actor server = {
   registrarAddProducer(
     short_name_:  Text,
     description_: Text,
-    region_: RegionId,
-  ) : async Result<ProducerId,IdErr> {
-    optionResult<ProduceId,IdErr>(
+    region_: T.RegionId,
+  ) : async Result<T.ProducerId,T.IdErr> {
+    Result.fromOption<T.ProduceId,T.IdErr>(
       getModel().producerTable.addInfoGetId(
-        func(id_:ProducerId):ProducerInfo {
+        func(id_:T.ProducerId):T.ProducerInfo {
           shared {
-            id=id_:ProducerId;
+            id=id_:T.ProducerId;
             short_name=short_name_:Text;
             description=description_:Text;
-            region=region_:RegionId;
+            region=region_:T.RegionId;
             inventory=[];
             reserved=[];
           }
@@ -375,9 +382,9 @@ actor server = {
    */
 
   registrarRemProducer(
-    id: ProducerId
-  ) : async Result<(),IdErr> {
-    optionResult<(),IdErr>(
+    id: T.ProducerId
+  ) : async Result<(),T.IdErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().producerTable.remGetUnit(id),
       {#idErr}
     )
@@ -390,9 +397,9 @@ actor server = {
    */
 
   getProducerInfo(
-    id: ProducerId
-  ) : async Result<ProducerInfo,IdErr> {
-    optionResult<ProducerInfo,IdErr>(
+    id: T.ProducerId
+  ) : async Result<T.ProducerInfo,T.IdErr> {
+    Result.fromOption<T.ProducerInfo,T.IdErr>(
       getModel().producerTable.getInfo(id),
       {#idErr}
     )  
@@ -403,7 +410,7 @@ actor server = {
    ---------------------
    */
 
-  allProducerInfo() : async [ProducerInfo] {    
+  allProducerInfo() : async [T.ProducerInfo] {    
     getModel().producerTable.allInfo()
   };
 
@@ -425,16 +432,16 @@ actor server = {
   registrarAddRetailer(
     short_name_:  Text,
     description_: Text,
-    region_: RegionId,
-  ) : async Result<RetailerId,IdErr> {
-    optionResult<RetailerId,IdErr>(
+    region_: T.RegionId,
+  ) : async Result<T.RetailerId,T.IdErr> {
+    Result.fromOption<T.RetailerId,T.IdErr>(
       getModel().retailerTable.addInfoGetId(
-        func(id_:RetailerId):RetailerInfo {
+        func(id_:T.RetailerId):T.RetailerInfo {
           shared {
-            id=id_:RetailerId;
+            id=id_:T.RetailerId;
             short_name=short_name_:Text;
             description=description_:Text;
-            region=region_:RegionId
+            region=region_:T.RegionId
           }
         }),
       {#idErr}
@@ -449,9 +456,9 @@ actor server = {
    */
 
   registrarRemRetailer(
-    id: RetailerId
-  ) : async Result<(),IdErr> {
-    optionResult<(),IdErr>(
+    id: T.RetailerId
+  ) : async Result<(),T.IdErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().retailerTable.remGetUnit(id),
       {#idErr}
     )    
@@ -463,9 +470,9 @@ actor server = {
    */
 
   getRetailerInfo(
-    id: RetailerId
-  ) : async Result<RetailerInfo,IdErr> {
-    optionResult<RetailerInfo,IdErr>(
+    id: T.RetailerId
+  ) : async Result<T.RetailerInfo,T.IdErr> {
+    Result.fromOption<T.RetailerInfo,T.IdErr>(
       getModel().retailerTable.getInfo(id),
       {#idErr}
     )
@@ -476,7 +483,7 @@ actor server = {
    ---------------------
    */
 
-  allRetailerInfo() : async [RetailerInfo] {
+  allRetailerInfo() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -495,12 +502,12 @@ actor server = {
   registrarAddTransporter(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<TransporterId,()> {
-    optionResult<TransporterId,()>(
+  ) : async Result<T.TransporterId,()> {
+    Result.fromOption<T.TransporterId,()>(
       getModel().transporterTable.addInfoGetId(
-        func(id_:TransporterId):TransporterInfo {
+        func(id_:T.TransporterId):T.TransporterInfo {
           shared {
-            id=id_:TransporterId;
+            id=id_:T.TransporterId;
             short_name=short_name_:Text;
             description=description_:Text;
             routes=[];
@@ -518,9 +525,9 @@ actor server = {
    */
 
   registrarRemTransporter(
-    id: TransporterId
-  ) : async Result<(),IdErr> {
-    optionResult<(),IdErr>(
+    id: T.TransporterId
+  ) : async Result<(),T.IdErr> {
+    Result.fromOption<(),T.IdErr>(
       getModel().transporterTable.remGetUnit(id),
       {#idErr}
     )
@@ -532,9 +539,9 @@ actor server = {
    */
 
   getTransporterInfo(
-    id: TransporterId
-  ) : async Result<TransporterInfo,IdErr> {
-    optionResult<TransporterInfo,IdErr>(
+    id: T.TransporterId
+  ) : async Result<T.TransporterInfo,T.IdErr> {
+    Result.fromOption<T.TransporterInfo,T.IdErr>(
       getModel().transporterTable.getInfo(id),
       {#idErr}
     )
@@ -546,7 +553,7 @@ actor server = {
    ---------------------
    */
 
-  allTransporterInfo() : async [TransporterInfo] {
+  allTransporterInfo() : async [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -563,16 +570,16 @@ actor server = {
    See also [Model.producerAddInventory]($DOCURL/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
    */
   producerAddInventory(
-    public_key: PublicKey,
-    id:   UserId,
-    prod: ProduceId,
-    quant:Quantity,
-    weight:Weight,
-    ppu:  PricePerUnit,
-    begin:Date,
-    end:  Date,
+    public_key: T.PublicKey,
+    id:   T.UserId,
+    prod: T.ProduceId,
+    quant:T.Quantity,
+    weight:T.Weight,
+    ppu:  T.PricePerUnit,
+    begin:T.Date,
+    end:  T.Date,
     comments: Text,
-  ) : async Result<InventoryId,ServerErr> {
+  ) : async Result<T.InventoryId,T.ServerErr> {
     getModel().
       producerAddInventory(
         public_key, null, id, prod, quant, weight, ppu, begin, end, comments)
@@ -584,17 +591,17 @@ actor server = {
 
    */
   producerUpdateInventory(
-    public_key: PublicKey,
-    iid:  InventoryId,
-    id:   UserId,
-    prod: ProduceId,
-    quant:Quantity,
-    weight:Weight,
-    ppu:  PricePerUnit,
-    begin:Date,
-    end:  Date,
+    public_key: T.PublicKey,
+    iid:  T.InventoryId,
+    id:   T.UserId,
+    prod: T.ProduceId,
+    quant:T.Quantity,
+    weight:T.Weight,
+    ppu:  T.PricePerUnit,
+    begin:T.Date,
+    end:  T.Date,
     comments: Text,
-  ) : async Result<(),ServerErr> {
+  ) : async Result<(),T.ServerErr> {
     getModel().
       producerUpdateInventory(
         public_key, iid, id, prod, quant, weight, ppu, begin, end, comments)
@@ -604,7 +611,7 @@ actor server = {
    `producerRemInventory`
    ---------------------------
    */
-  producerRemInventory(public_key: PublicKey, id:InventoryId) : async Result<(),ServerErr> {
+  producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : async Result<(),T.ServerErr> {
     getModel()
       .producerRemInventory(public_key, id)
   };
@@ -613,8 +620,8 @@ actor server = {
    `producerAllInventoryInfo`
    ---------------------------
    */
-  producerAllInventoryInfo(public_key: PublicKey, id:UserId) : async Result<[InventoryInfo],IdErr> {
-    optionResult<[InventoryInfo],IdErr>(
+  producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.InventoryInfo],T.IdErr> {
+    Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel()
         .producerAllInventoryInfo(public_key, id),
       {#idErr}
@@ -625,8 +632,8 @@ actor server = {
    `producerReservations`
    ---------------------------
    */
-  producerReservations(public_key: PublicKey, id:UserId) : async Result<[ReservedInventoryInfo],IdErr> {
-    optionResult<[ReservedInventoryInfo],IdErr>(
+  producerReservations(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedInventoryInfo],T.IdErr> {
+    Result.fromOption<[T.ReservedInventoryInfo],T.IdErr>(
       getModel()
         .producerReservations(public_key, id),
       {#idErr}
@@ -646,8 +653,8 @@ actor server = {
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(public_key: PublicKey, id:ProduceId, reg:?RegionId) : async Result<[ProduceMarketInfo],IdErr> {
-    optionResult<[ProduceMarketInfo],IdErr>(
+  produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : async Result<[T.ProduceMarketInfo],T.IdErr> {
+    Result.fromOption<[T.ProduceMarketInfo],T.IdErr>(
       getModel()
         .produceMarketInfo(public_key, id, reg),
       {#idErr}
@@ -660,7 +667,7 @@ actor server = {
    ---------------------------
    Get the information for all known inventory.
    */
-  allInventoryInfo() : async [InventoryInfo] {
+  allInventoryInfo() : async [T.InventoryInfo] {
     getModel()
       .inventoryTable.allInfo()
   };
@@ -670,8 +677,8 @@ actor server = {
    ---------------------------
    Get the information associated with inventory, based on its id.
    */
-  getInventoryInfo(id:InventoryId) : async Result<InventoryInfo,IdErr> {
-    optionResult<InventoryInfo,IdErr>(
+  getInventoryInfo(id:T.InventoryId) : async Result<T.InventoryInfo,T.IdErr> {
+    Result.fromOption<T.InventoryInfo,T.IdErr>(
       getModel()
         .inventoryTable.getInfo(id),
       {#idErr}
@@ -689,15 +696,15 @@ actor server = {
    ---------------------------
    */
   transporterAddRoute(
-    public_key: PublicKey,
-    id:  UserId,
-    rstart: RegionId,
-    rend:   RegionId,
-    start:  Date,
-    end:    Date,
-    cost:   Price,
-    ttid:   TruckTypeId
-  ) : async Result<RouteId,ServerErr> {
+    public_key: T.PublicKey,
+    id:  T.UserId,
+    rstart: T.RegionId,
+    rend:   T.RegionId,
+    start:  T.Date,
+    end:    T.Date,
+    cost:   T.Price,
+    ttid:   T.TruckTypeId
+  ) : async Result<T.RouteId,T.ServerErr> {
     getModel().transporterAddRoute(public_key, null, id, rstart, rend, start, end, cost, ttid)
   };
 
@@ -706,16 +713,16 @@ actor server = {
    ---------------------------
    */
   transporterUpdateRoute(
-    public_key: PublicKey,
-    route:  RouteId,
-    id:  UserId,
-    rstart: RegionId,
-    rend:   RegionId,
-    start:  Date,
-    end:    Date,
-    cost:   Price,
-    ttid:   TruckTypeId
-  ) : async Result<(),ServerErr> {
+    public_key: T.PublicKey,
+    route:  T.RouteId,
+    id:  T.UserId,
+    rstart: T.RegionId,
+    rend:   T.RegionId,
+    start:  T.Date,
+    end:    T.Date,
+    cost:   T.Price,
+    ttid:   T.TruckTypeId
+  ) : async Result<(),T.ServerErr> {
     getModel().transporterUpdateRoute(public_key, route, id, rstart, rend, start, end, cost, ttid)
   };
 
@@ -723,7 +730,7 @@ actor server = {
    `transporterRemRoute`
    ---------------------------
    */
-  transporterRemRoute(public_key: PublicKey, id:RouteId) : async Result<(),ServerErr> {
+  transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : async Result<(),T.ServerErr> {
       getModel()
         .transporterRemRoute(public_key, id)
   };
@@ -732,8 +739,8 @@ actor server = {
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: PublicKey, id:UserId) : async Result<[RouteInfo],IdErr> {
-    optionResult<[RouteInfo],IdErr>(
+  transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.RouteInfo],T.IdErr> {
+    Result.fromOption<[T.RouteInfo],T.IdErr>(
       getModel()
         .transporterAllRouteInfo(public_key, id),
       {#idErr}
@@ -744,8 +751,8 @@ actor server = {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  transporterAllReservationInfo(public_key: PublicKey, id:UserId) : async Result<[ReservedRouteInfo],IdErr> {
-    optionResult<[ReservedRouteInfo],IdErr>(
+  transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedRouteInfo],T.IdErr> {
+    Result.fromOption<[T.ReservedRouteInfo],T.IdErr>(
       getModel()
         .transporterAllReservationInfo(public_key, id),
       {#idErr}
@@ -757,7 +764,7 @@ actor server = {
    ---------------------------
    Get the information for all known routes.
    */
-  allRouteInfo() : async [RouteInfo] {
+  allRouteInfo() : async [T.RouteInfo] {
     getModel()
       .routeTable.allInfo()
   };
@@ -771,9 +778,9 @@ actor server = {
    */
 
   getRouteInfo(
-    id: RouteId
-  ) : async Result<RouteInfo,IdErr> {
-    optionResult<RouteInfo,IdErr>(
+    id: T.RouteId
+  ) : async Result<T.RouteInfo,T.IdErr> {
+    Result.fromOption<T.RouteInfo,T.IdErr>(
       getModel().routeTable.getInfo(id),
       {#idErr}
     )
@@ -789,8 +796,8 @@ actor server = {
    TODO-Cursors (see above).
 
    */
-  retailerQueryAll(public_key: PublicKey, id:UserId) : async Result<QueryAllResults,IdErr> {
-    optionResult<QueryAllResults,IdErr>(
+  retailerQueryAll(public_key: T.PublicKey, id:T.UserId) : async Result<T.QueryAllResults,T.IdErr> {
+    Result.fromOption<T.QueryAllResults,T.IdErr>(
       getModel().
         retailerQueryAll(public_key, id),
       {#idErr}
@@ -807,13 +814,13 @@ actor server = {
 
    */
   retailerQueryDates(
-    public_key: PublicKey,
-    id:UserId,
-    begin:Date,
-    end:Date
-  ) : async Result<[InventoryInfo],IdErr>
+    public_key: T.PublicKey,
+    id:T.UserId,
+    begin:T.Date,
+    end:T.Date
+  ) : async Result<[T.InventoryInfo],T.IdErr>
   {
-    optionResult<[InventoryInfo],IdErr>(
+    Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel().
         retailerQueryDates(public_key, id, begin, end),
       {#idErr}
@@ -825,12 +832,12 @@ actor server = {
    ---------------------------
    */
   retailerReserve(
-    public_key: PublicKey,
-    id:UserId,
-    inventory:InventoryId,
-    route:RouteId) : async Result<(ReservedInventoryId, ReservedRouteId),()>
+    public_key: T.PublicKey,
+    id:T.UserId,
+    inventory:T.InventoryId,
+    route:T.RouteId) : async Result<(T.ReservedInventoryId, T.ReservedRouteId),()>
   {
-    optionResult<(ReservedInventoryId, ReservedRouteId),()>(
+    Result.fromOption<(T.ReservedInventoryId, T.ReservedRouteId),()>(
       getModel().
         retailerReserve(public_key, id, inventory, route),
       ()
@@ -844,12 +851,12 @@ actor server = {
    TODO-Cursors (see above).
 
    */
-  retailerReservations(public_key: PublicKey, id:UserId) :
-    async Result<[(ReservedInventoryInfo,
-                   ReservedRouteInfo)],()>
+  retailerReservations(public_key: T.PublicKey, id:T.UserId) :
+    async Result<[(T.ReservedInventoryInfo,
+                   T.ReservedRouteInfo)],()>
   {
-    optionResult<[(ReservedInventoryInfo,
-                   ReservedRouteInfo)],()>(
+    Result.fromOption<[(T.ReservedInventoryInfo,
+                   T.ReservedRouteInfo)],()>(
       getModel().
         retailerAllReservationInfo(public_key, id),
       ()
@@ -872,7 +879,7 @@ actor server = {
    ----------
    */
 
-  getCounts() : async ProduceExchangeCounts {
+  getCounts() : async T.ProduceExchangeCounts {
     let m = getModel();
     shared {
       truck_type_count         = m.truckTypeTable.count();
@@ -903,7 +910,7 @@ been processed
 */
 
   devViewGMV() : async ?Nat {
-    nyi()
+    P.nyi()
   };
 
   /**
@@ -947,7 +954,7 @@ been processed
 
    */
 
-  devViewProducers() : async [ProducerInfo] {
+  devViewProducers() : async [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -964,7 +971,7 @@ been processed
 
    */
 
-  devViewTransporters() : async [TransporterInfo] {
+  devViewTransporters() : async [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -980,7 +987,7 @@ been processed
 
    */
 
-  devViewRetailers() : async [RetailerInfo] {
+  devViewRetailers() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -995,19 +1002,16 @@ been processed
   // 1. Call Model() directly; using this option now.
   // 2. Call Model() later, when we try to access the model field.
 
-  private var model : Model = Model(); // OPTION 2: null;
+  private var model : ?Model.Model = null;
 
-  private getModel() : Model {
-    model
-    // OPTION 2:
-    // switch model {
-    //   case (null) {
-    //          let m = Model();
-    //          model := ?m; m
-    //        };
-    //   case (?m) m;
-    // }
-    //
+  private getModel() : Model.Model {
+    switch model {
+    case (null) {
+           let m = Model.Model();
+           model := ?m; m
+         };
+    case (?m) m;
+    }
   };
 
 /**
