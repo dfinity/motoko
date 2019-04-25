@@ -63,7 +63,7 @@ See the full details in the definitions below:
 let Hash = (import "hash.as").BitVec;
 type Hash = Hash.t;
 
-let List = import "List.as";
+let List = import "list.as";
 type List<T> = List.List<T>;
 
 let AssocList = import "assocList.as";
