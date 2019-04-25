@@ -1,3 +1,4 @@
+
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -19,6 +20,9 @@ is part of the standards definition, and the internal type definitions that it
 uses are is not.
 
 */
+
+let Hash = (import "../../hash.as").BitVec;
+let Option = (import "../../option.as");
 
 type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;
 
@@ -243,7 +247,7 @@ secondary maps.
       reserved=[];
     },
     func(info:ProducerInfo):?ProducerDoc =
-      map<RegionDoc, ProducerDoc>(
+      Option.map<RegionDoc, ProducerDoc>(
         regionTable.getDoc(info.region),
         func (regionDoc: RegionDoc): ProducerDoc = new {
           id=info.id;
@@ -351,7 +355,7 @@ secondary maps.
         reserved_items=[];
       },
       func(info:RetailerInfo):?RetailerDoc =
-        map<RegionDoc, RetailerDoc>(
+        Option.map<RegionDoc, RetailerDoc>(
           regionTable.getDoc(info.region),
           func (regionDoc: RegionDoc): RetailerDoc = new {
             id=info.id;
@@ -703,25 +707,25 @@ than the MVP goals, however.
     }
   };
 
-  producerFromUserId(id: UserId): ?ProducerDoc = fmap<UserDoc, ProducerDoc>(
+  producerFromUserId(id: UserId): ?ProducerDoc = Option.fmap<UserDoc, ProducerDoc>(
     userTable.getDoc(id),
-    func (u: UserDoc): ?ProducerDoc = fmap<ProducerId, ProducerDoc>(
+    func (u: UserDoc): ?ProducerDoc = Option.fmap<ProducerId, ProducerDoc>(
       u.producerId,
       func (i: ProducerId): ?ProducerDoc = producerTable.getDoc(i)
     )
   );
 
-  transporterFromUserId(id: UserId): ?TransporterDoc = fmap<UserDoc, TransporterDoc>(
+  transporterFromUserId(id: UserId): ?TransporterDoc = Option.fmap<UserDoc, TransporterDoc>(
     userTable.getDoc(id),
-    func (u: UserDoc): ?TransporterDoc = fmap<TransporterId, TransporterDoc>(
+    func (u: UserDoc): ?TransporterDoc = Option.fmap<TransporterId, TransporterDoc>(
       u.transporterId,
       func (i: TransporterId): ?TransporterDoc = transporterTable.getDoc(i)
     )
   );
 
-  retailerFromUserId(id: UserId): ?RetailerDoc = fmap<UserDoc, RetailerDoc>(
+  retailerFromUserId(id: UserId): ?RetailerDoc = Option.fmap<UserDoc, RetailerDoc>(
     userTable.getDoc(id),
-    func (u: UserDoc): ?RetailerDoc = fmap<RetailerId, RetailerDoc>(
+    func (u: UserDoc): ?RetailerDoc = Option.fmap<RetailerId, RetailerDoc>(
       u.retailerId,
       func (i: RetailerId): ?RetailerDoc = retailerTable.getDoc(i)
     )
@@ -801,7 +805,7 @@ than the MVP goals, however.
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
-      case _ { return (#err #idErr) };
+      case _ { return #err(#idErr) };
       }};
 
     if (not isValidUser(public_key, producer_.short_name)) {

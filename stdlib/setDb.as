@@ -4,9 +4,20 @@
  ========================================
 
  */
-let SetDb = new {
 
-  private func setDbPrint(s:Set<Nat>) {
+let Set = import "set.as";
+let Hash = import "hash.as";
+let Trie = import "trie.as";
+let List = import "list.as";
+
+type Set<T> = Set.Set<T>;
+type BitList = Hash.BitList;
+type Hash = Hash.BitVec;
+type Key<K> = Trie.Key<K>;
+
+//let SetDb = new {
+
+  func setDbPrint(s:Set<Nat>) {
     func rec(s:Set<Nat>, ind:Nat, bits:BitList) {
       func indPrint(i:Nat) {
 	      if (i == 0) { } else { print "| "; indPrint(i-1) }
@@ -37,7 +48,7 @@ let SetDb = new {
                         print("hash(");
                         printInt(k.key);
                         print(")=");
-		                    Hash.hashPrintRev(k.hash);
+		                    Hash.BitVec.hashPrintRev(k.hash);
                         print("; ");
                         ()
                       }
@@ -53,7 +64,7 @@ let SetDb = new {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  private func natEq(n:Nat,m:Nat):Bool{ n == m};
+  func natEq(n:Nat,m:Nat):Bool{ n == m};
 
   func insert(s:Set<Nat>, x:Nat, xh:Hash):Set<Nat> = {
     print "  setInsert(";
@@ -106,4 +117,4 @@ let SetDb = new {
     r
   };
 
-};
+//};

@@ -18,9 +18,13 @@
 
 */
 
-type Set<T> = Trie<T,()>;
+let Trie = import "trie.as";
+let Hash = import "hash.as";
 
-let Set = new {
+type Hash = Hash.Hash;
+type Set<T> = Trie.Trie<T,()>;
+
+//let Set = new {
 
   func empty<T>():Set<T> =
     Trie.empty<T,()>();
@@ -73,4 +77,4 @@ let Set = new {
 
   func unitEq (_:(),_:()):Bool{ true };
 
-};
+//};
