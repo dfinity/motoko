@@ -199,12 +199,10 @@ and subst_kind sigma k =
   match k with
   | Def (tbs, t) ->
     let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
-    Def (List.map (subst_bind sigma') tbs,
-         subst sigma' t)
+    Def (List.map (subst_bind sigma') tbs, subst sigma' t)
   | Abs (tbs, t) ->
     let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
-    Abs (List.map (subst_bind sigma') tbs,
-         subst sigma' t)
+    Abs (List.map (subst_bind sigma') tbs, subst sigma' t)
 
 (* Handling binders *)
 
@@ -379,17 +377,18 @@ let lookup_field lab' tfs =
     | Kind (c, k) -> false
     | _ -> lab = lab' in
   match List.find_opt is_lab tfs with
-  | Some {typ = t; _} -> t
-  | None -> invalid "lookup_field"
+  | Some { typ = Kind (c,k); _ } -> assert false
+  | Some {typ = t; _} -> Some t
+  | None -> None
 
 let lookup_typ_field lab' tfs =
   let is_lab {lab; typ } = match typ with
     | Kind (c, k) -> lab = lab'
     | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some { typ = Kind (c,k); _ } -> (c,k)
+  | Some { typ = Kind (c,k); _ } -> Some (c,k)
   | Some _ -> assert false
-  | None -> invalid "lookup_typ_field"
+  | None -> None
 
 (* Span *)
 
@@ -906,3 +905,4 @@ let rec string_of_typ_expand t =
 (* Environments *)
 
 module Env = Env.Make(String)
+

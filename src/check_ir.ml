@@ -373,10 +373,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match T.lookup_field n tfs with (*CRUSSO: FIX ME*)
-      | tn ->
+      match T.lookup_field n tfs with
+      | Some tn ->
         tn <~ t
-      | exception _ ->
+      | None ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -670,7 +670,7 @@ and check_pat_field env t (pf : pat_field) =
   let s, tfs = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
-  if T.is_mut (T.lookup_field lab tfs)
+  if T.is_mut (match T.lookup_field lab tfs with Some t -> t | None -> assert false)
   then error env pf.it.pat.at "cannot match mutable field %s" lab
 
 (* Objects *)

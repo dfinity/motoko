@@ -122,6 +122,36 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
+(* Module/Scope transformations *)
+
+(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
+
+let module_of_scope scope =
+  let typ_fields =
+    T.Env.fold
+      (fun id con flds ->
+        let kind = Con.kind con in
+        { T.lab = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
+  in
+  let fields =
+    T.Env.fold
+      (fun id typ flds ->
+        { T.lab = id; T.typ = typ }::flds) scope.val_env typ_fields
+  in
+  T.Obj (T.Module, List.sort T.compare_field fields)
+
+let scope_of_module t =
+  match t with
+  | T.Obj (T.Module, flds) ->
+    List.fold_right
+      (fun {T.lab;T.typ} scope ->
+        match typ with
+        | T.Kind (c,k) ->
+          { scope with con_env = T.ConSet.add c scope.con_env;
+                       typ_env = T.Env.add lab c scope.typ_env}
+        | typ ->
+          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
+  | _ -> assert false
 
 (* Types *)
 
@@ -161,7 +191,8 @@ and check_path' env path : T.typ =
     | T.Pre ->
       error env path.at "cannot infer type of forward path reference"
     | T.Obj (T.Module, flds) ->
-      (try T.lookup_field id.it flds with
+      (match T.lookup_field id.it flds with
+       | Some t -> t
        | _ -> error env id.at "field name %s does not exist in module type\n  %s"
                 id.it (T.string_of_typ_expand t))
     | _ -> error env path.at "expecting a module type, but path expression produces a value of type %s"
@@ -243,11 +274,11 @@ and check_typ' env typ : T.typ =
      | T.Obj (_, flds) ->
       begin
         match T.lookup_typ_field id.it flds with
-        | (c, T.Def (tbs, t))
-        | (c, T.Abs (tbs, t)) ->
+        | Some (c, T.Def (tbs, t))
+        | Some (c, T.Abs (tbs, t)) ->
           let ts = check_typ_bounds env tbs typs typ.at in
           T.Con (c, ts)
-        | exception _ -> error env id.at "unbound type identifier %s" id.it
+        | None -> error env id.at "unbound type identifier %s" id.it
       end
      |  _ -> error env p.at "expecting an object, found path of type %s" (T.string_of_typ_expand t);
     )
@@ -495,10 +526,10 @@ and infer_exp'' env exp : T.typ =
     (try
       let s, tfs = T.as_obj_sub id.it t1 in
       match T.lookup_field id.it tfs with
-      | T.Pre ->
+      | Some T.Pre ->
         error env exp.at "cannot infer type of forward field reference %s" id.it
-      | t -> t
-      | exception Invalid_argument _ ->
+      | Some t -> t
+      | None ->
          error env exp1.at "field name %s does not exist in type\n  %s"
            id.it (T.string_of_typ_expand t1)
      with Invalid_argument _ ->
@@ -663,7 +694,11 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_promote env exp1 in
       (try
         let _, tfs = T.as_obj_sub "next" t1 in
-        let t = T.lookup_field "next" tfs in
+        let t =
+          match T.lookup_field "next" tfs with
+          | Some t -> t
+          | None -> assert false
+        in
         let t1, t2 = T.as_mono_func_sub t in
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
@@ -1119,10 +1154,10 @@ and infer_block_decs env decs : scope =
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
   let env'' = adjoin env scope_ce in
-  let scope_ce' = infer_block_typdecs env'' decs in
+  let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
-  (* assert (ce = ce'); *)
-  infer_block_valdecs (adjoin env'' scope_ce') decs scope_ce'
+  (* assert (scope_ce = _scope_ce); *)
+  infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce
 
 and infer_block_exps env decs : T.typ =
   match decs with
@@ -1227,35 +1262,6 @@ and check_dec env t dec =
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t)
 
-(* move me to type.ml *)
-and module_of_scope scope =
-  let typ_fields =
-    T.Env.fold
-      (fun id con flds ->
-        let kind = Con.kind con in
-        { T.lab = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
-  in
-  let fields =
-    T.Env.fold
-      (fun id typ flds ->
-        { T.lab = id; T.typ = typ }::flds) scope.val_env typ_fields
-  in
-  T.Obj (T.Module, List.sort T.compare_field fields)
-
-(* move me to type.ml *)
-and scope_of_module t =
-  match t with
-  | T.Obj (T.Module, flds) ->
-    List.fold_right
-      (fun {T.lab;T.typ} scope ->
-        match typ with
-        | T.Kind (c,k) ->
-          { scope with con_env = T.ConSet.add c scope.con_env;
-                       typ_env = T.Env.add lab c scope.typ_env}
-        | typ ->
-          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
-  | _ -> assert false
-
 and infer_val_path env exp : T.typ option =
   match exp.it with
   | ImportE (_, fp) ->
@@ -1270,11 +1276,7 @@ and infer_val_path env exp : T.typ option =
       | Some t ->
         match T.promote t with
         | T.Obj (T.Module, flds) ->
-          begin
-            match T.lookup_field id.it flds with
-            | t -> Some t
-            | exception _ -> None
-          end
+          T.lookup_field id.it flds
         | _ -> None
     end
   | _ -> None
@@ -1393,7 +1395,7 @@ and infer_dec_typdecs env dec : scope =
     let k = T.Def (tbs, T.close cs t) in
     { empty_scope with
       typ_env = T.Env.singleton id.it c ;
-      con_env =     infer_id_typdecs id c k }
+      con_env = infer_id_typdecs id c k }
   | ModuleD (id, decs) ->
     let t = T.Env.find id.it env.vals in
     let scope = scope_of_module t in

@@ -112,9 +112,9 @@ val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
 (* Field lookup, namespace sensitive *)
 
-val lookup_typ_field : string -> field list -> (con * kind)
+val lookup_typ_field : string -> field list -> (con * kind) option
 
-val lookup_field : string -> field list -> typ
+val lookup_field : string -> field list -> typ option
 
 (* Field ordering *)
 

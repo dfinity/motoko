@@ -1803,7 +1803,10 @@ module Object = struct
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type ({it = Name s; _}) =
     let _, fields = Type.as_obj_sub "" obj_type in
-    let field_typ = Type.lookup_field s fields in
+    let field_typ =
+      match Type.lookup_field s fields with
+      | Some t -> t
+      | None -> assert false in
     let mut = Type.is_mut field_typ in
     mut
 
