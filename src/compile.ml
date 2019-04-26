@@ -4950,14 +4950,17 @@ and conclude_module env module_name start_fi_o =
     let s = Bytes.create n in
     really_input ic s 0 n;
     close_in ic;
-    s in
+    Bytes.to_string s in
+
   let stdlib =
     (*
-    This is just scaffolding: We look for rts.wasm in ../rts relative
-    to the asc binary. This happens to match both the source layout and
-    the Nix store layout
+    The RTS can come via enviornment (in particular when built via nix),
+    or relative to the directory of the invoked asc (when developing)
     *)
-    let wasm_filename = Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
+    let wasm_filename =
+      match Sys.getenv_opt "ASC_RTS" with
+      | Some filename -> filename
+      | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
     let wasm = load_file wasm_filename in
     DylibDecode.decode "rts.wasm" wasm in
 

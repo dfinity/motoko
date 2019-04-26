@@ -3,6 +3,8 @@
   dvm ? null,
 }:
 
+let nixpkgs-newer = (import ./nix/nixpkgs-newer.nix) {}; in
+
 let stdenv = nixpkgs.stdenv; in
 
 let sourceByRegex = src: regexes: builtins.path
@@ -95,8 +97,30 @@ in
 
 rec {
 
-  native = stdenv.mkDerivation {
-    name = "asc";
+  rts = stdenv.mkDerivation {
+    name = "asc-rts";
+
+    src = sourceByRegex ./rts [
+      "rts.c"
+      "Makefile"
+      ];
+
+    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+
+    buildInputs = with nixpkgs-newer; [ clang_8 lld_8 ] ;
+
+    buildPhase = ''
+      make CLANG=clang WASM_LD=wasm-ld
+    '';
+
+    installPhase = ''
+      mkdir -p $out/rts
+      cp rts.wasm $out/rts
+    '';
+  };
+
+  asc-bin = stdenv.mkDerivation {
+    name = "asc-bin";
 
     src = sourceByRegex ./. [
       "src/"
@@ -122,6 +146,16 @@ rec {
     installPhase = ''
       mkdir -p $out/bin
       cp src/asc $out/bin
+    '';
+  };
+
+  native = nixpkgs.symlinkJoin {
+    name = "asc";
+    paths = [ asc-bin rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/rts.wasm"
     '';
   };
 
