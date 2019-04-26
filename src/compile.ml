@@ -2416,7 +2416,8 @@ module Dfinity = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "start";
       edesc = nr (FuncExport (nr fi))
-    })
+    });
+    E.add_dfinity_type env (fi, [])
 
   let box_reference env =
     Func.share_code1 env "box_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
@@ -4830,9 +4831,8 @@ and actor_lit outer_env this ds fs at =
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
-    if E.mode env = DfinityMode
-    then Dfinity.system_imports env
-    else RTS.system_imports env;
+    if E.mode env = DfinityMode then Dfinity.system_imports env;
+    RTS.system_imports env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -4975,9 +4975,8 @@ and conclude_module env module_name start_fi_o =
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
   let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
 
-  if E.mode env = DfinityMode
-  then Dfinity.system_imports env
-  else RTS.system_imports env;
+  if E.mode env = DfinityMode then Dfinity.system_imports env;
+  RTS.system_imports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
