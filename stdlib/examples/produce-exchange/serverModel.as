@@ -1544,17 +1544,89 @@ than the MVP goals, however.
     nyi()
   };
 
+
   /**
    `retailerReserve`
    ---------------------------
   */
   retailerReserve(
     public_key: PublicKey,
-    id:UserId,
+    user_id:UserId,
     inventory:InventoryId,
-    route:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
+    route_id:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
   {
+/*
+    let retailerDoc = retailerTable.getDoc(user_id); /// xxx
+    let routeDoc = routeTable.getDoc(route_id);
+    let inventoryDoc = inventoryTable.getDoc(inventory_id);
+
+    // xxx need to move access control logic elsewhere
+    let i = producerRemInventory(public_key, inventory);
+    let r = transporterRemRoute(public_key, route);
+
+    /// xxx: access control:
+    /// - Check that user by this id has this public key; nothing to do with a "user name"
+    /// - Check that the user is a retailer
+    if (false) {
+      return (#err(#publicKeyErr))
+    };
+
+    // if no errors in any results above, then continue:
+    // move documents into tables for reserved resources.
+
+    let rr = reservedRouteTable.addInfoGetId(
+      func (rrid:ReservedRouteId):ReservedRouteInfo {
+        shared {
+          id=rrid;
+          retailer=retailerDoc.id;
+          route=routeDoc;
+        }
+      }
+    );
+
+    let ri = reservedInventoryTable.addInfoGetId(
+      func (rrid:ReservedInventoryId):ReservedInventoryInfo {
+        shared {
+          id=riid;
+          retailer=retailerDoc.id;
+          item=inventoryDoc;
+        }
+      }
+    );
+
+    // to do
+    // - add documents to reservations collections of
+    //   producers, transporters and retailers documents
+*/
     nyi()
+  };
+
+  /**
+   `retailerReserveMany`
+   ---------------------------
+  */
+  retailerReserveMany(
+    public_key: PublicKey,
+    id:UserId,
+    list:[(InventoryId,RouteId)])
+    : Result<[(ReservedRouteId, ReservedInventoryId)], ServerErr>
+  {
+    let a = Array_init<?(Result<(ReservedRouteId, ReservedInventoryId), ServerErr>)>(
+      list.len(),
+      null
+    );
+    for (i in (range(0,list.len()))) {
+      let (item, route) = list[i];
+      let x = retailerReserve(public_key, id, item, route);
+      a[i] := ?x;
+    };
+    let results =
+      Array_tabulate<Result<(ReservedRouteId, ReservedInventoryId), ServerErr>>(
+        list.len(),
+        func(i:Nat):Result<(ReservedRouteId, ReservedInventoryId), ServerErr>{
+          unwrap<Result<(ReservedRouteId, ReservedInventoryId), ServerErr>>(a[i])
+        });
+    joinArrayIfOk<(ReservedRouteId, ReservedInventoryId), ServerErr>(results)
   };
 
 };
