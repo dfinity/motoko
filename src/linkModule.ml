@@ -84,11 +84,27 @@ let remove_memory_import : module_ -> module_ =
     { m with imports = List.filter go m.imports }
   )
 
-let _remove_function_exports : module_ -> module_ =
+let remove_function_export name : module_ -> module_ =
   let is_func_export exp = match exp.it.edesc.it with
-      | FuncExport _var -> false
+      | FuncExport _var when exp.it.name = Wasm.Utf8.decode name ->
+          false
       | _ -> true in
   phrase (fun m -> { m with exports = List.filter is_func_export m.exports })
+
+module VarMap = Map.Make(Int32)
+let remove_non_definity_exports (em : extended_module) : extended_module =
+  (* We assume that every expoted function that does not have an entry in the
+   custom types section was only expoted for linking, and should not be
+   exported in the final module *)
+  let dfinity_exports = List.fold_left
+    (fun map (fi, _) -> VarMap.add fi () map)
+    VarMap.empty em.types in
+
+  let is_dfinity_export exp = match exp.it.edesc.it with
+      | FuncExport var -> VarMap.mem var.it dfinity_exports
+      | _ -> true in
+  in_extended (phrase (fun m ->
+    { m with exports = List.filter is_dfinity_export m.exports })) em
 
 let remove_memory_base_import : module_ -> module_ =
   phrase (fun m ->
@@ -444,7 +460,6 @@ let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
     |> in_extended (set_global heap_ptr new_heap_start)
     )
     ( dm.module_
-    (* |> remove_function_exports *)
     |> remove_imports "as_rts"
     |> remove_memory_import
     |> remove_table_import
@@ -452,5 +467,7 @@ let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
     |> rename_funcs funs2
     |> rename_types (fun t -> Int32.(add t ty_offset2))
     |> remove_table_base_import
+    |> remove_function_export "__wasm_call_ctors"
     )
   |> in_extended add_call_ctors
+  |> remove_non_definity_exports (* only sane if no additional files get linked in *)
