@@ -344,6 +344,7 @@ actor server = {
    */
 
   registrarAddProducer(
+    producer_public_key : PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -353,6 +354,7 @@ actor server = {
         func(id_:ProducerId):ProducerInfo {
           shared {
             id=id_:ProducerId;
+            public_key=producer_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             region=region_:RegionId;
@@ -420,6 +422,7 @@ actor server = {
    */
 
   registrarAddRetailer(
+    retailer_public_key : PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: RegionId,
@@ -429,6 +432,7 @@ actor server = {
         func(id_:RetailerId):RetailerInfo {
           shared {
             id=id_:RetailerId;
+            public_key=retailer_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             region=region_:RegionId
@@ -490,6 +494,7 @@ actor server = {
 
    */
   registrarAddTransporter(
+    transporter_public_key: PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async Result<TransporterId,None> {
@@ -498,6 +503,7 @@ actor server = {
         func(id_:TransporterId):TransporterInfo {
           shared {
             id=id_:TransporterId;
+            public_key=transporter_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             routes=[];
@@ -560,7 +566,7 @@ actor server = {
    */
   producerAddInventory(
     public_key: PublicKey,
-    id:   UserId,
+    id:   ProducerId,
     prod: ProduceId,
     quant:Quantity,
     weight:Weight,
@@ -569,9 +575,12 @@ actor server = {
     end:  Date,
     comments: Text,
   ) : async Result<InventoryId,ServerErr> {
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
     getModel().
       producerAddInventory(
-        public_key, null, id, prod, quant, weight, ppu, begin, end, comments)
+        null, id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**
@@ -582,7 +591,7 @@ actor server = {
   producerUpdateInventory(
     public_key: PublicKey,
     iid:  InventoryId,
-    id:   UserId,
+    id:   ProducerId,
     prod: ProduceId,
     quant:Quantity,
     weight:Weight,
@@ -591,9 +600,12 @@ actor server = {
     end:  Date,
     comments: Text,
   ) : async Result<(),ServerErr> {
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
     getModel().
       producerUpdateInventory(
-        public_key, iid, id, prod, quant, weight, ppu, begin, end, comments)
+        iid, id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**
@@ -601,19 +613,20 @@ actor server = {
    ---------------------------
    */
   producerRemInventory(public_key: PublicKey, id:InventoryId) : async Result<(),ServerErr> {
-    getModel()
-      .producerRemInventory(public_key, id)
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().producerRemInventory(id)
   };
 
   /**
    `producerAllInventoryInfo`
    ---------------------------
    */
-  producerAllInventoryInfo(public_key: PublicKey, id:UserId) : async Result<[InventoryInfo],IdErr> {
+  producerAllInventoryInfo(public_key: PublicKey, id:ProducerId) : async Result<[InventoryInfo],IdErr> {
     optionResult<[InventoryInfo],IdErr>(
-      getModel()
-        .producerAllInventoryInfo(public_key, id),
-      {#idErr}
+      getModel().producerAllInventoryInfo(id),
+      #idErr
     )
   };
 
@@ -621,11 +634,10 @@ actor server = {
    `producerReservations`
    ---------------------------
    */
-  producerReservations(public_key: PublicKey, id:UserId) : async Result<[ReservedInventoryInfo],IdErr> {
+  producerReservations(public_key: PublicKey, id:ProducerId) : async Result<[ReservedInventoryInfo],IdErr> {
     optionResult<[ReservedInventoryInfo],IdErr>(
-      getModel()
-        .producerReservations(public_key, id),
-      {#idErr}
+      getModel().producerReservations(id),
+      #idErr
     )
   };
 
@@ -644,8 +656,7 @@ actor server = {
    */
   produceMarketInfo(public_key: PublicKey, id:ProduceId, reg:?RegionId) : async Result<[ProduceMarketInfo],IdErr> {
     optionResult<[ProduceMarketInfo],IdErr>(
-      getModel()
-        .produceMarketInfo(public_key, id, reg),
+      getModel().produceMarketInfo(id, reg),
       {#idErr}
     )
   };
@@ -657,8 +668,7 @@ actor server = {
    Get the information for all known inventory.
    */
   allInventoryInfo() : async [InventoryInfo] {
-    getModel()
-      .inventoryTable.allInfo()
+    getModel().inventoryTable.allInfo()
   };
 
   /**
@@ -668,8 +678,7 @@ actor server = {
    */
   getInventoryInfo(id:InventoryId) : async Result<InventoryInfo,IdErr> {
     optionResult<InventoryInfo,IdErr>(
-      getModel()
-        .inventoryTable.getInfo(id),
+      getModel().inventoryTable.getInfo(id),
       {#idErr}
     )
   };
@@ -686,7 +695,7 @@ actor server = {
    */
   transporterAddRoute(
     public_key: PublicKey,
-    id:  UserId,
+    id:     TransporterId,
     rstart: RegionId,
     rend:   RegionId,
     start:  Date,
@@ -694,7 +703,10 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async Result<RouteId,ServerErr> {
-    getModel().transporterAddRoute(public_key, null, id, rstart, rend, start, end, cost, ttid)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterAddRoute(null, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -704,7 +716,7 @@ actor server = {
   transporterUpdateRoute(
     public_key: PublicKey,
     route:  RouteId,
-    id:  UserId,
+    id:     TransporterId,
     rstart: RegionId,
     rend:   RegionId,
     start:  Date,
@@ -712,7 +724,10 @@ actor server = {
     cost:   Price,
     ttid:   TruckTypeId
   ) : async Result<(),ServerErr> {
-    getModel().transporterUpdateRoute(public_key, route, id, rstart, rend, start, end, cost, ttid)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterUpdateRoute(route, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -720,19 +735,20 @@ actor server = {
    ---------------------------
    */
   transporterRemRoute(public_key: PublicKey, id:RouteId) : async Result<(),ServerErr> {
-      getModel()
-        .transporterRemRoute(public_key, id)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterRemRoute(id)
   };
 
   /**
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: PublicKey, id:UserId) : async Result<[RouteInfo],IdErr> {
+  transporterAllRouteInfo(public_key: PublicKey, id:TransporterId) : async Result<[RouteInfo],IdErr> {
     optionResult<[RouteInfo],IdErr>(
-      getModel()
-        .transporterAllRouteInfo(public_key, id),
-      {#idErr}
+      getModel().transporterAllRouteInfo(id),
+      #idErr
     )
   };
 
@@ -740,11 +756,11 @@ actor server = {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  transporterAllReservationInfo(public_key: PublicKey, id:UserId) : async Result<[ReservedRouteInfo],IdErr> {
+  transporterAllReservationInfo(public_key: PublicKey, id:TransporterId) : async Result<[ReservedRouteInfo],IdErr> {
     optionResult<[ReservedRouteInfo],IdErr>(
       getModel()
-        .transporterAllReservationInfo(public_key, id),
-      {#idErr}
+        .transporterAllReservationInfo(id),
+      #idErr
     )
   };
 
@@ -783,13 +799,13 @@ actor server = {
    ---------------------------
 
    */
-  retailerQueryAll(public_key: PublicKey, id:UserId,
+  retailerQueryAll(public_key: PublicKey, id:RetailerId,
                    queryProduce:?ProduceId,
                    queryDate:?Date
   ) : async Result<QueryAllResults,IdErr> {
     optionResult<QueryAllResults,IdErr>(
       getModel().
-        retailerQueryAll(public_key, id, queryProduce, queryDate),
+        retailerQueryAll(id, queryProduce, queryDate),
       {#idErr}
     )
   };
@@ -805,14 +821,14 @@ actor server = {
    */
   retailerQueryDates(
     public_key: PublicKey,
-    id:UserId,
+    id:RetailerId,
     begin:Date,
     end:Date
   ) : async Result<[InventoryInfo],IdErr>
   {
     optionResult<[InventoryInfo],IdErr>(
       getModel().
-        retailerQueryDates(public_key, id, begin, end),
+        retailerQueryDates(id, begin, end),
       {#idErr}
     )
   };
@@ -823,12 +839,12 @@ actor server = {
    */
   retailerReserve(
     public_key: PublicKey,
-    id:UserId,
+    id:RetailerId,
     inventory:InventoryId,
     route:RouteId) : async Result<(ReservedInventoryId, ReservedRouteId),ServerErr>
   {
     getModel().
-      retailerReserve(public_key, id, inventory, route)
+      retailerReserve(id, inventory, route)
   };
 
   /**
@@ -836,14 +852,14 @@ actor server = {
    ---------------------------
 
   */
-  retailerReservations(public_key: PublicKey, id:UserId) :
+  retailerReservations(public_key: PublicKey, id:RetailerId) :
     async Result<[(ReservedInventoryInfo,
                    ReservedRouteInfo)],ServerErr>
   {
     optionResult<[(ReservedInventoryInfo,
                    ReservedRouteInfo)],ServerErr>(
       getModel().
-        retailerAllReservationInfo(public_key, id),
+        retailerAllReservationInfo(id),
       #idErr
     )
   };

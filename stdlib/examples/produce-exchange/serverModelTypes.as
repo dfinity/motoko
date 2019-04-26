@@ -101,8 +101,8 @@ User documents.
 
 type UserDoc = {
   id: UserId;
-  user_name: Text;
   public_key: Text;
+  user_name: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;
@@ -174,6 +174,7 @@ type ProduceTable =
 
 type ProducerDoc = {
   id : ProducerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionDoc;
@@ -245,6 +246,7 @@ type ReservedInventoryMap =
 
 type RetailerDoc = {
   id : RetailerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionDoc;
@@ -267,6 +269,7 @@ type ByProduceByRegionInventoryReservationMap =
 
 type TransporterDoc = {
   id : TransporterId;
+  public_key: Text;
   // no region; the transporters are the supply of routes, not "end
   // points" of any single route.
   short_name : Text;
