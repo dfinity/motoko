@@ -8,10 +8,13 @@ export void as_memcpy(char *str1, const char *str2, int n) {
   }
 }
 
-typedef int as_ptr;
-int* payload(as_ptr p) {
-  return (int *)(p + 1);
-}
+
+/*
+ActorScript pointers are offset by one. So lets represent
+them as a typedef, and access the fields using the payload macro.
+*/
+typedef long as_ptr;
+#define FIELD(p,n) (((int *)(p+1))[n])
 
 /*
 It seems we can’t get our hand on the heap bump pointer here.
@@ -40,9 +43,9 @@ int as_strlen(const char* p) {
 as_ptr as_str_of_cstr(const char * const s) {
   int l = as_strlen(s);
   as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  payload(r)[0] = 10;
-  payload(r)[1] = l;
-  as_memcpy((char *)(&(payload(r)[2])), RTS_VERSION, l);
+  FIELD(r, 0) = 10;
+  FIELD(r, 1) = l;
+  as_memcpy((char *)(&FIELD(r,2)), RTS_VERSION, l);
   return r;
 }
 
