@@ -702,7 +702,7 @@ module Heap = struct
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
-    Func.share_code3 env "memcpy_words_skewed" (("from", I32Type), ("to", I32Type), ("n", I32Type)) [] (fun env get_from get_to get_n ->
+    Func.share_code3 env "memcpy_words_skewed" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
       get_n ^^
       from_0_to_n env (fun get_i ->
           get_to ^^
@@ -3418,7 +3418,7 @@ module GC = struct
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
 
-    get_obj ^^ get_end_to_space ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
+    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
 
     (* Calculate new pointer *)
     get_end_to_space ^^

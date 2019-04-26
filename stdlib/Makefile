@@ -44,6 +44,7 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/option.md \
+	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
@@ -66,6 +67,7 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/option.html \
+	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
@@ -133,7 +135,7 @@ $(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as 
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as \
+	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
@@ -141,7 +143,7 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -dt -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)

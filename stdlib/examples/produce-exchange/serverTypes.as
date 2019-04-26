@@ -79,6 +79,21 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
+ Errors
+ -----------
+*/
+
+type IdErr = {
+  #idErr;
+};
+
+type ServerErr = {
+  #idErr;
+  #publicKeyErr;
+};
+
+
+/**
 Public info associated with Ids
 =====================================
 */
