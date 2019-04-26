@@ -578,6 +578,7 @@ module RTS = struct
 
   (* function ids for imported stuff *)
   let memcpy_i env = 0l
+  let version_i env = 1l
 
   let system_imports env =
     let i = E.add_func_import env (nr {
@@ -586,6 +587,18 @@ module RTS = struct
       idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type],[])))))
     }) in
     assert (Int32.to_int i == Int32.to_int (memcpy_i env));
+
+    let i = E.add_func_import env (nr {
+      module_name = Wasm.Utf8.decode "rts";
+      item_name = Wasm.Utf8.decode "version";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
+    }) in
+    assert (Int32.to_int i == Int32.to_int (version_i env));
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "alloc_bytes";
+      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
+    });
 
 end (* RTS *)
 
@@ -4278,6 +4291,11 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
 
+       | "rts_version" ->
+         SR.Vanilla,
+         compile_exp_as env SR.unit e ^^
+         G.i (Call (nr (RTS.version_i env)))
+
        | "Nat->Word8"
        | "Int->Word8" ->
          SR.Vanilla,
@@ -5048,7 +5066,7 @@ and conclude_module env module_name start_fi_o =
     s in
   let stdlib =
     let wasm = load_file "/home/jojo/dfinity/actorscript/rts/rts.wasm" in
-    LinkModule.decode "rts.wasm" wasm in
+    DylibDecode.decode "rts.wasm" wasm in
 
   let emodule =
     let open CustomModule in

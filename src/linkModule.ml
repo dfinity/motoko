@@ -6,31 +6,9 @@ plus the dylink section.
 open Wasm.Ast
 open Wasm.Source
 open CustomModule
+open Dylib
 
-type dylink = {
-  memorysize : int32;
-  memoryalignment : int32;
-  tablesize : int32;
-  tablealignment : int32;
-  needed_dynlibs : string list;
-}
-
-type dylink_module = {
-  module_ : module_;
-  dylink :  dylink
-}
-
-let decode name bs =
-  let module_ = Wasm.Decode.decode name bs in
-  { module_;
-    dylink = {
-      memorysize = 0l;
-      memoryalignment = 0l;
-      tablesize = 0l;
-      tablealignment = 0l;
-      needed_dynlibs = [];
-    }
-  }
+(* Linking *)
 
 type imports = (int32 * name) list
 
@@ -68,6 +46,36 @@ let remove_table_import : module_ -> module_ =
     { m with imports = List.filter go m.imports }
   )
 
+let count_fun_imports m =
+  let is_fun_import imp = match imp.it.idesc.it with
+        | FuncImport _ -> true
+        | _ -> false in
+  Lib.List32.length (List.filter is_fun_import m.it.imports)
+
+
+let prepend_to_start fi m =
+  let imports_n = count_fun_imports m in
+  let ftype = Lib.List32.length m.it.types in
+  let wrap_fi = Int32.add imports_n (Lib.List32.length m.it.funcs) in
+
+  let wrap_fun = {
+    ftype = ftype @@ no_region;
+    locals = [];
+    body =
+      [ Call (fi @@ no_region) @@ no_region ] @
+      (match m.it.start with
+        | Some start_fi -> [ Call start_fi @@ no_region ]
+        | None -> [])
+    } @@ no_region in
+
+  phrase (fun (m : module_') ->
+    { m with
+      types = m.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
+      funcs = m.funcs @ [ wrap_fun ];
+      start = Some (wrap_fi @@ no_region)
+    }) m
+
+
 let remove_memory_import : module_ -> module_ =
   phrase (fun m ->
     let go imp = match imp.it.idesc.it with
@@ -76,21 +84,29 @@ let remove_memory_import : module_ -> module_ =
     { m with imports = List.filter go m.imports }
   )
 
-let remove_function_exports : module_ -> module_ =
-  phrase (fun m ->
-    let go exp = match exp.it.edesc.it with
-        | FuncExport _var -> false
-        | _ -> true in
-    { m with exports = List.filter go m.exports }
-  )
+let _remove_function_exports : module_ -> module_ =
+  let is_func_export exp = match exp.it.edesc.it with
+      | FuncExport _var -> false
+      | _ -> true in
+  phrase (fun m -> { m with exports = List.filter is_func_export m.exports })
 
-let remove_base_imports : module_ -> module_ =
+let remove_memory_base_import : module_ -> module_ =
   phrase (fun m ->
     let go imp = match imp.it.idesc.it with
         | GlobalImport _
           when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               (imp.it.item_name = Wasm.Utf8.decode "__memory_base" ||
-                imp.it.item_name = Wasm.Utf8.decode "__table_base")
+               imp.it.item_name = Wasm.Utf8.decode "__memory_base"
+          -> false
+        | _ -> true in
+    { m with imports = List.filter go m.imports }
+  )
+
+let remove_table_base_import : module_ -> module_ =
+  phrase (fun m ->
+    let go imp = match imp.it.idesc.it with
+        | GlobalImport _
+          when imp.it.module_name = Wasm.Utf8.decode "env" &&
+               imp.it.item_name = Wasm.Utf8.decode "__table_base"
           -> false
         | _ -> true in
     { m with imports = List.filter go m.imports }
@@ -107,33 +123,52 @@ let find_exports m : exports =
     )
     NameMap.empty m.it.exports
 
-let count_functions m : int =
-  let rec go i = function
-    | [] -> i
-    | imp::is -> match imp.it.idesc.it with
-      | FuncImport _ -> go (i + 1) is
-      | _ -> go i is
-  in go 0 m.it.imports + List.length (m.it.funcs)
 
 exception LinkError of string
 
 type func_renumbering = int32 -> int32
-let resolve offset2 imports exports : func_renumbering =
-  let resolved = List.map (fun (fi, name) ->
-    match NameMap.find_opt name exports with
-    | Some fi' -> (fi, Int32.add offset2 fi')
-    | None -> raise (LinkError (Printf.sprintf "Unresolvd symbol %s" (Wasm.Utf8.encode name)))
-    ) imports in
 
-  (* Obviously algorithmically not great *)
-  fun i ->
-    let rec go offset = function
-      | [] -> Int32.sub i offset
+let resolve imports exports : (int32 * int32) list =
+  List.map (fun (fi, name) ->
+    match NameMap.find_opt name exports with
+    | Some fi' -> (fi, fi')
+    | None -> raise (LinkError (Printf.sprintf "Unresolvd symbol %s" (Wasm.Utf8.encode name)))
+    ) imports
+
+let join_functions n_imports1 n_funcs1 n_imports2 n_funcs2 resolved12 resolved21 : (func_renumbering * func_renumbering) =
+  let n_imports1' = Int32.(sub n_imports1 (of_int (List.length resolved12))) in
+  let n_imports2' = Int32.(sub n_imports2 (of_int (List.length resolved21))) in
+
+  let rec fun1 i =
+    let rec go skipped = function
       | (imp, exp)::is ->
-        if i < imp then Int32.sub i offset
-        else if i = imp then exp
-        else go (Int32.add offset 1l) is
-    in go 0l resolved
+        if i < imp then Int32.sub i skipped
+        else if i = imp then fun2 exp
+        else go (Int32.add skipped 1l) is
+      | [] ->
+        if i < n_imports1
+        then Int32.sub i skipped
+        else Int32.(sub (add i n_imports2') skipped)
+    in go 0l resolved12
+  and fun2 i =
+    let rec go skipped = function
+      | (imp, exp)::is ->
+        if i < imp then Int32.(sub (add (add i n_imports1') n_funcs1) skipped)
+        else if i = imp then fun1 exp
+        else go (Int32.add skipped 1l) is
+      | [] ->
+        Int32.(sub (add (add i n_imports1') n_funcs1) skipped)
+    in go 0l resolved21
+  in
+  (fun1, fun2)
+
+let read_heap_ptr heap_ptr (m : module_) : int32 =
+  let g = List.nth m.it.globals (Int32.to_int heap_ptr) in
+  let open Wasm.Types in
+  assert (g.it.gtype = GlobalType (I32Type, Mutable));
+  match g.it.value.it with
+  | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
+  | _ -> assert false
 
 let join_modules (em1 : extended_module) (m2 : module_) : extended_module =
   assert (m2.it.start = None);
@@ -173,13 +208,118 @@ let rename_funcs rn : module_ -> module_ =
     let func = phrase func' in
     let funcs = List.map func in
 
+    let edesc' = function
+      | FuncExport v -> FuncExport (var v)
+      | e -> e in
+    let edesc = phrase edesc' in
+    let export' e = { e with edesc = edesc e.edesc } in
+    let export = phrase export' in
+    let exports = List.map export in
+
     let segment' f s = { s with init  = f s.init } in
     let segment f = phrase (segment' f) in
 
     { m with
       funcs = funcs m.funcs;
+      exports = exports m.exports;
       start = Lib.Option.map var m.start;
       elems = List.map (segment (List.map var)) m.elems;
+    }
+  )
+
+let rename_globals rn : module_ -> module_ =
+  phrase (fun m ->
+    let var' = rn in
+    let var = phrase var' in
+
+    let rec instr' = function
+      | Block (ty, is) -> Block (ty, instrs is)
+      | Loop (ty, is) -> Loop (ty, instrs is)
+      | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+      | GlobalGet v -> GlobalGet (var v)
+      | GlobalSet v -> GlobalSet (var v)
+      | i -> i
+    and instr i = phrase instr' i
+    and instrs is = List.map instr is in
+
+    let func' f = { f with body = instrs f.body } in
+    let func = phrase func' in
+    let funcs = List.map func in
+
+    let const = phrase instrs in
+
+    let global' g = { g with value = const g.value } in
+    let global = phrase global' in
+    let globals = List.map global in
+
+    let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+    let table_segment = phrase (table_segment') in
+    let table_segments = List.map table_segment in
+
+    let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+    let memory_segment = phrase (memory_segment') in
+    let memory_segments = List.map memory_segment in
+
+
+    { m with
+      funcs = funcs m.funcs;
+      globals = globals m.globals;
+      elems = table_segments m.elems;
+      data = memory_segments m.data;
+    }
+  )
+
+let set_global global value = phrase (fun m ->
+    let rec go i = function
+      | [] -> assert false
+      | g::gs when i = Int32.to_int global ->
+        let open Wasm.Types in
+        assert (g.it.gtype = GlobalType (I32Type, Mutable));
+        let g = phrase (fun g' ->
+          { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
+        ) g in
+        g :: gs
+      | g::gs -> g :: go (i+1) gs
+    in
+    { m with globals = go 0 m.globals }
+  )
+
+let fill_global (global : int32) (value : int32) : module_ -> module_ =
+  phrase (fun m ->
+    let rec instr' = function
+      | Block (ty, is) -> Block (ty, instrs is)
+      | Loop (ty, is) -> Loop (ty, instrs is)
+      | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+      | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
+      | GlobalSet v when v.it = global -> assert false
+      | i -> i
+    and instr i = phrase instr' i
+    and instrs is = List.map instr is in
+
+    let func' f = { f with body = instrs f.body } in
+    let func = phrase func' in
+    let funcs = List.map func in
+
+    let const = phrase instrs in
+
+    let global' g = { g with value = const g.value } in
+    let global = phrase global' in
+    let globals = List.map global in
+
+    let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+    let table_segment = phrase (table_segment') in
+    let table_segments = List.map table_segment in
+
+    let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+    let memory_segment = phrase (memory_segment') in
+    let memory_segments = List.map memory_segment in
+
+
+    { m with
+      funcs = funcs m.funcs;
+      globals = globals m.globals;
+      elems = table_segments m.elems;
+      data = memory_segments m.data;
     }
   )
 
@@ -228,33 +368,89 @@ let rename_types rn m =
     }
   }
 
+let fill_memory_base_import new_base : module_ -> module_ = fun m ->
+  (* We need to find the right import,
+     replace all uses of get_global of that import with the constant,
+     and finally rename all globals
+  *)
+  let base_global =
+    let rec go i = function
+      | [] -> assert false
+      | imp::is -> match imp.it.idesc.it with
+        | GlobalImport _ty
+          when imp.it.module_name = Wasm.Utf8.decode "env" &&
+               imp.it.item_name = Wasm.Utf8.decode "__memory_base" ->
+          Int32.of_int i
+        | GlobalImport _ ->
+          go (i + 1) is
+        | _ ->
+          go i is
+    in go 0 m.it.imports in
+
+    m |> fill_global base_global new_base
+      |> remove_memory_base_import
+      |> rename_globals Int32.(fun i ->
+          if i < base_global then i
+          else if i = base_global then assert false
+          else sub i 1l
+        )
+
+let align p n =
+  let open Int32 in
+  let p = to_int p in
+  shift_left (shift_right_logical (add n (sub (shift_left 1l p) 1l)) p) p
+
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
 let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
   (* First we look into m to see which imports we have *)
-  let required = find_imports libname em.module_ in
-  (* And also how many functions in total *)
-  let funcs1_before = count_functions em.module_ in
-  let fun_offset2 = Int32.of_int (funcs1_before - List.length required) in
-  let ty_offset2 = Int32.of_int (List.length (em.module_.it.types)) in
-  (* Find exported functions from the second module *)
-  let exports = find_exports dm.module_ in
+  let required1 = find_imports libname em.module_ in
+  let required2 = find_imports "as_rts" dm.module_ in
+  (* Find exported functions from either module *)
+  let exports1 = find_exports em.module_ in
+  let exports2 = find_exports dm.module_ in
   (* Resolve imports, to produce a renumbering function: *)
-  let funs1 = resolve fun_offset2 required exports in
-  let funs2 = fun i -> Int32.add fun_offset2 i in
+  let resolved12 = resolve required1 exports2 in
+  let resolved21 = resolve required2 exports1  in
+  let (funs1, funs2) =
+    join_functions
+      (count_fun_imports em.module_)
+      (Lib.List32.length em.module_.it.funcs)
+      (count_fun_imports dm.module_)
+      (Lib.List32.length dm.module_.it.funcs)
+      resolved12
+      resolved21 in
+  (* Beginning of unused space *)
+  let old_heap_start = read_heap_ptr heap_ptr em.module_ in
+  let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
+  let new_heap_start = align 4l (Int32.add lib_heap_start dm.dylink.memory_size) in
+  (* Rename types *)
+  let ty_offset2 = Int32.of_int (List.length (em.module_.it.types)) in
+
+  (* Inject call to "__wasm_call_ctors" *)
+  let add_call_ctors =
+    match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") exports2 with
+    | None -> fun m -> m;
+    | Some fi -> prepend_to_start (funs2 fi)
+  in
 
   assert (dm.module_.it.globals = []);
+  assert (dm.dylink.table_size = 0l);
 
   join_modules
     ( em
     |> in_extended (remove_imports libname)
     |> rename_funcs_extended funs1
+    |> in_extended (set_global heap_ptr new_heap_start)
     )
     ( dm.module_
-    |> remove_function_exports
-    |> remove_table_import
+    (* |> remove_function_exports *)
+    |> remove_imports "as_rts"
     |> remove_memory_import
+    |> remove_table_import
+    |> fill_memory_base_import lib_heap_start
     |> rename_funcs funs2
     |> rename_types (fun t -> Int32.(add t ty_offset2))
-    |> remove_base_imports
+    |> remove_table_base_import
     )
+  |> in_extended add_call_ctors
