@@ -194,8 +194,8 @@ rec {
     '';
   };
 
-  native-coverage = native.overrideAttrs (oldAttrs: {
-    name = "asc-coverage";
+  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
+    name = "asc-bin-coverage";
     buildPhase =
       "export BISECT_COVERAGE=YES;" +
       oldAttrs.buildPhase;
@@ -205,8 +205,18 @@ rec {
       '';
   });
 
+  native-coverage = nixpkgs.symlinkJoin {
+    name = "asc-covergage";
+    paths = [ asc-bin-coverage rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/rts.wasm"
+    '';
+  };
+
   coverage-report = stdenv.mkDerivation {
-    name = "native.coverage";
+    name = "coverage-report";
 
     src = sourceByRegex ./. (
       test_files ++
