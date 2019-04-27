@@ -9,10 +9,13 @@ let
     name = "clang-${version}";
 
     unpackPhase = ''
-      unpackFile ${fetch "cfe" "0svk1f70hvpwrjp6x5i9kqwrqwxnmcrw5s7f4cxyd100mdd12k08"}
-      mv cfe-${version}* clang
+      unpackFile ${fetch "cfe" "1ifvdcjs1dpwm61xk7wlqwmmq0afxj9g7lknpcxsb1w239aza36z"}
+      mv cfe-* clang
+      chmod -R u+w clang
       sourceRoot=$PWD/clang
       unpackFile ${clang-tools-extra_src}
+      chmod -R u+w $sourceRoot/tools
+      chmod -R u+w clang-tools-extra-*
       mv clang-tools-extra-* $sourceRoot/tools/extra
     '';
 
@@ -35,7 +38,7 @@ let
       "-DLINK_POLLY_INTO_TOOLS=ON"
     ];
 
-    patches = [ ./purity.patch ];
+    # patches = [ ./purity.patch ];
 
     postPatch = ''
       sed -i -e 's/DriverArgs.hasArg(options::OPT_nostdlibinc)/true/' \

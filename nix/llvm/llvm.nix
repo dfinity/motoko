@@ -22,8 +22,8 @@
 let
   inherit (stdenv.lib) optional optionals optionalString;
 
-  src = fetch "llvm" "0k124sxkfhfi1rca6kzkdraf4axhx99x3cw2rk55056628dvwwl8";
-  polly_src = fetch "polly" "1x4xv3j226rqdddp7b61d71wsx2b8vmmri02ycx27y2fg7ba7xg3";
+  src = fetch "llvm" "180msa40issz6cljrclg7c2934az450gbsar72j174jc55l8h77i";
+  polly_src = fetch "polly" "1x4xv3j226rqdddp7b61d71wsx2b8vmmri02ycx27y2fg7ba7xg0";
 
   # Used when creating a version-suffixed symlink of libLLVM.dylib
   shortVersion = with stdenv.lib;
@@ -34,7 +34,8 @@ in stdenv.mkDerivation (rec {
 
   unpackPhase = ''
     unpackFile ${src}
-    mv llvm-${version}* llvm
+    mv llvm-r* llvm
+    chmod -R u+w llvm
     sourceRoot=$PWD/llvm
   '' + optionalString enablePolly ''
     unpackFile ${polly_src}

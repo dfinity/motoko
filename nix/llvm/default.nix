@@ -1,19 +1,20 @@
 { lowPrio, newScope, pkgs, stdenv, cmake, libstdcxxHook
-, libxml2, python, isl, fetchurl, overrideCC, wrapCCWith, wrapBintoolsWith
+, libxml2, python, isl, fetchsvn, overrideCC, wrapCCWith, wrapBintoolsWith
 , buildLlvmTools # tools, but from the previous stage, for cross
 , targetLlvmLibraries # libraries, but from the next stage, for cross
 }:
 
 let
-  release_version = "8.0.0";
+  release_version = "9.0.0";
   version = release_version; # differentiating these is important for rc's
 
-  fetch = name: sha256: fetchurl {
-    url = "https://releases.llvm.org/${release_version}/${name}-${version}.src.tar.xz";
+  fetch = name: sha256: fetchsvn {
+    url = "http://llvm.org/svn/llvm-project/${name}/trunk/";
+    rev = "358327";
     inherit sha256;
   };
 
-  clang-tools-extra_src = fetch "clang-tools-extra" "0jwx6nnshp92pd5852y7ip7qhaqdf8az5g0440pli9q8whmi402g";
+  clang-tools-extra_src = fetch "clang-tools-extra" "0gx7dbgjfnx3k06ggil782d6xbmj088yqd25sv05qri2d5j58k0x";
 
   tools = stdenv.lib.makeExtensible (tools: let
     callPackage = newScope (tools // { inherit stdenv cmake libxml2 python isl release_version version fetch; });
