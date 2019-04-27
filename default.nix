@@ -237,7 +237,7 @@ rec {
   };
 
 
-  js = native.overrideAttrs (oldAttrs: {
+  js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
@@ -252,12 +252,15 @@ rec {
     '';
 
     installPhase = ''
-      mkdir -p $out
-      cp src/asc.js $out
+      mkdir -p $out/bin
+      cp -v src/asc.js $out/bin
+      cp -vr ${rts}/rts $out
     '';
 
+    doInstallCheck = false; # see https://github.com/dfinity-lab/actorscript/pull/351
+
     installCheckPhase = ''
-      NODE_PATH=$out/ node test/node-test.js
+      NODE_PATH=$out/bin node test/node-test.js
     '';
 
   });
