@@ -1,7 +1,9 @@
 type my_type = nat;
+type B = my_type;
+type C = B;
 type message = record { 
   name : text;
-  2 : nat;
+  2 : C;
   unavailable; 
 };
 type tree = variant {
@@ -12,11 +14,11 @@ type broker = service {
   find : (name : text) -> 
     (service {up:() -> (); current:() -> nat});
 };
-type stream = opt record {head:nat; next:func ()->stream};
+type stream = opt record {head:nat; next:func ()->[pure] stream};
 
 service user {
   addUser : nat -> [sensitive,update] (my_type);
   userName : (nat) -> [pure] stream;
 };
-service B : broker;
+service D : broker;
 

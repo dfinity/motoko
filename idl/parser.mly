@@ -26,11 +26,11 @@ let (@=) it at = {it; at; note = None}
 
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 
-let prim_typs = ["nat"; "nat8"; "nat16"; "nat32"; "nat64";
-                 "int"; "int8"; "int16"; "int32"; "int64";
-                 "float32"; "float64"; "bool"; "text";
-                 "null"; "unavailable"]
-let is_prim_typs t = List.find_opt (fun x -> x=t) prim_typs         
+let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat64", Nat64;
+                 "int", Int; "int8", Int8; "int16", Int16; "int32", Int32; "int64", Int64;
+                 "float32", Float32; "float64", Float64; "bool", Bool; "text", Text;
+                 "null", Null; "unavailable", Unavailable]
+let is_prim_typs t = List.assoc_opt t prim_typs         
 %}
 
 %token EOF
@@ -85,7 +85,7 @@ ref_typ :
 
 field_typ :
   | n=NAT COLON t=data_typ
-    { { id = Stdint.Uint64.of_string n; name = n @@ no_region; typ = t } @@ at $sloc }
+    { { id = Stdint.Uint64.of_string n; name = n @@ at $loc(n); typ = t } @@ at $sloc }
   | name=name COLON t=data_typ
     (* TODO find a better hash function *)
     { { id = Stdint.Uint64.of_int (Hashtbl.hash name.it); name = name; typ = t } @@ at $sloc }
@@ -104,23 +104,19 @@ cons_typ :
   | VEC t=data_typ { VecT t @! at $sloc }
   | RECORD fs=field_typs { RecordT fs @! at $sloc }
   | VARIANT fs=field_typs { VariantT fs @! at $sloc }
-  | BLOB { VecT (PrimT "nat8" @! no_region) @! at $sloc }
+  | BLOB { VecT (PrimT Nat8 @! no_region) @! at $sloc }
   (* TODO add enums  *)
-  | ENUM enums { PrimT "nat64" @! at $sloc }
+  | ENUM enums { PrimT Nat64 @! at $sloc }
 
 data_typ :
   | t=cons_typ { t }
   | t=ref_typ { t }
   | t=prim_typ { t }
 
-param_typ :
- | name COLON t=data_typ { t }
- | t=data_typ { t }
-
 param_typs :
-  | t = data_typ { t }
-  | LPAR ts=seplist(param_typ, COMMA) RPAR
-    { match ts with [t] -> t | _ -> TupT(ts) @! at $sloc }
+  | f = field_typ { RecordT [f] @! at $sloc }
+  | LPAR fs=seplist(field_typ, COMMA) RPAR
+    { RecordT fs @! at $sloc }
 
 func_mode :
   | SENSITIVE { Sensitive @@ at $sloc }
@@ -155,7 +151,7 @@ actor :
   | SERVICE id=id tys=actor_typ
     { ActorD(id, tys) @? at $sloc }
   | SERVICE id=id COLON x=id
-    { ActorD(id, (*TODO*)[]) @? at $sloc }
+    { ActorVarD(id, x) @? at $sloc }
 
 dec :
   | d=def { d }
