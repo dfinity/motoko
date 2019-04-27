@@ -222,6 +222,8 @@ rec {
       cp src/asc.js $out
     '';
 
+    doInstallCheck = true;
+
     installCheckPhase = ''
       NODE_PATH=$out/ node test/node-test.js
     '';
