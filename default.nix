@@ -3,7 +3,7 @@
   dvm ? null,
 }:
 
-let nixpkgs-newer = (import ./nix/nixpkgs-newer.nix) {}; in
+let llvm = (import ./nix/llvm.nix); in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -107,7 +107,7 @@ rec {
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = with nixpkgs-newer; [ clang_8 lld_8 ] ;
+    buildInputs = with llvm; [ clang_9 lld_9 ] ;
 
     buildPhase = ''
       make CLANG=clang WASM_LD=wasm-ld
