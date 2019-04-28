@@ -210,7 +210,7 @@ rec {
       nixpkgs.ocamlPackages.js_of_ocaml
       nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx
-      nixpkgs.nodejs
+      nixpkgs.nodejs-10_x
     ];
 
     buildPhase = ''
@@ -225,7 +225,7 @@ rec {
     doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out/ node test/node-test.js
+      NODE_PATH=$out/ node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });
