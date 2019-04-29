@@ -4,6 +4,7 @@ open Arrange_idl
 
 (* Environments *)
 
+module FieldEnv = Env.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
 module Env = Env.Make(String)
            
 (* Error recovery *)
@@ -65,8 +66,6 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let typ t_base t = {t_base with it = t}
-                 
 let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
 let is_record t = match t.it with RecordT _ -> true | _ -> false
 let is_func t = match t.it with FuncT _ -> true | _ -> false
@@ -74,7 +73,6 @@ let is_serv t = match t.it with ServT _ -> true | _ -> false
 let is_pre t = match t.it with PreT -> true | _ -> false                                                     
                     
 let rec check_typ env t =
-  let typ' = typ t in
   match t.it with
   | PrimT prim -> t
   | VarT id ->
@@ -89,8 +87,9 @@ let rec check_typ env t =
             error env id.at "cyclic type identifier %s at non-reference location" id.it;)
      )
   | FuncT (ms, t1, t2) ->
-     let t1' = check_typ env t1 in
-     let t2' = check_typ {env with ref = true} t2 in
+     let env' = { env with ref = true } in
+     let t1' = check_typ env' t1 in
+     let t2' = check_typ env' t2 in
      let modes' = List.map (fun m -> m.it) ms in
      if List.mem Pure modes' && List.mem Updatable modes' then
        error env (List.hd ms).at "function mode cannot be pure and update at the same time";
@@ -98,38 +97,37 @@ let rec check_typ env t =
        error env t1.at "function has non-record parameter type\n %s" (string_of_typ t1');
      if not (is_record t2') then
        error env t2.at "function has non-record result type\n %s" (string_of_typ t2');     
-     typ' (FuncT (ms, t1', t2'))
-  | TupT ts -> typ' (TupT (List.map (check_typ env) ts))
-  | OptT t -> typ' (OptT (check_typ env t))
-  | VecT t -> typ' (VecT (check_typ env t))
+     FuncT (ms, t1', t2') @@ t.at
+  | TupT ts -> TupT (List.map (check_typ env) ts) @@ t.at
+  | OptT t -> OptT (check_typ env t) @@ t.at
+  | VecT t -> VecT (check_typ env t) @@ t.at
   | RecordT fs ->
      let fs' = check_fields env fs in
-     typ' (RecordT (List.sort compare_field fs'))
+     RecordT (List.sort compare_field fs') @@ t.at
   | VariantT fs ->
      let fs' = check_fields env fs in
-     typ' (VariantT (List.sort compare_field fs'))
-  | ServT meths -> typ' (ServT (List.map (check_meth {env with ref = true}) meths))
+     VariantT (List.sort compare_field fs') @@ t.at
+  | ServT meths -> ServT (List.map (check_meth {env with ref = true}) meths) @@ t.at
   | PreT -> assert false
 
 and check_fields env fs =
   let _, fields =
     List.fold_left (fun (fenv, fields) f ->
-        let tag_id = Stdint.Uint64.to_string f.it.id in
-        match Env.find_opt tag_id fenv with
+        match FieldEnv.find_opt f.it.id fenv with
         | Some name' ->
            error env f.it.name.at "field name %s hash collision with field %s" f.it.name.it name'
         | None ->
            let t' = check_typ env f.it.typ in
-           let f' = typ f {id=f.it.id; name=f.it.name; typ=t'} in
-           Env.disjoint_add tag_id f.it.name.it fenv, f'::fields
-      ) (Env.empty, []) fs
+           let f' = {id=f.it.id; name=f.it.name; typ=t'} @@ f.at in
+           FieldEnv.disjoint_add f.it.id f.it.name.it fenv, f'::fields
+      ) (FieldEnv.empty, []) fs
   in fields
 
 and check_meth env meth =
   let t' = check_typ env meth.it.bound in
   if not (is_func t') then
     error env meth.it.bound.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
-  typ meth {var=meth.it.var; bound=t'}
+  {var=meth.it.var; bound=t'} @@ meth.at
   
 (* Declarations *)
                     
