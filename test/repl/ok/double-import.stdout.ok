@@ -6,11 +6,13 @@ ActorScript 0.1 interpreter
 -- Interpreting empty.as:
 -- Interpreting stdin:
 -- Finished stdin:
+{} : module {}
 
 -- Parsing stdin:
 > -- Checking stdin:
 -- Interpreting stdin:
 -- Finished stdin:
+{} : module {}
 
 -- Parsing stdin:
 > 
