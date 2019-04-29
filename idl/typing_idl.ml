@@ -140,7 +140,7 @@ and check_def env dec =
      Env.singleton id.it t'
   | ActorD (id, meth_list) ->
      let sigs = List.map (check_meth env) meth_list in
-     Env.singleton id.it {it=ServT sigs; at=dec.at; note=Type_idl.Pre;}
+     Env.singleton id.it (ServT sigs @@ dec.at)
   | ActorVarD (id, var) ->
      (match Env.find_opt var.it env.vals with
       | None -> error env var.at "unbound service reference type %s" var.it
@@ -166,7 +166,7 @@ and gather_id dec =
 and gather_decs decs =
   List.fold_left (fun ve dec ->
       let id = gather_id dec in
-      let ve' = Env.singleton id.it {it=PreT; at=id.at; note=Type_idl.Pre} in
+      let ve' = Env.singleton id.it (PreT @@ id.at) in
       Env.adjoin ve ve'
     ) Env.empty decs.it
         

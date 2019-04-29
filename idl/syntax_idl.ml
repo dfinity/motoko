@@ -1,11 +1,3 @@
-module Type = Type_idl
-
-(* Notes *)
-
-type typ_note = {note_typ : Type.typ}
-
-let empty_typ_note = {note_typ = Type.Pre}
-
 
 (* Identifiers *)
 
@@ -34,7 +26,7 @@ type prim =
 type func_mode = func_mode' Source.phrase
 and func_mode' = Sensitive | Pure | Updatable               
                  
-type typ = (typ', Type.typ) Source.annotated_phrase
+type typ = typ' Source.phrase
 and typ' =
   | PrimT of prim                                (* primitive *)
   | VarT of id                                    (* type name *)
@@ -50,12 +42,12 @@ and typ' =
 and typ_field = typ_field' Source.phrase
 and typ_field' = { id : Stdint.uint64; name : id; typ : typ }
 
-and typ_meth = (typ_meth', Type.typ) Source.annotated_phrase
+and typ_meth = typ_meth' Source.phrase
 and typ_meth' = {var : id; bound : typ}
 
 (* Declarations *)
 
-and dec = (dec', typ_note) Source.annotated_phrase
+and dec = dec' Source.phrase
 and dec' =
   | TypD of id * typ             (* type *)
   | ActorD of id * typ_meth list     (* service *)

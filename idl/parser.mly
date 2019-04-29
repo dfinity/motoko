@@ -20,10 +20,6 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = empty_typ_note}
-let (@!) it at = {it; at; note = Type.Pre}
-let (@=) it at = {it; at; note = None}
-
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 
 let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat64", Nat64;
@@ -47,7 +43,6 @@ let is_prim_typs t = List.assoc_opt t prim_typs
 %left COLON
 
 %start<Syntax_idl.prog> parse_prog
-%start<Syntax_idl.prog> parse_prog_interactive
 
 %%
 
@@ -77,11 +72,11 @@ prim_typ :
   | x=id
     { (match is_prim_typs x.it with
          None -> VarT x
-       | Some t -> PrimT t) @! at $sloc }
+       | Some t -> PrimT t) @@ at $sloc }
 
 ref_typ :
   | FUNC t=func_typ { t }
-  | SERVICE ts=actor_typ { ServT ts @! at $sloc }
+  | SERVICE ts=actor_typ { ServT ts @@ at $sloc }
 
 field_typ :
   | n=NAT COLON t=data_typ
@@ -100,13 +95,13 @@ enums :
   | LCURLY es=seplist(name, semicolon) RCURLY { }
 
 cons_typ :
-  | OPT t=data_typ { OptT t @! at $sloc }
-  | VEC t=data_typ { VecT t @! at $sloc }
-  | RECORD fs=field_typs { RecordT fs @! at $sloc }
-  | VARIANT fs=field_typs { VariantT fs @! at $sloc }
-  | BLOB { VecT (PrimT Nat8 @! no_region) @! at $sloc }
+  | OPT t=data_typ { OptT t @@ at $sloc }
+  | VEC t=data_typ { VecT t @@ at $sloc }
+  | RECORD fs=field_typs { RecordT fs @@ at $sloc }
+  | VARIANT fs=field_typs { VariantT fs @@ at $sloc }
+  | BLOB { VecT (PrimT Nat8 @@ no_region) @@ at $sloc }
   (* TODO add enums  *)
-  | ENUM enums { PrimT Nat64 @! at $sloc }
+  | ENUM enums { PrimT Nat64 @@ at $sloc }
 
 data_typ :
   | t=cons_typ { t }
@@ -114,9 +109,9 @@ data_typ :
   | t=prim_typ { t }
 
 param_typs :
-  | f = field_typ { RecordT [f] @! at $sloc }
+  | f = field_typ { RecordT [f] @@ at $sloc }
   | LPAR fs=seplist(field_typ, COMMA) RPAR
-    { RecordT fs @! at $sloc }
+    { RecordT fs @@ at $sloc }
 
 func_mode :
   | SENSITIVE { Sensitive @@ at $sloc }
@@ -129,13 +124,13 @@ func_modes_opt :
 
 func_typ :
   | t1=param_typs ARROW ms=func_modes_opt t2=param_typs
-    { FuncT(ms, t1, t2) @! at $sloc }
+    { FuncT(ms, t1, t2) @@ at $sloc }
 
 meth_typ :
   | x=name COLON t=func_typ
-    { { var = x; bound = t } @! at $sloc }
+    { { var = x; bound = t } @@ at $sloc }
   | x=name COLON id=id
-    { { var = x; bound = VarT id @! at $sloc } @! at $sloc }
+    { { var = x; bound = VarT id @@ at $sloc } @@ at $sloc }
 
 actor_typ :
   | LCURLY ds=seplist(meth_typ, semicolon) RCURLY
@@ -145,13 +140,13 @@ actor_typ :
 
 def :
   | TYPE x=id EQ t=data_typ
-    { TypD(x, t) @? at $sloc }
+    { TypD(x, t) @@ at $sloc }
 
 actor :
   | SERVICE id=id tys=actor_typ
-    { ActorD(id, tys) @? at $sloc }
+    { ActorD(id, tys) @@ at $sloc }
   | SERVICE id=id COLON x=id
-    { ActorVarD(id, x) @? at $sloc }
+    { ActorVarD(id, x) @@ at $sloc }
 
 dec :
   | d=def { d }
@@ -161,8 +156,5 @@ dec :
 
 parse_prog :
   | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
-
-parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
 
 %%
