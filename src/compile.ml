@@ -2379,23 +2379,29 @@ module Dfinity = struct
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
-      (* for now always go the prelude route
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
-      G.i (Call (nr (E.built_in env "test_print")))
-       *)
-      let (set_arg, get_arg) = new_local64 env "arg" in
-      match Var.get_val env "@text_of_Int" with
+      let (set_n, get_n) = new_local64 env "n" in
+      set_n ^^ get_n ^^
+      compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+      compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+      get_n ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+      G.if_ (ValBlockType None)
+      begin
+        get_n ^^
+        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
+        G.i (Call (nr (E.built_in env "test_print")))
+      end
+      begin match Var.get_val env "@text_of_Int" with
       | SR.StaticThing (SR.StaticFun fi), code ->
-        set_arg ^^
         code ^^
         compile_unboxed_zero ^^ (* A dummy closure *)
-        get_arg ^^
+        get_n ^^
         BoxedInt.box env ^^
         G.i (Call (nr fi)) ^^
         compile_databuf_of_text env ^^
         G.i (Call (nr (E.built_in env "test_print")))
       | _ -> assert false;
+      end
     else
       G.i Unreachable
 
