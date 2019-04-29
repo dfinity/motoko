@@ -58,6 +58,7 @@ actor class Test() = this {
       let uidd = await s.registrarAddUser(pkd, "userd", "", assertUnwrapAny<RegionId>regd, true, true, true, true);
       let uide = await s.registrarAddUser(pke, "usere", "", assertUnwrapAny<RegionId>rege, true, true, true, true);
 
+      printEntityCount("User", (await s.getCounts()).user_count);
       printEntityCount("Producer", (await s.getCounts()).producer_count);
       printEntityCount("Transporter", (await s.getCounts()).transporter_count);
       printEntityCount("Retailer", (await s.getCounts()).retailer_count);
@@ -279,7 +280,7 @@ actor class Test() = this {
 
       // a double-remove should return null
       //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
-      
+
       printEntityCount("Route@time3", (await s.getCounts()).route_count);
 
       //////////////////////////////////////////////////////////////////
@@ -359,6 +360,13 @@ func debugDumpAll() : async () {
 
   print "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
+    print "- ";
+    print (debug_show info);
+    print "\n";
+  };
+
+  print "\nUser info\n----------------\n";
+  for ( info in ((await server.allUserInfo()).vals()) ) {
     print "- ";
     print (debug_show info);
     print "\n";

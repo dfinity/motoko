@@ -883,6 +883,7 @@ actor server = {
   getCounts() : async ProduceExchangeCounts {
     let m = getModel();
     shared {
+      user_count               = m.userTable.count();
       truck_type_count         = m.truckTypeTable.count();
       region_count             = m.regionTable.count();
       produce_count            = m.produceTable.count();
