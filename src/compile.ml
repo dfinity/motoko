@@ -2381,8 +2381,8 @@ module Dfinity = struct
     then
       let (set_n, get_n) = new_local64 env "n" in
       set_n ^^ get_n ^^
-      compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-      compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+      compile_const_64 0xFFFFFFFFL ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
       get_n ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
       G.if_ (ValBlockType None)
       begin
