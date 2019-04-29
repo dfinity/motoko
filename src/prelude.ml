@@ -101,22 +101,11 @@ func @text_of_Nat(x : Nat) : Text {
   var text = "";
   var n = x;
   let base = 10;
+  let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
   while (n > 0) {
     let rem = n % base;
-    text := (switch (rem) {
-      case (0) { "0" };
-      case (1) { "1" };
-      case (2) { "2" };
-      case (3) { "3" };
-      case (4) { "4" };
-      case (5) { "5" };
-      case (6) { "6" };
-      case (7) { "7" };
-      case (8) { "8" };
-      case (9) { "9" };
-      case (_) { assert false; "" };
-    }) # text;
+    text := digits[rem] # text;
     n := n / base;
   };
   return text;
