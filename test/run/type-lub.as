@@ -55,3 +55,27 @@ let shareds = [sh, 77, [1, 2, 3]];
 let shared_funcs = [ func (a : Int) : Int = a
                    , func (a : Shared) : Nat = 42
                    ];
+
+
+// recursive objects
+
+// { need global types due to https://dfinity.atlassian.net/browse/AST-34
+type A = {x : A};
+type B = {x : B};
+func f(v : {x : {x : B}; b : B}, x : A, y : B, z : {x : B; a : A}) : [A] { ignore([v, x, y, z]); [v, x, y, z] };
+// };
+/*
+// {
+type A1 = {x : B1};
+type B1 = {x : A1};
+func f1(x : A1, y : B1) : [A1] { ignore([x, y]); [x, y] };
+// };
+type O = ?O;
+type P = ?P;
+
+type Q = ?R;
+type R = ?S;
+type S = ?Q;
+
+func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] }
+*/

@@ -40,6 +40,19 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
+and typ' =
+  | Var' of var * int                          (* variable *)
+  | Con' of con * typ Lazy.t list                     (* constructor *)
+  | Prim' of prim                              (* primitive *)
+  | Obj' of obj_sort * field list Lazy.t             (* object *)
+  | Array' of typ Lazy.t                              (* array *)
+  | Opt' of typ Lazy.t                                (* option *)
+  | Variant' of (lab * typ) list Lazy.t               (* variant *)
+  | Tup' of typ list Lazy.t                           (* tuple *)
+  | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
+  | Async' of typ Lazy.t                              (* future *)
+  | Mut' of typ Lazy.t                                (* mutable type *)
+
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
@@ -47,6 +60,20 @@ and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
+
+let unlazy (l : typ') : typ = Obj.magic l
+let fixup = function
+  | Var' (v, i) as o -> ignore (Var' (v, i)); unlazy o
+  | Con' (c, ts) as o -> ignore (Con' (c, ts)); List.iter (fun (lazy _) -> ()) ts; unlazy o
+  | Prim' p as o -> ignore (Prim' p); unlazy o
+  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); let oo = unlazy o in assert (List.length fs > 0 && not (oo == (List.hd fs).typ)); oo
+  | Array' (lazy t) as o -> ignore (Array' (lazy t)); unlazy o
+  | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+  | Variant' (lazy t) as o -> ignore (Variant' (lazy t)); unlazy o
+  | Tup' (lazy t) as o -> ignore (Tup' (lazy t)); unlazy o
+  | Func' (s, c, bs, lazy args, lazy res) as o -> ignore (Func' (s, c, bs, lazy args, lazy res)); unlazy o
+  | Async' (lazy t) as o -> ignore (Async' (lazy t)); unlazy o
+  | Mut' (lazy t) as o -> ignore (Mut' (lazy t)); unlazy o
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -444,6 +471,9 @@ let is_concrete t =
 
 
 
+(* TEMPORARY HOME FOR SOME STUFF related to lub/glb *)
+
+module M = Map.Make (struct type t = typ * typ let compare = compare end)
 (* Equivalence & Subtyping *)
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
@@ -452,8 +482,18 @@ let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let str = ref (fun _ -> failwith "")
-let rec rel_typ rel eq t1 t2 =
+
+let rec rel_typ rel eq t1 t2 = match rel_typ' rel eq t1 t2, rel != eq with
+  | true, true -> (*let l = lub t1 t2 in
+                  (*let g = glb t1 t2 in*)
+                  if not (rel_typ' eq eq t2 l) then Printf.eprintf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);*)
+                  (*if not (rel_typ' eq eq t1 g) then Printf.eprintf "bad GLB: %s     (%s     <:     %s) \n%!" (!str g) (!str t1) (!str t2);*)
+                  true
+  | r, _ -> r (* TODO: remove this temporary check *)
 (*Printf.printf "[sub] %s == %s\n%!" (!str t1) (!str t2);*)
+
+
+and rel_typ' rel eq t1 t2 =
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
@@ -468,28 +508,28 @@ let rec rel_typ rel eq t1 t2 =
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ' rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
+      rel_typ' rel eq t1 (open_ ts2 t)
     | _ when Con.eq con1 con2 ->
       rel_list eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ' rel eq (open_ ts1 t) t2
     | _ ->
       false
     )
   | Con (con1, ts1), t2 ->
     (match Con.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ' rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ' rel eq (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Con.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
+      rel_typ' rel eq t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 when p1 = p2 ->
@@ -499,39 +539,39 @@ let rec rel_typ rel eq t1 t2 =
   | Prim p1, Shared when rel != eq ->
     true
   | Prim Text, Obj _ when rel != eq ->
-    rel_typ rel eq text_obj t2
+    rel_typ' rel eq text_obj t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields rel eq tfs1 tfs2
   | Obj (s, _), Shared when rel != eq ->
     s <> Object Local
   | Array t1', Array t2' ->
-    rel_typ rel eq t1' t2'
+    rel_typ' rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
-    rel_typ rel eq (array_obj t1') t2
+    rel_typ' rel eq (array_obj t1') t2
   | Array t, Shared when rel != eq ->
-    rel_typ rel eq t Shared
+    rel_typ' rel eq t Shared
   | Opt t1', Opt t2' ->
-    rel_typ rel eq t1' t2'
+    rel_typ' rel eq t1' t2'
   | Opt t1', Shared ->
-    rel_typ rel eq t1' Shared
+    rel_typ' rel eq t1' Shared
   | Variant cts1, Variant cts2 ->
     rel_summands rel eq cts1 cts2
   | Variant cts1, Shared ->
-    rel_list rel_typ rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
+    rel_list rel_typ' rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
-    rel_list rel_typ rel eq ts1 ts2
+    rel_list rel_typ' rel eq ts1 ts2
   | Tup ts1, Shared ->
-    rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
+    rel_list rel_typ' rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     c1 = c2 && s1 = s2 &&
     (* subtyping on shared functions needs to imply subtyping of the serialized
        arguments, i.e. the IDL. Until we have a real IDL, we are conservative
        here and assume no subtyping in the IDL. This makes shared functions invariant. *)
     let rel_param =
-      if s1 = Sharable then eq_typ else rel_typ in
+      if s1 = Sharable then eq_typ else rel_typ' in
     (match rel_binds rel eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -543,7 +583,7 @@ let rec rel_typ rel eq t1 t2 =
   | Shared, Shared ->
     true
   | Async t1', Async t2' ->
-    rel_typ rel eq t1' t2'
+    rel_typ' rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
   | Serialized t1', Serialized t2' ->
@@ -561,7 +601,7 @@ and rel_fields rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ rel eq tf1.typ tf2.typ &&
+      rel_typ' rel eq tf1.typ tf2.typ &&
       rel_fields rel eq tfs1' tfs2'
     | -1 when rel != eq ->
       rel_fields rel eq tfs1' tfs2
@@ -579,7 +619,7 @@ and rel_summands rel eq tcs1 tcs2 =
   | (c1, t1)::tcs1', (c2, t2)::tcs2' ->
     (match compare c1 c2 with
     | 0 ->
-      rel_typ rel eq t1 t2 &&
+      rel_typ' rel eq t1 t2 &&
       rel_summands rel eq tcs1' tcs2'
     | 1 when rel != eq ->
       rel_summands rel eq tcs1 tcs2'
@@ -594,14 +634,21 @@ and rel_binds rel eq tbs1 tbs2 =
   else None
 
 and rel_bind ts rel eq tb1 tb2 =
-  rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
+  rel_typ' rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+and eq_typ rel eq t1 t2 = rel_typ' eq eq t1 t2
 
 and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
 and sub t1 t2 : bool =
+  let res = rel_typ' (ref S.empty) (ref S.empty) t1 t2 in
+  let l = lub t1 t2 in
+  let g = glb t1 t2 in
+  if res && not (eq t2 l) then Printf.printf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);
+  if res && not (eq t1 g) then Printf.printf "bad GLB: %s     (%s     <:     %s) \n%!" (!str g) (!str t1) (!str t2);
+  res
+and sub' t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
@@ -616,11 +663,34 @@ and eq_kind k1 k2 : bool =
   | _ -> false
 
 (* Least upper bound and greatest lower bound *)
+and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
+and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
-let rec lub t1 t2 =
-  if t1 == t2 then t1 else
+and strnonv = function
+  | Con _ as t -> "CCCOOOONN  " ^ !str t
+  | Var _ -> "%VAR%"
+  | t -> !str t
+
+
+
+and strhead = function
+  | Con _ as t -> "Con" ^ !str t
+  | Var _ -> "Var"
+  | Obj _ -> "Obj"
+  | Opt _ -> "Opt"
+  | t -> "OTHER"
+
+
+and checkmate t1 t2 lu = match t1, t2 with
+  | Con _, Con _ -> Printf.printf "RETURNING LUB (%s)     %s = [%s]                %s = [%s] \n"
+                      (strhead lu) (strnonv t1) (strnonv (normalize t1)) (strnonv t2) (strnonv (normalize t2)); lu
+  | _ -> lu
+       
+and lub' lubs glbs t1 t2 =
+  Printf.printf "<<ENTERING %s                %s \n" (strnonv t1) (strnonv t2); if t1 == t2 then t1 else
+  if M.mem (t1, t2) !lubs then (Printf.printf "PULLING LUB (%s)     %s                %s \n" (strhead (Lazy.force (M.find (t1, t2) !lubs))) (strnonv t1) (strnonv t2); Lazy.force (M.find (t1, t2) !lubs)) else
   (* TBR: this is just a quick hack *)
-  match normalize t1, normalize t2 with
+  let tr = lazy begin Printf.printf "FORCING %s                %s \n" (strnonv t1) (strnonv t2); match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any
@@ -628,55 +698,73 @@ let rec lub t1 t2 =
   | _, Non -> t1
   | Non, _ -> t2
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
-  | Shared, t2 when sub t2 Shared -> Shared
-  | t1, Shared when sub t1 Shared -> Shared
+  | Shared, t2 when sub' t2 Shared -> Shared
+  | t1, Shared when sub' t1 Shared -> Shared
   | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
-  | Opt t1', Opt t2' -> Opt (lub t1' t2')
   | Prim Null, Opt t'
-  | Opt t', Prim Null -> Opt t'
-  | Variant t1', Variant t2' -> Variant (lub_variant t1' t2')
-  | Array t1', Array t2' -> Array (lub t1' t2')
-  | Array t1', (Obj _ as t2') -> lub (array_obj t1') t2'
-  | (Obj _ as t1'), Array t2' -> lub t1' (array_obj t2')
-  | Prim Text, (Obj _ as t2') -> lub text_obj t2'
-  | (Obj _ as t1'), Prim Text -> lub t1' text_obj
-  | Prim Text, Array t2' -> lub text_obj (array_obj t2')
-  | Array t1', Prim Text -> lub (array_obj t1') text_obj
-  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, lub_object tf1 tf2)
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 lub ts1 ts2)
+  | Opt t', Prim Null -> t1
+  | Variant t1', Variant t2' -> let rec o = lazy (Variant (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; lub_variant lubs glbs t1' t2') in Lazy.force o
+  | Array t1', Array t2' -> let rec o = lazy (Array (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; lub' lubs glbs t1' t2') in Lazy.force o
+  | Array t1', (Obj _ as t2') -> lub' lubs glbs (array_obj t1') t2'
+  | (Obj _ as t1'), Array t2' -> lub' lubs glbs t1' (array_obj t2')
+  | Prim Text, (Obj _ as t2') -> lub' lubs glbs text_obj t2'
+  | (Obj _ as t1'), Prim Text -> lub' lubs glbs t1' text_obj
+  | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
+  | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
+ (* | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> let rec o = lazy (Printf.eprintf "o\n"; Obj (s1, Lazy.force i)) and i = lazy (Printf.eprintf "i\n"; lubs := M.add (t1, t2) o !lubs; lub_object lubs glbs tf1 tf2) in Lazy.force o    *)
+
+
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> let rec o = lazy (Tup (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; List.map2 (lub' lubs glbs) ts1 ts2) in Lazy.force o
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence *)
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 glb args1 args2, List.map2 lub res1 res2)
+  (*    let rec o = lazy (Func (s1, c1, bs1, fst (Lazy.force arg_res), snd (Lazy.force arg_res))) and arg_res = lazy (Printf.eprintf "ADDING\n";lubs := M.add (t1, t2) o !lubs; (List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)) in let o' = Printf.eprintf "BEFORE\n"; Lazy.force o in Printf.eprintf "AFTER\n"; o'*)
+    Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
+
+
+  (* Potentially recursive types follow *)
+  | Opt t1', Opt t2' ->
+    let rec o = Opt' i
+    and i = lazy (Printf.printf "ADDING OPT\n"; lubs := M.add (t1, t2) (Lazy.from_val (unlazy o)) !lubs; lub' lubs glbs t1' t2') in
+    let oo = fixup o in Printf.printf "---> OPT LUB %s\n" (strnonv oo); oo
+  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+    let rec o = Obj' (s1, i)
+    and i = lazy (Printf.printf "ADDING OBJ\n"; lubs := M.add (t1, t2) (Lazy.from_val (unlazy o)) !lubs; lub_object lubs glbs tf1 tf2) in
+    let oo = fixup o in Printf.printf "---> OBJ LUB %s\n" (strhead oo); oo
+
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
+  end in
+  lubs := M.add (t1, t2) tr !lubs; checkmate t1 t2 (Lazy.force tr)
 
-and lub_object fs1 fs2 = match fs1, fs2 with
+
+and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
   | [], _ -> []
   | f1::fs1', f2::fs2' ->
     begin match compare_field f1 f2 with
-    | 0 -> {lab = f1.lab; typ = lub f1.typ f2.typ}::lub_object fs1' fs2'
-    | 1 -> lub_object fs1 fs2'
-    | _ -> lub_object fs1' fs2
+    | 0 -> {lab = f1.lab; typ = lub' lubs glbs f1.typ f2.typ}::lub_object lubs glbs fs1' fs2'
+    | 1 -> lub_object lubs glbs fs1 fs2'
+    | _ -> lub_object lubs glbs fs1' fs2
     end
 
-and lub_variant fs1 fs2 = match fs1, fs2 with
+and lub_variant lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
     begin match compare_summand f1 f2 with
-    | 0 -> (fst f1, lub (snd f1) (snd f2))::lub_variant fs1' fs2'
-    | 1 -> f2::lub_variant fs1 fs2'
-    | _ -> f1::lub_variant fs1' fs2
+    | 0 -> (fst f1, lub' lubs glbs (snd f1) (snd f2))::lub_variant lubs glbs fs1' fs2'
+    | 1 -> f2::lub_variant lubs glbs fs1 fs2'
+    | _ -> f1::lub_variant lubs glbs fs1' fs2
     end
 
-and glb t1 t2 =
-  if t1 == t2 then t1 else
+and glb' lubs glbs t1 t2 =
+  Printf.printf "<<GLB ENTERING %s                %s \n" (strnonv t1) (strnonv t2); if t1 == t2 then t1 else
+  if M.mem (t1, t2) !glbs then (Printf.printf "PULLING GLB\n"; Lazy.force (M.find (t1, t2) !glbs)) else
   (* TBR: this is just a quick hack *)
-  match normalize t1, normalize t2 with
+  let tr = lazy begin Printf.printf "GLB FORCING %s                %s \n" (strnonv t1) (strnonv t2); match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any -> t1
@@ -684,47 +772,61 @@ and glb t1 t2 =
   | _, Non -> Non
   | Non, _ -> Non
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
-  | Shared, t2 when sub t2 Shared -> t2
-  | t1, Shared when sub t1 Shared -> t1
-  | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1
+  | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1 (* TODO(gabor) not general enough *)
+  | Shared, t2 when sub' t2 Shared -> t2
+  | t1, Shared when sub' t1 Shared -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
-  | Opt t1', Opt t2' -> Opt (glb t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
-  | Variant t1', Variant t2' -> Variant (glb_variant t1' t2')
-  | Array t1', Array t2' -> Array (glb t1' t2')
-  | Array t1', (Obj _ as t2') when sub (array_obj t1') t2' -> t1
-  | (Obj _ as t1'), Array t2' when sub (array_obj t2') t1' -> t2
-  | Prim Text, (Obj _ as t2') when sub text_obj t2' -> t1
-  | (Obj _ as t1'), Prim Text when sub text_obj t1' -> t2
-  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object tf1 tf2)
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 glb ts1 ts2)
+  | Variant t1', Variant t2' -> Variant (glb_variant lubs glbs t1' t2')
+  | Array t1', Array t2' -> Array (glb' lubs glbs t1' t2')
+  | Array t1', (Obj _ as t2') when sub' (array_obj t1') t2' -> t1
+  | (Obj _ as t1'), Array t2' when sub' (array_obj t2') t1' -> t2
+  | Prim Text, (Obj _ as t2') when sub' text_obj t2' -> t1
+  | (Obj _ as t1'), Prim Text when sub' text_obj t1' -> t2
+  (*| Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object lubs glbs tf1 tf2)*)
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 (glb' lubs glbs) ts1 ts2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence *)
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 lub args1 args2, List.map2 glb res1 res2)
-  | t1', t2' when eq t1' t2' -> t1
-  | _ -> Non
+    Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
 
-and glb_object fs1 fs2 = match fs1, fs2 with
+
+  (* Potentially recursive types follow *)
+  | Opt t1', Opt t2' ->
+    let rec o = Opt' i
+    and i = lazy (Printf.printf "ADDING OPT GLB"; glbs := M.add (t1, t2) (Lazy.from_val (unlazy o)) !glbs; glb' lubs glbs t1' t2') in
+    let oo = fixup o in Printf.printf "---> OPT GLB %s\n" (strnonv oo); oo
+  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+    let rec o = Obj' (s1, i)
+    and i = lazy (Printf.printf "GLB ADDING OBJ\n"; glbs := M.add (t1, t2) (Lazy.from_val (unlazy o)) !glbs; glb_object lubs glbs tf1 tf2) in
+    let oo = fixup o in Printf.printf "---> OBJ GLB %s\n" (strnonv oo); oo
+
+  | t1', t2' when eq t1' t2' -> t1
+
+  | _ -> Non
+  end in
+  glbs := M.add (t1, t2) tr !glbs; Lazy.force tr
+
+and glb_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
     begin match compare_field f1 f2 with
-    | 0 -> {lab = f1.lab; typ = glb f1.typ f2.typ}::glb_object fs1' fs2'
-    | 1 -> f2::glb_object fs1 fs2'
-    | _ -> f1::glb_object fs1' fs2
+    | 0 -> {lab = f1.lab; typ = glb' lubs glbs f1.typ f2.typ}::glb_object lubs glbs fs1' fs2'
+    | 1 -> f2::glb_object lubs glbs fs1 fs2'
+    | _ -> f1::glb_object lubs glbs fs1' fs2
     end
 
-and glb_variant fs1 fs2 = match fs1, fs2 with
+and glb_variant lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
   | [], _ -> []
   | f1::fs1', f2::fs2' ->
     begin match compare_summand f1 f2 with
-    | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_variant fs1' fs2'
-    | 1 -> glb_variant fs1 fs2'
-    | _ -> glb_variant fs1' fs2
+    | 0 -> (fst f1, glb' lubs glbs (snd f1) (snd f2))::glb_variant lubs glbs fs1' fs2'
+    | 1 -> glb_variant lubs glbs fs1 fs2'
+    | _ -> glb_variant lubs glbs fs1' fs2
     end
 
 (* Pretty printing *)
@@ -761,7 +863,7 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "VAR<!>")
   | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con vs c)
