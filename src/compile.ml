@@ -2365,7 +2365,8 @@ module Dfinity = struct
   let compile_static_print env s =
       compile_databuf_of_bytes env s ^^
       G.i (Call (nr (E.built_in env "test_print")))
-  let _compile_print_int env =
+
+  let _compile_println_int env =
       G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
       G.i (Call (nr (E.built_in env "test_print"))) ^^
       compile_static_print env "\n"
@@ -2378,10 +2379,23 @@ module Dfinity = struct
   let prim_printInt env =
     if E.mode env = DfinityMode
     then
-      BoxedInt.unbox env ^^
+      (* for now always go the prelude route
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
       G.i (Call (nr (E.built_in env "test_print")))
+       *)
+      let (set_arg, get_arg) = new_local64 env "arg" in
+      match Var.get_val env "@text_of_Int" with
+      | SR.StaticThing (SR.StaticFun fi), code ->
+        set_arg ^^
+        code ^^
+        compile_unboxed_zero ^^ (* A dummy closure *)
+        get_arg ^^
+        BoxedInt.box env ^^
+        G.i (Call (nr fi)) ^^
+        compile_databuf_of_text env ^^
+        G.i (Call (nr (E.built_in env "test_print")))
+      | _ -> assert false;
     else
       G.i Unreachable
 
@@ -4278,7 +4292,7 @@ and compile_exp (env : E.t) exp =
 
        | "printInt" ->
          SR.unit,
-         compile_exp_vanilla env e ^^
+         compile_exp_as env SR.UnboxedInt64 e ^^
          Dfinity.prim_printInt env
        | "print" ->
          SR.unit,
