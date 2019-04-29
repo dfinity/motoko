@@ -8,7 +8,7 @@ type message = record {
 };
 type tree = variant {
   leaf : int;
-  branch : record { left : tree; val : int; right : tree };
+  branch : record { left : func ()->tree; val : int; right : func ()->tree };
 };
 type broker = service {
   find : (name : text) -> 

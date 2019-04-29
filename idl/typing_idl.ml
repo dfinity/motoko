@@ -5,7 +5,7 @@ open Arrange_idl
 (* Environments *)
 
 module Env = Env.Make(String)
-
+           
 (* Error recovery *)
 
 exception Recover
@@ -26,11 +26,13 @@ let empty_scope : scope = Env.empty;
 
 type env =
   { vals : val_env;
+    ref  : bool;
     msgs : Diag.msg_store;
   }
 
 let env_of_scope msgs scope =
   { vals = scope;
+    ref = false;
     msgs;
   }
 
@@ -68,7 +70,8 @@ let typ t_base t = {t_base with it = t}
 let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
 let is_record t = match t.it with RecordT _ -> true | _ -> false
 let is_func t = match t.it with FuncT _ -> true | _ -> false
-let is_serv t = match t.it with ServT _ -> true | _ -> false                                                     
+let is_serv t = match t.it with ServT _ -> true | _ -> false
+let is_pre t = match t.it with PreT -> true | _ -> false                                                     
                     
 let rec check_typ env t =
   let typ' = typ t in
@@ -76,11 +79,18 @@ let rec check_typ env t =
   | PrimT prim -> t
   | VarT id ->
      (match Env.find_opt id.it env.vals with
-     | None -> warn env id.at "unbound type identifier %s" id.it; t
-     | Some t' -> t')
+      | None ->
+         error env id.at "unbound type identifier %s" id.it;
+      | Some t' ->
+         (match (is_pre t', env.ref) with
+         | false, _ -> t'
+         | true, true -> t
+         | true, false ->
+            error env id.at "cyclic type identifier %s at non-reference location" id.it;)
+     )
   | FuncT (ms, t1, t2) ->
      let t1' = check_typ env t1 in
-     let t2' = check_typ env t2 in
+     let t2' = check_typ {env with ref = true} t2 in
      let modes' = List.map (fun m -> m.it) ms in
      if List.mem Pure modes' && List.mem Updatable modes' then
        error env (List.hd ms).at "function mode cannot be pure and update at the same time";
@@ -98,18 +108,21 @@ let rec check_typ env t =
   | VariantT fs ->
      let fs' = check_fields env fs in
      typ' (VariantT (List.sort compare_field fs'))
-  | ServT meths -> typ' (ServT (List.map (check_meth env) meths))
-  | _ -> t
+  | ServT meths -> typ' (ServT (List.map (check_meth {env with ref = true}) meths))
+  | PreT -> assert false
 
 and check_fields env fs =
-  let _, fields = List.fold_left (fun (ids, fields) f ->
-      match List.assoc_opt f.it.id ids with
-        Some name' -> error env f.it.name.at "field name %s hash collision with field %s" f.it.name.it name'
-      | None ->
-         let t' = check_typ env f.it.typ in
-         let f' = typ f {id=f.it.id; name=f.it.name; typ=t'} in
-         (f.it.id, f.it.name.it)::ids, f'::fields
-                    ) ([], []) fs
+  let _, fields =
+    List.fold_left (fun (fenv, fields) f ->
+        let tag_id = Stdint.Uint64.to_string f.it.id in
+        match Env.find_opt tag_id fenv with
+        | Some name' ->
+           error env f.it.name.at "field name %s hash collision with field %s" f.it.name.it name'
+        | None ->
+           let t' = check_typ env f.it.typ in
+           let f' = typ f {id=f.it.id; name=f.it.name; typ=t'} in
+           Env.disjoint_add tag_id f.it.name.it fenv, f'::fields
+      ) (Env.empty, []) fs
   in fields
 
 and check_meth env meth =
@@ -152,7 +165,9 @@ and gather_id dec =
 
 and gather_decs decs =
   List.fold_left (fun ve dec ->
-      Env.add (gather_id dec).it PreT ve
+      let id = gather_id dec in
+      let ve' = Env.singleton id.it {it=PreT; at=id.at; note=Type_idl.Pre} in
+      Env.adjoin ve ve'
     ) Env.empty decs.it
         
         
@@ -163,6 +178,8 @@ let check_prog scope prog : scope Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
+          let init_scope = gather_decs prog in
+          let scope = Env.adjoin scope init_scope in
           let env = env_of_scope msgs scope in
           let res = check_defs env prog in
           res
