@@ -810,29 +810,6 @@ actor server = {
   };
 
   /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   */
-  retailerQueryDates(
-    public_key: PublicKey,
-    id:RetailerId,
-    begin:Date,
-    end:Date
-  ) : async Result<[InventoryInfo],IdErr>
-  {
-    optionResult<[InventoryInfo],IdErr>(
-      getModel().
-        retailerQueryDates(id, begin, end),
-      {#idErr}
-    )
-  };
-
-  /**
    `retailerReserve`
    ---------------------------
    */

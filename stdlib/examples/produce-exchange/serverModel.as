@@ -1486,34 +1486,6 @@ than the MVP goals, however.
     )
   };
 
-  /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   ```
-   let jt = (joinTablesConditionally
-               (routesByDstSrcRegionTable (retailer region))
-               inventoryByRegionTable
-               filterByDateConstraints
-            );
-   ```
-
-   */
-  retailerQueryDates(
-    id:RetailerId,
-    begin:Date,
-    end:Date
-  ) : ?[InventoryInfo]
-  {
-    retailerQueryCount += 1;
-
-    nyi()
-  };
-
 
   /**
    `retailerReserve`
