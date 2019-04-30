@@ -33,7 +33,7 @@ class revrange(x : Nat, y : Nat) {
 
 func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
 
-func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
+func printInt(x : Int) { print (@text_of_Int x) };
 func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
@@ -339,7 +339,6 @@ let prim = function
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
-  | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in
