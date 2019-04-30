@@ -835,13 +835,12 @@ actor server = {
     id: RetailerId,
     list: [(InventoryId, RouteId)]
   )
-    : async Result<[(ReservedInventoryId, ReservedRouteId)], ServerErr>
+    : async Result<[Result<(ReservedInventoryId, ReservedRouteId), ServerErr>], ServerErr>
   {
     if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
       return (#err(#publicKeyErr))
     };
-    getModel().
-      retailerReserveMany(id, list)
+    #ok(getModel().retailerReserveMany(id, list))
   };
 
   /**

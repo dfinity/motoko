@@ -747,7 +747,7 @@ than the MVP goals, however.
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
     //   case null { return null };
-    null
+    nyi()
   };
 
   /**
@@ -1659,7 +1659,7 @@ than the MVP goals, however.
   retailerReserveMany(
     id:RetailerId,
     list:[(InventoryId,RouteId)])
-    : Result<[(ReservedRouteId, ReservedInventoryId)], ServerErr>
+    : [Result<(ReservedRouteId, ReservedInventoryId), ServerErr>]
   {
     let a = Array_init<?(Result<(ReservedRouteId, ReservedInventoryId), ServerErr>)>(
       list.len(),
@@ -1676,7 +1676,7 @@ than the MVP goals, however.
         func(i:Nat):Result<(ReservedRouteId, ReservedInventoryId), ServerErr>{
           unwrap<Result<(ReservedRouteId, ReservedInventoryId), ServerErr>>(a[i])
         });
-    joinArrayIfOk<(ReservedRouteId, ReservedInventoryId), ServerErr>(results)
+    results
   };
 
 };
