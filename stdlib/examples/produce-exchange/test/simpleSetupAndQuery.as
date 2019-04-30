@@ -115,12 +115,12 @@ actor class Test() = this {
 
       /**- remove some of the inventory items added above */
 
-      assertOk(await s.producerRemInventory(pkb, assertUnwrapAny<InventoryId>(prdib)));
+      //assertOk(await s.producerRemInventory(pkd, assertUnwrapAny<InventoryId>(prdib)));
 
       // a double-remove should return null
       //assertErr(await s.producerRemInventory(pkb, assertUnwrapAny<InventoryId>(prdib)));
 
-      assertOk(await s.producerRemInventory(pka, assertUnwrapAny<InventoryId>(praib)));
+      //assertOk(await s.producerRemInventory(pka, assertUnwrapAny<InventoryId>(praib)));
 
       // a double-remove should return null
       //assertErr(await s.producerRemInventory(pka, assertUnwrapAny<InventoryId>(praib)));
@@ -268,14 +268,14 @@ actor class Test() = this {
 
       /**- remove some of the routes added above */
 
-      assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_b_c_tta)));
+      //assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_b_c_tta)));
 
       // a double-remove should return null
       //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_b_c_tta)));
 
       printEntityCount("Route@time2", (await s.getCounts()).route_count);
 
-      assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
+      //assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
 
       // a double-remove should return null
       //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
