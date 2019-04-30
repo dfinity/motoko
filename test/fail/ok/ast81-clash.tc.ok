@@ -1,4 +1,4 @@
-prelude:200.1-225.2: internal error, Env.Make(X).Clash("x")
+prelude:189.1-214.2: internal error, Env.Make(X).Clash("x")
 
 Last environment:
 @new_async = func
