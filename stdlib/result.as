@@ -99,3 +99,20 @@ func optionResult<R,E>(x:?R, err:E):Result<R,E> {
     case null {#err err};
   }
 };
+
+/**
+ `joinArrayIfOk`
+ ---------------
+ a result that consists of an array of Ok results from an array of results, or the first error in the result array, if any.
+*/
+func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
+  /**- return early with the first Err result, if any */
+  for (i in x.keys()) {
+    switch (x[i]) {
+      case (#err e) { return #err(e) };
+      case (#ok _) { };
+    }
+  };
+  /**- all of the results are Ok; tabulate them. */
+  #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
+};

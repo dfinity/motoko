@@ -407,7 +407,6 @@ actor server = {
   };
 
 
-
   /**
    `Retailer`
    ============
@@ -631,12 +630,12 @@ actor server = {
   };
 
   /**
-   `producerReservations`
+   `producerAllReservationInfo`
    ---------------------------
    */
-  producerReservations(public_key: PublicKey, id:ProducerId) : async Result<[ReservedInventoryInfo],IdErr> {
+  producerAllReservationInfo(public_key: PublicKey, id:ProducerId) : async Result<[ReservedInventoryInfo],IdErr> {
     optionResult<[ReservedInventoryInfo],IdErr>(
-      getModel().producerReservations(id),
+      getModel().producerAllReservationInfo(id),
       #idErr
     )
   };
@@ -811,29 +810,6 @@ actor server = {
   };
 
   /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   */
-  retailerQueryDates(
-    public_key: PublicKey,
-    id:RetailerId,
-    begin:Date,
-    end:Date
-  ) : async Result<[InventoryInfo],IdErr>
-  {
-    optionResult<[InventoryInfo],IdErr>(
-      getModel().
-        retailerQueryDates(id, begin, end),
-      {#idErr}
-    )
-  };
-
-  /**
    `retailerReserve`
    ---------------------------
    */
@@ -843,8 +819,28 @@ actor server = {
     inventory:InventoryId,
     route:RouteId) : async Result<(ReservedInventoryId, ReservedRouteId),ServerErr>
   {
+    if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
     getModel().
       retailerReserve(id, inventory, route)
+  };
+
+  /**
+   `retailerReserveMany`
+   ---------------------------
+   */
+  retailerReserveMany(
+    public_key: PublicKey,
+    id: RetailerId,
+    list: [(InventoryId, RouteId)]
+  )
+    : async Result<[Result<(ReservedInventoryId, ReservedRouteId), ServerErr>], ServerErr>
+  {
+    if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    #ok(getModel().retailerReserveMany(id, list))
   };
 
   /**

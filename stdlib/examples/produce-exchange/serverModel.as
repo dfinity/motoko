@@ -747,7 +747,7 @@ than the MVP goals, however.
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
     //   case null { return null };
-    null
+    nyi()
   };
 
   /**
@@ -974,7 +974,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerReservations(id:ProducerId) : ?[ReservedInventoryInfo] {
+  producerAllReservationInfo(id:ProducerId) : ?[ReservedInventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -991,7 +991,6 @@ than the MVP goals, however.
         [reservedInventoryTable.getInfoOfDoc()(doc)]
     )
   };
-
 
    /**
    `Transporter`-facing operations
@@ -1487,44 +1486,197 @@ than the MVP goals, however.
     )
   };
 
-  /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   ```
-   let jt = (joinTablesConditionally
-               (routesByDstSrcRegionTable (retailer region))
-               inventoryByRegionTable
-               filterByDateConstraints
-            );
-   ```
-
-   */
-  retailerQueryDates(
-    id:RetailerId,
-    begin:Date,
-    end:Date
-  ) : ?[InventoryInfo]
-  {
-    retailerQueryCount += 1;
-
-    nyi()
-  };
 
   /**
    `retailerReserve`
    ---------------------------
+
+   ### Ids before/after this operation:
+
+   after this operation, the reserved documents have Ids that are stale/dangling:
+   These old Ids are no longer valid in the master tables; instead, their owners,
+   the created reservation documents, each have a valid id, which this operation returns.
+
   */
   retailerReserve(
-    id:RetailerId,
-    inventory:InventoryId,
-    route:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
+    retailer_id:RetailerId,
+    inventory_id:InventoryId,
+    route_id:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
   {
-    nyi()
+    /** ### validate Ids */
+
+    // xxx -- AS wishlist: macros that expand into case-null-return-#err forms, like below:
+
+    let retailerDocOp = retailerTable.getDoc(retailer_id);
+    let retailerDoc = switch retailerDocOp { case null return #err(#idErr); case (?x) x};
+
+    let routeDocOp = routeTable.getDoc(route_id);
+    let routeDoc = switch routeDocOp { case null return #err(#idErr); case (?x) x};
+
+    let transporterDocOp = transporterTable.getDoc(routeDoc.transporter);
+    let transporterDoc = switch transporterDocOp { case null return #err(#idErr); case (?x) x};
+
+    let inventoryDocOp = inventoryTable.getDoc(inventory_id);
+    let inventoryDoc = switch inventoryDocOp { case null return #err(#idErr); case (?x) x};
+
+    let producerDocOp = producerTable.getDoc(inventoryDoc.producer);
+    let producerDoc = switch producerDocOp { case null return #err(#idErr); case (?x) x};
+
+    /**if no errors in any results above, then continue: */
+
+    /**
+     ### remove resources
+
+     in preparation for _moving_ these resources, begin by removing
+     these reserved resources from the inventory and route tables, as well
+     as from all secondary mappings.  We reuse existing Model operations
+     for these removals.
+
+     */
+
+    assertOk(producerRemInventory(inventory_id));
+    assertOk(transporterRemRoute(route_id));
+
+    /**
+     ### create reservation documents
+
+     These new documents will "own" the removed documents for the
+     reserved resources.
+
+     Note: these owned documents have Ids that are stale/dangling.
+     They are no longer valid in the master tables.  Instead, their owners,
+     reservation documents, have valid ids.
+
+     */
+
+    /**- move route document into reserved route table, and mint an ID. */
+    let (_, reservedRouteDoc) = reservedRouteTable.addDoc(
+      func (rrid:ReservedRouteId):ReservedRouteDoc {
+        new {
+          id=rrid;
+          retailer=retailerDoc.id;
+          route=routeDoc;
+        }
+      }
+    );
+
+    /**- move inventory document into reserved inventory table, and mint an ID. */
+    let (_, reservedInventoryDoc) = reservedInventoryTable.addDoc(
+      func (rrid:ReservedInventoryId):ReservedInventoryDoc {
+        new {
+          id=rrid;
+          retailer=retailerDoc.id;
+          item=inventoryDoc;
+        }
+      }
+    );
+
+    /**
+     ### Update secondary mappings
+
+     add the newly-created reservation documents to reservation
+     collections of producers, transporters and retailers documents:
+
+     */
+    {
+      /**- Update the producer's reserved inventory: */
+
+      let (updatedProducerReserved,_) =
+        Map.insert<ReservedInventoryId,ReservedInventoryDoc>(
+          producerDoc.reserved,
+          keyOf(reservedInventoryDoc.id), idIsEq,
+          reservedInventoryDoc);
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedProducer = new {
+        id=producerDoc.id;
+        public_key=producerDoc.public_key;
+        short_name=producerDoc.short_name;
+        description=producerDoc.description;
+        region=producerDoc.region;
+        inventory=producerDoc.inventory;
+        reserved=updatedProducerReserved; // <-- the only field we are updating
+      };
+
+      assertSome<ProducerDoc>(
+        producerTable.updateDoc( producerDoc.id, updatedProducer )
+      )
+    };
+    {
+      /**- Update the transporter's reserved routes: */
+
+      let (updatedTransporterReserved,_) =
+        Map.insert<ReservedRouteId,ReservedRouteDoc>(
+          transporterDoc.reserved,
+          keyOf(reservedRouteDoc.id), idIsEq,
+          reservedRouteDoc);
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedTransporter = new {
+        id=transporterDoc.id;
+        public_key=transporterDoc.public_key;
+        short_name=transporterDoc.short_name;
+        description=transporterDoc.description;
+        routes=transporterDoc.routes;
+        reserved=updatedTransporterReserved; // <-- the only field we are updating
+      };
+
+      assertSome<TransporterDoc>(
+        transporterTable.updateDoc( transporterDoc.id, updatedTransporter )
+      )
+    };
+    {
+      /**- Update the retailer's reserved routes and inventory: */
+
+      let (updatedRetailerReserved,_) =
+        Map.insert<ReservedInventoryId, (ReservedInventoryDoc, ReservedRouteDoc)>(
+          retailerDoc.reserved,
+          keyOf(reservedInventoryDoc.id), idIsEq,
+          (reservedInventoryDoc, reservedRouteDoc));
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedRetailer = new {
+        id=retailerDoc.id;
+        public_key=retailerDoc.public_key;
+        short_name=retailerDoc.short_name;
+        description=retailerDoc.description;
+        region=retailerDoc.region;
+        reserved=updatedRetailerReserved; // <-- the only field we are updating
+      };
+
+      assertSome<RetailerDoc>(
+        retailerTable.updateDoc( retailerDoc.id, updatedRetailer )
+      )
+    };
+
+    return #ok (reservedRouteDoc.id, reservedInventoryDoc.id)
+  };
+
+  /**
+   `retailerReserveMany`
+   ---------------------------
+  */
+  retailerReserveMany(
+    id:RetailerId,
+    list:[(InventoryId,RouteId)])
+    : [Result<(ReservedRouteId, ReservedInventoryId), ServerErr>]
+  {
+    let a = Array_init<?(Result<(ReservedRouteId, ReservedInventoryId), ServerErr>)>(
+      list.len(),
+      null
+    );
+    for (i in (range(0,list.len()))) {
+      let (item, route) = list[i];
+      let x = retailerReserve(id, item, route);
+      a[i] := ?x;
+    };
+    let results =
+      Array_tabulate<Result<(ReservedRouteId, ReservedInventoryId), ServerErr>>(
+        list.len(),
+        func(i:Nat):Result<(ReservedRouteId, ReservedInventoryId), ServerErr>{
+          unwrap<Result<(ReservedRouteId, ReservedInventoryId), ServerErr>>(a[i])
+        });
+    results
   };
 
 };
