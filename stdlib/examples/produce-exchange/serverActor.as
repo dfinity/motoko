@@ -673,7 +673,7 @@ actor server = {
 
   /**
    `getInventoryInfo`
-   ---------------------------b
+   ---------------------------
    Get the information associated with inventory, based on its id.
    */
   getInventoryInfo(id:InventoryId) : async Result<InventoryInfo,IdErr> {
