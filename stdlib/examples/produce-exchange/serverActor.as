@@ -407,7 +407,6 @@ actor server = {
   };
 
 
-
   /**
    `Retailer`
    ============
@@ -631,12 +630,12 @@ actor server = {
   };
 
   /**
-   `producerReservations`
+   `producerAllReservationInfo`
    ---------------------------
    */
-  producerReservations(public_key: PublicKey, id:ProducerId) : async Result<[ReservedInventoryInfo],IdErr> {
+  producerAllReservationInfo(public_key: PublicKey, id:ProducerId) : async Result<[ReservedInventoryInfo],IdErr> {
     optionResult<[ReservedInventoryInfo],IdErr>(
-      getModel().producerReservations(id),
+      getModel().producerAllReservationInfo(id),
       #idErr
     )
   };

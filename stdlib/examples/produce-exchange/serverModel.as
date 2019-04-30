@@ -974,7 +974,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerReservations(id:ProducerId) : ?[ReservedInventoryInfo] {
+  producerAllReservationInfo(id:ProducerId) : ?[ReservedInventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -991,7 +991,6 @@ than the MVP goals, however.
         [reservedInventoryTable.getInfoOfDoc()(doc)]
     )
   };
-
 
    /**
    `Transporter`-facing operations
