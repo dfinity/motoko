@@ -39,7 +39,7 @@
 ##         when it can force you (the programmer) to do something only 
 ##         somewhat annoying, e.g.:
 ##
-##     - KISS: Dont mix mode-switch patterns and other ActorScript comments  on a single line##
+##     - KISS: Dont mix mode-switch patterns and other ActorScript comments  on a single line
 ##     - KISS: Dont mix mode switches on a single line.
 ##
 

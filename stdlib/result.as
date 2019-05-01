@@ -1,3 +1,5 @@
+let P = (import "prelude.as");
+
 /**
 
  Result
@@ -17,17 +19,6 @@ type Result<Ok,Err> = {
 };
 
 
-/**
- `unwrapOptionResult`
- ---------------
- to do: rename me. cc @paulyoung.
-*/
-func optionUnwrapResult<Ok>(o:?Ok):Result<Ok,None> {
-  switch(o) {
-    case (?o) (#ok o);
-    case _ unreachable();
-  }
-};
 
 /**
  `assertUnwrap`
@@ -36,7 +27,7 @@ func optionUnwrapResult<Ok>(o:?Ok):Result<Ok,None> {
 */
 func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
   switch(r) {
-    case (#err e) unreachable();
+    case (#err e) P.unreachable();
     case (#ok r) r;
   }
 };
@@ -47,7 +38,7 @@ func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
  */
 func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
   switch(r) {
-    case (#err e) unreachable();
+    case (#err e) P.unreachable();
     case (#ok r) r;
   }
 };
@@ -89,14 +80,26 @@ func bind<R1,R2,Error>(
 };
 
 /**
- `option`
- -------
+ `fromOption`
+ --------------
  create a result from an option, including an error value to handle the `null` case.
 */
-func optionResult<R,E>(x:?R, err:E):Result<R,E> {
+func fromOption<R,E>(x:?R, err:E):Result<R,E> {
   switch x {
     case (? x) {#ok x};
     case null {#err err};
+  }
+};
+
+/**
+ `fromSome`
+ ---------------
+ asserts that the option is Some(_) form.
+*/
+func fromSome<Ok>(o:?Ok):Result<Ok,None> {
+  switch(o) {
+    case (?o) (#ok o);
+    case _ P.unreachable();
   }
 };
 
