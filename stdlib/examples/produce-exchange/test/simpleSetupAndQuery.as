@@ -315,14 +315,14 @@ actor class Test() = this {
 
       print "\nAuthentication test:\n====================================\n";
 
-      print "\npk a == uid a: ";
-      print (debug_show (await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uida))));
-      print "\npk b == uid b: ";
-      print (debug_show (await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uidb))));
-      print "\npk a == uid b: ";
-      print (debug_show (await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uidb))));
-      print "\npk b == uid a: ";
-      print (debug_show (await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uida))));
+      print "\npk a == uid a";
+      assert(await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uida)));
+      print "\npk b == uid b";
+      assert(await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uidb)));
+      print "\npk a != uid b";
+      assert(not(await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uidb))));
+      print "\npk b != uid a";
+      assert(not(await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uida))));
 
       //////////////////////////////////////////////////////////////////
       // xxx --- todo: separate test(s) for expected failures
