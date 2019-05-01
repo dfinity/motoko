@@ -59,7 +59,7 @@ actor server {
  Register a new user, who may play several roles in the exchange.
 
  The given `user_name` must be unique to the exchange; the operation fails otherwise.
- 
+
  */
 
   registrarAddUser(
@@ -84,7 +84,7 @@ actor server {
         isTransporter
       ),
       {#idErr}
-    )   
+    )
   };
 
   /**
@@ -106,6 +106,15 @@ actor server {
       getModel().userTable.getInfo(id),
       {#idErr}
     )
+  };
+
+  /**
+   `validateUser`
+   ---------------------------
+   Returns true if the user id matches the public key.
+   */
+  validateUser(public_key: T.PublicKey, id: T.UserId) : async Bool {
+    getModel().isValidPublicKey(#user(id), public_key);
   };
 
  /**
@@ -132,14 +141,14 @@ actor server {
       getModel()
         .truckTypeTable.addInfoGetId(
         func (id_:T.TruckTypeId) : T.TruckTypeInfo =
-          
+
           // xxx: AS should have more concise syntax for this pattern, below:
           // two problems I see, that are separate:
           // 1: repeating the label/variable name, which is the same in each case, twice.
           // 2: explicit type annotations, because of "type error, cannot infer type of forward variable ..."
           //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
           //    and, the type of each of these `variables` is known, as well.
-          
+
           shared {
             id=id_ :T.TruckTypeId;
             short_name=short_name_:Text;
@@ -162,7 +171,7 @@ actor server {
     Result.fromOption<(),T.IdErr>(
       getModel().truckTypeTable.remGetUnit(id),
       {#idErr}
-    )    
+    )
   };
 
   /**
@@ -401,7 +410,7 @@ actor server {
     Result.fromOption<T.ProducerInfo,T.IdErr>(
       getModel().producerTable.getInfo(id),
       {#idErr}
-    )  
+    )
   };
 
   /**
@@ -409,7 +418,7 @@ actor server {
    ---------------------
    */
 
-  allProducerInfo() : async [T.ProducerInfo] {    
+  allProducerInfo() : async [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -461,7 +470,7 @@ actor server {
     Result.fromOption<(),T.IdErr>(
       getModel().retailerTable.remGetUnit(id),
       {#idErr}
-    )    
+    )
   };
 
   /**
