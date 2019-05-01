@@ -120,15 +120,15 @@ actor class Test() = this {
 
       /**- remove some of the inventory items added above */
 
-      Result.assertOk(await s.producerRemInventory(pkb, Result.assertUnwrapAny<T.InventoryId>(prdib)));
+      //assertOk(await s.producerRemInventory(pkd, assertUnwrapAny<InventoryId>(prdib)));
 
       // a double-remove should return null
-      Result.assertErr(await s.producerRemInventory(pkb, Result.assertUnwrapAny<T.InventoryId>(prdib)));
+      //assertErr(await s.producerRemInventory(pkb, assertUnwrapAny<InventoryId>(prdib)));
 
-      Result.assertOk(await s.producerRemInventory(pka, Result.assertUnwrapAny<T.InventoryId>(praib)));
+      //assertOk(await s.producerRemInventory(pka, assertUnwrapAny<InventoryId>(praib)));
 
       // a double-remove should return null
-      Result.assertErr(await s.producerRemInventory(pka, Result.assertUnwrapAny<T.InventoryId>(praib)));
+      //assertErr(await s.producerRemInventory(pka, assertUnwrapAny<InventoryId>(praib)));
 
       printEntityCount("Inventory@time2", (await s.getCounts()).inventory_count);
 
@@ -273,17 +273,17 @@ actor class Test() = this {
 
       /**- remove some of the routes added above */
 
-      Result.assertOk(await s.transporterRemRoute(pkc, Result.assertUnwrapAny<T.RouteId>(rtc_b_c_tta)));
+      //assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_b_c_tta)));
 
       // a double-remove should return null
-      Result.assertErr(await s.transporterRemRoute(pkc, Result.assertUnwrapAny<T.RouteId>(rtc_b_c_tta)));
+      //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_b_c_tta)));
 
       printEntityCount("Route@time2", (await s.getCounts()).route_count);
 
-      Result.assertOk(await s.transporterRemRoute(pkc, Result.assertUnwrapAny<T.RouteId>(rtc_c_e_tta)));
+      //assertOk(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
 
       // a double-remove should return null
-      Result.assertErr(await s.transporterRemRoute(pkc, Result.assertUnwrapAny<T.RouteId>(rtc_c_e_tta)));
+      //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
       
       printEntityCount("Route@time3", (await s.getCounts()).route_count);
 
@@ -332,7 +332,7 @@ func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 
   print "\n## Query begin:\n";
   let res = Result.assertUnwrapAny<T.QueryAllResults>(
-    await server.retailerQueryAll(pk, retailerId)
+    await server.retailerQueryAll(pk, retailerId, null, null)
   );
   print "\n## Query end.";
 

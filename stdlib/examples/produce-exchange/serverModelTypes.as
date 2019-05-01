@@ -180,6 +180,7 @@ type ProduceTable =
 
 type ProducerDoc = {
   id : T.ProducerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionDoc;
@@ -251,6 +252,7 @@ type ReservedInventoryMap =
 
 type RetailerDoc = {
   id : T.RetailerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionDoc;
@@ -273,6 +275,7 @@ type ByProduceByRegionInventoryReservationMap =
 
 type TransporterDoc = {
   id : T.TransporterId;
+  public_key: Text;
   // no region; the transporters are the supply of routes, not "end
   // points" of any single route.
   short_name : Text;

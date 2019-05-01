@@ -127,8 +127,8 @@ actor class Server () {
     capacity_ : T.Weight,
     isFridge_ : Bool,
     isFreezer_ : Bool,
-  ) : async Result<T.TruckTypeId, ()> {
-    Result.fromOption<T.TruckTypeId,()>(
+  ) : async Result<T.TruckTypeId,None> {
+    Result.fromSome<T.TruckTypeId>(
       getModel()
         .truckTypeTable.addInfoGetId(
         func (id_:T.TruckTypeId) : T.TruckTypeInfo =
@@ -147,8 +147,7 @@ actor class Server () {
             capacity=capacity_:T.Weight;
             isFridge=isFridge_:Bool;
             isFreezer=isFreezer_:Bool;
-          }),
-      ()
+          })
     )
   };
 
@@ -207,16 +206,15 @@ actor class Server () {
   registrarAddRegion(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<T.RegionId,()> {
-    Result.fromOption<T.RegionId,()>(
+  ) : async Result<T.RegionId,None> {
+    Result.fromSome<T.RegionId>(
       getModel().regionTable.addInfoGetId(
         func (id_:T.RegionId) : T.RegionInfo =
           shared {
             id = id_:T.RegionId;
             short_name=short_name_:Text;
             description=description_:Text
-          }),
-      ()
+          })
     )
   };
 
@@ -285,8 +283,8 @@ actor class Server () {
     short_name_:  Text,
     description_: Text,
     grade_: T.Grade,
-  ) : async Result<T.ProduceId,()> {
-    Result.fromOption<T.ProduceId,()>(
+  ) : async Result<T.ProduceId,None> {
+    Result.fromSome<T.ProduceId>(
       getModel().produceTable.addInfoGetId(
         func (id_:T.ProduceId) : T.ProduceInfo =
           shared {
@@ -294,8 +292,7 @@ actor class Server () {
             short_name=short_name_:Text;
             description=description_:Text;
             grade=grade_:T.Grade
-          }),
-      ()
+          })
     )
   };
 
@@ -354,6 +351,7 @@ actor class Server () {
    */
 
   registrarAddProducer(
+    producer_public_key : T.PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: T.RegionId,
@@ -363,6 +361,7 @@ actor class Server () {
         func(id_:T.ProducerId):T.ProducerInfo {
           shared {
             id=id_:T.ProducerId;
+            public_key=producer_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             region=region_:T.RegionId;
@@ -415,7 +414,6 @@ actor class Server () {
   };
 
 
-
   /**
    `Retailer`
    ============
@@ -430,6 +428,7 @@ actor class Server () {
    */
 
   registrarAddRetailer(
+    retailer_public_key : T.PublicKey,
     short_name_:  Text,
     description_: Text,
     region_: T.RegionId,
@@ -439,6 +438,7 @@ actor class Server () {
         func(id_:T.RetailerId):T.RetailerInfo {
           shared {
             id=id_:T.RetailerId;
+            public_key=retailer_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             region=region_:T.RegionId
@@ -500,6 +500,7 @@ actor class Server () {
 
    */
   registrarAddTransporter(
+    transporter_public_key: T.PublicKey,
     short_name_:  Text,
     description_: Text,
   ) : async Result<T.TransporterId,()> {
@@ -508,6 +509,7 @@ actor class Server () {
         func(id_:T.TransporterId):T.TransporterInfo {
           shared {
             id=id_:T.TransporterId;
+            public_key=transporter_public_key;
             short_name=short_name_:Text;
             description=description_:Text;
             routes=[];
@@ -571,7 +573,7 @@ actor class Server () {
    */
   producerAddInventory(
     public_key: T.PublicKey,
-    id:   T.UserId,
+    id:   T.ProducerId,
     prod: T.ProduceId,
     quant:T.Quantity,
     weight:T.Weight,
@@ -580,9 +582,12 @@ actor class Server () {
     end:  T.Date,
     comments: Text,
   ) : async Result<T.InventoryId,T.ServerErr> {
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
     getModel().
       producerAddInventory(
-        public_key, null, id, prod, quant, weight, ppu, begin, end, comments)
+        null, id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**
@@ -593,7 +598,7 @@ actor class Server () {
   producerUpdateInventory(
     public_key: T.PublicKey,
     iid:  T.InventoryId,
-    id:   T.UserId,
+    id:   T.ProducerId,
     prod: T.ProduceId,
     quant:T.Quantity,
     weight:T.Weight,
@@ -602,9 +607,12 @@ actor class Server () {
     end:  T.Date,
     comments: Text,
   ) : async Result<(),T.ServerErr> {
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
     getModel().
       producerUpdateInventory(
-        public_key, iid, id, prod, quant, weight, ppu, begin, end, comments)
+        iid, id, prod, quant, weight, ppu, begin, end, comments)
   };
 
   /**
@@ -612,8 +620,10 @@ actor class Server () {
    ---------------------------
    */
   producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : async Result<(),T.ServerErr> {
-    getModel()
-      .producerRemInventory(public_key, id)
+    if (not getModel().isValidPublicKey(#producer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().producerRemInventory(id)
   };
 
   /**
@@ -623,19 +633,19 @@ actor class Server () {
   producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.InventoryInfo],T.IdErr> {
     Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel()
-        .producerAllInventoryInfo(public_key, id),
+        .producerAllInventoryInfo(id),
       {#idErr}
     )
   };
 
   /**
-   `producerReservations`
+   `producerAllReservationInfo`
    ---------------------------
    */
   producerReservations(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedInventoryInfo],T.IdErr> {
     Result.fromOption<[T.ReservedInventoryInfo],T.IdErr>(
       getModel()
-        .producerReservations(public_key, id),
+        .producerAllReservationInfo(id),
       {#idErr}
     )
   };
@@ -656,7 +666,7 @@ actor class Server () {
   produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : async Result<[T.ProduceMarketInfo],T.IdErr> {
     Result.fromOption<[T.ProduceMarketInfo],T.IdErr>(
       getModel()
-        .produceMarketInfo(public_key, id, reg),
+        .produceMarketInfo(id, reg),
       {#idErr}
     )
   };
@@ -697,7 +707,7 @@ actor class Server () {
    */
   transporterAddRoute(
     public_key: T.PublicKey,
-    id:  T.UserId,
+    id:     T.TransporterId,
     rstart: T.RegionId,
     rend:   T.RegionId,
     start:  T.Date,
@@ -705,7 +715,10 @@ actor class Server () {
     cost:   T.Price,
     ttid:   T.TruckTypeId
   ) : async Result<T.RouteId,T.ServerErr> {
-    getModel().transporterAddRoute(public_key, null, id, rstart, rend, start, end, cost, ttid)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterAddRoute(null, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -715,7 +728,7 @@ actor class Server () {
   transporterUpdateRoute(
     public_key: T.PublicKey,
     route:  T.RouteId,
-    id:  T.UserId,
+    id:     T.TransporterId,
     rstart: T.RegionId,
     rend:   T.RegionId,
     start:  T.Date,
@@ -723,7 +736,10 @@ actor class Server () {
     cost:   T.Price,
     ttid:   T.TruckTypeId
   ) : async Result<(),T.ServerErr> {
-    getModel().transporterUpdateRoute(public_key, route, id, rstart, rend, start, end, cost, ttid)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterUpdateRoute(route, id, rstart, rend, start, end, cost, ttid)
   };
 
   /**
@@ -731,8 +747,10 @@ actor class Server () {
    ---------------------------
    */
   transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : async Result<(),T.ServerErr> {
-      getModel()
-        .transporterRemRoute(public_key, id)
+    if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().transporterRemRoute(id)
   };
 
   /**
@@ -742,7 +760,7 @@ actor class Server () {
   transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.RouteInfo],T.IdErr> {
     Result.fromOption<[T.RouteInfo],T.IdErr>(
       getModel()
-        .transporterAllRouteInfo(public_key, id),
+        .transporterAllRouteInfo(id),
       {#idErr}
     )
   };
@@ -754,7 +772,7 @@ actor class Server () {
   transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedRouteInfo],T.IdErr> {
     Result.fromOption<[T.ReservedRouteInfo],T.IdErr>(
       getModel()
-        .transporterAllReservationInfo(public_key, id),
+        .transporterAllReservationInfo(id),
       {#idErr}
     )
   };
@@ -793,36 +811,14 @@ actor class Server () {
    `retailerQueryAll`
    ---------------------------
 
-   TODO-Cursors (see above).
-
    */
-  retailerQueryAll(public_key: T.PublicKey, id:T.UserId) : async Result<T.QueryAllResults,T.IdErr> {
+  retailerQueryAll(public_key: T.PublicKey, id:T.RetailerId,
+                   queryProduce:?T.ProduceId,
+                   queryDate:?T.Date
+  ) : async Result<T.QueryAllResults,T.IdErr> {
     Result.fromOption<T.QueryAllResults,T.IdErr>(
       getModel().
-        retailerQueryAll(public_key, id),
-      {#idErr}
-    )
-  };
-
-  /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   */
-  retailerQueryDates(
-    public_key: T.PublicKey,
-    id:T.UserId,
-    begin:T.Date,
-    end:T.Date
-  ) : async Result<[T.InventoryInfo],T.IdErr>
-  {
-    Result.fromOption<[T.InventoryInfo],T.IdErr>(
-      getModel().
-        retailerQueryDates(public_key, id, begin, end),
+        retailerQueryAll(id, queryProduce, queryDate),
       {#idErr}
     )
   };
@@ -833,33 +829,48 @@ actor class Server () {
    */
   retailerReserve(
     public_key: T.PublicKey,
-    id:T.UserId,
+    id:T.RetailerId,
     inventory:T.InventoryId,
-    route:T.RouteId) : async Result<(T.ReservedInventoryId, T.ReservedRouteId),()>
+    route:T.RouteId) : async Result<(T.ReservedInventoryId, T.ReservedRouteId),T.ServerErr>
   {
-    Result.fromOption<(T.ReservedInventoryId, T.ReservedRouteId),()>(
-      getModel().
-        retailerReserve(public_key, id, inventory, route),
-      ()
-    )
+    if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    getModel().
+      retailerReserve(id, inventory, route)
+  };
+
+  /**
+   `retailerReserveMany`
+   ---------------------------
+   */
+  retailerReserveMany(
+    public_key: T.PublicKey,
+    id: T.RetailerId,
+    list: [(T.InventoryId, T.RouteId)]
+  )
+    : async Result<[Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>], T.ServerErr>
+  {
+    if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
+      return (#err(#publicKeyErr))
+    };
+    #ok(getModel().retailerReserveMany(id, list))
   };
 
   /**
    `retailerReservations`
    ---------------------------
 
-   TODO-Cursors (see above).
-
-   */
-  retailerReservations(public_key: T.PublicKey, id:T.UserId) :
+  */
+  retailerReservations(public_key: T.PublicKey, id:T.RetailerId) :
     async Result<[(T.ReservedInventoryInfo,
-                   T.ReservedRouteInfo)],()>
+                   T.ReservedRouteInfo)],T.ServerErr>
   {
     Result.fromOption<[(T.ReservedInventoryInfo,
-                   T.ReservedRouteInfo)],()>(
+                   T.ReservedRouteInfo)],T.ServerErr>(
       getModel().
-        retailerAllReservationInfo(public_key, id),
-      ()
+        retailerAllReservationInfo(id),
+      #idErr
     )
   };
 

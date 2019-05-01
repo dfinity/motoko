@@ -18,6 +18,8 @@ type Result<Ok,Err> = {
   #err:Err;
 };
 
+
+
 /**
  `assertUnwrap`
  ---------------
@@ -47,7 +49,7 @@ func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
 */
 func assertOk(r:Result<Any,Any>) {
   switch(r) {
-    case (#err _) P.unreachable();
+    case (#err _) assert false;
     case (#ok _) ();
   }
 };
@@ -59,7 +61,7 @@ func assertOk(r:Result<Any,Any>) {
 func assertErr(r:Result<Any,Any>) {
   switch(r) {
     case (#err _) ();
-    case (#ok _) P.unreachable();
+    case (#ok _) assert false;
   }
 };
 
@@ -87,4 +89,33 @@ func fromOption<R,E>(x:?R, err:E):Result<R,E> {
     case (? x) {#ok x};
     case null {#err err};
   }
-}
+};
+
+/**
+ `fromSome`
+ ---------------
+ asserts that the option is Some(_) form.
+*/
+func fromSome<Ok>(o:?Ok):Result<Ok,None> {
+  switch(o) {
+    case (?o) (#ok o);
+    case _ P.unreachable();
+  }
+};
+
+/**
+ `joinArrayIfOk`
+ ---------------
+ a result that consists of an array of Ok results from an array of results, or the first error in the result array, if any.
+*/
+func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
+  /**- return early with the first Err result, if any */
+  for (i in x.keys()) {
+    switch (x[i]) {
+      case (#err e) { return #err(e) };
+      case (#ok _) { };
+    }
+  };
+  /**- all of the results are Ok; tabulate them. */
+  #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
+};
