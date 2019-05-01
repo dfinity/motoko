@@ -199,6 +199,7 @@ rule token mode = parse
   | "if" { IF }
   | "in" { IN }
   | "import" { IMPORT }
+  | "module" { MODULE }
   | "new" { NEW }
   | "not" { NOT }
   | "null" { NULL }

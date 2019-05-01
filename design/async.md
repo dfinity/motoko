@@ -1,6 +1,6 @@
 # Lowering Async (following C\# async/await)
 
-Assuming a promise like interface:
+Assuming a promise-like interface:
 
 ```
 class Async<T>(){
@@ -35,11 +35,10 @@ The async expression (typically a block) is lowered to a block that
 
 The state machine is function `SM():()` that:
 - enters a loop that switches on the current value of `s` to resume the machine from the next state.
-- pause the state machine (at an `await`) by first advancing `s` to the next logical state and returning from `SM()` (thus  exiting the loop, too).
-- returning a value `t` from the async block (whether implicitly  or explicity), sets the result of `a` (`a.setresult(t)`)
+- pauses the state machine (at an `await`) by first advancing `s` to the next logical state and returning from `SM()` (thus exiting the loop, too).
+- returning a value `t` from the async block (whether implicitly or explicity), sets the result of `a` (`a.setresult(t)`)
 
 Here's a manual translation of the example above.
-
 
 ```
 {
@@ -71,7 +70,7 @@ a_0;
 }
 ```
 
-C# actually has an optimization that allows one to  test whether an awaited async  is already complete (Async<T>.IsCompleted:()->Bool) and continue the loop,
+C# actually has an optimization that allows one to test whether an awaited async is already complete (Async<T>.IsCompleted:()->Bool) and continue the loop,
 avoiding the cost of scheduling a continuation, but that's a local optimization we could do too.
 
 ## Example 2 (with strutured control flow)
@@ -85,7 +84,7 @@ Roughly:
 ```
 async () {
  while (await f())
-   await g()   
+   await g()
 }
 ```
 
@@ -135,18 +134,20 @@ func SM():(){
   case 1 :
     b = a_1.result;
     if (b) then { state = 2; continue loop };
-    else {state = 3; continue loop;} 
+    else {state = 3; continue loop;}
     s = 2;
     let a2 = g();
     a2.continuewith(SM);
     return;
   case 2:
-    {state = 0;
-     continue loop;} 
+    {
+       state = 0;
+       continue loop;
+    }
   case 3:
     {
-     state = 4;
-     continue loop;
+       state = 4;
+       continue loop;
     }
   case 4;
     {
@@ -158,8 +159,3 @@ SM();
 a_0;
 }
 ```
-
-
-
-
-

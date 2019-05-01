@@ -88,7 +88,7 @@ module Transform() = struct
     | T.Variant cts -> T.(Variant (map_constr_typ t_typ cts))
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
     | T.Mut t -> T.Mut (t_typ t)
-
+    | T.Kind(c,k) -> T.Kind(t_con c, t_kind k) (* TBR *)
     | T.Serialized t -> assert false (* This transformation should only run once *)
     | T.Async t -> assert false (* Should happen after async-translation *)
 
@@ -245,6 +245,8 @@ module Transform() = struct
       pat
     | TupP pats ->
       TupP (List.map t_pat pats)
+    | ObjP pfs ->
+      ObjP (map_obj_pat t_pat pfs)
     | OptP pat1 ->
       OptP (t_pat pat1)
     | VariantP (id, pat1) ->

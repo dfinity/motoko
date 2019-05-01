@@ -98,7 +98,7 @@ let share_expfield (ef : exp_field) =
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
-%token IMPORT
+%token IMPORT MODULE
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
@@ -137,8 +137,8 @@ let share_expfield (ef : exp_field) =
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
-%start<Syntax.prog> parse_prog
-%start<Syntax.prog> parse_prog_interactive
+%start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -195,6 +195,13 @@ seplist(X, SEP) :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED { Type.Sharable @@ at $sloc }
 
+(* paths *)
+
+path :
+  | x=id
+    { IdH x @! at $sloc }
+  | p=path DOT x=id
+    { DotH (p, x) @! at $sloc }
 
 (* Types *)
 
@@ -215,6 +222,8 @@ typ_nullary :
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
   | x=id tso=typ_args?
     { VarT(x, Lib.Option.get tso []) @! at $sloc }
+  | p=path DOT x=id tso=typ_args?
+    { PathT(p, x, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
@@ -351,8 +360,6 @@ exp_nullary :
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | i=variant_tag
-    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
@@ -376,6 +383,8 @@ exp_post :
 exp_un :
   | e=exp_post
     { e }
+  | i=variant_tag
+    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -495,21 +504,27 @@ exp_field :
 
 (* Patterns *)
 
-pat_nullary :
+pat_argument :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
-  | i=variant_tag
-    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
+pat_nullary :
+  | p=pat_argument
+    { p }
+  | LCURLY fps=seplist(pat_field, semicolon) RCURLY
+    { ObjP(fps) @! at $sloc }
 
 pat_un :
   | p=pat_nullary
     { p }
+  | i=variant_tag
+    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit
@@ -534,6 +549,12 @@ return_typ :
 
 return_typ_nullary :
   | COLON t=typ_nullary { t }
+
+pat_field :
+  | x=id
+    { {id = x; pat = VarP x @! x.at} @@ at $sloc }
+  | x=id EQ p=pat
+    { {id = x; pat = p} @@ at $sloc }
 
 
 (* Declarations *)
@@ -565,13 +586,16 @@ dec_nonvar :
   | s=shared_opt FUNC xf=id_opt fe=func_exp
     { let named, x = xf "func" $sloc in
       let_or_exp named x (fe s x.it).it (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_nullary xefs=class_body
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Object Type.Local
         then efs
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
+  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
+    { let _named, id = xf "module" $sloc in
+      ModuleD(id, ds) @? at $sloc }
 
 dec :
   | d=dec_var
@@ -582,7 +606,7 @@ dec :
     { ExpD e @? at $sloc }
 
 func_exp :
-  | tps=typ_params_opt p=pat_nullary rt=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_argument rt=return_typ? fb=func_body
     { let t = Lib.Option.get rt (TupT([]) @! no_region) in
       (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
@@ -611,9 +635,11 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+  | ds=seplist(dec, semicolon) EOF
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
+  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 %%

@@ -4,7 +4,17 @@ module I = Ir
 module T = Type
 open Construct
 
-(* Combinators used in the desguaring *)
+(*
+As a first scaffolding, we translate imported files into let-bound
+variables with a special, non-colliding name, which we sometimes
+want to recognize for better user experience.
+*)
+
+let id_of_full_path (fp : string) : Syntax.id =
+  let open Source in
+  ("file$" ^ fp) @@ no_region
+
+(* Combinators used in the desugaring *)
 
 let trueE : Ir.exp = boolE true
 let falseE : Ir.exp = boolE false
@@ -62,9 +72,13 @@ and exp' at note = function
     let args, wrap = to_args cc p in
     I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
-    let cc = Value.call_conv_of_typ e1.Source.note.S.note_typ in
-    let inst = List.map (fun t -> t.Source.note) inst in
-    I.CallE (cc, exp e1, inst, exp e2)
+    let t = e1.Source.note.S.note_typ in
+    if Type.is_non t
+    then unreachableE.it
+    else
+      let cc = Value.call_conv_of_typ t in
+      let inst = List.map (fun t -> t.Source.note) inst in
+      I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (Type.is_unit note.S.note_typ) ds)
@@ -86,23 +100,25 @@ and exp' at note = function
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, fp) ->
     if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (Syntax.id_of_full_path !fp)
+    I.VarE (id_of_full_path !fp)
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | Type.Object _ -> build_obj at s self_id es obj_typ
+  | Type.Object _ | T.Module -> build_obj at s self_id es obj_typ
   | Type.Actor -> build_actor at self_id es obj_typ
+
+and build_field {Type.lab; Type.typ} =
+  { it = { I.name = I.Name lab @@ no_region
+         ; I.var = lab @@ no_region
+         }
+  ; at = no_region
+  ; note = typ
+  }
 
 and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map (fun {Type.lab; Type.typ} ->
-        { it = { I.name = I.Name lab @@ no_region
-               ; I.var = lab @@ no_region
-               }
-        ; at = no_region
-        ; note = typ
-        }) fields
+      List.map build_field fields
     | _ -> assert false
 
 and build_actor at self_id es obj_typ =
@@ -145,6 +161,8 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+  | false, S.ModuleD (x, _) ->
+    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
 
@@ -206,6 +224,24 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
+  | S.ModuleD(id, ds) ->
+    (build_module id ds (n.S.note_typ)).it
+
+
+and field_typ_to_obj_entry (f: T.field) =
+  match f.T.typ with
+  | T.Kind _ -> []
+  | _ -> [ build_field f ]
+
+and build_module id ds typ =
+  let self = idE id typ in
+  let (s, fs) = T.as_obj typ in
+  letD self
+    (blockE
+       (decs ds)
+       (newObjE T.Module
+          (List.concat (List.map field_typ_to_obj_entry fs)) typ));
+          (* ^^^^ TBR: do these need to be sorted? *)
 
 and cases cs = List.map case cs
 
@@ -223,11 +259,17 @@ and pat' = function
   | S.LitP l -> I.LitP !l
   | S.SignP (o, l) -> I.LitP (apply_sign o !l)
   | S.TupP ps -> I.TupP (pats ps)
+  | S.ObjP pfs ->
+    I.ObjP (pat_fields pfs)
   | S.OptP p -> I.OptP (pat p)
   | S.VariantP (i, p) -> I.VariantP (i, pat p)
   | S.AltP (p1, p2) -> I.AltP (pat p1, pat p2)
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
+
+and pat_fields pfs = List.map pat_field pfs
+
+and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
@@ -292,7 +334,51 @@ and prog (p : Syntax.prog) : Ir.prog =
     ; I.serialized = false
     }
 
-(* validation *)
 
-let transform scope p = prog p
+let declare_import imp_env (f, (prog:Syntax.prog))  =
+  let open Source in
+  let t = Type.Env.find f imp_env in
+  let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
+  match prog.it with
+  |  [{it = Syntax.ExpD _;_}] ->
+     { it = Syntax.LetD
+              (
+                { it = Syntax.VarP (id_of_full_path f)
+                ; at = no_region
+                ; note = t
+                }
+              , { it = Syntax.BlockE prog.it
+                ; at = no_region
+                ; note = typ_note
+                }
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
+  (* HACK: to be removed once we support module expressions *)
+  |  ds ->
+     { it = Syntax.ModuleD
+              (  id_of_full_path f
+               , ds
+              )
+     ; at = no_region
+     ; note = typ_note
+     }
+
+
+let combine_files imp_env libraries progs : Syntax.prog =
+  (* This is a hack until the backend has explicit support for libraries *)
+  let open Source in
+  { it = List.map (declare_import imp_env) libraries
+         @ List.concat (List.map (fun p -> p.it) progs)
+  ; at = no_region
+  ; note = match progs with
+           | [prog] -> prog.Source.note
+           | _ -> "all"
+  }
+
+let transform p = prog p
+
+let transform_graph imp_env libraries progs =
+  prog (combine_files imp_env libraries progs)
 

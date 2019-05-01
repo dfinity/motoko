@@ -1,0 +1,12 @@
+-- Parsing ListClient.as:
+-- Parsing ListLib.as:
+-- Checking ListLib.as:
+-- Checking ListClient.as:
+type Stack = List<Int>
+let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
+let empty : ?(Int, List<Int>)
+let push : (Int, Stack) -> Stack
+-- Interpreting ListLib.as:
+-- Interpreting ListClient.as:
+nil()
+  <= null

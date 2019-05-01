@@ -7,6 +7,8 @@ PANDOC=pandoc
 
 # Add new module targets here:
 MODULES=\
+	Option \
+	Result \
 	Hash \
 	List \
 	ListTest \
@@ -44,6 +46,7 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/option.md \
+	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
@@ -67,6 +70,7 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/option.html \
+	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
@@ -107,35 +111,41 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	$(MDofMD) $< >> $@
 
-$(OUTDIR)/Hash.out: prelude.as hash.as | $(OUTDIR)
+$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/List.out: prelude.as list.as | $(OUTDIR)
+$(OUTDIR)/Option.out: option.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/ListTest.out: prelude.as list.as listTest.as | $(OUTDIR)
+$(OUTDIR)/Result.out: result.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/AssocList.out: prelude.as list.as assocList.as | $(OUTDIR)
+$(OUTDIR)/List.out: list.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Trie.out: prelude.as hash.as list.as assocList.as trie.as | $(OUTDIR)
+$(OUTDIR)/ListTest.out: listTest.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/DocTable.out: prelude.as hash.as list.as assocList.as trie.as docTable.as | $(OUTDIR)
+$(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Set.out: prelude.as hash.as list.as assocList.as trie.as set.as | $(OUTDIR)
+$(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/SetDb.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as | $(OUTDIR)
+$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/SetDbTest.out: prelude.as hash.as list.as assocList.as trie.as set.as setDb.as setDbTest.as | $(OUTDIR)
+$(OUTDIR)/Set.out: set.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/SetDb.out: setDb.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as \
+	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverExp.as \
 	examples/produce-exchange/serverModelTypes.as \
@@ -144,10 +154,10 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ $(filter-out $(OUTDIR), $^)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@

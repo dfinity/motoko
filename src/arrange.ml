@@ -58,6 +58,7 @@ and pat p = match p.it with
   | WildP           -> Atom "WildP"
   | VarP x          -> "VarP"       $$ [id x]
   | TupP ps         -> "TupP"       $$ List.map pat ps
+  | ObjP ps         -> "ObjP"       $$ List.map pat_field ps
   | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]
   | LitP l          -> "LitP"       $$ [lit !l]
   | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
@@ -112,6 +113,8 @@ and relop ro = match ro with
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
+and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
+
 and prim p = Atom (Type.string_of_prim p)
 
 and sharing sh = match sh with
@@ -125,6 +128,7 @@ and control c = match c with
 and obj_sort' s = match s with
   | Type.Object sh -> Atom ("Object " ^ sharing sh)
   | Type.Actor -> Atom "Actor"
+  | Type.Module -> Atom "Module"
 
 and obj_sort s = obj_sort' s.it
 
@@ -150,6 +154,10 @@ and exp_field (ef : exp_field)
 
 and operator_type t = Atom (Type.string_of_typ t)
 
+and path p = match p.it with
+  | IdH i -> "IdH" $$ [id i]
+  | DotH (p,i) -> "DotH" $$ [path p; id i]
+
 and typ t = match t.it with
   | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]
@@ -161,6 +169,7 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
+  | PathT (p, i, ts)         -> "PathT" $$ [path p; id i] @ List.map typ ts
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
@@ -170,5 +179,7 @@ and dec d = match d.it with
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
   | ClassD (x, tp, s, p, i', efs) ->
     "ClassD" $$ id x :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+  | ModuleD (i,ds) ->
+    "ModuleD" $$  [id i] @ List.map dec ds
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

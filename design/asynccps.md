@@ -1,6 +1,6 @@
 # Async Await Translation
 
-Based on 
+Based on
 
 "A Selective CPS Transformation",
 Lasse R.Nielsen, BRICS1
@@ -27,7 +27,7 @@ e = x
 
 The aim of game is to remove async and await by a source-to-source translation, leaving as much code as possible in direct-style.
 
-Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` is `await`. 
+Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` is `await`.
 
 The only term that introduce effect `A` is `await` - the effect is masked by its innermost enclosing async (if any).
 
@@ -88,7 +88,7 @@ T[ x ]= x
 T[ c ] = c
 T[ \x.t ] = \x.T[t]
 T[ t1 t1 ] = T[t1] T[t2]
-T[ let x = t1 in t2 ] = let x = T[t1]  in T[t2] 
+T[ let x = t1 in t2 ] = let x = T[t1]  in T[t2]
 T[ if t1 then t2 else t3] =
    if T[t1] then T[t2] else T[t3]
 T[ while t1 do t1 ] =
@@ -103,21 +103,21 @@ T[ return T[t] ] =
 
 We use the following primitives for scheduling actions (that complete tasks).
 
-```JS               
+```JS
 spawn(f) = let t = task{result=None;waiters=[]} in
            schedule (\u.f(t));
            t
 
 await(t,k) = match t with
              | {result=Some v} -> k v
-	           | {result=None} -> t.waiters <- k::t.waiters; yield()
+               | {result=None} -> t.waiters <- k::t.waiters; yield()
 
 complete(t,v) = match t with
              | {result=None;waiters} ->
                t.result = Some v;
                foreach waiter in waiters do
                 schedule(\u.waiter(v))
-             | {result=Some _ } -> assert(false) 
+             | {result=Some _ } -> assert(false)
 
 yield() = schedule.Next()
 ```
@@ -127,10 +127,10 @@ The above translations are flawed:
 Consider:
 
 ```
-async { 
-  label l 
+async {
+  label l
   let x = break l 1 in
-	break l (await {2})
+    break l (await {2})
 }
 ```
 
@@ -150,7 +150,7 @@ C env [ label l e ] =
 C env [ break l e ] =
   assert(env[l] = Cont)
   \\k. C env [e] @ l     // discard k, continue from l
-  
+
 C env [ return e ] =
   assert(env[kret] = Cont)
   \\_. C env [e] @ kret   // discard k, return
@@ -179,8 +179,8 @@ T env [ return t ] =
 Returning to the problematic example, we should now have that label `l` is compiled and used as a continuation in both cases:
 
 ```
-async { 
-  label l 
+async {
+  label l
   let x = break l 1 in
   break l (await {2})
 }

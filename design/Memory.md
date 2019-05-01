@@ -32,7 +32,6 @@ The Heap is *not* an explicit entity that can be im/exported, only individual re
 Note: It is highly likely that most languages implemented on Wasm will eventually use Wasm GC.
 Various implementers are currently waiting for it to become available before they start porting their language to Wasm.
 
-
 ### Dfinity
 
 #### API Types
@@ -144,13 +143,12 @@ but Wasm is extended with some notion of volatile state and reinitialisation.
    Pros:
    1. compromise between other two models
 
+   Cons:
    1. compromise between other two models
    2. creates dangling references between bifurcated state parts
    3. incoherent with Wasm semantics (segments, start function)
 
-
 ### Implementing Transparent persistence
-
 
 #### *High-level* implementation of persistence
 

@@ -19,7 +19,7 @@ We can use string_of_typ here for now, it seems.
 let typ_id : T.typ -> string =
   T.string_of_typ
 
-(* Environmemt *)
+(* Environment *)
 
 (* We go through the file and collect all type arguments to `show`.
    We store them in `params`, indexed by their `type_id`
@@ -41,7 +41,7 @@ let add_type env t : unit =
 
 (* For a concrete type `t` we want to create a function name for `show`.
    This name needs to be disjoint from all user-generated names.
-   Luckily, we are not limited in the characters to use at this point:
+   Luckily, we are not limited in the characters to use at this point.
 *)
 
 let show_name_for t =
@@ -346,7 +346,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
         (List.map (fun (l, t') ->
           let t' = T.normalize t' in
           l @@ no_region,
-          (varP (argE t')), (* Shadowing, but thats fine *)
+          (varP (argE t')), (* Shadowing, but that's fine *)
           (invoke_text_of_variant t' (show_var_for t') l (argE t'))
         ) cts)
         (T.Prim T.Text)
@@ -414,7 +414,7 @@ let rec show_val t v =
     Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
   | T.Variant cts, Value.Variant (l, v) ->
     begin match List.find_opt (fun (l',t) -> l = l') cts with
-    | Some (_, T.Tup []) -> Printf.sprintf "#%s" l
+    | Some (_, T.Tup []) -> Printf.sprintf "(#%s)" l
     | Some (_, t') -> Printf.sprintf "(#%s %s)" l (show_val t' v)
     | _ -> assert false
     end

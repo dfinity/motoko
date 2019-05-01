@@ -1,3 +1,9 @@
+type ClientData = {
+  id : Nat;
+  client : shared Text -> ();
+  var revoked : Bool;
+};
+
 actor class Server() = {
   private var nextId : Nat = 0;
   private var clients : List<ClientData> = null;
@@ -8,14 +14,14 @@ actor class Server() = {
       switch next {
         case null { break sends };
         case (?n) {
-          if (n.head.id != id) n.head.client.send(message);
+          if (n.head.id != id) n.head.client(message);
           next := n.tail;
         };
       };
     };
   };
 
-  subscribe(aclient : Client) : async Subscription {
+  subscribe(aclient : shared Text -> ()) : async Subscription {
     let c = new {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = new {head = c; var tail = clients};

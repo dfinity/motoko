@@ -167,6 +167,7 @@ module Transform() = struct
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
+    | Kind (c,k) -> Kind (t_con c, t_kind k)
 
   and t_bind {var; bound} =
     {var; bound = t_typ bound}
@@ -382,6 +383,8 @@ module Transform() = struct
       pat
     | TupP pats ->
       TupP (List.map t_pat pats)
+    | ObjP pfs ->
+      ObjP (map_obj_pat t_pat pfs)
     | OptP pat1 ->
       OptP (t_pat pat1)
     | VariantP (i, pat1) ->

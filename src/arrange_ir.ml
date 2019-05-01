@@ -43,7 +43,7 @@ let rec exp e = match e.it with
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
 
-and fields fs = List.fold_left (fun flds f -> (name f.it.name $$ [ id f.it.var ]):: flds) [] fs
+and fields fs = List.fold_left (fun flds (f : field) -> (name f.it.name $$ [ id f.it.var ]):: flds) [] fs
 
 and args = function
  | [] -> []
@@ -55,10 +55,13 @@ and pat p = match p.it with
   | WildP           -> Atom "WildP"
   | VarP i          -> "VarP"       $$ [ id i ]
   | TupP ps         -> "TupP"       $$ List.map pat ps
+  | ObjP pfs        -> "ObjP"       $$ List.map pat_field pfs
   | LitP l          -> "LitP"       $$ [ Arrange.lit l ]
   | OptP p          -> "OptP"       $$ [ pat p ]
   | VariantP (i, p) -> "VariantP"   $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
+
+and pat_field pf = name pf.it.name $$ [pat pf.it.pat]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
