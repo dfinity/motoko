@@ -128,6 +128,7 @@ exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
+val is_loop_breaker : typ -> bool
 
 (* Equivalence and Subtyping *)
 

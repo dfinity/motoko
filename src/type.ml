@@ -49,10 +49,11 @@ and typ' =
   | Opt' of typ Lazy.t                                (* option *)
   | Variant' of (lab * typ) list Lazy.t               (* variant *)
   | Tup' of typ list Lazy.t                           (* tuple *)
+          (*
   | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
   | Async' of typ Lazy.t                              (* future *)
   | Mut' of typ Lazy.t                                (* mutable type *)
-
+           *)
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
@@ -71,9 +72,11 @@ let fixup = function
   | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+                          (*
   | Func' (s, c, bs, lazy args, lazy res) as o -> ignore (Func' (s, c, bs, lazy args, lazy res)); unlazy o
   | Async' (lazy t) as o -> ignore (Async' (lazy t)); unlazy o
   | Mut' (lazy t) as o -> ignore (Mut' (lazy t)); unlazy o
+                           *)
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -469,7 +472,15 @@ let is_concrete t =
     end
   in go t
 
-
+let is_loop_breaker = function
+  | Con (c, []) ->
+    begin match Con.kind c with
+    | Def ([], _) ->
+      let name = Con.name c in
+      String.length name > 4 && name.[3] = ' '
+    | _ -> false
+    end
+  | _ -> false
 
 (* TEMPORARY HOME FOR SOME STUFF related to lub/glb *)
 
@@ -643,11 +654,11 @@ and eq t1 t2 : bool =
 
 and sub t1 t2 : bool =
   let res = rel_typ' (ref S.empty) (ref S.empty) t1 t2 in
-  let l = lub t1 t2 in
+  (*let l = lub t1 t2 in
   let g = glb t1 t2 in
   if res && not (eq t2 l) then Printf.printf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);
   if res && not (eq t1 g) then Printf.printf "bad GLB: %s     (%s     <:     %s) \n%!" (!str g) (!str t1) (!str t2);
-  res
+   *)res
 and sub' t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
@@ -666,37 +677,13 @@ and eq_kind k1 k2 : bool =
 and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
-and strnonv = function
-  | Con _ as t -> "CCCOOOONN  " ^ !str t
-  | Var _ -> "%VAR%"
-  | t -> !str t
-
-
-
-and strhead = function
-  | Con _ as t -> "Con: " ^ !str t
-  | Var _ -> "Var"
-  | Obj _ -> "Obj"
-  | Opt _ -> "Opt"
-  | Func _ -> "Func"
-  | Variant _ -> "Variant"
-  | Tup _ -> "Tup"
-  | Mut _ -> "Mut"
-  | Any -> "Any"
-  | t -> "OTHER"
-
-
-and checkmate t1 t2 lu = match t1, t2 with
-  | Con _, Con _ -> Printf.printf "RETURNING LUB (%s)     %s = [%s]                %s = [%s] \n"
-                      (strhead lu) (strnonv t1) (strnonv (normalize t1)) (strnonv t2) (strnonv (normalize t2)); lu
-  | _ -> lu
-       
 and lub' lubs glbs t1 t2 =
   let add_loop_breaker o = lubs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "lub" o)) !lubs in
-  Printf.printf "<<ENTERING %s                %s \n" (strnonv t1) (strnonv t2); if t1 == t2 then t1 else
-  if M.mem (t1, t2) !lubs then (Printf.printf "PULLING LUB (%s)     %s                %s \n" (strhead (Lazy.force (M.find (t1, t2) !lubs))) (strnonv t1) (strnonv t2); Lazy.force (M.find (t1, t2) !lubs)) else
+  if t1 == t2 then t1 else
+  if M.mem (t1, t2) !lubs then Lazy.force (M.find (t1, t2) !lubs) else
+  if M.mem (t2, t1) !lubs then Lazy.force (M.find (t2, t1) !lubs) else
   (* TBR: this is just a quick hack *)
-  let tr = lazy begin Printf.printf "FORCING %s                %s \n" (strnonv t1) (strnonv t2); match normalize t1, normalize t2 with
+  let tr = lazy begin match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any
@@ -722,39 +709,39 @@ and lub' lubs glbs t1 t2 =
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
 
-
+  | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
     let rec o = Opt' i
-    and i = lazy (Printf.printf "ADDING OPT\n"; add_loop_breaker o; lub' lubs glbs t1' t2') in
-    let oo = fixup o in Printf.printf "---> OPT LUB %s\n" (strnonv oo); oo
+    and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
+    fixup o
   | Variant t1', Variant t2' ->
     let rec o = Variant' i
-    and i = lazy (add_loop_breaker o; lub_variant lubs glbs t1' t2') in fixup o
+    and i = lazy (add_loop_breaker o; lub_variant lubs glbs t1' t2') in
+    fixup o
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
     let rec o = Tup' i
-    and i = lazy (add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in fixup o
+    and i = lazy (add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
+    fixup o
   | Array t1', Array t2' ->
     let rec o = Array' i
     and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
     fixup o
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
-    and i = lazy (Printf.printf "ADDING OBJ\n"; add_loop_breaker o; lub_object lubs glbs tf1 tf2) in
-    let oo = fixup o in Printf.printf "---> OBJ %s LUB %s\n" (if Lazy.is_val (M.find (t1, t2) !lubs) then "USED" else "unused") (strhead oo); oo
-
-  | t1', t2' when eq t1' t2' -> t1
+    and i = lazy (add_loop_breaker o; lub_object lubs glbs tf1 tf2) in
+    fixup o
   | _ -> Any
   end in
-  lubs := M.add (t1, t2) tr !lubs; checkmate t1 t2 (Lazy.force tr)
+  lubs := M.add (t1, t2) tr !lubs; Lazy.force tr
 
 and loop_breaker t1 t2 how cand = match t1, t2 with
   | Con _, _ | _, Con _ -> (* when Con is recursive! *)
     let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], unlazy cand)) in
     let typ = Con (c, []) in
-    Printf.printf "XXX loop_breaker %s\n" (strnonv typ); assert (normalize typ == unlazy cand);
-              (*Con' (Def ([], Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2), *) typ
-  | _, _ -> Printf.printf "loop_breaker %s                %s \n" (strnonv t1) (strnonv t2); unlazy cand
+    assert (normalize typ == unlazy cand);
+    typ
+  | _, _ -> unlazy cand
 
 and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
@@ -778,10 +765,11 @@ and lub_variant lubs glbs fs1 fs2 = match fs1, fs2 with
 
 and glb' lubs glbs t1 t2 =
   let add_loop_breaker o = glbs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "glb" o)) !glbs in
-  Printf.printf "<<GLB ENTERING %s                %s \n" (strnonv t1) (strnonv t2); if t1 == t2 then t1 else
-  if M.mem (t1, t2) !glbs then (Printf.printf "PULLING GLB\n"; Lazy.force (M.find (t1, t2) !glbs)) else
+  if t1 == t2 then t1 else
+  if M.mem (t1, t2) !glbs then Lazy.force (M.find (t1, t2) !glbs) else
+  if M.mem (t2, t1) !glbs then Lazy.force (M.find (t2, t1) !glbs) else
   (* TBR: this is just a quick hack *)
-  let tr = lazy begin Printf.printf "GLB FORCING %s                %s \n" (strnonv t1) (strnonv t2); match normalize t1, normalize t2 with
+  let tr = lazy begin match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any -> t1
@@ -805,12 +793,12 @@ and glb' lubs glbs t1 t2 =
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
 
-
+  | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
     let rec o = Opt' i
-    and i = lazy (Printf.printf "ADDING OPT GLB"; add_loop_breaker o; glb' lubs glbs t1' t2') in
-    let oo = fixup o in Printf.printf "---> OPT GLB %s\n" (strnonv oo); oo
+    and i = lazy (add_loop_breaker o; glb' lubs glbs t1' t2') in
+    fixup o
   | Variant t1', Variant t2' ->
     let rec o = Variant' i
     and i = lazy (add_loop_breaker o; glb_variant lubs glbs t1' t2')
@@ -825,11 +813,8 @@ and glb' lubs glbs t1 t2 =
     fixup o
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
-    and i = lazy (Printf.printf "GLB ADDING OBJ\n"; add_loop_breaker o; glb_object lubs glbs tf1 tf2) in
-    let oo = fixup o in Printf.printf "---> OBJ GLB %s\n" (strnonv oo); oo
-
-  | t1', t2' when eq t1' t2' -> t1
-
+    and i = lazy (add_loop_breaker o; glb_object lubs glbs tf1 tf2) in
+    fixup o
   | _ -> Non
   end in
   glbs := M.add (t1, t2) tr !glbs; Lazy.force tr
