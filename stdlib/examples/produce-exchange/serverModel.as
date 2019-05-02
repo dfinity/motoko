@@ -53,6 +53,7 @@ type Result<Ok,Err> = Result.Result<Ok,Err>;
 type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
 
 type RoleId = {
+  #user        : T.UserId;
   #producer    : T.ProducerId;
   #transporter : T.TransporterId;
   #retailer    : T.RetailerId;
@@ -137,6 +138,12 @@ class Model() {
    */
   func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
     switch id {
+    case (#user id) {
+           switch (userTable.getDoc(id)) {
+           case null false;
+           case (?p) { p.public_key == public_key };
+           }
+         };
     case (#producer id) {
            switch (producerTable.getDoc(id)) {
            case null false;

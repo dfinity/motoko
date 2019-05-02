@@ -285,13 +285,13 @@ actor class Test() = this {
 
       // a double-remove should return null
       //assertErr(await s.transporterRemRoute(pkc, assertUnwrapAny<RouteId>(rtc_c_e_tta)));
-      
+
       printEntityCount("Route@time3", (await s.getCounts()).route_count);
 
       //////////////////////////////////////////////////////////////////
 
       print "\nExchange setup: Done.\n====================================\n";
-      
+
       //await debugDumpAll(s);
       await debugDumpAll();
 
@@ -313,6 +313,17 @@ actor class Test() = this {
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
+      print "\nAuthentication test:\n====================================\n";
+
+      print "\npk a == uid a";
+      assert(await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uida)));
+      print "\npk b == uid b";
+      assert(await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uidb)));
+      print "\npk a != uid b";
+      assert(not(await s.validateUser(pka, Result.assertUnwrapAny<T.UserId>(uidb))));
+      print "\npk b != uid a";
+      assert(not(await s.validateUser(pkb, Result.assertUnwrapAny<T.UserId>(uida))));
+
       //////////////////////////////////////////////////////////////////
       // xxx --- todo: separate test(s) for expected failures
       // User c should not be able to remove user a's route
@@ -320,6 +331,7 @@ actor class Test() = this {
         print "\nAuthentication test, expect Result.assertion failure:\n";
         ignore(await s.transporterRemRoute(pkc, Result.assertUnwrapAny<T.RouteId>(rta_a_c_tta)))
       };
+      print "\n";
     })
   };
 };

@@ -1,6 +1,6 @@
 > 1. Why would I want an `actor class` versus just a `class`?
 
-An actor is instantiated as a separate wasm instance, with isolated state. Classes can capture (mutable) free variables state, actors classes should not (but currently can because the typechecker is too liberal).
+An actor is instantiated as a separate wasm instance, with isolated state. Classes can capture (mutable) free variables state, actor classes should not (but currently can because the typechecker is too liberal).
 
 > 2. Where am I permitted to place `async` blocks?
 
