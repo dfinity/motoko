@@ -103,15 +103,16 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
 
 ```
 <constype> ::= ...
-  | enum { <name>* }       := nat64
-  | blob                   := vec nat8
+  | blob                   :=  vec nat8
 
 <paramtype> ::= ...
   | <name> : <datatype>    :=  <datatype>
 
 <fieldtype> ::= ...
-  | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
+  | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1  (only in records)
+  | <nat>                  :=  <nat> : null   (only in variants)
+  | <name>                 :=  <name> : null  (only in variants)
 ```
 
 #### Comments
@@ -149,6 +150,8 @@ A name is given either in the syntax of a typical programming language identifie
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
 <text> ::= "<char>*"
 ```
+Identifiers cannot be keywords of the IDL grammar. In case a name is needed that coincides with a keyword, it has to be quoted as a text string.
+
 
 #### Example
 ```
@@ -177,7 +180,7 @@ A function type describes the list of parameters and results and their respectiv
 ```
 
 The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
-No name/id may occur twice in the same parameter list or in the same result list.
+The list of parameters must be shorter than 2^32 values and no name/id may occur twice in it. The same restrictions apply to the result list.
 
 #### Example
 ```
@@ -206,7 +209,7 @@ The type `nat` describes a natural number (unsigned integer) of unlimited range.
 ```
 <primtype> ::= nat | nat8 | nat16 | nat32 | nat64 | ...
 ```
-**Note:** Values of type `nat` are assumed to have variable length representations on the wire, and hence take up space proportional to their value. As long as typical values are small, they may hence be more space-efficient than the fixed size types.
+**Note:** Values of type `nat` have variable length representations in the  binary serialisation format, and hence take up space proportional to (the logarithm of) their value. As long as typical values are small, they may hence be more space-efficient than the fixed size types.
 
 #### Integer Numbers
 
@@ -215,7 +218,7 @@ The type `int` describes an integer number (signed) of unlimited range. There ar
 ```
 <primtype> ::= ... | int | int8 | int16 | int32 | int64 | ...
 ```
-**Note:** Values of type `nat` are assumed to have variable length representations on the wire, and hence take up space proportional to their value. As long as typical values are small, they may hence be more space-efficient than the fixed size types.
+**Note:** Values of type `nat` have variable length representations in the binary serialisation format, and hence take up space proportional to (the logarithm of) their value. As long as typical values are small, they may hence be more space-efficient than the fixed size types.
 
 #### Floating-Point Numbers
 
@@ -297,7 +300,8 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
 ```
-No id may occur twice in the same record type.
+An id value must be smaller than 2^32 and no id may occur twice in the same record type.
+
 
 
 ##### Shorthand: Symbolic Field Ids
@@ -354,35 +358,33 @@ A *variant* is a tagged union of different possible data types. The tag is given
 ```
 <constype>  ::= ... | variant { <fieldtype>;* } | ...
 ```
-No field id may occur twice in the same variant type.
+A field id must be smaller than 2^32 and no id may occur twice in the same variant type.
 
 
 ##### Shorthand: Symbolic Tag Ids
 
 Like for record fields, the id for a variant tag can also be given as a *name*, which is a shorthand for its hash.
 
+##### Shorthand: Enumeration Types
+
+The type of a variant field can be omitted, in which case it is `null`.
+```
+<fieldtype> ::= ...
+  | <nat>    :=  <nat> : null
+  | <name>   :=  <name> : null
+```
+This abbreviation only applies to variants. At the same time, variants do not allow the tuple field abbreviation for omitting the field id.
+
 ##### Example
 ```
+type color = variant { red; green; blue };
+
 type tree = variant {
   leaf : int;
   branch : record {left : tree; val : int; right : tree};
 }
 ```
 
-#### Shorthand: Enumerations
-
-A variant where all field types are *null* can be represented more compactly as an *enumeration*, which is another shorthand. An enumeration type consists of a list of tag names listing its possible values. This is merely a shorthand for a `nat64`, where each value is represented by the hash of the tag name.
-
-```
-<constype> ::= ....
-  | enum { <name>;* }       :=  nat64
-```
-
-##### Example
-
-```
-type color = enum { red; green; blue };
-```
 
 ### References
 
@@ -658,7 +660,7 @@ actor server = {
 * Namespaces for imports?
 
 
-## Wire Format
+## Binary Format
 
 ### Serialisation
 
@@ -691,9 +693,9 @@ M(null  : opt <datatype>) = i8(0)
 M(?v    : opt <datatype>) = i8(1) M(v : <datatype>)
 M(v^N   : vec <datatype>) = leb128(N) M(v : <datatype>)^N
 M(kv^N  : struct{<fieldtype>^K}) = leb128(K') M(kv : <fieldtype>^K)^N  where K' is the number of fields produced
-M((k,v) : variant{<fieldtype>*}) = i64(k) M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
+M((k,v) : variant{<fieldtype>*}) = i32(k) M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
 
-M((k,v) : <fieldtype>^*) = i64(k) leb128(|F(v : <datatype>)|) F(v : <datatype>)  iff k : <datatype> in <fieldtype>* and F(v : <datatype>) =/= .
+M((k,v) : <fieldtype>^*) = i32(k) leb128(|F(v : <datatype>)|) F(v : <datatype>)  iff k : <datatype> in <fieldtype>* and F(v : <datatype>) =/= .
 M((k,v) : <fieldtype>^*) = .                          otherwise
 
 F(null : opt <datatype>) = .
