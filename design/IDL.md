@@ -558,6 +558,9 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 ----------------------------------------------------------------------------------------------
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
+
+**TODO: Rules below are unsound as is, need fixing!**
+
 In addition, special rules apply to fields of `null` or option type, which makes an absent field interchangeable with a field of value `null`. Moreover, an optional field can be specialised to non-optional if the constituent type is not itself `null` or an option (this restriction is necessary to avoid confusing the different null values in an `opt (opt T)` type).
 ```
 <datatype> = null \/ <datatype> = opt <datatype'>
