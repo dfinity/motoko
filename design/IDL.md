@@ -9,7 +9,7 @@ exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
 * Well-formedness is checkable and guaranteed by the platform
-* Deterministic mapping to Wasm-level representation
+* Deterministic mapping to serialised representation
 * Human-readable and machine-readable
 * Declarative, usable as input to binding code generators
 
@@ -17,7 +17,7 @@ exchange (names, parameter and result formats of actor methods)
 
 * Specification of semantic constraints beyond representation concerns
   (Rationale: (1) there is no natural boundary to what should be expressible, a scalable solution would quickly lead into the realm of program logics and/or dependent types; (2) cost and complexity for the platform, the hypervisor would have to check and guarantee these properties on every message send; (3) in general, interesting properties cannot be formulated or checked without contextual information such as an actor’s state.)
-* Prescribing the wire format used internally by the network to transport data (though it will make sense to use an extension of the Wasm serialisation, which is fairly generic)
+* Prescribing the wire format used internally by the network to transport data (though it will make sense to use an extension of the serialisation format decribed, which is fairly generic)
 
 #### Inspiration:
 
@@ -64,7 +64,8 @@ This is a summary of the grammar proposed:
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
-<functype>  ::= ( <fieldtype>,* ) -> pure? ( <fieldtype>,* )
+<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcannot>*
+<funcannot> ::= pure
 <paramtype> ::= <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -89,9 +90,12 @@ This is a summary of the grammar proposed:
 
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
-<text> ::= "<codepoint>*"
+<text> ::= "<char>*"
 <nat>  ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
 ```
+
+A `<char>` is a *Unicode scalar value* (i.e., a codepoint that is not a surrogate part).
+
 
 #### Syntactic Shorthands
 
@@ -106,8 +110,8 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
   | <name> : <datatype>    :=  <datatype>
 
 <fieldtype> ::= ...
-  | <datatype>             :=  N : <datatype  where N is either 0 or previous + 1
-  | <name> : <datatype>    :=  <sha(name)> : <datatype>
+  | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1
+  | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
 
 #### Comments
@@ -150,8 +154,8 @@ A name is given either in the syntax of a typical programming language identifie
 ```
 service {
   addUser : (name : text, age : nat8) -> (id : nat64);
-  userName : (id : nat64) -> pure (text);
-  userAge : (id : nat64) -> pure (nat8);
+  userName : (id : nat64) -> (text) pure;
+  userAge : (id : nat64) -> (nat8) pure;
 }
 ```
 
@@ -165,13 +169,15 @@ service {
 
 #### Structure
 
-A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state).
+A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
-<functype>  ::= ( <fieldtype>,* ) -> pure? ( fieldtype>,* )
+<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcannot>*
+<funcannot> ::= pure
 ```
 
 The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
+No name/id may occur twice in the same parameter list or in the same result list.
 
 #### Example
 ```
@@ -291,6 +297,8 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
 ```
+No id may occur twice in the same record type.
+
 
 ##### Shorthand: Symbolic Field Ids
 
@@ -346,6 +354,8 @@ A *variant* is a tagged union of different possible data types. The tag is given
 ```
 <constype>  ::= ... | variant { <fieldtype>;* } | ...
 ```
+No field id may occur twice in the same variant type.
+
 
 ##### Shorthand: Symbolic Tag Ids
 
@@ -498,7 +508,8 @@ To make these constraints as flexible as possible, two special rules apply:
   - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;
   - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
 
-Future extensions: defaults, upgrading variants?
+Future extensions: defaults, including for variants?
+
 
 ### Rules
 
@@ -647,21 +658,22 @@ actor server = {
 * Namespaces for imports?
 
 
-## Wasm Mapping
+## Wire Format
 
 ### Serialisation
 
-For a Wasm binding, every IDL value is serialised into a pair (M, T), where M ("memory") is a sequence of bytes and T ("table") a sequence of references. If T is empty, it can be omitted. By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
+At runtime, every IDL value is serialised into a pair (M, T), where M ("memory") is a sequence of bytes and T ("table") a sequence of references. If T is empty, it can be omitted. By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
 
 Accordingly, serialisation is defined by two mapping functions, `M` and `T`, producing the respective parts. They are defined independently, but both definitions are indexed by IDL types.
 
-`M` maps an IDL value to a byte sequence described in terms of extended Wasm storage types (`i<N>` for N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`).
+`M` maps an IDL value to a byte sequence described in terms of natural storage types (`i<N>` for N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`).
 
 Notation:
+
 * `.` is the empty byte sequence
 * `x1 x2` is concatenation
 * `t^N`, `t+`, `t*`, `t?` are sequences of `N`, `N>0`, `N>=0`, or `N<=1` repetitions, respectively
-* `leb128` and `sleb128` are the unsigned and signed LEB128 encoding of a number
+* `leb128` and `sleb128` are the shortest unsigned and signed [LEB128](https://en.wikipedia.org/wiki/LEB128) encodings of a number, respectively
 * `utf8` is the UTF-8 encoding of a text string (not 0-terminated)
 
 ```
@@ -678,11 +690,11 @@ M(_ : unavailable) = .
 M(null  : opt <datatype>) = i8(0)
 M(?v    : opt <datatype>) = i8(1) M(v : <datatype>)
 M(v^N   : vec <datatype>) = leb128(N) M(v : <datatype>)^N
-M(kv^N  : struct{<fieldtype>^K}) = leb128(K) M(kv : <fieldtype>^K)^N
+M(kv^N  : struct{<fieldtype>^K}) = leb128(K') M(kv : <fieldtype>^K)^N  where K' is the number of fields produced
 M((k,v) : variant{<fieldtype>*}) = i64(k) M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
 
 M((k,v) : <fieldtype>^*) = i64(k) leb128(|F(v : <datatype>)|) F(v : <datatype>)  iff k : <datatype> in <fieldtype>* and F(v : <datatype>) =/= .
-M((k,v) : <fieldtype>^*) = .                         otherwise
+M((k,v) : <fieldtype>^*) = .                          otherwise
 
 F(null : opt <datatype>) = .
 F(v : opt <datatype>)    = M(v : <datatype>)
@@ -699,6 +711,10 @@ Notes:
 * Every record field explicitly includes the size of its payload data. This is to allow skipping an unknown field upon deserialisation, see below.
 
 * The M-representation of references is the respective index into T, denoted by `T(r)` above. A serialiser is allowed (but not required to) merge multiple occurrences of the same reference in T.
+
+* It is unspecified how references *r* are represented, neither internally nor externally. When binding to Wasm, their internal representation is expected to be based on Wasm reference types, i.e., `anyref` or subtypes thereof. It is up to the system how to represent or translate the reference table on the wire.
+
+* Serialisation is a function, i.e., it deterministically produces a unique output. However, this output depends on the type, so two binary representations (or hashes thereof) are only comparable when the serialisation side type is known and was the same for both.
 
 
 ### Deserialisation
