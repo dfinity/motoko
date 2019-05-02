@@ -65,7 +65,7 @@
 
 * Definitions lifted to the surrounding actor.
 
-* Closed-over locals need indirection through heap if mutable or if defined-ness cannot be proven.
+* Closed-over locals need indirection through heap if mutable or if definedness cannot be proved.
 
 
 ## Actor Objects
