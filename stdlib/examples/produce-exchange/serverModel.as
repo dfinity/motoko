@@ -1,3 +1,4 @@
+
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -20,12 +21,78 @@ uses are is not.
 
 */
 
-type RouteInventoryMap = Trie<(RouteId, InventoryId), (RouteDoc, InventoryDoc)>;
+
+let P = (import "../../prelude.as");
+
+let T = (import "serverTypes.as");
+let M = (import "serverModelTypes.as");
+
+let Hash = (import "../../hash.as").BitVec;
+type Hash = Hash.t;
+
+let Option = (import "../../option.as");
+let Trie = (import "../../trie.as");
+
+type Trie<K,V> = Trie.Trie<K,V>;
+type Key<K> = Trie.Key<K>;
+
+type Table<K,V> = Trie.Trie<K,V>;
+let Table = (import "../../trie.as");
+
+type Map<K,V> = Trie.Trie<K,V>;
+let Map = (import "../../trie.as");
+
+let DT = (import "../../docTable.as");
+let DocTable = DT.DocTable;
+type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
+
+let Result = (import "../../result.as");
+type Result<Ok,Err> = Result.Result<Ok,Err>;
+
+type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
+
+type RoleId = {
+  #user        : T.UserId;
+  #producer    : T.ProducerId;
+  #transporter : T.TransporterId;
+  #retailer    : T.RetailerId;
+};
+
 
 class Model() {
 
-
-
+  /**
+   Access control: Match a given public key to that of an identified role, whose public key on record.
+   ===================================================================================================
+   */
+  func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
+    switch id {
+    case (#user id) {
+           switch (userTable.getDoc(id)) {
+           case null false;
+           case (?p) { p.public_key == public_key };
+           }
+         };
+    case (#producer id) {
+           switch (producerTable.getDoc(id)) {
+           case null false;
+           case (?p) { p.public_key == public_key };
+           }
+         };
+    case (#transporter id) {
+           switch (transporterTable.getDoc(id)) {
+           case null false;
+           case (?p) { p.public_key == public_key };
+           }
+         };
+    case (#retailer id) {
+           switch (retailerTable.getDoc(id)) {
+           case null false;
+           case (?p) { p.public_key == public_key };
+           }
+         };
+    }
+  };
 
   /**
    Misc helpers
@@ -115,13 +182,13 @@ secondary maps.
    -----------------
    */
 
-  var userTable : UserTable =
-    DocTable<UserId, UserDoc, UserInfo>(
+  var userTable : M.UserTable =
+    DocTable<T.UserId, M.UserDoc, T.UserInfo>(
     0,
-    func(x:UserId):UserId{x+1},
-    func(x:UserId,y:UserId):Bool{x==y},
+    func(x:T.UserId):T.UserId{x+1},
+    func(x:T.UserId,y:T.UserId):Bool{x==y},
     idHash,
-    func(doc:UserDoc):UserInfo = shared {
+    func(doc:M.UserDoc):T.UserInfo = shared {
       id=doc.id;
       user_name=doc.user_name;
       public_key=doc.public_key;
@@ -132,7 +199,7 @@ secondary maps.
       retailerId=doc.retailerId;
       isDeveloper=doc.isDeveloper;
     },
-    func(info:UserInfo):?UserDoc = ?(new {
+    func(info:T.UserInfo):?M.UserDoc = ?(new {
       id=info.id;
       user_name=info.user_name;
       public_key=info.public_key;
@@ -151,13 +218,13 @@ secondary maps.
    -----------------
    */
 
-  var truckTypeTable : TruckTypeTable =
-    DocTable<TruckTypeId, TruckTypeDoc, TruckTypeInfo>(
+  var truckTypeTable : M.TruckTypeTable =
+    DocTable<T.TruckTypeId, M.TruckTypeDoc, T.TruckTypeInfo>(
     0,
-    func(x:TruckTypeId):TruckTypeId{x+1},
-    func(x:TruckTypeId,y:TruckTypeId):Bool{x==y},
+    func(x:T.TruckTypeId):T.TruckTypeId{x+1},
+    func(x:T.TruckTypeId,y:T.TruckTypeId):Bool{x==y},
     idHash,
-    func(doc:TruckTypeDoc):TruckTypeInfo = shared {
+    func(doc:M.TruckTypeDoc):T.TruckTypeInfo = shared {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
@@ -165,7 +232,7 @@ secondary maps.
       isFridge=doc.isFridge;
       isFreezer=doc.isFreezer;
     },
-    func(info:TruckTypeInfo):?TruckTypeDoc = ?(new {
+    func(info:T.TruckTypeInfo):?M.TruckTypeDoc = ?(new {
       id=info.id;
       short_name=info.short_name;
       description=info.description;
@@ -180,18 +247,18 @@ secondary maps.
    -----------------
    */
 
-  var regionTable : RegionTable =
-    DocTable<RegionId, RegionDoc, RegionInfo>(
+  var regionTable : M.RegionTable =
+    DocTable<T.RegionId, M.RegionDoc, T.RegionInfo>(
     0,
-    func(x:RegionId):RegionId{x+1},
-    func(x:RegionId,y:RegionId):Bool{x==y},
+    func(x:T.RegionId):T.RegionId{x+1},
+    func(x:T.RegionId,y:T.RegionId):Bool{x==y},
     idHash,
-    func(doc:RegionDoc):RegionInfo = shared {
+    func(doc:M.RegionDoc):T.RegionInfo = shared {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
     },
-    func(info:RegionInfo):?RegionDoc = ?(new {
+    func(info:T.RegionInfo):?M.RegionDoc = ?(new {
       id=info.id;
       short_name=info.short_name;
       description=info.description;
@@ -203,19 +270,19 @@ secondary maps.
    -----------------
    */
 
-  var produceTable : ProduceTable =
-    DocTable<ProduceId, ProduceDoc, ProduceInfo>(
+  var produceTable : M.ProduceTable =
+    DocTable<T.ProduceId, M.ProduceDoc, T.ProduceInfo>(
     0,
-    func(x:ProduceId):ProduceId{x+1},
-    func(x:ProduceId,y:ProduceId):Bool{x==y},
+    func(x:T.ProduceId):T.ProduceId{x+1},
+    func(x:T.ProduceId,y:T.ProduceId):Bool{x==y},
     idHash,
-    func(doc:ProduceDoc):ProduceInfo = shared {
+    func(doc:M.ProduceDoc):T.ProduceInfo = shared {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
       grade=doc.grade;
     },
-    func(info:ProduceInfo):?ProduceDoc = ?(new {
+    func(info:T.ProduceInfo):?M.ProduceDoc = ?(new {
       id=info.id;
       short_name=info.short_name;
       description=info.description;
@@ -228,30 +295,32 @@ secondary maps.
    -----------------
    */
 
-  var producerTable : ProducerTable =
-    DocTable<ProducerId, ProducerDoc, ProducerInfo>(
+  var producerTable : M.ProducerTable =
+    DocTable<T.ProducerId, M.ProducerDoc, T.ProducerInfo>(
     0,
-    func(x:ProducerId):ProducerId{x+1},
-    func(x:ProducerId,y:ProducerId):Bool{x==y},
+    func(x:T.ProducerId):T.ProducerId{x+1},
+    func(x:T.ProducerId,y:T.ProducerId):Bool{x==y},
     idHash,
-    func(doc:ProducerDoc):ProducerInfo = shared {
+    func(doc:M.ProducerDoc):T.ProducerInfo = shared {
       id=doc.id;
+      public_key=doc.public_key;
       short_name=doc.short_name;
       description=doc.description;
       region=doc.region.id;
       inventory=[];
       reserved=[];
     },
-    func(info:ProducerInfo):?ProducerDoc =
-      map<RegionDoc, ProducerDoc>(
+    func(info:T.ProducerInfo):?M.ProducerDoc =
+      Option.map<M.RegionDoc, M.ProducerDoc>(
         regionTable.getDoc(info.region),
-        func (regionDoc: RegionDoc): ProducerDoc = new {
+        func (regionDoc: M.RegionDoc): M.ProducerDoc = new {
           id=info.id;
+          public_key=info.public_key;
           short_name=info.short_name;
           description=info.description;
           region=regionDoc;
-          inventory=Table.empty<InventoryId, InventoryDoc>();
-          reserved=Table.empty<ReservedInventoryId, ReservedInventoryDoc>();
+          inventory=Table.empty<T.InventoryId, M.InventoryDoc>();
+          reserved=Table.empty<T.ReservedInventoryId, M.ReservedInventoryDoc>();
         }
       )
     );
@@ -262,13 +331,13 @@ secondary maps.
    ---------------
    */
 
-  var inventoryTable : InventoryTable =
-    DocTable<InventoryId, InventoryDoc, InventoryInfo>(
+  var inventoryTable : M.InventoryTable =
+    DocTable<T.InventoryId, M.InventoryDoc, T.InventoryInfo>(
     0,
-    func(x:InventoryId):InventoryId{x+1},
-    func(x:InventoryId,y:InventoryId):Bool{x==y},
+    func(x:T.InventoryId):T.InventoryId{x+1},
+    func(x:T.InventoryId,y:T.InventoryId):Bool{x==y},
     idHash,
-    func(doc:InventoryDoc):InventoryInfo = shared {
+    func(doc:M.InventoryDoc):T.InventoryInfo = shared {
       id=doc.id;
       produce=doc.produce.id;
       producer=doc.producer;
@@ -279,7 +348,7 @@ secondary maps.
       end_date=doc.end_date;
       comments=doc.comments;
     },
-    func(info:InventoryInfo):?InventoryDoc = {
+    func(info:T.InventoryInfo):?M.InventoryDoc = {
       // validate the info's producer and produce ids
       switch (producerTable.getDoc(info.producer),
               produceTable.getDoc(info.produce)) {
@@ -308,26 +377,28 @@ secondary maps.
    -----------------
    */
 
-  var transporterTable : TransporterTable =
-    DocTable<TransporterId, TransporterDoc, TransporterInfo> (
+  var transporterTable : M.TransporterTable =
+    DocTable<T.TransporterId, M.TransporterDoc, T.TransporterInfo> (
       0,
-      func(x:TransporterId):TransporterId{x+1},
-      func(x:TransporterId,y:TransporterId):Bool{x==y},
+      func(x:T.TransporterId):T.TransporterId{x+1},
+      func(x:T.TransporterId,y:T.TransporterId):Bool{x==y},
       idHash,
-      func(doc:TransporterDoc):TransporterInfo = shared {
+      func(doc:M.TransporterDoc):T.TransporterInfo = shared {
         id=doc.id;
+        public_key=doc.public_key;
         short_name=doc.short_name;
         description=doc.description;
         routes=[];
         reserved=[];
       },
-      func(info:TransporterInfo):?TransporterDoc =
+      func(info:T.TransporterInfo):?M.TransporterDoc =
         ?(new {
             id=info.id;
+            public_key=info.public_key;
             short_name=info.short_name;
             description=info.description;
-            routes=Table.empty<RouteId, RouteDoc>();
-            reserved=Table.empty<ReservedRouteId, ReservedRouteDoc>();
+            routes=Table.empty<T.RouteId, M.RouteDoc>();
+            reserved=Table.empty<T.ReservedRouteId, M.ReservedRouteDoc>();
           })
     );
 
@@ -336,25 +407,27 @@ secondary maps.
    -----------------
    */
 
-  var retailerTable : RetailerTable =
-    DocTable<RetailerId, RetailerDoc, RetailerInfo>(
+  var retailerTable : M.RetailerTable =
+    DocTable<T.RetailerId, M.RetailerDoc, T.RetailerInfo>(
       0,
-      func(x:RetailerId):RetailerId{x+1},
-      func(x:RetailerId,y:RetailerId):Bool{x==y},
+      func(x:T.RetailerId):T.RetailerId{x+1},
+      func(x:T.RetailerId,y:T.RetailerId):Bool{x==y},
       idHash,
-      func(doc:RetailerDoc):RetailerInfo = shared {
+      func(doc:M.RetailerDoc):T.RetailerInfo = shared {
         id=doc.id;
+        public_key=doc.public_key;
         short_name=doc.short_name;
         description=doc.description;
         region=doc.region.id;
         reserved_routes=[];
         reserved_items=[];
       },
-      func(info:RetailerInfo):?RetailerDoc =
-        map<RegionDoc, RetailerDoc>(
+      func(info:T.RetailerInfo):?M.RetailerDoc =
+        Option.map<M.RegionDoc, M.RetailerDoc>(
           regionTable.getDoc(info.region),
-          func (regionDoc: RegionDoc): RetailerDoc = new {
+          func (regionDoc: M.RegionDoc): M.RetailerDoc = new {
             id=info.id;
+            public_key=info.public_key;
             short_name=info.short_name;
             description=info.description;
             region=regionDoc;
@@ -372,13 +445,13 @@ secondary maps.
    ----------------
    */
 
-  var routeTable : RouteTable =
-    DocTable<RouteId, RouteDoc, RouteInfo> (
+  var routeTable : M.RouteTable =
+    DocTable<T.RouteId, M.RouteDoc, T.RouteInfo> (
       0,
-      func(x:RouteId):RouteId{x+1},
-      func(x:RouteId,y:RouteId):Bool{x==y},
+      func(x:T.RouteId):T.RouteId{x+1},
+      func(x:T.RouteId,y:T.RouteId):Bool{x==y},
       idHash,
-      func(doc:RouteDoc):RouteInfo = shared {
+      func(doc:M.RouteDoc):T.RouteInfo = shared {
         id=doc.id;
         transporter=doc.transporter;
         truck_type=(truckTypeTable.getInfoOfDoc())(doc.truck_type);
@@ -388,7 +461,7 @@ secondary maps.
         end_date=doc.end_date;
         cost=doc.cost;
       },
-      func(info:RouteInfo):?RouteDoc {
+      func(info:T.RouteInfo):?M.RouteDoc {
         switch (transporterTable.getDoc(info.transporter),
                 truckTypeTable.getDoc(info.truck_type.id),
                 regionTable.getDoc(info.start_region),
@@ -416,25 +489,25 @@ secondary maps.
    ---------------------------
    */
 
-  var reservedInventoryTable : ReservedInventoryTable =
-    DocTable<ReservedInventoryId, ReservedInventoryDoc, ReservedInventoryInfo>(
+  var reservedInventoryTable : M.ReservedInventoryTable =
+    DocTable<T.ReservedInventoryId, M.ReservedInventoryDoc, T.ReservedInventoryInfo>(
     0,
-    func(x:ReservedInventoryId):ReservedInventoryId{x+1},
-    func(x:ReservedInventoryId,y:ReservedInventoryId):Bool{x==y},
+    func(x:T.ReservedInventoryId):T.ReservedInventoryId{x+1},
+    func(x:T.ReservedInventoryId,y:T.ReservedInventoryId):Bool{x==y},
     idHash,
-    func(doc:ReservedInventoryDoc):ReservedInventoryInfo = shared {
+    func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = shared {
       id=doc.id;
       item=doc.item.id;
       retailer=doc.retailer
     },
-    func(info:ReservedInventoryInfo):?ReservedInventoryDoc = {
+    func(info:T.ReservedInventoryInfo):?M.ReservedInventoryDoc = {
       // validate the info's item id
       switch (inventoryTable.getDoc(info.id),
               retailerTable.getDoc(info.retailer)) {
         case (?item_, ?_) {
                ?(new {
                    id=info.id;
-                   item=item_:InventoryDoc;
+                   item=item_:M.InventoryDoc;
                    retailer=info.retailer;
                  })
              };
@@ -449,25 +522,25 @@ secondary maps.
    ----------------
    */
 
-  var reservedRouteTable : ReservedRouteTable =
-    DocTable<ReservedRouteId, ReservedRouteDoc, ReservedRouteInfo>(
+  var reservedRouteTable : M.ReservedRouteTable =
+    DocTable<T.ReservedRouteId, M.ReservedRouteDoc, T.ReservedRouteInfo>(
     0,
-    func(x:ReservedRouteId):ReservedRouteId{x+1},
-    func(x:ReservedRouteId,y:ReservedRouteId):Bool{x==y},
+    func(x:T.ReservedRouteId):T.ReservedRouteId{x+1},
+    func(x:T.ReservedRouteId,y:T.ReservedRouteId):Bool{x==y},
     idHash,
-    func(doc:ReservedRouteDoc):ReservedRouteInfo = shared {
+    func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = shared {
       id=doc.id;
       route=doc.route.id;
       retailer=doc.retailer
     },
-    func(info:ReservedRouteInfo):?ReservedRouteDoc = {
+    func(info:T.ReservedRouteInfo):?M.ReservedRouteDoc = {
       // validate the info's item id
       switch (routeTable.getDoc(info.id),
               retailerTable.getDoc(info.retailer)) {
         case (?route_, ?_) {
                ?(new {
                    id=info.id;
-                   route=route_:RouteDoc;
+                   route=route_:M.RouteDoc;
                    retailer=info.retailer;
                  })
              };
@@ -483,7 +556,7 @@ secondary maps.
    */
 
   private var usersByUserName
-    : UserNameMap = null;
+    : M.UserNameMap = null;
 
   /**
 
@@ -510,7 +583,7 @@ secondary maps.
 
    */
 
-  private var routesByDstSrcRegions : ByRegionPairRouteMap = null;
+  private var routesByDstSrcRegions : M.ByRegionPairRouteMap = null;
 
   /**
    Inventory by region
@@ -523,7 +596,7 @@ secondary maps.
 
   */
 
-  private var inventoryByRegion : ByRegionInventoryMap = null;
+  private var inventoryByRegion : M.ByRegionInventoryMap = null;
 
   /**
 
@@ -553,7 +626,7 @@ than the MVP goals, however.
 
    */
   private var reservationsByProduceByRegion
-    : ByProduceByRegionInventoryReservationMap = null;
+    : M.ByProduceByRegionInventoryReservationMap = null;
 
 
   /**
@@ -602,18 +675,18 @@ than the MVP goals, however.
 
    */
   addUser(
-    public_key_: PublicKey,
+    public_key_: T.PublicKey,
     user_name_: Text,
     description_: Text,
-    region_: RegionId,
+    region_: T.RegionId,
     isDeveloper_: Bool,
     isProducer: Bool,
     isRetailer: Bool,
     isTransporter: Bool
-  ) : ?UserId {
+  ) : ?T.UserId {
 
     /**- Fail immediately if the user name is already taken: */
-    switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name_), textIsEq)) {
+    switch (Trie.find<T.UserName,T.UserId>(usersByUserName, keyOfText(user_name_), textIsEq)) {
       case null {};
       case (?_) { return null };
     };
@@ -628,9 +701,10 @@ than the MVP goals, however.
 
     /**- Create a producer role for the user: */
     let prId = if isProducer { producerTable.addInfoGetId(
-      func(id_:ProducerId):ProducerInfo {
+      func(id_:T.ProducerId):T.ProducerInfo {
         shared {
-          id=id_:ProducerId;
+          id=id_:T.ProducerId;
+          public_key=public_key_;
           short_name=user_name_;
           description=description_;
           region=region_;
@@ -641,9 +715,10 @@ than the MVP goals, however.
 
     /**- Create a transporter role for the user: */
     let trId = if isTransporter { transporterTable.addInfoGetId(
-      func(id_:TransporterId):TransporterInfo {
+      func(id_:T.TransporterId):T.TransporterInfo {
         shared {
-          id=id_:TransporterId;
+          id=id_:T.TransporterId;
+          public_key=public_key_;
           short_name=user_name_;
           description=description_;
           routes=[];
@@ -653,18 +728,19 @@ than the MVP goals, however.
 
     /**- Create a retailer role for the user: */
     let rrId = if isRetailer { retailerTable.addInfoGetId(
-      func(id_:RetailerId):RetailerInfo {
+      func(id_:T.RetailerId):T.RetailerInfo {
         shared {
           id=id_;
+          public_key=public_key_;
           short_name=user_name_;
           description=description_;
-          region=region_:RegionId;
+          region=region_:T.RegionId;
         }
       }) } else null;
 
     /**- Record the user information: */
     let id = userTable.addInfoGetId(
-      func (id_: UserId) : UserInfo =
+      func (id_: T.UserId) : T.UserInfo =
         shared {
           id = id_;
           user_name = user_name_;
@@ -679,53 +755,15 @@ than the MVP goals, however.
 
     /**- Record the mapping from user-chosen name to exchange-chosen id: */
     usersByUserName :=
-    Trie.insertFresh<UserName,UserId>(
+    Trie.insertFresh<T.UserName,T.UserId>(
       usersByUserName,
       keyOfText(user_name_), textIsEq,
-      unwrap<UserId>(id)
+      Option.unwrap<T.UserId>(id)
     );
 
     /**- return the id */
     id
   };
-
-  /** Verifies that the user name and public key match */
-  isValidUser(public_key: PublicKey, user_name: Text): Bool {
-    switch (Trie.find<UserName,UserId>(usersByUserName, keyOfText(user_name), textIsEq)) {
-      case null { return false };
-      case (?userId) {
-        option<UserDoc, Bool>(
-          userTable.getDoc(userId),
-          func (u:UserDoc): Bool { u.public_key == public_key },
-          false
-        )
-      }
-    }
-  };
-
-  producerFromUserId(id: UserId): ?ProducerDoc = fmap<UserDoc, ProducerDoc>(
-    userTable.getDoc(id),
-    func (u: UserDoc): ?ProducerDoc = fmap<ProducerId, ProducerDoc>(
-      u.producerId,
-      func (i: ProducerId): ?ProducerDoc = producerTable.getDoc(i)
-    )
-  );
-
-  transporterFromUserId(id: UserId): ?TransporterDoc = fmap<UserDoc, TransporterDoc>(
-    userTable.getDoc(id),
-    func (u: UserDoc): ?TransporterDoc = fmap<TransporterId, TransporterDoc>(
-      u.transporterId,
-      func (i: TransporterId): ?TransporterDoc = transporterTable.getDoc(i)
-    )
-  );
-
-  retailerFromUserId(id: UserId): ?RetailerDoc = fmap<UserDoc, RetailerDoc>(
-    userTable.getDoc(id),
-    func (u: UserDoc): ?RetailerDoc = fmap<RetailerId, RetailerDoc>(
-      u.retailerId,
-      func (i: RetailerId): ?RetailerDoc = retailerTable.getDoc(i)
-    )
-  );
 
   /**
 
@@ -740,12 +778,12 @@ than the MVP goals, however.
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(public_key: PublicKey, produce_id:ProduceId, region_oid:?RegionId) : ?[ProduceMarketInfo] {
+  produceMarketInfo(produce_id:T.ProduceId, region_oid:?T.RegionId) : ?[T.ProduceMarketInfo] {
     // switch (Map.find<ProduceId,Map<RegionId,Map<ReservedInventoryId>>>(
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
     //   case null { return null };
-    null
+    P.nyi()
   };
 
   /**
@@ -760,15 +798,15 @@ than the MVP goals, however.
    // `producerAllInventoryInfo`
    // ---------------------------
    */
-  producerAllInventoryInfo(public_key: PublicKey, id:UserId) : ?[InventoryInfo] {
-    let doc = switch (producerFromUserId(id)) {
+  producerAllInventoryInfo(id:T.UserId) : ?[T.InventoryInfo] {
+    let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    ?Map.toArray<InventoryId,InventoryDoc,InventoryInfo>(
+    ?Map.toArray<T.InventoryId,M.InventoryDoc,T.InventoryInfo>(
       doc.inventory,
-      func (_:InventoryId,doc:InventoryDoc):[InventoryInfo] =
+      func (_:T.InventoryId,doc:M.InventoryDoc):[T.InventoryInfo] =
         [inventoryTable.getInfoOfDoc()(doc)]
     )
   };
@@ -779,57 +817,52 @@ than the MVP goals, however.
 
   */
   producerAddInventory(
-    public_key : Text,
-    iid_       : ?InventoryId,
-    id_        : UserId,
-    produce_id : ProduceId,
-    quantity_  : Quantity,
-    weight_    : Weight,
-    ppu_       : Price,
-    start_date_: Date,
-    end_date_  : Date,
+    iid_       : ?T.InventoryId,
+    id_        : T.UserId,
+    produce_id : T.ProduceId,
+    quantity_  : T.Quantity,
+    weight_    : T.Weight,
+    ppu_       : T.Price,
+    start_date_: T.Date,
+    end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<InventoryId, ServerErr>
+  ) : Result<T.InventoryId, T.ServerErr>
   {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let oproducer: ?ProducerDoc = producerFromUserId(id_);
-    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
+    let oproducer: ?M.ProducerDoc = producerTable.getDoc(id_);
+    let oproduce  : ?M.ProduceDoc  = produceTable.getDoc(produce_id);
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
       case _ { return #err(#idErr) };
       }};
 
-    if (not isValidUser(public_key, producer_.short_name)) {
-      return (#err(#publicKeyErr))
-    };
-
     /**- Create the inventory item document: */
     let (_, item) = {
       switch (inventoryTable.addInfoAs(iid_,
-                func(iid:InventoryId):InventoryInfo{
+                func(iid:T.InventoryId):T.InventoryInfo{
         shared {
-          id        = iid       :InventoryId;
-          produce   = produce_id:ProduceId;
-          producer  = id_       :ProducerId;
-          quantity  = quantity_ :Quantity;
-          weight    = weight_   :Weight;
-          ppu       = ppu_      :Price;
-          start_date=start_date_:Date;
-          end_date  =end_date_  :Date;
+          id        = iid       :T.InventoryId;
+          produce   = produce_id:T.ProduceId;
+          producer  = id_       :T.ProducerId;
+          quantity  = quantity_ :T.Quantity;
+          weight    = weight_   :T.Weight;
+          ppu       = ppu_      :T.Price;
+          start_date=start_date_:T.Date;
+          end_date  =end_date_  :T.Date;
           comments  =comments_  :Text;
         };
       })) {
       case (?item) { item };
-      case (null) { unreachable() };
+      case (null) { P.unreachable() };
       }
     };
 
     /**- Update the producer's inventory collection to hold the new inventory document: */
     let updatedInventory =
-      Map.insertFresh<InventoryId, InventoryDoc>(
+      Map.insertFresh<T.InventoryId, M.InventoryDoc>(
         producer_.inventory,
         keyOf(item.id),
         idIsEq,
@@ -841,6 +874,7 @@ than the MVP goals, however.
       producer_.id,
       new {
         id = producer_.id;
+        public_key = producer_.public_key;
         short_name = producer_.short_name;
         description = producer_.description;
         region = producer_.region;
@@ -850,7 +884,7 @@ than the MVP goals, however.
 
     /**- Update inventoryByRegion mapping: */
     inventoryByRegion :=
-    Map.insert2D<RegionId, ProducerId, InventoryMap>(
+    Map.insert2D<T.RegionId, T.ProducerId, M.InventoryMap>(
       inventoryByRegion,
       keyOf(producer_.region.id), idIsEq,
       keyOf(producer_.id), idIsEq,
@@ -866,22 +900,21 @@ than the MVP goals, however.
 
   */
   producerUpdateInventory(
-    public_key : Text,
-    iid_       : InventoryId,
-    id_        : UserId,
-    produce_id : ProduceId,
-    quantity_  : Quantity,
-    weight_    : Weight,
-    ppu_       : Price,
-    start_date_: Date,
-    end_date_  : Date,
+    iid_       : T.InventoryId,
+    id_        : T.ProducerId,
+    produce_id : T.ProduceId,
+    quantity_  : T.Quantity,
+    weight_    : T.Weight,
+    ppu_       : T.Price,
+    start_date_: T.Date,
+    end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<(),ServerErr>
+  ) : Result<(),T.ServerErr>
   {
     /**- Validate these ids; fail here if anything is invalid: */
-    let oproducer: ?ProducerDoc = producerFromUserId(id_);
-    let oinventory : ?InventoryDoc = inventoryTable.getDoc(iid_);
-    let oproduce  : ?ProduceDoc  = produceTable.getDoc(produce_id);
+    let oproducer: ?M.ProducerDoc = producerTable.getDoc(id_);
+    let oinventory : ?M.InventoryDoc = inventoryTable.getDoc(iid_);
+    let oproduce  : ?M.ProduceDoc  = produceTable.getDoc(produce_id);
     let (inventory_, producer_, produce_) = {
       switch (oinventory, oproducer, oproduce) {
       case (?inventory, ?producer, ?produce) {
@@ -897,17 +930,13 @@ than the MVP goals, however.
       case _ { return (#err(#idErr)) };
       }};
 
-    if (not isValidUser(public_key, producer_.short_name)) {
-      return (#err(#publicKeyErr))
-    };
-
     /**- remove the inventory item; given the validation above, this cannot fail. */
-    assertOk( producerRemInventory(public_key, iid_) );
+    Result.assertOk( producerRemInventory(iid_) );
 
     /**- add the (updated) inventory item; given the validation above, this cannot fail. */
-    assertOk(
+    Result.assertOk(
       producerAddInventory(
-        public_key, ?iid_, id_,
+        ?iid_, id_,
         produce_id,
         quantity_, weight_, ppu_, start_date_, end_date_, comments_ )
     );
@@ -923,7 +952,7 @@ than the MVP goals, however.
    Remove the given inventory item from the exchange.
 
    */
-  producerRemInventory(public_key: PublicKey, id:InventoryId) : Result<(),ServerErr> {
+  producerRemInventory(id:T.InventoryId) : Result<(),T.ServerErr> {
 
     /**- validate the `id` */
     /// xxx macro for this pattern?
@@ -933,26 +962,22 @@ than the MVP goals, however.
     };
 
     /**- remove document from `producerTable`, in several steps: */
-    let producer = unwrap<ProducerDoc>(producerTable.getDoc(doc.producer));
-
-    /// xxx: access control: Check that the current user is the owner of this inventory
-    if (not isValidUser(public_key, producer.short_name)) {
-      return (#err(#publicKeyErr))
-    };
+    let producer = Option.unwrap<M.ProducerDoc>(producerTable.getDoc(doc.producer));
 
     /**- remove document from `inventoryTable` */
-    assertSome<InventoryDoc>(
+    Option.assertSome<M.InventoryDoc>(
       inventoryTable.rem( id )
     );
 
     /// xxx an abstraction to hide these type arguments?
     let (updatedInventory, _) =
-      Trie.remove<InventoryId, InventoryDoc>(
+      Trie.remove<T.InventoryId, M.InventoryDoc>(
         producer.inventory, keyOf(id), idIsEq);
 
     /// xxx syntax for functional record updates?
     let updatedProducer = new {
       id          = producer.id ;
+      public_key  = producer.public_key ;
       short_name  = producer.short_name ;
       description = producer.description ;
       region      = producer.region ;
@@ -960,20 +985,20 @@ than the MVP goals, however.
       reserved    = producer.reserved ;
     };
 
-    assertSome<ProducerDoc>(
+    Option.assertSome<M.ProducerDoc>(
       producerTable.updateDoc( producer.id, updatedProducer )
     );
 
     /**- remove document from table `inventoryByRegion`: */
     /// xxx an abstraction to hide this tuple projection, assignment, and type args?
     inventoryByRegion := {
-      let (t, d) = Trie.remove3D<RegionId, ProducerId, InventoryId, InventoryDoc>(
+      let (t, d) = Trie.remove3D<T.RegionId, T.ProducerId, T.InventoryId, M.InventoryDoc>(
         inventoryByRegion,
         keyOf(producer.region.id), idIsEq,
         keyOf(producer.id), idIsEq,
         keyOf(id), idIsEq
       );
-      assertSome<InventoryDoc>(d);
+      Option.assertSome<M.InventoryDoc>(d);
       t
     };
 
@@ -981,28 +1006,27 @@ than the MVP goals, however.
   };
 
   /**
-   `producerReservations`
+   `producerAllReservationInfo`
    ---------------------------
 
    */
-  producerReservations(public_key: PublicKey, id:UserId) : ?[ReservedInventoryInfo] {
-    let doc = switch (producerFromUserId(id)) {
+  producerAllReservationInfo(id:T.ProducerId) : ?[T.ReservedInventoryInfo] {
+    let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    ?Map.toArray<ReservedInventoryId,
-                 ReservedInventoryDoc,
-                 ReservedInventoryInfo>(
+    ?Map.toArray<T.ReservedInventoryId,
+                 M.ReservedInventoryDoc,
+                 T.ReservedInventoryInfo>(
       doc.reserved,
-      func (_:ReservedInventoryId,
-            doc:ReservedInventoryDoc):
-        [ReservedInventoryInfo]
+      func (_:T.ReservedInventoryId,
+            doc:M.ReservedInventoryDoc):
+        [T.ReservedInventoryInfo]
         =
         [reservedInventoryTable.getInfoOfDoc()(doc)]
     )
   };
-
 
    /**
    `Transporter`-facing operations
@@ -1015,23 +1039,22 @@ than the MVP goals, however.
    ---------------------------
   */
   transporterAddRoute(
-    public_key:      Text,
-    rid_:            ?RouteId,
-    id_:             UserId,
-    start_region_id: RegionId,
-    end_region_id:   RegionId,
-    start_date_:     Date,
-    end_date_:       Date,
-    cost_:           Price,
-    trucktype_id:    TruckTypeId
-  ) : Result<RouteId,ServerErr> {
+    rid_:            ?T.RouteId,
+    id_:             T.TransporterId,
+    start_region_id: T.RegionId,
+    end_region_id:   T.RegionId,
+    start_date_:     T.Date,
+    end_date_:       T.Date,
+    cost_:           T.Price,
+    trucktype_id:    T.TruckTypeId
+  ) : Result<T.RouteId,T.ServerErr> {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let otransporter : ?TransporterDoc = transporterFromUserId(id_);
-    let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
-    let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
-    let otrucktype   : ?TruckTypeInfo  = truckTypeTable.getInfo(trucktype_id);
+    let otransporter : ?M.TransporterDoc = transporterTable.getDoc(id_);
+    let orstart      : ?M.RegionDoc  = regionTable.getDoc(start_region_id);
+    let orend        : ?M.RegionDoc  = regionTable.getDoc(end_region_id);
+    let otrucktype   : ?T.TruckTypeInfo  = truckTypeTable.getInfo(trucktype_id);
     let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
@@ -1039,13 +1062,9 @@ than the MVP goals, however.
       }};
     let transporterId = transporter.id;
 
-    if (not isValidUser(public_key, transporter.short_name)) {
-      return (#err(#publicKeyErr))
-    };
-
     /**- Create the route item document: */
-    let route : RouteDoc = {
-      switch (routeTable.addInfoAs(rid_, func(routeId:RouteId):RouteInfo{
+    let route : M.RouteDoc = {
+      switch (routeTable.addInfoAs(rid_, func(routeId:T.RouteId):T.RouteInfo{
         shared {
         id= routeId;
         transporter=transporterId;
@@ -1058,13 +1077,13 @@ than the MVP goals, however.
         };
       })) {
       case (?(_, route)) { route };
-      case null { unreachable() };
+      case null { P.unreachable() };
       }
     };
 
     /**- Update the transporter's routes collection to hold the new route document: */
     let updatedRoutes =
-      Map.insertFresh<RouteId, RouteDoc>(
+      Map.insertFresh<T.RouteId, M.RouteDoc>(
         transporter.routes,
         keyOf(route.id),
         idIsEq,
@@ -1076,6 +1095,7 @@ than the MVP goals, however.
       transporter.id,
       new {
         id = transporter.id;
+        public_key = transporter.public_key;
         short_name = transporter.short_name;
         description = transporter.description;
         reserved = transporter.reserved;
@@ -1084,7 +1104,7 @@ than the MVP goals, however.
 
     /**- Update the [`routesByDstSrcRegions` mapping](#routes-by-region) using the route's regions and id */
     routesByDstSrcRegions :=
-    Map.insert3D<RegionId, RegionId, RouteId, RouteDoc>(
+    Map.insert3D<T.RegionId, T.RegionId, T.RouteId, M.RouteDoc>(
       routesByDstSrcRegions,
       keyOf(end_region_.id), idIsEq,
       keyOf(start_region_.id), idIsEq,
@@ -1101,24 +1121,23 @@ than the MVP goals, however.
    Update the given route with the given field values.
    */
   transporterUpdateRoute(
-    public_key      : Text,
-    rid_            : RouteId,
-    id_             : UserId,
-    start_region_id : RegionId,
-    end_region_id   : RegionId,
-    start_date_     : Date,
-    end_date_       : Date,
-    cost_           : Price,
-    trucktype_id    : TruckTypeId
-  ) : Result<(),ServerErr> {
+    rid_            : T.RouteId,
+    id_             : T.TransporterId,
+    start_region_id : T.RegionId,
+    end_region_id   : T.RegionId,
+    start_date_     : T.Date,
+    end_date_       : T.Date,
+    cost_           : T.Price,
+    trucktype_id    : T.TruckTypeId
+  ) : Result<(),T.ServerErr> {
     /** The model updates routes and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
-    let oroute       : ?RouteDoc   = routeTable.getDoc(rid_);
-    let otransporter : ?TransporterDoc = transporterFromUserId(id_);
-    let orstart      : ?RegionDoc  = regionTable.getDoc(start_region_id);
-    let orend        : ?RegionDoc  = regionTable.getDoc(end_region_id);
-    let otrucktype   : ?TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
+    let oroute       : ?M.RouteDoc   = routeTable.getDoc(rid_);
+    let otransporter : ?M.TransporterDoc = transporterTable.getDoc(id_);
+    let orstart      : ?M.RegionDoc  = regionTable.getDoc(start_region_id);
+    let orend        : ?M.RegionDoc  = regionTable.getDoc(end_region_id);
+    let otrucktype   : ?M.TruckTypeDoc  = truckTypeTable.getDoc(trucktype_id);
     let (route, transporter, start_region_, end_region_, truck_type_) = {
       switch (oroute, otransporter, orstart, orend, otrucktype) {
       case (?route, ?transporter, ?x2, ?x3, ?x4) {
@@ -1134,18 +1153,12 @@ than the MVP goals, however.
       case _ { return #err(#idErr) };
       }};
 
-    /**- validate the user */
-    if (not isValidUser(public_key, transporter.short_name)) {
-      return #err(#publicKeyErr)
-    }
-
     /**- remove the route; given the validation above, this cannot fail. */
-    assertOk( transporterRemRoute(public_key, rid_) );
+    Result.assertOk( transporterRemRoute(rid_) );
 
     /**- add the (updated) route; given the validation above, this cannot fail. */
-    assertOk(
+    Result.assertOk(
       transporterAddRoute(
-        public_key,
         ?rid_, id_,
         start_region_id,
         end_region_id,
@@ -1165,47 +1178,44 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(public_key: PublicKey, id:RouteId) : Result<(),ServerErr> {
+  transporterRemRoute(id:T.RouteId) : Result<(),T.ServerErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return #err(#idErr) };
       case (?doc) { doc };
     };
 
-    let transporter = unwrap<TransporterDoc>(transporterTable.getDoc(doc.transporter));
+    let transporter = Option.unwrap<M.TransporterDoc>(transporterTable.getDoc(doc.transporter));
 
-    if (not isValidUser(public_key, transporter.short_name)) {
-      return #err(#publicKeyErr)
-    }
-
-    assertSome<RouteDoc>(
+    Option.assertSome<M.RouteDoc>(
       routeTable.rem( id )
     );
 
     let (updatedRoutes, _) =
-      Trie.remove<RouteId, RouteDoc>(
+      Trie.remove<T.RouteId, M.RouteDoc>(
         transporter.routes, keyOf(id), idIsEq);
 
     let updatedTransporter = new {
       id          = transporter.id ;
+      public_key  = transporter.public_key;
       short_name  = transporter.short_name ;
       description = transporter.description ;
       routes      = updatedRoutes ;
       reserved    = transporter.reserved ;
     };
 
-    assertSome<TransporterDoc>(
+    Option.assertSome<M.TransporterDoc>(
       transporterTable.updateDoc( transporter.id, updatedTransporter )
     );
 
     routesByDstSrcRegions := {
-      let (t, d) = Trie.remove3D<RegionId, RegionId, RouteId, RouteDoc>(
+      let (t, d) = Trie.remove3D<T.RegionId, T.RegionId, T.RouteId, M.RouteDoc>(
         routesByDstSrcRegions,
         keyOf(doc.end_region.id), idIsEq,
         keyOf(doc.start_region.id), idIsEq,
         keyOf(doc.id), idIsEq
       );
-      assertSome<RouteDoc>(d);
+      Option.assertSome<M.RouteDoc>(d);
       t
     };
 
@@ -1216,19 +1226,19 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: PublicKey, id:UserId) : ?[RouteInfo] {
-    let doc = switch (transporterFromUserId(id)) {
+  transporterAllRouteInfo(id:T.TransporterId) : ?[T.RouteInfo] {
+    let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    ?Map.toArray<RouteId,
-                 RouteDoc,
-                 RouteInfo>(
+    ?Map.toArray<T.RouteId,
+                 M.RouteDoc,
+                 T.RouteInfo>(
       doc.routes,
-      func (_:RouteId,
-            doc:RouteDoc):
-        [RouteInfo]
+      func (_:T.RouteId,
+            doc:M.RouteDoc):
+        [T.RouteInfo]
         =
         [routeTable.getInfoOfDoc()(doc)]
     )
@@ -1239,19 +1249,19 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  transporterAllReservationInfo(public_key: PublicKey, id:UserId) : ?[ReservedRouteInfo] {
-    let doc = switch (transporterFromUserId(id)) {
+  transporterAllReservationInfo(id:T.TransporterId) : ?[T.ReservedRouteInfo] {
+    let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    ?Map.toArray<ReservedRouteId,
-                 ReservedRouteDoc,
-                 ReservedRouteInfo>(
+    ?Map.toArray<T.ReservedRouteId,
+                 M.ReservedRouteDoc,
+                 T.ReservedRouteInfo>(
       doc.reserved,
-      func (_:ReservedRouteId,
-            doc:ReservedRouteDoc):
-        [ReservedRouteInfo]
+      func (_:T.ReservedRouteId,
+            doc:M.ReservedRouteDoc):
+        [T.ReservedRouteInfo]
         =
         [reservedRouteTable.getInfoOfDoc()(doc)]
     )
@@ -1270,23 +1280,23 @@ than the MVP goals, however.
   Prepare reservation information for a server client
   based on the given inventory and route documents.
   */
-  makeReservationInfo(item:InventoryDoc, route:RouteDoc) : ReservationInfo {
+  makeReservationInfo(item:M.InventoryDoc, route:M.RouteDoc) : T.ReservationInfo {
     shared {
-      produce  =item.produce.id :ProduceId;
-      producer =item.producer   :ProducerId;
-      quant    =item.quantity   :Quantity;
-      ppu      =item.ppu        :Price;
-      weight   =item.weight     :Weight;
-      prod_cost=item.quantity * item.ppu:Price;
+      produce  =item.produce.id :T.ProduceId;
+      producer =item.producer   :T.ProducerId;
+      quant    =item.quantity   :T.Quantity;
+      ppu      =item.ppu        :T.Price;
+      weight   =item.weight     :T.Weight;
+      prod_cost=item.quantity * item.ppu:T.Price;
 
-      transporter = route.transporter :TransporterId;
-      truck_type  = route.truck_type.id :TruckTypeId;
+      transporter = route.transporter :T.TransporterId;
+      truck_type  = route.truck_type.id :T.TruckTypeId;
 
-      region_begin = route.start_region.id:RegionId;
-      region_end   = route.end_region.id  :RegionId;
-      date_begin   = route.start_date  :Date;
-      date_end     = route.end_date    :Date;
-      trans_cost   = route.cost:  Price;
+      region_begin = route.start_region.id:T.RegionId;
+      region_end   = route.end_region.id  :T.RegionId;
+      date_begin   = route.start_date  :T.Date;
+      date_end     = route.end_date    :T.Date;
+      trans_cost   = route.cost:  T.Price;
     }
   };
 
@@ -1299,7 +1309,7 @@ than the MVP goals, however.
   Check whether the given truck type can accommodate the given produce type.
 
   */
-  isCompatibleTruckType(tt:TruckTypeDoc, produce:ProduceDoc) : Bool {
+  isCompatibleTruckType(tt:M.TruckTypeDoc, produce:M.ProduceDoc) : Bool {
     // todo
     true
   };
@@ -1313,11 +1323,11 @@ than the MVP goals, however.
   */
 
   isFeasibleReservation(
-    retailer:RetailerDoc,
-    item:InventoryDoc,
-    route:RouteDoc,
-    queryProduce:?ProduceId,
-    queryDate:?Date)
+    retailer:M.RetailerDoc,
+    item:M.InventoryDoc,
+    route:M.RouteDoc,
+    queryProduce:?T.ProduceId,
+    queryDate:?T.Date)
     : Bool
   {
 
@@ -1378,24 +1388,21 @@ than the MVP goals, however.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
   retailerQueryAll(
-    public_key: PublicKey,
-    id:UserId,
-    queryProduce:?ProduceId,
-    queryDate:?Date
-  ) : ?QueryAllResults
+    id:T.RetailerId,
+    queryProduce:?T.ProduceId,
+    queryDate:?T.Date
+  ) : ?T.QueryAllResults
   {
     retailerQueryCount += 1;
 
     /** - Find the retailer's document: */
     let retailer =
-      switch (retailerFromUserId(id)) {
+      switch (retailerTable.getDoc(id)) {
       case (null) { return null };
       case (?x) { x }};
 
     debug "- user_name: ";
     debug (retailer.short_name);
-    debug ", public_key: ";
-    debug (public_key);
     debug "\n";
 
     /** - Temp: */
@@ -1405,7 +1412,7 @@ than the MVP goals, however.
 
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
-      switch (Trie.find<RegionId, ByRegionRouteMap>(
+      switch (Trie.find<T.RegionId, M.ByRegionRouteMap>(
                 routesByDstSrcRegions,
                 keyOf(retailer.region.id),
                 idIsEq
@@ -1413,39 +1420,39 @@ than the MVP goals, however.
       case (null) { return ?[] };
       case (?x) { x }};
 
-    debugInt(Trie.count<RegionId, RouteMap>(retailerRoutes));
+    debugInt(Trie.count<T.RegionId, M.RouteMap>(retailerRoutes));
     debug " production regions.\n";
 
     /** - Join: For each production region, consider all routes and inventory: */
-    let queryResults : Trie<RegionId, RouteInventoryMap> = {
+    let queryResults : Trie<T.RegionId, RouteInventoryMap> = {
       retailerJoinCount += 1;
-      Trie.join<RegionId,
-                RouteMap,
-                ByProducerInventoryMap,
+      Trie.join<T.RegionId,
+                M.RouteMap,
+                M.ByProducerInventoryMap,
                 RouteInventoryMap>(
         retailerRoutes,
         inventoryByRegion,
         idIsEq,
-        func (routes:RouteMap,
-              inventory:ByProducerInventoryMap) : RouteInventoryMap
+        func (routes:M.RouteMap,
+              inventory:M.ByProducerInventoryMap) : RouteInventoryMap
       {
 
         /** - Within this production region, consider every route-item pairing: */
-        let product = Trie.prod<RouteId, RouteDoc,
-                                InventoryId, InventoryDoc,
-                                (RouteId, InventoryId),
-                                (RouteDoc, InventoryDoc)>(
+        let product = Trie.prod<T.RouteId, M.RouteDoc,
+                                T.InventoryId, M.InventoryDoc,
+                                (T.RouteId, T.InventoryId),
+                                (M.RouteDoc, M.InventoryDoc)>(
           routes,
           /** - (To perform this Cartesian product, use a 1D inventory map:) */
-          Trie.mergeDisjoint2D<ProducerId, InventoryId, InventoryDoc>(
+          Trie.mergeDisjoint2D<T.ProducerId, T.InventoryId, M.InventoryDoc>(
             inventory, idIsEq, idIsEq),
 
-          func (route_id:RouteId,
-                route   :RouteDoc,
-                item_id :InventoryId,
-                item    :InventoryDoc) :
-            ?(Key<(RouteId, InventoryId)>,
-              (RouteDoc, InventoryDoc))
+          func (route_id:T.RouteId,
+                route   :M.RouteDoc,
+                item_id :T.InventoryId,
+                item    :M.InventoryDoc) :
+            ?(Key<(T.RouteId, T.InventoryId)>,
+              (M.RouteDoc, M.InventoryDoc))
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
@@ -1463,22 +1470,22 @@ than the MVP goals, however.
 
     /** - The results are still organized by producer region; merge all such regions: */
     let queryResultsMerged : RouteInventoryMap =
-      Trie.mergeDisjoint2D<RegionId, (RouteId, InventoryId), (RouteDoc, InventoryDoc)>(
+      Trie.mergeDisjoint2D<T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>(
         queryResults, idIsEq, idPairIsEq);
 
     debug "- query result count: ";
-    debugInt(Trie.count<(RouteId, InventoryId),
-                        (RouteDoc, InventoryDoc)>(queryResultsMerged));
+    debugInt(Trie.count<(T.RouteId, T.InventoryId),
+                        (M.RouteDoc, M.InventoryDoc)>(queryResultsMerged));
     debug " (count of feasible route-item pairs).\n";
 
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
     let arr =
-      Trie.toArray<(RouteId, InventoryId),
-                   (RouteDoc, InventoryDoc),
-                   ReservationInfo>(
+      Trie.toArray<(T.RouteId, T.InventoryId),
+                   (M.RouteDoc, M.InventoryDoc),
+                   T.ReservationInfo>(
         queryResultsMerged,
-        func (_:(RouteId,InventoryId), (r:RouteDoc, i:InventoryDoc))
-          : [ ReservationInfo ] {
+        func (_:(T.RouteId,T.InventoryId), (r:M.RouteDoc, i:M.InventoryDoc))
+          : [ T.ReservationInfo ] {
             [ makeReservationInfo(i, r) ]
           });
 
@@ -1490,71 +1497,222 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  retailerAllReservationInfo(public_key: PublicKey, id:UserId) :
-    ?[(ReservedInventoryInfo,
-       ReservedRouteInfo)]
+  retailerAllReservationInfo(id:T.RetailerId) :
+    ?[(T.ReservedInventoryInfo,
+       T.ReservedRouteInfo)]
   {
-    let doc = switch (retailerFromUserId(id)) {
+    let doc = switch (retailerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
     };
 
-    ?Map.toArray<ReservedInventoryId,
-                 (ReservedInventoryDoc,  ReservedRouteDoc),
-                 (ReservedInventoryInfo, ReservedRouteInfo)>(
+    ?Map.toArray<T.ReservedInventoryId,
+                 (M.ReservedInventoryDoc,  M.ReservedRouteDoc),
+                 (T.ReservedInventoryInfo, T.ReservedRouteInfo)>(
       doc.reserved,
-      func (_:ReservedInventoryId,
-            ((idoc:ReservedInventoryDoc),
-             (rdoc:ReservedRouteDoc)))
+      func (_:T.ReservedInventoryId,
+            ((idoc:M.ReservedInventoryDoc),
+             (rdoc:M.ReservedRouteDoc)))
             :
-            [(ReservedInventoryInfo,
-              ReservedRouteInfo)]
+            [(T.ReservedInventoryInfo,
+              T.ReservedRouteInfo)]
         =
         [(reservedInventoryTable.getInfoOfDoc()(idoc),
           reservedRouteTable.getInfoOfDoc()(rdoc))]
     )
   };
 
-  /**
-   `retailerQueryDates`
-   ---------------------------
-
-   Retailer queries available produce by delivery date range; returns
-   a list of inventory items that can be delivered to that retailer's
-   geography within that date.
-
-   ```
-   let jt = (joinTablesConditionally
-               (routesByDstSrcRegionTable (retailer region))
-               inventoryByRegionTable
-               filterByDateConstraints
-            );
-   ```
-
-   */
-  retailerQueryDates(
-    public_key: PublicKey,
-    id:UserId,
-    begin:Date,
-    end:Date
-  ) : ?[InventoryInfo]
-  {
-    retailerQueryCount += 1;
-
-    nyi()
-  };
 
   /**
    `retailerReserve`
    ---------------------------
+
+   ### Ids before/after this operation:
+
+   after this operation, the reserved documents have Ids that are stale/dangling:
+   These old Ids are no longer valid in the master tables; instead, their owners,
+   the created reservation documents, each have a valid id, which this operation returns.
+
   */
   retailerReserve(
-    public_key: PublicKey,
-    id:UserId,
-    inventory:InventoryId,
-    route:RouteId) : Result<(ReservedRouteId, ReservedInventoryId), ServerErr>
+    retailer_id:T.RetailerId,
+    inventory_id:T.InventoryId,
+    route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>
   {
-    nyi()
+    /** ### validate Ids */
+
+    // xxx -- AS wishlist: macros that expand into case-null-return-#err forms, like below:
+
+    let retailerDocOp = retailerTable.getDoc(retailer_id);
+    let retailerDoc = switch retailerDocOp { case null return #err(#idErr); case (?x) x};
+
+    let routeDocOp = routeTable.getDoc(route_id);
+    let routeDoc = switch routeDocOp { case null return #err(#idErr); case (?x) x};
+
+    let transporterDocOp = transporterTable.getDoc(routeDoc.transporter);
+    let transporterDoc = switch transporterDocOp { case null return #err(#idErr); case (?x) x};
+
+    let inventoryDocOp = inventoryTable.getDoc(inventory_id);
+    let inventoryDoc = switch inventoryDocOp { case null return #err(#idErr); case (?x) x};
+
+    let producerDocOp = producerTable.getDoc(inventoryDoc.producer);
+    let producerDoc = switch producerDocOp { case null return #err(#idErr); case (?x) x};
+
+    /**if no errors in any results above, then continue: */
+
+    /**
+     ### remove resources
+
+     in preparation for _moving_ these resources, begin by removing
+     these reserved resources from the inventory and route tables, as well
+     as from all secondary mappings.  We reuse existing Model operations
+     for these removals.
+
+     */
+
+    Result.assertOk(producerRemInventory(inventory_id));
+    Result.assertOk(transporterRemRoute(route_id));
+
+    /**
+     ### create reservation documents
+
+     These new documents will "own" the removed documents for the
+     reserved resources.
+
+     Note: these owned documents have Ids that are stale/dangling.
+     They are no longer valid in the master tables.  Instead, their owners,
+     reservation documents, have valid ids.
+
+     */
+
+    /**- move route document into reserved route table, and mint an ID. */
+    let (_, reservedRouteDoc) = reservedRouteTable.addDoc(
+      func (rrid:T.ReservedRouteId):M.ReservedRouteDoc {
+        new {
+          id=rrid;
+          retailer=retailerDoc.id;
+          route=routeDoc;
+        }
+      }
+    );
+
+    /**- move inventory document into reserved inventory table, and mint an ID. */
+    let (_, reservedInventoryDoc) = reservedInventoryTable.addDoc(
+      func (rrid:T.ReservedInventoryId):M.ReservedInventoryDoc {
+        new {
+          id=rrid;
+          retailer=retailerDoc.id;
+          item=inventoryDoc;
+        }
+      }
+    );
+
+    /**
+     ### Update secondary mappings
+
+     add the newly-created reservation documents to reservation
+     collections of producers, transporters and retailers documents:
+
+     */
+    {
+      /**- Update the producer's reserved inventory: */
+
+      let (updatedProducerReserved,_) =
+        Map.insert<T.ReservedInventoryId,M.ReservedInventoryDoc>(
+          producerDoc.reserved,
+          keyOf(reservedInventoryDoc.id), idIsEq,
+          reservedInventoryDoc);
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedProducer = new {
+        id=producerDoc.id;
+        public_key=producerDoc.public_key;
+        short_name=producerDoc.short_name;
+        description=producerDoc.description;
+        region=producerDoc.region;
+        inventory=producerDoc.inventory;
+        reserved=updatedProducerReserved; // <-- the only field we are updating
+      };
+
+      Option.assertSome<M.ProducerDoc>(
+        producerTable.updateDoc( producerDoc.id, updatedProducer )
+      )
+    };
+    {
+      /**- Update the transporter's reserved routes: */
+
+      let (updatedTransporterReserved,_) =
+        Map.insert<T.ReservedRouteId,M.ReservedRouteDoc>(
+          transporterDoc.reserved,
+          keyOf(reservedRouteDoc.id), idIsEq,
+          reservedRouteDoc);
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedTransporter = new {
+        id=transporterDoc.id;
+        public_key=transporterDoc.public_key;
+        short_name=transporterDoc.short_name;
+        description=transporterDoc.description;
+        routes=transporterDoc.routes;
+        reserved=updatedTransporterReserved; // <-- the only field we are updating
+      };
+
+      Option.assertSome<M.TransporterDoc>(
+        transporterTable.updateDoc( transporterDoc.id, updatedTransporter )
+      )
+    };
+    {
+      /**- Update the retailer's reserved routes and inventory: */
+
+      let (updatedRetailerReserved,_) =
+        Map.insert<T.ReservedInventoryId, (M.ReservedInventoryDoc, M.ReservedRouteDoc)>(
+          retailerDoc.reserved,
+          keyOf(reservedInventoryDoc.id), idIsEq,
+          (reservedInventoryDoc, reservedRouteDoc));
+
+      // xxx -- AS wishlist: better syntax for functional record update:
+      let updatedRetailer = new {
+        id=retailerDoc.id;
+        public_key=retailerDoc.public_key;
+        short_name=retailerDoc.short_name;
+        description=retailerDoc.description;
+        region=retailerDoc.region;
+        reserved=updatedRetailerReserved; // <-- the only field we are updating
+      };
+
+      Option.assertSome<M.RetailerDoc>(
+        retailerTable.updateDoc( retailerDoc.id, updatedRetailer )
+      )
+    };
+
+    return #ok (reservedRouteDoc.id, reservedInventoryDoc.id)
+  };
+
+  /**
+   `retailerReserveMany`
+   ---------------------------
+  */
+  retailerReserveMany(
+    id:T.RetailerId,
+    list:[(T.InventoryId,T.RouteId)])
+    : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>]
+  {
+    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>)>(
+      list.len(),
+      null
+    );
+    for (i in (range(0,list.len()))) {
+      let (item, route) = list[i];
+      let x = retailerReserve(id, item, route);
+      a[i] := ?x;
+    };
+    let results =
+      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(
+        list.len(),
+        func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>{
+          Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(a[i])
+        });
+    results
   };
 
 };

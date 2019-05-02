@@ -2382,7 +2382,8 @@ module Dfinity = struct
   let compile_static_print env s =
       compile_databuf_of_bytes env s ^^
       G.i (Call (nr (E.built_in env "test_print")))
-  let _compile_print_int env =
+
+  let _compile_println_int env =
       G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
       G.i (Call (nr (E.built_in env "test_print"))) ^^
       compile_static_print env "\n"
@@ -2391,16 +2392,6 @@ module Dfinity = struct
     if E.mode env = DfinityMode
     then compile_static_print env (s ^ "\n") ^^ G.i Unreachable
     else G.i Unreachable
-
-  let prim_printInt env =
-    if E.mode env = DfinityMode
-    then
-      BoxedInt.unbox env ^^
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
-      G.i (Call (nr (E.built_in env "test_print")))
-    else
-      G.i Unreachable
 
   let prim_print env =
     if E.mode env = DfinityMode
@@ -4382,10 +4373,6 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Text.prim_showChar env
 
-       | "printInt" ->
-         SR.unit,
-         compile_exp_vanilla env e ^^
-         Dfinity.prim_printInt env
        | "print" ->
          SR.unit,
          compile_exp_vanilla env e ^^
