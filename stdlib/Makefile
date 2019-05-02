@@ -57,7 +57,7 @@ docMd: \
 	$(DOCDIR)/setDbTest.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.md \
-	$(DOCDIR)/examples/produce-exchange/serverExp.md \
+	$(DOCDIR)/examples/produce-exchange/serverLang.md \
 	$(DOCDIR)/examples/produce-exchange/serverActor.md \
 	$(DOCDIR)/examples/produce-exchange/serverModelTypes.md \
 	$(DOCDIR)/examples/produce-exchange/serverModel.md \
@@ -81,7 +81,7 @@ docHtml: \
 	$(DOCDIR)/setDbTest.html \
 	$(DOCDIR)/examples/produce-exchange/README.html \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.html \
-	$(DOCDIR)/examples/produce-exchange/serverExp.html \
+	$(DOCDIR)/examples/produce-exchange/serverLang.html \
 	$(DOCDIR)/examples/produce-exchange/serverActor.html \
 	$(DOCDIR)/examples/produce-exchange/serverModelTypes.html \
 	$(DOCDIR)/examples/produce-exchange/serverModel.html \
@@ -147,7 +147,7 @@ $(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
 PRODUCE_EXCHANGE_SRC=\
 	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
-	examples/produce-exchange/serverExp.as \
+	examples/produce-exchange/serverLang.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
 	examples/produce-exchange/serverActor.as \

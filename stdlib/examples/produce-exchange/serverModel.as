@@ -25,6 +25,7 @@ uses are is not.
 let P = (import "../../prelude.as");
 
 let T = (import "serverTypes.as");
+let L = (import "serverLang.as");
 let M = (import "serverModelTypes.as");
 
 let Hash = (import "../../hash.as").BitVec;
@@ -57,8 +58,78 @@ type RoleId = {
   #retailer    : T.RetailerId;
 };
 
-
 class Model() {
+
+  /**
+   PX server language semantics
+   ===================================================================================================
+   Evaluation semantics for the PX server language
+   */
+
+
+  /**
+   `evalReq`
+   ----------
+   evaluate an API call (a "request"), represented as an AS datatype.
+
+   supported calls currently consists of an add (`#add`), remove (`#rem`), or update (`#update`).
+   */
+  evalReq(req:L.Req) : Result<L.Resp, T.ServerErr> {
+    switch req {
+    case (#add info) {
+           switch (info) {
+             case (#user info) {
+                    Result.fromSomeMap<T.UserId,L.Resp,T.ServerErr>(
+                      addUser(
+                        info.public_key,
+                        info.user_name,
+                        info.description,
+                        info.region,
+                        info.isDeveloper,
+                        info.isProducer,
+                        info.isRetailer,
+                        info.isTransporter
+                      ),
+                      func (id:T.UserId):L.Resp = #add(#user(id)),
+                      #idErr
+                    )
+                  };
+             case _ {
+                    P.nyi()
+                  };
+           }
+         };
+    case (#update info ) {
+           P.nyi()
+         };
+    case (#rem id) {
+           P.nyi()
+         };
+    }
+  };
+
+  /**
+   `evalBulk`
+   ----------
+   evaluate groups of similar API calls, grouping their results.
+   Each bulk request consists of an array of similar requests (adds, updates, or removes).
+   */
+  evalBulk(req:L.BulkReq) : L.BulkResp {
+    P.nyi()
+  };
+
+  /**
+   `evalBulkArray`
+   ----------
+   evaluate arrays of bulk requests.
+   Notice that there are two levels of grouping:
+   - The request is an array of bulk request, and
+   - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
+   */
+  evalBulkArray(req:[L.BulkReq]) : [L.BulkResp] {
+    P.nyi()
+  };
+
 
   /**
    Access control: Match a given public key to that of an identified role, whose public key on record.
