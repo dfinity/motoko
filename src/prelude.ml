@@ -42,6 +42,7 @@ func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
 
 // Conversions
+/*
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
 func intToWord8(n : Int) : Word8 = (prim "Int->Word8" : Int -> Word8) n;
@@ -65,6 +66,7 @@ func word64ToInt(n : Word64) : Int = (prim "Word64->Int" : Word64 -> Int) n;
 func charToWord32(c : Char) : Word32 = (prim "Char->Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
 func decodeUTF8(s : Text) : (Word32, Char) = (prim "decodeUTF8" : Text -> (Word32, Char)) s;
+*/
 
 // Exotic bitwise operations
 func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word8) -> Word8) (w, amount);
@@ -103,8 +105,11 @@ func @text_of_Nat(x : Nat) : Text {
   var n = x;
   let base = 10;
 
+  /*
   while (n > 0) {
     let rem = n % base;
+  */
+    let rem = n;
     text := (switch (rem) {
       case (0) { "0" };
       case (1) { "1" };
@@ -116,10 +121,12 @@ func @text_of_Nat(x : Nat) : Text {
       case (7) { "7" };
       case (8) { "8" };
       case (9) { "9" };
-      case (_) { assert false; "" };
+      case (_) { "BIG!" };
     }) # text;
+  /*
     n := n / base;
   };
+  */
   return text;
 };
 

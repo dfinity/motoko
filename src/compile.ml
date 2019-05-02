@@ -438,7 +438,7 @@ let compile_op_const op i =
     compile_unboxed_const i ^^
     G.i (Binary (Wasm.Values.I32 op))
 let compile_add_const = compile_op_const I32Op.Add
-let _compile_sub_const = compile_op_const I32Op.Sub
+let compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = function
@@ -588,6 +588,14 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_ge" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
 
     E.add_export env (nr {
       name = Wasm.Utf8.decode "alloc_bytes";
@@ -929,6 +937,7 @@ module Tagged = struct
     | Text
     | Indirection
     | SmallWord (* Contains a 32 bit unsigned number *)
+    | BigInt
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -944,6 +953,7 @@ module Tagged = struct
     | Text -> 10l
     | Indirection -> 11l
     | SmallWord -> 12l
+    | BigInt -> 13l
 
   (* The tag *)
   let header_size = 1l
@@ -1452,6 +1462,15 @@ module BoxedInt = struct
   let _lit env n = compile_const_64 n ^^ box env
 
 end (* BoxedInt *)
+
+module BigInt = struct
+
+  let lit env n =
+    compile_unboxed_const n ^^
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
+
+end
+
 
 module BoxedSmallWord = struct
   (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
@@ -2544,6 +2563,8 @@ module HeapTraversal = struct
           compile_unboxed_const 3l
         ; Tagged.SmallWord,
           compile_unboxed_const 2l
+        ; Tagged.BigInt,
+          compile_unboxed_const 5l
         ; Tagged.Reference,
           compile_unboxed_const 2l
         ; Tagged.Some,
@@ -2594,31 +2615,39 @@ module HeapTraversal = struct
         )
 
   (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer. *)
-  let for_each_pointer env get_x mk_code =
+     passing code get the address of the pointer.
+     and code to get the offset of the pointer (for the BigInt payload field). *)
+  let for_each_pointer env get_x mk_code mk_code_offset =
     let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    let code = mk_code get_ptr_loc in
+    let code_offset = mk_code_offset get_ptr_loc in
     get_x ^^
     Tagged.branch_default env (ValBlockType None) G.nop
       [ Tagged.MutBox,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
+      ; Tagged.BigInt,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size 4l) ^^
+        set_ptr_loc ^^
+        code_offset Text.unskewed_payload_offset
       ; Tagged.Some,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.Variant,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Variant.payload_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.ObjInd,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size 1l) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.Array,
         get_x ^^
         Heap.load_field Arr.len_field ^^
@@ -2628,7 +2657,7 @@ module HeapTraversal = struct
           get_i ^^
           Arr.idx env ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ; Tagged.Object,
         get_x ^^
@@ -2643,7 +2672,7 @@ module HeapTraversal = struct
           get_x ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ; Tagged.Closure,
         get_x ^^
@@ -2656,7 +2685,7 @@ module HeapTraversal = struct
           get_x ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ]
 
@@ -3347,6 +3376,66 @@ module GC = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Add))
   )
 
+  (* A variant for an offseted pointer. These are never scalars *)
+  let evacuate_offset env offset =
+    let name = Printf.sprintf "evacuate_offset_%d" (Int32.to_int offset) in
+    Func.share_code4 env name (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+    let (set_len, get_len) = new_local env "len" in
+    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
+
+    let get_obj = get_ptr_loc ^^ load_ptr ^^ compile_sub_const offset in
+
+    (* If this is static, ignore it *)
+    get_obj ^^
+    get_begin_from_space ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+
+    (* If this is an indirection, just use that value *)
+    get_obj ^^
+    Tagged.branch_default env (ValBlockType None) G.nop [
+      Tagged.Indirection,
+      (* Update pointer *)
+      get_ptr_loc ^^
+      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
+      store_ptr ^^
+
+      get_end_to_space ^^
+      G.i Return
+    ] ^^
+
+    (* Copy the referenced object to to space *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
+
+    (* Calculate new pointer *)
+    get_end_to_space ^^
+    get_begin_to_space ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    get_begin_from_space ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_new_ptr ^^
+
+    (* Set indirection *)
+    get_obj ^^
+    Tagged.store Tagged.Indirection ^^
+    get_obj ^^
+    get_new_ptr ^^
+    Heap.store_field 1l ^^
+
+    (* Update pointer *)
+    get_ptr_loc ^^
+    get_new_ptr ^^
+    compile_add_const offset ^^
+    store_ptr ^^
+
+    (* Calculate new end of to space *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add))
+  )
+
   let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
     if not gc_enabled then G.nop else
 
@@ -3369,6 +3458,14 @@ module GC = struct
         evacuate env ^^
         set_end_to_space in
 
+    let evac_offset get_ptr_loc offset =
+        get_begin_from_space ^^
+        get_begin_to_space ^^
+        get_end_to_space ^^
+        get_ptr_loc ^^
+        evacuate_offset env offset ^^
+        set_end_to_space in
+
     (* Go through the roots, and evacuate them *)
     ClosureTable.get_counter ^^
     from_0_to_n env (fun get_i -> evac (
@@ -3381,7 +3478,7 @@ module GC = struct
     HeapTraversal.walk_heap_from_to env
       (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
       (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
     (* Go through the to-space, and evacuate that.
        Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
@@ -3389,7 +3486,7 @@ module GC = struct
     HeapTraversal.walk_heap_from_to env
       get_begin_to_space
       get_end_to_space
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
     (* Copy the to-space to the beginning of memory. *)
     get_begin_from_space ^^ compile_add_const ptr_unskew ^^
@@ -3430,8 +3527,8 @@ module StackRep = struct
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat -> UnboxedInt64
-    | Type.Prim Type.Int -> UnboxedInt64
+    | Type.Prim Type.Nat -> Vanilla
+    | Type.Prim Type.Int -> Vanilla
     | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
@@ -3895,8 +3992,8 @@ let compile_lit env lit =
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
     (* This maps int to int32, instead of a proper arbitrary precision library *)
-    | IntLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
-    | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
+    | IntLit n      -> SR.Vanilla, BigInt.lit env (Big_int.int32_of_big_int n)
+    | NatLit n      -> SR.Vanilla, BigInt.lit env (Big_int.int32_of_big_int n)
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
@@ -3917,7 +4014,7 @@ let compile_lit_as env sr_out lit =
 let compile_unop env t op =
   let open Syntax in
   match op, t with
-  | NegOp, Type.(Prim (Int | Word64)) ->
+  | NegOp, Type.(Prim Word64) ->
       SR.UnboxedInt64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
@@ -3952,17 +4049,21 @@ let compile_unop env t op =
 let rec compile_binop env t op =
   StackRep.of_type t,
   Syntax.(match t, op with
-  | Type.(Prim (Nat | Int | Word64)),         AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.(Prim (Nat | Int)),                  AddOp -> G.i (Call (nr (E.built_in env "rts_bigint_add")))
+  | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.(Prim (Nat | Int)),                  SubOp -> G.i (Call (nr (E.built_in env "rts_bigint_sub")))
+  (*
   | Type.Prim Type.Nat,                       SubOp ->
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
+  *)
   | Type.(Prim (Nat | Int | Word64)),         MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim (Nat | Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.(Prim (Nat | Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
-  | Type.(Prim (Int | Word64)),               SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
   | Type.(Prim Int),                          DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
   | Type.(Prim Int),                          ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
 
@@ -4061,23 +4162,24 @@ let rec compile_binop env t op =
 let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.(Prim (Nat | Int | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.(Prim (Nat | Int)) -> G.i (Call (nr (E.built_in env "rts_bigint_eq")))
+  | Type.(Prim Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
 let get_relops = Syntax.(function
-  | GeOp -> I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
-  | GtOp -> I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
-  | LeOp -> I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
-  | LtOp -> I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
+  | GeOp -> "ge", I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
+  | GtOp -> "gt", I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
+  | LeOp -> "le", I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
+  | LtOp -> "lt", I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
-  let u64op, s64op, u32op, s32op = get_relops op in
+  let bigintop, u64op, s64op, u32op, s32op = get_relops op in
   let open Type in
   match t with
-    | (Nat | Word64) -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Int -> G.i (Compare (Wasm.Values.I64 s64op))
+    | (Nat | Int) -> G.i (Call (nr (E.built_in env ("rts_bigint_" ^ bigintop))))
+    | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
     | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
@@ -4552,8 +4654,8 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BoxedInt.unbox env ^^
-    compile_lit_as env SR.UnboxedInt64 l ^^
+    (* BoxedInt.unbox env ^^ *)
+    compile_lit_as env SR.Vanilla l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
