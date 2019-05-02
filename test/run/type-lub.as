@@ -64,12 +64,13 @@ type A = {x : A};
 type B = {x : B};
 func f(v : {x : {x : B}; b : B}, x : A, y : B, z : {x : B; a : A}) : [A] { ignore([v, x, y, z]); [v, x, y, z] };
 // };
-/*
+
 // {
 type A1 = {x : B1};
 type B1 = {x : A1};
 func f1(x : A1, y : B1) : [A1] { ignore([x, y]); [x, y] };
 // };
+
 type O = ?O;
 type P = ?P;
 
@@ -77,5 +78,27 @@ type Q = ?R;
 type R = ?S;
 type S = ?Q;
 
-func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] }
-*/
+func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
+
+type U = { #a : Any; #b : U };
+type V = { #a : V; #b : Any };
+
+
+func v0(u : U, v : V, w : { #a : Any; #b : { #a : Any; #b : U } }) : [U] { ignore([u, v, w]); [u, v, w] };
+
+type U1 = { #a : U1; #b : Int };
+type V1 = { #a : V1; #b : Nat };
+
+
+func v1(u : U1, v : V1) : [U1] { ignore([u, v]); [u, v] };
+
+
+type G = (Nat, G);
+type H = (Int, H);
+
+func g0(g : G, h : H) : [H] { ignore([g, h]); [g, h] };
+
+type K = [K];
+type L = [L];
+
+func k0(k : K, l : L) : [L] { ignore([k, l]); [k, l] }

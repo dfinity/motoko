@@ -67,10 +67,10 @@ let fixup = function
   | Con' (c, ts) as o -> ignore (Con' (c, ts)); List.iter (fun (lazy _) -> ()) ts; unlazy o
   | Prim' p as o -> ignore (Prim' p); unlazy o
   | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); let oo = unlazy o in assert (List.length fs = 0 || not (oo == (List.hd fs).typ)); oo
-  | Array' (lazy t) as o -> ignore (Array' (lazy t)); unlazy o
+  | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Variant' (lazy t) as o -> ignore (Variant' (lazy t)); unlazy o
-  | Tup' (lazy t) as o -> ignore (Tup' (lazy t)); unlazy o
+  | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Func' (s, c, bs, lazy args, lazy res) as o -> ignore (Func' (s, c, bs, lazy args, lazy res)); unlazy o
   | Async' (lazy t) as o -> ignore (Async' (lazy t)); unlazy o
   | Mut' (lazy t) as o -> ignore (Mut' (lazy t)); unlazy o
@@ -710,8 +710,6 @@ and lub' lubs glbs t1 t2 =
   | Prim Int, Prim Nat -> Prim Int
   | Prim Null, Opt t' -> t2
   | Opt t', Prim Null -> t1
-  | Variant t1', Variant t2' -> let rec o = lazy (Variant (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; lub_variant lubs glbs t1' t2') in Lazy.force o
-  | Array t1', Array t2' -> let rec o = lazy (Array (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; lub' lubs glbs t1' t2') in Lazy.force o
   | Array t1', (Obj _ as t2') -> lub' lubs glbs (array_obj t1') t2'
   | (Obj _ as t1'), Array t2' -> lub' lubs glbs t1' (array_obj t2')
   | Prim Text, (Obj _ as t2') -> lub' lubs glbs text_obj t2'
@@ -721,7 +719,6 @@ and lub' lubs glbs t1 t2 =
  (* | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> let rec o = lazy (Printf.eprintf "o\n"; Obj (s1, Lazy.force i)) and i = lazy (Printf.eprintf "i\n"; lubs := M.add (t1, t2) o !lubs; lub_object lubs glbs tf1 tf2) in Lazy.force o    *)
 
 
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> let rec o = lazy (Tup (Lazy.force i)) and i = lazy (lubs := M.add (t1, t2) o !lubs; List.map2 (lub' lubs glbs) ts1 ts2) in Lazy.force o
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
     when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
@@ -734,6 +731,16 @@ and lub' lubs glbs t1 t2 =
     let rec o = Opt' i
     and i = lazy (Printf.printf "ADDING OPT\n"; lubs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "lub" o)) !lubs; lub' lubs glbs t1' t2') in
     let oo = fixup o in Printf.printf "---> OPT LUB %s\n" (strnonv oo); oo
+  | Variant t1', Variant t2' ->
+    let rec o = Variant' i
+    and i = lazy (lubs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "lub" o)) !lubs; lub_variant lubs glbs t1' t2') in fixup o
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+    let rec o = Tup' i
+    and i = lazy (lubs := M.add (t1, t2) (lazy (loop_breaker t1 t2 "lub" o)) !lubs; List.map2 (lub' lubs glbs) ts1 ts2) in fixup o
+  | Array t1', Array t2' ->
+    let rec o = Array' i
+    and i = lazy (lubs := M.add (t1, t2) (lazy (loop_breaker t1 t2 "lub" o)) !lubs; lub' lubs glbs t1' t2') in
+    fixup o
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
     and i = lazy (Printf.printf "ADDING OBJ\n"; lubs := M.add (t1, t2) (lazy (loop_breaker t1 t2 "lub" o)) !lubs; lub_object lubs glbs tf1 tf2) in
@@ -745,7 +752,7 @@ and lub' lubs glbs t1 t2 =
   lubs := M.add (t1, t2) tr !lubs; checkmate t1 t2 (Lazy.force tr)
 
 and loop_breaker t1 t2 how cand = match t1, t2 with
-  | Con _, _ | _, Con _ ->
+  | Con _, _ | _, Con _ -> (* when Con is recursive! *)
     let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], unlazy cand)) in
     let typ = Con (c, []) in
     Printf.printf "XXX loop_breaker %s\n" (strnonv typ); assert (normalize typ == unlazy cand);
@@ -791,14 +798,10 @@ and glb' lubs glbs t1 t2 =
   | Prim Int, Prim Nat -> Prim Nat
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
-  | Variant t1', Variant t2' -> Variant (glb_variant lubs glbs t1' t2')
-  | Array t1', Array t2' -> Array (glb' lubs glbs t1' t2')
   | Array t1', (Obj _ as t2') when sub' (array_obj t1') t2' -> t1
   | (Obj _ as t1'), Array t2' when sub' (array_obj t2') t1' -> t2
   | Prim Text, (Obj _ as t2') when sub' text_obj t2' -> t1
   | (Obj _ as t1'), Prim Text when sub' text_obj t1' -> t2
-  (*| Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 -> Obj (s1, glb_object lubs glbs tf1 tf2)*)
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) -> Tup (List.map2 (glb' lubs glbs) ts1 ts2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
     when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
@@ -810,6 +813,18 @@ and glb' lubs glbs t1 t2 =
     let rec o = Opt' i
     and i = lazy (Printf.printf "ADDING OPT GLB"; glbs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "glb" o)) !glbs; glb' lubs glbs t1' t2') in
     let oo = fixup o in Printf.printf "---> OPT GLB %s\n" (strnonv oo); oo
+  | Variant t1', Variant t2' ->
+    let rec o = Variant' i
+    and i = lazy (glbs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "glb" o)) !glbs; glb_variant lubs glbs t1' t2')
+    in fixup o
+  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+    let rec o = Tup' i
+    and i = lazy (glbs := M.add (t1, t2) (lazy (loop_breaker t1 t2 "glb" o)) !glbs; List.map2 (glb' lubs glbs) ts1 ts2) in
+    fixup o
+  | Array t1', Array t2' ->
+    let rec o = Array' i
+    and i = lazy (glbs := M.add (t1, t2) (lazy (loop_breaker t1 t2 "glb" o)) !glbs; glb' lubs glbs t1' t2') in
+    fixup o
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
     and i = lazy (Printf.printf "GLB ADDING OBJ\n"; glbs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "glb"  o)) !glbs; glb_object lubs glbs tf1 tf2) in
