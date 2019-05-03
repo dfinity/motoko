@@ -49,11 +49,11 @@ and typ' =
   | Opt' of typ Lazy.t                                (* option *)
   | Variant' of (lab * typ) list Lazy.t               (* variant *)
   | Tup' of typ list Lazy.t                           (* tuple *)
-          (*
+         
   | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
   | Async' of typ Lazy.t                              (* future *)
   | Mut' of typ Lazy.t                                (* mutable type *)
-           *)
+          
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
@@ -63,6 +63,20 @@ and kind =
   | Abs of bind list * typ
 
 let unlazy (l : typ') : typ = Obj.magic l
+
+(* A type is looping when it's graph references the same subgraph more than once
+   (pointer equality), and there is a path between them that doesn't contain a Con. *)
+let is_loop_free t =
+  let check_no_pointer ts followers =
+    List.for_all (fun p -> not (List.exists (fun p' -> p' == p) ts)) followers in
+   (*check_no_pointer (ts @ followers) (concatMap references followers) *)
+  let references = function
+    | Tup ts -> ts
+    | Opt t | Array t | Async t -> [t]
+    | Obj (_, fts) -> List.map (fun {lab; typ} -> typ) fts
+    | _ -> [] in
+  check_no_pointer [t] (references t)
+
 let fixup = function
   | Var' (v, i) as o -> ignore (Var' (v, i)); unlazy o
   | Con' (c, ts) as o -> ignore (Con' (c, ts)); List.iter (fun (lazy _) -> ()) ts; unlazy o
@@ -71,12 +85,12 @@ let fixup = function
   | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-                          (*
+  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); assert (is_loop_free (unlazy o)); unlazy o
+                         
   | Func' (s, c, bs, lazy args, lazy res) as o -> ignore (Func' (s, c, bs, lazy args, lazy res)); unlazy o
   | Async' (lazy t) as o -> ignore (Async' (lazy t)); unlazy o
   | Mut' (lazy t) as o -> ignore (Mut' (lazy t)); unlazy o
-                           *)
+                          
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -472,6 +486,8 @@ let is_concrete t =
     end
   in go t
 
+(* TEMPORARY HOME FOR SOME STUFF related to lub/glb *)
+
 let is_loop_breaker = function
   | Con (c, []) ->
     begin match Con.kind c with
@@ -482,9 +498,9 @@ let is_loop_breaker = function
     end
   | _ -> false
 
-(* TEMPORARY HOME FOR SOME STUFF related to lub/glb *)
-
+       
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
+
 (* Equivalence & Subtyping *)
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
@@ -678,12 +694,14 @@ and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 and lub' lubs glbs t1 t2 =
-  let add_loop_breaker o = lubs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "lub" o)) !lubs in
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !lubs then Lazy.force (M.find (t1, t2) !lubs) else
-  if M.mem (t2, t1) !lubs then Lazy.force (M.find (t2, t1) !lubs) else
-  (* TBR: this is just a quick hack *)
-  let tr = lazy begin match normalize t1, normalize t2 with
+  if M.mem (t1, t2) !lubs then (Printf.printf "X PULL  %s            %s\n"(!str t1) (!str t2);Lazy.force (M.find (t1, t2) !lubs)) else
+  if M.mem (t2, t1) !lubs then (Printf.printf "Y PULL\n";Lazy.force (M.find (t2, t1) !lubs)) else
+    (* TBR: this is just a quick hack *)
+    let norm = normalize t1, normalize t2 in
+    (*if M.mem norm !lubs then (Printf.printf "Z PULL  %s(%s)            %s(%s)\n"(!str t1) (!str (fst norm)) (!str t2) (!str (snd norm));Lazy.force (M.find norm !lubs)) else*)
+  let add_loop_breaker o = let lb = Lazy.from_val (loop_breaker t1 t2 "lub" o) in lubs := M.add (t1, t2) lb !lubs in
+  let tr = lazy begin match norm with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any
@@ -713,15 +731,15 @@ and lub' lubs glbs t1 t2 =
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
     let rec o = Opt' i
-    and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
+    and i = lazy (Printf.printf "ADDING Opt  %s            %s\n"(!str t1) (!str t2);add_loop_breaker o; lub' lubs glbs t1' t2') in
     fixup o
   | Variant t1', Variant t2' ->
     let rec o = Variant' i
-    and i = lazy (add_loop_breaker o; lub_variant lubs glbs t1' t2') in
+    and i = lazy (Printf.printf "ADDING Variant  %s            %s\n" (!str t1) (!str t2);add_loop_breaker o; lub_variant lubs glbs t1' t2') in
     fixup o
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
     let rec o = Tup' i
-    and i = lazy (add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
+    and i = lazy (Printf.printf "ADDING Tup  %s            %s\n" (!str t1) (!str t2);add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
     fixup o
   | Array t1', Array t2' ->
     let rec o = Array' i
@@ -735,12 +753,17 @@ and lub' lubs glbs t1 t2 =
   end in
   lubs := M.add (t1, t2) tr !lubs; Lazy.force tr
 
+(* The presence of Con can potentially lead to direct type recursion
+   in the lub/glb result. To avoid introducing a loop into the type,
+   wrap the putative result by a descriptively named Con that redirects to it.
+ *)
 and loop_breaker t1 t2 how cand = match t1, t2 with
-  | Con _, _ | _, Con _ -> (* when Con is recursive! *)
+  | Con _, _
+  | _, Con _ -> (* TODO(gabor) only when Con is recursive! *)
     let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], unlazy cand)) in
-    let typ = Con (c, []) in
-    assert (normalize typ == unlazy cand);
-    typ
+    let wrap = Con (c, []) in
+    assert (normalize wrap == unlazy cand);
+    Printf.printf "XXX loop_breaker %s\n" (!str wrap);wrap
   | _, _ -> unlazy cand
 
 and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
