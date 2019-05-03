@@ -596,6 +596,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_ge" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
 
     E.add_export env (nr {
       name = Wasm.Utf8.decode "alloc_bytes";
@@ -736,6 +738,23 @@ module Heap = struct
 
 end (* Heap *)
 
+module Stack = struct
+  (* We don’t actually use the shadow stack here, but we need to reserve
+     space for it.
+  *)
+
+  let stack_global = 3l
+
+  let end_of_stack = Int32.mul 64l 1024l (* 64k of stack *)
+
+  let export env =
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "__stack_pointer";
+      edesc = nr (GlobalExport (nr stack_global))
+    });
+
+end (* Stack *)
+
 module ElemHeap = struct
   (* The ElemHeap adds a level of indirection for references (elements, as in
      ElemRef). This way, the fake orthogonal persistence code can easily
@@ -746,17 +765,14 @@ module ElemHeap = struct
      target orthogonal persistence anyways.
   *)
 
-  let ref_counter_global = 3l
+  let ref_counter_global = 4l
   let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
   let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
 
   (* For now, we allocate a fixed size range. This obviously cannot stay. *)
   let max_references = 1024l
 
-  (* By placing the ElemHeap at memory location 0, we incidentally make sure that
-     the 0l pointer is never a valid pointer.
-  *)
-  let ref_location = 0l
+  let ref_location = Stack.end_of_stack
 
   let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
 
@@ -4042,6 +4058,8 @@ let rec compile_binop env t op =
   Syntax.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> G.i (Call (nr (E.built_in env "rts_bigint_add")))
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.(Prim (Nat | Int)),                  DivOp -> G.i (Call (nr (E.built_in env "rts_bigint_mod")))
+  | Type.(Prim (Nat | Int)),                  ModOp -> G.i (Call (nr (E.built_in env "rts_bigint_div")))
   | Type.(Prim (Nat | Int)),                  SubOp -> G.i (Call (nr (E.built_in env "rts_bigint_sub")))
   (*
   | Type.Prim Type.Nat,                       SubOp ->
@@ -4052,11 +4070,9 @@ let rec compile_binop env t op =
     )
   *)
   | Type.(Prim (Nat | Int | Word64)),         MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.(Prim (Nat | Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.(Prim (Nat | Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.(Prim Word64),                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  | Type.(Prim Int),                          DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
-  | Type.(Prim Int),                          ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
 
   | Type.Prim Type.(Word8 | Word16 | Word32), AddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
@@ -4922,6 +4938,7 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     RTS.system_imports env;
+    Stack.export env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -5004,6 +5021,10 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
       };
+      (* stack poitner *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
+      };
       (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
@@ -5075,6 +5096,7 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : Custom
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
+  Stack.export env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in

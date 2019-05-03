@@ -16,7 +16,7 @@ let phrase f x = { x with it = f x.it }
 
 let in_extended f (em : extended_module) = { em with module_ = f em.module_ }
 
-let find_imports libname m : imports =
+let find_fun_imports libname m : imports =
   let name = Wasm.Utf8.decode libname in
   let rec go i acc = function
     | [] -> List.rev acc
@@ -29,13 +29,44 @@ let find_imports libname m : imports =
         go i acc is
   in go 0 [] m.it.imports
 
-let remove_imports libname : module_ -> module_ =
+let find_global_imports libname m : imports =
+  let name = Wasm.Utf8.decode libname in
+  let rec go i acc = function
+    | [] -> List.rev acc
+    | imp::is -> match imp.it.idesc.it with
+      | GlobalImport _ty when imp.it.module_name = name ->
+        go (i + 1) ((Int32.of_int i, imp.it.item_name) :: acc) is
+      | GlobalImport _ ->
+        go (i + 1) acc is
+      | _ ->
+        go i acc is
+  in go 0 [] m.it.imports
+
+let remove_fun_imports resolved : module_ -> module_ =
   phrase (fun m ->
-    let name = Wasm.Utf8.decode libname in
-    let go imp = match imp.it.idesc.it with
-        | FuncImport _ty when imp.it.module_name = name -> false
-        | _ -> true in
-    { m with imports = List.filter go m.imports }
+    let rec go i = function
+      | [] -> []
+      | (imp::is) -> match imp.it.idesc.it with
+        | FuncImport _ when List.mem_assoc i resolved
+          -> go (Int32.add i 1l) is
+        | FuncImport _
+          -> imp :: go (Int32.add i 1l) is
+        | _
+          -> imp :: go i is in
+    { m with imports = go 0l m.imports }
+  )
+let remove_global_imports resolved : module_ -> module_ =
+  phrase (fun m ->
+    let rec go i = function
+      | [] -> []
+      | (imp::is) -> match imp.it.idesc.it with
+        | GlobalImport _ when List.mem_assoc i resolved
+          -> go (Int32.add i 1l) is
+        | GlobalImport _
+          -> imp :: go (Int32.add i 1l) is
+        | _
+          -> imp :: go i is in
+    { m with imports = go 0l m.imports }
   )
 
 let remove_table_import : module_ -> module_ =
@@ -51,6 +82,12 @@ let count_fun_imports m =
         | FuncImport _ -> true
         | _ -> false in
   Lib.List32.length (List.filter is_fun_import m.it.imports)
+
+let count_global_imports m =
+  let is_global_import imp = match imp.it.idesc.it with
+        | GlobalImport _ -> true
+        | _ -> false in
+  Lib.List32.length (List.filter is_global_import m.it.imports)
 
 
 let prepend_to_start fi m =
@@ -106,31 +143,9 @@ let remove_non_definity_exports (em : extended_module) : extended_module =
   in_extended (phrase (fun m ->
     { m with exports = List.filter is_dfinity_export m.exports })) em
 
-let remove_memory_base_import : module_ -> module_ =
-  phrase (fun m ->
-    let go imp = match imp.it.idesc.it with
-        | GlobalImport _
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__memory_base"
-          -> false
-        | _ -> true in
-    { m with imports = List.filter go m.imports }
-  )
-
-let remove_table_base_import : module_ -> module_ =
-  phrase (fun m ->
-    let go imp = match imp.it.idesc.it with
-        | GlobalImport _
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__table_base"
-          -> false
-        | _ -> true in
-    { m with imports = List.filter go m.imports }
-  )
-
 module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
 type exports = int32 NameMap.t
-let find_exports m : exports =
+let find_fun_exports m : exports =
   List.fold_left
     (fun map exp ->
       match exp.it.edesc.it with
@@ -138,20 +153,30 @@ let find_exports m : exports =
       | _ -> map
     )
     NameMap.empty m.it.exports
+let find_global_exports m : exports =
+  List.fold_left
+    (fun map exp ->
+      match exp.it.edesc.it with
+      | GlobalExport fi -> NameMap.add exp.it.name fi.it map
+      | _ -> map
+    )
+    NameMap.empty m.it.exports
 
 
+(*
 exception LinkError of string
+*)
 
-type func_renumbering = int32 -> int32
+type renumbering = int32 -> int32
 
 let resolve imports exports : (int32 * int32) list =
-  List.map (fun (fi, name) ->
+  List.flatten (List.map (fun (fi, name) ->
     match NameMap.find_opt name exports with
-    | Some fi' -> (fi, fi')
-    | None -> raise (LinkError (Printf.sprintf "Unresolvd symbol %s" (Wasm.Utf8.encode name)))
-    ) imports
+    | Some fi' -> [ (fi, fi') ]
+    | None -> []
+    ) imports)
 
-let join_functions n_imports1 n_funcs1 n_imports2 n_funcs2 resolved12 resolved21 : (func_renumbering * func_renumbering) =
+let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 resolved21 : (renumbering * renumbering) =
   let n_imports1' = Int32.(sub n_imports1 (of_int (List.length resolved12))) in
   let n_imports2' = Int32.(sub n_imports2 (of_int (List.length resolved21))) in
 
@@ -169,11 +194,11 @@ let join_functions n_imports1 n_funcs1 n_imports2 n_funcs2 resolved12 resolved21
   and fun2 i =
     let rec go skipped = function
       | (imp, exp)::is ->
-        if i < imp then Int32.(sub (add (add i n_imports1') n_funcs1) skipped)
+        if i < imp then Int32.(sub (add (add i n_imports1') n_things1) skipped)
         else if i = imp then fun1 exp
         else go (Int32.add skipped 1l) is
       | [] ->
-        Int32.(sub (add (add i n_imports1') n_funcs1) skipped)
+        Int32.(sub (add (add i n_imports1') n_things1) skipped)
     in go 0l resolved21
   in
   (fun1, fun2)
@@ -347,6 +372,11 @@ let rename_funcs_extended rn (em : extended_module) =
       locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) em.locals_names;
     }
 
+let rename_globals_extended rn (em : extended_module) =
+    { em with
+      module_ = rename_globals rn em.module_;
+    }
+
 let rename_types rn m =
   let phrase f x = { x with it = f x.it } in
   let ty_var' = rn in
@@ -404,12 +434,40 @@ let fill_memory_base_import new_base : module_ -> module_ = fun m ->
     in go 0 m.it.imports in
 
     m |> fill_global base_global new_base
-      |> remove_memory_base_import
+      |> remove_global_imports [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
           else if i = base_global then assert false
           else sub i 1l
         )
+
+let fill_table_base_import new_base : module_ -> module_ = fun m ->
+  (* We need to find the right import,
+     replace all uses of get_global of that import with the constant,
+     and finally rename all globals
+  *)
+  let base_global =
+    let rec go i = function
+      | [] -> assert false
+      | imp::is -> match imp.it.idesc.it with
+        | GlobalImport _ty
+          when imp.it.module_name = Wasm.Utf8.decode "env" &&
+               imp.it.item_name = Wasm.Utf8.decode "__table_base" ->
+          Int32.of_int i
+        | GlobalImport _ ->
+          go (i + 1) is
+        | _ ->
+          go i is
+    in go 0 m.it.imports in
+
+    m |> fill_global base_global new_base
+      |> remove_global_imports [(base_global, base_global)]
+      |> rename_globals Int32.(fun i ->
+          if i < base_global then i
+          else if i = base_global then assert false
+          else sub i 1l
+        )
+
 
 let align p n =
   let open Int32 in
@@ -419,54 +477,81 @@ let align p n =
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
 let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
-  (* First we look into m to see which imports we have *)
-  let required1 = find_imports libname em.module_ in
-  let required2 = find_imports "as_rts" dm.module_ in
-  (* Find exported functions from either module *)
-  let exports1 = find_exports em.module_ in
-  let exports2 = find_exports dm.module_ in
-  (* Resolve imports, to produce a renumbering function: *)
-  let resolved12 = resolve required1 exports2 in
-  let resolved21 = resolve required2 exports1  in
-  let (funs1, funs2) =
-    join_functions
-      (count_fun_imports em.module_)
-      (Lib.List32.length em.module_.it.funcs)
-      (count_fun_imports dm.module_)
-      (Lib.List32.length dm.module_.it.funcs)
-      resolved12
-      resolved21 in
   (* Beginning of unused space *)
   let old_heap_start = read_heap_ptr heap_ptr em.module_ in
   let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
   let new_heap_start = align 4l (Int32.add lib_heap_start dm.dylink.memory_size) in
+
+  (* Fill in memory base pointer  *)
+  let dm2 = dm.module_
+    |> fill_memory_base_import lib_heap_start
+    |> fill_table_base_import 0l in
+
+  (* Link functions *)
+  let fun_required1 = find_fun_imports libname em.module_ in
+  let fun_required2 = find_fun_imports "as_rts" dm2 in
+  let fun_exports1 = find_fun_exports em.module_ in
+  let fun_exports2 = find_fun_exports dm2 in
+  (* Resolve imports, to produce a renumbering function: *)
+  let fun_resolved12 = resolve fun_required1 fun_exports2 in
+  let fun_resolved21 = resolve fun_required2 fun_exports1  in
+  let (funs1, funs2) =
+    calculate_renaming
+      (count_fun_imports em.module_)
+      (Lib.List32.length em.module_.it.funcs)
+      (count_fun_imports dm2)
+      (Lib.List32.length dm2.it.funcs)
+      fun_resolved12
+      fun_resolved21 in
+
+  (* Link globals *)
+  let global_required1 = find_global_imports libname em.module_ in
+  let global_required2 = find_global_imports "env" dm2 in
+  let global_exports1 = find_global_exports em.module_ in
+  let global_exports2 = find_global_exports dm2 in
+  (* Resolve imports, to produce a renumbering globalction: *)
+  let global_resolved12 = resolve global_required1 global_exports2 in
+  let global_resolved21 = resolve global_required2 global_exports1  in
+  let (globals1, globals2) =
+    calculate_renaming
+      (count_global_imports em.module_)
+      (Lib.List32.length em.module_.it.globals)
+      (count_global_imports dm2)
+      (Lib.List32.length dm2.it.globals)
+      global_resolved12
+      global_resolved21 in
+  assert (global_required1 = []); (* so far, we do not import globals *)
+
+
   (* Rename types *)
   let ty_offset2 = Int32.of_int (List.length (em.module_.it.types)) in
 
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
-    match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") exports2 with
+    match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") fun_exports2 with
     | None -> fun m -> m;
     | Some fi -> prepend_to_start (funs2 fi)
   in
 
-  assert (dm.module_.it.globals = []);
+  assert (dm2.it.globals = []);
   assert (dm.dylink.table_size = 0l);
 
   join_modules
     ( em
-    |> in_extended (remove_imports libname)
+    |> in_extended (remove_fun_imports fun_resolved12)
+    |> in_extended (remove_global_imports global_resolved12)
     |> rename_funcs_extended funs1
+    |> rename_globals_extended globals1
     |> in_extended (set_global heap_ptr new_heap_start)
     )
-    ( dm.module_
-    |> remove_imports "as_rts"
+    ( dm2
+    |> remove_fun_imports fun_resolved21
+    |> remove_global_imports global_resolved21
     |> remove_memory_import
     |> remove_table_import
-    |> fill_memory_base_import lib_heap_start
     |> rename_funcs funs2
+    |> rename_globals globals2
     |> rename_types (fun t -> Int32.(add t ty_offset2))
-    |> remove_table_base_import
     |> remove_function_export "__wasm_call_ctors"
     )
   |> in_extended add_call_ctors

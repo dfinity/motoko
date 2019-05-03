@@ -3,18 +3,18 @@ WASM_LD = wasm-ld-9
 
 TOMMATHFUNCS=\
    mp_init mp_add mp_sub mp_zero mp_cmp mp_init_set_int mp_set_long mp_set_int \
-#   mp_mod mp_div mp_init_copy
+   mp_mod mp_div mp_init_copy
 
 TOMMATHFILES=\
    $(TOMMATHFUNCS) \
    s_mp_add mp_cmp_mag s_mp_sub mp_grow mp_clamp \
-#   mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_lshd mp_rshd mp_mul_d mp_div_2d mp_mod_2d
+   mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_lshd mp_rshd mp_mul_d mp_div_2d mp_mod_2d
 
-TOMMATH_O=$(patsubst %,tommath_%.o,$(TOMMATHFILES))
+TOMMATH_O=$(patsubst %,_build/tommath_%.o,$(TOMMATHFILES))
 
 TOMMATHSRC = $(PWD)/../../libtommath
 
-tommath_%.o: $(TOMMATHSRC)/bn_%.c
+_build/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build
 	$(CLANG) --compile -fpic --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
 		$< --output $@ \
 		-fno-builtin \
@@ -23,19 +23,22 @@ tommath_%.o: $(TOMMATHSRC)/bn_%.c
 
 all: rts.wasm
 
-rts.o: rts.c
+_build:
+	mkdir _build
+
+_build/rts.o: rts.c | _build
 	$(CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
 		-fno-builtin -Wall \
 		-I$(TOMMATHSRC) \
 		$< --output $@
 
-rts.wasm: rts.o $(TOMMATH_O)
+rts.wasm: _build/rts.o $(TOMMATH_O)
 	$(WASM_LD) --import-memory --shared --no-entry --gc-sections \
-		rts.o $(TOMMATH_O) -o $@ \
+		_build/rts.o $(TOMMATH_O) -o $@ \
 		--export=__wasm_call_ctors \
 		$(patsubst %,--export=%,$(TOMMATHFUNCS))
 
 
 clean:
-	rm -f rts.o $(TOMMATH_O) rts.wasm
+	rm -rf _build rts.wasm
 

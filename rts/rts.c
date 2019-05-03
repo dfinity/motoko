@@ -167,7 +167,6 @@ export as_ptr bigint_sub(as_ptr a, as_ptr b) {
   return r;
 }
 
-/*
 export as_ptr bigint_mod(as_ptr a, as_ptr b) {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
   FIELD(r, 0) = TAG_BIGINT;
@@ -175,4 +174,12 @@ export as_ptr bigint_mod(as_ptr a, as_ptr b) {
   mp_mod(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r));
   return r;
 }
-*/
+
+export as_ptr bigint_div(as_ptr a, as_ptr b) {
+  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
+  mp_int rem;
+  FIELD(r, 0) = TAG_BIGINT;
+  mp_init(BIGINT_PAYLOAD(r));
+  mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem);
+  return r;
+}

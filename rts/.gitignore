@@ -1,2 +1,2 @@
 rts.wasm
-*.o
+_build
