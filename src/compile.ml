@@ -614,7 +614,7 @@ module Heap = struct
 
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff. This the actual memory offset, not-skewed yet *)
-  let heap_global = 2l
+  let heap_global = 3l
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
   let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
@@ -743,9 +743,9 @@ module Stack = struct
      space for it.
   *)
 
-  let stack_global = 3l
+  let stack_global = 2l
 
-  let end_of_stack = Int32.mul 64l 1024l (* 64k of stack *)
+  let end_of_stack = page_size (* 64k of stack *)
 
   let export env =
     E.add_export env (nr {
@@ -4938,7 +4938,6 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     RTS.system_imports env;
-    Stack.export env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -4957,6 +4956,7 @@ and actor_lit outer_env this ds fs at =
     let start_fi = E.add_fun env "start" start_fun in
 
     OrthogonalPersistence.register env start_fi;
+    Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
     let m = conclude_module env this.it None in
     let (_map, wasm_binary) = CustomModule.encode m in
@@ -5013,17 +5013,17 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* persistent elembuf for memory *)
+      (* persistent elembuf for references *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
+      };
+      (* stack pointer *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
       };
       (* end-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
-      };
-      (* stack poitner *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
       };
       (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
@@ -5096,7 +5096,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : Custom
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
-  Stack.export env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
@@ -5107,5 +5106,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : Custom
       Dfinity.export_start_stub env;
       None
     end else Some (nr start_fi) in
+  Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
   conclude_module env module_name start_fi_o
