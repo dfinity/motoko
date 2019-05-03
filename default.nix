@@ -93,11 +93,18 @@ let
     "stdlib/examples/produce-exchange/README.md"
   ];
 
+  libtommath = nixpkgs.fetchFromGitHub {
+    owner = "libtom";
+    repo = "libtommath";
+    rev = "c20bb5fc0d1a92387e80dabb148ad715e93693d0";
+    sha256 = "01648hmlbzv1gb00scg4pwlqgd61fkvkis6l03475z9mz4r2x04v";
+  };
+
 in
 
 rec {
 
-  rts = stdenv.mkDerivation {
+  rts = nixpkgs.pkgsi686Linux.stdenv.mkDerivation {
     name = "asc-rts";
 
     src = sourceByRegex ./rts [
@@ -107,10 +114,11 @@ rec {
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = with llvm; [ clang_9 lld_9 ] ;
+    buildInputs = with nixpkgs; with llvm;
+      [ clang_9 lld_9 ] ;
 
     buildPhase = ''
-      make CLANG=clang WASM_LD=wasm-ld
+      make CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"  WASM_LD=wasm-ld TOMMATHSRC=${libtommath}
     '';
 
     installPhase = ''
