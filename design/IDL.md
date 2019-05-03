@@ -700,6 +700,7 @@ M((k,v) : <fieldtype>^*) = i32(k) leb128(|F(v : <datatype>)|) F(v : <datatype>) 
 M((k,v) : <fieldtype>^*) = .                          otherwise
 
 F(null : opt <datatype>) = .
+F(t : text)              = i8^*(utf8(t))
 F(v : opt <datatype>)    = M(v : <datatype>)
 F(v : <datatype>)        = M(v : <datatype>)          otherwise
 
