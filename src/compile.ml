@@ -592,7 +592,7 @@ module Heap = struct
 
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff. This the actual memory offset, not-skewed yet *)
-  let heap_global = 2l
+  let heap_global = 3l
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
   let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
@@ -730,6 +730,23 @@ module Heap = struct
 
 end (* Heap *)
 
+module Stack = struct
+  (* We don’t actually use the shadow stack here, but we need to reserve
+     space for it.
+  *)
+
+  let stack_global = 2l
+
+  let end_of_stack = page_size (* 64k of stack *)
+
+  let export env =
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "__stack_pointer";
+      edesc = nr (GlobalExport (nr stack_global))
+    });
+
+end (* Stack *)
+
 module ElemHeap = struct
   (* The ElemHeap adds a level of indirection for references (elements, as in
      ElemRef). This way, the fake orthogonal persistence code can easily
@@ -740,17 +757,14 @@ module ElemHeap = struct
      target orthogonal persistence anyways.
   *)
 
-  let ref_counter_global = 3l
+  let ref_counter_global = 4l
   let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
   let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
 
   (* For now, we allocate a fixed size range. This obviously cannot stay. *)
   let max_references = 1024l
 
-  (* By placing the ElemHeap at memory location 0, we incidentally make sure that
-     the 0l pointer is never a valid pointer.
-  *)
-  let ref_location = 0l
+  let ref_location = Stack.end_of_stack
 
   let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
 
@@ -4833,6 +4847,7 @@ and actor_lit outer_env this ds fs at =
     let start_fi = E.add_fun env "start" start_fun in
 
     OrthogonalPersistence.register env start_fi;
+    Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
     let m = conclude_module env this.it None in
     let (_map, wasm_binary) = CustomModule.encode m in
@@ -4889,9 +4904,13 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* persistent elembuf for memory *)
+      (* persistent elembuf for references *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
+      };
+      (* stack pointer *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
       };
       (* end-of-heap pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
@@ -4950,5 +4969,6 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extend
       Dfinity.export_start_stub env;
       None
     end else Some (nr start_fi) in
+  Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
   conclude_module env module_name start_fi_o
