@@ -100,12 +100,12 @@ type L = [L];
 
 func k0(k : K, l : L) : [L] { ignore([k, l]); [k, l] };
 
-/* LOOPS
-type K = [?(Nat, K)];
-type L = [?(Int, L)];
 
-func k0(k : K, l : L) : [L] { ignore([k, l]); [k, l] };
-*/
+type K1 = [?(Nat, K1)];
+type L1 = [?(Int, L1)];
+
+func k1(k : K1, l : L1) : [L1] { ignore([k, l]); [k, l] };
+
 
 /*
 type M = [var ?M];

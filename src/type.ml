@@ -751,7 +751,7 @@ and lub' lubs glbs t1 t2 =
     fixup o
   | _ -> Any
   end in
-  lubs := M.add (t1, t2) tr !lubs; Lazy.force tr
+  lubs := M.add (t1, t2) tr !lubs; ignore (Lazy.force tr); Lazy.force (M.find (t1, t2) !lubs)
 
 (* The presence of Con can potentially lead to direct type recursion
    in the lub/glb result. To avoid introducing a loop into the type,
@@ -840,7 +840,7 @@ and glb' lubs glbs t1 t2 =
     fixup o
   | _ -> Non
   end in
-  glbs := M.add (t1, t2) tr !glbs; Lazy.force tr
+  glbs := M.add (t1, t2) tr !glbs; ignore (Lazy.force tr); Lazy.force (M.find (t1, t2) !glbs)
 
 and glb_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
