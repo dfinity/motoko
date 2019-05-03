@@ -1,4 +1,4 @@
-module Env : Env.S with type key = string
+module Env : Env_idl.S with type key = string
 
 type val_env = Syntax_idl.typ Env.t
 

@@ -3,9 +3,8 @@ open Source
 open Arrange_idl
 
 (* Environments *)
-
-module FieldEnv = Env.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
-module Env = Env.Make(String)
+module FieldEnv = Env_idl.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
+module Env = Env_idl.Make(String)
            
 (* Error recovery *)
 
@@ -27,13 +26,11 @@ let empty_scope : scope = Env.empty;
 
 type env =
   { vals : val_env;
-    ref  : bool;
     msgs : Diag.msg_store;
   }
 
 let env_of_scope msgs scope =
   { vals = scope;
-    ref = false;
     msgs;
   }
 
@@ -70,8 +67,8 @@ let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
 let is_record t = match t.it with RecordT _ -> true | _ -> false
 let is_func t = match t.it with FuncT _ -> true | _ -> false
 let is_serv t = match t.it with ServT _ -> true | _ -> false
-let is_pre t = match t.it with PreT -> true | _ -> false                                                     
-                    
+let is_pre t = match t.it with PreT -> true | _ -> false
+
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
@@ -79,17 +76,11 @@ let rec check_typ env t =
      (match Env.find_opt id.it env.vals with
       | None ->
          error env id.at "unbound type identifier %s" id.it;
-      | Some t' ->
-         (match (is_pre t', env.ref) with
-         | false, _ -> t'
-         | true, true -> t
-         | true, false ->
-            error env id.at "cyclic type identifier %s at non-reference location" id.it;)
+      | Some t' -> if is_pre t' then t else t'
      )
   | FuncT (ms, t1, t2) ->
-     let env' = { env with ref = true } in
-     let t1' = check_typ env' t1 in
-     let t2' = check_typ env' t2 in
+     let t1' = check_typ env t1 in
+     let t2' = check_typ env t2 in
      let modes' = List.map (fun m -> m.it) ms in
      if List.mem Pure modes' && List.mem Updatable modes' then
        error env (List.hd ms).at "function mode cannot be pure and update at the same time";
@@ -107,7 +98,7 @@ let rec check_typ env t =
   | VariantT fs ->
      let fs' = check_fields env fs in
      VariantT (List.sort compare_field fs') @@ t.at
-  | ServT meths -> ServT (List.map (check_meth {env with ref = true}) meths) @@ t.at
+  | ServT meths -> ServT (List.map (check_meth env) meths) @@ t.at
   | PreT -> assert false
 
 and check_fields env fs =
@@ -167,8 +158,7 @@ and gather_decs decs =
       let ve' = Env.singleton id.it (PreT @@ id.at) in
       Env.adjoin ve ve'
     ) Env.empty decs.it
-        
-        
+
 (* Programs *)
 
 let check_prog scope prog : scope Diag.result =

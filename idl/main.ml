@@ -59,27 +59,22 @@ let process_files files : unit =
   | Default ->
      assert false
   | Check ->
-     let _ = exit_on_failure (Pipeline.(check_file (List.hd files))) in ()
+     let out = exit_on_failure (Pipeline.(compile_js_file (List.hd files))) in
+     Buffer.contents out |> print_endline
   | _ -> assert false
-    (*
-  | Run ->
-    ignore (exit_on_none Pipeline.(run_files initial_env files))
-  | Interact ->
-    printf "%s\n" banner;
-    let env = exit_on_none Pipeline.(run_files initial_env files) in
-    Pipeline.run_stdin env
+       (*
   | Compile ->
     if !out_file = "" then begin
       match files with
-      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
-      | ns -> eprintf "asc: no output file specified"; exit 1
+      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".js"
+      | ns -> eprintf "idl: no output file specified"; exit 1
     end;
     let module_name = Filename.remove_extension (Filename.basename !out_file) in
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files module_name) in
+    let module_ = exit_on_failure Pipeline.(compile_js_file files module_name) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModule.encode module_ in
     output_string oc wasm; close_out oc;
-     *)
+        *)
 
 let print_exn exn =
   Printf.printf "%!";

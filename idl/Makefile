@@ -13,8 +13,6 @@ OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
 OCAML_FLAGS = -cflags '-w'
 OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -use-ocamlfind \
- -I actorscript \
- -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
  -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" \
  $(OPAM_PACKAGES:%=-pkg %) \
  -tags debug

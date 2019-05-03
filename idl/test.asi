@@ -1,6 +1,7 @@
 type my_type = nat;
 type B = my_type;
-type C = B;
+type C = E;
+type E = opt C;
 type message = record { 
   name : text;
   2 : C;
@@ -8,7 +9,7 @@ type message = record {
 };
 type tree = variant {
   leaf : int;
-  branch : record { left : func ()->tree; val : int; right : func ()->tree };
+  branch : record { left : tree; val : int; right : tree };
 };
 type broker = service {
   find : (name : text) -> 
