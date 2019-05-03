@@ -1,0 +1,11 @@
+let trace = ref false
+let verbose = ref false
+let print_depth = ref 2
+let await_lowering = ref true
+let async_lowering = ref true
+let dump_parse = ref false
+let dump_tc = ref false
+let dump_lowering = ref false
+let interpret_ir = ref false
+let source_map = ref false
+let prelude = ref true
