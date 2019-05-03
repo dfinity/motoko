@@ -128,11 +128,21 @@ export void mp_free(void *ptr, int size) {
 #include <tommath.h>
 #define BIGINT_PAYLOAD(p) ((mp_int *)(&FIELD(p,1)))
 
-export as_ptr bigint_of_word32(unsigned long b) {
+as_ptr bigint_alloc() {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
   FIELD(r, 0) = TAG_BIGINT;
-  mp_init_set_int(BIGINT_PAYLOAD(r), b);
+  mp_init(BIGINT_PAYLOAD(r));
   return r;
+}
+
+export as_ptr bigint_of_word32(unsigned long b) {
+  as_ptr r = bigint_alloc();
+  mp_set_int(BIGINT_PAYLOAD(r), b);
+  return r;
+}
+
+export unsigned long bigint_to_word32(as_ptr a) {
+  return mp_get_int(BIGINT_PAYLOAD(a));
 }
 
 export int bigint_eq(as_ptr a, as_ptr b) {
@@ -152,34 +162,47 @@ export int bigint_ge(as_ptr a, as_ptr b) {
 }
 
 export as_ptr bigint_add(as_ptr a, as_ptr b) {
-  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
-  FIELD(r, 0) = TAG_BIGINT;
-  mp_init(BIGINT_PAYLOAD(r));
+  as_ptr r = bigint_alloc();
   mp_add(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r));
   return r;
 }
 
 export as_ptr bigint_sub(as_ptr a, as_ptr b) {
-  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
-  FIELD(r, 0) = TAG_BIGINT;
-  mp_init(BIGINT_PAYLOAD(r));
+  as_ptr r = bigint_alloc();
   mp_sub(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r));
   return r;
 }
 
+export as_ptr bigint_mul(as_ptr a, as_ptr b) {
+  as_ptr r = bigint_alloc();
+  mp_mul(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r));
+  return r;
+}
+
 export as_ptr bigint_mod(as_ptr a, as_ptr b) {
-  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
-  FIELD(r, 0) = TAG_BIGINT;
-  mp_init(BIGINT_PAYLOAD(r));
+  as_ptr r = bigint_alloc();
   mp_mod(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r));
   return r;
 }
 
+export as_ptr bigint_neg(as_ptr a) {
+  as_ptr r = bigint_alloc();
+  mp_neg(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r));
+  return r;
+}
+
+export as_ptr bigint_lshd(as_ptr a, int b) {
+  as_ptr r = bigint_alloc();
+  mp_copy(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r));
+  mp_lshd(BIGINT_PAYLOAD(a), b);
+  return r;
+}
+
 export as_ptr bigint_div(as_ptr a, as_ptr b) {
-  as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
+  as_ptr r = bigint_alloc();
   mp_int rem;
-  FIELD(r, 0) = TAG_BIGINT;
-  mp_init(BIGINT_PAYLOAD(r));
+  mp_init(&rem);
   mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem);
   return r;
 }
+

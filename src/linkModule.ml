@@ -477,6 +477,7 @@ let align p n =
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
 let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
+
   (* Beginning of unused space *)
   let old_heap_start = read_heap_ptr heap_ptr em.module_ in
   let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
