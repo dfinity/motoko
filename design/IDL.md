@@ -728,10 +728,10 @@ Deserialisation is the parallel application of the inverse functions of `M` and 
 
 ### Parameters
 
-`P` defines the parameter mapping. Essentially, a parameter list is serialised into the pair (M,T) as if it was a single closed record:
+`P` defines the parameter mapping. Essentially, a parameter list is serialised into the pair (M,T) as if it was a single closed record, preceded by the string "DIDL" as a magic number:
 
 ```
-P(kv* : <fieldtype>,*) = M(kv* : <fieldtype>;*)
+P(kv* : <fieldtype>,*) = i8('D') i8('I') i8('D') i8('L') M(kv* : <fieldtype>;*)
 ```
 
 The same representation is used for function results.
