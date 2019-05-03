@@ -2112,8 +2112,7 @@ module Text = struct
             get_len ^^ compile_add_const 1l ^^ set_len
           end ^^
         get_len ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BoxedInt.box env
+        BigInt.from_word32 env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
