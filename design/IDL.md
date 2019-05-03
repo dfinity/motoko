@@ -433,18 +433,16 @@ Types can be named via *type definitions*.
 <def>   ::= type <id> = <datatype>
 ```
 
-Type definitions are mutually recursive, i.e., they can refer to themselves or each other. However, every type cycle must go through a reference type.
-
- definition is *vacuous*, i.e., a type is only equal to itself.
+Type definitions are mutually recursive, i.e., they can refer to themselves or each other. However, every type cycle must be productive, i.e., go through a type expression that is not just an identifier. A type definition that is *vacuous*, i.e., is only equal to itself, is not allowed.
 
 ##### Examples
 
 ```
 type stream = opt record {head : nat; next : func () -> stream};
 ```
-
 ```
-type list = opt record {head : nat; tail : list};  // error: cyclic data
+type node = record {head : nat; tail : list};
+type list = opt node;
 ```
 ```
 type A = B;
