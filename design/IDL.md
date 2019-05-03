@@ -665,9 +665,9 @@ actor server = {
 
 ### Serialisation
 
-At runtime, every IDL value is serialised into a pair (M, T), where M ("memory") is a sequence of bytes and T ("table") a sequence of references. If T is empty, it can be omitted. By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
+At runtime, every IDL value is serialised into a pair (M, R), where M ("memory") is a sequence of bytes and R ("references") a sequence of references. If R is empty, it can be omitted. By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
 
-Accordingly, serialisation is defined by two mapping functions, `M` and `T`, producing the respective parts. They are defined independently, but both definitions are indexed by IDL types.
+Accordingly, serialisation is defined by two mapping functions, `M` and `R`, producing the respective parts. They are defined independently, but both definitions are indexed by IDL types.
 
 `M` maps an IDL value to a byte sequence described in terms of natural storage types (`i<N>` for N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`).
 
@@ -696,8 +696,10 @@ M(v^N   : vec <datatype>) = leb128(N) M(v : <datatype>)^N
 M(kv^N  : struct{<fieldtype>^K}) = leb128(K') M(kv : <fieldtype>^K)^N  where K' is the number of fields produced
 M((k,v) : variant{<fieldtype>*}) = i32(k) M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
 
-M((k,v) : <fieldtype>^*) = i32(k) leb128(|F(v : <datatype>)|) F(v : <datatype>)  iff k : <datatype> in <fieldtype>* and F(v : <datatype>) =/= .
-M((k,v) : <fieldtype>^*) = .                          otherwise
+M((k,v) : <fieldtype>^*) = i32(k) leb128(|F(v : <datatype>)|) leb128(|RF(v : <datatype>)|) F(v : <datatype>)
+    iff k : <datatype> in <fieldtype>* and (|F(v : <datatype>)| + |RF(v : <datatype>)|) > 0
+M((k,v) : <fieldtype>^*) = .
+    otherwise
 
 F(null : opt <datatype>) = .
 F(v : opt <datatype>)    = M(v : <datatype>)
@@ -705,6 +707,33 @@ F(v : <datatype>)        = M(v : <datatype>)          otherwise
 
 M(r : service <actortype>) = leb128(T(r))
 M(r : func <functype>)     = leb128(T(r))
+
+
+R(n : nat)         = .
+R(_ : int)         = .
+R(_ : nat<N>)      = .
+R(_ : int<N>)      = .
+R(_ : float<N>)    = .
+R(_ : bool)        = .
+R(_ : text)        = .
+R(_ : null)        = .
+R(_ : unavailable) = .
+
+R(null  : opt <datatype>) = .
+R(?v    : opt <datatype>) = R(v : <datatype>)
+R(v^N   : vec <datatype>) = R(v : <datatype>)^N
+R(kv^N  : struct{<fieldtype>^K}) = R(kv : <fieldtype>^K)^N
+R((k,v) : variant{<fieldtype>*}) = R(v : <datatype>)  iff k : <datatype> in <fieldtype>*
+
+R((k,v) : <fieldtype>^*) = R(v : <datatype>)  iff k : <datatype> in <fieldtype>* and F(v : <datatype>) =/= .
+R((k,v) : <fieldtype>^*) = .                          otherwise
+
+RF(null : opt <datatype>) = .
+RF(v : opt <datatype>)    = R(v : <datatype>)
+RF(v : <datatype>)        = R(v : <datatype>)          otherwise
+
+M(r : service <actortype>) = r
+M(r : func <functype>)     = r
 ```
 
 Notes:
@@ -713,8 +742,6 @@ Notes:
 
 * Every record field explicitly includes the size of its payload data. This is to allow skipping an unknown field upon deserialisation, see below.
 
-* The M-representation of references is the respective index into T, denoted by `T(r)` above. A serialiser is allowed (but not required to) merge multiple occurrences of the same reference in T.
-
 * It is unspecified how references *r* are represented, neither internally nor externally. When binding to Wasm, their internal representation is expected to be based on Wasm reference types, i.e., `anyref` or subtypes thereof. It is up to the system how to represent or translate the reference table on the wire.
 
 * Serialisation is a function, i.e., it deterministically produces a unique output. However, this output depends on the type, so two binary representations (or hashes thereof) are only comparable when the serialisation side type is known and was the same for both.
@@ -722,13 +749,13 @@ Notes:
 
 ### Deserialisation
 
-Deserialisation is the parallel application of the inverse functions of `M` and `T` defined above, with the following relaxation:
+Deserialisation is the parallel application of the inverse functions of `M` and `R` defined above, with the following relaxation:
 
 * A record representation may include *additional* fields not occurring in the static type, or which serialisation would omit (`null`, `unavailable`); they are simply ignored, the deserialiser can skip over the body using the field size.
 
 ### Parameters
 
-`P` defines the parameter mapping. Essentially, a parameter list is serialised into the pair (M,T) as if it was a single closed record, preceded by the string "DIDL" as a magic number:
+`P` defines the parameter mapping. Essentially, a parameter list is serialised into the pair (M,R) as if it was a single closed record, preceded by the string "DIDL" as a magic number:
 
 ```
 P(kv* : <fieldtype>,*) = i8('D') i8('I') i8('D') i8('L') M(kv* : <fieldtype>;*)
