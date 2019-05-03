@@ -145,6 +145,16 @@ export unsigned long bigint_to_word32(as_ptr a) {
   return mp_get_int(BIGINT_PAYLOAD(a));
 }
 
+export as_ptr bigint_of_word64(unsigned long long b) {
+  as_ptr r = bigint_alloc();
+  mp_set_long_long(BIGINT_PAYLOAD(r), b);
+  return r;
+}
+
+export unsigned long long bigint_to_word64(as_ptr a) {
+  return mp_get_long_long(BIGINT_PAYLOAD(a));
+}
+
 export int bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
@@ -188,6 +198,12 @@ export as_ptr bigint_mod(as_ptr a, as_ptr b) {
 export as_ptr bigint_neg(as_ptr a) {
   as_ptr r = bigint_alloc();
   mp_neg(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r));
+  return r;
+}
+
+export as_ptr bigint_abs(as_ptr a) {
+  as_ptr r = bigint_alloc();
+  mp_abs(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r));
   return r;
 }
 

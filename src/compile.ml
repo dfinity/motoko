@@ -590,6 +590,8 @@ module RTS = struct
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
@@ -602,6 +604,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lshd" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
 
     E.add_export env (nr {
       name = Wasm.Utf8.decode "alloc_bytes";
@@ -1483,7 +1486,10 @@ end (* BoxedInt *)
 module BigInt = struct
 
   let lit env n =
-     let twoto32 = Big_int.power_int_positive_int 2 31 in
+    let twoto32 = Big_int.power_int_positive_int 2 31 in
+
+    compile_unboxed_const 0l ^^
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
 
     let rec go n =
       if Big_int.sign_big_int n = 0 then G.nop else
@@ -1495,24 +1501,23 @@ module BigInt = struct
       G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
       G.i (Call (nr (E.built_in env "rts_bigint_add"))) in
 
-    match Big_int.sign_big_int n with
-    | 0 ->
-      compile_unboxed_const 0l ^^
-      G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
-    | 1 ->
-      compile_unboxed_const 1l ^^
-      G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
-      go (Big_int.abs_big_int n)
-    | _ ->
-      compile_unboxed_const 1l ^^
-      G.i (Call (nr (E.built_in env "rts_bigint_neg"))) ^^
-      go (Big_int.abs_big_int n)
+    go (Big_int.abs_big_int n) ^^
+
+    if Big_int.sign_big_int n < 0
+      then G.i (Call (nr (E.built_in env "rts_bigint_neg")))
+      else G.nop
 
   let from_word32 env =
     G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
 
   let to_word32 env =
     G.i (Call (nr (E.built_in env "rts_bigint_to_word32")))
+
+  let from_word64 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
+
+  let to_word64 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_to_word64")))
 
 end (* BigInt *)
 
@@ -1700,20 +1705,7 @@ module Prim = struct
   open Wasm.Values
 
   let prim_abs env =
-    let (set_i, get_i) = new_local env "abs_param" in
-    set_i ^^
-    get_i ^^
-    BoxedInt.unbox env ^^
-    compile_const_64 0L ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-    G.if_ (ValBlockType (Some I32Type))
-      ( compile_const_64 0L ^^
-        get_i ^^
-        BoxedInt.unbox env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        BoxedInt.box env
-      )
-      ( get_i )
+    G.i (Call (nr (E.built_in env "rts_bigint_abs")))
 
   (* The Word8 and Word16 bits sit in the MSBs of the i32, in this manner
      we can perform almost all operations, with the exception of
@@ -1725,28 +1717,32 @@ module Prim = struct
      Both Word8/16 easily fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let prim_shiftWordNtoUnsigned b =
+  let prim_word32toNat env =
+    BigInt.from_word32 env
+  let prim_shiftWordNtoUnsigned env b =
     compile_shrU_const b ^^
-    prim_word32toNat
-  let prim_word32toInt =
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-  let prim_shiftWordNtoSigned b =
+    prim_word32toNat env
+  let prim_word32toInt env =
+    BigInt.from_word32 env
+  let prim_shiftWordNtoSigned env b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrS)) ^^
-    prim_word32toInt
-  let prim_intToWord32 =
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let prim_shiftToWordN b =
-    prim_intToWord32 ^^
+    prim_word32toInt env
+  let prim_intToWord32 env =
+    BigInt.to_word32 env
+  let prim_shiftToWordN env b =
+    prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
   let prim_hashInt env =
+    G.i Drop ^^
+    compile_unboxed_const 0l
+    (*
     let (set_n, get_n) = new_local64 env "n" in
     set_n ^^
     get_n ^^ get_n ^^ compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
     prim_intToWord32
+    *)
 end (* Prim *)
 
 module Object = struct
@@ -4326,24 +4322,26 @@ and compile_exp (env : E.t) exp =
        | "Nat->Word8"
        | "Int->Word8" ->
          SR.Vanilla,
-         compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_shiftToWordN (UnboxedSmallWord.shift_of_type Type.Word8)
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Nat->Word16"
        | "Int->Word16" ->
          SR.Vanilla,
-         compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_shiftToWordN (UnboxedSmallWord.shift_of_type Type.Word16)
+         compile_exp_vanilla env e ^^
+         Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Nat->Word32"
        | "Int->Word32" ->
          SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedInt64 e ^^
-         Prim.prim_intToWord32
+         compile_exp_vanilla env e ^^
+         Prim.prim_intToWord32 env
 
        | "Nat->Word64"
        | "Int->Word64" ->
-          let sr, code = compile_exp env e in sr, code ^^ G.nop
+          SR.UnboxedInt64,
+          compile_exp_vanilla env e ^^
+          BigInt.to_word64 env
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
@@ -4351,35 +4349,37 @@ and compile_exp (env : E.t) exp =
          UnboxedSmallWord.unbox_codepoint
 
        | "Word8->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoUnsigned (UnboxedSmallWord.shift_of_type Type.Word8)
+         Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
        | "Word8->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoSigned (UnboxedSmallWord.shift_of_type Type.Word8)
+         Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Word16->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoUnsigned (UnboxedSmallWord.shift_of_type Type.Word16)
+         Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
        | "Word16->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
-         Prim.prim_shiftWordNtoSigned (UnboxedSmallWord.shift_of_type Type.Word16)
+         Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Word32->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat
+         Prim.prim_word32toNat env
        | "Word32->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
-         Prim.prim_word32toInt
+         Prim.prim_word32toInt env
 
        | "Word64->Nat"
        | "Word64->Int" ->
-          let sr, code = compile_exp env e in sr, code ^^ G.nop
+         SR.Vanilla,
+         compile_exp_as env SR.UnboxedInt64 e ^^
+         BigInt.from_word64 env
 
        | "Word32->Char" ->
          SR.Vanilla,
@@ -4388,7 +4388,7 @@ and compile_exp (env : E.t) exp =
 
        | "Int~hash" ->
          SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedInt64 e ^^
+         compile_exp_vanilla env e ^^
          Prim.prim_hashInt env
 
        | "popcnt" ->
@@ -4687,7 +4687,6 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    (* BoxedInt.unbox env ^^ *)
     compile_lit_as env SR.Vanilla l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->

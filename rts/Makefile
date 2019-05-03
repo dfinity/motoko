@@ -3,7 +3,7 @@ WASM_LD = wasm-ld-9
 
 TOMMATHFUNCS=\
    mp_init mp_add mp_sub mp_mul mp_zero mp_cmp mp_init_set_int mp_set_long mp_set_int \
-   mp_mod mp_div mp_init_copy mp_get_int mp_get_long mp_neg mp_lshd
+   mp_mod mp_div mp_init_copy mp_get_int mp_get_long mp_set_long_long mp_get_long_long mp_neg mp_lshd mp_abs
 
 TOMMATHFILES=\
    $(TOMMATHFUNCS) \
