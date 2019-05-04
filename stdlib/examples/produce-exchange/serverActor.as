@@ -11,7 +11,7 @@ let Result = (import "../../result.as");
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
-actor server {
+class Server() {
 
 /**
  Server Actor

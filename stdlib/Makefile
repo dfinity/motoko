@@ -156,6 +156,9 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
 
+$(OUTDIR)/memory-access-oob.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/memory-access-oob.as
+
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
 	@echo "" >> $@
