@@ -1297,6 +1297,9 @@ than the MVP goals, however.
       date_begin   = route.start_date  :T.Date;
       date_end     = route.end_date    :T.Date;
       trans_cost   = route.cost:  T.Price;
+
+      inventoryId = item.id  : T.InventoryId;
+      routeId = route.id : T.RouteId;
     }
   };
 
