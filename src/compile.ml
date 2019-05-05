@@ -3308,6 +3308,15 @@ module GC = struct
       G.i Return
     ] ^^
 
+    (* Get object size *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    (* Grow memory if needed *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    Heap.grow_memory env ^^
+
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
 
