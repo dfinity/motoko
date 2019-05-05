@@ -758,6 +758,12 @@ module ElemHeap = struct
      reference table *)
   let remember_reference env : G.t =
     Func.share_code1 env "remember_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
+      (* Check table space *)
+      get_ref_ctr ^^
+      compile_unboxed_const max_references ^^
+      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
+      E.else_trap_with env "Reference table full" ^^
+
       (* Return index *)
       get_ref_ctr ^^
 
@@ -811,6 +817,12 @@ module ClosureTable = struct
      reference table *)
   let remember_closure env : G.t =
     Func.share_code1 env "remember_closure" ("ptr", I32Type) [I32Type] (fun env get_ptr ->
+      (* Check table space *)
+      get_counter ^^
+      compile_unboxed_const (Int32.sub max_entries 1l) ^^
+      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
+      E.else_trap_with env "Closure table full" ^^
+
       (* Return index *)
       get_counter ^^
       compile_add_const 1l ^^
