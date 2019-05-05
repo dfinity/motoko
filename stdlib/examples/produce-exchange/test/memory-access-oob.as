@@ -2,7 +2,7 @@ let A = (import "../serverActor.as");
 
 actor test {
 
-  func go() : async () {
+  func go() : async Text {
       let s = A.Server();
 
       let r = await s.registrarAddRegion("region", "");
@@ -38,5 +38,7 @@ actor test {
       ignore(await s.registrarAddUser("27", "27", "", 0, true, true, true, true)); print "\nAdded user 27";
       ignore(await s.registrarAddUser("28", "28", "", 0, true, true, true, true)); print "\nAdded user 28";
       ignore(await s.registrarAddUser("29", "29", "", 0, true, true, true, true)); print "\nAdded user 29";
+
+      "Done";
   };
 };
