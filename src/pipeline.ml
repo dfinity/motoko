@@ -137,6 +137,14 @@ let typecheck_library senv filename prog : Typing.scope Diag.result =
   phase "Checking" prog.Source.note;
   Typing.check_library senv (filename, prog)
 
+(* Definedness checking *)
+
+let defindeness_prog prog : unit Diag.result =
+  phase "Definedness" prog.Source.note;
+  Definedness.check_prog prog
+
+let defindeness_progs progs : unit Diag.result =
+  Diag.traverse_ defindeness_prog progs
 
 (* Imported file loading *)
 
@@ -189,11 +197,12 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
       Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
       Diag.bind (go_set more_imports) (fun () ->
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
+      Diag.bind (defindeness_prog prog) (fun () ->
       libraries := (f, prog) :: !libraries; (* NB: Conceptually an append *)
       senv := Typing.adjoin_scope !senv sscope;
       pending := remove f !pending;
       Diag.return ()
-      )))))
+      ))))))
     end
     and go_set todo = Diag.traverse_ go (elements todo)
   in
@@ -208,8 +217,9 @@ let load_progs parse senv : load_result =
     (List.map snd rs) in
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
   Diag.bind (typecheck_progs senv' progs') (fun senv'' ->
+  Diag.bind (defindeness_progs progs') (fun _ ->
   Diag.return (libraries, progs', senv'')
-  ))))
+  )))))
 
 let load_decl parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
