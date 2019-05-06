@@ -213,7 +213,7 @@ let read_global gi (m : module_) : int32 =
   let n_impo = count_global_imports m in
   let g = List.nth m.it.globals (Int32.(to_int (sub gi n_impo))) in
   let open Wasm.Types in
-  assert (g.it.gtype = GlobalType (I32Type, Mutable));
+  assert (g.it.gtype = GlobalType (I32Type, Immutable));
   match g.it.value.it with
   | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
   | _ -> assert false
@@ -328,7 +328,7 @@ let set_global global value = phrase (fun m ->
       | [] -> assert false
       | g::gs when i = Int32.to_int global ->
         let open Wasm.Types in
-        assert (g.it.gtype = GlobalType (I32Type, Mutable));
+        assert (g.it.gtype = GlobalType (I32Type, Immutable));
         let g = phrase (fun g' ->
           { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
         ) g in

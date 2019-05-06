@@ -621,7 +621,9 @@ module Heap = struct
 
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff. This the actual memory offset, not-skewed yet *)
-  let heap_global = 3l
+  let base_global = 3l
+  let heap_global = 4l
+  let get_heap_base = G.i (GlobalGet (nr base_global))
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
   let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
@@ -766,7 +768,7 @@ module ElemHeap = struct
      target orthogonal persistence anyways.
   *)
 
-  let ref_counter_global = 4l
+  let ref_counter_global = 5l
   let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
   let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
 
@@ -3481,7 +3483,7 @@ module GC = struct
     let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
-    compile_unboxed_const end_of_static_space ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+    Heap.get_heap_base ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
     Heap.get_skewed_heap_ptr ^^ set_begin_to_space ^^
     Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
 
@@ -5025,6 +5027,15 @@ and actor_fake_object_idx env name =
 
 and conclude_module env module_name start_fi_o =
 
+  (* Wrap the start function with the RTS initialization *)
+  let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Heap.get_heap_base ^^
+    Heap.set_heap_ptr ^^
+    match start_fi_o with
+    | Some fi -> G.i (Call fi)
+    | None -> G.nop
+  )) in
+
   Dfinity.default_exports env;
   GC.register env (E.get_end_of_static_memory env);
 
@@ -5058,9 +5069,13 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
       };
-      (* end-of-heap pointer *)
-      nr { gtype = GlobalType (I32Type, Mutable);
+      (* beginning-of-heap pointer, may be changed by linker *)
+      nr { gtype = GlobalType (I32Type, Immutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
+      };
+      (* end-of-heap pointer, initialized to __heap_base upon start *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const 0xDEAFBEEFl))
       };
       (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
@@ -5073,7 +5088,7 @@ and conclude_module env module_name start_fi_o =
   });
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__heap_base";
-    edesc = nr (GlobalExport (nr Heap.heap_global))
+    edesc = nr (GlobalExport (nr Heap.base_global))
   });
 
   let data = List.map (fun (offset, init) -> nr {
@@ -5090,7 +5105,7 @@ and conclude_module env module_name start_fi_o =
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = start_fi_o;
+      start = Some (nr rts_start_fi);
       globals = globals;
       memories = memories;
       imports = func_imports @ other_imports;
