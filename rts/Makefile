@@ -20,7 +20,7 @@ _build/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build
 		$< --output $@ \
 		-fno-builtin \
 		-DMP_MALLOC=mp_malloc -DMP_REALLOC=mp_realloc -DMP_CALLOC=mp_calloc -DMP_FREE=mp_free -DMP_MEMSET=0 \
-		-DKARATSUBA_MUL_CUTOFF=80 -DKARATSUBA_SQR_CUTOFF=120 -DTOOM_MUL_CUTOFF=350 -DTOOM_SQR_CUTOFF=400
+		-DMP_FIXED_CUTOFFS
 
 
 all: rts.wasm

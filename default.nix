@@ -96,8 +96,8 @@ let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
-    rev = "c20bb5fc0d1a92387e80dabb148ad715e93693d0";
-    sha256 = "01648hmlbzv1gb00scg4pwlqgd61fkvkis6l03475z9mz4r2x04v";
+    rev = "develop";
+    sha256 = "9e1a75cfdc4de614eaf4f88c52d8faf384e54dd0";
   };
 
 in
