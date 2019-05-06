@@ -105,9 +105,6 @@ let () =
   (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
-  try
-    Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := (if !args = [] then Interact else Compile);
-    process_files !args
-  with exn ->
-    Interpret.print_exn exn
+  Arg.parse argspec add_arg usage;
+  if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  process_files !args
