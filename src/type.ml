@@ -48,61 +48,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-(* typ' is a semanic subtype of typ and mostly representationally
-   (heap layout-wise) compatible. It is needed for knot-tying operations
-   like lub and glb. In contrast to typ, typ' contains lazy fields, which
-   enable delaying computation of subobject lub/glb which may refer to the
-   outer result due to recursion.
-   To obtain the final result, the graph in OCaml runtime heap can be
-   fixed-up after building, patching the lazy fields with strict ones.
-   In the process of patching, the heap layout of typ' changes to become
-   a legal typ via coercion. *)
-and typ' =
-  | Var' of unit                              (* variable (unused) *)
-  | Con' of unit                              (* constructor (unused) *)
-  | Prim' of unit                             (* primitive (unused) *)
-  | Obj' of obj_sort * field list Lazy.t      (* object *)
-  | Array' of typ Lazy.t                      (* array *)
-  | Opt' of typ Lazy.t                        (* option *)
-  | Variant' of (lab * typ) list Lazy.t       (* variant *)
-  | Tup' of typ list Lazy.t                   (* tuple *)
-  | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
-  | Async' of typ Lazy.t                      (* future *)
-  (*| Mut' of typ Lazy.t                         mutable type *)
-
-let coerced_typ (l : typ') : typ = Obj.magic l
-
-                            (* It is forbidden to (deeply) inspect the result of coerced_typ, so this is MOOT!!
-(* A type is looping when it's directed graph references the same subgraph more than once
-   (pointer equality), and there is a path between them that doesn't contain a Con. *)
-let _is_loop_free t =
-  let rec check_no_pointer ts followers = (List.length followers = 0 ||
-    List.for_all (fun p -> not (List.exists (fun p' -> p' == p) ts)) followers
-    && (Printf.printf "DEEPER %d  --> %d\n" (List.length ts) (List.length followers);check_no_pointer (ts @ followers) List.(flatten (map references followers))))
-  and references = function
-    | Tup ts -> Printf.printf "Typ children %d\n" (List.length ts); ts
-    | Opt t | Array t | Async t -> Printf.printf "Other children 1\n";[t]
-    | Obj (_, fts) -> let ts = List.map (fun {lab; typ} -> typ) fts in Printf.printf "Obj children %d\n" (List.length ts); ts
-    | Variant vts -> let ts = List.map snd vts in Printf.printf "Variant children %d\n" (List.length ts); ts
-    | _ -> [] in
-  check_no_pointer [t] (references t)
-                             *)
-let fixup = function
-  | Var' _
-  | Con' _
-  | Prim' _ ->
-    ignore [Var' (); Con' (); Prim' ()]; assert false; (* these are placeholders for the sake of layout compatibility *)
-  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); coerced_typ o
-  | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
-  | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
-  | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
-  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
-  | Func' (s, c, bs, lazy args, lazy res) as o ->
-    Obj.(set_field (repr o) 3 (repr args));
-    Obj.(set_field (repr o) 4 (repr res));
-    coerced_typ o
-  | Async' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
-(*| Mut' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o*)
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -705,13 +650,26 @@ and eq_kind k1 k2 : bool =
 and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
+and is_recursive_con = function
+  | Con _ as t ->
+    begin match normalize t with
+    | Any | Non | Pre | Shared | Prim _ | Serialized _ | Var _ -> false
+    | _ -> true (* TODO(gabor) this is too conservative *)
+    end
+  | _ -> false
+
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !lubs then Lazy.force (M.find (t1, t2) !lubs) else
-  if M.mem (t2, t1) !lubs then Lazy.force (M.find (t2, t1) !lubs) else
-    (* TBR: this is just a quick hack *)
-  let add_loop_breaker o = let lb = Lazy.from_val (loop_breaker t1 t2 "lub" o) in lubs := M.add (t1, t2) lb !lubs in
-  let tr = lazy begin match normalize t1, normalize t2 with
+  if M.mem (t1, t2) !lubs then M.find (t1, t2) !lubs else
+  if M.mem (t2, t1) !lubs then M.find (t2, t1) !lubs else
+  if is_recursive_con t1 || is_recursive_con t2 then
+    let c = Con.fresh (Printf.sprintf "lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    lubs := M.add (t1, t2) (Con (c, [])) !lubs;
+    let inner = lub' lubs glbs (normalize t1) (normalize t2) in
+    set_kind c (Def ([], inner));
+    inner
+  else
+  begin match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any
@@ -735,55 +693,23 @@ and lub' lubs glbs t1 t2 =
   | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
-    let rec o = Opt' i
-    and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
-    fixup o
+    Opt (lub' lubs glbs t1' t2')
   | Variant t1', Variant t2' ->
-    let rec o = Variant' i
-    and i = lazy (add_loop_breaker o; lub_variant lubs glbs t1' t2') in
-    fixup o
+    Variant (lub_variant lubs glbs t1' t2')
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-    let rec o = Tup' i
-    and i = lazy (add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
-    fixup o
+    Tup (List.map2 (lub' lubs glbs) ts1 ts2)
   | Array t1', Array t2' ->
-    let rec o = Array' i
-    and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
-    fixup o
+    Array (lub' lubs glbs t1' t2')
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-    let rec o = Obj' (s1, i)
-    and i = lazy (add_loop_breaker o; lub_object lubs glbs tf1 tf2) in
-    fixup o
+    Obj (s1, lub_object lubs glbs tf1 tf2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
     when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
-    let rec o = Func' (s1, c1, bs1, args, results)
-    and lb = lazy (add_loop_breaker o)
-    and args = lazy (Lazy.force lb; List.map2 (glb' lubs glbs) args1 args2)
-    and results = lazy (Lazy.force lb; List.map2 (lub' lubs glbs) res1 res2) in
-    fixup o
+    Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
-    let rec o = Async' i
-    and i = lazy (lub' lubs glbs t1' t2') in
-    fixup o
+    Async (lub' lubs glbs t1' t2')
   | _ -> Any
-  end in
-  lubs := M.add (t1, t2) tr !lubs;
-  ignore (Lazy.force tr); (* kickstart evaluation *)
-  Lazy.force (M.find (t1, t2) !lubs) (* fetch potential loop-breaker *)
-
-(* The presence of Con can potentially lead to direct type recursion
-   in the lub/glb result. To avoid introducing a loop into the type,
-   wrap the putative result by a descriptively named Con that redirects to it.
- *)
-and loop_breaker t1 t2 how cand = match t1, t2 with
-  | Con _, _
-  | _, Con _ -> (* TODO(gabor) only when Con is recursive! *)
-    let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], coerced_typ cand)) in
-    let wrap = Con (c, []) in
-    assert (normalize wrap == coerced_typ cand);
-    wrap
-  | _, _ -> coerced_typ cand
+  end
 
 and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
@@ -806,12 +732,17 @@ and lub_variant lubs glbs fs1 fs2 = match fs1, fs2 with
     end
 
 and glb' lubs glbs t1 t2 =
-  let add_loop_breaker o = glbs := M.add (t1, t2) (Lazy.from_val (loop_breaker t1 t2 "glb" o)) !glbs in
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !glbs then Lazy.force (M.find (t1, t2) !glbs) else
-  if M.mem (t2, t1) !glbs then Lazy.force (M.find (t2, t1) !glbs) else
-  (* TBR: this is just a quick hack *)
-  let tr = lazy begin match normalize t1, normalize t2 with
+  if M.mem (t1, t2) !glbs then M.find (t1, t2) !glbs else
+  if M.mem (t2, t1) !glbs then M.find (t2, t1) !glbs else
+  if is_recursive_con t1 || is_recursive_con t2 then
+    let c = Con.fresh (Printf.sprintf "glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    glbs := M.add (t1, t2) (Con (c, [])) !glbs;
+    let inner = glb' lubs glbs (normalize t1) (normalize t2) in
+    set_kind c (Def ([], inner));
+    inner
+  else
+  begin match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any -> t1
@@ -834,42 +765,23 @@ and glb' lubs glbs t1 t2 =
   | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
-    let rec o = Opt' i
-    and i = lazy (add_loop_breaker o; glb' lubs glbs t1' t2') in
-    fixup o
+    Opt (glb' lubs glbs t1' t2')
   | Variant t1', Variant t2' ->
-    let rec o = Variant' i
-    and i = lazy (add_loop_breaker o; glb_variant lubs glbs t1' t2')
-    in fixup o
+    Variant (glb_variant lubs glbs t1' t2')
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-    let rec o = Tup' i
-    and i = lazy (add_loop_breaker o; List.map2 (glb' lubs glbs) ts1 ts2) in
-    fixup o
+    Tup (List.map2 (glb' lubs glbs) ts1 ts2)
   | Array t1', Array t2' ->
-    let rec o = Array' i
-    and i = lazy (add_loop_breaker o; glb' lubs glbs t1' t2') in
-    fixup o
+    Array (glb' lubs glbs t1' t2')
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-    let rec o = Obj' (s1, i)
-    and i = lazy (add_loop_breaker o; glb_object lubs glbs tf1 tf2) in
-    fixup o
+    Obj (s1, glb_object lubs glbs tf1 tf2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
     when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
-    let rec o = Func' (s1, c1, bs1, args, results)
-    and lb = lazy (add_loop_breaker o)
-    and args = lazy (Lazy.force lb; List.map2 (lub' lubs glbs) args1 args2)
-    and results = lazy (Lazy.force lb; List.map2 (glb' lubs glbs) res1 res2) in
-    fixup o
+    Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
-    let rec o = Async' i
-    and i = lazy (glb' lubs glbs t1' t2') in
-    fixup o
+    Async (glb' lubs glbs t1' t2')
   | _ -> Non
-  end in
-  glbs := M.add (t1, t2) tr !glbs;
-  ignore (Lazy.force tr); (* kickstart evaluation *)
-  Lazy.force (M.find (t1, t2) !glbs) (* fetch potential loop-breaker *)
+  end
 
 and glb_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
