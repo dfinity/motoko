@@ -653,8 +653,11 @@ let interpret_prog scope ((ds, exp), _flavor) : scope =
   let env = env_of_scope scope in
   trace_depth := 0;
   let ve = ref V.Env.empty in
-  Scheduler.queue (fun () ->
-    interpret_block env (Some ve) ds exp  (fun v -> ())
-  );
-  Scheduler.run ();
-  !ve
+  try
+    Scheduler.queue (fun () ->
+      interpret_block env (Some ve) ds exp  (fun v -> ())
+    );
+    Scheduler.run ();
+    !ve
+  with exn -> print_exn exn; !ve
+

@@ -699,16 +699,25 @@ and interpret_func env name pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope p : V.value option * scope =
-  let env = env_of_scope scope in
-  trace_depth := 0;
-  let vo = ref None in
-  let ve = ref V.Env.empty in
-  Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
-  );
-  Scheduler.run ();
-  !vo, { val_env = !ve; lib_env = scope.lib_env }
+let interpret_prog scope p : (V.value * scope) option =
+  try
+    let env = env_of_scope scope in
+    trace_depth := 0;
+    let vo = ref None in
+    let ve = ref V.Env.empty in
+    Scheduler.queue (fun () ->
+      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    );
+    Scheduler.run ();
+    let scope = { val_env = !ve; lib_env = scope.lib_env } in
+    match !vo with
+    | Some v -> Some (v, scope)
+    | None -> None
+  with exn ->
+    (* For debugging, should never happen. *)
+    print_exn exn;
+    None
+
 
 let interpret_library scope (filename, p) : scope =
   let env = env_of_scope scope in
