@@ -237,8 +237,11 @@ let join_modules (em1 : extended_module) (m2 : module_) (ns2 : name_section) : e
         }
       ; at = m1.at
       };
-    function_names = em1.function_names @ ns2.function_names;
-    locals_names = em1.locals_names @ ns2.locals_names;
+    name = {
+      em1.name with
+      function_names = em1.name.function_names @ ns2.function_names;
+      locals_names = em1.name.locals_names @ ns2.locals_names;
+    }
   }
 
 let rename_funcs rn : module_ -> module_ =
@@ -384,8 +387,7 @@ let rename_funcs_extended rn (em : extended_module) =
   { em with
     module_ = rename_funcs rn em.module_;
     types = List.map (fun (fi, ty) -> (rn fi, ty)) em.types;
-    function_names = List.map (fun (fi, name) -> (rn fi, name)) em.function_names;
-    locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) em.locals_names;
+    name = rename_funcs_name_section rn em.name;
   }
 
 let rename_globals_extended rn (em : extended_module) =

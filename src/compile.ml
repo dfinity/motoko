@@ -5127,11 +5127,13 @@ and conclude_module env module_name start_fi_o =
              [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
              ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
              ];
-      module_name;
-      function_names =
-          List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-      locals_names =
-          List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+      name = Dylib.{
+        module_ = module_name;
+        function_names =
+            List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+        locals_names =
+            List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+      };
     } in
 
   LinkModule.link emodule "rts" stdlib

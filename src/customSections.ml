@@ -1,5 +1,7 @@
 (* Some data type to represent custom sectoins *)
 
+open Dylib
+
 type type_ = I32 | DataBuf | ElemBuf | ActorRef | FuncRef
 
 (* Some Code copied from encodeMap.ml *)
@@ -25,9 +27,7 @@ let encode
     (offset : int32) (* Number of imports, to offset the numbers in dfinity_types *)
     (dfinity_types : (int32 * type_ list) list) (* List of messages and arguments *)
     (persistent_globals : (int32 * type_) list)
-    (module_name : string)
-    (function_names : (int32 * string) list)
-    (locals_names : (int32 * (int32 * string) list) list)
+    (ns : name_section)
     : string =
   let s = stream () in
 
@@ -111,12 +111,12 @@ let encode
   section 0 (fun _ ->
     string "name";
     (* module name section *)
-    section 0 (fun _ -> string module_name);
+    section 0 (fun _ -> string ns.module_);
     (* function names section *)
-    section 1 (fun _ -> assoc_list function_names string);
+    section 1 (fun _ -> assoc_list ns.function_names string);
     (* locals names section *)
     section 2 (fun _ ->
-      assoc_list locals_names (fun locals -> assoc_list locals string)
+      assoc_list ns.locals_names (fun locals -> assoc_list locals string)
     );
   );
   to_string s
