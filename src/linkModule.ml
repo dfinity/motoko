@@ -515,7 +515,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
 
   (* Link functions *)
   let fun_required1 = find_fun_imports libname em.module_ in
-  let fun_required2 = find_fun_imports "as_rts" dm2 in
+  let fun_required2 = find_fun_imports "env" dm2 in
   let fun_exports1 = find_fun_exports em.module_ in
   let fun_exports2 = find_fun_exports dm2 in
   (* Resolve imports, to produce a renumbering function: *)

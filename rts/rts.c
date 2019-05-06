@@ -1,7 +1,7 @@
 #pragma GCC diagnostic ignored "-Wattributes"
 #pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 #define export __attribute__ ((visibility("default")))
-#define from_rts __attribute__ ((import_module("as_rts"))) extern
+#define from_rts __attribute__ ((import_module("env"))) extern
 
 export void as_memcpy(char *str1, const char *str2, int n) {
   for (int i = 0; i < n; i++) {
