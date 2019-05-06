@@ -40,18 +40,6 @@ and typ =
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
 
-and typ' =
-  | Var' of var * int                         (* variable *)
-  | Con' of con * typ Lazy.t list             (* constructor *)
-  | Prim' of prim                             (* primitive *)
-  | Obj' of obj_sort * field list Lazy.t      (* object *)
-  | Array' of typ Lazy.t                      (* array *)
-  | Opt' of typ Lazy.t                        (* option *)
-  | Variant' of (lab * typ) list Lazy.t       (* variant *)
-  | Tup' of typ list Lazy.t                   (* tuple *)
-  | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
-  | Async' of typ Lazy.t                      (* future *)
-  (*| Mut' of typ Lazy.t                         mutable type *)
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
@@ -60,9 +48,31 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-let unlazy (l : typ') : typ = Obj.magic l
+(* typ' is a semanic subtype of typ and mostly representationally
+   (heap layout-wise) compatible. It is needed for knot-tying operations
+   like lub and glb. In contrast to typ, typ' contains lazy fields, which
+   enable delaying computation of subobject lub/glb which may refer to the
+   outer result due to recursion.
+   To obtain the final result, the graph in OCaml runtime heap can be
+   fixed-up after building, patching the lazy fields with strict ones.
+   In the process of patching, the heap layout of typ' changes to become
+   a legal typ via coercion. *)
+and typ' =
+  | Var' of unit                              (* variable (unused) *)
+  | Con' of unit                              (* constructor (unused) *)
+  | Prim' of unit                             (* primitive (unused) *)
+  | Obj' of obj_sort * field list Lazy.t      (* object *)
+  | Array' of typ Lazy.t                      (* array *)
+  | Opt' of typ Lazy.t                        (* option *)
+  | Variant' of (lab * typ) list Lazy.t       (* variant *)
+  | Tup' of typ list Lazy.t                   (* tuple *)
+  | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
+  | Async' of typ Lazy.t                      (* future *)
+  (*| Mut' of typ Lazy.t                         mutable type *)
 
-                            (* It is forbidden to (deeply) inspect the result of unlazy, so this is MOOT!!
+let coerced_typ (l : typ') : typ = Obj.magic l
+
+                            (* It is forbidden to (deeply) inspect the result of coerced_typ, so this is MOOT!!
 (* A type is looping when it's directed graph references the same subgraph more than once
    (pointer equality), and there is a path between them that doesn't contain a Con. *)
 let _is_loop_free t =
@@ -78,20 +88,21 @@ let _is_loop_free t =
   check_no_pointer [t] (references t)
                              *)
 let fixup = function
-  | Var' (v, i) as o -> ignore (Var' (v, i)); unlazy o
-  | Con' (c, ts) as o -> ignore (Con' (c, ts)); List.iter (fun (lazy _) -> ()) ts; unlazy o
-  | Prim' p as o -> ignore (Prim' p); unlazy o
-  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); unlazy o
-  | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+  | Var' _
+  | Con' _
+  | Prim' _ ->
+    ignore [Var' (); Con' (); Prim' ()]; assert false; (* these are placeholders for the sake of layout compatibility *)
+  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); coerced_typ o
+  | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
+  | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
+  | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
+  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
   | Func' (s, c, bs, lazy args, lazy res) as o ->
     Obj.(set_field (repr o) 3 (repr args));
     Obj.(set_field (repr o) 4 (repr res));
-    unlazy o
-  | Async' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-(*| Mut' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o*)
+    coerced_typ o
+  | Async' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o
+(*| Mut' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); coerced_typ o*)
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -757,7 +768,9 @@ and lub' lubs glbs t1 t2 =
     fixup o
   | _ -> Any
   end in
-  lubs := M.add (t1, t2) tr !lubs; ignore (Lazy.force tr); Lazy.force (M.find (t1, t2) !lubs)
+  lubs := M.add (t1, t2) tr !lubs;
+  ignore (Lazy.force tr); (* kickstart evaluation *)
+  Lazy.force (M.find (t1, t2) !lubs) (* fetch potential loop-breaker *)
 
 (* The presence of Con can potentially lead to direct type recursion
    in the lub/glb result. To avoid introducing a loop into the type,
@@ -766,11 +779,11 @@ and lub' lubs glbs t1 t2 =
 and loop_breaker t1 t2 how cand = match t1, t2 with
   | Con _, _
   | _, Con _ -> (* TODO(gabor) only when Con is recursive! *)
-    let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], unlazy cand)) in
+    let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], coerced_typ cand)) in
     let wrap = Con (c, []) in
-    assert (normalize wrap == unlazy cand);
+    assert (normalize wrap == coerced_typ cand);
     wrap
-  | _, _ -> unlazy cand
+  | _, _ -> coerced_typ cand
 
 and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
@@ -854,7 +867,9 @@ and glb' lubs glbs t1 t2 =
     fixup o
   | _ -> Non
   end in
-  glbs := M.add (t1, t2) tr !glbs; ignore (Lazy.force tr); Lazy.force (M.find (t1, t2) !glbs)
+  glbs := M.add (t1, t2) tr !glbs;
+  ignore (Lazy.force tr); (* kickstart evaluation *)
+  Lazy.force (M.find (t1, t2) !glbs) (* fetch potential loop-breaker *)
 
 and glb_object lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -910,7 +925,7 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "VAR<!>")
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con vs c)
