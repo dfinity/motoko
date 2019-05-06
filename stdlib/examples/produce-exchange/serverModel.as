@@ -1704,7 +1704,7 @@ than the MVP goals, however.
       list.len(),
       null
     );
-    for (i in (range(0,list.len()))) {
+    for (i in (range(0,list.len()-1))) {
       let (item, route) = list[i];
       let x = retailerReserve(id, item, route);
       a[i] := ?x;
