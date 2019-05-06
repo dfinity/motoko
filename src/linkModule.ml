@@ -578,6 +578,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
 
   (* Rename types *)
   let ty_offset2 = Int32.of_int (List.length (em.module_.it.types)) in
+  let tys2 t = Int32.(add t ty_offset2) in
 
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
@@ -604,7 +605,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
     |> remove_table_import
     |> rename_funcs funs2
     |> rename_globals globals2
-    |> rename_types (fun t -> Int32.(add t ty_offset2))
+    |> rename_types tys2
     |> remove_function_export "__wasm_call_ctors"
     )
     ( dm.name
