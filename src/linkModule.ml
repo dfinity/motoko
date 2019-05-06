@@ -171,9 +171,7 @@ let find_global_exports m : exports =
     NameMap.empty m.it.exports
 
 
-(*
 exception LinkError of string
-*)
 
 type renumbering = int32 -> int32
 
@@ -211,8 +209,9 @@ let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 reso
   in
   (fun1, fun2)
 
-let read_heap_ptr heap_ptr (m : module_) : int32 =
-  let g = List.nth m.it.globals (Int32.to_int heap_ptr) in
+let read_global gi (m : module_) : int32 =
+  let n_impo = count_global_imports m in
+  let g = List.nth m.it.globals (Int32.(to_int (sub gi n_impo))) in
   let open Wasm.Types in
   assert (g.it.gtype = GlobalType (I32Type, Mutable));
   match g.it.value.it with
@@ -493,10 +492,17 @@ let align p n =
 
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
-let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
+let link (em : extended_module) libname (dm : dylink_module) =
+
+  let global_exports1 = find_global_exports em.module_ in
+
+  let heap_global =
+    match NameMap.find_opt (Wasm.Utf8.decode "__heap_base") global_exports1 with
+    | None -> raise (LinkError "First module does not export __heap_base")
+    | Some gi -> gi in
 
   (* Beginning of unused space *)
-  let old_heap_start = read_heap_ptr heap_ptr em.module_ in
+  let old_heap_start = read_global heap_global em.module_ in
   let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
   let new_heap_start = align 4l (Int32.add lib_heap_start dm.dylink.memory_size) in
 
@@ -525,7 +531,6 @@ let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
   (* Link globals *)
   let global_required1 = find_global_imports libname em.module_ in
   let global_required2 = find_global_imports "env" dm2 in
-  let global_exports1 = find_global_exports em.module_ in
   let global_exports2 = find_global_exports dm2 in
   (* Resolve imports, to produce a renumbering globalction: *)
   let global_resolved12 = resolve global_required1 global_exports2 in
@@ -560,7 +565,7 @@ let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
     |> in_extended (remove_global_imports global_resolved12)
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
-    |> in_extended (set_global heap_ptr new_heap_start)
+    |> in_extended (set_global heap_global new_heap_start)
     )
     ( dm2
     |> remove_fun_imports fun_resolved21

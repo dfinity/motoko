@@ -754,12 +754,6 @@ module Stack = struct
 
   let end_of_stack = page_size (* 64k of stack *)
 
-  let export env =
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "__stack_pointer";
-      edesc = nr (GlobalExport (nr stack_global))
-    });
-
 end (* Stack *)
 
 module ElemHeap = struct
@@ -5000,7 +4994,6 @@ and actor_lit outer_env this ds fs at =
     let start_fi = E.add_fun env "start" start_fun in
 
     OrthogonalPersistence.register env start_fi;
-    Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
     let m = conclude_module env this.it None in
     let (_map, wasm_binary) = CustomModule.encode m in
@@ -5074,6 +5067,14 @@ and conclude_module env module_name start_fi_o =
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
       ] in
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "__stack_pointer";
+    edesc = nr (GlobalExport (nr Stack.stack_global))
+  });
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "__heap_base";
+    edesc = nr (GlobalExport (nr Heap.heap_global))
+  });
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
@@ -5133,7 +5134,7 @@ and conclude_module env module_name start_fi_o =
           List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
     } in
 
-  LinkModule.link Heap.heap_global emodule "rts" stdlib
+  LinkModule.link emodule "rts" stdlib
 
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
   let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
@@ -5150,6 +5151,5 @@ let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : Custom
       Dfinity.export_start_stub env;
       None
     end else Some (nr start_fi) in
-  Stack.export env; (* Due to bug in dvm, need to export in the right order *)
 
   conclude_module env module_name start_fi_o
