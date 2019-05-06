@@ -48,7 +48,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
 
