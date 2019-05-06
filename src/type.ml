@@ -400,7 +400,7 @@ let rec span = function
   | Prim (Nat | Int | Float | Text) -> None
   | Prim Word8 -> Some 0x100
   | Prim Word16 -> Some 0x10000
-  | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
+  | Prim (Word32 | Word64 | Char) -> None  (* for all practical purposes *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
@@ -503,8 +503,6 @@ let is_concrete t =
       | Serialized t -> go t
     end
   in go t
-
-(* TEMPORARY HOME FOR SOME STUFF related to lub/glb *)
 
 let is_loop_breaker = function
   | Con (c, []) ->
