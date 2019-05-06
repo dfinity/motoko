@@ -34,7 +34,7 @@ let get_string n s = let i = pos s in skip n s; String.sub s.bytes i n
 module Code = Error.Make ()
 exception Code = Code.Error
 
-let position s pos = Source.({file = s.name; line = -1; column = pos})
+let position (s : stream) pos = Source.({file = s.name; line = -1; column = pos})
 let region s left right =
   Source.({left = position s left; right = position s right})
 
@@ -94,6 +94,13 @@ let sized f s =
   require (pos s = start + size) s start "section size mismatch";
   x
 
+let sized_skip f s =
+  let size = len32 s in
+  let start = pos s in
+  let x = f s in
+  s.pos := start + size;
+  x
+
 let id s =
   let bo = peek s in
   Lib.Option.map
@@ -113,6 +120,10 @@ let id s =
     | _ -> error s (pos s) "invalid section id"
     ) bo
 
+let var s = vu32 s
+
+(* Dylink section *)
+
 let dylink _size s =
   require (name s = Wasm.Utf8.decode "dylink") s (pos s)
      "Expecting dylib to start with custom dylink section";
@@ -129,17 +140,91 @@ let dylink_section s =
   ignore (u8 s);
   sized dylink s
 
+(* Name section *)
+
+let repeat_until p_end s x0 f =
+  let rec go x =
+    require (pos s <= p_end) s (pos s) "repeat_until overshot";
+    if pos s = p_end then x else go (f x s)
+  in go x0
+
+let empty_name_section : name_section = {
+  module_ = "";
+  function_names = [];
+  locals_names = [];
+  }
+
+let assoc_list f s = vec (fun s ->
+    let i = var s in
+    let x = f s in
+    (i, x)
+  ) s
+
+let name_map = assoc_list string
+let indirect_name_map = assoc_list name_map
+
+let name_section_subsection (ns : name_section) s =
+  match u8 s with
+  | 0 -> (* module name *)
+    let mod_name = sized (fun _ -> string) s in
+    { ns with module_ = mod_name }
+  | 1 -> (* function names *)
+    let func_names = sized (fun _ -> name_map) s in
+    { ns with function_names = ns.function_names @ func_names }
+  | 2 -> (* local names *)
+    let loc_names = sized (fun _ -> indirect_name_map) s in
+    { ns with locals_names = ns.locals_names @ loc_names }
+  | i -> error s (pos s) "unknown name section subsection id"
+
+let name_section_content size s =
+  let p_end = pos s + size in
+  require (name s = Wasm.Utf8.decode "name") s (pos s)
+     "Expecting name section to start with \"name\"";
+  repeat_until p_end s empty_name_section name_section_subsection
+
+
+let name_section s =
+  match id s with
+    | Some `CustomSection -> ignore (u8 s); sized name_section_content s
+    | Some _ -> error s (pos s) "Expecting custom section"
+    | None -> empty_name_section
+
+(* Other section *)
+
+let skip_other_section s =
+  let p = pos s in
+  let skip = match id s with
+    | Some `CustomSection ->
+      ignore (u8 s);
+      sized_skip (fun s ->
+        name s <> Wasm.Utf8.decode "name"
+      ) s
+    | Some _ ->
+      ignore (u8 s);
+      sized_skip (fun _ -> true) s
+    | None -> false
+  in
+  if not skip then s.pos := p;
+  skip
+
 (* Modules *)
+
+let rec iterate f s = if f s then iterate f s
 
 let dylib_module s =
   let magic = u32 s in
   require (magic = 0x6d736100l) s 0 "magic header not detected";
   let version = u32 s in
   require (version = Encode.version) s 4 "unknown binary version";
-  dylink_section s
+  let dynlink = dylink_section s in
+  iterate skip_other_section s;
+  let name = name_section s in
+  iterate skip_other_section s;
+  require (pos s = len s) s (len s) "junk after last section";
+  (dynlink, name)
 
 
 let decode name bs =
   let module_ = Wasm.Decode.decode name bs in
-  let dylink = dylib_module (stream name bs) in
-  { module_; dylink }
+  let (dylink, name) = dylib_module (stream name bs) in
+  { module_; dylink; name }

@@ -1,5 +1,11 @@
 open Wasm.Ast
 
+type name_section = {
+  module_ : string;
+  function_names : (int32 * string) list;
+  locals_names : (int32 * (int32 * string) list) list;
+}
+
 type dylink = {
   memory_size : int32;
   memory_alignment : int32;
@@ -10,6 +16,7 @@ type dylink = {
 
 type dylink_module = {
   module_ : module_;
-  dylink :  dylink
+  dylink : dylink;
+  name : name_section;
 }
 

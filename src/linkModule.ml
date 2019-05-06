@@ -55,6 +55,14 @@ let remove_fun_imports resolved : module_ -> module_ =
           -> imp :: go i is in
     { m with imports = go 0l m.imports }
   )
+
+let remove_fun_imports_name_section resolved : name_section -> name_section = fun ns ->
+  let keep (fi, x) = not (List.mem_assoc fi resolved) in
+  { ns with
+    function_names = List.filter keep ns.function_names;
+    locals_names = List.filter keep ns.locals_names;
+  }
+
 let remove_global_imports resolved : module_ -> module_ =
   phrase (fun m ->
     let rec go i = function
@@ -211,24 +219,27 @@ let read_heap_ptr heap_ptr (m : module_) : int32 =
   | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
   | _ -> assert false
 
-let join_modules (em1 : extended_module) (m2 : module_) : extended_module =
+let join_modules (em1 : extended_module) (m2 : module_) (ns2 : name_section) : extended_module =
   assert (m2.it.start = None);
   let m1 = em1.module_ in
-  { em1 with module_ =
-    { it =
-      { types = m1.it.types @ m2.it.types
-      ; globals = m1.it.globals @ m2.it.globals
-      ; tables = m1.it.tables @ m2.it.tables
-      ; memories = m1.it.memories @ m2.it.memories
-      ; funcs = m1.it.funcs @ m2.it.funcs
-      ; start = m1.it.start
-      ; elems = m1.it.elems @ m2.it.elems
-      ; data = m1.it.data @ m2.it.data
-      ; imports = m1.it.imports @ m2.it.imports
-      ; exports = m1.it.exports @ m2.it.exports
-      }
-    ; at = m1.at
-    }
+  { em1 with
+    module_ =
+      { it =
+        { types = m1.it.types @ m2.it.types
+        ; globals = m1.it.globals @ m2.it.globals
+        ; tables = m1.it.tables @ m2.it.tables
+        ; memories = m1.it.memories @ m2.it.memories
+        ; funcs = m1.it.funcs @ m2.it.funcs
+        ; start = m1.it.start
+        ; elems = m1.it.elems @ m2.it.elems
+        ; data = m1.it.data @ m2.it.data
+        ; imports = m1.it.imports @ m2.it.imports
+        ; exports = m1.it.exports @ m2.it.exports
+        }
+      ; at = m1.at
+      };
+    function_names = em1.function_names @ ns2.function_names;
+    locals_names = em1.locals_names @ ns2.locals_names;
   }
 
 let rename_funcs rn : module_ -> module_ =
@@ -364,18 +375,24 @@ let fill_global (global : int32) (value : int32) : module_ -> module_ =
     }
   )
 
+let rename_funcs_name_section rn (ns : name_section) =
+  { ns with
+    function_names = List.map (fun (fi, name) -> (rn fi, name)) ns.function_names;
+    locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) ns.locals_names;
+  }
+
 let rename_funcs_extended rn (em : extended_module) =
-    { em with
-      module_ = rename_funcs rn em.module_;
-      types = List.map (fun (fi, ty) -> (rn fi, ty)) em.types;
-      function_names = List.map (fun (fi, name) -> (rn fi, name)) em.function_names;
-      locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) em.locals_names;
-    }
+  { em with
+    module_ = rename_funcs rn em.module_;
+    types = List.map (fun (fi, ty) -> (rn fi, ty)) em.types;
+    function_names = List.map (fun (fi, name) -> (rn fi, name)) em.function_names;
+    locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) em.locals_names;
+  }
 
 let rename_globals_extended rn (em : extended_module) =
-    { em with
-      module_ = rename_globals rn em.module_;
-    }
+  { em with
+    module_ = rename_globals rn em.module_;
+  }
 
 let rename_types rn m =
   let phrase f x = { x with it = f x.it } in
@@ -554,6 +571,10 @@ let link heap_ptr (em : extended_module) libname (dm : dylink_module) =
     |> rename_globals globals2
     |> rename_types (fun t -> Int32.(add t ty_offset2))
     |> remove_function_export "__wasm_call_ctors"
+    )
+    ( dm.name
+    |> remove_fun_imports_name_section fun_resolved21
+    |> rename_funcs_name_section funs2
     )
   |> in_extended add_call_ctors
   |> remove_non_definity_exports (* only sane if no additional files get linked in *)
