@@ -52,10 +52,6 @@ enum as_heap_tag {
 	TAG_BIGINT = 13,
 	};
 
-
-// This is mostly to test static strings and access to the AS heap
-const char* RTS_VERSION = "0.1";
-
 int as_strlen(const char* p) {
   int i = 0;
   while (p[i]) i++;
@@ -67,13 +63,18 @@ as_ptr as_str_of_cstr(const char * const s) {
   as_ptr r = alloc_bytes (2*sizeof(void*) + l);
   FIELD(r, 0) = TAG_TEXT;
   FIELD(r, 1) = l;
-  as_memcpy((char *)(&FIELD(r,2)), RTS_VERSION, l);
+  as_memcpy((char *)(&FIELD(r,2)), s, l);
   return r;
 }
 
-export as_ptr version() {
-  return as_str_of_cstr(RTS_VERSION);
-}
+// This is mostly to test static strings and access to the AS heap
+const char* RTS_VERSION = "0.1";
+
+// This is mostly to test function pointers
+as_ptr get_version() { return as_str_of_cstr(RTS_VERSION); }
+as_ptr (*version_getter)() = &get_version;
+
+export as_ptr version() { return (*version_getter)(); }
 
 /* libtommath wrappers */
 

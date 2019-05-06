@@ -218,6 +218,30 @@ let read_global gi (m : module_) : int32 =
   | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
   | _ -> assert false
 
+let read_table_size (m : module_) : int32 =
+  (* Assumes there is one table *)
+  let open Wasm.Types in
+  match m.it.tables with
+  | [t] ->
+    let TableType ({min;max}, _) = t.it.ttype in
+    if Some min <> max
+    then raise (LinkError "Expect fixed sized table in first module")
+    else min
+  | _ -> raise (LinkError "Expect one table in first module")
+
+let set_table_size new_size : module_ -> module_ = phrase (fun m ->
+  let open Wasm.Types in
+  match m.tables with
+  | [t] ->
+    { m with
+      tables = [ phrase (fun t ->
+        let TableType (_, ty) = t.ttype in
+        { ttype = TableType ({min = new_size; max = Some new_size}, ty) }
+      ) t ]
+    }
+  | _ -> raise (LinkError "Expect one table in first module")
+  )
+
 let join_modules (em1 : extended_module) (m2 : module_) (ns2 : name_section) : extended_module =
   assert (m2.it.start = None);
   let m1 = em1.module_ in
@@ -508,10 +532,14 @@ let link (em : extended_module) libname (dm : dylink_module) =
   let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
   let new_heap_start = align 4l (Int32.add lib_heap_start dm.dylink.memory_size) in
 
+  let old_elem_size = read_table_size em.module_ in
+  let lib_elem_start = align dm.dylink.table_alignment old_elem_size in
+  let new_elem_size = Int32.add lib_elem_start dm.dylink.table_size in
+
   (* Fill in memory base pointer  *)
   let dm2 = dm.module_
     |> fill_memory_base_import lib_heap_start
-    |> fill_table_base_import 0l in
+    |> fill_table_base_import lib_elem_start in
 
   (* Link functions *)
   let fun_required1 = find_fun_imports libname em.module_ in
@@ -559,7 +587,6 @@ let link (em : extended_module) libname (dm : dylink_module) =
   in
 
   assert (dm2.it.globals = []);
-  assert (dm.dylink.table_size = 0l);
 
   join_modules
     ( em
@@ -568,6 +595,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> in_extended (set_global heap_global new_heap_start)
+    |> in_extended (set_table_size new_elem_size)
     )
     ( dm2
     |> remove_fun_imports fun_resolved21
