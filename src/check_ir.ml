@@ -87,11 +87,10 @@ let add_typs c cs =
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    cons = T.ConSet.disjoint_union c.cons scope.con_env;
+    cons = T.ConSet.(*disjoint_*)union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
-
 
 let adjoin_cons c ce =
   { c with
@@ -179,14 +178,17 @@ let rec check_typ env typ : unit =
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
-    let rec sorted = function
-      | [] | [_] -> true
+    let rec strictly_sorted fields =
+      match fields with
+      | []
+      | [_] -> true
       | f1::((f2::_) as fields') ->
-        T.compare_field f1 f2  < 0 && sorted fields'
+        T.compare_field f1 f2  < 0 && strictly_sorted fields'
     in
-    check_ids env (List.map (fun (field : T.field) -> field.T.lab) fields);
     List.iter (check_typ_field env sort) fields;
-    check env no_region (sorted fields) "object type's fields are not sorted"
+    (* fields strictly sorted (and) distinct *)
+    if (not (strictly_sorted fields)) then
+      error env no_region "object type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Variant cts ->
     let rec sorted = function
       | [] | [_] -> true
@@ -203,6 +205,19 @@ let rec check_typ env typ : unit =
       "Serialized in non-serialized flavor";
     check_typ env typ;
     check_sub env no_region typ T.Shared
+  | T.Kind (c,k) ->
+    check_kind env k
+
+and check_kind env k =
+  let (binds,typ) =
+    match k with
+    | T.Abs(binds,typ)
+      | T.Def(binds,typ) -> (binds,typ)
+  in
+  let cs,ce = check_typ_binds env binds in
+  let ts = List.map (fun c -> T.Con(c,[])) cs in
+  let env' = adjoin_cons env ce in
+  check_typ env' (T.open_ ts  typ);
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -211,7 +226,7 @@ and check_typ_field env s typ_field : unit =
      (s <> T.Actor || T.is_func (T.promote typ))
     "actor field has non-function type";
   check env no_region
-     (s = T.Object T.Local || T.sub typ T.Shared)
+     (s = T.Object T.Local || s = T.Module || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
 
 and check_typ_summand env (c, typ) : unit =
@@ -359,10 +374,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match List.find_opt (fun T.{lab; _} -> lab = n) tfs with
-      | Some {T.typ = tn;_} ->
+      match T.lookup_field n tfs with (*CRUSSO: FIX ME*)
+      | tn ->
         tn <~ t
-      | None ->
+      | exception _ ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -540,11 +555,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1 <: t0;
     t0 <: t;
   | NewObjE (s, fs, t0) ->
-    let t1 = type_obj env s fs in
     check (T.is_obj t0) "bad annotation (object type expected)";
+    let is_typ_field {T.lab;T.typ} =
+      match typ with T.Kind _ -> true | _ -> false
+    in
+    let (_s,tfs0) = T.as_obj t0 in
+    let typ_tfs0, val_tfs0 = List.partition is_typ_field tfs0
+    in
+    let t1 = type_obj env s fs in
+    let (_s, tfs1) = T.as_obj t1 in
+    let t1 = T.Obj(s, List.sort T.compare_field (typ_tfs0 @ tfs1)) in
     t1 <: t0;
     t0 <: t
-
 (* Cases *)
 
 and check_cases env t_pat t cases =
@@ -671,7 +693,7 @@ and type_exp_field env s f : T.field =
   check_sub env f.at t f.note;
   check env f.at ((s = T.Actor) ==> T.is_func t)
     "public actor field is not a function";
-  check env f.at ((s <> T.Object T.Local) ==> T.sub t T.Shared)
+  check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
     "public shared object or actor field has non-shared type";
   T.{lab = name; typ = t}
 
@@ -723,9 +745,10 @@ and gather_block_decs env decs =
 
 and gather_dec env scope dec : scope =
   match dec.it with
-  | LetD (pat, _) ->
+  | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
-    { scope with val_env = ve}
+    let ce' = gather_typ env scope.con_env exp.note.note_typ in
+    { val_env = ve; con_env = ce'}
   | VarD (id, exp) ->
     check env dec.at
       (not (T.Env.mem id.it scope.val_env))
@@ -738,6 +761,16 @@ and gather_dec env scope dec : scope =
       "duplicate definition of type in block";
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     { scope with con_env = ce' }
+
+and gather_typ env ce typ =
+   match typ with
+   | T.Obj(T.Module,fs) ->
+     List.fold_right (fun {T.lab;T.typ = typ1} ce ->
+         match typ1 with
+         | T.Kind (c, k) -> T.ConSet.add c ce
+         | _ -> gather_typ env ce typ1
+       ) fs ce
+   | _ -> ce
 
 (* Programs *)
 

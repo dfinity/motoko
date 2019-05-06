@@ -7,7 +7,7 @@ actor class Client() = this {
     name := n;
     server := ?s;
     ignore(async {
-      let sub = await s.subscribe(this);
+      let sub = await s.subscribe(this.send);
       sub.post("hello from " # name);
       sub.post("goodbye from " # name);
       sub.cancel();

@@ -17,27 +17,37 @@ let recover f y = recover_with () f y
 (* Scopes *)
 
 type val_env = T.typ T.Env.t
+type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 
 
 type scope =
   { val_env : val_env;
+    lib_env : lib_env;
     typ_env : typ_env;
     con_env : con_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
+    lib_env = T.Env.empty;
     typ_env = T.Env.empty;
     con_env = T.ConSet.empty
   }
 
 let adjoin_scope scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
+    lib_env = T.Env.adjoin scope1.lib_env scope2.lib_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
-    con_env = T.ConSet.disjoint_union scope1.con_env scope2.con_env;
+    con_env = T.ConSet.union scope1.con_env scope2.con_env;
   }
+
+
+let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
+
+let library_scope f t =
+  { empty_scope with lib_env = T.Env.add f t empty_scope.lib_env }
 
 
 (* Contexts (internal) *)
@@ -47,6 +57,7 @@ type ret_env = T.typ option
 
 type env =
   { vals : val_env;
+    libs : lib_env;
     typs : typ_env;
     cons : con_env;
     labs : lab_env;
@@ -58,6 +69,7 @@ type env =
 
 let env_of_scope msgs scope =
   { vals = scope.val_env;
+    libs = scope.lib_env;
     typs = scope.typ_env;
     cons = scope.con_env;
     labs = T.Env.empty;
@@ -67,14 +79,15 @@ let env_of_scope msgs scope =
     msgs;
   }
 
-
 (* Error bookkeeping *)
 
-let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"; text}
+let type_error at text : Diag.message =
+  Diag.{sev = Diag.Error; at; cat = "type"; text}
 let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
 let local_error env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
+ Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
+
 let error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
 let warn env at fmt =
@@ -95,8 +108,9 @@ let add_typs env xs cs =
 let adjoin env scope =
   { env with
     vals = T.Env.adjoin env.vals scope.val_env;
+    libs = T.Env.adjoin env.libs scope.lib_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
-    cons = T.ConSet.disjoint_union env.cons scope.con_env;
+    cons = T.ConSet.union env.cons scope.con_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
@@ -129,6 +143,32 @@ let infer_mut mut : T.typ -> T.typ =
   match mut.it with
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
+
+let rec check_path env path : T.typ =
+  let t = check_path' env path in
+  path.note <- t;
+  t
+
+and check_path' env path : T.typ =
+  match path.it with
+  | IdH id ->
+    begin
+      match T.Env.find_opt id.it env.vals with
+      | Some t ->
+        t
+      | None -> error env id.at "unbound path identifier %s" id.it
+    end
+  | DotH(path, id) ->
+    let t = check_path env path in
+    match T.promote t with
+    | T.Obj (T.Module, flds) ->
+      begin
+        try T.lookup_field id.it flds with
+        | _ -> error env id.at "field name %s does not exist in module type\n  %s"
+                     id.it (T.string_of_typ_expand t)
+      end
+    | _ -> error env id.at "expecting path of module type, found %s"
+             (T.string_of_typ_expand t)
 
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
@@ -200,6 +240,22 @@ and check_typ' env typ : T.typ =
     check_ids env false (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
+  | PathT (p, id, typs) ->
+    let t = check_path env p in
+    (match T.promote t with
+     | T.Obj(_,flds) ->
+      begin
+        match T.lookup_typ_field id.it flds with
+        | (c,T.Def (tbs, t))
+        | (c,T.Abs (tbs, t)) ->
+          let ts = (* if env.pre
+                   then List.map (check_typ env) typs
+                   else *) check_typ_bounds env tbs typs typ.at in
+          T.Con (c, ts)
+        | exception _ -> error env id.at "unbound type identifier %s" id.it
+      end
+     |  _ -> error env id.at "path of unexpected type %s" id.it
+    )
   | ParT typ ->
     check_typ env typ
 
@@ -442,15 +498,14 @@ and infer_exp'' env exp : T.typ =
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     (try
-      let _, tfs = T.as_obj_sub id.it t1 in
-      match List.find_opt (fun T.{lab; _} -> lab = id.it) tfs with
-      | Some {T.typ = t; _} -> t
-      | None ->
-        error env exp1.at "field name %s does not exist in type\n  %s"
-          id.it (T.string_of_typ_expand t1)
-    with Invalid_argument _ ->
-      error env exp1.at "expected object type, but expression produces type\n  %s"
-        (T.string_of_typ_expand t1)
+      let s, tfs = T.as_obj_sub id.it t1 in
+      try T.lookup_field id.it tfs with
+      |  Invalid_argument _ ->
+         error env exp1.at "field name %s does not exist in type\n  %s"
+           id.it (T.string_of_typ_expand t1)
+     with Invalid_argument _ ->
+       error env exp1.at "expected object type, but expression produces type\n  %s"
+         (T.string_of_typ_expand t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -676,7 +731,7 @@ and infer_exp'' env exp : T.typ =
     t
   | ImportE (_, fp) ->
     if !fp = "" then assert false;
-    (match T.Env.find_opt (Syntax.id_of_full_path !fp).it env.vals with
+    (match T.Env.find_opt !fp env.libs with
     | Some T.Pre ->
       error env exp.at "cannot infer type of forward import %s" !fp
     | Some t -> t
@@ -993,6 +1048,8 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | ClassD (id, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
+  | ModuleD (id, _) -> pub_val_id id xs
+
 
 and pub_pat pat xs : region T.Env.t * region T.Env.t =
   match pat.it with
@@ -1062,14 +1119,14 @@ and infer_block env decs at : T.typ * scope =
 and infer_block_decs env decs : scope =
   let scope = gather_block_typdecs env decs in
   let env' = adjoin {env with pre = true} scope in
-  let ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env {scope with con_env = ce} in
-  let _ce' = infer_block_typdecs env'' decs in
+  let scope_ce = infer_block_typdecs env' decs in
+  let env'' = adjoin env scope_ce in
+  let scope_ce' = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (ce = ce'); *)
-  let pre_ve' = gather_block_valdecs env decs in
-  let ve = infer_block_valdecs (adjoin_vals env'' pre_ve') decs in
-  {scope with val_env = ve; con_env = ce}
+  let pre_scope_ve' = gather_block_valdecs env decs scope_ce' in
+  let full_scope = infer_block_valdecs (adjoin env'' pre_scope_ve') decs pre_scope_ve' in
+  full_scope
 
 and infer_block_exps env decs : T.typ =
   match decs with
@@ -1107,6 +1164,12 @@ and infer_dec env dec : T.typ =
     t
   | TypD _ ->
     T.unit
+  | ModuleD (id, decs) ->
+    let t = try T.Env.find id.it env.vals with Not_found -> assert false in
+    if not env.pre then begin
+        ignore (infer_block env decs id.at) (* TBR *)
+    end;
+    t
   in
   let eff = A.infer_effect_dec dec in
   dec.note <- {note_typ = t; note_eff = eff};
@@ -1165,9 +1228,75 @@ and check_dec env t dec =
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t)
 
+(* move me to type.ml *)
+and module_of_scope scope =
+  let typ_fields =
+    T.Env.fold
+      (fun id con flds ->
+        let kind = Con.kind con in
+        { T.lab = id; T.typ = T.Kind (con,kind) }::flds) scope.typ_env  []
+  in
+  let fields =
+    T.Env.fold
+      (fun id typ flds ->
+        { T.lab = id; T.typ = typ }::flds) scope.val_env typ_fields
+  in
+  T.Obj(T.Module, List.sort T.compare_field fields)
+
+(* move me to type.ml *)
+and scope_of_module t =
+  match t with
+  | T.Obj (T.Module, flds) ->
+    List.fold_right
+      (fun {T.lab;T.typ} scope ->
+        match typ with
+        | T.Kind (c,k) ->
+          { scope with con_env = T.ConSet.add c scope.con_env;
+                       typ_env = T.Env.add lab c scope.typ_env}
+        | typ ->
+          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
+  | _ -> assert false
+
+
 (* Pass 1: collect type identifiers and their arity *)
 and gather_block_typdecs env decs : scope =
   List.fold_left (gather_dec_typdecs env) empty_scope decs
+
+
+
+and infer_val_path env exp : T.typ option =
+  match exp.it with
+  | ImportE (_, fp) ->
+    if !fp = "" then assert false;
+    T.Env.find_opt !fp env.libs
+  | VarE id ->
+    T.Env.find_opt id.it env.vals
+  | DotE(path, id) ->
+    begin
+      match infer_val_path env path with
+      | None -> None
+      | Some t ->
+        match T.promote t with
+        | T.Obj (T.Module, flds) ->
+          begin
+            match T.lookup_field id.it flds with
+            | t -> Some t
+            | exception _ -> None
+          end
+        | _ -> None
+    end
+  | _ -> None
+
+
+and is_module_path env exp =
+  match infer_val_path env exp with
+  | Some t ->
+    begin
+      match T.promote t with
+      | T.Obj (T.Module, flds) -> true
+      | _ -> false
+    end
+  | None -> false
 
 and gather_dec_typdecs env scope dec : scope =
   match dec.it with
@@ -1177,7 +1306,9 @@ and gather_dec_typdecs env scope dec : scope =
       error env dec.at "duplicate definition for type %s in block" id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
-    let c = Con.fresh id.it pre_k in
+    let c = match id.note with
+      | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
+      | Some c -> c  in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     let ve' =  match dec.it with
@@ -1185,40 +1316,67 @@ and gather_dec_typdecs env scope dec : scope =
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { typ_env = te'; con_env = ce'; val_env = ve' }
-
+    { typ_env = te'; lib_env = scope.lib_env; con_env = ce'; val_env = ve' }
+  | ModuleD (id, decs) ->
+    (* TODO: this won't catch shadowing of ordinary val and module; instead gather vals here too?*)
+    if T.Env.mem id.it scope.val_env then
+      error env dec.at "duplicate definition for module %s in block" id.it;
+    let scope' = gather_block_typdecs env decs in
+    let ve' = T.Env.add id.it (module_of_scope scope') scope.val_env in
+    {val_env = ve';
+     typ_env = scope.typ_env;
+     lib_env = scope.lib_env;
+     con_env = scope.con_env }
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs : con_env =
-  List.fold_left
-    (fun ce dec ->
-      let ce' = infer_dec_typdecs env dec in
-      T.ConSet.disjoint_union ce ce'
-    )  T.ConSet.empty decs
+and infer_block_typdecs env decs : scope =
+  let _env', scope =
+    List.fold_left (fun (env, scope) dec ->
+      let scope' = infer_dec_typdecs env dec in
+      adjoin env scope', adjoin_scope scope scope'
+    ) (env, empty_scope) decs
+  in scope
 
-and infer_dec_typdecs env dec : con_env =
+and infer_dec_typdecs env dec : scope =
   match dec.it with
+  | LetD ({ it = VarP id; _ }, exp) when is_module_path env exp ->
+    begin
+      match infer_val_path env exp with
+      | Some t -> { empty_scope with val_env = T.Env.singleton id.it t }
+      | None -> empty_scope
+    end
   | ExpD _ | LetD _ | VarD _ ->
-    T.ConSet.empty
-  | TypD (id, binds, typ) ->
-    let c = T.Env.find id.it env.typs in
+    empty_scope
+  | TypD (con_id, binds, typ) ->
+    let c = T.Env.find con_id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    infer_id_typdecs id c k
+    { empty_scope with
+      typ_env = T.Env.singleton con_id.it c ;
+      con_env = infer_id_typdecs con_id c k }
   | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in 
+    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    infer_id_typdecs id c k
+    { empty_scope with
+      typ_env = T.Env.singleton id.it c ;
+      con_env =     infer_id_typdecs id c k }
+  | ModuleD (id, decs) ->
+    let t = T.Env.find id.it env.vals in
+    let scope = scope_of_module t in
+    let env' = adjoin env scope in
+    let mod_scope = infer_block_typdecs env' decs in
+    { empty_scope with con_env = mod_scope.con_env;
+                       val_env = T.Env.singleton id.it (module_of_scope mod_scope)}
 
 and infer_id_typdecs id c k : con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
@@ -1230,17 +1388,23 @@ and infer_id_typdecs id c k : con_env =
   );
   T.ConSet.singleton c
 
-
 (* Pass 4: collect value identifiers *)
-and gather_block_valdecs env decs : val_env =
-  List.fold_left (gather_dec_valdecs env) T.Env.empty decs
+(* TODO: consider merging with gather_dec_type_decs so we can reject duplicate mod and
+   val ids *)
+and gather_block_valdecs env decs scope : scope =
+  List.fold_left (gather_dec_valdecs env) scope decs
 
-and gather_dec_valdecs env ve dec : val_env =
+and gather_dec_valdecs env scope dec : scope =
   match dec.it with
-  | ExpD _ | TypD _ -> ve
-  | LetD (pat, _) -> gather_pat env ve pat
-  | VarD (id, _) -> gather_id env ve id
-  | ClassD (id, _ , _, _, _, _) -> gather_id env ve {id with note = ()}
+  | ExpD _ | TypD _ -> scope
+  | LetD (pat, _) -> adjoin_val_env scope (gather_pat env scope.val_env pat)
+  | VarD (id, _) -> adjoin_val_env scope (gather_id env scope.val_env id)
+  | ClassD (id, _ , _, _, _, _) ->  adjoin_val_env scope (gather_id env scope.val_env {id with note = ()})
+  | ModuleD (id, decs) ->
+    let t = T.Env.find id.it scope.val_env in
+    let mod_scope = scope_of_module t in
+    let mod_scope = gather_block_valdecs env decs mod_scope in
+    adjoin_val_env scope (T.Env.singleton id.it (module_of_scope mod_scope))
 
 and gather_pat env ve pat : val_env =
   match pat.it with
@@ -1254,32 +1418,46 @@ and gather_pat_field env ve pf : val_env =
   gather_pat env ve pf.it.pat
 
 and gather_id env ve id : val_env =
-  if T.Env.mem id.it ve then
-    error env id.at "duplicate definition for %s in block" id.it;
+  begin
+    match T.Env.find_opt id.it ve with
+    | Some t ->
+      begin
+        match T.promote t with
+        | T.Obj (T.Module, _flds) ->
+          ()
+        | t ->
+          error env id.at "duplicate definition for %s in block" id.it
+      end
+    | None -> ()
+  end;
   T.Env.add id.it T.Pre ve
 
 (* Pass 5: infer value types *)
-and infer_block_valdecs env decs : val_env =
-  let _, ve =
-    List.fold_left (fun (env, ve) dec ->
-      let ve' = infer_dec_valdecs env dec in
-      adjoin_vals env ve', T.Env.adjoin ve ve'
-    ) (env, T.Env.empty) decs
-  in ve
+and infer_block_valdecs env decs scope : scope =
+  let _, scope' =
+    List.fold_left (fun (env, scope) dec ->
+      let scope' = infer_dec_valdecs env dec in
+      adjoin env scope', adjoin_scope scope scope'
+    ) (env, scope) decs
+  in scope'
 
-and infer_dec_valdecs env dec : val_env =
+and infer_dec_valdecs env dec : scope =
   match dec.it with
   | ExpD _ ->
-    T.Env.empty
+    empty_scope
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in
-    ve'
+    { empty_scope with val_env = ve' }
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    T.Env.singleton id.it (T.Mut t)
-  | TypD _ ->
-    T.Env.empty
+    { empty_scope with val_env = T.Env.singleton id.it (T.Mut t) }
+  | TypD (con_id, binds, typ) ->
+    let c = match con_id.note with
+      | Some c -> c | _ -> assert false in
+    { empty_scope with
+      typ_env = T.Env.singleton con_id.it c;
+      con_env = T.ConSet.singleton c }
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -1288,21 +1466,24 @@ and infer_dec_valdecs env dec : val_env =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Env.singleton id.it (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]))
-
+    { empty_scope with
+      val_env = T.Env.singleton id.it
+                  (T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]));
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c
+    }
+  | ModuleD (id, decs) ->
+    let t = try T.Env.find id.it env.vals with _ -> assert false  in
+    let mod_scope = scope_of_module t in
+    let mod_scope' =
+      infer_block_valdecs
+        (adjoin {env with pre = true} mod_scope)
+        decs empty_scope
+    in
+    { empty_scope with
+      val_env = T.Env.singleton id.it (module_of_scope mod_scope')}
 
 (* Programs *)
-
-let check_prog scope prog : scope Diag.result =
-  Diag.with_message_store (fun msgs ->
-    recover_opt
-      (fun prog ->
-        let env = env_of_scope msgs scope in
-        let res = check_block env T.unit prog.it prog.at in
-        Definedness.check_prog msgs prog;
-        res)
-      prog
-    )
 
 let infer_prog scope prog : (T.typ * scope) Diag.result =
   Diag.with_message_store
@@ -1317,4 +1498,23 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
         prog
     )
 
+let infer_library env prog at =
+  let typ,scope = infer_block env prog at in
+  match prog with
+  |  [{it = Syntax.ExpD _;_}] ->
+     typ
+  (* HACK: to be removed once we support module expressions, remove ModuleD *)
+  |  ds ->
+     module_of_scope scope
 
+let check_library scope (filename, prog) : scope Diag.result =
+  Diag.with_message_store (fun msgs ->
+    recover_opt
+      (fun prog ->
+        let env = env_of_scope msgs scope in
+        let typ = infer_library env prog.it prog.at in
+        Definedness.check_prog msgs prog;
+        library_scope filename typ
+      )
+      prog
+    )

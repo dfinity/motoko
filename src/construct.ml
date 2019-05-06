@@ -509,3 +509,7 @@ let forE pat exp1 exp2 =
       )
     )
   )
+
+let unreachableE =
+  (* Do we want UnreachableE in the AST *)
+  loopE unitE

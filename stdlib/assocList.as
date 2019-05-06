@@ -9,10 +9,10 @@ Implements the same interface as `Trie`, but as a linked-list of key-value pairs
 
 */
 
-// polymorphic association linked lists between keys and values
-type AssocList<K,V> = List<(K,V)>;
+let List = import "list.as";
 
-let AssocList = new {
+// polymorphic association linked lists between keys and values
+type AssocList<K,V> = List.List<(K,V)>;
 
   /**
    `find`
@@ -186,7 +186,7 @@ let AssocList = new {
                    cons:(K,V,X)->X)
     : X
   {
-    func rec(al:List<(K,V)>) : X = {
+    func rec(al:AssocList<K,V>) : X = {
       switch al {
       case null nil;
       case (?((k,v),t)) { cons(k, v, rec(t)) };
@@ -194,5 +194,3 @@ let AssocList = new {
     };
     rec(al)
   };
-
-};

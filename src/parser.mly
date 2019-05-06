@@ -98,7 +98,7 @@ let share_expfield (ef : exp_field) =
 %token FUNC TYPE OBJECT ACTOR CLASS PRIVATE NEW SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
-%token IMPORT
+%token IMPORT MODULE
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
@@ -137,8 +137,8 @@ let share_expfield (ef : exp_field) =
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
-%start<Syntax.prog> parse_prog
-%start<Syntax.prog> parse_prog_interactive
+%start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -195,6 +195,13 @@ seplist(X, SEP) :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED { Type.Sharable @@ at $sloc }
 
+(* paths *)
+
+path :
+  | x=id
+    { IdH x @! at $sloc }
+  | p=path DOT x=id
+    { DotH (p, x) @! at $sloc }
 
 (* Types *)
 
@@ -215,6 +222,8 @@ typ_nullary :
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
   | x=id tso=typ_args?
     { VarT(x, Lib.Option.get tso []) @! at $sloc }
+  | p=path DOT x=id tso=typ_args?
+    { PathT(p, x, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
@@ -584,6 +593,9 @@ dec_nonvar :
         then efs
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
+  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
+    { let _named, id = xf "module" $sloc in
+      ModuleD(id, ds) @? at $sloc }
 
 dec :
   | d=dec_var
@@ -623,9 +635,11 @@ class_body :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+  | ds=seplist(dec, semicolon) EOF
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL { ds @@ at $sloc }
+  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
 
 %%

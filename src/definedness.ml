@@ -77,7 +77,6 @@ let delayed_vars : f -> S.t =
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
-  | ImportE (_, fp)     -> M.singleton (Syntax.id_of_full_path !fp).it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   (* And break and return can be thought of as calling a continuation: *)
@@ -90,6 +89,7 @@ let rec exp msgs e : f = match e.it with
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
+  | ImportE _           -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
@@ -155,6 +155,9 @@ and dec msgs d = match d.it with
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
+  | ModuleD (i, ds) ->
+    (M.empty, S.singleton i.it) +++ decs msgs ds    (* TBR *)
+
 
 and decs msgs decs : f =
   (* Annotate the declarations with the analysis results *)

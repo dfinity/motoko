@@ -15,6 +15,10 @@ let map_result f = function
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
 
+let ignore = function
+  | Pervasives.Error msgs -> Pervasives.Error msgs
+  | Ok (_, msgs) -> Ok ((), msgs)
+
 let bind x f = match x with
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (y, msgs1) -> match f y with
@@ -24,6 +28,10 @@ let bind x f = match x with
 let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
   | [] -> return []
   | x :: xs -> bind (f x) (fun y -> map_result (fun ys -> y :: ys) (traverse f xs))
+
+let rec traverse_ : ('a -> unit result) -> 'a list -> unit result = fun f -> function
+  | [] -> return ()
+  | x :: xs -> bind (f x) (fun () -> traverse_ f xs)
 
 type msg_store = messages ref
 let add_msg s m = s := m :: !s
@@ -54,4 +62,8 @@ let with_message_store f =
   | Some x when not (has_errors msgs) -> Ok (x, msgs)
   | _ -> Error msgs
 
+
+let flush_messages : 'a result -> 'a result = function
+  | Pervasives.Error msgs -> print_messages msgs; Pervasives.Error []
+  | Ok (x, msgs) -> print_messages msgs; Ok (x, [])
 

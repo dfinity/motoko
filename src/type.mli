@@ -5,7 +5,7 @@ type var = string
 
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type sharing = Local | Sharable
-type obj_sort = Object of sharing | Actor
+type obj_sort = Object of sharing | Actor | Module
 type eff = Triv | Await
 
 type prim =
@@ -39,6 +39,9 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Pre                                       (* pre-type *)
+  | Kind of con * kind
+
+
 
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
@@ -47,6 +50,7 @@ and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
+
 
 
 (* Short-hands *)
@@ -61,6 +65,7 @@ val prim : string -> prim
 
 (* Projection *)
 
+val is_non : typ -> bool
 val is_prim : prim -> typ -> bool
 val is_obj : typ -> bool
 val is_variant : typ -> bool
@@ -99,11 +104,20 @@ val as_func_sub : sharing -> int -> typ -> sharing * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
+(* n-ary argument/result sequences *)
+
 val seq : typ list -> typ
 val as_seq : typ -> typ list
 val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
+(* field lookup, namespace sensitive *)
+
+val lookup_typ_field : string -> field list -> (con * kind)
+
 val lookup_field : string -> field list -> typ
+
+(* field ordering *)
+
 val compare_field : field -> field -> int
 
 val map_constr_typ : (typ -> typ) -> (lab * typ) list -> (lab * typ) list
@@ -112,12 +126,13 @@ val compare_summand : (lab * typ) -> (lab * typ) -> int
 val span : typ -> int option
 
 
+
+
 (* Constructors *)
 
 val set_kind : con -> kind -> unit
 
 module ConSet : Dom.S with type elt = con
-
 
 (* Normalization and Classification *)
 

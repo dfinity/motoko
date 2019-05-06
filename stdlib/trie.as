@@ -60,6 +60,15 @@ See the full details in the definitions below:
 
 */
 
+let Hash = (import "hash.as").BitVec;
+type Hash = Hash.t;
+
+let List = import "list.as";
+type List<T> = List.List<T>;
+
+let AssocList = import "assocList.as";
+type AssocList<K,V> = AssocList.AssocList<K,V>;
+
 let HASH_BITS = 4;
 
 type Key<K> = {
@@ -78,14 +87,14 @@ type Branch<K,V> = {
 // Leaf nodes are association lists of `Key<K>`s where every key
 // shares a common hash prefix, its (common) trie path.
 type Leaf<K,V> = {
-  keyvals:List<(Key<K>,V)>;
+  keyvals:AssocList<Key<K>,V>;
 };
 
 // XXX: See AST-42
 type Node<K,V> = {
   left:Trie<K,V>;
   right:Trie<K,V>;
-  keyvals:List<(Key<K>,V)>;
+  keyvals:AssocList<Key<K>,V>;
 };
 
 type Trie<K,V> = ?Node<K,V>;
@@ -125,7 +134,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
  */
 
-let Trie = new {
+//let Trie = new {
 
   /**
    `empty`
@@ -1126,7 +1135,7 @@ let Trie = new {
   };
 
   // XXX: until AST-42:
-  func matchLeaf<K,V>(t:Trie<K,V>) : ?List<(Key<K>,V)> {
+  func matchLeaf<K,V>(t:Trie<K,V>) : ?AssocList<Key<K>,V> {
     switch t {
     case null { null };
     case (?t_) {
@@ -1216,7 +1225,7 @@ let Trie = new {
     rec(bitpos)
   };
 
-};
+//};
 
 
 /**

@@ -4,6 +4,8 @@ Functions for Option types.
 
 */
 
+let P = (import "prelude.as");
+
 type t<A> = ?A;
 
 /***
@@ -44,7 +46,7 @@ func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
 */
 func unwrap<T>(x: ?T): T =
   switch x {
-    case null { unreachable() };
+    case null { P.unreachable() };
     case (?x_) x_;
   };
 
@@ -114,7 +116,7 @@ func fmap<A, B>(x: ?A, f: A->?B): ?B =
 */
 func assertSomeAny(x: ?Any) =
   switch x {
-    case null { unreachable() };
+    case null { P.unreachable() };
     case _ {};
   };
 
@@ -131,7 +133,7 @@ func assertSome<A>(x: ?A) = assertSomeAny(x);
 func assertNullAny(x: ?Any) =
   switch x {
     case null { };
-    case _ { unreachable() };
+    case _ { P.unreachable() };
   };
 
 func assertNull<A>(x: ?A) = assertNullAny(x);

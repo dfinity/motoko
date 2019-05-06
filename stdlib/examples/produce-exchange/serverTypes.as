@@ -79,6 +79,21 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
+ Errors
+ -----------
+*/
+
+type IdErr = {
+  #idErr;
+};
+
+type ServerErr = {
+  #idErr;
+  #publicKeyErr;
+};
+
+
+/**
 Public info associated with Ids
 =====================================
 */
@@ -90,8 +105,8 @@ Public info associated with Ids
 
 type UserInfo = shared {
   id: UserId;
-  user_name: Text;
   public_key: Text;
+  user_name: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;
@@ -144,6 +159,7 @@ type ProduceInfo = shared {
 
 type ProducerInfo = shared {
   id : ProducerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionId;
@@ -208,6 +224,7 @@ type ProduceMarketInfo = shared {
 
 type RetailerInfo = shared {
   id : RetailerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionId;
@@ -220,6 +237,7 @@ type RetailerInfo = shared {
 
 type TransporterInfo = shared {
   id : TransporterId;
+  public_key: Text;
   // no region; the transporters are the supply of routes, not "end
   // points" of any single route.
   short_name : Text;

@@ -8,6 +8,4 @@ val adjoin_scope : scope -> scope -> scope
 
 exception Trap of Source.region * string
 
-val interpret_prog : scope -> Ir.prog -> V.value option * scope
-
-val print_exn : exn -> unit
+val interpret_prog : scope -> Ir.prog -> scope
