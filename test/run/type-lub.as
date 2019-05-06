@@ -56,6 +56,12 @@ let shared_funcs = [ func (a : Int) : Int = a
                    , func (a : Shared) : Nat = 42
                    ];
 
+type C = async(?Int);
+type D = async(?Nat);
+
+func c0(c : C, d : D) : [C] { ignore([c, d]); [c, d] };
+let c1s = [async ?4, async ?-42];
+
 
 // recursive objects
 
@@ -111,5 +117,21 @@ func k1(k : K1, l : L1) : [L1] { ignore([k, l]); [k, l] };
 type M = [var ?M];
 type N = [?N];
 
-func m0(m : M, n : N) : [M] { ignore([m, n]); [m, n] }
+func m0(m : M, n : N) : [M] { ignore([m, n]); [m, n] };
 */
+
+type E = Int -> E;
+type F = Nat -> F;
+
+func f0(e : E, f : F) : [F] { ignore([e, f]); [e, f] };
+
+type E1 = E1 -> E1;
+type F1 = F1 -> F1;
+
+func f12(e : E1, f : F1) : [F1] { ignore([e, f]); [e, f] };
+
+type E2 = F2 -> E2;
+type F2 = E2 -> F2;
+
+func f2(e : E2, f : F2) : [F2] { ignore([e, f]); [e, f] };
+

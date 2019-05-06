@@ -41,19 +41,17 @@ and typ =
   | Pre                                       (* pre-type *)
 
 and typ' =
-  | Var' of var * int                          (* variable *)
-  | Con' of con * typ Lazy.t list                     (* constructor *)
-  | Prim' of prim                              (* primitive *)
-  | Obj' of obj_sort * field list Lazy.t             (* object *)
-  | Array' of typ Lazy.t                              (* array *)
-  | Opt' of typ Lazy.t                                (* option *)
-  | Variant' of (lab * typ) list Lazy.t               (* variant *)
-  | Tup' of typ list Lazy.t                           (* tuple *)
-         
+  | Var' of var * int                         (* variable *)
+  | Con' of con * typ Lazy.t list             (* constructor *)
+  | Prim' of prim                             (* primitive *)
+  | Obj' of obj_sort * field list Lazy.t      (* object *)
+  | Array' of typ Lazy.t                      (* array *)
+  | Opt' of typ Lazy.t                        (* option *)
+  | Variant' of (lab * typ) list Lazy.t       (* variant *)
+  | Tup' of typ list Lazy.t                   (* tuple *)
   | Func' of sharing * control * bind list * typ list Lazy.t * typ list Lazy.t  (* function *)
-  | Async' of typ Lazy.t                              (* future *)
-  | Mut' of typ Lazy.t                                (* mutable type *)
-          
+  | Async' of typ Lazy.t                      (* future *)
+  (*| Mut' of typ Lazy.t                         mutable type *)
 and bind = {var : var; bound : typ}
 and field = {lab : lab; typ : typ}
 
@@ -64,33 +62,36 @@ and kind =
 
 let unlazy (l : typ') : typ = Obj.magic l
 
-(* A type is looping when it's graph references the same subgraph more than once
+                            (* It is forbidden to (deeply) inspect the result of unlazy, so this is MOOT!!
+(* A type is looping when it's directed graph references the same subgraph more than once
    (pointer equality), and there is a path between them that doesn't contain a Con. *)
-let is_loop_free t =
-  let check_no_pointer ts followers =
-    List.for_all (fun p -> not (List.exists (fun p' -> p' == p) ts)) followers in
-   (*check_no_pointer (ts @ followers) (concatMap references followers) *)
-  let references = function
-    | Tup ts -> ts
-    | Opt t | Array t | Async t -> [t]
-    | Obj (_, fts) -> List.map (fun {lab; typ} -> typ) fts
+let _is_loop_free t =
+  let rec check_no_pointer ts followers = (List.length followers = 0 ||
+    List.for_all (fun p -> not (List.exists (fun p' -> p' == p) ts)) followers
+    && (Printf.printf "DEEPER %d  --> %d\n" (List.length ts) (List.length followers);check_no_pointer (ts @ followers) List.(flatten (map references followers))))
+  and references = function
+    | Tup ts -> Printf.printf "Typ children %d\n" (List.length ts); ts
+    | Opt t | Array t | Async t -> Printf.printf "Other children 1\n";[t]
+    | Obj (_, fts) -> let ts = List.map (fun {lab; typ} -> typ) fts in Printf.printf "Obj children %d\n" (List.length ts); ts
+    | Variant vts -> let ts = List.map snd vts in Printf.printf "Variant children %d\n" (List.length ts); ts
     | _ -> [] in
   check_no_pointer [t] (references t)
-
+                             *)
 let fixup = function
   | Var' (v, i) as o -> ignore (Var' (v, i)); unlazy o
   | Con' (c, ts) as o -> ignore (Con' (c, ts)); List.iter (fun (lazy _) -> ()) ts; unlazy o
   | Prim' p as o -> ignore (Prim' p); unlazy o
-  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); let oo = unlazy o in assert (List.length fs = 0 || not (oo == (List.hd fs).typ)); oo
+  | Obj' (s, lazy fs) as o -> Obj.(set_field (repr o) 1 (repr fs)); unlazy o
   | Array' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Opt' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
   | Variant' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
-  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); assert (is_loop_free (unlazy o)); unlazy o
-                         
-  | Func' (s, c, bs, lazy args, lazy res) as o -> ignore (Func' (s, c, bs, lazy args, lazy res)); unlazy o
-  | Async' (lazy t) as o -> ignore (Async' (lazy t)); unlazy o
-  | Mut' (lazy t) as o -> ignore (Mut' (lazy t)); unlazy o
-                          
+  | Tup' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+  | Func' (s, c, bs, lazy args, lazy res) as o ->
+    Obj.(set_field (repr o) 3 (repr args));
+    Obj.(set_field (repr o) 4 (repr res));
+    unlazy o
+  | Async' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o
+(*| Mut' (lazy t) as o -> Obj.(set_field (repr o) 0 (repr t)); unlazy o*)
 
 (* Helper for variant constructors *)
 let map_constr_typ f = List.map (fun (c, t) -> c, f t)
@@ -695,13 +696,11 @@ and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !lubs then (Printf.printf "X PULL  %s            %s\n"(!str t1) (!str t2);Lazy.force (M.find (t1, t2) !lubs)) else
-  if M.mem (t2, t1) !lubs then (Printf.printf "Y PULL\n";Lazy.force (M.find (t2, t1) !lubs)) else
+  if M.mem (t1, t2) !lubs then Lazy.force (M.find (t1, t2) !lubs) else
+  if M.mem (t2, t1) !lubs then Lazy.force (M.find (t2, t1) !lubs) else
     (* TBR: this is just a quick hack *)
-    let norm = normalize t1, normalize t2 in
-    (*if M.mem norm !lubs then (Printf.printf "Z PULL  %s(%s)            %s(%s)\n"(!str t1) (!str (fst norm)) (!str t2) (!str (snd norm));Lazy.force (M.find norm !lubs)) else*)
   let add_loop_breaker o = let lb = Lazy.from_val (loop_breaker t1 t2 "lub" o) in lubs := M.add (t1, t2) lb !lubs in
-  let tr = lazy begin match norm with
+  let tr = lazy begin match normalize t1, normalize t2 with
   | _, Pre
   | Pre, _ -> Pre
   | _, Any
@@ -722,24 +721,19 @@ and lub' lubs glbs t1 t2 =
   | (Obj _ as t1'), Prim Text -> lub' lubs glbs t1' text_obj
   | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
   | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
-  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
-      List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
-
   | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
   | Opt t1', Opt t2' ->
     let rec o = Opt' i
-    and i = lazy (Printf.printf "ADDING Opt  %s            %s\n"(!str t1) (!str t2);add_loop_breaker o; lub' lubs glbs t1' t2') in
+    and i = lazy (add_loop_breaker o; lub' lubs glbs t1' t2') in
     fixup o
   | Variant t1', Variant t2' ->
     let rec o = Variant' i
-    and i = lazy (Printf.printf "ADDING Variant  %s            %s\n" (!str t1) (!str t2);add_loop_breaker o; lub_variant lubs glbs t1' t2') in
+    and i = lazy (add_loop_breaker o; lub_variant lubs glbs t1' t2') in
     fixup o
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
     let rec o = Tup' i
-    and i = lazy (Printf.printf "ADDING Tup  %s            %s\n" (!str t1) (!str t2);add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
+    and i = lazy (add_loop_breaker o; List.map2 (lub' lubs glbs) ts1 ts2) in
     fixup o
   | Array t1', Array t2' ->
     let rec o = Array' i
@@ -748,6 +742,18 @@ and lub' lubs glbs t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
     and i = lazy (add_loop_breaker o; lub_object lubs glbs tf1 tf2) in
+    fixup o
+  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
+      List.(length args1 = length args2 && length res1 = length res2) ->
+    let rec o = Func' (s1, c1, bs1, args, results)
+    and lb = lazy (add_loop_breaker o)
+    and args = lazy (Lazy.force lb; List.map2 (glb' lubs glbs) args1 args2)
+    and results = lazy (Lazy.force lb; List.map2 (lub' lubs glbs) res1 res2) in
+    fixup o
+  | Async t1', Async t2' ->
+    let rec o = Async' i
+    and i = lazy (lub' lubs glbs t1' t2') in
     fixup o
   | _ -> Any
   end in
@@ -763,7 +769,7 @@ and loop_breaker t1 t2 how cand = match t1, t2 with
     let c = Con.fresh (Printf.sprintf "%s (%s, %s)" how (!str t1) (!str t2)) (Def ([], unlazy cand)) in
     let wrap = Con (c, []) in
     assert (normalize wrap == unlazy cand);
-    Printf.printf "XXX loop_breaker %s\n" (!str wrap);wrap
+    wrap
   | _, _ -> unlazy cand
 
 and lub_object lubs glbs fs1 fs2 = match fs1, fs2 with
@@ -811,10 +817,6 @@ and glb' lubs glbs t1 t2 =
   | (Obj _ as t1'), Array t2' when sub' (array_obj t2') t1' -> t2
   | Prim Text, (Obj _ as t2') when sub' text_obj t2' -> t1
   | (Obj _ as t1'), Prim Text when sub' text_obj t1' -> t2
-  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
-      List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
 
   | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
@@ -837,6 +839,18 @@ and glb' lubs glbs t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     let rec o = Obj' (s1, i)
     and i = lazy (add_loop_breaker o; glb_object lubs glbs tf1 tf2) in
+    fixup o
+  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
+      List.(length args1 = length args2 && length res1 = length res2) ->
+    let rec o = Func' (s1, c1, bs1, args, results)
+    and lb = lazy (add_loop_breaker o)
+    and args = lazy (Lazy.force lb; List.map2 (lub' lubs glbs) args1 args2)
+    and results = lazy (Lazy.force lb; List.map2 (glb' lubs glbs) res1 res2) in
+    fixup o
+  | Async t1', Async t2' ->
+    let rec o = Async' i
+    and i = lazy (glb' lubs glbs t1' t2') in
     fixup o
   | _ -> Non
   end in
