@@ -12,6 +12,12 @@ type name_section = {
   locals_names : (int32 * (int32 * string) list) list;
 }
 
+let empty_name_section : name_section = {
+  module_ = None;
+  function_names = [];
+  locals_names = [];
+}
+
 type dylink_section = {
   memory_size : int32;
   memory_alignment : int32;
@@ -22,7 +28,7 @@ type dylink_section = {
 
 type extended_module = {
   (* The non-custom sections *)
-  module_ : module_;
+  module_ : module_';
   (* name section *)
   name : name_section;
   (* dylib section *)

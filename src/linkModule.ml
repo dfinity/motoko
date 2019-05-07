@@ -26,7 +26,7 @@ let find_fun_imports libname m : imports =
         go (i + 1) acc is
       | _ ->
         go i acc is
-  in go 0 [] m.it.imports
+  in go 0 [] m.imports
 
 let find_global_imports libname m : imports =
   let name = Wasm.Utf8.decode libname in
@@ -39,21 +39,19 @@ let find_global_imports libname m : imports =
         go (i + 1) acc is
       | _ ->
         go i acc is
-  in go 0 [] m.it.imports
+  in go 0 [] m.imports
 
-let remove_fun_imports resolved : module_ -> module_ =
-  phrase (fun m ->
-    let rec go i = function
-      | [] -> []
-      | (imp::is) -> match imp.it.idesc.it with
-        | FuncImport _ when List.mem_assoc i resolved
-          -> go (Int32.add i 1l) is
-        | FuncImport _
-          -> imp :: go (Int32.add i 1l) is
-        | _
-          -> imp :: go i is in
-    { m with imports = go 0l m.imports }
-  )
+let remove_fun_imports resolved : module_' -> module_' = fun m ->
+  let rec go i = function
+    | [] -> []
+    | (imp::is) -> match imp.it.idesc.it with
+      | FuncImport _ when List.mem_assoc i resolved
+        -> go (Int32.add i 1l) is
+      | FuncImport _
+        -> imp :: go (Int32.add i 1l) is
+      | _
+        -> imp :: go i is in
+  { m with imports = go 0l m.imports }
 
 let remove_fun_imports_name_section resolved : name_section -> name_section = fun ns ->
   let keep (fi, x) = not (List.mem_assoc fi resolved) in
@@ -62,84 +60,77 @@ let remove_fun_imports_name_section resolved : name_section -> name_section = fu
     locals_names = List.filter keep ns.locals_names;
   }
 
-let remove_global_imports resolved : module_ -> module_ =
-  phrase (fun m ->
-    let rec go i = function
-      | [] -> []
-      | (imp::is) -> match imp.it.idesc.it with
-        | GlobalImport _ when List.mem_assoc i resolved
-          -> go (Int32.add i 1l) is
-        | GlobalImport _
-          -> imp :: go (Int32.add i 1l) is
-        | _
-          -> imp :: go i is in
-    { m with imports = go 0l m.imports }
-  )
+let remove_global_imports resolved : module_' -> module_' = fun m ->
+  let rec go i = function
+    | [] -> []
+    | (imp::is) -> match imp.it.idesc.it with
+      | GlobalImport _ when List.mem_assoc i resolved
+        -> go (Int32.add i 1l) is
+      | GlobalImport _
+        -> imp :: go (Int32.add i 1l) is
+      | _
+        -> imp :: go i is in
+  { m with imports = go 0l m.imports }
 
-let remove_table_import : module_ -> module_ =
-  phrase (fun m ->
-    let go imp = match imp.it.idesc.it with
-        | TableImport _ -> false
-        | _ -> true in
-    { m with imports = List.filter go m.imports }
-  )
+let remove_table_import : module_' -> module_' = fun m ->
+  let go imp = match imp.it.idesc.it with
+      | TableImport _ -> false
+      | _ -> true in
+  { m with imports = List.filter go m.imports }
 
 let count_fun_imports m =
   let is_fun_import imp = match imp.it.idesc.it with
         | FuncImport _ -> true
         | _ -> false in
-  Lib.List32.length (List.filter is_fun_import m.it.imports)
+  Lib.List32.length (List.filter is_fun_import m.imports)
 
 let count_global_imports m =
   let is_global_import imp = match imp.it.idesc.it with
         | GlobalImport _ -> true
         | _ -> false in
-  Lib.List32.length (List.filter is_global_import m.it.imports)
+  Lib.List32.length (List.filter is_global_import m.imports)
 
 
 let prepend_to_start fi (em : extended_module)  =
   let imports_n = count_fun_imports em.module_ in
-  let ftype = Lib.List32.length em.module_.it.types in
-  let wrap_fi = Int32.add imports_n (Lib.List32.length em.module_.it.funcs) in
+  let ftype = Lib.List32.length em.module_.types in
+  let wrap_fi = Int32.add imports_n (Lib.List32.length em.module_.funcs) in
 
   let wrap_fun = {
     ftype = ftype @@ no_region;
     locals = [];
     body =
       [ Call (fi @@ no_region) @@ no_region ] @
-      (match em.module_.it.start with
+      (match em.module_.start with
         | Some start_fi -> [ Call start_fi @@ no_region ]
         | None -> [])
     } @@ no_region in
 
   { em with
     module_ =
-      phrase (fun (m : module_') ->
-        { m with
-          types = m.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
-          funcs = m.funcs @ [ wrap_fun ];
-          start = Some (wrap_fi @@ no_region)
-        }) em.module_;
+      { em.module_ with
+        types = em.module_.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
+        funcs = em.module_.funcs @ [ wrap_fun ];
+        start = Some (wrap_fi @@ no_region)
+      };
     name =
       { em.name with
         function_names = em.name.function_names @ [ wrap_fi, "link_start" ]
       }
   }
 
-let remove_memory_import : module_ -> module_ =
-  phrase (fun m ->
-    let go imp = match imp.it.idesc.it with
-        | MemoryImport _ -> false
-        | _ -> true in
-    { m with imports = List.filter go m.imports }
-  )
+let remove_memory_import : module_' -> module_' = fun m ->
+  let go imp = match imp.it.idesc.it with
+      | MemoryImport _ -> false
+      | _ -> true in
+  { m with imports = List.filter go m.imports }
 
-let remove_function_export name : module_ -> module_ =
+let remove_function_export name : module_' -> module_' = fun m ->
   let is_func_export exp = match exp.it.edesc.it with
       | FuncExport _var when exp.it.name = Wasm.Utf8.decode name ->
           false
       | _ -> true in
-  phrase (fun m -> { m with exports = List.filter is_func_export m.exports })
+  { m with exports = List.filter is_func_export m.exports }
 
 module VarMap = Map.Make(Int32)
 let remove_non_definity_exports (em : extended_module) : extended_module =
@@ -153,8 +144,7 @@ let remove_non_definity_exports (em : extended_module) : extended_module =
   let is_dfinity_export exp = match exp.it.edesc.it with
       | FuncExport var -> VarMap.mem var.it dfinity_exports
       | _ -> true in
-  in_extended (phrase (fun m ->
-    { m with exports = List.filter is_dfinity_export m.exports })) em
+  in_extended (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
 
 module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
 type exports = int32 NameMap.t
@@ -165,7 +155,7 @@ let find_fun_exports m : exports =
       | FuncExport fi -> NameMap.add exp.it.name fi.it map
       | _ -> map
     )
-    NameMap.empty m.it.exports
+    NameMap.empty m.exports
 let find_global_exports m : exports =
   List.fold_left
     (fun map exp ->
@@ -173,7 +163,7 @@ let find_global_exports m : exports =
       | GlobalExport fi -> NameMap.add exp.it.name fi.it map
       | _ -> map
     )
-    NameMap.empty m.it.exports
+    NameMap.empty m.exports
 
 
 exception LinkError of string
@@ -214,19 +204,19 @@ let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 reso
   in
   (fun1, fun2)
 
-let read_global gi (m : module_) : int32 =
+let read_global gi (m : module_') : int32 =
   let n_impo = count_global_imports m in
-  let g = List.nth m.it.globals (Int32.(to_int (sub gi n_impo))) in
+  let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
   let open Wasm.Types in
   assert (g.it.gtype = GlobalType (I32Type, Immutable));
   match g.it.value.it with
   | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
   | _ -> assert false
 
-let read_table_size (m : module_) : int32 =
+let read_table_size (m : module_') : int32 =
   (* Assumes there is one table *)
   let open Wasm.Types in
-  match m.it.tables with
+  match m.tables with
   | [t] ->
     let TableType ({min;max}, _) = t.it.ttype in
     if Some min <> max
@@ -234,7 +224,7 @@ let read_table_size (m : module_) : int32 =
     else min
   | _ -> raise (LinkError "Expect one table in first module")
 
-let set_table_size new_size : module_ -> module_ = phrase (fun m ->
+let set_table_size new_size : module_' -> module_' = fun m ->
   let open Wasm.Types in
   match m.tables with
   | [t] ->
@@ -245,27 +235,23 @@ let set_table_size new_size : module_ -> module_ = phrase (fun m ->
       ) t ]
     }
   | _ -> raise (LinkError "Expect one table in first module")
-  )
 
-let join_modules (em1 : extended_module) (m2 : module_) (ns2 : name_section) : extended_module =
-  assert (m2.it.start = None);
+let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
+  assert (m2.start = None);
   let m1 = em1.module_ in
   { em1 with
-    module_ =
-      { it =
-        { types = m1.it.types @ m2.it.types
-        ; globals = m1.it.globals @ m2.it.globals
-        ; tables = m1.it.tables @ m2.it.tables
-        ; memories = m1.it.memories @ m2.it.memories
-        ; funcs = m1.it.funcs @ m2.it.funcs
-        ; start = m1.it.start
-        ; elems = m1.it.elems @ m2.it.elems
-        ; data = m1.it.data @ m2.it.data
-        ; imports = m1.it.imports @ m2.it.imports
-        ; exports = m1.it.exports @ m2.it.exports
-        }
-      ; at = m1.at
-      };
+    module_ = {
+      types = m1.types @ m2.types;
+      globals = m1.globals @ m2.globals;
+      tables = m1.tables @ m2.tables;
+      memories = m1.memories @ m2.memories;
+      funcs = m1.funcs @ m2.funcs;
+      start = m1.start;
+      elems = m1.elems @ m2.elems;
+      data = m1.data @ m2.data;
+      imports = m1.imports @ m2.imports;
+      exports = m1.exports @ m2.exports;
+    };
     name = {
       em1.name with
       function_names = em1.name.function_names @ ns2.function_names;
@@ -273,138 +259,131 @@ let join_modules (em1 : extended_module) (m2 : module_) (ns2 : name_section) : e
     }
   }
 
-let rename_funcs rn : module_ -> module_ =
-  phrase (fun m ->
-    let var' = rn in
-    let var = phrase var' in
+let rename_funcs rn : module_' -> module_' = fun m ->
+  let var' = rn in
+  let var = phrase var' in
 
-    let rec instr' = function
-      | Call v -> Call (var v)
-      | Block (ty, is) -> Block (ty, instrs is)
-      | Loop (ty, is) -> Loop (ty, instrs is)
-      | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-      | i -> i
-    and instr i = phrase instr' i
-    and instrs is = List.map instr is in
+  let rec instr' = function
+    | Call v -> Call (var v)
+    | Block (ty, is) -> Block (ty, instrs is)
+    | Loop (ty, is) -> Loop (ty, instrs is)
+    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+    | i -> i
+  and instr i = phrase instr' i
+  and instrs is = List.map instr is in
 
-    let func' f = { f with body = instrs f.body } in
-    let func = phrase func' in
-    let funcs = List.map func in
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = List.map func in
 
-    let edesc' = function
-      | FuncExport v -> FuncExport (var v)
-      | e -> e in
-    let edesc = phrase edesc' in
-    let export' e = { e with edesc = edesc e.edesc } in
-    let export = phrase export' in
-    let exports = List.map export in
+  let edesc' = function
+    | FuncExport v -> FuncExport (var v)
+    | e -> e in
+  let edesc = phrase edesc' in
+  let export' e = { e with edesc = edesc e.edesc } in
+  let export = phrase export' in
+  let exports = List.map export in
 
-    let segment' f s = { s with init  = f s.init } in
-    let segment f = phrase (segment' f) in
+  let segment' f s = { s with init  = f s.init } in
+  let segment f = phrase (segment' f) in
 
-    { m with
-      funcs = funcs m.funcs;
-      exports = exports m.exports;
-      start = Lib.Option.map var m.start;
-      elems = List.map (segment (List.map var)) m.elems;
-    }
-  )
+  { m with
+    funcs = funcs m.funcs;
+    exports = exports m.exports;
+    start = Lib.Option.map var m.start;
+    elems = List.map (segment (List.map var)) m.elems;
+  }
 
-let rename_globals rn : module_ -> module_ =
-  phrase (fun m ->
-    let var' = rn in
-    let var = phrase var' in
+let rename_globals rn : module_' -> module_' = fun m ->
+  let var' = rn in
+  let var = phrase var' in
 
-    let rec instr' = function
-      | Block (ty, is) -> Block (ty, instrs is)
-      | Loop (ty, is) -> Loop (ty, instrs is)
-      | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-      | GlobalGet v -> GlobalGet (var v)
-      | GlobalSet v -> GlobalSet (var v)
-      | i -> i
-    and instr i = phrase instr' i
-    and instrs is = List.map instr is in
+  let rec instr' = function
+    | Block (ty, is) -> Block (ty, instrs is)
+    | Loop (ty, is) -> Loop (ty, instrs is)
+    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+    | GlobalGet v -> GlobalGet (var v)
+    | GlobalSet v -> GlobalSet (var v)
+    | i -> i
+  and instr i = phrase instr' i
+  and instrs is = List.map instr is in
 
-    let func' f = { f with body = instrs f.body } in
-    let func = phrase func' in
-    let funcs = List.map func in
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = List.map func in
 
-    let const = phrase instrs in
+  let const = phrase instrs in
 
-    let global' g = { g with value = const g.value } in
-    let global = phrase global' in
-    let globals = List.map global in
+  let global' g = { g with value = const g.value } in
+  let global = phrase global' in
+  let globals = List.map global in
 
-    let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
-    let table_segment = phrase (table_segment') in
-    let table_segments = List.map table_segment in
+  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+  let table_segment = phrase (table_segment') in
+  let table_segments = List.map table_segment in
 
-    let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-    let memory_segment = phrase (memory_segment') in
-    let memory_segments = List.map memory_segment in
+  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+  let memory_segment = phrase (memory_segment') in
+  let memory_segments = List.map memory_segment in
 
 
-    { m with
-      funcs = funcs m.funcs;
-      globals = globals m.globals;
-      elems = table_segments m.elems;
-      data = memory_segments m.data;
-    }
-  )
+  { m with
+    funcs = funcs m.funcs;
+    globals = globals m.globals;
+    elems = table_segments m.elems;
+    data = memory_segments m.data;
+  }
 
-let set_global global value = phrase (fun m ->
-    let rec go i = function
-      | [] -> assert false
-      | g::gs when i = Int32.to_int global ->
-        let open Wasm.Types in
-        assert (g.it.gtype = GlobalType (I32Type, Immutable));
-        let g = phrase (fun g' ->
-          { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
-        ) g in
-        g :: gs
-      | g::gs -> g :: go (i+1) gs
-    in
-    { m with globals = go 0 m.globals }
-  )
+let set_global global value = fun m ->
+  let rec go i = function
+    | [] -> assert false
+    | g::gs when i = Int32.to_int global ->
+      let open Wasm.Types in
+      assert (g.it.gtype = GlobalType (I32Type, Immutable));
+      let g = phrase (fun g' ->
+        { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
+      ) g in
+      g :: gs
+    | g::gs -> g :: go (i+1) gs
+  in
+  { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : int32) : module_ -> module_ =
-  phrase (fun m ->
-    let rec instr' = function
-      | Block (ty, is) -> Block (ty, instrs is)
-      | Loop (ty, is) -> Loop (ty, instrs is)
-      | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-      | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
-      | GlobalSet v when v.it = global -> assert false
-      | i -> i
-    and instr i = phrase instr' i
-    and instrs is = List.map instr is in
+let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m ->
+  let rec instr' = function
+    | Block (ty, is) -> Block (ty, instrs is)
+    | Loop (ty, is) -> Loop (ty, instrs is)
+    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+    | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
+    | GlobalSet v when v.it = global -> assert false
+    | i -> i
+  and instr i = phrase instr' i
+  and instrs is = List.map instr is in
 
-    let func' f = { f with body = instrs f.body } in
-    let func = phrase func' in
-    let funcs = List.map func in
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = List.map func in
 
-    let const = phrase instrs in
+  let const = phrase instrs in
 
-    let global' g = { g with value = const g.value } in
-    let global = phrase global' in
-    let globals = List.map global in
+  let global' g = { g with value = const g.value } in
+  let global = phrase global' in
+  let globals = List.map global in
 
-    let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
-    let table_segment = phrase (table_segment') in
-    let table_segments = List.map table_segment in
+  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+  let table_segment = phrase (table_segment') in
+  let table_segments = List.map table_segment in
 
-    let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-    let memory_segment = phrase (memory_segment') in
-    let memory_segments = List.map memory_segment in
+  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+  let memory_segment = phrase (memory_segment') in
+  let memory_segments = List.map memory_segment in
 
 
-    { m with
-      funcs = funcs m.funcs;
-      globals = globals m.globals;
-      elems = table_segments m.elems;
-      data = memory_segments m.data;
-    }
-  )
+  { m with
+    funcs = funcs m.funcs;
+    globals = globals m.globals;
+    elems = table_segments m.elems;
+    data = memory_segments m.data;
+  }
 
 let rename_funcs_name_section rn (ns : name_section) =
   { ns with
@@ -455,13 +434,11 @@ let rename_types rn m =
   let imports = List.map import in
 
   { m with
-    it = { m.it with
-      funcs = funcs m.it.funcs;
-      imports = imports m.it.imports;
-    }
+    funcs = funcs m.funcs;
+    imports = imports m.imports;
   }
 
-let fill_memory_base_import new_base : module_ -> module_ = fun m ->
+let fill_memory_base_import new_base : module_' -> module_' = fun m ->
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -478,7 +455,7 @@ let fill_memory_base_import new_base : module_ -> module_ = fun m ->
           go (i + 1) is
         | _ ->
           go i is
-    in go 0 m.it.imports in
+    in go 0 m.imports in
 
     m |> fill_global base_global new_base
       |> remove_global_imports [(base_global, base_global)]
@@ -488,7 +465,7 @@ let fill_memory_base_import new_base : module_ -> module_ = fun m ->
           else sub i 1l
         )
 
-let fill_table_base_import new_base : module_ -> module_ = fun m ->
+let fill_table_base_import new_base : module_' -> module_' = fun m ->
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -505,7 +482,7 @@ let fill_table_base_import new_base : module_ -> module_ = fun m ->
           go (i + 1) is
         | _ ->
           go i is
-    in go 0 m.it.imports in
+    in go 0 m.imports in
 
     m |> fill_global base_global new_base
       |> remove_global_imports [(base_global, base_global)]
@@ -561,9 +538,9 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let (funs1, funs2) =
     calculate_renaming
       (count_fun_imports em1.module_)
-      (Lib.List32.length em1.module_.it.funcs)
+      (Lib.List32.length em1.module_.funcs)
       (count_fun_imports dm2)
-      (Lib.List32.length dm2.it.funcs)
+      (Lib.List32.length dm2.funcs)
       fun_resolved12
       fun_resolved21 in
 
@@ -577,16 +554,16 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let (globals1, globals2) =
     calculate_renaming
       (count_global_imports em1.module_)
-      (Lib.List32.length em1.module_.it.globals)
+      (Lib.List32.length em1.module_.globals)
       (count_global_imports dm2)
-      (Lib.List32.length dm2.it.globals)
+      (Lib.List32.length dm2.globals)
       global_resolved12
       global_resolved21 in
   assert (global_required1 = []); (* so far, we do not import globals *)
 
 
   (* Rename types *)
-  let ty_offset2 = Int32.of_int (List.length (em1.module_.it.types)) in
+  let ty_offset2 = Int32.of_int (List.length (em1.module_.types)) in
   let tys2 t = Int32.(add t ty_offset2) in
 
   (* Inject call to "__wasm_call_ctors" *)
@@ -596,7 +573,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | Some fi -> prepend_to_start (funs2 fi)
   in
 
-  assert (dm2.it.globals = []);
+  assert (dm2.globals = []);
 
   join_modules
     ( em1

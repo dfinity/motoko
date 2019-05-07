@@ -556,7 +556,7 @@ let encode (em : extended_module) =
       let is_fun_import imp = match imp.it.idesc.it with
             | FuncImport _ -> true
             | _ -> false in
-      Lib.List32.length (List.filter is_fun_import em.module_.it.imports)
+      Lib.List32.length (List.filter is_fun_import em.module_.imports)
 
     let dfinity_type = function
         | CustomModule.I32      -> vu32 0x7fl
@@ -616,17 +616,17 @@ let encode (em : extended_module) =
       u32 version;
       (* no use-case for encoding dylink section yet, but here would be the place *)
       assert (em.dylink = None);
-      type_section m.it.types;
-      import_section m.it.imports;
-      func_section m.it.funcs;
-      table_section m.it.tables;
-      memory_section m.it.memories;
-      global_section m.it.globals;
-      export_section m.it.exports;
-      start_section m.it.start;
-      elem_section m.it.elems;
-      code_section m.it.funcs;
-      data_section m.it.data;
+      type_section m.types;
+      import_section m.imports;
+      func_section m.funcs;
+      table_section m.tables;
+      memory_section m.memories;
+      global_section m.globals;
+      export_section m.exports;
+      start_section m.start;
+      elem_section m.elems;
+      code_section m.funcs;
+      data_section m.data;
       (* other optional sections *)
       dfinity_types_section (count_fun_imports em) em.types;
       dfinity_persist_section em.persist;

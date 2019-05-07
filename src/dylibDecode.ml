@@ -148,12 +148,6 @@ let repeat_until p_end s x0 f =
     if pos s = p_end then x else go (f x s)
   in go x0
 
-let empty_name_section : name_section = {
-  module_ = None;
-  function_names = [];
-  locals_names = [];
-  }
-
 let assoc_list f s = vec (fun s ->
     let i = var s in
     let x = f s in
@@ -225,6 +219,6 @@ let dylib_module s =
 
 
 let decode name bs =
-  let module_ = Wasm.Decode.decode name bs in
+  let module_ = (Wasm.Decode.decode name bs).Source.it in
   let (dylink, name) = dylib_module (stream name bs) in
   { module_; dylink; name; types = []; persist = [] }
