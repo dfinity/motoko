@@ -1,4 +1,4 @@
-open Dylib
+open CustomModule
 open Wasm
 
 (* Lots of code copied from Wasm.Binary.Decode *)
@@ -149,7 +149,7 @@ let repeat_until p_end s x0 f =
   in go x0
 
 let empty_name_section : name_section = {
-  module_ = "";
+  module_ = None;
   function_names = [];
   locals_names = [];
   }
@@ -167,7 +167,7 @@ let name_section_subsection (ns : name_section) s =
   match u8 s with
   | 0 -> (* module name *)
     let mod_name = sized (fun _ -> string) s in
-    { ns with module_ = mod_name }
+    { ns with module_ = Some mod_name }
   | 1 -> (* function names *)
     let func_names = sized (fun _ -> name_map) s in
     { ns with function_names = ns.function_names @ func_names }

@@ -74,12 +74,14 @@ do
   old-asc/bin/asc --dfinity $file -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
   $WASM2WAT compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
+  #wasm-objdump -s -h -d compare-out/$base.old/$base.wasm > compare-out/$base.old/$base.dump
 
   rm -rf compare-out/$base.new
   mkdir compare-out/$base.new
   new-asc/bin/asc --dfinity $file -o compare-out/$base.new/$base.wasm 2> compare-out/$base.new/$base.stderr
   test ! -e compare-out/$base.new/$base.wasm ||
   $WASM2WAT compare-out/$base.new/$base.wasm >& compare-out/$base.new/$base.wat
+  #wasm-objdump -s -h -d compare-out/$base.new/$base.wasm > compare-out/$base.new/$base.dump
 
   diff -r -N -u10 compare-out/$base.old compare-out/$base.new
 

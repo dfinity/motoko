@@ -176,7 +176,7 @@ module E = struct
     func_imports : import list ref;
     other_imports : import list ref;
     exports : export list ref;
-    dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
+    dfinity_types : (int32 * CustomModule.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
@@ -299,15 +299,17 @@ module E = struct
     NameEnv.fold (fun k _ -> Freevars.S.add k) l Freevars.S.empty
 
   let _add_other_import (env : t) m =
-    let _ = reg env.other_imports m in ()
+    ignore (reg env.other_imports m)
 
-  let add_export (env : t) e = let _ = reg env.exports e in ()
+  let add_export (env : t) e =
+    ignore (reg env.exports e)
 
-  let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
+  let add_dfinity_type (env : t) e =
+    ignore (reg env.dfinity_types e)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Wasm.I32.of_int_u (List.length !(env.func_imports)) in
+    let n = Int32.of_int (List.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -344,7 +346,7 @@ module E = struct
   let get_n_res (env : t) = env.n_res
 
   let get_func_imports (env : t) = !(env.func_imports)
-  let get_other_imports (env : t) = !(env.other_imports) 
+  let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -3309,12 +3311,15 @@ module Serialization = struct
         G.i Drop
     )
 
-    let dfinity_type t = match Type.normalize t with
-      | Type.Prim Type.Text -> CustomSections.DataBuf
-      | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
-      | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
-      | t' when has_no_references t' -> CustomSections.DataBuf
-      | _ -> CustomSections.ElemBuf
+    let dfinity_type t =
+      let open Type in
+      let open CustomModule in
+      match normalize t with
+      | Prim Text -> DataBuf
+      | Obj (Actor, _) -> ActorRef
+      | Func (Sharable, _, _, _, _) -> FuncRef
+      | t' when has_no_references t' -> DataBuf
+      | _ -> ElemBuf
 
 end (* Serialization *)
 
@@ -3851,7 +3856,7 @@ module FuncDec = struct
 
   let declare_dfinity_type env has_closure fi args =
       E.add_dfinity_type env (fi,
-        (if has_closure then [ CustomSections.I32 ] else []) @
+        (if has_closure then [ CustomModule.I32 ] else []) @
         List.map (
           fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
         ) args
@@ -4998,7 +5003,7 @@ and actor_lit outer_env this ds fs at =
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env this.it None in
-    let (_map, wasm_binary) = CustomModule.encode m in
+    let (_map, wasm_binary) = CustomModuleEncode.encode m in
     wasm_binary in
 
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
@@ -5139,11 +5144,11 @@ and conclude_module env module_name start_fi_o =
     { module_;
       types = E.get_dfinity_types env;
       persist =
-             [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-             ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
+             [ (OrthogonalPersistence.mem_global, CustomModule.DataBuf)
+             ; (OrthogonalPersistence.elem_global, CustomModule.ElemBuf)
              ];
-      name = Dylib.{
-        module_ = module_name;
+      name = {
+        module_ = Some module_name;
         function_names =
             List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
         locals_names =

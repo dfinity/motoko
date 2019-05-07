@@ -6,7 +6,6 @@ plus the dylink section.
 open Wasm.Ast
 open Wasm.Source
 open CustomModule
-open Dylib
 
 (* Linking *)
 

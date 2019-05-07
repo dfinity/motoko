@@ -1,3 +1,17 @@
+(*
+This module originated as a copy of interpreter/binary/encode.ml in the
+reference implementation.
+
+The changes are:
+ * Support for writing out a source map for the Code parts
+ * Support for additional custom sections
+
+The code is otherwise as untouched as possible, so that we can relatively
+easily apply diffs froim the original code (possibly manually).
+*)
+
+open CustomModule
+
 (* Version *)
 
 let version = 1l
@@ -30,7 +44,7 @@ let to_string s =
 
 (* Encoding *)
 
-let encode m =
+let encode (em : extended_module) =
   let s = stream () in
 
   (* source map *)
@@ -112,6 +126,7 @@ let encode m =
     let list f xs = List.iter f xs
     let opt f xo = Lib.Option.app f xo
     let vec f xs = len (List.length xs); list f xs
+    let veci f xs = len (List.length xs); List.iteri f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
     let patch_gap32 p n =
@@ -415,6 +430,12 @@ let encode m =
         patch_gap32 g (pos s - p)
       end
 
+    let custom_section name f x needed =
+      section 0 (fun x ->
+        string name;
+        f x
+      ) x needed
+
     (* Type section *)
     let type_ t = func_type t.it
 
@@ -524,11 +545,76 @@ let encode m =
     let data_section data =
       section 11 (vec memory_segment) data (data <> [])
 
+    (* DFINITY Types section *)
+
+    (*
+    The dfinity types are specified in terms of function ids excluding
+    imports, which is unidiomatic. We use real function ids internally,
+    so we have to work around it here.
+    *)
+    let count_fun_imports (em : extended_module) =
+      let is_fun_import imp = match imp.it.idesc.it with
+            | FuncImport _ -> true
+            | _ -> false in
+      Lib.List32.length (List.filter is_fun_import em.module_.it.imports)
+
+    let dfinity_type = function
+        | CustomModule.I32      -> vu32 0x7fl
+        | CustomModule.DataBuf  -> vu32 0x6cl
+        | CustomModule.ElemBuf  -> vu32 0x6bl
+        | CustomModule.ActorRef -> vu32 0x6fl
+        | CustomModule.FuncRef  -> vu32 0x6dl
+
+    let dfinity_fun_type (_fi, param_types) =
+      vu32 0x60l; (* function type op code *)
+      vec dfinity_type param_types;
+      vu32 0l
+
+    let dfinity_fun_type_map ni i (fi, _param_types) =
+      vu32 (Int32.sub fi ni);
+      vu32 (Int32.of_int i)
+
+    let dfinity_types_section ni tys =
+      (* We could deduplicate the types here *)
+      custom_section "types" (vec dfinity_fun_type) tys (tys <> []);
+      custom_section "typeMap" (veci (dfinity_fun_type_map ni)) tys (tys <> [])
+
+    (* DFINITY Persist section *)
+
+    let dfinity_persist_global (i, sort) =
+      vu32 0x03l; (* a global *)
+      vu32 i; (* the index *)
+      dfinity_type sort
+
+    let dfinity_persist_section pgs =
+      custom_section "persist" (vec dfinity_persist_global) pgs (pgs <> [])
+
+    (* Name section *)
+
+    let assoc_list : 'a. ('a -> unit) -> (int32 * 'a) list -> unit = fun f xs ->
+      vec (fun (li, x) -> vu32 li; f x)
+          (List.sort (fun (i1,_) (i2,_) -> compare i1 i2) xs)
+
+    let name_section_body (ns : name_section) =
+      (* module name section *)
+      section 0 (opt string) ns.module_ (ns.module_ <> None);
+      (* function names section *)
+      section 1 (assoc_list string) ns.function_names  (ns.function_names <> []);
+      (* locals names section *)
+      section 2 (assoc_list (assoc_list string)) ns.locals_names  (ns.locals_names <> [])
+
+    let name_section ns =
+      custom_section "name" name_section_body ns
+        (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
+
     (* Module *)
 
-    let module_ m =
+    let module_ (em : extended_module) =
+      let m = em.module_ in
+
       u32 0x6d736100l;
       u32 version;
+      (* optional dylink module *)
       type_section m.it.types;
       import_section m.it.imports;
       func_section m.it.funcs;
@@ -539,9 +625,13 @@ let encode m =
       start_section m.it.start;
       elem_section m.it.elems;
       code_section m.it.funcs;
-      data_section m.it.data
+      data_section m.it.data;
+      (* other optional sections *)
+      dfinity_types_section (count_fun_imports em) em.types;
+      dfinity_persist_section em.persist;
+      name_section em.name;
   end
-  in E.module_ m;
+  in E.module_ em;
 
   let mappings = Buffer.contents map in
   let n = max 0 ((String.length mappings) - 1) in
