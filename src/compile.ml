@@ -1513,6 +1513,13 @@ module BoxedWord = struct
 
   let _lit env n = compile_const_64 n ^^ box env
 
+  let compile_unsigned_sub env =
+    Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
+      get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+      E.then_trap_with env "Natural subtraction underflow" ^^
+      get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+    )
+
 end (* BoxedWord *)
 
 module BoxedSmallWord = struct
@@ -4121,12 +4128,7 @@ let rec compile_binop env t op =
   Syntax.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Prim Type.Nat,                       SubOp -> (*candidate*)
-    Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
-      get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      E.then_trap_with env "Natural subtraction underflow" ^^
-      get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-    )
+  | Type.Prim Type.Nat,                       SubOp -> BigNum.compile_unsigned_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
