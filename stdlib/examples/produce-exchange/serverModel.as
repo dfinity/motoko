@@ -1713,7 +1713,7 @@ than the MVP goals, however.
       array.len(),
       null
     );
-    for (i in (range(0,array.len()-1))) {
+    for (i in array.keys()) {
       let (item, route) = array[i];
       let x = retailerReserve(id, item, route);
       a[i] := ?x;
