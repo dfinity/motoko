@@ -292,6 +292,8 @@ type ReservationInfo = shared {
   date_end:    Date;
   prod_cost:   PriceTotal;
   trans_cost:  PriceTotal;
+  inventoryId: InventoryId;
+  routeId:     RouteId;
 };
 
 

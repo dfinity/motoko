@@ -90,6 +90,10 @@ do
   [ -d $ok ] || mkdir $ok
 
   rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr}
+  if [ $ACCEPT = yes ]
+  then
+    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr}.ok
+  fi
 
   # First run all the steps, and remember what to diff
   diff_files=

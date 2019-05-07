@@ -224,15 +224,8 @@ let load_decl parse_one senv : load_decl_result =
 (* Interpretation (Source) *)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
-  try
-    phase "Interpreting" prog.Source.note;
-    match Interpret.interpret_prog denv prog with
-    | None, _ -> None
-    | Some v, scope -> Some (v, scope)
-  with exn ->
-    (* For debugging, should never happen. *)
-    Interpret.print_exn exn;
-    None
+  phase "Interpreting" prog.Source.note;
+  Interpret.interpret_prog denv prog
 
 let rec interpret_libraries denv libraries : Interpret.scope =
   match libraries with
