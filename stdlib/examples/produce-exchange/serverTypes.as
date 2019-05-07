@@ -109,7 +109,7 @@ type IdErr = {
 
 type ServerErr = {
   #idErr: OpEntId;
-  #publicKeyErr: ();
+  #publicKeyErr;
 };
 
 

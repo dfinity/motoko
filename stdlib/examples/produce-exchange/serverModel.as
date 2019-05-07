@@ -836,7 +836,7 @@ than the MVP goals, however.
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
-      case _ { return #err(#idErr(null)) };
+      case _ { return #err(#idErr null) };
       }};
 
     /**- Create the inventory item document: */
@@ -924,10 +924,10 @@ than the MVP goals, however.
              if ( inventory.producer == producer.id ) {
                (inventory, producer, produce)
              } else {
-               return (#err(#idErr(null)))
+               return (#err(#idErr null))
              }
            };
-      case _ { return (#err(#idErr(null))) };
+      case _ { return (#err(#idErr null)) };
       }};
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
@@ -957,7 +957,7 @@ than the MVP goals, however.
     /**- validate the `id` */
     /// xxx macro for this pattern?
     let doc = switch (inventoryTable.getDoc(id)) {
-      case null { return #err(#idErr(null)) };
+      case null { return #err(#idErr null) };
       case (?doc) { doc };
     };
 
@@ -1058,7 +1058,7 @@ than the MVP goals, however.
     let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
-      case _ { return #err(#idErr(null)) };
+      case _ { return #err(#idErr null) };
       }};
     let transporterId = transporter.id;
 
@@ -1147,10 +1147,10 @@ than the MVP goals, however.
              if ( route.transporter == transporter.id ) {
                (route, transporter, x2, x3, x4);
              } else {
-               return #err(#idErr(null))
+               return #err(#idErr null)
              }
            };
-      case _ { return #err(#idErr(null)) };
+      case _ { return #err(#idErr null) };
       }};
 
     /**- remove the route; given the validation above, this cannot fail. */
@@ -1181,7 +1181,7 @@ than the MVP goals, however.
   transporterRemRoute(id:T.RouteId) : Result<(),T.ServerErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
-      case null { return #err(#idErr(null)) };
+      case null { return #err(#idErr null) };
       case (?doc) { doc };
     };
 
@@ -1558,7 +1558,7 @@ than the MVP goals, however.
     let transporterDocOp = transporterTable.getDoc(routeDoc.transporter);
     let transporterDoc = switch transporterDocOp {
     // internal error, if any:
-    case null return #err(#idErr(null)); case (?x) x};
+    case null return #err(#idErr null); case (?x) x};
 
     let inventoryDocOp = inventoryTable.getDoc(inventory_id);
     let inventoryDoc = switch inventoryDocOp {
@@ -1568,7 +1568,7 @@ than the MVP goals, however.
     let producerDocOp = producerTable.getDoc(inventoryDoc.producer);
     let producerDoc = switch producerDocOp {
     // internal error, if any:
-    case null return #err(#idErr(null)); case (?x) x};
+    case null return #err(#idErr null); case (?x) x};
 
     /**if no errors in any results above, then continue: */
 
