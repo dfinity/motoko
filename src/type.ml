@@ -525,18 +525,8 @@ let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let str = ref (fun _ -> failwith "")
-
-let rec rel_typ rel eq t1 t2 = match rel_typ' rel eq t1 t2, rel != eq with
-  | true, true -> (*let l = lub t1 t2 in
-                  (*let g = glb t1 t2 in*)
-                  if not (rel_typ' eq eq t2 l) then Printf.eprintf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);*)
-                  (*if not (rel_typ' eq eq t1 g) then Printf.eprintf "bad GLB: %s     (%s     <:     %s) \n%!" (!str g) (!str t1) (!str t2);*)
-                  true
-  | r, _ -> r (* TODO: remove this temporary check *)
+let rec rel_typ rel eq t1 t2 =
 (*Printf.printf "[sub] %s == %s\n%!" (!str t1) (!str t2);*)
-
-
-and rel_typ' rel eq t1 t2 =
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
@@ -551,28 +541,28 @@ and rel_typ' rel eq t1 t2 =
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ' rel eq (open_ ts1 t) t2
+      rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ' rel eq t1 (open_ ts2 t)
+      rel_typ rel eq t1 (open_ ts2 t)
     | _ when Con.eq con1 con2 ->
       rel_list eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ' rel eq (open_ ts1 t) t2
+      rel_typ rel eq (open_ ts1 t) t2
     | _ ->
       false
     )
   | Con (con1, ts1), t2 ->
     (match Con.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ' rel eq (open_ ts1 t) t2
+      rel_typ rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ' rel eq (open_ ts1 t) t2
+      rel_typ rel eq (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Con.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ' rel eq t1 (open_ ts2 t)
+      rel_typ rel eq t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 when p1 = p2 ->
@@ -582,39 +572,39 @@ and rel_typ' rel eq t1 t2 =
   | Prim p1, Shared when rel != eq ->
     true
   | Prim Text, Obj _ when rel != eq ->
-    rel_typ' rel eq text_obj t2
+    rel_typ rel eq text_obj t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields rel eq tfs1 tfs2
   | Obj (s, _), Shared when rel != eq ->
     s <> Object Local
   | Array t1', Array t2' ->
-    rel_typ' rel eq t1' t2'
+    rel_typ rel eq t1' t2'
   | Array t1', Obj _ when rel != eq ->
-    rel_typ' rel eq (array_obj t1') t2
+    rel_typ rel eq (array_obj t1') t2
   | Array t, Shared when rel != eq ->
-    rel_typ' rel eq t Shared
+    rel_typ rel eq t Shared
   | Opt t1', Opt t2' ->
-    rel_typ' rel eq t1' t2'
+    rel_typ rel eq t1' t2'
   | Opt t1', Shared ->
-    rel_typ' rel eq t1' Shared
+    rel_typ rel eq t1' Shared
   | Variant cts1, Variant cts2 ->
     rel_summands rel eq cts1 cts2
   | Variant cts1, Shared ->
-    rel_list rel_typ' rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
+    rel_list rel_typ rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
-    rel_list rel_typ' rel eq ts1 ts2
+    rel_list rel_typ rel eq ts1 ts2
   | Tup ts1, Shared ->
-    rel_list rel_typ' rel eq ts1 (List.map (fun _ -> Shared) ts1)
+    rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     c1 = c2 && s1 = s2 &&
     (* subtyping on shared functions needs to imply subtyping of the serialized
        arguments, i.e. the IDL. Until we have a real IDL, we are conservative
        here and assume no subtyping in the IDL. This makes shared functions invariant. *)
     let rel_param =
-      if s1 = Sharable then eq_typ else rel_typ' in
+      if s1 = Sharable then eq_typ else rel_typ in
     (match rel_binds rel eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -626,7 +616,7 @@ and rel_typ' rel eq t1 t2 =
   | Shared, Shared ->
     true
   | Async t1', Async t2' ->
-    rel_typ' rel eq t1' t2'
+    rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
   | Serialized t1', Serialized t2' ->
@@ -646,7 +636,7 @@ and rel_fields rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ' rel eq tf1.typ tf2.typ &&
+      rel_typ rel eq tf1.typ tf2.typ &&
       rel_fields rel eq tfs1' tfs2'
     | -1 when rel != eq ->
       rel_fields rel eq tfs1' tfs2
@@ -664,7 +654,7 @@ and rel_summands rel eq tcs1 tcs2 =
   | (c1, t1)::tcs1', (c2, t2)::tcs2' ->
     (match compare c1 c2 with
     | 0 ->
-      rel_typ' rel eq t1 t2 &&
+      rel_typ rel eq t1 t2 &&
       rel_summands rel eq tcs1' tcs2'
     | 1 when rel != eq ->
       rel_summands rel eq tcs1 tcs2'
@@ -679,15 +669,15 @@ and rel_binds rel eq tbs1 tbs2 =
   else None
 
 and rel_bind ts rel eq tb1 tb2 =
-  rel_typ' rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
+  rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-and eq_typ rel eq t1 t2 = rel_typ' eq eq t1 t2
+and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 
 and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
 and sub t1 t2 : bool =
-  let res = rel_typ' (ref S.empty) (ref S.empty) t1 t2 in
+  let res = rel_typ (ref S.empty) (ref S.empty) t1 t2 in
   (*let l = lub t1 t2 in
   let g = glb t1 t2 in
   if res && not (eq t2 l) then Printf.printf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);
