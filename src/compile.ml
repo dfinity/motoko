@@ -1722,27 +1722,34 @@ module BigNum = struct
     G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
     box env ^^
     compile_unboxed_const 8l (* 64 bit for now *)
-end
 
-(* Primitive functions *)
-module Prim = struct
-  open Wasm.Values
-
-  let prim_abs env = (*candidate*)
+  let compile_abs env =
     let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
-    BigNum.unbox env ^^
+    unbox env ^^
     compile_const_64 0L ^^
     G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
     G.if_ (ValBlockType (Some I32Type))
       ( compile_const_64 0L ^^
         get_i ^^
-        BigNum.unbox env ^^
+        unbox env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        BigNum.box env
+        box env
       )
       ( get_i )
+
+  let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  let compile_mul env = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  let compile_signed_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivS))
+  let compile_signed_mod env = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+  let compile_unsigned_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  let compile_unsigned_rem env = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+end
+
+(* Primitive functions *)
+module Prim = struct
+  open Wasm.Values
 
   (* The Word8 and Word16 bits sit in the MSBs of the i32, in this manner
      we can perform almost all operations, with the exception of
@@ -4049,7 +4056,7 @@ let compile_lit env lit =
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
     (* This maps int to int32, instead of a proper arbitrary precision library *)
-    | IntLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
+    | IntLit n
     | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
@@ -4106,7 +4113,7 @@ let compile_unop env t op =
 let rec compile_binop env t op =
   StackRep.of_type t,
   Syntax.(match t, op with
-  | Type.(Prim (Nat | Int)),                  AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.Prim Type.Nat,                       SubOp ->
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
@@ -4114,13 +4121,15 @@ let rec compile_binop env t op =
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
-  | Type.(Prim (Nat | Int)),                  MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.(Prim (Nat | Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.(Prim (Nat | Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.(Prim Word64),                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
+  | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
   | Type.(Prim (Int | Word64)),               SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  | Type.(Prim Int),                          DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
-  | Type.(Prim Int),                          ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+  | Type.(Prim Int),                          DivOp -> BigNum.compile_signed_div env
+  | Type.(Prim Int),                          ModOp -> BigNum.compile_signed_mod env
 
   | Type.Prim Type.(Word8 | Word16 | Word32), AddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
@@ -4335,7 +4344,7 @@ and compile_exp (env : E.t) exp =
        | "abs" ->
          SR.Vanilla,
          compile_exp_vanilla env e ^^
-         Prim.prim_abs env
+         BigNum.compile_abs env
 
        | "rts_version" ->
          SR.Vanilla,
