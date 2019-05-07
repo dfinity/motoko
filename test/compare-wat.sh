@@ -34,12 +34,13 @@ function build_ref_to {
   else
     echo "Building $2 asc (rev $1).."
     chronic nix-build \
+      --argstr ref "$(git for-each-ref --count 1 --contains "$1" --format '%(refname)')" \
       --argstr rev "$1" \
       --argstr path "$(realpath "$(dirname $0)/..")" \
       -E '
-      {rev, path}:
+      {rev, ref, path}:
       let nixpkg = import (../nix/nixpkgs.nix) {}; in
-      let checkout = (builtins.fetchGit {url = path; ref = rev; rev = rev; name = "old-asc";}).outPath; in
+      let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev; name = "old-asc";}).outPath; in
       builtins.trace checkout (
       ((import checkout) {}).native)' \
       --option binary-caches '' \
