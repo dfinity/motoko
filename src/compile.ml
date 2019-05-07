@@ -1696,6 +1696,10 @@ end (* UnboxedSmallWord *)
 module BigNum = struct
   include BoxedWord
 
+  let preferred_SR = SR.UnboxedInt64
+
+  let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n)
+
   (* given a numeric object on stack (vanilla),
      push the number (i32) of bytes necessary
      to externalize the numeric object *)
@@ -3593,8 +3597,8 @@ module StackRep = struct
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat -> UnboxedInt64 (* later: Vanilla *)
-    | Type.Prim Type.Int -> UnboxedInt64 (* later: Vanilla *)
+    | Type.Prim Type.Nat
+    | Type.Prim Type.Int -> BigNum.preferred_SR
     | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
@@ -4059,7 +4063,7 @@ let compile_lit env lit =
     | BoolLit true ->  SR.bool, Bool.lit true
     (* This maps int to int32, instead of a proper arbitrary precision library *)
     | IntLit n
-    | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n) (*candidate*)
+    | NatLit n      -> BigNum.preferred_SR, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
