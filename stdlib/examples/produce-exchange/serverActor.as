@@ -15,6 +15,7 @@ type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 actor server {
 
+/*
   // xxx these array/async combinators should go into a stdlib library (an stdlib Array "actor class", or what?)
 
   /**
@@ -43,6 +44,7 @@ actor server {
   arrayMapAsync(a:[Nat], f:shared Nat -> async Nat) : async [Nat] = async {
     await arrayTabulateAsync(a.len(), shared func (i:Nat):async Nat = async { await f(a[i]) })
   };
+*/
 
 /**
  Server Actor
