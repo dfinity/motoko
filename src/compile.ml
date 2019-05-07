@@ -1464,14 +1464,14 @@ module Closure = struct
 end (* Closure *)
 
 
-module BoxedInt = struct
+module BoxedWord = struct
   (* We store large nats and ints in immutable boxed 64bit heap objects.
      Eventually, this should contain the bigint implementation.
 
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
 
-     The heap layout of a BoxedInt is:
+     The heap layout of a BoxedWord is:
 
        ┌─────┬─────┬─────┐
        │ tag │    i64    │
@@ -1514,7 +1514,7 @@ module BoxedInt = struct
 
   let _lit env n = compile_const_64 n ^^ box env
 
-end (* BoxedInt *)
+end (* BoxedWord *)
 
 module BoxedSmallWord = struct
   (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
@@ -1702,15 +1702,15 @@ module Prim = struct
     let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
-    BoxedInt.unbox env ^^
+    BoxedWord.unbox env ^^
     compile_const_64 0L ^^
     G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
     G.if_ (ValBlockType (Some I32Type))
       ( compile_const_64 0L ^^
         get_i ^^
-        BoxedInt.unbox env ^^
+        BoxedWord.unbox env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        BoxedInt.box env
+        BoxedWord.box env
       )
       ( get_i )
 
@@ -2116,7 +2116,7 @@ module Text = struct
           end ^^
         get_len ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BoxedInt.box env
+        BoxedWord.box env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2211,7 +2211,7 @@ module Arr = struct
       let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
         let get_idx = G.i (LocalGet (nr 1l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BoxedInt.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        get_idx ^^ BoxedWord.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         idx env ^^
         load_ptr
       )) in
@@ -2224,7 +2224,7 @@ module Arr = struct
         let get_idx = G.i (LocalGet (nr 1l)) in
         let get_val = G.i (LocalGet (nr 2l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BoxedInt.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        get_idx ^^ BoxedWord.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         idx env ^^
         get_val ^^
         store_ptr
@@ -2238,7 +2238,7 @@ module Arr = struct
         Closure.get ^^ Closure.load_data 0l ^^
         Heap.load_field len_field ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BoxedInt.box env1
+        BoxedWord.box env1
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2254,7 +2254,7 @@ module Arr = struct
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BoxedInt.box32 env (* return the boxed index *)
+        get_i ^^ BoxedWord.box32 env (* return the boxed index *)
       )
 
   let vals_iter env =
@@ -2293,7 +2293,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BoxedInt.unbox env ^^
+    BoxedWord.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     set_len ^^
 
@@ -2318,7 +2318,7 @@ module Arr = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     set_f ^^
-    BoxedInt.unbox env ^^
+    BoxedWord.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     set_len ^^
 
@@ -2337,7 +2337,7 @@ module Arr = struct
       (* The arg *)
       get_i ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      BoxedInt.box env ^^
+      BoxedWord.box env ^^
       (* The closure again *)
       get_f ^^
       (* Call *)
@@ -2944,7 +2944,7 @@ module Serialization = struct
       begin match t with
       | Prim (Nat | Int | Word64) ->
         get_data_buf ^^
-        get_x ^^ BoxedInt.unbox env ^^
+        get_x ^^ BoxedWord.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l ^^ advance_data_buf
       | Prim Word32 ->
@@ -3069,7 +3069,7 @@ module Serialization = struct
       | Prim (Nat | Int | Word64) ->
         get_data_buf ^^
         G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
-        BoxedInt.box env ^^
+        BoxedWord.box env ^^
         compile_unboxed_const 8l ^^ advance_data_buf (* 64 bit *)
       | Prim Word32 ->
         get_data_buf ^^
@@ -3544,8 +3544,8 @@ module StackRep = struct
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat -> UnboxedInt64
-    | Type.Prim Type.Int -> UnboxedInt64
+    | Type.Prim Type.Nat -> UnboxedInt64 (* later: Vanilla *)
+    | Type.Prim Type.Int -> UnboxedInt64 (* later: Vanilla *)
     | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
@@ -3665,8 +3665,8 @@ module StackRep = struct
       adjust env sr (UnboxedTuple n) ^^ unbox_reference_n env n
 
 
-    | UnboxedInt64, Vanilla -> BoxedInt.box env
-    | Vanilla, UnboxedInt64 -> BoxedInt.unbox env
+    | UnboxedInt64, Vanilla -> BoxedWord.box env
+    | Vanilla, UnboxedInt64 -> BoxedWord.unbox env
 
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
@@ -4662,7 +4662,7 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BoxedInt.unbox env ^^
+    BoxedWord.unbox env ^^
     compile_lit_as env SR.UnboxedInt64 l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
