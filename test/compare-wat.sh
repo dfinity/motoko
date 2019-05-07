@@ -28,12 +28,12 @@ function build_ref_to {
   if [ -z "$1" ]
   then
     echo "Building $2 asc from working copy.."
-    nix-build -E '((import ./..) {}).native' \
+    chronic nix-build -E '((import ./..) {}).native' \
       --option binary-caches '' \
-      -o $2-asc/ |& tail -n1
+      -o $2-asc/
   else
     echo "Building $2 asc (rev $1).."
-    nix-build \
+    chronic nix-build \
       --argstr rev "$1" \
       --argstr path "$(realpath "$(dirname $0)/..")" \
       -E '
@@ -43,7 +43,7 @@ function build_ref_to {
       builtins.trace checkout (
       ((import checkout) {}).native)' \
       --option binary-caches '' \
-      -o $2-asc/ |& tail -n1
+      -o $2-asc/
   fi
   test -x $2-asc/bin/asc || exit 1
 }
