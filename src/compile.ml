@@ -5137,7 +5137,7 @@ and conclude_module env module_name start_fi_o =
       | Some filename -> filename
       | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
     let wasm = load_file wasm_filename in
-    DylibDecode.decode "rts.wasm" wasm in
+    CustomModuleDecode.decode "rts.wasm" wasm in
 
   let emodule =
     let open CustomModule in
