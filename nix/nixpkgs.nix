@@ -1,6 +1,10 @@
-with { rev = "d50bc0afd23ae2c6bcc31556b005f4e9421d2532"; };
+rec {
+  rev = "3cd3d1eeb6b26f3acb9e9e16cd7220cd5eb07148";
 
-import (builtins.fetchTarball {
-  sha256 = "1vdh3x0a65z2k4mzf2f7jpyggqhnqv2716xc51gg4a1lgnf3g8pa";
-  url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
-})
+  src = builtins.fetchTarball {
+    sha256 = "0671riiyzw2y3vw2apxhnq6vq67py64cqkgwiajfnw5qcrva86pw";
+    url = "https://github.com/dfinity-lab/nixpkgs/archive/${rev}.tar.gz";
+  };
+
+  nixpkgs = import src;
+}
