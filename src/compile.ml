@@ -2113,7 +2113,7 @@ module Text = struct
 
 end (* Text *)
 
-module Array = struct
+module Arr = struct
   (* Object layout:
 
      ┌─────┬──────────┬────────┬───┐
@@ -2300,7 +2300,7 @@ module Tuple = struct
   let compile_unit = compile_unboxed_one
 
   (* Expects on the stack the pointer to the array. *)
-  let load_n n = Heap.load_field (Int32.add Array.header_size n)
+  let load_n n = Heap.load_field (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -2309,7 +2309,7 @@ module Tuple = struct
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
       Func.share_code env name args [I32Type] (fun env ->
-        Array.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
+        Arr.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -2409,7 +2409,8 @@ module Dfinity = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "start";
       edesc = nr (FuncExport (nr fi))
-    })
+    });
+    E.add_dfinity_type env (fi, [])
 
   let box_reference env =
     Func.share_code1 env "box_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
@@ -2548,8 +2549,8 @@ module HeapTraversal = struct
           compile_unboxed_const 2l
         ; Tagged.Array,
           get_x ^^
-          Heap.load_field Array.len_field ^^
-          compile_add_const Array.header_size
+          Heap.load_field Arr.len_field ^^
+          compile_add_const Arr.header_size
         ; Tagged.Text,
           get_x ^^
           Heap.load_field Text.len_field ^^
@@ -2613,12 +2614,12 @@ module HeapTraversal = struct
         mk_code get_ptr_loc
       ; Tagged.Array,
         get_x ^^
-        Heap.load_field Array.len_field ^^
+        Heap.load_field Arr.len_field ^^
         (* Adjust fields *)
         from_0_to_n env (fun get_i ->
           get_x ^^
           get_i ^^
-          Array.idx env ^^
+          Arr.idx env ^^
           set_ptr_loc ^^
           mk_code get_ptr_loc
         )
@@ -2790,9 +2791,9 @@ module Serialization = struct
       | Array t ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* 32 bit length field *)
         get_x ^^
-        Heap.load_field Array.len_field ^^
+        Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Text ->
@@ -2907,10 +2908,10 @@ module Serialization = struct
           write env f.typ
         ) fs
       | Array t ->
-        write_word (get_x ^^ Heap.load_field Array.len_field) ^^
-        get_x ^^ Heap.load_field Array.len_field ^^
+        write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
+        get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           write env t
         )
       | (Prim Null | Shared) -> G.nop
@@ -3029,9 +3030,9 @@ module Serialization = struct
         let (set_x, get_x) = new_local env "x" in
 
         read_word ^^ set_len ^^
-        get_len ^^ Array.alloc env ^^ set_x ^^
+        get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^
           read env t ^^ store_ptr
         ) ^^
         get_x
@@ -3204,8 +3205,8 @@ module Serialization = struct
           set_refs_size ^^
 
           get_refs_size ^^
-          Array.alloc env ^^
-          compile_add_const Array.header_size ^^
+          Arr.alloc env ^^
+          compile_add_const Arr.header_size ^^
           compile_add_const ptr_unskew ^^
           set_refs_start ^^
 
@@ -3230,8 +3231,8 @@ module Serialization = struct
         get_data_size ^^
         compile_add_const 3l ^^
         compile_divU_const Heap.word_size ^^
-        Array.alloc env ^^
-        compile_add_const Array.header_size ^^
+        Arr.alloc env ^^
+        compile_add_const Arr.header_size ^^
         compile_add_const ptr_unskew ^^
         set_data_start ^^
 
@@ -3307,6 +3308,15 @@ module GC = struct
       get_end_to_space ^^
       G.i Return
     ] ^^
+
+    (* Get object size *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    (* Grow memory if needed *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    Heap.grow_memory env ^^
 
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
@@ -4093,16 +4103,16 @@ let compile_load_field env typ ({it=(Name n); _} as name) =
     ( Tagged.Object, Object.load_idx env typ name ) ::
     match n with
     | "len" ->
-      [ Tagged.Array, Array.partial_len env
+      [ Tagged.Array, Arr.partial_len env
       ; Tagged.Text, Text.partial_len env ]
     | "get" ->
-      [ Tagged.Array, Array.partial_get env ]
+      [ Tagged.Array, Arr.partial_get env ]
     | "set" ->
-      [ Tagged.Array, Array.partial_set env ]
+      [ Tagged.Array, Arr.partial_set env ]
     | "keys" ->
-      [ Tagged.Array, Array.keys_iter env ]
+      [ Tagged.Array, Arr.keys_iter env ]
     | "vals" ->
-      [ Tagged.Array, Array.vals_iter env ]
+      [ Tagged.Array, Arr.vals_iter env ]
     | "chars" ->
       [ Tagged.Text, Text.text_chars env ]
     | _ -> []
@@ -4121,7 +4131,7 @@ let rec compile_lexp (env : E.t) exp =
      compile_exp_vanilla env e1 ^^ (* offset to array *)
      compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-     Array.idx env,
+     Arr.idx env,
      store_ptr
   | DotE (e, n) ->
      compile_exp_vanilla env e ^^
@@ -4138,7 +4148,7 @@ and compile_exp (env : E.t) exp =
     compile_exp_vanilla env e1 ^^ (* offset to array *)
     compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    Array.idx env ^^
+    Arr.idx env ^^
     load_ptr
   | DotE (e, name) ->
     SR.Vanilla,
@@ -4282,8 +4292,8 @@ and compile_exp (env : E.t) exp =
           begin
            let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
            in match p with
-             | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
-             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+             | "Array.init" -> compile_kernel_as SR.Vanilla (Arr.init env)
+             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Arr.tabulate env)
              | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word8)
              | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word16)
              | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
@@ -4388,7 +4398,7 @@ and compile_exp (env : E.t) exp =
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
     Tuple.load_n (Int32.of_int n)
   | ArrayE (m, t, es) ->
-    SR.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
+    SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env) es)
   | CallE (cc, e1, _, e2) ->
     StackRep.of_arity (cc.Value.n_res),
     let fun_sr, code1 = compile_exp env e1 in
@@ -4889,7 +4899,7 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* persistent elembuf for memory *)
+      (* persistent elembuf for references *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };

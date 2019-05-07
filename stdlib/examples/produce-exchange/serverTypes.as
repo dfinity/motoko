@@ -79,18 +79,39 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
+ EntId
+ -------------------------------------------------------------------
+ An entity's ID; the optional payload of an `#idErr` error message
+*/
+type EntId = {
+  #user        : UserId ;
+  #truckType   : TruckTypeId ;
+  #region      : RegionId ;
+  #produce     : ProduceId ;
+  #producer    : ProducerId ;
+  #retailer    : RetailerId ;
+  #transporter : TransporterId ;
+  #inventory   : InventoryId ;
+  #route       : RouteId ;
+};
+
+/**
  Errors
  -----------
 */
 
+type OpEntId = ?EntId;
+
 type IdErr = {
-  #idErr;
+  // optional for now, to avoid a huge refactoring
+  #idErr: OpEntId;
 };
 
 type ServerErr = {
-  #idErr;
+  #idErr: OpEntId;
   #publicKeyErr;
 };
+
 
 
 /**
@@ -292,6 +313,8 @@ type ReservationInfo = shared {
   date_end:    Date;
   prod_cost:   PriceTotal;
   trans_cost:  PriceTotal;
+  inventoryId: InventoryId;
+  routeId:     RouteId;
 };
 
 
