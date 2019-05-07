@@ -8,7 +8,7 @@ LIBRARY_NAME = actorscript
 LANGUAGE_SERVER_DIR = language_server
 LANGUAGE_SERVER_BIN = aslan
 LANGUAGE_SERVER_MAIN = language_server_main
-LANGUAGE_SERVER_OPAM_PACKAGES = ppx_deriving_rpc rpclib
+LANGUAGE_SERVER_OPAM_PACKAGES = ppx_deriving_rpc rpclib rpclib.json rpclib.cmdliner
 
 ASC = `pwd`/$(NAME)
 
@@ -18,7 +18,7 @@ JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain --strict
 
-OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
+OCAML_FLAGS = -cflags '' #'-w +a-4-27-30-42-44-45-58 -warn-error +a'
 OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -use-ocamlfind \
  -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
@@ -54,7 +54,7 @@ $(LANGUAGE_SERVER_BIN): $(LANGUAGE_SERVER_MAIN).${BUILD}
 	mv $< $@
 
 $(LANGUAGE_SERVER_MAIN).${BUILD}: sanity
-	$(OCAMLBUILD) $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %) $(LANGUAGE_SERVER_DIR)/$@
+	$(OCAMLBUILD) -tag thread $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %) $(LANGUAGE_SERVER_DIR)/$@
 
 $(LIBRARY_NAME).cma: sanity
 	$(OCAMLBUILD) $@
