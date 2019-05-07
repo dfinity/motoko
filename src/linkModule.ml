@@ -98,28 +98,34 @@ let count_global_imports m =
   Lib.List32.length (List.filter is_global_import m.it.imports)
 
 
-let prepend_to_start fi m =
-  let imports_n = count_fun_imports m in
-  let ftype = Lib.List32.length m.it.types in
-  let wrap_fi = Int32.add imports_n (Lib.List32.length m.it.funcs) in
+let prepend_to_start fi (em : extended_module)  =
+  let imports_n = count_fun_imports em.module_ in
+  let ftype = Lib.List32.length em.module_.it.types in
+  let wrap_fi = Int32.add imports_n (Lib.List32.length em.module_.it.funcs) in
 
   let wrap_fun = {
     ftype = ftype @@ no_region;
     locals = [];
     body =
       [ Call (fi @@ no_region) @@ no_region ] @
-      (match m.it.start with
+      (match em.module_.it.start with
         | Some start_fi -> [ Call start_fi @@ no_region ]
         | None -> [])
     } @@ no_region in
 
-  phrase (fun (m : module_') ->
-    { m with
-      types = m.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
-      funcs = m.funcs @ [ wrap_fun ];
-      start = Some (wrap_fi @@ no_region)
-    }) m
-
+  { em with
+    module_ =
+      phrase (fun (m : module_') ->
+        { m with
+          types = m.types @ [ Wasm.Types.FuncType ([],[]) @@ no_region ];
+          funcs = m.funcs @ [ wrap_fun ];
+          start = Some (wrap_fi @@ no_region)
+        }) em.module_;
+    name =
+      { em.name with
+        function_names = em.name.function_names @ [ wrap_fi, "link_start" ]
+      }
+  }
 
 let remove_memory_import : module_ -> module_ =
   phrase (fun m ->
@@ -583,7 +589,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
     match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") fun_exports2 with
-    | None -> fun m -> m;
+    | None -> fun em -> em;
     | Some fi -> prepend_to_start (funs2 fi)
   in
 
@@ -612,5 +618,5 @@ let link (em : extended_module) libname (dm : dylink_module) =
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
-  |> in_extended add_call_ctors
+  |> add_call_ctors
   |> remove_non_definity_exports (* only sane if no additional files get linked in *)
