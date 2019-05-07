@@ -1745,6 +1745,8 @@ module BigNum = struct
   let compile_signed_mod env = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
   let compile_unsigned_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   let compile_unsigned_rem env = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+
+  let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
 end
 
 (* Primitive functions *)
@@ -4057,7 +4059,7 @@ let compile_lit env lit =
     | BoolLit true ->  SR.bool, Bool.lit true
     (* This maps int to int32, instead of a proper arbitrary precision library *)
     | IntLit n
-    | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n)
+    | NatLit n      -> SR.UnboxedInt64, compile_const_64 (Big_int.int64_of_big_int n) (*candidate*)
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
@@ -4115,7 +4117,7 @@ let rec compile_binop env t op =
   Syntax.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Prim Type.Nat,                       SubOp ->
+  | Type.Prim Type.Nat,                       SubOp -> (*candidate*)
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
@@ -4157,7 +4159,7 @@ let rec compile_binop env t op =
                  square_recurse_with_shifted (UnboxedSmallWord.sanitize_word_result ty) ^^
                  mul)))
      in pow ()
-  | Type.(Prim Int),                          PowOp ->
+  | Type.(Prim Int),                          PowOp -> (*candidate*)
      let _, pow = compile_binop env Type.(Prim Nat) PowOp in
      let (set_n, get_n) = new_local64 env "n" in
      let (set_exp, get_exp) = new_local64 env "exp" in
@@ -4165,7 +4167,7 @@ let rec compile_binop env t op =
      get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
-  | Type.(Prim (Nat|Word64)),                 PowOp ->
+  | Type.(Prim (Nat|Word64)),                 PowOp -> (*candidate*)
      let rec pow () = Func.share_code2 env "pow"
                         (("n", I64Type), ("exp", I64Type)) [I64Type]
                         Wasm.Values.(fun env get_n get_exp ->
@@ -4226,8 +4228,8 @@ let rec compile_binop env t op =
 let compile_eq env t = match t with
   | Type.Prim Type.Text -> Text.compare env
   | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Type.(Prim (Nat | Int)) ->          G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.(Prim Word64) ->               G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
+  | Type.(Prim Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
@@ -4243,8 +4245,8 @@ let compile_comparison env t op =
   let open Type in
   match t with
     | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Nat -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Int -> G.i (Compare (Wasm.Values.I64 s64op))
+    | Nat -> G.i (Compare (Wasm.Values.I64 u64op)) (*candidate*)
+    | Int -> G.i (Compare (Wasm.Values.I64 s64op)) (*candidate*)
     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
     | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
