@@ -5142,11 +5142,7 @@ and conclude_module env module_name start_fi_o =
   let emodule =
     let open CustomModule in
     { module_;
-      types = E.get_dfinity_types env;
-      persist =
-             [ (OrthogonalPersistence.mem_global, CustomModule.DataBuf)
-             ; (OrthogonalPersistence.elem_global, CustomModule.ElemBuf)
-             ];
+      dylink = None;
       name = {
         module_ = Some module_name;
         function_names =
@@ -5154,6 +5150,11 @@ and conclude_module env module_name start_fi_o =
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
       };
+      types = E.get_dfinity_types env;
+      persist =
+             [ (OrthogonalPersistence.mem_global, CustomModule.DataBuf)
+             ; (OrthogonalPersistence.elem_global, CustomModule.ElemBuf)
+             ];
     } in
 
   LinkModule.link emodule "rts" stdlib

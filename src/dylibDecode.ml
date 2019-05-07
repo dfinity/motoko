@@ -221,10 +221,10 @@ let dylib_module s =
   let name = name_section s in
   iterate skip_other_section s;
   require (pos s = len s) s (len s) "junk after last section";
-  (dynlink, name)
+  (Some dynlink, name)
 
 
 let decode name bs =
   let module_ = Wasm.Decode.decode name bs in
   let (dylink, name) = dylib_module (stream name bs) in
-  { module_; dylink; name }
+  { module_; dylink; name; types = []; persist = [] }

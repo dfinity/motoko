@@ -614,7 +614,8 @@ let encode (em : extended_module) =
 
       u32 0x6d736100l;
       u32 version;
-      (* optional dylink module *)
+      (* no use-case for encoding dylink section yet, but here would be the place *)
+      assert (em.dylink = None);
       type_section m.it.types;
       import_section m.it.imports;
       func_section m.it.funcs;

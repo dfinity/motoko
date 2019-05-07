@@ -1,2 +1,2 @@
-val decode : string -> string -> CustomModule.dylink_module (* raises Code *)
+val decode : string -> string -> CustomModule.extended_module (* raises Code *)
 

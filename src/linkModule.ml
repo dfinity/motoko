@@ -144,7 +144,7 @@ let remove_function_export name : module_ -> module_ =
 module VarMap = Map.Make(Int32)
 let remove_non_definity_exports (em : extended_module) : extended_module =
   (* We assume that every expoted function that does not have an entry in the
-   custom types section was only expoted for linking, and should not be
+   custom types section was only exported for linking, and should not be
    exported in the final module *)
   let dfinity_exports = List.fold_left
     (fun map (fi, _) -> VarMap.add fi () map)
@@ -523,48 +523,52 @@ let align p n =
 
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
-let link (em : extended_module) libname (dm : dylink_module) =
+let link (em1 : extended_module) libname (em2 : extended_module) =
 
-  let global_exports1 = find_global_exports em.module_ in
+  let global_exports1 = find_global_exports em1.module_ in
 
   let heap_global =
     match NameMap.find_opt (Wasm.Utf8.decode "__heap_base") global_exports1 with
     | None -> raise (LinkError "First module does not export __heap_base")
     | Some gi -> gi in
 
-  (* Beginning of unused space *)
-  let old_heap_start = read_global heap_global em.module_ in
-  let lib_heap_start = align dm.dylink.memory_alignment old_heap_start in
-  let new_heap_start = align 4l (Int32.add lib_heap_start dm.dylink.memory_size) in
+  let dylink = match em2.dylink with
+    | Some dylink -> dylink
+    | None -> raise (LinkError "Second module does not have a dylink section") in
 
-  let old_elem_size = read_table_size em.module_ in
-  let lib_elem_start = align dm.dylink.table_alignment old_elem_size in
-  let new_elem_size = Int32.add lib_elem_start dm.dylink.table_size in
+  (* Beginning of unused space *)
+  let old_heap_start = read_global heap_global em1.module_ in
+  let lib_heap_start = align dylink.memory_alignment old_heap_start in
+  let new_heap_start = align 4l (Int32.add lib_heap_start dylink.memory_size) in
+
+  let old_elem_size = read_table_size em1.module_ in
+  let lib_elem_start = align dylink.table_alignment old_elem_size in
+  let new_elem_size = Int32.add lib_elem_start dylink.table_size in
 
   (* Fill in memory base pointer  *)
-  let dm2 = dm.module_
+  let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start
     |> fill_table_base_import lib_elem_start in
 
   (* Link functions *)
-  let fun_required1 = find_fun_imports libname em.module_ in
+  let fun_required1 = find_fun_imports libname em1.module_ in
   let fun_required2 = find_fun_imports "env" dm2 in
-  let fun_exports1 = find_fun_exports em.module_ in
+  let fun_exports1 = find_fun_exports em1.module_ in
   let fun_exports2 = find_fun_exports dm2 in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
   let fun_resolved21 = resolve fun_required2 fun_exports1  in
   let (funs1, funs2) =
     calculate_renaming
-      (count_fun_imports em.module_)
-      (Lib.List32.length em.module_.it.funcs)
+      (count_fun_imports em1.module_)
+      (Lib.List32.length em1.module_.it.funcs)
       (count_fun_imports dm2)
       (Lib.List32.length dm2.it.funcs)
       fun_resolved12
       fun_resolved21 in
 
   (* Link globals *)
-  let global_required1 = find_global_imports libname em.module_ in
+  let global_required1 = find_global_imports libname em1.module_ in
   let global_required2 = find_global_imports "env" dm2 in
   let global_exports2 = find_global_exports dm2 in
   (* Resolve imports, to produce a renumbering globalction: *)
@@ -572,8 +576,8 @@ let link (em : extended_module) libname (dm : dylink_module) =
   let global_resolved21 = resolve global_required2 global_exports1  in
   let (globals1, globals2) =
     calculate_renaming
-      (count_global_imports em.module_)
-      (Lib.List32.length em.module_.it.globals)
+      (count_global_imports em1.module_)
+      (Lib.List32.length em1.module_.it.globals)
       (count_global_imports dm2)
       (Lib.List32.length dm2.it.globals)
       global_resolved12
@@ -582,7 +586,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
 
 
   (* Rename types *)
-  let ty_offset2 = Int32.of_int (List.length (em.module_.it.types)) in
+  let ty_offset2 = Int32.of_int (List.length (em1.module_.it.types)) in
   let tys2 t = Int32.(add t ty_offset2) in
 
   (* Inject call to "__wasm_call_ctors" *)
@@ -595,7 +599,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
   assert (dm2.it.globals = []);
 
   join_modules
-    ( em
+    ( em1
     |> in_extended (remove_fun_imports fun_resolved12)
     |> in_extended (remove_global_imports global_resolved12)
     |> rename_funcs_extended funs1
@@ -613,7 +617,7 @@ let link (em : extended_module) libname (dm : dylink_module) =
     |> rename_types tys2
     |> remove_function_export "__wasm_call_ctors"
     )
-    ( dm.name
+    ( em2.name
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
