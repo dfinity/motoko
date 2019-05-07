@@ -1520,6 +1520,27 @@ module BoxedWord = struct
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
 
+  let compile_unsigned_pow env mul_code bt =
+    let rec pow () = Func.share_code2 env "pow"
+                       (("n", I64Type), ("exp", I64Type)) [I64Type]
+                       Wasm.Values.(fun env get_n get_exp ->
+         let one = compile_const_64 1L in
+         let (set_res, get_res) = new_local64 env "res" in
+         let square_recurse_with_shifted =
+           get_n ^^ get_exp ^^ one ^^
+           G.i (Binary (I64 I64Op.ShrU)) ^^
+           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul_code
+         in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+            G.if_ bt
+             one
+             (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
+              G.if_ bt
+                square_recurse_with_shifted
+                (get_n ^^
+                 square_recurse_with_shifted ^^
+                 mul_code)))
+    in pow ()
+
 end (* BoxedWord *)
 
 module BoxedSmallWord = struct
@@ -4173,27 +4194,8 @@ let rec compile_binop env t op =
      get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
-  | Type.(Prim (Nat|Word64)),                 PowOp -> (*candidate*)
-     let rec pow () = Func.share_code2 env "pow"
-                        (("n", I64Type), ("exp", I64Type)) [I64Type]
-                        Wasm.Values.(fun env get_n get_exp ->
-         let one = compile_const_64 1L in
-         let (set_res, get_res) = new_local64 env "res" in
-         let mul = snd (compile_binop env t MulOp) in
-         let square_recurse_with_shifted =
-           get_n ^^ get_exp ^^ one ^^
-           G.i (Binary (I64 I64Op.ShrU)) ^^
-           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
-         in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
-             one
-             (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ (StackRep.to_block_type env SR.UnboxedInt64)
-                square_recurse_with_shifted
-                (get_n ^^
-                 square_recurse_with_shifted ^^
-                 mul)))
-     in pow ()
+  | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64)
+  | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env BigNum.preferred_SR)
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
