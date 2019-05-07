@@ -1466,7 +1466,6 @@ end (* Closure *)
 
 module BoxedWord = struct
   (* We store large nats and ints in immutable boxed 64bit heap objects.
-     Eventually, this should contain the bigint implementation.
 
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
@@ -1694,6 +1693,8 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
+module BigNum = BoxedWord
+
 (* Primitive functions *)
 module Prim = struct
   open Wasm.Values
@@ -1702,15 +1703,15 @@ module Prim = struct
     let (set_i, get_i) = new_local env "abs_param" in
     set_i ^^
     get_i ^^
-    BoxedWord.unbox env ^^
+    BigNum.unbox env ^^
     compile_const_64 0L ^^
     G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
     G.if_ (ValBlockType (Some I32Type))
       ( compile_const_64 0L ^^
         get_i ^^
-        BoxedWord.unbox env ^^
+        BigNum.unbox env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        BoxedWord.box env
+        BigNum.box env
       )
       ( get_i )
 
@@ -2116,7 +2117,7 @@ module Text = struct
           end ^^
         get_len ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BoxedWord.box env
+        BigNum.box env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2211,7 +2212,7 @@ module Arr = struct
       let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
         let get_idx = G.i (LocalGet (nr 1l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BoxedWord.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        get_idx ^^ BigNum.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         idx env ^^
         load_ptr
       )) in
@@ -2224,7 +2225,7 @@ module Arr = struct
         let get_idx = G.i (LocalGet (nr 1l)) in
         let get_val = G.i (LocalGet (nr 2l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BoxedWord.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        get_idx ^^ BigNum.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         idx env ^^
         get_val ^^
         store_ptr
@@ -2238,7 +2239,7 @@ module Arr = struct
         Closure.get ^^ Closure.load_data 0l ^^
         Heap.load_field len_field ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BoxedWord.box env1
+        BigNum.box env1
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2254,7 +2255,7 @@ module Arr = struct
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BoxedWord.box32 env (* return the boxed index *)
+        get_i ^^ BigNum.box32 env (* return the boxed index *)
       )
 
   let vals_iter env =
@@ -2293,7 +2294,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BoxedWord.unbox env ^^
+    BigNum.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     set_len ^^
 
@@ -2318,7 +2319,7 @@ module Arr = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     set_f ^^
-    BoxedWord.unbox env ^^
+    BigNum.unbox env ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     set_len ^^
 
@@ -2337,7 +2338,7 @@ module Arr = struct
       (* The arg *)
       get_i ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      BoxedWord.box env ^^
+      BigNum.box env ^^
       (* The closure again *)
       get_f ^^
       (* Call *)
@@ -2942,7 +2943,12 @@ module Serialization = struct
       (* Now the actual serialization *)
 
       begin match t with
-      | Prim (Nat | Int | Word64) ->
+      | Prim (Nat | Int) ->
+        get_data_buf ^^
+        get_x ^^ BigNum.unbox env ^^
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l ^^ advance_data_buf
+      | Prim Word64 ->
         get_data_buf ^^
         get_x ^^ BoxedWord.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
@@ -3066,7 +3072,12 @@ module Serialization = struct
 
       (* Now the actual deserialization *)
       begin match t with
-      | Prim (Nat | Int | Word64) ->
+      | Prim (Nat | Int) ->
+        get_data_buf ^^
+        G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
+        BigNum.box env ^^
+        compile_unboxed_const 8l ^^ advance_data_buf (* 64 bit *)
+      | Prim Word64 ->
         get_data_buf ^^
         G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
         BoxedWord.box env ^^
@@ -4662,7 +4673,7 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BoxedWord.unbox env ^^
+    BigNum.unbox env ^^
     compile_lit_as env SR.UnboxedInt64 l ^^
     compile_eq env (Type.Prim Type.Nat)
   | Syntax.(TextLit t) ->
