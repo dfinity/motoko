@@ -79,39 +79,18 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
- EntId
- -------------------------------------------------------------------
- An entity's ID; the optional payload of an `#idErr` error message
-*/
-type EntId = {
-  #user        : UserId ;
-  #truckType   : TruckTypeId ;
-  #region      : RegionId ;
-  #produce     : ProduceId ;
-  #producer    : ProducerId ;
-  #retailer    : RetailerId ;
-  #transporter : TransporterId ;
-  #inventory   : InventoryId ;
-  #route       : RouteId ;
-};
-
-/**
  Errors
  -----------
 */
 
-type OpEntId = ?EntId;
-
 type IdErr = {
-  // optional for now, to avoid a huge refactoring
-  #idErr: OpEntId;
+  #idErr;
 };
 
 type ServerErr = {
-  #idErr: OpEntId;
+  #idErr;
   #publicKeyErr;
 };
-
 
 
 /**

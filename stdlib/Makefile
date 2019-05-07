@@ -19,8 +19,6 @@ MODULES=\
 	SetDb \
 	SetDbTest \
 	ProduceExchange \
-	retailerReserveMany \
-
 
 WASM=\
   ProduceExchange
@@ -154,10 +152,6 @@ PRODUCE_EXCHANGE_SRC=\
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
-
-$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as

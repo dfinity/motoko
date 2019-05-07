@@ -836,7 +836,7 @@ than the MVP goals, however.
     let (producer_, produce_) = {
       switch (oproducer, oproduce) {
       case (?producer, ?produce) (producer, produce);
-      case _ { return #err(#idErr null) };
+      case _ { return #err(#idErr) };
       }};
 
     /**- Create the inventory item document: */
@@ -924,10 +924,10 @@ than the MVP goals, however.
              if ( inventory.producer == producer.id ) {
                (inventory, producer, produce)
              } else {
-               return (#err(#idErr null))
+               return (#err(#idErr))
              }
            };
-      case _ { return (#err(#idErr null)) };
+      case _ { return (#err(#idErr)) };
       }};
 
     /**- remove the inventory item; given the validation above, this cannot fail. */
@@ -957,7 +957,7 @@ than the MVP goals, however.
     /**- validate the `id` */
     /// xxx macro for this pattern?
     let doc = switch (inventoryTable.getDoc(id)) {
-      case null { return #err(#idErr null) };
+      case null { return #err(#idErr) };
       case (?doc) { doc };
     };
 
@@ -1058,7 +1058,7 @@ than the MVP goals, however.
     let (transporter, start_region_, end_region_, truck_type_) = {
       switch (otransporter, orstart, orend, otrucktype) {
       case (?x1, ?x2, ?x3, ?x4) (x1, x2, x3, x4);
-      case _ { return #err(#idErr null) };
+      case _ { return #err(#idErr) };
       }};
     let transporterId = transporter.id;
 
@@ -1147,10 +1147,10 @@ than the MVP goals, however.
              if ( route.transporter == transporter.id ) {
                (route, transporter, x2, x3, x4);
              } else {
-               return #err(#idErr null)
+               return #err(#idErr)
              }
            };
-      case _ { return #err(#idErr null) };
+      case _ { return #err(#idErr) };
       }};
 
     /**- remove the route; given the validation above, this cannot fail. */
@@ -1181,7 +1181,7 @@ than the MVP goals, however.
   transporterRemRoute(id:T.RouteId) : Result<(),T.ServerErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
-      case null { return #err(#idErr null) };
+      case null { return #err(#idErr) };
       case (?doc) { doc };
     };
 
@@ -1547,28 +1547,19 @@ than the MVP goals, however.
     // xxx -- AS wishlist: macros that expand into case-null-return-#err forms, like below:
 
     let retailerDocOp = retailerTable.getDoc(retailer_id);
-    let retailerDoc = switch retailerDocOp {
-    case null return #err(#idErr(?#retailer(retailer_id)));
-    case (?x) x};
+    let retailerDoc = switch retailerDocOp { case null return #err(#idErr); case (?x) x};
 
     let routeDocOp = routeTable.getDoc(route_id);
-    let routeDoc = switch routeDocOp {
-    case null return #err(#idErr(?#route(route_id))); case (?x) x};
+    let routeDoc = switch routeDocOp { case null return #err(#idErr); case (?x) x};
 
     let transporterDocOp = transporterTable.getDoc(routeDoc.transporter);
-    let transporterDoc = switch transporterDocOp {
-    // internal error, if any:
-    case null return #err(#idErr null); case (?x) x};
+    let transporterDoc = switch transporterDocOp { case null return #err(#idErr); case (?x) x};
 
     let inventoryDocOp = inventoryTable.getDoc(inventory_id);
-    let inventoryDoc = switch inventoryDocOp {
-    case null return #err(#idErr(?#inventory(inventory_id)));
-    case (?x) x};
+    let inventoryDoc = switch inventoryDocOp { case null return #err(#idErr); case (?x) x};
 
     let producerDocOp = producerTable.getDoc(inventoryDoc.producer);
-    let producerDoc = switch producerDocOp {
-    // internal error, if any:
-    case null return #err(#idErr null); case (?x) x};
+    let producerDoc = switch producerDocOp { case null return #err(#idErr); case (?x) x};
 
     /**if no errors in any results above, then continue: */
 
@@ -1706,21 +1697,21 @@ than the MVP goals, however.
   */
   retailerReserveMany(
     id:T.RetailerId,
-    array:[(T.InventoryId,T.RouteId)])
+    list:[(T.InventoryId,T.RouteId)])
     : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>]
   {
     let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>)>(
-      array.len(),
+      list.len(),
       null
     );
-    for (i in array.keys()) {
-      let (item, route) = array[i];
+    for (i in (range(0,list.len()))) {
+      let (item, route) = list[i];
       let x = retailerReserve(id, item, route);
       a[i] := ?x;
     };
     let results =
       Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(
-        array.len(),
+        list.len(),
         func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>{
           Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(a[i])
         });
