@@ -6,7 +6,7 @@ MDofMD=./markdown-of-markdown.py
 PANDOC=pandoc
 
 # Add new module targets here:
-MODULES=\
+TESTS=\
 	Option \
 	Result \
 	Hash \
@@ -20,12 +20,13 @@ MODULES=\
 	SetDbTest \
 	ProduceExchange \
 	retailerReserveMany \
+	evalBulk \
 
 
 WASM=\
   ProduceExchange
 
-OUTFILES=$(addsuffix .out, $(MODULES)) $(addsuffix .wasm, $(WASM))
+OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
 OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 
@@ -161,6 +162,10 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as

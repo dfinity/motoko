@@ -73,39 +73,149 @@ class Model() {
    ----------
    evaluate an API call (a "request"), represented as an AS datatype.
 
-   supported calls currently consists of an add (`#add`), remove (`#rem`), or update (`#update`).
+   supported calls currently consists of each kind of "add", where
+   each request has the form `#add (entityTag entityInfo)`, and
+   where the type of `entityInfo` varies with each `entityTag` case.
+
+   In each case, the evaluation logic either directly adds the entity
+   to the relevant master table (e.g., the `#add #trucktype` case), or it
+   uses an existing operation to do so, and keeps additional indexing
+   maps up to date (e.g., `producerAddInventory`).  Critically, since
+   this file does not perform access control checks, that logic is
+   separate from this semantic model-level logic.
+
+   To do, each similar to the `producerAddInventory` case:
+   - remove (`#rem`) cases
+   - update (`#update`) cases
+
    */
-  evalReq(req:L.Req) : Result<L.Resp, T.ServerErr> {
+  evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
     switch req {
-    case (#add info) {
-           switch (info) {
-             case (#user info) {
-                    Result.fromSomeMap<T.UserId,L.Resp,T.ServerErr>(
-                      addUser(
-                        info.public_key,
-                        info.user_name,
-                        info.description,
-                        info.region,
-                        info.isDeveloper,
-                        info.isProducer,
-                        info.isRetailer,
-                        info.isTransporter
-                      ),
-                      func (id:T.UserId):L.Resp = #add(#user(id)),
-                      #idErr
-                    )
-                  };
-             case _ {
-                    P.nyi()
-                  };
-           }
-         };
-    case (#update info ) {
-           P.nyi()
-         };
-    case (#rem id) {
-           P.nyi()
-         };
+    case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
+           truckTypeTable.addInfoGetId(
+             func (id_:T.TruckTypeId) : T.TruckTypeInfo =
+               shared {
+                 id=id_;
+                 short_name=info.short_name;
+                 description=info.description;
+                 capacity=info.capacity;
+                 isFridge=info.isFridge;
+                 isFreezer=info.isFreezer;
+               }
+           ),
+           func (id:T.TruckTypeId):L.Resp = #add(#truckType(id)),
+           #idErr null
+         );
+
+    case (#add (#region info)) Result.fromSomeMap<T.RegionId,L.Resp,T.IdErr>(
+           regionTable.addInfoGetId(
+             func (id_:T.RegionId) : T.RegionInfo =
+               shared {
+                 id = id_;
+                 short_name=info.short_name;
+                 description=info.description
+               }
+           ),
+           func (id:T.RegionId):L.Resp = #add(#region(id)),
+           #idErr null
+         );
+
+    case (#add (#produce info)) Result.fromSomeMap<T.ProduceId,L.Resp,T.IdErr>(
+           produceTable.addInfoGetId(
+             func (id_:T.ProduceId) : T.ProduceInfo =
+               shared {
+                 id = id_;
+                 short_name=info.short_name;
+                 description=info.description;
+                 grade=info.grade
+               }
+           ),
+           func (id:T.ProduceId):L.Resp = #add(#produce(id)),
+           #idErr null
+         );
+
+    case (#add (#producer info)) Result.fromSomeMap<T.ProducerId,L.Resp,T.IdErr>(
+           producerTable.addInfoGetId(
+             func(id_:T.ProducerId):T.ProducerInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 region=info.region;
+                 inventory=[];
+                 reserved=[];
+               }
+             }
+           ),
+           func (id:T.ProducerId):L.Resp = #add(#producer(id)),
+           #idErr null
+         );
+
+    case (#add (#transporter info)) Result.fromSomeMap<T.TransporterId,L.Resp,T.IdErr>(
+           transporterTable.addInfoGetId(
+             func(id_:T.TransporterId):T.TransporterInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 routes=[];
+                 reserved=[];
+               }
+             }
+           ),
+           func (id:T.TransporterId):L.Resp = #add(#transporter(id)),
+           #idErr null
+         );
+
+    case (#add (#route info)) Result.mapOk<T.RouteId,L.Resp,T.IdErr>(
+           transporterAddRoute(
+             null,
+             info.transporter,
+             info.start_region,
+             info.end_region,
+             info.start_date,
+             info.end_date,
+             info.cost,
+             info.truck_type
+           ),
+           func (id:T.RouteId):L.Resp = #add(#route(id))
+         );
+
+    case (#add (#inventory info)) Result.mapOk<T.InventoryId,L.Resp,T.IdErr>(
+           producerAddInventory(
+             null,
+             info.producer,
+             info.produce,
+             info.quantity,
+             info.weight,
+             info.ppu,
+             info.start_date,
+             info.end_date,
+             info.comments,
+           ),
+           func (id:T.RouteId):L.Resp = #add(#route(id))
+         );
+
+    case (#add (#user info)) Result.fromSomeMap<T.UserId,L.Resp,T.IdErr>(
+           addUser(
+             info.public_key,
+             info.user_name,
+             info.description,
+             info.region,
+             info.isDeveloper,
+             info.isProducer,
+             info.isRetailer,
+             info.isTransporter
+           ),
+           func (id:T.UserId):L.Resp = #add(#user(id)),
+           #idErr null
+         );
+
+    case (#add _) P.unreachable();
+
+    case _ P.nyi();
     }
   };
 
@@ -116,7 +226,27 @@ class Model() {
    Each bulk request consists of an array of similar requests (adds, updates, or removes).
    */
   evalBulk(req:L.BulkReq) : L.BulkResp {
-    P.nyi()
+    func eatAdd (x:L.Resp) : T.EntId =
+      switch x { case (#add i) i; case _ P.unreachable() };
+    switch req {
+      case (#add reqs)
+      #add (
+        Array_tabulate<Result<T.EntId, T.IdErr>>(
+          reqs.len(),
+          func(i:Nat):Result<T.EntId, T.IdErr> =
+            Result.mapOk<L.Resp, T.EntId, T.IdErr>(
+              evalReq(#add(reqs[i])),
+              eatAdd
+            )
+        )
+      );
+
+      case (#rem reqs)
+      P.nyi();
+
+      case (#update reqs)
+      P.nyi();
+    }
   };
 
   /**
@@ -127,8 +257,11 @@ class Model() {
    - The request is an array of bulk request, and
    - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
    */
-  evalBulkArray(req:[L.BulkReq]) : [L.BulkResp] {
-    P.nyi()
+  evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
+    Array_tabulate<L.BulkResp>(
+      reqs.len(),
+      func(i:Nat):L.BulkResp = evalBulk(reqs[i])
+    )
   };
 
 
@@ -889,7 +1022,7 @@ than the MVP goals, however.
   */
   producerAddInventory(
     iid_       : ?T.InventoryId,
-    id_        : T.UserId,
+    id_        : T.ProducerId,
     produce_id : T.ProduceId,
     quantity_  : T.Quantity,
     weight_    : T.Weight,
@@ -897,7 +1030,7 @@ than the MVP goals, however.
     start_date_: T.Date,
     end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<T.InventoryId, T.ServerErr>
+  ) : Result<T.InventoryId, T.IdErr>
   {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
@@ -980,7 +1113,7 @@ than the MVP goals, however.
     start_date_: T.Date,
     end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<(),T.ServerErr>
+  ) : Result<(),T.IdErr>
   {
     /**- Validate these ids; fail here if anything is invalid: */
     let oproducer: ?M.ProducerDoc = producerTable.getDoc(id_);
@@ -1118,7 +1251,7 @@ than the MVP goals, however.
     end_date_:       T.Date,
     cost_:           T.Price,
     trucktype_id:    T.TruckTypeId
-  ) : Result<T.RouteId,T.ServerErr> {
+  ) : Result<T.RouteId,T.IdErr> {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1200,7 +1333,7 @@ than the MVP goals, however.
     end_date_       : T.Date,
     cost_           : T.Price,
     trucktype_id    : T.TruckTypeId
-  ) : Result<(),T.ServerErr> {
+  ) : Result<(),T.IdErr> {
     /** The model updates routes and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1249,7 +1382,7 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(id:T.RouteId) : Result<(),T.ServerErr> {
+  transporterRemRoute(id:T.RouteId) : Result<(),T.IdErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return #err(#idErr null) };
@@ -1611,7 +1744,7 @@ than the MVP goals, however.
   retailerReserve(
     retailer_id:T.RetailerId,
     inventory_id:T.InventoryId,
-    route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>
+    route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>
   {
     /** ### validate Ids */
 
@@ -1778,9 +1911,9 @@ than the MVP goals, however.
   retailerReserveMany(
     id:T.RetailerId,
     array:[(T.InventoryId,T.RouteId)])
-    : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>]
+    : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>]
   {
-    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>)>(
+    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>)>(
       array.len(),
       null
     );
@@ -1790,10 +1923,10 @@ than the MVP goals, however.
       a[i] := ?x;
     };
     let results =
-      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(
+      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(
         array.len(),
-        func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>{
-          Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(a[i])
+        func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>{
+          Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(a[i])
         });
     results
   };

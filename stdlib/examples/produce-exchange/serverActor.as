@@ -7,6 +7,7 @@
 let P = (import "../../prelude.as");
 let Option = (import "../../option.as");
 let T = (import "serverTypes.as");
+let L = (import "serverLang.as");
 let Model = (import "serverModel.as");
 let Result = (import "../../result.as");
 
@@ -1041,6 +1042,17 @@ been processed
 
   devViewRetailers() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
+  };
+
+
+  /**
+   `evalBulk`
+   -------------------
+   evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
+   */
+
+  evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+    getModel().evalBulkArray(reqs)
   };
 
 

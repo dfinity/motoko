@@ -5,12 +5,10 @@
 
  A simple DSL for scripting interactions with the Produce Exchange (PX) server.
 
- PS: This file demosntrates (one of _many_ reasons) why we aren't using GoLang for the PX.
 */
 
 let Result = (import "../../result.as");
 type Result<Ok,Err> = Result.Result<Ok,Err>;
-
 let T = import "serverTypes.as";
 
 /**
@@ -25,7 +23,7 @@ let T = import "serverTypes.as";
 type Req = {
   #add    : AddReq ;
   #update : UpdateReq ;
-  #rem    : EntId ;
+  #rem    : T.EntId ;
 } ;
 
 /**
@@ -41,7 +39,7 @@ type Req = {
  - [bulk response](#bulkresp)
 */
 type Resp = {
-  #add    : EntId;
+  #add    : T.EntId;
   #update : ();
   #rem    : ();
 } ;
@@ -49,6 +47,7 @@ type Resp = {
 /**
  `ResultResp`
  --------------------------------------
+ A `Result` whose OK type is `Resp`.
 */
 type ResultResp = Result<Resp, T.ServerErr>;
 
@@ -64,7 +63,7 @@ type ResultResp = Result<Resp, T.ServerErr>;
 type BulkReq = {
   #add    : [ AddReq    ] ;
   #update : [ UpdateReq ] ;
-  #rem    : [ EntId     ] ;
+  #rem    : [ T.EntId     ] ;
 } ;
 
 /**
@@ -75,9 +74,9 @@ type BulkReq = {
  See also: [bulk request](#bulkreq).
 */
 type BulkResp = {
-  #add    : [ Result<EntId, T.ServerErr> ] ;
-  #update : [ Result<(),    T.ServerErr> ] ;
-  #rem    : [ Result<(),    T.ServerErr> ] ;
+  #add    : [ Result<T.EntId, T.IdErr> ] ;
+  #update : [ Result<(), T.IdErr> ] ;
+  #rem    : [ Result<(), T.IdErr> ] ;
 } ;
 
 
@@ -90,6 +89,22 @@ type UserAddReq = shared {
   isProducer: Bool;
   isRetailer: Bool;
   isTransporter: Bool;
+};
+
+/**
+ `RouteAddReq`
+ ----------------
+ Note: The `RouteInfo` type contains too much information about truck types to use here in place of this type.
+ */
+type RouteAddReq = shared {
+  id : T.RouteId;
+  transporter : T.TransporterId;
+  truck_type : T.TruckTypeId;
+  start_region : T.RegionId;
+  end_region : T.RegionId;
+  start_date : T.Date;
+  end_date : T.Date;
+  cost : T.Price;
 };
 
 /**
@@ -106,7 +121,7 @@ type AddReq = {
   #retailer    : T.RetailerInfo ;
   #transporter : T.TransporterInfo ;
   #inventory   : T.InventoryInfo ;
-  #route       : T.RouteInfo ;
+  #route       : RouteAddReq ;
 } ;
 
 /**
@@ -125,20 +140,3 @@ type UpdateReq = {
   #inventory   : (T.InventoryId,   T.InventoryInfo) ;
   #route       : (T.RouteId,       T.RouteInfo) ;
 } ;
-
-/**
- EntId
- --------------------------------------
- An entity's ID; the response of an `Add` request
-*/
-type EntId = {
-  #user        : T.UserId ;
-  #truckType   : T.TruckTypeId ;
-  #region      : T.RegionId ;
-  #produce     : T.ProduceId ;
-  #producer    : T.ProducerId ;
-  #retailer    : T.RetailerId ;
-  #transporter : T.TransporterId ;
-  #inventory   : T.InventoryId ;
-  #route       : T.RouteId ;
-}
