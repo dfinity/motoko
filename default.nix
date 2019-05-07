@@ -1,4 +1,4 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix) {},
+{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
   test-dvm ? true,
   dvm ? null,
 }:
@@ -36,7 +36,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "b6f587c3303b9f2585548e5fcb98f907b0275219";
+        rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
       }; in
       (import dev {}).dvm
     else null
