@@ -1726,6 +1726,8 @@ module BigNum = struct
 
   let preferred_SR = SR.UnboxedInt64
 
+  let local = new_local64
+
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n)
 
   (* given a numeric object on stack (vanilla),
@@ -1780,6 +1782,16 @@ module BigNum = struct
 
   let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   let compile_relop env bigintop i64op = G.i (Compare (Wasm.Values.I64 i64op))
+  let compile_is_negative env = compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+
+  (* given a numeric object on the stack,
+     compile the literal and leave equality
+     comparison result on the stack
+   *)
+  let compile_lit_pat env compile_lit =
+    unbox env ^^
+    compile_lit ^^
+    compile_eq env
 end
 
 (* Primitive functions *)
@@ -4187,12 +4199,12 @@ let rec compile_binop env t op =
                  square_recurse_with_shifted (UnboxedSmallWord.sanitize_word_result ty) ^^
                  mul)))
      in pow ()
-  | Type.(Prim Int),                          PowOp -> (*candidate*)
+  | Type.(Prim Int),                          PowOp ->
      let _, pow = compile_binop env Type.(Prim Nat) PowOp in
-     let (set_n, get_n) = new_local64 env "n" in
-     let (set_exp, get_exp) = new_local64 env "exp" in
+     let (set_n, get_n) = BigNum.local env "n" in
+     let (set_exp, get_exp) = BigNum.local env "exp" in
      set_exp ^^ set_n ^^
-     get_exp ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+     get_exp ^^ BigNum.compile_is_negative env ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64)
@@ -4725,10 +4737,8 @@ and compile_lit_pat env l =
   | Syntax.BoolLit false ->
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | Syntax.(NatLit _ | IntLit _) -> (*candidate*)
-    BigNum.unbox env ^^
-    compile_lit_as env SR.UnboxedInt64 l ^^
-    compile_eq env (Type.Prim Type.Nat(*!*))
+  | Syntax.(NatLit _ | IntLit _) ->
+    BigNum.compile_lit_pat env (compile_lit_as env BigNum.preferred_SR l)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env

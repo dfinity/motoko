@@ -13,6 +13,7 @@ Besides the usual arithmetics it supports:
 - Match literal pattern
 
 Can be queried about the preferred stack representation
+Can create locals
 
 Arithmetic operations
 
