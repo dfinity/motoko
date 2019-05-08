@@ -21,6 +21,9 @@ nixpkgs.mkShell {
     default.users-guide.buildInputs ++
     [ nixpkgs.ncurses ];
 
-  NIX_FONTCONFIG_FILE = default.users-guide.NIX_FONTCONFIG_FILE;
+  shellHook =
+    default.rts.preBuild + ''
+      export NIX_FONTCONFIG_FILE=${default.users-guide.NIX_FONTCONFIG_FILE};
+    '';
 }
 

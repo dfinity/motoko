@@ -63,13 +63,15 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl)/"
-    "test/(fail|run|run-dfinity|repl)/lib/"
-    "test/(fail|run|run-dfinity|repl)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl)/.*.as"
-    "test/(fail|run|run-dfinity|repl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl)/ok/"
-    "test/(fail|run|run-dfinity|repl)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl|ld)/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.as"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.sh"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.wat"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.c"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -117,9 +119,12 @@ rec {
     buildInputs = with nixpkgs; with llvm;
       [ clang_9 lld_9 ] ;
 
-    buildPhase = ''
-      make CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"  WASM_LD=wasm-ld TOMMATHSRC=${libtommath}
+    preBuild = ''
+      export CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"
+      export WASM_LD=wasm-ld
     '';
+
+    makeFlags = [ "TOMMATHSRC=${libtommath}" ];
 
     installPhase = ''
       mkdir -p $out/rts
@@ -184,18 +189,21 @@ rec {
         nixpkgs.perl
         filecheck
       ] ++
-      (if test-dvm then [ real-dvm ] else []);
+      (if test-dvm then [ real-dvm ] else []) ++
+      rts.buildInputs;
 
-    buildPhase = ''
-      patchShebangs .
-      asc --version
-      make -C samples ASC=asc all
-    '' +
-      (if test-dvm
-      then ''
-      make -C test ASC=asc parallel
+    buildPhase =
+      rts.preBuild + ''
+        patchShebangs .
+        asc --version
+        export ASC=asc
+        export AS_LD=as-ld
+        make -C samples all
+      '' +
+      (if test-dvm then ''
+        make -C test parallel
       '' else ''
-      make -C test ASC=asc quick
+        make -C test quick
       '');
 
     installPhase = ''

@@ -1,5 +1,5 @@
-CLANG = clang-9
-WASM_LD = wasm-ld-9
+CLANG ?= clang-9
+WASM_LD ?= wasm-ld-9
 
 TOMMATHFUNCS=\
    mp_init mp_add mp_sub mp_mul mp_zero mp_cmp mp_init_set_int mp_set_long mp_set_int \

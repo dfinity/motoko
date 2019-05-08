@@ -2,7 +2,7 @@
 
 # This works with bash
 
-ASC=../src/asc
+ASC?=../src/asc
 ASC_FLAGS=-r -t -v
 
 
@@ -10,6 +10,7 @@ SAMPLES:=$(basename $(wildcard *.as))
 SUBDIRS:=$(shell ls -d */)
 
 all:
+	echo bash: $$ASC make $(ASC)
 	rm -f *.txt
 	@for sample in $(SAMPLES); do \
 	  echo "$(ASC) $(ASC_FLAGS) $$sample.as >$$sample.txt 2>&1"; \
