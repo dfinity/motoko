@@ -39,7 +39,7 @@ function build_ref_to {
       --argstr path "$(realpath "$(dirname $0)/..")" \
       -E '
       {rev, ref, path}:
-      let nixpkg = import (../nix/nixpkgs.nix) {}; in
+      let nixpkg = import (../nix/nixpkgs.nix).nixpkgs {}; in
       let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev; name = "old-asc";}).outPath; in
       builtins.trace checkout (
       ((import checkout) {}).native)' \

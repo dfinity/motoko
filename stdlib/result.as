@@ -66,6 +66,24 @@ func assertErr(r:Result<Any,Any>) {
 };
 
 /**
+ `assertErrIs`
+ ---------------
+*/
+func assertErrIs<E>(r:Result<Any,E>, f:E->Bool) : Bool =
+  assertErrAs<E,Bool>(r, f);
+
+/**
+ `assertErrAs`
+ ---------------
+*/
+func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
+  switch(r) {
+    case (#err e) f e;
+    case (#ok _) P.unreachable();
+  }
+};
+
+/**
  `bind`
  -------
  bind operation in result monad.
