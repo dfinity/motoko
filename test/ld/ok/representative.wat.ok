@@ -1,0 +1,25 @@
+(module
+  (type (;0;) (func))
+  (type (;1;) (func (param i32) (result i32)))
+  (type (;2;) (func))
+  (type (;3;) (func (param i32) (result i32)))
+  (type (;4;) (func))
+  (import "rts" "imported" (func (;0;) (type 1)))
+  (func $call_imported (type 0)
+    i32.const 42
+    call 0
+    drop)
+  (func $__wasm_call_ctors (type 2)
+    call $__wasm_apply_relocs)
+  (func $__wasm_apply_relocs (type 2))
+  (func $square (type 3) (param i32) (result i32)
+    local.get 0
+    local.get 0
+    i32.mul)
+  (func $link_start (type 4)
+    call $__wasm_call_ctors)
+  (table (;0;) 0 0 anyfunc)
+  (memory (;0;) 2)
+  (global (;0;) i32 (i32.const 65536))
+  (export "__heap_base" (global 0))
+  (start 5))

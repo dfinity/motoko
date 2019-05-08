@@ -20,6 +20,8 @@ ACCEPT=no
 DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
+AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
+export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 ECHO=echo
@@ -72,8 +74,10 @@ do
   then base=$(basename $file .as)
   elif [ ${file: -3} == ".sh" ]
   then base=$(basename $file .sh)
+  elif [ ${file: -4} == ".wat" ]
+  then base=$(basename $file .wat)
   else
-    echo "Unknown file extension in $file, expected .as or .sh"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh or .wat"; exit 1
     failures=yes
     continue
   fi
@@ -177,11 +181,18 @@ do
         fi
       fi
     fi
-  else
+  elif [ ${file: -3} == ".sh" ]
+  then
     # The file is a shell script, just run it
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
+  else
+    # The file is a .wat file, so we are expected to test linking
+    $ECHO -n " [as-ld]"
+    rm -f _out/$base.wat
+    make --quiet _out/$base.wat
+    diff_files="$diff_files $base.wat"
   fi
   $ECHO ""
 

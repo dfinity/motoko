@@ -21,6 +21,8 @@ nixpkgs.mkShell {
     default.users-guide.buildInputs ++
     [ nixpkgs.ncurses ];
 
+  shellHook = default.llvmEnv;
+
   NIX_FONTCONFIG_FILE = default.users-guide.NIX_FONTCONFIG_FILE;
 }
 

@@ -3,6 +3,8 @@
   dvm ? null,
 }:
 
+let llvm = (import ./nix/llvm.nix); in
+
 let stdenv = nixpkgs.stdenv; in
 
 let sourceByRegex = src: regexes: builtins.path
@@ -61,13 +63,15 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl)/"
-    "test/(fail|run|run-dfinity|repl)/lib/"
-    "test/(fail|run|run-dfinity|repl)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl)/.*.as"
-    "test/(fail|run|run-dfinity|repl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl)/ok/"
-    "test/(fail|run|run-dfinity|repl)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl|ld)/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.as"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.sh"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.wat"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.c"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -94,6 +98,15 @@ let
 in
 
 rec {
+  llvmBuildInputs = [
+    llvm.clang_9
+    llvm.lld_9
+  ];
+
+  llvmEnv = ''
+    export CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"
+    export WASM_LD=wasm-ld
+  '';
 
   native = stdenv.mkDerivation {
     name = "asc";
@@ -116,12 +129,13 @@ rec {
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc
+      make -C src BUILD=native asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
       cp src/asc $out/bin
+      cp src/as-ld $out/bin
     '';
   };
 
@@ -141,18 +155,21 @@ rec {
         nixpkgs.perl
         filecheck
       ] ++
-      (if test-dvm then [ real-dvm ] else []);
+      (if test-dvm then [ real-dvm ] else []) ++
+      llvmBuildInputs;
 
     buildPhase = ''
-      patchShebangs .
-      asc --version
-      make -C samples ASC=asc all
-    '' +
-      (if test-dvm
-      then ''
-      make -C test ASC=asc parallel
+        patchShebangs .
+        ${llvmEnv}
+        export ASC=asc
+        export AS_LD=as-ld
+        asc --version
+        make -C samples all
+      '' +
+      (if test-dvm then ''
+        make -C test parallel
       '' else ''
-      make -C test ASC=asc quick
+        make -C test quick
       '');
 
     installPhase = ''
@@ -186,12 +203,16 @@ rec {
         nixpkgs.perl
         ocaml_bisect_ppx
       ] ++
-      (if test-dvm then [ real-dvm ] else []);
+      (if test-dvm then [ real-dvm ] else []) ++
+      llvmBuildInputs;
 
     buildPhase = ''
       patchShebangs .
+      ${llvmEnv}
+      export ASC=asc
+      export AS_LD=as-ld
       ln -vs ${native-coverage}/src src
-      make -C test ASC=asc coverage
+      make -C test coverage
       '';
 
     installPhase = ''

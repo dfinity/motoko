@@ -23,7 +23,7 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
 
 .PHONY: all parallel quick clean test test-parallel test-quick
 
-all: $(NAME) test
+all: $(NAME) as-ld test
 
 parallel: $(NAME) test-parallel
 quick: $(NAME) test-quick
@@ -31,10 +31,13 @@ quick: $(NAME) test-quick
 $(NAME): $(MAIN).$(BUILD)
 	mv $< $@
 
+as-ld: ld_main.$(BUILD)
+	mv $< $@
+
 $(NAME).js: $(JS_MAIN).byte
 	js_of_ocaml +nat.js $< -o $@
 
-$(MAIN).$(BUILD): sanity
+%.$(BUILD): sanity
 	$(OCAMLBUILD) $@
 
 $(JS_MAIN).byte: $(JS_MAIN).ml sanity
