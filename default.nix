@@ -106,7 +106,7 @@ in
 
 rec {
 
-  rts = nixpkgs.pkgsi686Linux.stdenv.mkDerivation {
+  rts = stdenv.mkDerivation {
     name = "asc-rts";
 
     src = sourceByRegex ./rts [
@@ -120,7 +120,7 @@ rec {
       [ clang_9 lld_9 ] ;
 
     preBuild = ''
-      export CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"
+      export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
       export WASM_LD=wasm-ld
       export TOMMATHSRC=${libtommath}
     '';
