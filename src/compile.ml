@@ -1508,11 +1508,12 @@ module BoxedWord = struct
         ( get_n ^^ Heap.load_field64 payload_field)
     )
 
-  let box32 env =
+  let _box32 env =
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ box env
 
   let _lit env n = compile_const_64 n ^^ box env
 
+  (* from/to SR.UnboxedInt64 *)
   let to_word64 env = G.nop
   let from_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
@@ -2206,8 +2207,7 @@ module Text = struct
             get_len ^^ compile_add_const 1l ^^ set_len
           end ^^
         get_len ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BigNum.box env
+        BigNum.from_word32 env ^^ BigNum.box env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2302,8 +2302,8 @@ module Arr = struct
       let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
         let get_idx = G.i (LocalGet (nr 1l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        idx env ^^
+        get_idx ^^ BigNum.unbox env1 ^^ BigNum.to_word32 env1 ^^
+        idx env1 ^^
         load_ptr
       )) in
       Closure.fixed_closure env funid [ get_x ]
@@ -2315,8 +2315,8 @@ module Arr = struct
         let get_idx = G.i (LocalGet (nr 1l)) in
         let get_val = G.i (LocalGet (nr 2l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.unbox env1 ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        idx env ^^
+        get_idx ^^ BigNum.unbox env1 ^^ BigNum.to_word32 env1 ^^
+        idx env1 ^^
         get_val ^^
         store_ptr
       )) in
@@ -2328,8 +2328,7 @@ module Arr = struct
       let funid = E.add_fun env "array_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
         Closure.get ^^ Closure.load_data 0l ^^
         Heap.load_field len_field ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        BigNum.box env1
+        BigNum.from_word32 env1 ^^ BigNum.box env1
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2345,7 +2344,7 @@ module Arr = struct
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BigNum.box32 env (* return the boxed index *)
+        get_i ^^ BigNum.from_word32 env ^^ BigNum.box env (* return the boxed index *)
       )
 
   let vals_iter env =
@@ -2384,8 +2383,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BigNum.unbox env ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    BigNum.unbox env ^^ BigNum.to_word32 env ^^
     set_len ^^
 
     (* Allocate *)
@@ -2409,8 +2407,7 @@ module Arr = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     set_f ^^
-    BigNum.unbox env ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    BigNum.unbox env ^^ BigNum.to_word32 env ^^
     set_len ^^
 
     (* Allocate *)
@@ -2427,8 +2424,7 @@ module Arr = struct
       get_f ^^
       (* The arg *)
       get_i ^^
-      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-      BigNum.box env ^^
+      BigNum.from_word32 env ^^ BigNum.box env ^^
       (* The closure again *)
       get_f ^^
       (* Call *)
