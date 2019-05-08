@@ -1779,6 +1779,7 @@ module BigNum = struct
   let compile_unsigned_rem env = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
 
   let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  let compile_relop env bigintop i64op = G.i (Compare (Wasm.Values.I64 i64op))
 end
 
 (* Primitive functions *)
@@ -4242,19 +4243,19 @@ let compile_eq env t = match t with
   | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
 let get_relops = Syntax.(function
-  | GeOp -> I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
-  | GtOp -> I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
-  | LeOp -> I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
-  | LtOp -> I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
+  | GeOp -> "ge", I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
+  | GtOp -> "gt", I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
+  | LeOp -> "le", I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
+  | LtOp -> "lt", I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
-  let u64op, s64op, u32op, s32op = get_relops op in
+  let bigintop, u64op, s64op, u32op, s32op = get_relops op in
   let open Type in
   match t with
+    | Nat -> BigNum.compile_relop env bigintop u64op
+    | Int -> BigNum.compile_relop env bigintop s64op 
     | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Nat -> G.i (Compare (Wasm.Values.I64 u64op)) (*candidate*)
-    | Int -> G.i (Compare (Wasm.Values.I64 s64op)) (*candidate*)
     | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
     | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
