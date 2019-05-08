@@ -5133,18 +5133,6 @@ and conclude_module env module_name start_fi_o =
     close_in ic;
     Bytes.to_string s in
 
-  let stdlib =
-    (*
-    The RTS can come via enviornment (in particular when built via nix),
-    or relative to the directory of the invoked asc (when developing)
-    *)
-    let wasm_filename =
-      match Sys.getenv_opt "ASC_RTS" with
-      | Some filename -> filename
-      | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
-    let wasm = load_file wasm_filename in
-    CustomModuleDecode.decode "rts.wasm" wasm in
-
   let emodule =
     let open CustomModule in
     { module_;
@@ -5163,7 +5151,23 @@ and conclude_module env module_name start_fi_o =
              ];
     } in
 
-  LinkModule.link emodule "rts" stdlib
+  if !(Flags.link)
+  then
+    let stdlib =
+      (*
+      The RTS can come via enviornment (in particular when built via nix),
+      or relative to the directory of the invoked asc (when developing)
+      *)
+      let wasm_filename =
+        match Sys.getenv_opt "ASC_RTS" with
+        | Some filename -> filename
+        | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
+      let wasm = load_file wasm_filename in
+      CustomModuleDecode.decode "rts.wasm" wasm in
+
+    LinkModule.link emodule "rts" stdlib
+  else
+    emodule
 
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
   let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
