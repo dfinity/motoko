@@ -1538,10 +1538,10 @@ module BoxedWord = struct
            G.i (Binary (I64 I64Op.ShrU)) ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul_code
          in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ bt
+            G.if_ (bt env SR.UnboxedInt64)
              one
              (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ bt
+              G.if_ (bt env SR.UnboxedInt64)
                 square_recurse_with_shifted
                 (get_n ^^
                  square_recurse_with_shifted ^^
@@ -1776,7 +1776,7 @@ sig
   val compile_signed_mod : E.t -> G.t
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
-  val compile_unsigned_pow : E.t -> G.t -> Wasm.Ast.block_type -> G.t
+  val compile_unsigned_pow : E.t -> G.t -> (E.t -> SR.t -> Wasm.Ast.block_type) -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -4264,9 +4264,9 @@ let rec compile_binop env t op =
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp ->
-    BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64)
+    BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) StackRep.to_block_type
   | Type.(Prim Nat),                          PowOp ->
-    BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64(* todo(gabor): because internally it compares i64 *))
+    BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) StackRep.to_block_type
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
