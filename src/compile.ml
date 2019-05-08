@@ -58,7 +58,7 @@ module SR = struct
     | Vanilla
     | UnboxedTuple of int
     | UnboxedRefTuple of int
-    | UnboxedInt64
+    | UnboxedWord64
     | UnboxedWord32
     | UnboxedReference
     | Unreachable
@@ -1513,7 +1513,7 @@ module BoxedWord = struct
 
   let _lit env n = compile_const_64 n ^^ box env
 
-  (* from/to SR.UnboxedInt64 *)
+  (* from/to SR.UnboxedWord64 *)
   let to_word64 env = G.nop
   let from_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
@@ -1538,10 +1538,10 @@ module BoxedWord = struct
            G.i (Binary (I64 I64Op.ShrU)) ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul_code
          in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ (bt env SR.UnboxedInt64)
+            G.if_ (bt env SR.UnboxedWord64)
              one
              (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ (bt env SR.UnboxedInt64)
+              G.if_ (bt env SR.UnboxedWord64)
                 square_recurse_with_shifted
                 (get_n ^^
                  square_recurse_with_shifted ^^
@@ -3695,7 +3695,7 @@ module StackRep = struct
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat
     | Type.Prim Type.Int -> Vanilla
-    | Type.Prim Type.Word64 -> UnboxedInt64
+    | Type.Prim Type.Word64 -> UnboxedWord64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
     | Type.Prim Type.Text -> Vanilla
@@ -3703,7 +3703,7 @@ module StackRep = struct
 
   let to_block_type env = function
     | Vanilla -> ValBlockType (Some I32Type)
-    | UnboxedInt64 -> ValBlockType (Some I64Type)
+    | UnboxedWord64 -> ValBlockType (Some I64Type)
     | UnboxedWord32 -> ValBlockType (Some I32Type)
     | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
@@ -3717,7 +3717,7 @@ module StackRep = struct
 
   let to_string = function
     | Vanilla -> "Vanilla"
-    | UnboxedInt64 -> "UnboxedInt64"
+    | UnboxedWord64 -> "UnboxedWord64"
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
@@ -3729,7 +3729,7 @@ module StackRep = struct
     | _, _ when sr1 = sr2 -> sr1
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
-    | UnboxedInt64, UnboxedInt64 -> UnboxedInt64
+    | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
     | UnboxedReference, UnboxedReference -> UnboxedReference
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
@@ -3742,7 +3742,7 @@ module StackRep = struct
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla -> G.i Drop
-    | UnboxedInt64 -> G.i Drop
+    | UnboxedWord64 -> G.i Drop
     | UnboxedWord32 -> G.i Drop
     | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
@@ -3814,8 +3814,8 @@ module StackRep = struct
       adjust env sr (UnboxedTuple n) ^^ unbox_reference_n env n
 
 
-    | UnboxedInt64, Vanilla -> BoxedWord.box env
-    | Vanilla, UnboxedInt64 -> BoxedWord.unbox env
+    | UnboxedWord64, Vanilla -> BoxedWord.box env
+    | Vanilla, UnboxedWord64 -> BoxedWord.unbox env
 
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
@@ -4163,7 +4163,7 @@ let compile_lit env lit =
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
-    | Word64Lit n   -> SR.UnboxedInt64, compile_const_64 n
+    | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
@@ -4181,7 +4181,7 @@ let compile_unop env t op =
   let open Syntax in
   match op, t with
   | NegOp, Type.(Prim (Int | Word64)) ->
-      SR.UnboxedInt64,
+      SR.UnboxedWord64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
         get_n ^^
@@ -4195,7 +4195,7 @@ let compile_unop env t op =
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
       )
   | NotOp, Type.(Prim Word64) ->
-     SR.UnboxedInt64,
+     SR.UnboxedWord64,
      compile_const_64 (-1L) ^^
      G.i (Binary (Wasm.Values.I64 I64Op.Xor))
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
@@ -4375,7 +4375,7 @@ let rec compile_lexp (env : E.t) exp =
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
+     compile_exp_as env SR.UnboxedWord64 e2 ^^ (* idx *)
      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
      Arr.idx env,
      store_ptr
@@ -4392,7 +4392,7 @@ and compile_exp (env : E.t) exp =
   | IdxE (e1, e2)  ->
     SR.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to array *)
-    compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
+    compile_exp_as env SR.UnboxedWord64 e2 ^^ (* idx *)
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     Arr.idx env ^^
     load_ptr
@@ -4452,7 +4452,7 @@ and compile_exp (env : E.t) exp =
 
        | "Nat->Word64"
        | "Int->Word64" ->
-         SR.UnboxedInt64,
+         SR.UnboxedWord64,
          compile_exp_vanilla env e ^^
          BigNum.to_word64 env
 
@@ -4491,7 +4491,7 @@ and compile_exp (env : E.t) exp =
        | "Word64->Nat"
        | "Word64->Int" ->
          SR.Vanilla,
-         compile_exp_as env SR.UnboxedInt64 e ^^
+         compile_exp_as env SR.UnboxedWord64 e ^^
          BigNum.from_word64 env
 
        | "Word32->Char" ->
@@ -4515,17 +4515,17 @@ and compile_exp (env : E.t) exp =
          G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
          UnboxedSmallWord.msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
        | "popcnt64" ->
-         SR.UnboxedInt64,
-         compile_exp_as env SR.UnboxedInt64 e ^^
+         SR.UnboxedWord64,
+         compile_exp_as env SR.UnboxedWord64 e ^^
          G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
        | "clz" -> SR.UnboxedWord32, compile_exp_as env SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
        | "clz8" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.clz_kernel Type.Word8
        | "clz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.clz_kernel Type.Word16
-       | "clz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
+       | "clz64" -> SR.UnboxedWord64, compile_exp_as env SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
        | "ctz" -> SR.UnboxedWord32, compile_exp_as env SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
        | "ctz8" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word8
        | "ctz16" -> SR.Vanilla, compile_exp_vanilla env e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
-       | "ctz64" -> SR.UnboxedInt64, compile_exp_as env SR.UnboxedInt64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
+       | "ctz64" -> SR.UnboxedWord64, compile_exp_as env SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
        | "Char->Text" ->
          SR.Vanilla,
@@ -4552,11 +4552,11 @@ and compile_exp (env : E.t) exp =
              | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word8)
              | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word16)
              | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
-             | "shrs64" -> compile_kernel_as SR.UnboxedInt64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+             | "shrs64" -> compile_kernel_as SR.UnboxedWord64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
              | "btst8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
              | "btst16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
              | "btst" -> compile_kernel_as SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
-             | "btst64" -> compile_kernel_as SR.UnboxedInt64 (
+             | "btst64" -> compile_kernel_as SR.UnboxedWord64 (
                                let (set_b, get_b) = new_local64 env "b"
                                in set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
                                   G.i (Binary (Wasm.Values.I64 I64Op.And)))
