@@ -148,12 +148,13 @@ rec {
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc
+      make -C src BUILD=native asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
       cp src/asc $out/bin
+      cp src/as-ld $out/bin
     '';
   };
 
