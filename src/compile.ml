@@ -5124,15 +5124,6 @@ and conclude_module env module_name start_fi_o =
       data
     } in
 
-  (* Load standard library *)
-  let load_file f =
-    let ic = open_in f in
-    let n = in_channel_length ic in
-    let s = Bytes.create n in
-    really_input ic s 0 n;
-    close_in ic;
-    Bytes.to_string s in
-
   let emodule =
     let open CustomModule in
     { module_;
@@ -5153,6 +5144,15 @@ and conclude_module env module_name start_fi_o =
 
   if !(Flags.link)
   then
+    (* Load standard library *)
+    let load_file f =
+      let ic = open_in f in
+      let n = in_channel_length ic in
+      let s = Bytes.create n in
+      really_input ic s 0 n;
+      close_in ic;
+      Bytes.to_string s in
+
     let stdlib =
       (*
       The RTS can come via enviornment (in particular when built via nix),
