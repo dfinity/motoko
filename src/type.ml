@@ -728,8 +728,8 @@ and lub' lubs glbs t1 t2 =
   | _, Non -> t1
   | Non, _ -> t2
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
-  | Shared, t2 when sub' t2 Shared -> Shared
-  | t1, Shared when sub' t1 Shared -> Shared
+  | Shared, t2' when sub' t2' Shared -> Shared
+  | t1', Shared when sub' t1' Shared -> Shared
   | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
@@ -802,8 +802,8 @@ and glb' lubs glbs t1 t2 =
   | Non, _ -> Non
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
   | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1 (* TODO(gabor) not general enough *)
-  | Shared, t2 when sub' t2 Shared -> t2
-  | t1, Shared when sub' t1 Shared -> t1
+  | Shared, t2' when sub' t2' Shared -> t2
+  | t1', Shared when sub' t1' Shared -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Prim Null, Opt _
