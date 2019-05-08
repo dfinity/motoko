@@ -122,9 +122,8 @@ rec {
     preBuild = ''
       export CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"
       export WASM_LD=wasm-ld
+      export TOMMATHSRC=${libtommath}
     '';
-
-    makeFlags = [ "TOMMATHSRC=${libtommath}" ];
 
     installPhase = ''
       mkdir -p $out/rts

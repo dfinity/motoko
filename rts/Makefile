@@ -13,7 +13,7 @@ TOMMATHFILES=\
 
 TOMMATH_O=$(patsubst %,_build/tommath_%.o,$(TOMMATHFILES))
 
-TOMMATHSRC = $(PWD)/../../libtommath
+TOMMATHSRC ?= $(PWD)/../../libtommath
 
 _build/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build
 	$(CLANG) --compile -fpic --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
