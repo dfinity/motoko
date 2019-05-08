@@ -1731,14 +1731,7 @@ end (* UnboxedSmallWord *)
 
 module type BigNumType =
 sig
-  val preferred_SR : SR.t
-
-  val box : E.t -> G.t (* preferred_SR to SR.Vanilla *)
-  val unbox : E.t -> G.t (* SR.Vanilla to preferred_SR *)
-
-  val local : E.t -> string -> G.t * G.t (* holding preferred_SR *)
-
-  (* word to/from preferred_SR *)
+  (* word to/from SR.Vanilla *)
   val to_word32 : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_signed_word32 : E.t -> G.t
@@ -1746,17 +1739,37 @@ sig
   val from_word64 : E.t -> G.t
 
   (* buffers *)
+  (* given a numeric object on stack (vanilla),
+     push the number (i32) of bytes necessary
+     to externalize the numeric object *)
   val compile_data_size : G.t
+  (* given on stack
+     - numeric object (vanilla, TOS)
+     - data buffer
+    store the binary representation of the numeric object into the data buffer,
+    and push the number (i32) of bytes stored onto the stack
+   *)
   val compile_store_to_data_buf : E.t -> G.t
+  (* given a data buffer on stack, consume bytes from it,
+     deserializing to a numeric object
+     and leave two words on stack:
+     - number of consumed bytes (i32, TOS)
+     - numeric object (vanilla)
+   *)
   val compile_load_from_data_buf : E.t -> G.t
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
+  (* given a numeric object on the stack,
+     compile the literal and leave equality
+     comparison result on the stack
+   *)
   val compile_lit_pat : E.t -> G.t -> G.t
 
   (* aritmetics *)
   val compile_abs : E.t -> G.t
   val compile_add : E.t -> G.t
+  val compile_sub : E.t -> G.t
   val compile_unsigned_sub : E.t -> G.t
   val compile_mul : E.t -> G.t
   val compile_signed_div : E.t -> G.t
@@ -1774,34 +1787,21 @@ end
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
-  let preferred_SR = SR.UnboxedInt64
+  let to_word32 env = unbox env ^^ BoxedWord.to_word32 env
+  let from_word32 env = BoxedWord.from_word32 env ^^ box env
+  let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
+  let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
+  let from_word64 env = BoxedWord.from_word64 env ^^ box env
 
-  let local = new_local64
+  let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
-  let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n)
-
-  (* given a numeric object on stack (vanilla),
-     push the number (i32) of bytes necessary
-     to externalize the numeric object *)
   let compile_data_size = G.i Drop ^^ compile_unboxed_const 8l (* 64 bit for now *)
 
-  (* given on stack
-     - numeric object (vanilla, TOS)
-     - data buffer
-    store the binary representation of the numeric object into the data buffer,
-    and push the number (i32) of bytes stored onto the stack
-   *)
   let compile_store_to_data_buf env =
     unbox env ^^
     G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     compile_unboxed_const 8l (* 64 bit for now *)
 
-  (* given a data buffer on stack, consume bytes from it,
-     deserializing to a numeric object
-     and leave two words on stack:
-     - number of consumed bytes (i32, TOS)
-     - numeric object (vanilla)
-   *)
   let compile_load_from_data_buf env =
     G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
     box env ^^
@@ -1823,23 +1823,30 @@ module BigNum64 : BigNumType = struct
       )
       ( get_i )
 
-  let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  let compile_mul env = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  let compile_signed_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivS))
-  let compile_signed_mod env = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
-  let compile_unsigned_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  let compile_unsigned_rem env = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  let with_both_unboxed op env =
+    let set_tmp, get_tmp = new_local64 env "top" in
+    unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op ^^ box env
 
-  let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  let compile_relop env bigintop i64op = G.i (Compare (Wasm.Values.I64 i64op))
-  let compile_is_negative env = compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+  let compile_add = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Add)))
+  let compile_sub = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
+  let compile_mul = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Mul)))
+  let compile_signed_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivS)))
+  let compile_signed_mod = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemS)))
+  let compile_unsigned_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivU)))
+  let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
+  let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
+  let compile_unsigned_pow env _ bt =
+    with_both_unboxed (BoxedWord.compile_unsigned_pow env (G.i (Binary (Wasm.Values.I64 I64Op.Mul))) bt) env
 
-  (* given a numeric object on the stack,
-     compile the literal and leave equality
-     comparison result on the stack
-   *)
+  let with_comp_unboxed op env =
+    let set_tmp, get_tmp = new_local64 env "top" in
+    unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
+
+  let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
+  let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
+  let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+
   let compile_lit_pat env compile_lit =
-    unbox env ^^
     compile_lit ^^
     compile_eq env
 end
@@ -2252,7 +2259,7 @@ module Text = struct
             get_len ^^ compile_add_const 1l ^^ set_len
           end ^^
         get_len ^^
-        BigNum.from_word32 env ^^ BigNum.box env
+        BigNum.from_word32 env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2347,7 +2354,7 @@ module Arr = struct
       let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
         let get_idx = G.i (LocalGet (nr 1l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.unbox env1 ^^ BigNum.to_word32 env1 ^^
+        get_idx ^^ BigNum.to_word32 env1 ^^
         idx env1 ^^
         load_ptr
       )) in
@@ -2360,7 +2367,7 @@ module Arr = struct
         let get_idx = G.i (LocalGet (nr 1l)) in
         let get_val = G.i (LocalGet (nr 2l)) in
         Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.unbox env1 ^^ BigNum.to_word32 env1 ^^
+        get_idx ^^ BigNum.to_word32 env1 ^^
         idx env1 ^^
         get_val ^^
         store_ptr
@@ -2373,7 +2380,7 @@ module Arr = struct
       let funid = E.add_fun env "array_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
         Closure.get ^^ Closure.load_data 0l ^^
         Heap.load_field len_field ^^
-        BigNum.from_word32 env1 ^^ BigNum.box env1
+        BigNum.from_word32 env1
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -2389,7 +2396,7 @@ module Arr = struct
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
         compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BigNum.from_word32 env ^^ BigNum.box env (* return the boxed index *)
+        get_i ^^ BigNum.from_word32 env (* return the boxed index *)
       )
 
   let vals_iter env =
@@ -2428,7 +2435,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BigNum.unbox env ^^ BigNum.to_word32 env ^^
+    BigNum.to_word32 env ^^
     set_len ^^
 
     (* Allocate *)
@@ -2452,7 +2459,7 @@ module Arr = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     set_f ^^
-    BigNum.unbox env ^^ BigNum.to_word32 env ^^
+    BigNum.to_word32 env ^^
     set_len ^^
 
     (* Allocate *)
@@ -2469,7 +2476,7 @@ module Arr = struct
       get_f ^^
       (* The arg *)
       get_i ^^
-      BigNum.from_word32 env ^^ BigNum.box env ^^
+      BigNum.from_word32 env ^^
       (* The closure again *)
       get_f ^^
       (* Call *)
@@ -3687,7 +3694,7 @@ module StackRep = struct
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
     | Type.Prim Type.Nat
-    | Type.Prim Type.Int -> BigNum.preferred_SR
+    | Type.Prim Type.Int -> Vanilla
     | Type.Prim Type.Word64 -> UnboxedInt64
     | Type.Prim Type.Word32 -> UnboxedWord32
     | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
@@ -4152,7 +4159,7 @@ let compile_lit env lit =
     | BoolLit true ->  SR.bool, Bool.lit true
     (* This maps int to int32, instead of a proper arbitrary precision library *)
     | IntLit n
-    | NatLit n      -> BigNum.preferred_SR, BigNum.compile_lit env n
+    | NatLit n      -> SR.Vanilla, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
@@ -4210,14 +4217,15 @@ let rec compile_binop env t op =
   Syntax.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  | Type.Prim Type.Nat,                       SubOp -> BigNum.compile_unsigned_sub env
+  | Type.(Prim Nat),                          SubOp -> BigNum.compile_unsigned_sub env
+  | Type.(Prim Int),                          SubOp -> BigNum.compile_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.(Prim Word64),                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
-  | Type.(Prim (Int | Word64)),               SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
   | Type.(Prim Int),                          DivOp -> BigNum.compile_signed_div env
   | Type.(Prim Int),                          ModOp -> BigNum.compile_signed_mod env
 
@@ -4249,14 +4257,16 @@ let rec compile_binop env t op =
      in pow ()
   | Type.(Prim Int),                          PowOp ->
      let _, pow = compile_binop env Type.(Prim Nat) PowOp in
-     let (set_n, get_n) = BigNum.local env "n" in
-     let (set_exp, get_exp) = BigNum.local env "exp" in
+     let (set_n, get_n) = new_local env "n" in
+     let (set_exp, get_exp) = new_local env "exp" in
      set_exp ^^ set_n ^^
      get_exp ^^ BigNum.compile_is_negative env ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
-  | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64)
-  | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env BigNum.preferred_SR)
+  | Type.(Prim Word64),                       PowOp ->
+    BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64)
+  | Type.(Prim Nat),                          PowOp ->
+    BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) (StackRep.to_block_type env SR.UnboxedInt64(* todo(gabor): because internally it compares i64 *))
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
@@ -4425,25 +4435,25 @@ and compile_exp (env : E.t) exp =
        | "Nat->Word8"
        | "Int->Word8" ->
          SR.Vanilla,
-         compile_exp_as env BigNum.preferred_SR e ^^
+         compile_exp_vanilla env e ^^
          Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Nat->Word16"
        | "Int->Word16" ->
          SR.Vanilla,
-         compile_exp_as env BigNum.preferred_SR e ^^
+         compile_exp_vanilla env e ^^
          Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Nat->Word32"
        | "Int->Word32" ->
          SR.UnboxedWord32,
-         compile_exp_as env BigNum.preferred_SR e ^^
+         compile_exp_vanilla env e ^^
          Prim.prim_intToWord32 env
 
        | "Nat->Word64"
        | "Int->Word64" ->
          SR.UnboxedInt64,
-         compile_exp_as env BigNum.preferred_SR e ^^
+         compile_exp_vanilla env e ^^
          BigNum.to_word64 env
 
        | "Char->Word32" ->
@@ -4452,35 +4462,35 @@ and compile_exp (env : E.t) exp =
          UnboxedSmallWord.unbox_codepoint
 
        | "Word8->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
        | "Word8->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
 
        | "Word16->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
        | "Word16->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
 
        | "Word32->Nat" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
          Prim.prim_word32toNat env
        | "Word32->Int" ->
-         SR.UnboxedInt64,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
          Prim.prim_word32toInt env
 
        | "Word64->Nat"
        | "Word64->Int" ->
-         BigNum.preferred_SR,
+         SR.Vanilla,
          compile_exp_as env SR.UnboxedInt64 e ^^
          BigNum.from_word64 env
 
@@ -4491,7 +4501,7 @@ and compile_exp (env : E.t) exp =
 
        | "Int~hash" ->
          SR.UnboxedWord32,
-         compile_exp_as env SR.UnboxedInt64 e ^^
+         compile_exp_vanilla env e ^^
          Prim.prim_hashInt env
 
        | "popcnt" ->
@@ -4790,7 +4800,7 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BigNum.compile_lit_pat env (compile_lit_as env BigNum.preferred_SR l)
+    BigNum.compile_lit_pat env (compile_lit_as env SR.Vanilla l)
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
