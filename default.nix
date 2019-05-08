@@ -1,6 +1,7 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
   test-dvm ? true,
   dvm ? null,
+  export-shell ? false,
 }:
 
 let llvm = (import ./nix/llvm.nix); in
@@ -95,9 +96,6 @@ let
     "stdlib/examples/produce-exchange/README.md"
   ];
 
-in
-
-rec {
   llvmBuildInputs = [
     llvm.clang_9
     llvm.lld_9
@@ -107,6 +105,9 @@ rec {
     export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
     export WASM_LD=wasm-ld
   '';
+in
+
+rec {
 
   native = stdenv.mkDerivation {
     name = "asc";
@@ -350,4 +351,27 @@ rec {
     name = "all-systems-go";
     constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
   };
+
+  shell = if export-shell then nixpkgs.mkShell {
+
+    #
+    # Since building asc, and testing it, are two different derivation in default.nix
+    # we have to create a fake derivation for shell.nix that commons up the build dependencies
+    # of the two to provide a build environment that offers both
+    #
+    # Would not be necessary if nix-shell would take more than one `-A` flag, see
+    # https://github.com/NixOS/nix/issues/955
+    #
+
+    buildInputs =
+      native.buildInputs ++
+      builtins.filter (i: i != native) native_test.buildInputs ++
+      users-guide.buildInputs ++
+      [ nixpkgs.ncurses ];
+
+    shellHook = llvmEnv;
+
+    NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
+  } else null;
+
 }
