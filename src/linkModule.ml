@@ -7,6 +7,18 @@ open Wasm.Ast
 open Wasm.Source
 open CustomModule
 
+(*
+This module is a first working draft that should be functionally working, but
+will go through further refactoring before we are happy with it. Things to do:
+
+ * much code (finding imports, counting) is duplicated for globals and
+   functions. This could be refactored into general functions an predicates.
+ * There are multiple AST traversals. These could be turned into a single one
+   (taking multiple rename functions) or even more general taking a record
+   of functions for each syntactic category.
+
+*)
+
 (* Linking *)
 
 type imports = (int32 * name) list
@@ -133,7 +145,7 @@ let remove_function_export name : module_' -> module_' = fun m ->
   { m with exports = List.filter is_func_export m.exports }
 
 module VarMap = Map.Make(Int32)
-let remove_non_definity_exports (em : extended_module) : extended_module =
+let remove_non_dfinity_exports (em : extended_module) : extended_module =
   (* We assume that every expoted function that does not have an entry in the
    custom types section was only exported for linking, and should not be
    exported in the final module *)
@@ -404,7 +416,6 @@ let rename_globals_extended rn (em : extended_module) =
   }
 
 let rename_types rn m =
-  let phrase f x = { x with it = f x.it } in
   let ty_var' = rn in
   let ty_var = phrase ty_var' in
 
@@ -599,4 +610,4 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
-  |> remove_non_definity_exports (* only sane if no additional files get linked in *)
+  |> remove_non_dfinity_exports (* only sane if no additional files get linked in *)
