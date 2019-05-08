@@ -155,6 +155,8 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
+  module LabSet = Set.Make(String)
+
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
@@ -197,6 +199,7 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+    labs : LabSet.t ref; (* used labels (fields and variants) *)
   }
 
   (* The initial global environment *)
@@ -222,7 +225,15 @@ module E = struct
     ld = NameEnv.empty;
     locals = ref [];
     local_names = ref [];
+    labs = ref LabSet.empty;
   }
+
+  (* record an object or variant field label, for debugging *)
+  let add_lab (env : t) lab =
+    env.labs := LabSet.add lab (!(env.labs))
+
+  let get_labs env =
+    LabSet.fold (fun lab ls -> (Int32.of_int (Hashtbl.hash lab), lab) :: ls) (!(env.labs)) []
 
   (* Creating a local environment, resetting the local fields,
      and removing bindings for local variables (unless they are at global locations)
@@ -1165,11 +1176,12 @@ module Variant = struct
   let tag_field = Tagged.header_size
   let payload_field = Int32.add Tagged.header_size 1l
 
-  let hash_variant_label : Type.lab -> int32 = fun l ->
+  let hash_variant_label env : Type.lab -> int32 = fun l ->
+    E.add_lab env l;
     Int32.of_int (Hashtbl.hash l)
 
   let inject env l e =
-    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label l); e]
+    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
   let get_tag = Heap.load_field tag_field
   let project = Heap.load_field payload_field
@@ -1177,7 +1189,7 @@ module Variant = struct
   (* Test if the top of the stacks points to a variant with this label *)
   let test_is env l =
     get_tag ^^
-    compile_eq_const (hash_variant_label l)
+    compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
 
@@ -1701,7 +1713,8 @@ module Object = struct
   let size_field = Int32.add Tagged.header_size 0l
 
   (* We use the same hashing function as Ocaml would *)
-  let hash_field_name ({it = Name s; _}) =
+  let hash_field_name env ({it = Name s; _}) =
+    E.add_lab env s;
     Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
@@ -1715,7 +1728,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun ({it = Name s;_} as n,_) -> (hash_field_name n, s)) |>
+      List.map (fun ({it = Name s;_} as n,_) -> (hash_field_name env n, s)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1747,7 +1760,7 @@ module Object = struct
      let init_field (name, mk_is) : G.t =
        (* Write the hash *)
        get_ri ^^
-       compile_unboxed_const (hash_field_name name) ^^
+       compile_unboxed_const (hash_field_name env name) ^^
        Heap.store_field (hash_position env name) ^^
        (* Write the pointer to the indirection *)
        get_ri ^^
@@ -1808,7 +1821,7 @@ module Object = struct
     mut
 
   let idx env obj_type name =
-    compile_unboxed_const (hash_field_name name) ^^
+    compile_unboxed_const (hash_field_name env name) ^^
     idx_hash env (is_mut_field env obj_type name)
 
   let load_idx env obj_type f =
@@ -5047,9 +5060,10 @@ and conclude_module env module_name start_fi_o =
            ];
     module_name;
     function_names =
-	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+      List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
     locals_names =
-	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+      List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+    labels = E.get_labs env
   }
 
 let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =

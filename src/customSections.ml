@@ -28,6 +28,7 @@ let encode
     (module_name : string)
     (function_names : (int32 * string) list)
     (locals_names : (int32 * (int32 * string) list) list)
+    (labels : (int32 * string) list)
     : string =
   let s = stream () in
 
@@ -83,7 +84,6 @@ let encode
       | ActorRef -> vu32 0x6fl
       | FuncRef  -> vu32 0x6dl
   in
-
   section 0 (fun _ ->
     string "types";
     (* We could deduplicate the types here *)
@@ -118,6 +118,11 @@ let encode
     section 2 (fun _ ->
       assoc_list locals_names (fun locals -> assoc_list locals string)
     );
+  );
+  section 0 (fun _ ->
+    string "actorScript";
+    (* labels section *)
+    section 0 (fun _ -> assoc_list labels string);
   );
   to_string s
 
