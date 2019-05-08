@@ -104,7 +104,7 @@ rec {
   ];
 
   llvmEnv = ''
-    export CLANG="clang-9 -I${nixpkgs.pkgsi686Linux.glibc.dev}/include"
+    export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
     export WASM_LD=wasm-ld
   '';
 
