@@ -1728,7 +1728,50 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
-module BigNum = struct
+
+module type BigNumType =
+sig
+  val preferred_SR : SR.t
+
+  val box : E.t -> G.t (* preferred_SR to SR.Vanilla *)
+  val unbox : E.t -> G.t (* SR.Vanilla to preferred_SR *)
+
+  val local : E.t -> string -> G.t * G.t (* holding preferred_SR *)
+
+  (* word to/from preferred_SR *)
+  val to_word32 : E.t -> G.t
+  val from_word32 : E.t -> G.t
+  val from_signed_word32 : E.t -> G.t
+  val to_word64 : E.t -> G.t
+  val from_word64 : E.t -> G.t
+
+  (* buffers *)
+  val compile_data_size : G.t
+  val compile_store_to_data_buf : E.t -> G.t
+  val compile_load_from_data_buf : E.t -> G.t
+
+  (* literals *)
+  val compile_lit : E.t -> Big_int.big_int -> G.t
+  val compile_lit_pat : E.t -> G.t -> G.t
+
+  (* aritmetics *)
+  val compile_abs : E.t -> G.t
+  val compile_add : E.t -> G.t
+  val compile_unsigned_sub : E.t -> G.t
+  val compile_mul : E.t -> G.t
+  val compile_signed_div : E.t -> G.t
+  val compile_signed_mod : E.t -> G.t
+  val compile_unsigned_div : E.t -> G.t
+  val compile_unsigned_rem : E.t -> G.t
+  val compile_unsigned_pow : E.t -> G.t -> Wasm.Ast.block_type -> G.t
+
+  (* comparisons *)
+  val compile_eq : E.t -> G.t
+  val compile_is_negative : E.t -> G.t
+  val compile_relop : E.t -> string -> Wasm.Ast.I64Op.relop -> G.t
+end
+
+module BigNum64 : BigNumType = struct
   include BoxedWord
 
   let preferred_SR = SR.UnboxedInt64
@@ -1800,6 +1843,8 @@ module BigNum = struct
     compile_lit ^^
     compile_eq env
 end
+
+module BigNum = BigNum64
 
 (* Primitive functions *)
 module Prim = struct
