@@ -25,8 +25,7 @@ coverage:
 	$(MAKE) -C run; \
 	$(MAKE) -C run-dfinity; \
 	$(MAKE) -C repl;
-	$(MAKE) -C ld
-	|| true
+	$(MAKE) -C ld || true
 	bisect-ppx-report -I ../src/_build/ -html coverage/ _coverage/bisect*.out
 	rm -rf _coverage
 

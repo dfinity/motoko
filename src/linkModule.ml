@@ -8,15 +8,14 @@ open Wasm.Source
 open CustomModule
 
 (*
-This module is a first working draft that should be functionally working, but
-will go through further refactoring before we are happy with it. Things to do:
+This module is a first stab that should be functionally working, but will go
+through further refactoring before we are happy with it. Things to do:
 
  * much code (finding imports, counting) is duplicated for globals and
    functions. This could be refactored into general functions an predicates.
  * There are multiple AST traversals. These could be turned into a single one
    (taking multiple rename functions) or even more general taking a record
    of functions for each syntactic category.
-
 *)
 
 (* Linking *)
