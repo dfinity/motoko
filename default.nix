@@ -96,18 +96,50 @@ let
     "stdlib/examples/produce-exchange/README.md"
   ];
 
+  libtommath = nixpkgs.fetchFromGitHub {
+    owner = "libtom";
+    repo = "libtommath";
+    rev = "9e1a75cfdc4de614eaf4f88c52d8faf384e54dd0";
+    sha256 = "0qwmzmp3a2rg47pnrsls99jpk5cjj92m75alh1kfhcg104qq6w3d";
+  };
+
   llvmBuildInputs = [
     llvm.clang_9
     llvm.lld_9
   ];
 
   llvmEnv = ''
-    export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
+    export CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
 
 rec {
+
+  rts = stdenv.mkDerivation {
+    name = "asc-rts";
+
+    src = sourceByRegex ./rts [
+      "rts.c"
+      "Makefile"
+      "includes/"
+      "includes/.*.h"
+      ];
+
+    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+
+    buildInputs = llvmBuildInputs;
+
+    preBuild = ''
+      ${llvmEnv}
+      export TOMMATHSRC=${libtommath}
+    '';
+
+    installPhase = ''
+      mkdir -p $out/rts
+      cp as-rts.wasm $out/rts
+    '';
+  };
 
   native = stdenv.mkDerivation {
     name = "asc";
@@ -349,7 +381,16 @@ rec {
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
+    constituents = [
+      native
+      js
+      native_test
+      coverage-report
+      rts
+      stdlib-reference
+      produce-exchange
+      users-guide
+    ];
   };
 
   shell = if export-shell then nixpkgs.mkShell {
@@ -370,7 +411,7 @@ rec {
       [ nixpkgs.ncurses ];
 
     shellHook = llvmEnv;
-
+    TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 
