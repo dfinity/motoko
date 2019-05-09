@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     str1[i] = str2[i];
   }
 }
@@ -17,7 +17,7 @@ ActorScript pointers are offset by one. So let us represent
 them as a typedef, and access the fields using the payload macro.
 */
 typedef intptr_t as_ptr;
-#define FIELD(p,n) (((int *)(p+1))[n])
+#define FIELD(p,n) (((size_t *)(p+1))[n])
 #define TAG(p) FIELD(p,0)
 #define TEXT_LEN(p) ((char *)(&FIELD(p,1)))
 #define TEXT_PAYLOAD(p) ((char *)(&FIELD(p,2)))
@@ -39,7 +39,7 @@ see https://bugs.llvm.org/show_bug.cgi?id=41610
 So in order to allocate on the ActorScript heap from C, we import
 alloc_bytes from the Actorscript RTS:
 */
-from_rts as_ptr alloc_bytes(int n);
+from_rts as_ptr alloc_bytes(size_t n);
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
@@ -60,7 +60,7 @@ enum as_heap_tag {
   };
 
 size_t as_strlen(const char* p) {
-  int i = 0;
+  size_t i = 0;
   while (p[i]) i++;
   return i;
 }
@@ -113,10 +113,10 @@ void* mp_alloc(size_t l) {
 }
 
 export void* mp_calloc(size_t n, size_t size) {
-  int l = n * size; // check overflow?
+  size_t l = n * size; // check overflow?
   void *payload = mp_alloc(l);
   char *tmp = (char *)payload;
-  for (int i = 0; i < l; i++) {
+  for (size_t i = 0; i < l; i++) {
     *tmp++ = 0;
   }
   return payload;
